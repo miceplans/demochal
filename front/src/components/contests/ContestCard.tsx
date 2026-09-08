@@ -69,7 +69,6 @@ export function ContestCard({
             aria-label={`${contest.title} 북마크`}
             aria-pressed={saved}
             onClick={() => toggle(contest.id)}
-            style={{ background: saved ? c.lightBlue : 'transparent' }}
           >
             <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
           </IconButton>
