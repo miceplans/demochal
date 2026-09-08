@@ -20,6 +20,7 @@ import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { categories, desktopContests, contests, teams } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { useUserStore } from '@/stores/useUserStore';
+import { Dropdown } from '@/components/ui/Dropdown';
 
 const Layout = styled.div({
   display: 'grid',
@@ -105,49 +106,42 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             <>
               <div>
                 <h3>챌린지</h3>
-                <Select aria-label="챌린지">
-                  <option>전체 챌린지</option>
-                  <option>공공데이터 공모전</option>
-                </Select>
+                <Dropdown
+                  aria-label="챌린지"
+                  options={['전체 챌린지', '공공데이터 공모전']}
+                  value={category}
+                  onChange={(v) => setCategory(v)}
+                />
               </div>
               <div>
                 <h3>필요 역할</h3>
-                <Wrap>
-                  {['백엔드', '프론트', '디자인'].map((x) => (
-                    <Chip
-                      key={x}
-                      selected={role === x}
-                      onClick={() => setRole(role === x ? '' : x)}
-                    >
-                      {x}
-                    </Chip>
-                  ))}
-                </Wrap>
+                <Dropdown
+                  aria-label="필요 역할"
+                  options={['백엔드', '프론트', '디자인']}
+                  value={role}
+                  onChange={(v) => setRole(v)}
+                />
               </div>
               <div>
                 <h3>지역</h3>
-                <Select aria-label="지역">
-                  <option>서울</option>
-                  <option>전체</option>
-                  <option>부산</option>
-                </Select>
+                <Dropdown
+                  aria-label="지역"
+                  options={['서울', '전체', '부산']}
+                  value={category}
+                  onChange={(v) => setCategory(v)}
+                />
               </div>
             </>
           ) : (
             <>
               <div>
                 <h3>분야</h3>
-                <Wrap>
-                  {categories.map((x) => (
-                    <Chip
-                      key={x}
-                      selected={category === x}
-                      onClick={() => setCategory(category === x ? '' : x)}
-                    >
-                      {x}
-                    </Chip>
-                  ))}
-                </Wrap>
+                <Dropdown
+                  aria-label="분야"
+                  options={categories}
+                  value={category}
+                  onChange={(v) => setCategory(v)}
+                />
               </div>
               {[
                 [
@@ -210,19 +204,19 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               ? ['전체 챌린지', '필요역할', '지역']
               : ['분야', '대상', '주최기관', '상금']
             ).map((x, i) => (
-              <Select
+              <Dropdown
                 key={x}
                 aria-label={x}
                 value={i === 0 ? category : undefined}
                 onChange={(e) => {
-                  if (i === 0) setCategory(e.target.value);
+                  if (i === 0) setCategory(e);
                 }}
               >
                 <option value="">{x}</option>
                 {(i === 0 ? categories : ['전체', '대학생', '일반인']).map((v) => (
                   <option key={v}>{v}</option>
                 ))}
-              </Select>
+              </Dropdown>
             ))}
           </MobileFilters>
           <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>

@@ -34,6 +34,7 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import legalCopy from '@/data/design-copy.json';
+import { Dropdown } from '@/components/ui/Dropdown';
 
 const MobileMenu = styled.nav({
   display: 'flex',
@@ -92,7 +93,7 @@ export function MyPage() {
                   <Tag>기획</Tag>
                   <Tag>프론트엔드</Tag>
                 </Wrap>
-                <Muted>D-14 · 마감 7월 10일</Muted>
+                <Muted>D-14 · 마감 7 월 10 일</Muted>
               </Link>
             ))}
           </Participating>
@@ -159,7 +160,7 @@ export function BookmarksPage() {
           </Row>
           <MobileOnly>
             <Button small tone="plain" aria-pressed={two} onClick={() => setTwo(!two)}>
-              {two ? '1열 보기' : '2열 보기'}
+              {two ? '1 열 보기' : '2 열 보기'}
             </Button>
           </MobileOnly>
         </Row>
@@ -361,17 +362,14 @@ export function TeamApplicantsPage() {
                 </td>
                 <td></td>
                 <td style={{ width: 130 }}>
-                  <Select
+                  <Dropdown
                     aria-label={`${name} 결과`}
+                    options={['미정', '합격', '불합격']}
                     value={results[i]}
-                    onChange={(e) =>
-                      setResults(results.map((x, j) => (j === i ? e.target.value : x)))
+                    onChange={(v) =>
+                      setResults(results.map((x, j) => (j === i ? v : x)))
                     }
-                  >
-                    {['미정', '합격', '불합격'].map((x) => (
-                      <option key={x}>{x}</option>
-                    ))}
-                  </Select>
+                  />
                 </td>
               </tr>
             ))}
@@ -418,11 +416,11 @@ const NotificationList = styled.div({
 });
 export function NotificationsPage() {
   const items = [
-    '공공데이터 챌린지 팀 · 김민수님이 지원 · 2분 전',
-    '디자이너 자리 지원이 수락되었어요 · 스타트업 해커톤 팀 · 15분 전',
-    '북마크한 챌린지 마감 D-7 · 7월 3일 마감',
-    '관심분야 새 챌린지가 등록되었어요 · AI/데이터 분야 · 1시간 전',
-    '관심분야 새 수상작이 등록되었어요 · 디자인 분야 · 3시간 전',
+    '공공데이터 챌린지 팀 · 김민수님이 지원 · 2 분 전',
+    '디자이너 자리 지원이 수락되었어요 · 스타트업 해커톤 팀 · 15 분 전',
+    '북마크한 챌린지 마감 D-7 · 7 월 3 일 마감',
+    '관심분야 새 챌린지가 등록되었어요 · AI/데이터 분야 · 1 시간 전',
+    '관심분야 새 수상작이 등록되었어요 · 디자인 분야 · 3 시간 전',
   ];
   return (
     <UserShell title="알림">
