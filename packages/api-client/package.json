@@ -1,0 +1,17 @@
+{
+  "name": "@semochal/api-client",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@semochal/config": "workspace:*",
+    "typescript": "^5.6.3"
+  }
+}
