@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useState, useEffect } from 'react';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
 import {
@@ -17,15 +18,23 @@ import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });
-const HeroRail = styled.div({
+const HeroRail = styled.div<{ currentIndex: number }>({
   display: 'flex',
   justifyContent: 'center',
   gap: 60,
   height: 252,
   marginBottom: 60,
+  overflow: 'hidden',
   '& img': { width: 1059, height: 252, borderRadius: 12, objectFit: 'cover', flexShrink: 0 },
   [mobile]: { display: 'none' },
-});
+}, ({ currentIndex }) => ({
+  '& > div': {
+    display: 'flex',
+    gap: 60,
+    transform: `translateX(calc(${-currentIndex * (1059 + 60)}px))`,
+    transition: 'transform 0.5s ease-in-out',
+  },
+}));
 const MobileHero = styled(Link)({
   display: 'none',
   [mobile]: {
@@ -86,19 +95,31 @@ const PhotoRail = styled.div({
 });
 const More = styled(Link)({ ...textStyle.secondaryText, color: c.gray500 });
 export function HomePage() {
+  const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+  const heroCount = 3;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % heroCount);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <UserShell>
       <Home>
-        <HeroRail>
-          {[0, 1, 2].map((i) => (
-            <img
-              key={i}
-              src={asset('195-959', 'imgHero')}
-              width={1059}
-              height={252}
-              alt="PIZZA FLEX"
-            />
-          ))}
+        <HeroRail currentIndex={currentHeroIndex}>
+          <div>
+            {[0, 1, 2].map((i) => (
+              <img
+                key={i}
+                src={asset('195-959', 'imgHero')}
+                width={1059}
+                height={252}
+                alt="PIZZA FLEX"
+              />
+            ))}
+          </div>
         </HeroRail>
         <MobileHero href="/my/interests">
           <h2>나에게 맞는 챌린지 찾기</h2>
