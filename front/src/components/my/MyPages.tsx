@@ -72,7 +72,7 @@ export function MyPage() {
             {myMenu.map(([href, label]) => (
               <Link key={href} href={href}>
                 {label}
-                <Icon frame="839-13815" name="imgMoreIcon" size={14} />
+                <span style={{ fontSize: 14 }}>›</span>
               </Link>
             ))}
           </MobileMenu>

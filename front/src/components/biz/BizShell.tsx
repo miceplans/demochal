@@ -31,7 +31,7 @@ export function routeOf(pathname: string) {
 export const BizGlobalStyles = (
   <Global
     styles={{
-      body: { fontFamily: 'Pretendard', fontSize: 15, color: c.gray900, background: c.white },
+      body: { ...textStyle.body, color: c.gray900, background: c.white },
       'button,input,select,textarea': {
         fontFamily: 'Pretendard',
         fontSize: 'inherit',
@@ -79,8 +79,7 @@ const NavItem = styled(Link)<{ active?: boolean }>(({ active }) => ({
   display: 'block',
   padding: '10px 12px',
   borderRadius: 6,
-  fontSize: 13,
-  fontWeight: 600,
+  ...textStyle.subtitle,
   color: active ? c.gray900 : c.gray700,
   background: active ? c.lightBlue : 'transparent',
 }));
@@ -94,8 +93,7 @@ const Avatar = styled.span({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontSize: 13,
-  fontWeight: 700,
+  ...textStyle.caption2,
 });
 
 export const menu: [string, string][] = [
@@ -129,8 +127,8 @@ export function BizSidebar() {
       <Profile href={`${base}/profile`} aria-label="나의 정보">
         <Avatar aria-hidden>{admin.name[0]}</Avatar>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <strong style={{ fontSize: 13 }}>{admin.name}</strong>
-          <span style={{ fontSize: 11, color: '#6b7280' }}>{admin.company}</span>
+          <strong style={{ ...textStyle.subtitle }}>{admin.name}</strong>
+          <span style={{ ...textStyle.label, color: c.gray500 }}>{admin.company}</span>
         </span>
       </Profile>
     </SidebarBox>
@@ -149,7 +147,7 @@ export function BizFooter() {
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <Logo size={24} />
-        <nav style={{ display: 'flex', gap: 12, fontSize: 15 }}>
+        <nav style={{ display: 'flex', gap: 12, ...textStyle.body }}>
           <a href={siteHref('/privacy')}>개인정보처리방침</a>
           <a href={siteHref('/terms')}>이용약관</a>
           <span>광고 운영정책</span>
@@ -209,7 +207,7 @@ export const BizContent = styled.div({
   flexDirection: 'column',
   gap: 48,
 });
-export const PageTitle = styled.h1({ fontSize: 20, fontWeight: 600 });
+export const PageTitle = styled.h1(textStyle.h1_2);
 export const SectionTitle = styled.h2(textStyle.h2_2);
 export const SectionHeader = styled.div({
   display: 'flex',
@@ -221,8 +219,7 @@ export const PrimaryButton = styled.button({
   borderRadius: 6,
   background: c.primary,
   color: c.white,
-  fontSize: 13,
-  fontWeight: 600,
+  ...textStyle.subtitle,
   padding: '10px 12px',
   '&:hover:not(:disabled)': { background: '#005ee0' },
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
@@ -240,7 +237,7 @@ export const Field = styled.label({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  fontSize: 18,
+  ...textStyle.h2_2,
 });
 export const FieldInput = styled.input({
   height: 40,
@@ -277,7 +274,7 @@ export const TRow = styled.div({
   alignItems: 'center',
   padding: '18px 16px',
   background: c.white,
-  fontSize: 16,
+  ...textStyle.h1,
   borderTop: `1px solid ${c.gray100}`,
 });
 export const StatBox = styled.div({
@@ -290,9 +287,9 @@ export const StatBox = styled.div({
   minWidth: 0,
 });
 export const StatValue = styled.strong({ fontSize: 28, fontWeight: 700 });
-export const Delta = styled.span({ fontSize: 12, color: c.green });
+export const Delta = styled.span({ ...textStyle.metaText, color: c.green });
 export const StatusTag = styled.span<{ tone: 'blue' | 'gray' | 'red' | 'green' }>(({ tone }) => ({
-  fontSize: 11,
+  ...textStyle.label,
   padding: '4px 8px',
   borderRadius: 4,
   background:

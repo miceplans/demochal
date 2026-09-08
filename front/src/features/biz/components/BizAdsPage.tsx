@@ -40,8 +40,7 @@ const ViewTab = styled.button<{ active?: boolean }>(({ active }) => ({
   padding: '10px 12px',
   background: active ? c.primary : 'transparent',
   color: active ? c.white : c.gray900,
-  fontSize: 13,
-  fontWeight: 600,
+  ...textStyle.subtitle,
 }));
 const Slots = styled.div({ display: 'flex', gap: 60, justifyContent: 'center' });
 const Slot = styled.div<{ wide?: boolean }>(({ wide }) => ({
@@ -59,7 +58,7 @@ const SlotInner = styled.div({
   alignItems: 'center',
   justifyContent: 'center',
   color: c.gray500,
-  fontSize: 13,
+  ...textStyle.caption,
 });
 const Products = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
 const Product = styled.div({
@@ -110,7 +109,7 @@ export function BizAdsPage() {
       <Hero aria-hidden>한국 마라톤 공모전 배너</Hero>
       <section aria-label="광고 관리">
         <SectionHeader>
-          <h2 style={{ fontSize: 20, fontWeight: 600 }}>광고 관리</h2>
+          <h2 style={{ ...textStyle.h1_2 }}>광고 관리</h2>
           <PrimaryButton>광고 추가</PrimaryButton>
         </SectionHeader>
         <TableBox style={{ marginTop: 16 }}>
@@ -167,9 +166,9 @@ export function BizAdsPage() {
           {adProducts.map((p) => (
             <Product key={p.name}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
-                <strong style={{ fontSize: 16 }}>{p.name}</strong>
-                <span style={{ fontSize: 13, color: c.gray700 }}>{p.desc}</span>
-                <span style={{ fontSize: 12, color: c.gray500 }}>노출 기간 {p.period}</span>
+                <strong style={{ ...textStyle.h1 }}>{p.name}</strong>
+                <span style={{ ...textStyle.caption, color: c.gray700 }}>{p.desc}</span>
+                <span style={{ ...textStyle.metaText, color: c.gray500 }}>노출 기간 {p.period}</span>
               </div>
               <span style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
                 <strong>{won(p.price)}</strong>
@@ -188,7 +187,7 @@ export function BizAdsPage() {
         >
           <Modal onClick={(e) => e.stopPropagation()}>
             <ModalTitle>광고 등록</ModalTitle>
-            <p style={{ fontSize: 13, color: c.gray700 }}>
+            <p style={{ ...textStyle.caption, color: c.gray700 }}>
               {buying} 상품을 등록합니다. 결제 방식(단기 결제 / 정기 결제)을 선택하고 광고명을
               입력해주세요.
             </p>

@@ -19,18 +19,21 @@ export function Icon({
   height,
   alt = '',
   className,
+  src,
 }: {
-  name: string;
+  name?: string;
   frame?: string;
   size?: number;
   width?: number;
   height?: number;
   alt?: string;
   className?: string;
+  src?: string;
 }) {
+  const iconSrc = src || (name ? asset(frame, name) : '');
   return (
     <img
-      src={asset(frame, name)}
+      src={iconSrc}
       alt={alt}
       width={width ?? size}
       height={height ?? size}

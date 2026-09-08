@@ -14,7 +14,7 @@ const Hero = styled.section({
   gap: 80,
 });
 const HeroCopy = styled.div({ display: 'flex', flexDirection: 'column', gap: 18 });
-const HeroTitle = styled.h1({ fontSize: 24, fontWeight: 400 });
+const HeroTitle = styled.h1({ ...textStyle.display, fontWeight: 400 });
 const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 18 });
 const CtaRow = styled.div({ display: 'flex', gap: 8 });
 const Join = styled(BizLink)({
@@ -26,8 +26,7 @@ const Join = styled(BizLink)({
   borderRadius: 6,
   background: c.primary,
   color: c.white,
-  fontSize: 13,
-  fontWeight: 600,
+  ...textStyle.subtitle,
 });
 const Consult = styled(BizLink)({
   display: 'flex',
@@ -63,7 +62,7 @@ const Intro = styled.section({
   gap: 64,
 });
 const IntroLabel = styled.span({ ...textStyle.overline, color: c.gray700 });
-const IntroTitle = styled.h2({ fontSize: 22, fontWeight: 700, color: c.white });
+const IntroTitle = styled.h2({ ...textStyle.display, color: c.white });
 const Cards = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
@@ -79,14 +78,14 @@ const Card = styled.div({
   gap: 12,
 });
 const CardTitle = styled.h3(textStyle.h3);
-const CardDesc = styled.p({ fontSize: 12, color: c.gray700 });
+const CardDesc = styled.p({ ...textStyle.metaText, color: c.gray700 });
 const Ops = styled.section({
   padding: '120px 80px',
   display: 'flex',
   flexDirection: 'column',
   gap: 28,
 });
-const OpsTitle = styled.h2({ fontSize: 22, fontWeight: 700 });
+const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
@@ -97,7 +96,7 @@ const OpsTile = styled.div({
   background: '#f8f8f8',
   borderRadius: 6,
   position: 'relative',
-  fontSize: 24,
+  ...textStyle.display,
   fontWeight: 700,
   padding: '18px 16px',
 });
@@ -121,7 +120,7 @@ export function BizLanding() {
           <HeroTitle>쉬운 행사 관리</HeroTitle>
           <BrandRow>
             <Logo size={40} />
-            <span style={{ fontSize: 24 }}>에서 시작해보세요!</span>
+            <span style={{ ...textStyle.display }}>에서 시작해보세요!</span>
           </BrandRow>
         </HeroCopy>
         <CtaRow>

@@ -14,6 +14,7 @@ import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { desktopContests, teams } from '@/data/user-design';
 import { mobile, colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 
 const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });
 const HeroRail = styled.div({
@@ -35,8 +36,8 @@ const MobileHero = styled(Link)({
     padding: 20,
     background: c.lightBlue,
     borderRadius: 8,
-    '& h2': { fontSize: 18 },
-    '& p': { fontSize: 12, color: c.gray700 },
+    '& h2': textStyle.h2_2,
+    '& p': textStyle.metaText,
   },
 });
 const Sections = styled.div({
@@ -83,7 +84,7 @@ const PhotoRail = styled.div({
     '& img': { width: 122, height: 74 },
   },
 });
-const More = styled(Link)({ fontSize: 13, color: c.gray500 });
+const More = styled(Link)({ ...textStyle.secondaryText, color: c.gray500 });
 export function HomePage() {
   return (
     <UserShell>

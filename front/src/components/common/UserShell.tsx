@@ -66,7 +66,7 @@ function SearchBar() {
         router.push('/explore');
       }}
     >
-      <Icon name="imgSIc" size={16} />
+      <Icon src="/assets/icons/search.png" size={16} alt="검색" />
       <Input
         aria-label="챌린지, 팀, 분야 검색"
         placeholder="챌린지, 팀, 분야를 검색하세요"
@@ -181,11 +181,11 @@ export function UserShell({
     void useUserStore.persist.rehydrate();
   }, []);
   const navItems = [
-    ['/', '홈', 'imgFrame'],
-    ['/explore', '공모전 탐색', 'imgFrame1'],
-    ['/teams', '팀 탐색', 'imgFrame2'],
-    ['/notifications', '알림', 'imgFrame3'],
-    ['/my', 'MY', 'imgFrame4'],
+    ['/', '홈', '/assets/icons/search.png'],
+    ['/explore', '공모전 탐색', '/assets/icons/search.png'],
+    ['/teams', '팀 탐색', '/assets/icons/shareIc.png'],
+    ['/notifications', '알림', '/assets/icons/bell.png'],
+    ['/my', 'MY', '/assets/icons/profile.png'],
   ];
   return (
     <>
@@ -219,10 +219,10 @@ export function UserShell({
               <SearchBar />
               <Row gap={20}>
                 <Link href="/notifications" aria-label="알림">
-                  <Icon name="imgIcBell" />
+                  <Icon src="/assets/icons/bell.png" alt="알림" />
                 </Link>
                 <Link href="/my" aria-label="내 프로필">
-                  <Icon name="imgIcProfile" />
+                  <Icon src="/assets/icons/profile.png" alt="프로필" />
                 </Link>
               </Row>
             </>
@@ -243,9 +243,7 @@ export function UserShell({
         {title ? (
           <Row style={{ minHeight: 28 }}>
             <Link href={back} aria-label="뒤로">
-              <span style={{ display: 'block', transform: 'rotate(180deg)' }}>
-                <Icon frame="839-13815" name="imgMoreIcon" size={16} />
-              </span>
+              <span style={{ display: 'block', fontSize: 20, transform: 'rotate(180deg)' }}>‹</span>
             </Link>
             <h1 style={{ fontSize: 18 }}>{title}</h1>
           </Row>
@@ -273,7 +271,7 @@ export function UserShell({
                   (href === '/' ? path === '/' : path.startsWith(href)) ? 'page' : undefined
                 }
               >
-                <Icon frame="839-13815" name={icon} size={28} />
+                <Icon src={icon} size={28} alt={label} />
               </Link>
             ))}
           </Bottom>
