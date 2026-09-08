@@ -35,6 +35,33 @@ const HeroRail = styled.div<{ currentIndex: number }>({
     transition: 'transform 0.5s ease-in-out',
   },
 }));
+
+const PhotoRailContainer = styled.div<{ currentIndex: number }>({
+  display: 'flex',
+  gap: 32,
+  justifyContent: 'center',
+  margin: '60px 0',
+  overflow: 'hidden',
+  '& img': { width: 315, height: 190, borderRadius: 8, objectFit: 'cover', flexShrink: 0 },
+  [mobile]: {
+    gap: 12,
+    margin: '8px 0 32px',
+    justifyContent: 'flex-start',
+    padding: '0 16px',
+    '& img': { width: 122, height: 74 },
+  },
+}, ({ currentIndex }) => ({
+  '& > div': {
+    display: 'flex',
+    gap: 32,
+    transform: `translateX(calc(${-currentIndex * (315 + 32)}px))`,
+    transition: 'transform 0.5s ease-in-out',
+    [mobile]: {
+      gap: 12,
+      transform: `translateX(calc(${-currentIndex * (122 + 12)}px))`,
+    },
+  },
+}));
 const MobileHero = styled(Link)({
   display: 'none',
   [mobile]: {
@@ -78,30 +105,24 @@ const TeamRail = styled.div({
   '& > article': { flex: '0 0 362px' },
   [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
 });
-const PhotoRail = styled.div({
-  display: 'flex',
-  gap: 32,
-  justifyContent: 'center',
-  margin: '60px 0',
-  '& img': { width: 315, height: 190, borderRadius: 8, objectFit: 'cover' },
-  [mobile]: {
-    gap: 12,
-    margin: '8px 0 32px',
-    justifyContent: 'flex-start',
-    overflow: 'hidden',
-    padding: '0 16px',
-    '& img': { width: 122, height: 74 },
-  },
-});
 const More = styled(Link)({ ...textStyle.secondaryText, color: c.gray500 });
 export function HomePage() {
   const [currentHeroIndex, setCurrentHeroIndex] = useState(0);
+  const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const heroCount = 3;
+  const photoCount = 6;
 
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentHeroIndex((prev) => (prev + 1) % heroCount);
-    }, 3000);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentPhotoIndex((prev) => (prev + 1) % photoCount);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -189,17 +210,19 @@ export function HomePage() {
             </MobileOnly>
           </section>
         </Sections>
-        <PhotoRail>
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <img
-              key={i}
-              src={asset('195-959', 'imgImage11')}
-              alt="공모전 행사 현장"
-              width={315}
-              height={190}
-            />
-          ))}
-        </PhotoRail>
+        <PhotoRailContainer currentIndex={currentPhotoIndex}>
+          <div>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <img
+                key={i}
+                src={asset('195-959', 'imgImage11')}
+                alt="공모전 행사 현장"
+                width={315}
+                height={190}
+              />
+            ))}
+          </div>
+        </PhotoRailContainer>
         <Sections>
           <section>
             <MobileOnly style={{ marginBottom: 16 }}>
