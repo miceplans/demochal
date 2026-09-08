@@ -1,0 +1,136 @@
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/b8c15b0a-3488-47fd-a503-eda80964f4ed.svg";
+const imgFg2C2Icon = "https://www.figma.com/api/mcp/asset/bc02c145-c60b-4f88-b110-8d150e9a82af.svg";
+
+export default function Component03() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-center justify-center relative size-full" data-node-id="491:4207" data-name="0.3- 설문">
+      <div className="content-stretch flex flex-[1_0_0] flex-col items-center min-h-px px-[120px] py-[80px] relative w-full" data-node-id="491:4208" data-name="Content">
+        <div className="content-stretch flex flex-col gap-[64px] items-start relative shrink-0" data-node-id="491:4209">
+          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0" data-node-id="491:4210">
+            <div className="content-stretch flex flex-col items-center relative shrink-0 w-[95.577px]" data-node-id="491:4211">
+              <div className="content-stretch flex gap-[3.035px] items-center relative shrink-0 w-full" data-node-id="491:4212">
+                <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="491:4213">
+                  <div className="-rotate-15 flex-none">
+                    <div className="h-[18.531px] relative w-[18.371px]">
+                      <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                    </div>
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="491:4214">
+                  SEMO.
+                </p>
+              </div>
+            </div>
+            <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0" data-node-id="491:4215">
+              <div className="bg-[#32a6f9] col-1 h-[5.9px] ml-0 mt-0 opacity-20 relative rounded-[295px] row-1 w-[600px]" data-node-id="491:4216" data-name="BG" />
+              <div className="bg-[var(--semo,#006fff)] col-1 h-[6px] ml-0 mt-0 relative rounded-[295px] row-1 w-[287px]" data-node-id="491:4217" data-name="Fill" />
+            </div>
+          </div>
+          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-[600px]" data-node-id="491:4225" data-name="Step1">
+            <div className="content-stretch flex items-center relative shrink-0" data-node-id="491:4226" data-name="s1label">
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="491:4227">
+                참여하는 목적은 무엇인가요?
+              </p>
+            </div>
+            <a className="cursor-pointer gap-x-[30px] gap-y-[16px] grid-cols-[repeat(2,fit-content(100%))] grid-rows-[repeat(6,fit-content(100%))] inline-grid relative shrink-0" data-node-id="491:4279">
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-start relative row-1 self-start shrink-0" data-node-id="491:4269" data-name="fg2row2">
+                <div className="bg-[var(--semo,#006fff)] relative rounded-[3px] shrink-0 size-[16px]" data-node-id="491:4270" data-name="fg2c2">
+                  <div className="absolute left-[-0.27px] size-[16px] top-[0.16px]" data-node-id="491:4271" data-name="fg2c2icon">
+                    <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFg2C2Icon} />
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="491:4273">
+                  상금이 목적이예요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-1 self-start shrink-0" data-node-id="491:4275" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="491:4276" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="491:4277">
+                  포트폴리오를 쌓고 싶어요
+                </p>
+              </div>
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-start relative row-2 self-start shrink-0" data-node-id="491:4280" data-name="fg2row2">
+                <div className="bg-[var(--semo,#006fff)] relative rounded-[3px] shrink-0 size-[16px]" data-node-id="491:4281" data-name="fg2c2">
+                  <div className="absolute left-[-0.27px] size-[16px] top-[0.16px]" data-node-id="491:4282" data-name="fg2c2icon">
+                    <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFg2C2Icon} />
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="491:4284">
+                  취업에 도움이 되었으면 해요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-start relative row-2 self-start shrink-0" data-node-id="491:4286" data-name="fg2row2">
+                <div className="bg-[var(--semo,#006fff)] relative rounded-[3px] shrink-0 size-[16px]" data-node-id="491:4287" data-name="fg2c2">
+                  <div className="absolute left-[-0.27px] size-[16px] top-[0.16px]" data-node-id="491:4288" data-name="fg2c2icon">
+                    <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFg2C2Icon} />
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="491:4290">
+                  새로운 경험을 원해요
+                </p>
+              </div>
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-3 self-start shrink-0" data-node-id="491:4292" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="491:4293" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="491:4294">
+                  사람들과 네트워킹하고 싶어요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-3 self-start shrink-0" data-node-id="608:5299" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5300" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5301">
+                  내 실력을 검증해보고 싶어요
+                </p>
+              </div>
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-4 self-start shrink-0" data-node-id="608:5303" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5304" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5305">
+                  새로운 기술/스킬을 배우고 싶어요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-4 self-start shrink-0" data-node-id="608:5307" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5308" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5309">
+                  이직/스펙업에 활용하고싶어요
+                </p>
+              </div>
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-5 self-start shrink-0" data-node-id="608:5315" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5316" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5317">
+                  멘토/선배를 찾고싶어요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-5 self-start shrink-0" data-node-id="608:5311" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5312" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5313">
+                  업계 트렌드를 파악하고 싶어요
+                </p>
+              </div>
+              <div className="col-1 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-6 self-start shrink-0" data-node-id="608:5319" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5320" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5321">
+                  그냥 재미있어 보여서요
+                </p>
+              </div>
+              <div className="col-2 content-stretch flex gap-[8px] items-center justify-self-stretch relative row-6 self-start shrink-0" data-node-id="608:5323" data-name="fg2row1">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid relative rounded-[3px] shrink-0 size-[16px]" data-node-id="608:5324" data-name="fg2check1" />
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[13px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="608:5325">
+                  사회에 이바지하고 싶어요
+                </p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: m/Hero Heading: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), m/Name Label: Font(family: "Pretendard", style: SemiBold, size: 15, weight: 600, lineHeight: 100, letterSpacing: 0), m/Body Detail: Font(family: "Pretendard", style: Regular, size: 13, weight: 400, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

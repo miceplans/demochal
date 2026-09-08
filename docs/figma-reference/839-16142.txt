@@ -1,0 +1,89 @@
+const imgSignal = "https://www.figma.com/api/mcp/asset/25f93fa1-0015-4391-9fd4-055863df0af2.svg";
+const imgWifi = "https://www.figma.com/api/mcp/asset/534b5bb3-10a9-4162-bc93-2c807e895e9f.svg";
+const imgBattery = "https://www.figma.com/api/mcp/asset/647216ef-5a31-499a-ba4f-472ac4497308.svg";
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/c217f17d-62d8-4f48-8607-be6cf1ebb9dc.svg";
+const imgFrame = "https://www.figma.com/api/mcp/asset/1f1096f2-9cf3-4b62-9626-b76b6118acda.svg";
+
+export default function Component01() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-center px-[10px] py-[40px] relative size-full" data-node-id="839:16142" data-name="0.1- 설문">
+      <div className="absolute bg-white content-stretch flex flex-col h-[50px] items-start justify-center left-0 top-0 w-[390px]" data-node-id="839:16143" data-name="StatusBar">
+        <div className="content-stretch flex h-[21px] items-center justify-between overflow-clip px-[16px] relative shrink-0 w-full" data-node-id="839:16144" data-name="Frame">
+          <div className="content-stretch flex h-[100px] items-center overflow-clip pr-[6px] relative shrink-0" data-node-id="839:16145" data-name="Time">
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:16146">
+              9:41
+            </p>
+          </div>
+          <div className="h-[10px] relative shrink-0 w-[124px]" data-node-id="839:16147" data-name="Dynamic Island spacer" />
+          <div className="content-stretch flex gap-[7px] h-[100px] items-center justify-end overflow-clip pl-[6px] relative shrink-0" data-node-id="839:16148" data-name="Levels">
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:16149" data-name="signal">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSignal} />
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:16155" data-name="wifi">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgWifi} />
+            </div>
+            <div className="h-[16px] relative shrink-0 w-[20px]" data-node-id="839:16160" data-name="battery">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgBattery} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <a className="absolute bg-[#006fff] content-stretch cursor-pointer flex items-center justify-center left-[16px] py-[16px] rounded-[14px] top-[776px] w-[358px]" data-node-id="839:16179" data-name="nextBtn">
+        <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[16px] text-center text-white whitespace-nowrap" data-node-id="839:16180">
+          <p className="leading-[normal]">다음</p>
+        </div>
+      </a>
+      <div className="content-stretch flex flex-col gap-[64px] items-start py-[60px] relative shrink-0 w-[358px]" data-node-id="839:20313">
+        <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-node-id="839:20314">
+          <div className="content-stretch flex flex-col items-center relative shrink-0 w-[95.577px]" data-node-id="839:20315">
+            <div className="content-stretch flex gap-[3.035px] items-center relative shrink-0 w-full" data-node-id="839:20316">
+              <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="839:20317">
+                <div className="-rotate-15 flex-none">
+                  <div className="h-[18.531px] relative w-[18.371px]">
+                    <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                  </div>
+                </div>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="839:20318">
+                SEMO.
+              </p>
+            </div>
+          </div>
+          <div className="grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0 w-full" data-node-id="839:20319">
+            <div className="bg-[#32a6f9] col-1 h-[5.9px] ml-0 mt-0 opacity-20 relative rounded-[295px] row-1 w-full" data-node-id="839:20320" data-name="BG" />
+            <div className="bg-[var(--semo,#006fff)] col-1 h-[6px] ml-0 mt-0 relative rounded-[295px] row-1 w-[0.83%]" data-node-id="839:20321" data-name="Fill" />
+          </div>
+        </div>
+        <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full" data-node-id="839:20329" data-name="Step1">
+          <div className="content-stretch flex items-center relative shrink-0" data-node-id="839:20330" data-name="s1label">
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="839:20331">
+              지금 어떤 활동을 하고 계신가요?
+            </p>
+          </div>
+          <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-node-id="839:20332">
+            <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-node-id="839:20333" data-name="components/Dropdown/Default/L">
+              <div className="bg-white border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex h-[44px] items-center justify-between px-[14px] relative rounded-[8px] shrink-0 w-full" data-node-id="I839:20333;491:4065" data-name="s1input">
+                <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/500,#858a99)] whitespace-nowrap" data-node-id="I839:20333;491:4066">
+                  활동을 선택하세요
+                </p>
+                <div className="relative shrink-0 size-[24px]" data-node-id="I839:20333;491:4067" data-name="Frame">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: m/Timestamp: Font(family: "Noto Sans KR", style: Medium, size: 15, weight: 500, lineHeight: 100, letterSpacing: 0), m/Hero Heading: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), m/Name Label: Font(family: "Pretendard", style: SemiBold, size: 15, weight: 600, lineHeight: 100, letterSpacing: 0), m/List Text: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

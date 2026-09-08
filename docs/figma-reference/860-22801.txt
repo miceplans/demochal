@@ -1,0 +1,91 @@
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/ed14cc47-ea5d-4094-a42f-75707997d3a9.svg";
+const imgSIc = "https://www.figma.com/api/mcp/asset/0631cadd-616b-43ad-aa2b-7246123d82fb.svg";
+const imgIcBell = "https://www.figma.com/api/mcp/asset/db785351-5a33-4b94-bb72-92557cd3fbc3.svg";
+const imgIcProfile = "https://www.figma.com/api/mcp/asset/fb892528-1259-4e0b-b410-67f6d7e3cdf1.svg";
+const imgPolygon4 = "https://www.figma.com/api/mcp/asset/a50ca2b5-2fdc-4a3e-8981-721b78ea96e2.svg";
+
+export default function Component3() {
+  return (
+    <div className="bg-white relative size-full" data-node-id="860:22801" data-name="3-공모전상세">
+      <div className="absolute bg-white border-[var(--gray\/100,#f4f4f4)] border-b-[0.5px] border-solid content-stretch flex flex-col gap-[4px] items-start justify-center left-0 px-[120px] py-[8px] top-0 w-[1440px]" data-node-id="860:22802" data-name="Header">
+        <div className="content-stretch flex items-center justify-between relative shrink-0 w-full" data-node-id="I860:22802;513:4515">
+          <a className="content-stretch cursor-pointer flex gap-[8px] items-center relative shrink-0" data-node-id="I860:22802;195:2977">
+            <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="I860:22802;195:2978">
+              <div className="-rotate-15 flex-none">
+                <div className="h-[18.531px] relative w-[18.371px]">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                </div>
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] text-left whitespace-nowrap" data-node-id="I860:22802;195:2979">
+              SEMO
+            </p>
+          </a>
+          <div className="bg-white border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex gap-[8px] items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-[591px]" data-node-id="I860:22802;510:4479" data-name="SearchBar">
+            <div className="relative shrink-0 size-[16px]" data-node-id="I860:22802;510:4480" data-name="sIc">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSIc} />
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/500,#858a99)] whitespace-nowrap" data-node-id="I860:22802;510:4483">
+              챌린지, 팀, 분야를 검색하세요
+            </p>
+          </div>
+          <div className="content-stretch cursor-pointer flex gap-[20px] h-[56px] items-center relative shrink-0" data-node-id="I860:22802;195:2984" data-name="RightIcons">
+            <a className="block relative shrink-0 size-[20px]" data-node-id="I860:22802;195:2988" data-name="ic-bell">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcBell} />
+            </a>
+            <a className="block relative shrink-0 size-[20px]" data-node-id="I860:22802;195:2991" data-name="ic-profile">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcProfile} />
+            </a>
+          </div>
+        </div>
+        <div className="content-stretch cursor-pointer flex gap-[8px] items-center relative shrink-0" data-node-id="I860:22802;514:5035">
+          <a className="bg-white content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[6px] shrink-0 w-[90px]" data-node-id="I860:22802;514:5050" data-name="NavBarItem">
+            <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="I860:22802;514:5050;514:5037">
+              공모전 탐색
+            </p>
+          </a>
+          <a className="bg-white content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[6px] shrink-0 w-[90px]" data-node-id="I860:22802;514:5053" data-name="NavBarItem">
+            <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="I860:22802;514:5053;514:5037">
+              팀 탐색
+            </p>
+          </a>
+        </div>
+      </div>
+      <div className="-translate-x-1/2 -translate-y-1/2 absolute content-stretch flex flex-col gap-[65.625px] items-center left-[calc(50%+0.5px)] top-[calc(50%-129.68px)]" data-node-id="860:22792">
+        <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0" data-node-id="860:22793">
+          <div className="col-1 content-stretch flex gap-[5.008px] items-center ml-[24.61px] mt-0 relative row-1" data-node-id="860:22794">
+            <div className="flex h-[37.381px] items-center justify-center relative shrink-0 w-[37.195px]" data-node-id="860:22795">
+              <div className="-rotate-15 flex-none">
+                <div className="h-[30.577px] relative w-[30.314px]">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon4} />
+                </div>
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[39.601px] text-black whitespace-nowrap" data-node-id="860:22796">
+              404
+            </p>
+          </div>
+          <div className="[word-break:break-word] col-1 font-['Noto_Sans_KR:Regular'] font-normal ml-0 mt-[55.14px] relative row-1 text-[16.406px] text-black text-center w-[175px] whitespace-pre-wrap" data-node-id="860:22797">
+            <p className="leading-[normal] mb-0">{`앗, 여긴 아무것도 없어요. `}</p>
+            <p className="leading-[normal]">홈으로 돌아가실래요?</p>
+          </div>
+        </div>
+        <div className="bg-[#006fff] content-stretch flex flex-col items-center justify-center px-[16.406px] py-[10.938px] relative rounded-[8.203px] shrink-0" data-node-id="860:22798" data-name="saveBtn">
+          <div className="[word-break:break-word] flex flex-col font-['Pretendard:SemiBold'] justify-center leading-[0] not-italic relative shrink-0 text-[16.406px] text-center text-white whitespace-nowrap" data-node-id="860:22799">
+            <p className="leading-[normal]">홈으로</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: Display: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), m/List Text: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0), SEMO: #006FFF.
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

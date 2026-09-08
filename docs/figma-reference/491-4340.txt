@@ -1,0 +1,221 @@
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/888ab4e9-b011-4cb3-a6bb-fed37bb209a1.svg";
+
+export default function Component04() {
+  return (
+    <a className="bg-white content-stretch cursor-pointer flex flex-col items-center justify-center relative size-full" data-node-id="491:4340" data-name="0.4- 설문">
+      <div className="content-stretch flex flex-[1_0_0] flex-col items-center min-h-px px-[120px] py-[80px] relative w-full" data-node-id="491:4341" data-name="Content">
+        <div className="content-stretch flex flex-col gap-[64px] items-start relative shrink-0" data-node-id="491:4342">
+          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0" data-node-id="491:4343">
+            <div className="content-stretch flex flex-col items-center relative shrink-0 w-[95.577px]" data-node-id="491:4344">
+              <div className="content-stretch flex gap-[3.035px] items-center relative shrink-0 w-full" data-node-id="491:4345">
+                <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="491:4346">
+                  <div className="-rotate-15 flex-none">
+                    <div className="h-[18.531px] relative w-[18.371px]">
+                      <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                    </div>
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] text-left whitespace-nowrap" data-node-id="491:4347">
+                  SEMO.
+                </p>
+              </div>
+            </div>
+            <div className="grid-cols-[max-content] grid-rows-[max-content] inline-grid leading-[0] place-items-start relative shrink-0" data-node-id="491:4348">
+              <div className="bg-[#32a6f9] col-1 h-[5.9px] ml-0 mt-0 opacity-20 relative rounded-[295px] row-1 w-[600px]" data-node-id="491:4349" data-name="BG" />
+              <div className="bg-[var(--semo,#006fff)] col-1 h-[6px] ml-0 mt-0 relative rounded-[295px] row-1 w-[503px]" data-node-id="491:4350" data-name="Fill" />
+            </div>
+          </div>
+          <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-[600px]" data-node-id="491:4358" data-name="Step1">
+            <div className="content-stretch flex items-center relative shrink-0" data-node-id="491:4359" data-name="s1label">
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] text-left whitespace-nowrap" data-node-id="491:4360">
+                어떤 종류의 도전을 찾고 계신가요?
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[10px] items-start relative shrink-0 w-full" data-node-id="491:4472">
+              <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="491:4473">
+                <div className="bg-[var(--semo,#006fff)] content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4474" data-name="chip1">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:SemiBold'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-center text-white whitespace-nowrap" data-node-id="491:4475">
+                    <p className="leading-[normal]">공모전</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4476" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4477">
+                    <p className="leading-[normal]">해커톤</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4478" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4479">
+                    <p className="leading-[normal]">대외활동</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1293" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1294">
+                    <p className="leading-[normal]">봉사활동</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4482" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4483">
+                    <p className="leading-[normal]">서포터즈</p>
+                  </div>
+                </div>
+              </div>
+              <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="491:4486">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4487" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4488">
+                    <p className="leading-[normal]">교육</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="609:2754" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="609:2755">
+                    <p className="leading-[normal]">강연</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4489" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4490">
+                    <p className="leading-[normal]">공연</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="609:2751" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="609:2752">
+                    <p className="leading-[normal]">전시</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4497" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4498">
+                    <p className="leading-[normal]">이벤트</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="491:4499" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="491:4500">
+                    <p className="leading-[normal]">대회</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1302" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1303">
+                    <p className="leading-[normal]">컨퍼런스</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1299" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1300">
+                    <p className="leading-[normal]">세미나</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1296" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1297">
+                    <p className="leading-[normal]">인턴십</p>
+                  </div>
+                </div>
+              </div>
+              <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="531:1305">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1308" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1309">
+                    <p className="leading-[normal]">해외교류</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1310" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1311">
+                    <p className="leading-[normal]">크라우드 펀딩</p>
+                  </div>
+                </div>
+                <div className="bg-[var(--semo,#006fff)] content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1306" data-name="chip1">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:SemiBold'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-center text-white whitespace-nowrap" data-node-id="531:1307">
+                    <p className="leading-[normal]">캠프</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1312" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1313">
+                    <p className="leading-[normal]">자격증</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1314" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1315">
+                    <p className="leading-[normal]">데모데이</p>
+                  </div>
+                </div>
+              </div>
+              <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="526:1471">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="526:1472" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="526:1473">
+                    <p className="leading-[normal]">네트워킹</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="526:1474" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="526:1475">
+                    <p className="leading-[normal]">멘토</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="609:2745" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="609:2746">
+                    <p className="leading-[normal]">멘티</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="526:1476" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center w-[34px]" data-node-id="526:1477">
+                    <p className="leading-[normal]">창업</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1278" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1279">
+                    <p className="leading-[normal]">아이디어톤</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="526:1478" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="526:1479">
+                    <p className="leading-[normal]">기타</p>
+                  </div>
+                </div>
+              </div>
+              <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="531:1281">
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1282" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1283">
+                    <p className="leading-[normal]">채용</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1284" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1285">
+                    <p className="leading-[normal]">연구</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="609:2748" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="609:2749">
+                    <p className="leading-[normal]">논문</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1286" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center w-[34px]" data-node-id="531:1287">
+                    <p className="leading-[normal]">장학금</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1288" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1289">
+                    <p className="leading-[normal]">지원사업</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="605:5296" data-name="chip3">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="605:5297">
+                    <p className="leading-[normal]">체험단</p>
+                  </div>
+                </div>
+                <div className="border-[0.5px] border-[var(--gray\/100,#f4f4f4)] border-solid content-stretch flex items-center justify-center px-[10px] py-[8px] relative rounded-[20px] shrink-0" data-node-id="531:1290" data-name="chip2">
+                  <div className="[word-break:break-word] flex flex-col font-['Pretendard:Regular'] justify-center leading-[0] not-italic relative shrink-0 text-[12px] text-[color:var(--gray\/700,#636c7f)] text-center whitespace-nowrap" data-node-id="531:1291">
+                    <p className="leading-[normal]">모니터링단</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </a>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: m/Hero Heading: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), m/Name Label: Font(family: "Pretendard", style: SemiBold, size: 15, weight: 600, lineHeight: 100, letterSpacing: 0), m/Counter Text: Font(family: "Pretendard", style: SemiBold, size: 12, weight: 600, lineHeight: 100, letterSpacing: 0), m/Info Text: Font(family: "Pretendard", style: Regular, size: 12, weight: 400, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

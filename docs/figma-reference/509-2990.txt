@@ -1,0 +1,318 @@
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/91667e10-209c-43e2-b864-09bbc5d1a798.svg";
+const imgBulletIcon = "https://www.figma.com/api/mcp/asset/bc02748d-6680-4f7f-af93-3b67a260f83e.svg";
+const imgIcSearch = "https://www.figma.com/api/mcp/asset/4a31ae93-6fb8-4621-87a9-2247dec8c181.svg";
+const imgIcBell = "https://www.figma.com/api/mcp/asset/b3782ec8-75c0-4d01-87e1-f283eacba198.svg";
+const imgIcProfile = "https://www.figma.com/api/mcp/asset/ec7dc2c3-b451-4ff2-bd43-c90054a900f1.svg";
+
+type FooterProps = {
+  className?: string;
+  property1?: "Default";
+};
+
+function Footer({ className, property1 = "Default" }: FooterProps) {
+  return (
+    <div className={className || "bg-[var(--gray\\/50,#fdfdfd)] content-stretch flex flex-col gap-[148px] items-start overflow-clip px-[60px] py-[50px] relative w-[1440px]"} data-node-id="845:22274">
+      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full" data-node-id="845:22255">
+        <div className="content-stretch flex flex-col items-center relative shrink-0 w-[95.577px]" data-node-id="863:23187">
+          <div className="content-stretch flex gap-[3.035px] items-center relative shrink-0 w-full" data-node-id="863:23188">
+            <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="863:23189">
+              <div className="-rotate-15 flex-none">
+                <div className="h-[18.531px] relative w-[18.371px]">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                </div>
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="863:23190">
+              SEMO.
+            </p>
+          </div>
+        </div>
+        <div className="[word-break:break-word] content-stretch flex font-['Pretendard:Regular'] gap-[12px] items-start leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="845:22254">
+          <p className="relative shrink-0" data-node-id="845:22248">
+            개인정보처리방침
+          </p>
+          <p className="relative shrink-0" data-node-id="845:22250">
+            이용약관
+          </p>
+          <p className="relative shrink-0" data-node-id="845:22252">
+            청소년 보호 정책
+          </p>
+        </div>
+      </div>
+      <div className="[word-break:break-word] content-stretch flex font-['Pretendard:Regular'] items-end justify-between leading-[normal] not-italic relative shrink-0 text-[15px] w-full" data-node-id="845:22247">
+        <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 text-[color:var(--gray\/900,#101010)] w-[329px]" data-node-id="845:22246">
+          <p className="relative shrink-0 w-full" data-node-id="504:2236">
+            대표 유철한
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22237">
+            사업자등록번호 617-81-98126
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22239">
+            부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22241">
+            051-783-1170 / mice@miceplans.com
+          </p>
+        </div>
+        <p className="relative shrink-0 text-[color:var(--gray\/500,#858a99)] whitespace-nowrap" data-node-id="845:22243">
+          © MICEPLANS. ALL Rights Reserved.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BulletIcon({ className }: { className?: string }) {
+  return (
+    <div className={className || "h-[23px] relative w-[8.006px]"} data-node-id="863:26976" data-name="BulletIcon">
+      <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgBulletIcon} />
+    </div>
+  );
+}
+
+export default function Component20() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-start relative size-full" data-node-id="509:2990" data-name="20-개인정보처리방침">
+      <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b-[0.5px] border-solid h-[56px] relative shrink-0 w-[1440px]" data-node-id="509:2991" data-name="Header">
+        <div className="absolute content-stretch flex gap-[3.035px] items-center left-[120px] top-[15.5px]" data-node-id="I509:2991;41:2">
+          <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="I509:2991;41:3">
+            <div className="-rotate-15 flex-none">
+              <div className="h-[18.531px] relative w-[18.371px]">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="I509:2991;41:4">
+            SEMO.
+          </p>
+        </div>
+        <div className="[word-break:break-word] absolute bottom-[-0.5px] content-stretch flex gap-[32px] items-center leading-[normal] left-[611.29px] not-italic top-0 whitespace-nowrap" data-node-id="I509:2991;35:1365" data-name="Nav">
+          <p className="font-['Pretendard:SemiBold'] relative shrink-0 text-[14px] text-[color:var(--gray\/900,#101010)]" data-node-id="I509:2991;35:1366">
+            홈
+          </p>
+          <p className="font-['Pretendard:Regular'] relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)]" data-node-id="I509:2991;35:1367">
+            탐색
+          </p>
+          <p className="font-['Pretendard:Regular'] relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)]" data-node-id="I509:2991;35:1369">
+            수상작
+          </p>
+        </div>
+        <div className="absolute bottom-[-0.5px] content-stretch flex gap-[20px] items-center left-[1220px] top-0" data-node-id="I509:2991;35:1370" data-name="RightIcons">
+          <div className="relative shrink-0 size-[20px]" data-node-id="I509:2991;35:1371" data-name="ic-search">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcSearch} />
+          </div>
+          <div className="relative shrink-0 size-[20px]" data-node-id="I509:2991;35:1374" data-name="ic-bell">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcBell} />
+          </div>
+          <div className="relative shrink-0 size-[20px]" data-node-id="I509:2991;35:1377" data-name="ic-profile">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcProfile} />
+          </div>
+        </div>
+      </div>
+      <div className="content-stretch flex flex-col items-start px-[120px] py-[60px] relative shrink-0 w-full" data-node-id="509:2992" data-name="Content">
+        <div className="content-stretch flex flex-col gap-[40px] items-start relative shrink-0 w-full" data-node-id="509:3124">
+          <div className="[word-break:break-word] content-stretch flex flex-col gap-[20px] items-start leading-[normal] not-italic relative shrink-0 w-full" data-node-id="509:3075">
+            <p className="font-['Pretendard:Bold'] relative shrink-0 text-[32px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:2996">
+              SEMO 개인정보처리방침
+            </p>
+            <p className="font-['Pretendard:Regular'] min-w-full relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] w-[min-content] whitespace-pre-wrap" data-node-id="509:2997">{`본 약관은 마이스플랜즈 (이하 “회사”)의  이용자의 개인정보를 중요시하며, 회사가 운영하는 웹사이트 세모챌 (이하"사이트”)「개인정보 보호법」을 준수하고 있습니다. 회사는 본 개인정보처리방침을 통하여 이용자가 제공하는 개인정보가 어떠한 목적과 방식으로 이용되고 있으며, 개인정보 보호를 위해 어떠한 조치가 취해지고 있는지 알려드립니다.`}</p>
+          </div>
+          <div className="content-stretch flex flex-col gap-[24px] items-start relative shrink-0 w-full" data-node-id="509:3091">
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3076">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3082">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3080">
+                  제1조 (개인정보의 처리 목적)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3078">
+                회사는 회원 가입 및 관리를 위해 개인정보를 처리합니다. 여기에는 회원가입 의사 확인, 회원제 서비스 제공에 따른 본인 식별과 인증, 회원자격의 유지와 관리, 만 14세 미만 아동의 개인정보 처리 시 법정대리인 동의 여부 확인, 서비스 부정이용 방지, 각종 고지와 통지, 고충처리가 포함됩니다. 또한 챌린지(공모전·대외활동·이벤트) 추천 및 매칭 서비스를 제공하기 위해 개인정보를 처리하며, 이는 AI 기반 챌린지 추천, 관심분야 기반 맞춤 정보 제공, 팀원 찾기와 팀 매칭, 배지·활동(수상) 이력 관리, 커뮤니티 게시판 운영 목적을 포함합니다. 이 밖에 콘텐츠 제공, 본인인증, 유료 서비스 이용 시 요금결제와 정산 등 재화 또는 서비스 제공을 위한 목적, 그리고 신규 서비스 개발 및 맞춤 서비스 제공, 이벤트·광고성 정보 제공 및 참여 기회 제공, 서비스 이용에 대한 통계 분석 등 마케팅 및 광고 활용 목적으로도 개인정보를 처리합니다. 처리한 개인정보는 위 목적 이외의 용도로는 이용되지 않으며, 이용 목적이 변경되는 경우에는 「개인정보 보호법」 제18조에 따라 별도의 동의를 받는 등 필요한 조치를 이행할 예정입니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3083">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3084">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3088">
+                  제2조 (개인정보의 처리 및 보유 기간)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3089">
+                회사는 법령에 따른 개인정보 보유·이용기간 또는 정보주체로부터 개인정보를 수집할 때 동의받은 보유·이용기간 내에서 개인정보를 처리하고 보유합니다. 회원가입 및 관리와 관련한 개인정보는 회원 탈퇴 시까지 보유하며, 전자상거래법에 따라 계약 또는 청약철회, 대금결제, 재화 등의 공급에 관한 기록(해당 시)은 5년, 소비자의 불만 또는 분쟁처리에 관한 기록은 3년, 표시·광고에 관한 기록은 6개월간 보유합니다. 또한 통신비밀보호법에 따라 웹사이트 방문기록(로그인 기록)은 3개월간 보유합니다. 다만 관계 법령 위반에 따른 수사·조사 등이 진행 중인 경우에는 해당 수사·조사가 종료될 때까지, 서비스 이용에 따른 채권·채무관계가 남아있는 경우에는 정산이 완료될 때까지 개인정보를 보유합니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3092">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3093">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3097">
+                  제3조 (개인정보의 제3자 제공)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3098">
+                회사는 정보주체의 개인정보를 제1조(개인정보의 처리 목적)에서 명시한 범위 내에서만 처리하며, 정보주체의 동의나 법률의 특별한 규정 등 「개인정보 보호법」 제17조 및 제18조에 해당하는 경우에만 개인정보를 제3자에게 제공합니다. 회사는 현재 개인정보를 제3자에게 제공하고 있지 않으며, 향후 제3자 제공이 발생하는 경우 제공받는 자, 제공 목적, 제공 항목, 보유·이용기간 등을 사전에 고지하고 별도의 동의를 받겠습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3100">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3101">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3105">
+                  제4조 (개인정보 수집 출처에 관한 사항)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3106">
+                회사는 카카오, 네이버, 구글 계정을 통한 간편 회원가입과 로그인을 지원하며, 이용자가 이를 선택하는 경우 각 사업자로부터 회원가입 및 로그인 인증에 필요한 개인정보를 제공받습니다. 카카오 계정으로 가입하는 경우 카카오계정 이메일, 닉네임, 그리고 이용자가 동의한 범위 내의 프로필 사진을 제공받으며, 네이버 계정으로 가입하는 경우 네이버 아이디에 연동된 이메일과 별명 또는 이름, 이용자가 동의한 범위 내의 프로필 사진을 제공받습니다. 구글 계정으로 가입하는 경우에는 구글 계정의 이메일과 이름, 이용자가 동의한 범위 내의 프로필 사진을 제공받습니다. 실제로 제공되는 항목은 각 소셜 로그인 사업자의 정책 및 이용자가 해당 계정에서 허용한 동의 범위에 따라 달라질 수 있으며, 회사는 이렇게 제공받은 정보를 로그인 인증 목적 외의 용도로 이용하거나 카카오·네이버·구글 외의 제3자에게 제공하지 않습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3108">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3109">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3113">
+                  제5조 (개인정보처리의 위탁)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3114">
+                회사는 원활한 개인정보 업무처리를 위하여 개인정보 처리업무 일부를 외부 업체에 위탁하고 있습니다. 서비스 서버 운영 및 데이터 보관 업무는 [클라우드·호스팅 사업자명]에, 마케팅 정보 수신에 동의한 회원에 한해 발송되는 알림톡과 문자 발송 업무는 [알림톡·문자 발송 대행사명]에, 유료 서비스 이용 시 결제 처리 업무는 [결제대행사명]에 위탁하고 있으며, 위탁 기간은 각 위탁계약이 종료될 때까지입니다. 회사는 위탁계약을 체결할 때 「개인정보 보호법」 제26조에 따라 위탁업무 수행 목적 외 개인정보 처리 금지, 기술적·관리적 보호조치, 재위탁 제한, 수탁자에 대한 관리·감독, 손해배상 등 책임에 관한 사항을 계약서 등 문서에 명시하고, 수탁자가 개인정보를 안전하게 처리하는지 감독하고 있습니다. 위탁업무의 내용이나 수탁자가 변경될 경우에는 지체없이 본 개인정보처리방침을 통해 공개하겠습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="509:3116">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="509:3117">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="509:3121">
+                  제6조 (정보주체와 법정대리인의 권리·의무 및 행사방법)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="509:3122">
+                정보주체는 회사에 대해 언제든지 개인정보 열람, 정정, 삭제, 처리정지 요구 등의 권리를 행사할 수 있습니다. 이러한 권리 행사는 서면, 전자우편, 모사전송(FAX) 등을 통하여 하실 수 있으며, 회사는 이에 대해 지체없이 조치하겠습니다. 권리 행사는 정보주체의 법정대리인이나 위임을 받은 자 등 대리인을 통해서도 할 수 있으며, 이 경우 「개인정보 처리 방법에 관한 고시」 별지 제11호 서식에 따른 위임장을 제출하셔야 합니다. 다만 개인정보 열람 및 처리정지 요구는 「개인정보 보호법」 제35조 제4항, 제37조 제2항에 의하여 정보주체의 권리가 제한될 수 있으며, 개인정보의 정정 및 삭제 요구는 다른 법령에서 그 개인정보가 수집 대상으로 명시되어 있는 경우에는 요구할 수 없습니다. 회사는 이러한 권리 행사 요구가 있을 때 요구한 자가 본인이거나 정당한 대리인인지를 확인합니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5217">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5218">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5222">
+                  제6조 (정보주체와 법정대리인의 권리·의무 및 행사방법)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5223">
+                정보주체는 회사에 대해 언제든지 개인정보 열람, 정정, 삭제, 처리정지 요구 등의 권리를 행사할 수 있습니다. 이러한 권리 행사는 서면, 전자우편, 모사전송(FAX) 등을 통하여 하실 수 있으며, 회사는 이에 대해 지체없이 조치하겠습니다. 권리 행사는 정보주체의 법정대리인이나 위임을 받은 자 등 대리인을 통해서도 할 수 있으며, 이 경우 「개인정보 처리 방법에 관한 고시」 별지 제11호 서식에 따른 위임장을 제출하셔야 합니다. 다만 개인정보 열람 및 처리정지 요구는 「개인정보 보호법」 제35조 제4항, 제37조 제2항에 의하여 정보주체의 권리가 제한될 수 있으며, 개인정보의 정정 및 삭제 요구는 다른 법령에서 그 개인정보가 수집 대상으로 명시되어 있는 경우에는 요구할 수 없습니다. 회사는 이러한 권리 행사 요구가 있을 때 요구한 자가 본인이거나 정당한 대리인인지를 확인합니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5225">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5226">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5230">
+                  제7조 (처리하는 개인정보 항목)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5231">
+                회원가입 및 관리를 위해 회사는 이메일 주소, 소셜 로그인 식별자(카카오·네이버·구글 고유 ID), 닉네임, 그리고 자체 회원가입 시 비밀번호를 필수 항목으로 수집하며, 프로필 사진과 휴대전화번호, 생년월일, 성별은 선택 항목으로 수집합니다. 챌린지 및 팀원 매칭, 커뮤니티 이용을 위해서는 관심 분야와 활동 포지션(개발자·디자이너·기획자·마케터 등)을 필수 항목으로, 참여·수상 이력과 배지 정보, 팀 구성 정보, 게시글·댓글 등의 작성 정보를 선택적으로 수집합니다. 이 밖에 서비스 이용 과정에서 IP 주소, 쿠키, 방문일시, 서비스 이용기록, 기기 및 브라우저 정보가 자동으로 생성되어 수집될 수 있습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5233">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5234">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5238">
+                  제8조 (개인정보의 파기)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5239">
+                회사는 개인정보 보유기간의 경과, 처리목적 달성 등 개인정보가 불필요하게 되었을 때에는 지체없이 해당 개인정보를 파기합니다. 다만 정보주체로부터 동의받은 개인정보 보유기간이 경과하거나 처리목적이 달성되었더라도 다른 법령에 따라 개인정보를 계속 보존해야 하는 경우에는 해당 개인정보를 별도의 데이터베이스로 옮기거나 보관장소를 달리하여 보존합니다. 파기 절차는 파기 사유가 발생한 개인정보를 선정하고 개인정보 보호책임자의 승인을 받아 진행하며, 전자적 파일 형태로 기록·저장된 개인정보는 기록을 재생할 수 없는 기술적 방법으로 삭제하고, 종이 문서에 기록·저장된 개인정보는 분쇄기로 분쇄하거나 소각하는 방법으로 파기합니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5241">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5242">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5246">
+                  제9조 (개인정보의 안전성 확보조치)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5247">
+                회사는 개인정보의 안전성을 확보하기 위하여 관리적 측면에서 내부관리계획을 수립·시행하고 개인정보를 취급하는 직원을 최소화하며 정기적으로 교육을 실시하고 있습니다. 기술적 측면에서는 개인정보처리시스템 등에 대한 접근권한을 관리하고 접근통제시스템을 설치하며 고유식별정보 등을 암호화하고 보안프로그램을 설치하여 주기적으로 갱신하고 점검합니다. 물리적 측면에서는 전산실과 자료보관실 등에 대한 접근을 통제하고 있습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5249">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5250">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5254">
+                  제10조 (개인정보 자동 수집 장치의 설치·운영 및 거부에 관한 사항)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5255">{`회사는 이용자에게 맞춤형 서비스를 제공하기 위해 이용정보를 저장하고 수시로 불러오는 '쿠키(cookie)'를 사용합니다. 쿠키는 웹사이트를 운영하는 데 이용되는 서버가 이용자의 브라우저에 보내는 소량의 정보로, 이용자의 컴퓨터 등에 저장되며, 이용자가 방문한 서비스의 접속 빈도나 방문 시간 등을 분석하고 이용자의 취향과 관심 분야를 파악하며 각종 이벤트 참여 정도를 파악하여 맞춤형 서비스를 제공하는 데 사용됩니다. 이용자는 웹브라우저 상단의 도구에서 인터넷 옵션의 개인정보 메뉴에 있는 옵션 설정을 통해 쿠키 저장을 거부할 수 있으며, 다만 쿠키 저장을 거부할 경우 맞춤형 서비스 이용에 어려움이 발생할 수 있습니다.`}</p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5257">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5258">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5262">
+                  제11조 (개인정보 보호책임자)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[0] min-w-full not-italic relative shrink-0 text-[0px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5263">
+                <span className="leading-[normal] text-[15px]">{`회사는 개인정보 처리에 관한 업무를 총괄해서 책임지고 개인정보 처리와 관련한 정보주체의 불만처리 및 피해구제 등을 위하여 개인정보 보호책임자를 지정하고 있습니다. 개인정보 보호책임자는 `}</span>
+                <a className="cursor-pointer leading-[normal] text-[15px]" href="https://claude.ai/cowork/%5B%EC%A7%81%EC%B1%85%5D" target="_blank">
+                  <span href="https://claude.ai/cowork/%5B%EC%A7%81%EC%B1%85%5D" target="_blank">
+                    성명
+                  </span>
+                </a>
+                <span className="leading-[normal] text-[15px]">이며, 전화번호 [전화번호]와 이메일 [이메일]로 문의하실 수 있습니다. 정보주체께서는 서비스 이용 중 발생한 모든 개인정보 보호 관련 문의, 불만처리, 피해구제 등에 관한 사항을 개인정보 보호책임자에게 문의하실 수 있으며, 회사는 지체없이 답변하고 처리하겠습니다.</span>
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5265">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5266">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5270">
+                  제12조 (개인정보 열람청구)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5271">
+                정보주체는 「개인정보 보호법」 제35조에 따른 개인정보의 열람 청구를 [부서명]의 [담당자명]에게 하실 수 있으며, 연락처는 [전화번호] 또는 [이메일]입니다. 회사는 정보주체의 개인정보 열람청구가 신속하게 처리되도록 노력하겠습니다.
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5273">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5274">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5278">
+                  제13조 (권익침해 구제방법)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[0] min-w-full not-italic relative shrink-0 text-[0px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5279">
+                <span className="leading-[normal] text-[15px]">{`정보주체는 개인정보 침해로 인한 구제를 받기 위하여 개인정보분쟁조정위원회(국번없이 1833-6972, `}</span>
+                <a className="cursor-pointer leading-[normal] text-[15px]" href="http://www.kopico.go.kr" target="_blank">
+                  <span href="http://www.kopico.go.kr" target="_blank">
+                    www.kopico.go.kr
+                  </span>
+                </a>
+                <span className="leading-[normal] text-[15px]">{`), 개인정보침해신고센터(국번없이 118, privacy.kisa.or.kr)에 분쟁해결이나 상담을 신청할 수 있으며, 이 밖에 대검찰청(국번없이 1301, `}</span>
+                <a className="cursor-pointer leading-[normal] text-[15px]" href="http://www.spo.go.kr)%EC%9D%B4%EB%82%98" target="_blank">
+                  <span href="http://www.spo.go.kr)%EC%9D%B4%EB%82%98" target="_blank">
+                    www.spo.go.kr)이나
+                  </span>
+                </a>
+                <span className="leading-[normal] text-[15px]">{` 경찰청(국번없이 182, ecrm.cyber.go.kr)에도 신고할 수 있습니다.`}</span>
+              </p>
+            </div>
+            <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="600:5281">
+              <div className="content-stretch flex gap-[12px] items-center relative shrink-0" data-node-id="600:5282">
+                <BulletIcon className="h-[23px] relative shrink-0 w-[8.006px]" />
+                <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="600:5286">
+                  제14조 (개인정보 처리방침의 변경)
+                </p>
+              </div>
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] min-w-full not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] w-[min-content]" data-node-id="600:5287">
+                이 개인정보처리방침은 시행일로부터 적용되며, 법령 및 방침에 따른 변경사항의 추가·삭제·정정이 있는 경우에는 변경사항 시행 7일 전부터 공지사항을 통하여 고지합니다. 공고일자는 2026년 8월 25일이며, 시행일자는 [2026년 8월 25일]입니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer className="bg-[var(--gray\/50,#fdfdfd)] content-stretch flex flex-col gap-[148px] items-start overflow-clip px-[60px] py-[50px] relative shrink-0 w-[1440px]" />
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: Display: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), H3: Font(family: "Pretendard", style: SemiBold, size: 14, weight: 600, lineHeight: 100, letterSpacing: 0), Body: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0), m/List Text: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0), m/Header Title: Font(family: "Pretendard", style: SemiBold, size: 20, weight: 600, lineHeight: 1.2999999523162842, letterSpacing: 0), m/Hero Heading: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

@@ -1,0 +1,229 @@
+const imgPolygon3 = "https://www.figma.com/api/mcp/asset/173d2a11-dadf-4a33-9bf7-d56b43fab4fa.svg";
+const imgMiniAvatar = "https://www.figma.com/api/mcp/asset/37adb395-1e61-4a0f-8ddd-f5c87552640c.svg";
+
+type FooterProps = {
+  className?: string;
+  property1?: "Default";
+};
+
+function Footer({ className, property1 = "Default" }: FooterProps) {
+  return (
+    <div className={className || "bg-[var(--gray\\/50,#fdfdfd)] content-stretch flex flex-col gap-[148px] items-start overflow-clip px-[60px] py-[50px] relative w-[1440px]"} data-node-id="845:22274">
+      <div className="content-stretch flex items-start justify-between relative shrink-0 w-full" data-node-id="845:22255">
+        <div className="content-stretch flex flex-col items-center relative shrink-0 w-[95.577px]" data-node-id="863:23187">
+          <div className="content-stretch flex gap-[3.035px] items-center relative shrink-0 w-full" data-node-id="863:23188">
+            <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="863:23189">
+              <div className="-rotate-15 flex-none">
+                <div className="h-[18.531px] relative w-[18.371px]">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+                </div>
+              </div>
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="863:23190">
+              SEMO.
+            </p>
+          </div>
+        </div>
+        <div className="[word-break:break-word] content-stretch flex font-['Pretendard:Regular'] gap-[12px] items-start leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="845:22254">
+          <p className="relative shrink-0" data-node-id="845:22248">
+            개인정보처리방침
+          </p>
+          <p className="relative shrink-0" data-node-id="845:22250">
+            이용약관
+          </p>
+          <p className="relative shrink-0" data-node-id="845:22252">
+            청소년 보호 정책
+          </p>
+        </div>
+      </div>
+      <div className="[word-break:break-word] content-stretch flex font-['Pretendard:Regular'] items-end justify-between leading-[normal] not-italic relative shrink-0 text-[15px] w-full" data-node-id="845:22247">
+        <div className="content-stretch flex flex-col gap-[6px] items-start relative shrink-0 text-[color:var(--gray\/900,#101010)] w-[329px]" data-node-id="845:22246">
+          <p className="relative shrink-0 w-full" data-node-id="504:2236">
+            대표 유철한
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22237">
+            사업자등록번호 617-81-98126
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22239">
+            부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
+          </p>
+          <p className="relative shrink-0 w-full" data-node-id="845:22241">
+            051-783-1170 / mice@miceplans.com
+          </p>
+        </div>
+        <p className="relative shrink-0 text-[color:var(--gray\/500,#858a99)] whitespace-nowrap" data-node-id="845:22243">
+          © MICEPLANS. ALL Rights Reserved.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+export default function Component9My() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-start relative size-full" data-node-id="531:4419" data-name="9-MY">
+      <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b-[0.5px] border-solid h-[56px] relative shrink-0 w-[1440px]" data-node-id="531:4420" data-name="Header">
+        <a className="absolute content-stretch cursor-pointer flex gap-[8px] items-center left-[120px] top-[15.5px]" data-node-id="I531:4420;195:2996">
+          <div className="flex h-[22.654px] items-center justify-center relative shrink-0 w-[22.541px]" data-node-id="I531:4420;195:2997">
+            <div className="-rotate-15 flex-none">
+              <div className="h-[18.531px] relative w-[18.371px]">
+                <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgPolygon3} />
+              </div>
+            </div>
+          </div>
+          <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[24px] text-[color:var(--gray\/900,#101010)] text-left whitespace-nowrap" data-node-id="I531:4420;195:2998">
+            SEMO
+          </p>
+        </a>
+      </div>
+      <div className="content-stretch flex items-start px-[120px] relative shrink-0 w-full" data-node-id="531:4421" data-name="body">
+        <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-r-[0.5px] border-solid content-stretch flex flex-col gap-[4px] h-[562px] items-start py-[24px] relative shrink-0 w-[240px]" data-node-id="531:4422" data-name="Header/mySidebar">
+          <div className="content-stretch flex gap-[12px] items-center p-[16px] relative shrink-0 w-full" data-node-id="I531:4422;531:4057" data-name="profileMini">
+            <div className="relative shrink-0 size-[40px]" data-node-id="I531:4422;531:4058" data-name="miniAvatar">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgMiniAvatar} />
+            </div>
+            <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[14px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="I531:4422;531:4059">
+              황지영
+            </p>
+          </div>
+          <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-node-id="I531:4422;531:4105">
+            <div className="bg-white content-stretch flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full" data-node-id="I531:4422;531:4085" data-name="myMenuItem">
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] whitespace-nowrap" data-node-id="I531:4422;531:4085;531:4072">
+                내 팀
+              </p>
+            </div>
+            <a className="bg-white content-stretch cursor-pointer flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full" data-node-id="I531:4422;531:4088" data-name="myMenuItem">
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="I531:4422;531:4088;531:4072">
+                북마크 챌린지
+              </p>
+            </a>
+            <div className="bg-[var(--gray\/100,#f4f4f4)] content-stretch flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full" data-node-id="I531:4422;531:4091" data-name="myMenuItem">
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[normal] not-italic relative shrink-0 text-[14px] text-[color:var(--gray\/700,#636c7f)] whitespace-nowrap" data-node-id="I531:4422;531:4091;531:4077">
+                지원현황
+              </p>
+            </div>
+            <a className="bg-white content-stretch cursor-pointer flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full" data-node-id="I531:4422;531:4097" data-name="myMenuItem">
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="I531:4422;531:4097;531:4072">
+                관심분야 설정
+              </p>
+            </a>
+            <a className="bg-white content-stretch cursor-pointer flex items-center px-[16px] py-[12px] relative rounded-[8px] shrink-0 w-full" data-node-id="I531:4422;531:4101" data-name="myMenuItem">
+              <p className="[word-break:break-word] font-['Pretendard:Regular'] leading-[normal] not-italic relative shrink-0 text-[15px] text-[color:var(--gray\/700,#636c7f)] text-left whitespace-nowrap" data-node-id="I531:4422;531:4101;531:4072">
+                알림 설정
+              </p>
+            </a>
+          </div>
+        </div>
+        <div className="content-stretch flex flex-[1_0_0] flex-col gap-[32px] items-start min-w-px pl-[32px] py-[24px] relative" data-node-id="531:4423" data-name="rightMain">
+          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-node-id="531:4487">
+            <div className="content-stretch flex items-center relative shrink-0 w-full" data-node-id="531:4424" data-name="titleRow">
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="531:4425">
+                공모전 지원 현황
+              </p>
+            </div>
+            <div className="[word-break:break-word] content-stretch flex flex-col items-end not-italic relative shrink-0 text-[16px] w-full" data-node-id="531:4470">
+              <div className="bg-[var(--gray\/100,#f4f4f4)] content-stretch flex font-['Pretendard:SemiBold'] items-center justify-between leading-[normal] px-[16px] py-[14px] relative rounded-tl-[12px] rounded-tr-[12px] shrink-0 text-[color:var(--gray\/900,#101010)] w-full" data-node-id="531:4471" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0" data-node-id="531:4472">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4473">
+                    공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4474">
+                    협회
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 w-[80px]" data-node-id="531:4475">
+                  결과
+                </p>
+              </div>
+              <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b border-l border-r border-solid content-stretch flex font-['Pretendard:Regular'] h-[56px] items-center justify-between leading-[1.5] px-[16px] py-[18px] relative shrink-0 w-full" data-node-id="531:4476" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0 text-[color:var(--gray\/900,#101010)]" data-node-id="531:4477">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4478">
+                    한국 마라톤 공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4479">
+                    한국 마라톤 협회
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 text-[color:var(--semo,#006fff)] w-[80px]" data-node-id="531:4480">
+                  예선 통과
+                </p>
+              </div>
+              <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b border-l border-r border-solid content-stretch flex font-['Pretendard:Regular'] h-[56px] items-center justify-between leading-[1.5] px-[16px] py-[18px] relative rounded-bl-[12px] rounded-br-[12px] shrink-0 w-full" data-node-id="531:4481" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0 text-[color:var(--gray\/900,#101010)]" data-node-id="531:4482">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4483">
+                    한국 마라톤 공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4484">
+                    한국 마라톤 협회
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 text-[color:var(--semo,#006fff)] w-[80px]" data-node-id="531:4485">
+                  예선 통과
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex flex-col gap-[16px] items-start relative shrink-0 w-full" data-node-id="531:4488">
+            <div className="content-stretch flex items-center relative shrink-0 w-full" data-node-id="531:4489" data-name="titleRow">
+              <p className="[word-break:break-word] font-['Pretendard:SemiBold'] leading-[1.3] not-italic relative shrink-0 text-[20px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="531:4490">
+                팀 지원현황
+              </p>
+            </div>
+            <div className="[word-break:break-word] content-stretch flex flex-col items-end not-italic relative shrink-0 text-[16px] w-full" data-node-id="531:4491">
+              <div className="bg-[var(--gray\/100,#f4f4f4)] content-stretch flex font-['Pretendard:SemiBold'] items-center justify-between leading-[normal] px-[16px] py-[14px] relative rounded-tl-[12px] rounded-tr-[12px] shrink-0 text-[color:var(--gray\/900,#101010)] w-full" data-node-id="531:4492" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0" data-node-id="531:4493">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4494">
+                    공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4495">
+                    팀
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 w-[80px]" data-node-id="531:4496">
+                  결과
+                </p>
+              </div>
+              <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b border-l border-r border-solid content-stretch flex font-['Pretendard:Regular'] h-[56px] items-center justify-between leading-[1.5] px-[16px] py-[18px] relative shrink-0 w-full" data-node-id="531:4497" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0 text-[color:var(--gray\/900,#101010)]" data-node-id="531:4498">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4499">
+                    한국 마라톤 공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4500">
+                    김창윤의 팀
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 text-[#ff4d00] w-[80px]" data-node-id="531:4501">
+                  불합격
+                </p>
+              </div>
+              <div className="bg-white border-[var(--gray\/100,#f4f4f4)] border-b border-l border-r border-solid content-stretch flex font-['Pretendard:Regular'] h-[56px] items-center justify-between leading-[1.5] px-[16px] py-[18px] relative rounded-bl-[12px] rounded-br-[12px] shrink-0 w-full" data-node-id="531:4502" data-name="공모전 지원현황">
+                <div className="content-stretch flex gap-[16px] items-center relative shrink-0 text-[color:var(--gray\/900,#101010)]" data-node-id="531:4503">
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4504">
+                    한국 IT 공모전
+                  </p>
+                  <p className="h-[20px] relative shrink-0 w-[180px]" data-node-id="531:4505">
+                    강다정의 팀
+                  </p>
+                </div>
+                <p className="h-[20px] relative shrink-0 text-[#0b6eff] w-[80px]" data-node-id="531:4506">
+                  확정
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer className="bg-[var(--gray\/50,#fdfdfd)] content-stretch flex flex-col gap-[148px] items-start overflow-clip px-[60px] py-[50px] relative shrink-0 w-[1440px]" />
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: Display: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), m/Card Title: Font(family: "Pretendard", style: SemiBold, size: 14, weight: 600, lineHeight: 100, letterSpacing: 0), m/List Text: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0), m/Header Title: Font(family: "Pretendard", style: SemiBold, size: 20, weight: 600, lineHeight: 1.2999999523162842, letterSpacing: 0), m/Panel Title: Font(family: "Pretendard", style: SemiBold, size: 16, weight: 600, lineHeight: 100, letterSpacing: 0), m/Body Text: Font(family: "Pretendard", style: Regular, size: 16, weight: 400, lineHeight: 1.5, letterSpacing: 0), SEMO: #006FFF, m/Hero Heading: Font(family: "Pretendard", style: SemiBold, size: 24, weight: 600, lineHeight: 100, letterSpacing: 0), Body: Font(family: "Pretendard", style: Regular, size: 15, weight: 400, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

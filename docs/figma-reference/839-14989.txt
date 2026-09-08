@@ -1,0 +1,324 @@
+const imgFrame = "https://www.figma.com/api/mcp/asset/71ef5bc7-5359-4aa8-a37c-147f4247e7e7.svg";
+const imgFrame1 = "https://www.figma.com/api/mcp/asset/f17db970-68fe-48b6-baf7-6f07537f69c1.svg";
+const imgFrame2 = "https://www.figma.com/api/mcp/asset/2a2aaf6f-2d05-4afd-95ae-eb273cc5517c.svg";
+const imgFrame3 = "https://www.figma.com/api/mcp/asset/6e54794f-97c7-4bff-880d-2a7723ae6c83.svg";
+const imgSignal = "https://www.figma.com/api/mcp/asset/9f2de94c-b609-4c2a-9c24-a115ac608a5f.svg";
+const imgWifi = "https://www.figma.com/api/mcp/asset/2b9d23a5-e925-4fee-b14a-ece20e494363.svg";
+const imgBattery = "https://www.figma.com/api/mcp/asset/96dd3684-ce92-4352-b486-72297bfa2e3f.svg";
+const imgSettingsIcon = "https://www.figma.com/api/mcp/asset/24e1b0c9-8f01-4995-94c5-17bdd2c9cc0f.svg";
+const imgAvatar = "https://www.figma.com/api/mcp/asset/0e4f5f86-fe98-4e64-a403-4994605ab3e0.svg";
+const imgIcon = "https://www.figma.com/api/mcp/asset/f3b52b21-d81f-41da-b2e9-128367134f11.svg";
+const imgIcon1 = "https://www.figma.com/api/mcp/asset/e8af0514-3727-4059-973e-fd094e70e79e.svg";
+const imgIcon2 = "https://www.figma.com/api/mcp/asset/91534ee6-02bd-4f7b-af77-4e9cb3e73421.svg";
+const imgIcon3 = "https://www.figma.com/api/mcp/asset/21392912-44ea-492d-ad93-299f874a79d1.svg";
+const imgChevron = "https://www.figma.com/api/mcp/asset/73b3611d-861b-485f-abf8-7ba926ddb155.svg";
+const imgIcon4 = "https://www.figma.com/api/mcp/asset/6d0d90c8-e89c-4352-9268-f853385f6d7a.svg";
+const imgIcon5 = "https://www.figma.com/api/mcp/asset/9bed8b01-cb1c-445a-8de4-fd4ab00039bf.svg";
+const imgIcon6 = "https://www.figma.com/api/mcp/asset/417a7aff-b96f-437e-b5f4-f8771684691b.svg";
+const imgIcon7 = "https://www.figma.com/api/mcp/asset/e0492c37-ea7f-49f6-bf04-825a80ce8bf7.svg";
+const imgFrame4 = "https://www.figma.com/api/mcp/asset/aa54febe-2667-4dd9-9416-d9c8d134aa0b.svg";
+
+type FooterNavItemsProps = {
+  className?: string;
+  isClick?: boolean;
+  property1?: "home" | "team" | "alert" | "account";
+};
+
+function FooterNavItems({ className, isClick = false, property1 = "home" }: FooterNavItemsProps) {
+  if (property1 === "team" && !isClick) {
+    return (
+      <a className={className || "bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px]"} data-node-id="841:21004" data-name="Property 1=team, isClick=false">
+        <div className="relative shrink-0 size-[34px]" data-node-id="841:21007" data-name="Frame">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame1} />
+        </div>
+      </a>
+    );
+  }
+  if (property1 === "alert" && !isClick) {
+    return (
+      <a className={className || "bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px]"} data-node-id="841:21016" data-name="Property 1=alert, isClick=false">
+        <div className="relative shrink-0 size-[34px]" data-node-id="841:21025" data-name="Frame">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame2} />
+        </div>
+      </a>
+    );
+  }
+  if (property1 === "account" && !isClick) {
+    return (
+      <div className={className || "bg-white content-stretch flex flex-col items-start p-[12px] relative rounded-[6px]"} data-node-id="841:21022" data-name="Property 1=account, isClick=false">
+        <div className="relative shrink-0 size-[34px]" data-node-id="841:21031" data-name="Frame">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame3} />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <a className={className || "bg-white content-stretch cursor-pointer flex flex-col items-center justify-center p-[12px] relative rounded-[6px]"} data-node-id="841:20990" data-name="Property 1=home, isClick=false">
+      <div className="relative shrink-0 size-[34px]" data-node-id="841:20965" data-name="Frame">
+        <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame} />
+      </div>
+    </a>
+  );
+}
+
+export default function Component9My() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-start relative size-full" data-node-id="839:14989" data-name="9-MY">
+      <div className="bg-white content-stretch flex flex-col h-[50px] items-start justify-center relative shrink-0 w-[390px]" data-node-id="839:14990" data-name="StatusBar">
+        <div className="content-stretch flex h-[21px] items-center justify-between overflow-clip px-[16px] relative shrink-0 w-full" data-node-id="839:14991" data-name="Frame">
+          <div className="content-stretch flex h-[100px] items-center overflow-clip pr-[6px] relative shrink-0" data-node-id="839:14992" data-name="Time">
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:14993">
+              9:41
+            </p>
+          </div>
+          <div className="h-[10px] relative shrink-0 w-[124px]" data-node-id="839:14994" data-name="Dynamic Island spacer" />
+          <div className="content-stretch flex gap-[7px] h-[100px] items-center justify-end overflow-clip pl-[6px] relative shrink-0" data-node-id="839:14995" data-name="Levels">
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:14996" data-name="signal">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSignal} />
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15002" data-name="wifi">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgWifi} />
+            </div>
+            <div className="h-[16px] relative shrink-0 w-[20px]" data-node-id="839:15007" data-name="battery">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgBattery} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="content-stretch flex items-center justify-between pb-[8px] pt-[16px] px-[16px] relative shrink-0 w-full" data-node-id="839:15013" data-name="Header">
+        <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[22px] text-[color:var(--gray\/900,#101010)] whitespace-nowrap" data-node-id="839:15014">
+          MY
+        </p>
+        <div className="relative shrink-0 size-[22px]" data-node-id="839:15015" data-name="settingsIcon">
+          <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSettingsIcon} />
+        </div>
+      </div>
+      <div className="content-stretch flex flex-col gap-[24px] items-start pb-[32px] pt-[8px] px-[16px] relative shrink-0 w-full" data-node-id="839:15018" data-name="Content">
+        <div className="content-stretch flex gap-[16px] items-center relative shrink-0 w-full" data-node-id="839:15019" data-name="profileCard">
+          <div className="relative shrink-0 size-[72px]" data-node-id="839:15020" data-name="avatar">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgAvatar} />
+          </div>
+          <div className="flex flex-[1_0_0] flex-row items-center self-stretch" data-node-id="839:15021">
+            <div className="[word-break:break-word] content-stretch flex flex-[1_0_0] flex-col gap-[6px] h-full items-start leading-[normal] min-w-px relative whitespace-nowrap" data-name="info">
+              <p className="font-['Noto_Sans_KR:Bold'] font-bold relative shrink-0 text-[#101010] text-[20px]" data-node-id="839:15022">
+                황지영
+              </p>
+              <p className="font-['Noto_Sans_KR:Regular'] font-normal relative shrink-0 text-[#636c7f] text-[13px]" data-node-id="839:15023">
+                풀스택 개발자 · 서울
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="content-stretch flex gap-[8px] items-start relative shrink-0 w-full" data-node-id="839:15024" data-name="badges">
+          <div className="bg-[#f4f4f4] content-stretch flex gap-[4px] items-center px-[10px] py-[5px] relative rounded-[8px] self-stretch shrink-0" data-node-id="839:15025" data-name="badge">
+            <div className="relative shrink-0 size-[11px]" data-node-id="839:15026" data-name="icon">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon} />
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[normal] relative shrink-0 text-[#101010] text-[11px] whitespace-nowrap" data-node-id="839:15029">
+              깃허브 인증
+            </p>
+          </div>
+          <div className="bg-[#dff7ff] content-stretch flex gap-[4px] items-center px-[10px] py-[5px] relative rounded-[8px] self-stretch shrink-0" data-node-id="839:15030" data-name="badge">
+            <div className="relative shrink-0 size-[11px]" data-node-id="839:15031" data-name="icon">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon1} />
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[normal] relative shrink-0 text-[#169ac6] text-[11px] whitespace-nowrap" data-node-id="839:15037">
+              포트폴리오
+            </p>
+          </div>
+          <div className="bg-[#f0fdf4] content-stretch flex gap-[4px] items-center px-[10px] py-[5px] relative rounded-[8px] self-stretch shrink-0" data-node-id="839:15038" data-name="badge">
+            <div className="relative shrink-0 size-[11px]" data-node-id="839:15039" data-name="icon">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon2} />
+            </div>
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[normal] relative shrink-0 text-[#22c55e] text-[11px] whitespace-nowrap" data-node-id="839:15042">
+              출품이력
+            </p>
+          </div>
+        </div>
+        <div className="content-stretch flex flex-col gap-[2px] items-start relative shrink-0 w-full" data-node-id="839:15043" data-name="menu">
+          <div className="content-stretch flex items-center justify-between px-[4px] py-[14px] relative shrink-0 w-full" data-node-id="839:15044" data-name="menuItem">
+            <div className="flex flex-row items-center self-stretch" data-node-id="839:15045">
+              <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-name="left">
+                <div className="relative shrink-0 size-[19px]" data-node-id="839:15046" data-name="icon">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon3} />
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15051">
+                  내 팀
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15052" data-name="chevron">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgChevron} />
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-between px-[4px] py-[14px] relative shrink-0 w-full" data-node-id="839:15054" data-name="menuItem">
+            <div className="flex flex-row items-center self-stretch" data-node-id="839:15055">
+              <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-name="left">
+                <div className="relative shrink-0 size-[19px]" data-node-id="839:15056" data-name="icon">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon4} />
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15058">
+                  북마크 챌린지
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15059" data-name="chevron">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgChevron} />
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-between px-[4px] py-[14px] relative shrink-0 w-full" data-node-id="839:15061" data-name="menuItem">
+            <div className="flex flex-row items-center self-stretch" data-node-id="839:15062">
+              <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-name="left">
+                <div className="relative shrink-0 size-[19px]" data-node-id="839:15063" data-name="icon">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon5} />
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15069">
+                  지원현황
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15070" data-name="chevron">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgChevron} />
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-between px-[4px] py-[14px] relative shrink-0 w-full" data-node-id="839:15072" data-name="menuItem">
+            <div className="flex flex-row items-center self-stretch" data-node-id="839:15073">
+              <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-name="left">
+                <div className="relative shrink-0 size-[19px]" data-node-id="839:15074" data-name="icon">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon6} />
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15076">
+                  관심분야 설정
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15077" data-name="chevron">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgChevron} />
+            </div>
+          </div>
+          <div className="content-stretch flex items-center justify-between px-[4px] py-[14px] relative shrink-0 w-full" data-node-id="839:15079" data-name="menuItem">
+            <div className="flex flex-row items-center self-stretch" data-node-id="839:15080">
+              <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-name="left">
+                <div className="relative shrink-0 size-[19px]" data-node-id="839:15081" data-name="icon">
+                  <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgIcon7} />
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15084">
+                  알림 설정
+                </p>
+              </div>
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15085" data-name="chevron">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgChevron} />
+            </div>
+          </div>
+        </div>
+        <div className="bg-[#f0f1f3] h-px relative shrink-0 w-full" data-node-id="839:15087" data-name="divider" />
+        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-node-id="839:15088" data-name="stackSection">
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[#101010] text-[14px] whitespace-nowrap" data-node-id="839:15089">
+            보유 스택
+          </p>
+          <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15090" data-name="stackRow">
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15091" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15092">
+                <p className="leading-[normal]">React</p>
+              </div>
+            </div>
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15093" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15094">
+                <p className="leading-[normal]">TypeScript</p>
+              </div>
+            </div>
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15095" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15096">
+                <p className="leading-[normal]">Next.js</p>
+              </div>
+            </div>
+          </div>
+          <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15097" data-name="stackRow">
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15098" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15099">
+                <p className="leading-[normal]">Node.js</p>
+              </div>
+            </div>
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15100" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15101">
+                <p className="leading-[normal]">Figma</p>
+              </div>
+            </div>
+            <div className="bg-[#f4f4f4] content-stretch flex items-center justify-center px-[14px] py-[7px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15102" data-name="chip">
+              <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Regular'] font-normal justify-center leading-[0] relative shrink-0 text-[#101010] text-[13px] text-center whitespace-nowrap" data-node-id="839:15103">
+                <p className="leading-[normal]">Python</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-node-id="839:15104" data-name="historySection">
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[#101010] text-[14px] whitespace-nowrap" data-node-id="839:15105">
+            참가 이력
+          </p>
+          <div className="border border-[#f0f1f3] border-solid content-stretch flex gap-[14px] h-[76px] items-center p-[14px] relative rounded-[12px] shrink-0 w-full" data-node-id="839:15106" data-name="hcard">
+            <div className="bg-[#f4f4f4] h-[48px] relative rounded-[8px] shrink-0 w-[64px]" data-node-id="839:15107" data-name="thumb" />
+            <div className="content-stretch flex flex-[1_0_0] flex-col gap-[4px] h-full items-start min-w-px relative" data-node-id="839:15108" data-name="info">
+              <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] min-w-full relative shrink-0 text-[#101010] text-[13px] w-[min-content]" data-node-id="839:15109">
+                2025 공공데이터 활용 챌린지
+              </p>
+              <div className="content-stretch flex gap-[6px] items-center relative shrink-0" data-node-id="839:15110" data-name="badgeRow">
+                <div className="flex flex-row items-center self-stretch" data-node-id="839:15111">
+                  <div className="bg-[#eaf3ff] content-stretch flex h-full items-center justify-center px-[7px] py-[2px] relative rounded-[4px] shrink-0" data-name="prize">
+                    <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[#006fff] text-[10px] text-center whitespace-nowrap" data-node-id="839:15112">
+                      <p className="leading-[normal]">대상</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[normal] relative shrink-0 text-[#858a99] text-[11px] whitespace-nowrap" data-node-id="839:15113">
+                  프론트엔드 · 3인 팀
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="border border-[#f0f1f3] border-solid content-stretch flex gap-[14px] h-[76px] items-center p-[14px] relative rounded-[12px] shrink-0 w-full" data-node-id="839:15114" data-name="hcard">
+            <div className="bg-[#f4f4f4] h-[48px] relative rounded-[8px] shrink-0 w-[64px]" data-node-id="839:15115" data-name="thumb" />
+            <div className="content-stretch flex flex-[1_0_0] flex-col gap-[4px] h-full items-start min-w-px relative" data-node-id="839:15116" data-name="info">
+              <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] min-w-full relative shrink-0 text-[#101010] text-[13px] w-[min-content]" data-node-id="839:15117">
+                2024 스타트업 해커톤
+              </p>
+              <div className="content-stretch flex gap-[6px] items-center relative shrink-0" data-node-id="839:15118" data-name="badgeRow">
+                <div className="flex flex-row items-center self-stretch" data-node-id="839:15119">
+                  <div className="bg-[#eaf3ff] content-stretch flex h-full items-center justify-center px-[7px] py-[2px] relative rounded-[4px] shrink-0" data-name="prize">
+                    <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[#006fff] text-[10px] text-center whitespace-nowrap" data-node-id="839:15120">
+                      <p className="leading-[normal]">우수상</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[normal] relative shrink-0 text-[#858a99] text-[11px] whitespace-nowrap" data-node-id="839:15121">
+                  백엔드 · 4인 팀
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white content-stretch flex items-center justify-between pb-[20px] pt-[10px] px-[20px] relative shrink-0 w-[390px]" data-node-id="844:21365" data-name="footerNavBar">
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-center justify-center p-[12px] relative rounded-[6px] shrink-0" />
+        <div className="bg-[var(--gray\/50,#fdfdfd)] content-stretch flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0 size-[58px]" data-node-id="I844:21365;841:21076" data-name="footerNavItems">
+          <div className="relative shrink-0 size-[34px]" data-node-id="I844:21365;841:21076;851:22447" data-name="Frame">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame4} />
+          </div>
+        </div>
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="team" />
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="alert" />
+        <FooterNavItems className="bg-white content-stretch flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="account" />
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: m/Timestamp: Font(family: "Noto Sans KR", style: Medium, size: 15, weight: 500, lineHeight: 100, letterSpacing: 0), m/Description Text: Font(family: "Noto Sans KR", style: Regular, size: 13, weight: 400, lineHeight: 100, letterSpacing: 0), m/Block Title: Font(family: "Noto Sans KR", style: Bold, size: 14, weight: 700, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.

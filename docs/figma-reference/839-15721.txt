@@ -1,0 +1,224 @@
+const imgFrame = "https://www.figma.com/api/mcp/asset/869129a7-5504-44bb-bf38-5d6690931e12.svg";
+const imgFrame1 = "https://www.figma.com/api/mcp/asset/51ed937c-c1aa-48e2-b9be-390708bd4307.svg";
+const imgFrame2 = "https://www.figma.com/api/mcp/asset/e6f91255-82bb-4f64-b670-5c78d548b682.svg";
+const imgFrame3 = "https://www.figma.com/api/mcp/asset/fb2c89b3-06e9-4f63-8ff9-58bcf1cb71d6.svg";
+const imgSignal = "https://www.figma.com/api/mcp/asset/0e834b0b-0328-404b-b10f-a31267168965.svg";
+const imgWifi = "https://www.figma.com/api/mcp/asset/9d2aca88-2b24-479c-9a61-3aa8e73dac7b.svg";
+const imgBattery = "https://www.figma.com/api/mcp/asset/9e3e148f-8fd4-418f-9eda-ee8bc685a018.svg";
+const imgBackIcon = "https://www.figma.com/api/mcp/asset/660fc621-4859-4ac0-94ad-7e5dca6ed154.svg";
+const imgFrame4 = "https://www.figma.com/api/mcp/asset/06542f09-5b1a-4d0a-94ca-c089230cb345.svg";
+
+type FooterNavItemsProps = {
+  className?: string;
+  isClick?: boolean;
+  property1?: "home" | "team" | "alert" | "account";
+};
+
+function FooterNavItems({ className, isClick = false, property1 = "home" }: FooterNavItemsProps) {
+  const isAccount = property1 === "account";
+  const isAlert = property1 === "alert";
+  const isTeam = property1 === "team";
+  return (
+    <a className={className || `bg-white content-stretch cursor-pointer flex flex-col p-[12px] relative rounded-[6px] ${["team", "alert", "account"].includes(property1) ? "items-start" : "items-center justify-center"}`} id={isAccount ? "node-841_21022" : isAlert ? "node-841_21016" : isTeam ? "node-841_21004" : "node-841_20990"}>
+      <div className="relative shrink-0 size-[34px]" id={isAccount ? "node-841_21031" : isAlert ? "node-841_21025" : isTeam ? "node-841_21007" : "node-841_20965"} data-name="Frame">
+        <img alt="" className="absolute block inset-0 max-w-none size-full" src={isAccount ? imgFrame3 : isAlert ? imgFrame2 : isTeam ? imgFrame1 : imgFrame} />
+      </div>
+    </a>
+  );
+}
+
+export default function Component93() {
+  return (
+    <div className="bg-white content-stretch flex flex-col items-start relative size-full" data-node-id="839:15721" data-name="9-3-관심분야설정">
+      <div className="bg-white content-stretch flex flex-col h-[50px] items-start justify-center relative shrink-0 w-[390px]" data-node-id="839:15722" data-name="StatusBar">
+        <div className="content-stretch flex h-[21px] items-center justify-between overflow-clip px-[16px] relative shrink-0 w-full" data-node-id="839:15723" data-name="Frame">
+          <div className="content-stretch flex h-[100px] items-center overflow-clip pr-[6px] relative shrink-0" data-node-id="839:15724" data-name="Time">
+            <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15725">
+              9:41
+            </p>
+          </div>
+          <div className="h-[10px] relative shrink-0 w-[124px]" data-node-id="839:15726" data-name="Dynamic Island spacer" />
+          <div className="content-stretch flex gap-[7px] h-[100px] items-center justify-end overflow-clip pl-[6px] relative shrink-0" data-node-id="839:15727" data-name="Levels">
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15728" data-name="signal">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgSignal} />
+            </div>
+            <div className="relative shrink-0 size-[16px]" data-node-id="839:15734" data-name="wifi">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgWifi} />
+            </div>
+            <div className="h-[16px] relative shrink-0 w-[20px]" data-node-id="839:15739" data-name="battery">
+              <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgBattery} />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white border-[#f0f1f3] border-b border-solid content-stretch flex h-[44px] items-center px-[16px] py-[10px] relative shrink-0 w-[390px]" data-node-id="839:15745" data-name="TopBar">
+        <div className="content-stretch flex gap-[12px] h-full items-center relative shrink-0" data-node-id="839:15746" data-name="Left">
+          <div className="relative shrink-0 size-[24px]" data-node-id="839:15747" data-name="BackIcon">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgBackIcon} />
+          </div>
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Medium'] font-medium leading-[normal] relative shrink-0 text-[#101010] text-[17px] whitespace-nowrap" data-node-id="839:15749">
+            관심분야 설정
+          </p>
+        </div>
+      </div>
+      <div className="content-stretch flex flex-col gap-[24px] items-start pb-[32px] pt-[20px] px-[16px] relative shrink-0 w-full" data-node-id="839:15750" data-name="Content">
+        <p className="[word-break:break-word] font-['Noto_Sans_KR:Regular'] font-normal leading-[1.5] relative shrink-0 text-[14px] text-[color:var(--gray\/700,#636c7f)] w-full" data-node-id="839:15751">
+          관심 있는 분야를 선택하면 맞춤 챌린지와 팀 모집을 추천해드려요
+        </p>
+        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-node-id="839:15752" data-name="chipSection">
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15753">
+            챌린지 분야
+          </p>
+          <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="839:15754" data-name="chipWrap">
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15755" data-name="chipRow">
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15756" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15757">
+                  <p className="leading-[normal]">IT · 소프트웨어</p>
+                </div>
+              </div>
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15758" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15759">
+                  <p className="leading-[normal]">데이터 · AI</p>
+                </div>
+              </div>
+            </div>
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15760" data-name="chipRow">
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15761" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15762">
+                  <p className="leading-[normal]">디자인 · UX</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15763" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15764">
+                  <p className="leading-[normal]">영상 · 콘텐츠</p>
+                </div>
+              </div>
+            </div>
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15765" data-name="chipRow">
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15766" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15767">
+                  <p className="leading-[normal]">마케팅 · 광고</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15768" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15769">
+                  <p className="leading-[normal]">건축 · 도시</p>
+                </div>
+              </div>
+            </div>
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15770" data-name="chipRow">
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15771" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15772">
+                  <p className="leading-[normal]">환경 · ESG</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15773" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15774">
+                  <p className="leading-[normal]">문학 · 글쓰기</p>
+                </div>
+              </div>
+            </div>
+            <div className="content-stretch flex items-start relative shrink-0" data-node-id="839:15775" data-name="chipRow">
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15776" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15777">
+                  <p className="leading-[normal]">음악 · 공연</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-node-id="839:15778" data-name="chipSection">
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15779">
+            선호 역할
+          </p>
+          <div className="content-stretch flex flex-col gap-[8px] items-start relative shrink-0 w-full" data-node-id="839:15780" data-name="chipWrap">
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15781" data-name="chipRow">
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15782" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15783">
+                  <p className="leading-[normal]">프론트엔드</p>
+                </div>
+              </div>
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15784" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15785">
+                  <p className="leading-[normal]">백엔드</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15786" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15787">
+                  <p className="leading-[normal]">디자이너</p>
+                </div>
+              </div>
+            </div>
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15788" data-name="chipRow">
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15789" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15790">
+                  <p className="leading-[normal]">기획자</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15791" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15792">
+                  <p className="leading-[normal]">풀스택</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="content-stretch flex flex-col gap-[12px] items-start relative shrink-0 w-full" data-node-id="839:15793" data-name="chipSection">
+          <p className="[word-break:break-word] font-['Noto_Sans_KR:Bold'] font-bold leading-[normal] relative shrink-0 text-[#101010] text-[15px] whitespace-nowrap" data-node-id="839:15794">
+            참가 대상
+          </p>
+          <div className="content-stretch flex flex-col items-start relative shrink-0 w-full" data-node-id="839:15795" data-name="chipWrap">
+            <div className="content-stretch flex gap-[8px] items-start relative shrink-0" data-node-id="839:15796" data-name="chipRow">
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15797" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15798">
+                  <p className="leading-[normal]">대학생</p>
+                </div>
+              </div>
+              <div className="bg-[#006fff] content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15799" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[13px] text-center text-white whitespace-nowrap" data-node-id="839:15800">
+                  <p className="leading-[normal]">일반인</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15801" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15802">
+                  <p className="leading-[normal]">직장인</p>
+                </div>
+              </div>
+              <div className="border border-[#f0f1f3] border-solid content-stretch flex items-center justify-center px-[16px] py-[8px] relative rounded-[20px] self-stretch shrink-0" data-node-id="839:15803" data-name="chip">
+                <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Medium'] font-medium justify-center leading-[0] relative shrink-0 text-[#636c7f] text-[13px] text-center whitespace-nowrap" data-node-id="839:15804">
+                  <p className="leading-[normal]">청소년</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="bg-[#006fff] content-stretch flex items-center justify-center py-[16px] relative rounded-[14px] shrink-0 w-full" data-node-id="839:15805" data-name="saveBtn">
+          <div className="[word-break:break-word] flex flex-col font-['Noto_Sans_KR:Bold'] font-bold justify-center leading-[0] relative shrink-0 text-[16px] text-center text-white whitespace-nowrap" data-node-id="839:15806">
+            <p className="leading-[normal]">저장하기</p>
+          </div>
+        </div>
+      </div>
+      <div className="bg-white content-stretch flex items-center justify-between pb-[20px] pt-[10px] px-[20px] relative shrink-0 w-[390px]" data-node-id="844:21433" data-name="footerNavBar">
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-center justify-center p-[12px] relative rounded-[6px] shrink-0" />
+        <div className="bg-[var(--gray\/50,#fdfdfd)] content-stretch flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0 size-[58px]" data-node-id="I844:21433;841:21076" data-name="footerNavItems">
+          <div className="relative shrink-0 size-[34px]" data-node-id="I844:21433;841:21076;851:22447" data-name="Frame">
+            <img alt="" className="absolute block inset-0 max-w-none size-full" src={imgFrame4} />
+          </div>
+        </div>
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="team" />
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="alert" />
+        <FooterNavItems className="bg-white content-stretch cursor-pointer flex flex-col items-start p-[12px] relative rounded-[6px] shrink-0" property1="account" />
+      </div>
+    </div>
+  );
+}
+SUPER CRITICAL: The generated React+Tailwind code MUST be converted to match the target project's technology stack and styling system.
+1. Analyze the target codebase to identify: technology stack, styling approach, component patterns, and design tokens
+2. Convert React syntax to the target framework/library
+3. Transform all Tailwind classes to the target styling system while preserving exact visual design
+4. Follow the project's existing patterns and conventions
+DO NOT install any Tailwind as a dependency unless the user instructs you to do so.
+
+Node ids have been added to the code as data attributes, e.g. `data-node-id="1:2"`.
+These styles are contained in the design: m/Timestamp: Font(family: "Noto Sans KR", style: Medium, size: 15, weight: 500, lineHeight: 100, letterSpacing: 0).
+Images and SVGs will be stored as constants, e.g. const image = 'https://www.figma.com/api/mcp/asset/550e8400-e29b-41d4-a716-446655440000.png'. These constants will be used in the code as the source for the image, ex: <img src={image} />. Image assets are stored on a remote server for 7 days and can be fetched using the provided URLs until they expire.
