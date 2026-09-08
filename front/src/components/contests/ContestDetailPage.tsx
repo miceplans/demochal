@@ -125,11 +125,11 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
             <Row>
               <Tag tone="blue">D-3</Tag>
               <Button small tone="plain" aria-pressed={saved} onClick={() => toggle('contest-1')}>
-                <Icon frame="195-1147" name="imgScrapIc" size={14} />
+                <Icon src="/assets/icons/scrap.png" size={14} alt="북마크" />
                 북마크
               </Button>
               <Button small tone="plain" onClick={share}>
-                <Icon frame="195-1147" name="imgShareIc" size={14} />
+                <Icon src="/assets/icons/shareIc.png" size={14} alt="공유" />
                 공유
               </Button>
             </Row>

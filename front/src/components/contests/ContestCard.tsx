@@ -71,7 +71,7 @@ export function ContestCard({
             onClick={() => toggle(contest.id)}
             style={{ background: saved ? c.lightBlue : 'transparent' }}
           >
-            <Icon name="imgScrap" size={16} />
+            <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
           </IconButton>
           {!simple && (
             <Link href="/contests/public-data/teams">
