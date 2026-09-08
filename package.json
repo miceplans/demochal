@@ -1,0 +1,25 @@
+{
+  "name": "semochal",
+  "private": true,
+  "version": "0.0.1",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "predev": "pnpm --filter @semochal/api-client build",
+    "prebuild": "pnpm --filter @semochal/api-client build",
+    "dev": "pnpm --parallel --filter ./front --filter ./server run dev",
+    "dev:front": "pnpm --filter ./front dev",
+    "dev:server": "pnpm --filter ./server dev",
+    "dev:worker": "pnpm --filter ./server dev:worker",
+    "build": "pnpm --filter ./front --filter ./server --filter ./packages/* run build",
+    "lint": "pnpm --filter ./front --filter ./server run lint",
+    "typecheck": "pnpm -r run typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "packageManager": "pnpm@12.3.4",
+  "devDependencies": {
+    "prettier": "^3.9.6"
+  }
+}

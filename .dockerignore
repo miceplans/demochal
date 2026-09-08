@@ -1,0 +1,11 @@
+# Build context hygiene — never copy host installs/builds into images.
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.log
+.DS_Store
+.git
+.env
+.env.*
+.env.example
