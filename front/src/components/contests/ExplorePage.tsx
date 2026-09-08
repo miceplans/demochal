@@ -20,7 +20,6 @@ import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { categories, desktopContests, contests, teams } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { useUserStore } from '@/stores/useUserStore';
-import { Dropdown } from '@/components/ui/Dropdown';
 
 const Layout = styled.div({
   display: 'grid',
@@ -106,42 +105,38 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             <>
               <div>
                 <h3>챌린지</h3>
-                <Dropdown
-                  aria-label="챌린지"
-                  options={['전체 챌린지', '공공데이터 공모전']}
-                  value={category}
-                  onChange={(v) => setCategory(v)}
-                />
+                <Select aria-label="챌린지" value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="">전체 챌린지</option>
+                  <option value="공공데이터">공공데이터 공모전</option>
+                </Select>
               </div>
               <div>
                 <h3>필요 역할</h3>
-                <Dropdown
-                  aria-label="필요 역할"
-                  options={['백엔드', '프론트', '디자인']}
-                  value={role}
-                  onChange={(v) => setRole(v)}
-                />
+                <Select aria-label="필요 역할" value={role} onChange={(e) => setRole(e.target.value)}>
+                  <option value="">모든 역할</option>
+                  <option value="백엔드">백엔드</option>
+                  <option value="프론트">프론트</option>
+                  <option value="디자인">디자인</option>
+                </Select>
               </div>
               <div>
                 <h3>지역</h3>
-                <Dropdown
-                  aria-label="지역"
-                  options={['서울', '전체', '부산']}
-                  value={category}
-                  onChange={(v) => setCategory(v)}
-                />
+                <Select aria-label="지역" value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="">전체</option>
+                  <option value="서울">서울</option>
+                  <option value="부산">부산</option>
+                </Select>
               </div>
             </>
           ) : (
             <>
               <div>
                 <h3>분야</h3>
-                <Dropdown
-                  aria-label="분야"
-                  options={categories}
-                  value={category}
-                  onChange={(v) => setCategory(v)}
-                />
+                <Select aria-label="분야" value={category} onChange={(e) => setCategory(e.target.value)}>
+                  {categories.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </Select>
               </div>
               {[
                 [
@@ -204,19 +199,19 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               ? ['전체 챌린지', '필요역할', '지역']
               : ['분야', '대상', '주최기관', '상금']
             ).map((x, i) => (
-              <Dropdown
+              <Select
                 key={x}
                 aria-label={x}
                 value={i === 0 ? category : undefined}
                 onChange={(e) => {
-                  if (i === 0) setCategory(e);
+                  if (i === 0) setCategory(e.target.value);
                 }}
               >
                 <option value="">{x}</option>
                 {(i === 0 ? categories : ['전체', '대학생', '일반인']).map((v) => (
                   <option key={v}>{v}</option>
                 ))}
-              </Dropdown>
+              </Select>
             ))}
           </MobileFilters>
           <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>

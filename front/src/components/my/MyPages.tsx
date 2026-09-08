@@ -34,7 +34,6 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import legalCopy from '@/data/design-copy.json';
-import { Dropdown } from '@/components/ui/Dropdown';
 
 const MobileMenu = styled.nav({
   display: 'flex',
@@ -362,12 +361,12 @@ export function TeamApplicantsPage() {
                 </td>
                 <td></td>
                 <td style={{ width: 130 }}>
-                  <Dropdown
+                  <Select
                     aria-label={`${name} 결과`}
                     options={['미정', '합격', '불합격']}
                     value={results[i]}
-                    onChange={(v) =>
-                      setResults(results.map((x, j) => (j === i ? v : x)))
+                    onChange={(e) =>
+                      setResults(results.map((x, j) => (j === i ? e.target.value : x)))
                     }
                   />
                 </td>
