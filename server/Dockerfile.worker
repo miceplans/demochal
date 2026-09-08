@@ -1,0 +1,21 @@
+# Build context is the monorepo root: docker build -f server/Dockerfile.worker .
+FROM node:20-slim AS build
+WORKDIR /repo
+RUN npm install -g pnpm@12.3.4
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/config/package.json packages/config/
+COPY server/package.json server/
+RUN pnpm install --frozen-lockfile --filter @semochal/server...
+COPY packages/config packages/config
+COPY server server
+RUN pnpm --filter @semochal/server build
+
+FROM node:20-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=build /repo/server/dist ./dist
+COPY --from=build /repo/server/node_modules ./node_modules
+COPY --from=build /repo/server/package.json ./package.json
+
+# No EXPOSE: this process only consumes SQS, it accepts no inbound traffic.
+CMD ["node", "dist/worker.js"]
