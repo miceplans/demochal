@@ -1,0 +1,426 @@
+/* Extracted from Figma 195:956 on 2026-09-08. See docs/design-tokens.md. */
+:root {
+  --font-family-ui: 'Pretendard';
+  --color-semo: #006fff;
+  --color-light-blue: #cfe4ff;
+  --color-light-green: #f0fdf4;
+  --color-green: #22c55e;
+  --color-light-red: #fff0eb;
+  --color-red: #ff4d00;
+  --color-gray-100: #f4f4f4;
+  --color-gray-500: #858a99;
+  --color-gray-700: #636c7f;
+  --color-gray-900: #101010;
+  --color-gray-50: #fdfdfd;
+  --color-gray-200: #dfe2e7;
+  --color-gray-300: #c9ccd2;
+  --shadow-toast: 4px 4px 10px 0 rgb(0 0 0 / 20%);
+}
+
+.type-display {
+  font-family: var(--font-family-ui);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-h1 {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-body-large {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.type-h2 {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-body {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-h3 {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-body-small {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-subtitle {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.type-caption {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-overline {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-label {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-button-label {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-secondary-text {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-meta-text {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-meta-detail {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-fine-print {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-h1-2 {
+  font-family: var(--font-family-ui);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.type-h2-2 {
+  font-family: var(--font-family-ui);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-subtitle-2 {
+  font-family: var(--font-family-ui);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-h3-2 {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-title {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-body-strong {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-label-large {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.type-body-small-2 {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-caption-2 {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.type-fine-print-2 {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-label-2 {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-label-small {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-hero-heading {
+  font-family: var(--font-family-ui);
+  font-size: 24px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-header-title {
+  font-family: var(--font-family-ui);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.type-m-section-heading {
+  font-family: var(--font-family-ui);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-body-text {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+.type-m-panel-title {
+  font-family: var(--font-family-ui);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-list-text {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-name-label {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-timestamp {
+  font-family: var(--font-family-ui);
+  font-size: 15px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-card-title {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-block-title {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-tab-label {
+  font-family: var(--font-family-ui);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-feature-title {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.type-m-body-detail {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-description-text {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-mini-card-title {
+  font-family: var(--font-family-ui);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.type-m-info-text {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-counter-text {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-sub-text {
+  font-family: var(--font-family-ui);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-badge-text {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-tag-text {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-index-number {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-role-text {
+  font-family: var(--font-family-ui);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0;
+}
+
+.type-m-micro-tag {
+  font-family: var(--font-family-ui);
+  font-size: 10px;
+  font-weight: 500;
+  line-height: normal;
+  letter-spacing: 0;
+}
