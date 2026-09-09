@@ -477,13 +477,15 @@ export function NotificationsPage() {
   );
 }
 
-export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' }) {
+export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
   const paragraphs =
     kind === 'privacy'
       ? (legalCopy as { privacy: string[] }).privacy
       : kind === 'youth-protection'
         ? (legalCopy as { youthProtection: string[] }).youthProtection
-        : (legalCopy as { terms: string[] }).terms;
+        : kind === 'advertising-policy'
+          ? (legalCopy as { advertisingPolicy: string[] }).advertisingPolicy
+          : (legalCopy as { terms: string[] }).terms;
   // Data shape: [title, intro, heading, body?, heading, body?, ...] — a heading
   // (조/장) isn't always followed by a body: chapter dividers like "제1장 총칙"
   // sit directly before the next heading with no body of their own.
@@ -502,7 +504,7 @@ export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protect
     i += hasBody ? 2 : 1;
   }
   return (
-    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : '이용약관'}>
+    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : kind === 'advertising-policy' ? '광고 운영 정책' : '이용약관'}>
       <Content>
         <Stack gap={24}>
           <Title style={{ fontSize: 32, fontWeight: 700, lineHeight: 'normal', color: c.gray900 }}>
