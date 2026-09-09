@@ -28,6 +28,13 @@ import {
   desktopContests,
   preferenceGroups,
   notificationSettings,
+  participatingTeams,
+  contestApplications,
+  teamApplications,
+  teamApplicants,
+  notificationItems,
+  notificationTabs,
+  contestDetail,
 } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
@@ -82,17 +89,23 @@ export function MyPage() {
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           <Participating>
-            {[0, 1].map((x) => (
-              <Link key={x} href="/my/teams/public-data">
-                <Heading>OO챌린지</Heading>
-                <Muted>데이터 시각화로 도시 문제 해결</Muted>
+            {participatingTeams.map((team) => (
+              <Link key={team.id} href={team.href}>
+                <Heading>{team.challenge}</Heading>
+                <Muted>{team.description}</Muted>
                 <Wrap style={{ margin: '20px 0' }}>
-                  <Tag tone="blue">디자이너</Tag>
-                  <Tag tone="blue">백엔드</Tag>
-                  <Tag>기획</Tag>
-                  <Tag>프론트엔드</Tag>
+                  {team.filledRoles.map((role) => (
+                    <Tag key={role} tone="blue">
+                      {role}
+                    </Tag>
+                  ))}
+                  {team.recruitingRoles.map((role) => (
+                    <Tag key={role}>{role}</Tag>
+                  ))}
                 </Wrap>
-                <Muted>D-14 · 마감 7 월 10 일</Muted>
+                <Muted>
+                  {team.dday} · {team.deadline}
+                </Muted>
               </Link>
             ))}
           </Participating>
@@ -262,10 +275,10 @@ const Table = styled.table({
   border: `1px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
-  fontSize: 14,
+  ...textStyle.bodySmall,
   '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
   '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
-  [mobile]: { '& td, & th': { padding: 10, fontSize: 12 } },
+  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
 export function ApplicationsPage() {
   return (
@@ -282,14 +295,18 @@ export function ApplicationsPage() {
               </tr>
             </thead>
             <tbody>
-              {[0, 1].map((i) => (
-                <tr key={i}>
+              {contestApplications.map((row) => (
+                <tr key={row.id}>
                   <td>
-                    <Link href="/contests/public-data">한국 마라톤 공모전</Link>
+                    <Link href={row.href}>{row.contest}</Link>
                   </td>
-                  <td>한국 마라톤 협회</td>
+                  <td>{row.org}</td>
                   <td>
-                    <Tag tone="green">예선 통과</Tag>
+                    <Tag
+                      tone={row.result === '예선 통과' ? 'green' : row.result === '심사중' ? 'blue' : 'red'}
+                    >
+                      {row.result}
+                    </Tag>
                   </td>
                 </tr>
               ))}
@@ -307,15 +324,16 @@ export function ApplicationsPage() {
               </tr>
             </thead>
             <tbody>
-              {[
-                ['한국 마라톤 공모전', '김창윤의 팀', '불합격'],
-                ['한국 IT 공모전', '강다정의 팀', '확정'],
-              ].map(([name, team, result]) => (
-                <tr key={team}>
-                  <td>{name}</td>
-                  <td>{team}</td>
+              {teamApplications.map((row) => (
+                <tr key={row.id}>
+                  <td>{row.contest}</td>
+                  <td>{row.team}</td>
                   <td>
-                    <Tag tone={result === '확정' ? 'blue' : 'red'}>{result}</Tag>
+                    <Tag
+                      tone={row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'}
+                    >
+                      {row.result}
+                    </Tag>
                   </td>
                 </tr>
               ))}
@@ -327,7 +345,7 @@ export function ApplicationsPage() {
   );
 }
 export function TeamApplicantsPage() {
-  const [results, setResults] = useState(['미정', '미정']);
+  const [results, setResults] = useState<string[]>(teamApplicants.map(() => '미정'));
   const [open, setOpen] = useState(false);
   const [link, setLink] = useState('');
   const toast = useToast();
@@ -336,8 +354,8 @@ export function TeamApplicantsPage() {
       <Stack gap={28}>
         <div style={{ height: 220, borderRadius: 20, background: c.gray100 }} />
         <div>
-          <Title>2025 공공데이터 활용 창업 대회</Title>
-          <Muted style={{ marginTop: 8 }}>한국데이터산업진흥원</Muted>
+          <Title>{contestDetail.title}</Title>
+          <Muted style={{ marginTop: 8 }}>{contestDetail.org}</Muted>
         </div>
         <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
           <Heading>팀 지원현황</Heading>
@@ -354,21 +372,32 @@ export function TeamApplicantsPage() {
             </tr>
           </thead>
           <tbody>
-            {['이창윤', '황지영'].map((name, i) => (
-              <tr key={name}>
+            {teamApplicants.map((applicant, i) => (
+              <tr key={applicant.id}>
                 <td>
-                  <Link href="/profile">{name}</Link>
+                  <Link href={applicant.href}>{applicant.name}</Link>
                 </td>
-                <td></td>
+                <td>
+                  <Wrap style={{ gap: 6 }}>
+                    {applicant.badges.map((badge) => (
+                      <Tag key={badge} tone="blue">
+                        {badge}
+                      </Tag>
+                    ))}
+                  </Wrap>
+                </td>
                 <td style={{ width: 130 }}>
                   <Select
-                    aria-label={`${name} 결과`}
-                    options={['미정', '합격', '불합격']}
+                    aria-label={`${applicant.name} 결과`}
                     value={results[i]}
                     onChange={(e) =>
                       setResults(results.map((x, j) => (j === i ? e.target.value : x)))
                     }
-                  />
+                  >
+                    <option>미정</option>
+                    <option>합격</option>
+                    <option>불합격</option>
+                  </Select>
                 </td>
               </tr>
             ))}
@@ -414,13 +443,8 @@ const NotificationList = styled.div({
   borderTop: `1px solid ${c.gray100}`,
 });
 export function NotificationsPage() {
-  const items = [
-    '공공데이터 챌린지 팀 · 김민수님이 지원 · 2 분 전',
-    '디자이너 자리 지원이 수락되었어요 · 스타트업 해커톤 팀 · 15 분 전',
-    '북마크한 챌린지 마감 D-7 · 7 월 3 일 마감',
-    '관심분야 새 챌린지가 등록되었어요 · AI/데이터 분야 · 1 시간 전',
-    '관심분야 새 수상작이 등록되었어요 · 디자인 분야 · 3 시간 전',
-  ];
+  const [tab, setTab] = useState<string>('전체');
+  const items = notificationItems.filter((x) => tab === '전체' || x.category === tab);
   return (
     <UserShell title="알림">
       <Content>
@@ -429,23 +453,24 @@ export function NotificationsPage() {
             <Title>알림</Title>
           </DesktopOnly>
           <Row>
-            {['전체', '팀매칭', '마감', '공고'].map((x) => (
-              <Chip key={x} selected={x === '전체'}>
+            {notificationTabs.map((x) => (
+              <Chip key={x} selected={x === tab} aria-pressed={x === tab} onClick={() => setTab(x)}>
                 {x}
               </Chip>
             ))}
           </Row>
           <NotificationList>
-            {items.map((item, i) => (
+            {items.map((item) => (
               <div
-                key={item}
+                key={item.id}
                 style={{ padding: '18px 4px', borderBottom: `1px solid ${c.gray100}` }}
               >
-                <Heading style={{ fontSize: 14 }}>{item.split(' · ')[0]}</Heading>
-                <Muted>{item.split(' · ').slice(1).join(' · ')}</Muted>
+                <Heading style={{ fontSize: 14 }}>{item.title}</Heading>
+                <Muted>{item.body}</Muted>
               </div>
             ))}
           </NotificationList>
+          {items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
       </Content>
     </UserShell>
@@ -457,25 +482,55 @@ export function LegalPage({ kind }: { kind: 'privacy' | 'terms' }) {
     kind === 'privacy'
       ? (legalCopy as { privacy: string[] }).privacy
       : (legalCopy as { terms: string[] }).terms;
+  // Data shape: [title, intro, heading, body?, heading, body?, ...] — a heading
+  // (조/장) isn't always followed by a body: chapter dividers like "제1장 총칙"
+  // sit directly before the next heading with no body of their own.
+  const [title, intro, ...articles] = paragraphs;
+  const isHeading = (s: string) => /^제\s*\d+\s*(장|조)/.test(s);
+  const isChapter = (s: string) => /^제\s*\d+\s*장/.test(s);
+  const sections: { heading: string; body: string; isChapter: boolean }[] = [];
+  for (let i = 0; i < articles.length;) {
+    const next = articles[i + 1];
+    const hasBody = next !== undefined && !isHeading(next);
+    sections.push({
+      heading: articles[i],
+      body: hasBody ? next : '',
+      isChapter: isChapter(articles[i]),
+    });
+    i += hasBody ? 2 : 1;
+  }
   return (
     <UserShell title={kind === 'privacy' ? '개인정보처리방침' : '이용약관'}>
       <Content>
         <Stack gap={24}>
-          <Title>{kind === 'privacy' ? 'SEMO 개인정보처리방침' : '이용약관'}</Title>
-          {paragraphs.map((p, i) =>
-            i === 0 ? (
-              <p key={i} style={{ lineHeight: 1.8 }}>
-                {p}
-              </p>
-            ) : (
-              <section key={i}>
-                <Heading style={{ marginBottom: 8 }}>{p.split('\n')[0]}</Heading>
-                <Muted style={{ whiteSpace: 'pre-line' }}>
-                  {p.split('\n').slice(1).join('\n')}
-                </Muted>
-              </section>
-            ),
-          )}
+          <Title style={{ fontSize: 32, fontWeight: 700, lineHeight: 'normal', color: c.gray900 }}>
+            {title}
+          </Title>
+          <p style={{ ...textStyle.body, color: c.gray700, whiteSpace: 'pre-wrap' }}>{intro}</p>
+          {sections.map((s, i) => (
+            <section key={i}>
+              <Heading
+                style={{
+                  ...textStyle.h1_2,
+                  color: c.gray900,
+                  marginBottom: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: s.isChapter ? 0 : 12,
+                }}
+              >
+                {!s.isChapter && (
+                  <Icon src="/assets/icons/BulletIcon.png" width={8} height={23} alt="" />
+                )}
+                {s.heading}
+              </Heading>
+              {s.body && (
+                <p style={{ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' }}>
+                  {s.body}
+                </p>
+              )}
+            </section>
+          ))}
         </Stack>
       </Content>
     </UserShell>
