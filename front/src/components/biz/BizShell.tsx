@@ -252,7 +252,7 @@ export function BizShell({ children, footer = true }: { children: ReactNode; foo
           style={{
             minWidth: 0,
             minHeight: '100dvh',
-            padding: '20px 60px',
+            padding: '80px 60px',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
