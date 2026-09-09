@@ -4,7 +4,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
-import { colors as c, mobile } from '@/styles/design';
+import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
@@ -46,6 +46,8 @@ const Search = styled.form({
   padding: '0 16px',
   width: 'min(591px, 55vw)',
   '& input': { border: 0, padding: 0, height: 42 },
+  '& input:focus': { outline: 'none', boxShadow: 'none' },
+  '&:focus-within': { boxShadow: s.focus },
   [mobile]: {
     background: '#f7f8fa',
     width: '100%',
@@ -80,7 +82,7 @@ const Nav = styled.nav({
   display: 'flex',
   gap: 8,
   paddingTop: 4,
-  '& a': { padding: '8px 10px', fontSize: 15, color: c.gray700, borderRadius: 6 },
+  '& a': { padding: '8px 10px', ...textStyle.body, color: c.gray700, borderRadius: 6 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
 });
 const MobileHeader = styled.header({
@@ -132,7 +134,7 @@ const FooterBox = styled.footer({
   flexDirection: 'column',
   justifyContent: 'space-between',
   gap: 100,
-  fontSize: 15,
+  ...textStyle.body,
   [mobile]: { display: 'none' },
 });
 export function Footer() {
@@ -143,7 +145,7 @@ export function Footer() {
         <Row>
           <Link href="/privacy">개인정보처리방침</Link>
           <Link href="/terms">이용약관</Link>
-          <span>청소년 보호 정책</span>
+          <Link href="/youth">청소년 보호 정책</Link>
         </Row>
       </Row>
       <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -198,7 +200,7 @@ export function UserShell({
             fontStyle: 'normal',
             fontDisplay: 'swap',
           },
-          body: { fontFamily: 'Pretendard', fontSize: 15, color: c.gray900, background: c.white },
+          body: { ...textStyle.body, color: c.gray900, background: c.white },
           'button,input,select,textarea': {
             fontFamily: 'Pretendard',
             fontSize: 'inherit',
@@ -307,7 +309,7 @@ const MyAside = styled.aside({
   '& a': {
     display: 'block',
     padding: '13px 16px',
-    fontSize: 14,
+    ...textStyle.bodySmall,
     color: c.gray700,
     borderRadius: 8,
   },

@@ -6,7 +6,6 @@ import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
   Input,
-  Select,
   Stack,
   Row,
   Icon,
@@ -14,6 +13,7 @@ import {
   DesktopOnly,
   Title,
 } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { roles } from '@/data/user-design';
@@ -29,7 +29,15 @@ export const FormContainer = styled.form({
   gap: 32,
   [mobile]: { padding: '24px 0', gap: 32 },
 });
-export function StepLabel({ number, children }: { number: number; children: React.ReactNode }) {
+export function StepLabel({
+  number,
+  completed,
+  children,
+}: {
+  number: number;
+  completed: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <Row gap={8} style={textStyle.bodyStrong}>
       <span
@@ -39,9 +47,9 @@ export function StepLabel({ number, children }: { number: number; children: Reac
           display: 'grid',
           placeItems: 'center',
           borderRadius: '50%',
-          background: number === 1 ? c.primary : c.white,
+          background: completed ? c.primary : c.white,
           border: `1px solid ${c.primary}`,
-          color: number === 1 ? c.white : c.primary,
+          color: completed ? c.white : c.primary,
           fontSize: 12,
         }}
       >
@@ -56,10 +64,7 @@ export function RecruitmentPage() {
   const setDraft = useUserStore((s) => s.setRecruitment);
   const toast = useToast();
   const router = useRouter();
-  const [slots, setSlots] = useState([
-    { id: 1, role: '백엔드', count: 1 },
-    { id: 2, role: '디자이너', count: 1 },
-  ]);
+  const [slots, setSlots] = useState<{ id: number; role: string; count: number }[]>([]);
   return (
     <UserShell title="모집글 작성" back="/teams" footer={false}>
       <FormContainer
@@ -73,7 +78,9 @@ export function RecruitmentPage() {
           <Title>모집글 작성</Title>
         </DesktopOnly>
         <Stack gap={10}>
-          <StepLabel number={1}>챌린지 선택</StepLabel>
+          <StepLabel number={1} completed={!!draft.challenge}>
+            챌린지 선택
+          </StepLabel>
           <Input
             list="challenges"
             aria-label="챌린지 선택"
@@ -81,6 +88,7 @@ export function RecruitmentPage() {
             required
             value={draft.challenge}
             onChange={(e) => setDraft({ ...draft, challenge: e.target.value })}
+            style={{ color: draft.challenge ? c.gray900 : c.gray500 }}
           />
           <datalist id="challenges">
             <option>2025 공공데이터 활용 창업 대회</option>
@@ -88,7 +96,9 @@ export function RecruitmentPage() {
           </datalist>
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={2}>팀 소개 한줄</StepLabel>
+          <StepLabel number={2} completed={!!draft.introduction}>
+            팀 소개 한줄
+          </StepLabel>
           <Input
             aria-label="팀 소개 한줄"
             placeholder="팀을 한 줄로 소개해주세요"
@@ -96,26 +106,25 @@ export function RecruitmentPage() {
             maxLength={100}
             value={draft.introduction}
             onChange={(e) => setDraft({ ...draft, introduction: e.target.value })}
+            style={{ color: draft.introduction ? c.gray900 : c.gray500 }}
           />
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={3}>필요 역할 슬롯 추가</StepLabel>
+          <StepLabel number={3} completed={slots.length > 0}>
+            필요 역할 슬롯 추가
+          </StepLabel>
           {slots.map((slot, i) => (
             <Row key={slot.id}>
-              <Select
+              <Dropdown
                 aria-label={`모집 역할 ${i + 1}`}
+                size="S"
                 value={slot.role}
                 style={{ flex: 1 }}
-                onChange={(e) =>
-                  setSlots(
-                    slots.map((s) => (s.id === slot.id ? { ...s, role: e.target.value } : s)),
-                  )
+                onChange={(x) =>
+                  setSlots(slots.map((s) => (s.id === slot.id ? { ...s, role: x } : s)))
                 }
-              >
-                {roles.map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </Select>
+                options={roles.map((x) => ({ value: x, label: x }))}
+              />
               <Input
                 type="number"
                 aria-label={`모집 인원 ${i + 1}`}
@@ -136,7 +145,7 @@ export function RecruitmentPage() {
                 aria-label={`역할 ${i + 1} 삭제`}
                 onClick={() => setSlots(slots.filter((s) => s.id !== slot.id))}
               >
-                <Icon frame="195-1250" name="imgS1Del" size={16} />
+                <Icon name="imgS1Del" size={16} />
               </IconButton>
             </Row>
           ))}
@@ -145,21 +154,20 @@ export function RecruitmentPage() {
             tone="plain"
             onClick={() => setSlots([...slots, { id: Date.now(), role: '백엔드', count: 1 }])}
           >
-            <Icon frame="195-1250" name="imgAddSlotIc" size={16} />
+            <Icon name="imgAddSlotIc" size={16} />
             역할 슬롯 추가
           </Button>
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={4}>내가 맡은 역할</StepLabel>
-          <Select
+          <StepLabel number={4} completed={!!draft.role}>
+            내가 맡은 역할
+          </StepLabel>
+          <Dropdown
             aria-label="내가 맡은 역할"
             value={draft.role}
-            onChange={(e) => setDraft({ ...draft, role: e.target.value })}
-          >
-            {roles.map((x) => (
-              <option key={x}>{x}</option>
-            ))}
-          </Select>
+            onChange={(x) => setDraft({ ...draft, role: x })}
+            options={roles.map((x) => ({ value: x, label: x }))}
+          />
         </Stack>
         <Button type="submit" fullWidth disabled={!slots.length}>
           게시하기

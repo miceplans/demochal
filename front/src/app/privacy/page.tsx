@@ -1,4 +1,4 @@
 import { LegalPage } from '@/components/my/MyPages';
 export default function Page() {
-  return <LegalPage kind="youth-protection" />;
+  return <LegalPage kind="privacy" />;
 }

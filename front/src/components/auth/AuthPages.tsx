@@ -30,7 +30,12 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
   background: provider === 'Kakao' ? '#fee500' : provider === 'Naver' ? '#06be34' : c.white,
   color: provider === 'Naver' ? c.white : c.gray900,
   border: provider === 'Google' ? `1px solid ${c.gray200}` : 0,
-  [mobile]: { width: 'min(358px, calc(100vw - 32px))', height: 48, fontSize: 14, borderRadius: 8 },
+  [mobile]: {
+    width: 'min(358px, calc(100vw - 32px))',
+    height: 48,
+    fontSize: textStyle.mCardTitle.fontSize,
+    borderRadius: 8,
+  },
 }));
 const KakaoCrop = styled.span({
   width: 13,
@@ -53,11 +58,10 @@ export function LoginPage() {
             <Social key={provider} href="/onboarding/activity" provider={provider}>
               {i === 0 ? (
                 <KakaoCrop>
-                  <Icon frame="195-1989" name="imgImage2" size={44.66} />
+                  <Icon name="imgImage2" size={44.66} />
                 </KakaoCrop>
               ) : (
                 <Icon
-                  frame="195-1989"
                   name={i === 1 ? 'imgImage1' : 'imgImage3'}
                   width={i === 1 ? 11.81 : 17.948}
                   height={i === 1 ? 12.094 : 17.948}

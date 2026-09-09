@@ -4,6 +4,7 @@ import styled from '@emotion/styled';
 import { UserShell, Content } from '@/components/common/UserShell';
 import { Button, Heading, Stack, Icon, Row } from '@/components/common/Primitives';
 import { Badges, Identity, SkillStack, History } from './ProfileCards';
+import { profileUser } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 const Grid = styled.div({
   display: 'grid',
@@ -30,21 +31,17 @@ export function ProfilePage() {
             <Badges />
             <Stack gap={12} style={{ borderTop: `1px solid ${c.gray100}`, paddingTop: 20 }}>
               <Heading>외부 링크</Heading>
-              {[
-                ['github.com/juhyun-kim', 'imgLink1Icon'],
-                ['portfolio.juhyun.dev', 'imgLink2Icon'],
-                ['notion.so/juhyun-resume', 'imgLink3Icon'],
-              ].map(([text, icon]) => (
+              {profileUser.links.map((link) => (
                 <a
-                  key={text}
-                  href={`https://${text}`}
+                  key={link.label}
+                  href={link.url}
                   target="_blank"
                   rel="noreferrer"
                   style={{ fontSize: 13, color: c.gray700 }}
                 >
                   <Row gap={8}>
-                    <Icon frame="195-1309" name={icon} size={16} />
-                    {text}
+                    <Icon name={link.icon} size={16} />
+                    {link.label}
                   </Row>
                 </a>
               ))}

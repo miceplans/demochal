@@ -12,22 +12,22 @@ import {
   Title,
   Tag,
   Icon,
-  asset,
   SectionHeader,
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
-import { desktopContests, contests } from '@/data/user-design';
+import { desktopContests, contests, contestDetail } from '@/data/user-design';
 const Intro = styled.div({
   display: 'flex',
   gap: 24,
   marginBottom: 60,
   '.cover': { width: 315, height: 220, borderRadius: 12, background: c.gray100 },
   '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
-  '.facts': { marginTop: 'auto', fontSize: 12, color: c.gray700, lineHeight: 1.8 },
+  '.facts': { marginTop: 'auto', ...textStyle.metaText, color: c.gray700, lineHeight: 1.8 },
   [mobile]: {
     flexDirection: 'column',
     gap: 24,
@@ -54,7 +54,7 @@ const Tabs = styled.nav({
   gap: 24,
   borderBottom: `1px solid ${c.gray100}`,
   marginBottom: 20,
-  '& a': { padding: '12px 16px', fontSize: 14, color: c.gray500 },
+  '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
   '& a[aria-current=page]': { color: c.primary, borderBottom: `2px solid ${c.primary}` },
 });
 const Summary = styled.div({
@@ -62,7 +62,7 @@ const Summary = styled.div({
   borderRadius: 12,
   padding: 16,
   marginTop: 16,
-  fontSize: 13,
+  ...textStyle.caption,
   '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
   '& dt': { color: c.gray500 },
   '& dd': { textAlign: 'right', fontWeight: 600 },
@@ -100,11 +100,11 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
         <b>대회 요약</b>
         <dl>
           <dt>마감일</dt>
-          <dd>2025.07.15</dd>
+          <dd>{contestDetail.deadline}</dd>
           <dt>총 상금</dt>
-          <dd>3,600만원</dd>
+          <dd>{contestDetail.prizeTotal}</dd>
           <dt>팀 구성</dt>
-          <dd>2~5인</dd>
+          <dd>{contestDetail.teamSize}</dd>
         </dl>
       </Summary>
     </>
@@ -115,15 +115,15 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
         <Intro>
           <div className="cover" />
           <div className="intro-body">
-            <Title>2025 공공데이터 활용 창업 대회</Title>
-            <Muted>한국데이터산업진흥원</Muted>
+            <Title>{contestDetail.title}</Title>
+            <Muted>{contestDetail.org}</Muted>
             <div className="facts">
-              자격 / 대상　대학(원)생 및 일반인 누구나 참여 가능
+              자격 / 대상　{contestDetail.eligibility}
               <br />
-              접수기간　2025.06.01 ~ 2025.07.15
+              접수기간　{contestDetail.period}
             </div>
             <Row>
-              <Tag tone="blue">D-3</Tag>
+              <Tag tone="blue">{contestDetail.dday}</Tag>
               <Button small tone="plain" aria-pressed={saved} onClick={() => toggle('contest-1')}>
                 <Icon src="/assets/icons/scrap.png" size={14} alt="북마크" />
                 북마크
@@ -155,24 +155,17 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
               <Stack gap={28}>
                 <DesktopOnly>
                   <img
-                    src={asset('195-1147', 'imgImage16')}
-                    alt="2026년 청년창업지원사업 멘토링 안내"
+                    src={contestDetail.poster}
+                    alt={`${contestDetail.title} 포스터`}
                     width={860}
                     height={860}
                     style={{ width: '100%', height: 'auto' }}
                   />
                 </DesktopOnly>
-                {[
-                  ['자격 / 대상', '대학(원)생 및 일반인 누구나 참여 가능\n팀 구성: 2~5인 (필수)'],
-                  [
-                    '일정',
-                    '접수기간: 2025.06.01 ~ 2025.07.15\n1차 심사: 2025.07.30\n최종 발표: 2025.08.20',
-                  ],
-                  ['상금', '대상 1팀: 1,000만원\n최우수상 2팀: 각 500만원\n우수상 3팀: 각 300만원'],
-                ].map(([title, text]) => (
+                {contestDetail.sections.map(({ title, body }) => (
                   <section key={title}>
                     <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
-                    <Muted style={{ whiteSpace: 'pre-line' }}>{text}</Muted>
+                    <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
                   </section>
                 ))}
                 <MobileOnly>{summary}</MobileOnly>

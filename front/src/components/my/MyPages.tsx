@@ -17,9 +17,9 @@ import {
   Tag,
   Toggle,
   Input,
-  Select,
   Icon,
 } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
 import { Identity, Badges, SkillStack, History } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
@@ -274,10 +274,13 @@ const Table = styled.table({
   borderSpacing: 0,
   border: `1px solid ${c.gray100}`,
   borderRadius: 12,
-  overflow: 'hidden',
   ...textStyle.bodySmall,
   '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
   '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
+  '& th:first-child': { borderRadius: '11px 0 0 0' },
+  '& th:last-child': { borderRadius: '0 11px 0 0' },
+  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
+  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
   [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
 export function ApplicationsPage() {
@@ -344,6 +347,10 @@ export function ApplicationsPage() {
     </MyShell>
   );
 }
+const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
+  value: x,
+  label: x,
+}));
 export function TeamApplicantsPage() {
   const [results, setResults] = useState<string[]>(teamApplicants.map(() => '미정'));
   const [open, setOpen] = useState(false);
@@ -387,17 +394,13 @@ export function TeamApplicantsPage() {
                   </Wrap>
                 </td>
                 <td style={{ width: 130 }}>
-                  <Select
+                  <Dropdown
                     aria-label={`${applicant.name} 결과`}
+                    size="S"
                     value={results[i]}
-                    onChange={(e) =>
-                      setResults(results.map((x, j) => (j === i ? e.target.value : x)))
-                    }
-                  >
-                    <option>미정</option>
-                    <option>합격</option>
-                    <option>불합격</option>
-                  </Select>
+                    onChange={(x) => setResults(results.map((y, j) => (j === i ? x : y)))}
+                    options={applicantResultOptions}
+                  />
                 </td>
               </tr>
             ))}

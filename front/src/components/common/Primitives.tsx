@@ -1,19 +1,28 @@
 'use client';
 import styled from '@emotion/styled';
-import { colors as c, mobile } from '@/styles/design';
+import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import assets from '@/data/figma-assets.json';
 import { Button as BaseButton } from '@/components/ui/Button';
 import type { ElementType, ReactNode } from 'react';
 
-export function asset(frame: string, name: string): string {
-  const entries = (assets as Record<string, Record<string, string>>)[frame];
-  if (!entries?.[name]) throw new Error(`Missing Figma asset: ${frame}/${name}`);
-  return entries[name];
-}
+const ICON_SOURCES: Record<string, string> = {
+  imgS1Del: '/assets/icons/delete.svg',
+  imgAddSlotIc: '/assets/icons/add.svg',
+  imgGithub: '/assets/icons/github.svg',
+  imgDescription24DpE3E3E3Fill0Wght300Grad0Opsz241: '/assets/icons/document.svg',
+  imgTrophy24DpE3E3E3Fill0Wght300Grad0Opsz241: '/assets/icons/trophy.svg',
+  imgLink1Icon: '/assets/icons/github.svg',
+  imgLink2Icon: '/assets/icons/link-external.svg',
+  imgLink3Icon: '/assets/icons/document.svg',
+  imgToastSuccess: '/assets/icons/toast-success.svg',
+  imgToastError: '/assets/icons/toast-error.svg',
+  imgToastInfo: '/assets/icons/toast-info.svg',
+  imgImage2: '/assets/icons/kakao.svg',
+  imgImage1: '/assets/icons/google.svg',
+  imgImage3: '/assets/icons/naver.svg',
+};
 export function Icon({
   name,
-  frame = '195-959',
   size = 20,
   width,
   height,
@@ -22,7 +31,6 @@ export function Icon({
   src,
 }: {
   name?: string;
-  frame?: string;
   size?: number;
   width?: number;
   height?: number;
@@ -30,7 +38,8 @@ export function Icon({
   className?: string;
   src?: string;
 }) {
-  const iconSrc = src || (name ? asset(frame, name) : '');
+  const iconSrc = src ?? (name ? ICON_SOURCES[name] : undefined);
+  if (!iconSrc) return null;
   return (
     <img
       src={iconSrc}
@@ -66,6 +75,7 @@ export const Input = styled.input({
   padding: '0 14px',
   background: c.white,
   '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const Select = styled.select({
   minWidth: 0,
@@ -75,6 +85,7 @@ export const Select = styled.select({
   padding: '0 14px',
   background: c.white,
   color: c.gray700,
+  '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const Row = styled.div<{ gap?: number }>(({ gap = 12 }) => ({
   display: 'flex',
@@ -89,9 +100,9 @@ export const Stack = styled.div<{ gap?: number }>(({ gap = 24 }) => ({
   minWidth: 0,
 }));
 export const Wrap = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 });
-export const Muted = styled.p({ color: c.gray500, fontSize: 13, lineHeight: 1.5 });
-export const Title = styled.h1({ fontSize: 20, lineHeight: 1.3 });
-export const Heading = styled.h2({ fontSize: 16, lineHeight: 1.4 });
+export const Muted = styled.p({ ...textStyle.caption, color: c.gray500, lineHeight: 1.5 });
+export const Title = styled.h1(textStyle.h1_2);
+export const Heading = styled.h2({ ...textStyle.title, lineHeight: 1.4 });
 export const SectionHeading = styled.h2(textStyle.h2_2);
 export const Panel = styled.section({
   border: `1px solid ${c.gray100}`,
@@ -105,7 +116,7 @@ export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   borderRadius: 24,
   background: selected ? c.primary : c.white,
   color: selected ? c.white : c.gray700,
-  fontSize: 13,
+  ...textStyle.caption,
   padding: '8px 16px',
 }));
 export const Tag = styled.span<{ tone?: 'blue' | 'green' | 'red' | 'gray' }>(
@@ -113,7 +124,7 @@ export const Tag = styled.span<{ tone?: 'blue' | 'green' | 'red' | 'gray' }>(
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
-    fontSize: 11,
+    ...textStyle.finePrint,
     lineHeight: 1.25,
     borderRadius: 4,
     padding: '4px 8px',

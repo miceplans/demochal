@@ -19,7 +19,10 @@ import { ContestCard, ContestGrid } from './ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { categories, desktopContests, contests, teams } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
+import { Dropdown } from '@/components/ui/Dropdown';
+import { RangeSlider } from '@/components/ui/RangeSlider';
 
 const Layout = styled.div({
   display: 'grid',
@@ -32,8 +35,8 @@ const Sidebar = styled.aside({
   display: 'flex',
   flexDirection: 'column',
   gap: 44,
-  '& h3': { fontSize: 13, marginBottom: 12 },
-  '& button': { fontSize: 12, padding: '5px 10px' },
+  '& h3': { ...textStyle.subtitle, marginBottom: 12 },
+  '& button': { ...textStyle.metaText, padding: '5px 10px' },
   [mobile]: { display: 'none' },
 });
 const Results = styled.div({
@@ -46,14 +49,13 @@ const CheckGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: 12,
-  '& label': { fontSize: 12, color: c.gray700, display: 'flex', gap: 8, alignItems: 'center' },
+  '& label': { ...textStyle.metaText, color: c.gray700, display: 'flex', gap: 8, alignItems: 'center' },
 });
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
   border: 0,
   background: 'transparent',
-  fontSize: 13,
+  ...(active ? textStyle.caption2 : textStyle.caption),
   color: active ? c.primary : c.gray500,
-  fontWeight: active ? 600 : 400,
 }));
 const MobileFilters = styled.div({
   display: 'none',
@@ -64,7 +66,7 @@ const MobileFilters = styled.div({
     flexWrap: 'wrap',
     '& select': {
       background: c.gray100,
-      fontSize: 12,
+      fontSize: textStyle.mSubText.fontSize,
       borderRadius: 24,
       height: 34,
       maxWidth: 110,
@@ -77,6 +79,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [role, setRole] = useState('');
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(6);
+  const [prize, setPrize] = useState<[number, number]>([3000, 8000]);
   const [includeClosed, setIncludeClosed] = useState(true);
   const visible = (category || query ? contests : desktopContests)
     .filter(
@@ -105,38 +108,58 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             <>
               <div>
                 <h3>챌린지</h3>
-                <Select aria-label="챌린지" value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="">전체 챌린지</option>
-                  <option value="공공데이터">공공데이터 공모전</option>
-                </Select>
+                <Dropdown
+                  aria-label="챌린지"
+                  size="S"
+                  value={category}
+                  onChange={setCategory}
+                  options={[
+                    { value: '', label: '전체 챌린지' },
+                    { value: '공공데이터', label: '공공데이터 공모전' },
+                  ]}
+                />
               </div>
               <div>
                 <h3>필요 역할</h3>
-                <Select aria-label="필요 역할" value={role} onChange={(e) => setRole(e.target.value)}>
-                  <option value="">모든 역할</option>
-                  <option value="백엔드">백엔드</option>
-                  <option value="프론트">프론트</option>
-                  <option value="디자인">디자인</option>
-                </Select>
+                <Dropdown
+                  aria-label="필요 역할"
+                  size="S"
+                  value={role}
+                  onChange={setRole}
+                  options={[
+                    { value: '', label: '모든 역할' },
+                    { value: '백엔드', label: '백엔드' },
+                    { value: '프론트', label: '프론트' },
+                    { value: '디자인', label: '디자인' },
+                  ]}
+                />
               </div>
               <div>
                 <h3>지역</h3>
-                <Select aria-label="지역" value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="">전체</option>
-                  <option value="서울">서울</option>
-                  <option value="부산">부산</option>
-                </Select>
+                <Dropdown
+                  aria-label="지역"
+                  size="S"
+                  value={category}
+                  onChange={setCategory}
+                  options={[
+                    { value: '', label: '전체' },
+                    { value: '서울', label: '서울' },
+                    { value: '부산', label: '부산' },
+                  ]}
+                />
               </div>
             </>
           ) : (
             <>
               <div>
                 <h3>분야</h3>
-                <Select aria-label="분야" value={category} onChange={(e) => setCategory(e.target.value)}>
-                  {categories.map((cat) => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </Select>
+                <Dropdown
+                  aria-label="분야"
+                  size="S"
+                  value={category}
+                  onChange={setCategory}
+                  options={categories.map((cat) => ({ value: cat, label: cat }))}
+                />
               </div>
               {[
                 [
@@ -179,16 +202,21 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 </div>
               ))}
               <div>
-                <h3>상금</h3>
-                <Muted>3,000~8,000천만원</Muted>
-                <input
-                  type="range"
-                  aria-label="상금 범위"
-                  min="0"
-                  max="10000"
-                  defaultValue="8000"
-                  style={{ width: '100%', marginTop: 12 }}
-                />
+                <h3 style={{ marginBottom: 10 }}>상금</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <span style={{ ...textStyle.caption, color: c.gray700 }}>
+                    {prize[0].toLocaleString()}~{prize[1].toLocaleString()}천만원
+                  </span>
+                  <RangeSlider
+                    min={0}
+                    max={10000}
+                    step={100}
+                    value={prize}
+                    onChange={setPrize}
+                    minAriaLabel="최소 상금"
+                    maxAriaLabel="최대 상금"
+                  />
+                </div>
               </div>
             </>
           )}

@@ -1,16 +1,23 @@
 'use client';
 
 import { ThemeProvider } from '@emotion/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { EmotionRegistry } from '@/lib/emotion-registry';
-import { ToastProvider } from '@/components/common/Toast';
+import { ToastProvider, useToast } from '@/components/common/Toast';
 import { theme } from '@/styles/theme';
 
-export function Providers({ children }: { children: ReactNode }) {
+function QueryProvider({ children }: { children: ReactNode }) {
+  const toast = useToast();
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        queryCache: new QueryCache({
+          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요.'),
+        }),
+        mutationCache: new MutationCache({
+          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요.'),
+        }),
         defaultOptions: {
           queries: {
             staleTime: 30_000,
@@ -21,13 +28,17 @@ export function Providers({ children }: { children: ReactNode }) {
       }),
   );
 
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+export function Providers({ children }: { children: ReactNode }) {
   return (
     <EmotionRegistry>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider theme={theme}>
-          <ToastProvider>{children}</ToastProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <ThemeProvider theme={theme}>
+        <ToastProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </ToastProvider>
+      </ThemeProvider>
     </EmotionRegistry>
   );
 }

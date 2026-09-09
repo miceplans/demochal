@@ -107,7 +107,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             role={t.variant === 'error' ? 'alert' : 'status'}
             onClick={() => dismiss(t.id)}
           >
-            <Icon frame="797-3508" name={iconNames[t.variant]} size={26} alt="" />
+            <Icon name={iconNames[t.variant]} size={26} alt="" />
             <TextBox>
               <Message>{t.message}</Message>
               {t.description ? <Description>{t.description}</Description> : null}
