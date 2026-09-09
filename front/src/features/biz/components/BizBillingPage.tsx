@@ -7,31 +7,35 @@ import { paymentCard, paymentHistory, won } from '@/data/biz-design';
 
 const Grid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
 const CardVisual = styled.div({
+  position: 'relative',
   width: 350,
   height: 224,
   borderRadius: 25,
-  background:
-    'radial-gradient(circle at -37% -16%, rgba(255,255,255,0) 5%, rgba(254,255,220,1) 23%, rgba(0,111,255,1) 37%, rgba(25,31,40,1) 100%)',
+  background: 'url(/assets/card.png) center / cover no-repeat',
   color: c.white,
   padding: 26,
   display: 'flex',
   flexDirection: 'column',
   flexShrink: 0,
 });
-const CardNo = styled.strong({ fontSize: 22, fontWeight: 600, letterSpacing: '0.08em' });
+const CardBottom = styled.div({
+  position: 'absolute',
+  left: 26,
+  top: 172,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+});
+const CardNo = styled.strong({
+  fontSize: 22,
+  fontWeight: 600,
+  letterSpacing: '0.08em',
+});
 const CardMeta = styled.div({
   display: 'flex',
-  justifyContent: 'space-between',
-  marginTop: 'auto',
+  gap: 20,
   ...textStyle.metaText,
   opacity: 0.7,
-});
-const CardChip = styled.span({
-  width: 35,
-  height: 33,
-  borderRadius: 6,
-  background: 'linear-gradient(135deg, #f5d67b, #b98e3a)',
-  alignSelf: 'flex-end',
 });
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0 }}>{children}</span>
@@ -44,14 +48,15 @@ export function BizBillingPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32, flexShrink: 0 }}>
           <SectionTitle>나의 결제수단</SectionTitle>
           <CardVisual>
-            <CardChip aria-hidden />
-            <div style={{ marginTop: 12, fontSize: 12, opacity: 0.7 }}>금액</div>
+            <div style={{ fontSize: 12, opacity: 0.7 }}>금액</div>
             <div style={{ fontSize: 20, fontWeight: 600 }}>{paymentCard.balance}</div>
-            <CardNo>{paymentCard.masked}</CardNo>
-            <CardMeta>
-              <span>카드 명의 {paymentCard.holder}</span>
-              <span>유효 기간 {paymentCard.expiry}</span>
-            </CardMeta>
+            <CardBottom>
+              <CardNo>{paymentCard.masked}</CardNo>
+              <CardMeta>
+                <span>카드 명의 {paymentCard.holder}</span>
+                <span>유효 기간 {paymentCard.expiry}</span>
+              </CardMeta>
+            </CardBottom>
           </CardVisual>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 32, flex: 1, minWidth: 0 }}>
