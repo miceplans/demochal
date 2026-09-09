@@ -14,6 +14,7 @@ export const orgProfile = {
   email: 'mice@miceplans.com',
 };
 export const recentPosting = {
+  id: 'ch-1',
   title: '2025 공공데이터 활용 창업 대회',
   org: '한국데이터산업진흥원',
   eligibility: '대학(원)생 및 일반인 누구나 참여 가능',
@@ -24,6 +25,14 @@ export const postingStats = {
   bookmarks: { value: '2,156개', delta: '+5.1% 전주 대비' },
   exposure: { value: '124,582 조회수', delta: '+12.5% 전주 대비' },
 };
+export const applicantDistribution = [
+  { label: '고등학생', value: 63 },
+  { label: '대학생', value: 25 },
+];
+export const myPostingCards = [
+  { id: 'ch-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', dday: 'D-7', teamCount: 3, closed: true },
+  { id: 'ch-3', title: '디자인 씽킹 해커톤', category: '디자인', dday: 'D-3', teamCount: 5, closed: false },
+];
 export const chartMonths = ['7월', '8월', '9월', '10월', '11월', '12월', '1월'];
 export const chartBars = [32, 45, 38, 60, 52, 74, 66];
 export const paymentCard = {

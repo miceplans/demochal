@@ -2,6 +2,7 @@
 
 import { useChallengesQuery } from '../api/queries';
 import { DataTable } from '@/components/data/DataTable';
+import { BizLink } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
 import type { Challenge } from '@semochal/api-client';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -17,7 +18,11 @@ const columns: ColumnDef<Challenge, unknown>[] = [
   {
     accessorKey: 'title',
     header: '챌린지명',
-    cell: (info) => <strong>{info.getValue() as string}</strong>,
+    cell: (info) => (
+      <BizLink href={`/postings/${info.row.original.id}`} style={{ color: c.primary }}>
+        <strong>{info.getValue() as string}</strong>
+      </BizLink>
+    ),
   },
   {
     accessorKey: 'price',
