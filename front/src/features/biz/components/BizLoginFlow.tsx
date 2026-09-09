@@ -1,8 +1,10 @@
 'use client';
-import { Fragment, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
+import { StepProgressBar } from '@/components/ui/StepProgressBar';
 import {
   BizGlobalStyles,
   BizLink,
@@ -31,45 +33,23 @@ const Card = styled.div({
   justifyContent: 'space-between',
   minHeight: 480,
 });
-const Steps = styled.ol({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '0 11px',
-  listStyle: 'none',
-});
-const Bar = styled.li({ flex: 1, height: 1.5, background: c.gray200 });
-const Step = styled.li({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 7,
-  fontSize: 10,
-  color: c.gray700,
-});
-const Dot = styled.span<{ state: 'done' | 'current' | 'todo' }>(({ state }) => ({
-  width: 32,
-  height: 32,
-  borderRadius: '50%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  fontSize: 10,
-  background: state === 'todo' ? c.gray50 : c.white,
-  border: `1.5px solid ${state === 'todo' ? c.gray200 : c.primary}`,
-  color: state === 'current' ? c.primary : c.gray700,
-}));
-const Title = styled.h1({ fontSize: 20, fontWeight: 600, marginBottom: 24 });
+const Title = styled.h1({ ...textStyle.h1_2, marginBottom: 24 });
 const Form = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
 const CheckRow = styled.label({
   display: 'flex',
   alignItems: 'center',
   gap: 8,
-  fontSize: 13,
+  ...textStyle.caption,
   color: c.gray700,
   cursor: 'pointer',
 });
-const CheckBox = styled.input({ accentColor: c.primary, width: 16, height: 16 });
+const CheckBox = styled.input({
+  accentColor: c.primary,
+  width: 16,
+  height: 16,
+  borderRadius: 3,
+  border: `0.5px solid ${c.gray100}`,
+});
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 32 });
 const UploadBox = styled.div({
   border: `2px dashed ${c.lightBlue}`,
@@ -82,7 +62,7 @@ const UploadBox = styled.div({
   justifyContent: 'center',
   gap: 10,
   minHeight: 180,
-  fontSize: 12,
+  ...textStyle.metaText,
   color: c.gray500,
 });
 const UploadMark = styled.span({
@@ -91,11 +71,7 @@ const UploadMark = styled.span({
   background: `radial-gradient(circle at 50% 120%, ${c.primary} 38%, #191f28 100%)`,
   clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
 });
-const stepMeta: [string, string][] = [
-  ['1', '약관 동의'],
-  ['2', '계정 정보'],
-  ['3', '기관 인증'],
-];
+const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
 export function BizLoginFlow() {
   const router = useRouter();
@@ -111,19 +87,7 @@ export function BizLoginFlow() {
         <Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <Logo size={24} />
-            <Steps>
-              {stepMeta.map(([index, label], i) => (
-                <Fragment key={index}>
-                  {i > 0 && <Bar aria-hidden />}
-                  <Step>
-                    <Dot state={i < step ? 'done' : i === step ? 'current' : 'todo'}>
-                      {i < step ? '✓' : index}
-                    </Dot>
-                    <span>{label}</span>
-                  </Step>
-                </Fragment>
-              ))}
-            </Steps>
+            <StepProgressBar steps={stepLabels} currentStep={step} />
             {step === 0 && (
               <section aria-label="약관 동의">
                 <Title>약관 동의</Title>

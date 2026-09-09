@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -9,6 +10,7 @@ import {
   TRow,
   PrimaryButton,
   OutlineButton,
+  useBizHref,
 } from '@/components/biz/BizShell';
 import { admin, orgProfile } from '@/data/biz-design';
 
@@ -38,10 +40,12 @@ const OrgMeta = styled.div({
   position: 'relative',
 });
 const OrgName = styled.strong(textStyle.display);
-const OrgRow = styled.span({ display: 'flex', alignItems: 'center', gap: 8, fontSize: 15 });
+const OrgRow = styled.span({ display: 'flex', alignItems: 'center', gap: 8, ...textStyle.body });
 const Actions = styled.div({ display: 'flex', justifyContent: 'center' });
 
 export function BizProfilePage() {
+  const router = useRouter();
+  const hrefOf = useBizHref();
   return (
     <BizContent>
       <section aria-label="나의 정보">
@@ -101,7 +105,9 @@ export function BizProfilePage() {
           </OrgMeta>
         </OrgCard>
         <Actions style={{ marginTop: 24 }}>
-          <PrimaryButton>내 기업 프로필 수정하기</PrimaryButton>
+          <PrimaryButton onClick={() => router.push(hrefOf('/profile/edit'))}>
+            내 기업 프로필 수정하기
+          </PrimaryButton>
         </Actions>
       </section>
     </BizContent>

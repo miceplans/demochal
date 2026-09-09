@@ -2,57 +2,121 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { BizContent, SectionTitle, PrimaryButton } from '@/components/biz/BizShell';
-import { operationSteps } from '@/data/biz-design';
+import { Logo, PrimaryButton } from '@/components/biz/BizShell';
+import { orgProfile } from '@/data/biz-design';
 
-const Grid = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-  gap: 18,
+const ICON = '/assets/icons';
+
+const Wrap = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+  alignItems: 'center',
 });
-const Tile = styled.div({
-  height: 176,
-  background: '#f8f8f8',
-  borderRadius: 6,
-  position: 'relative',
-  fontSize: 24,
-  fontWeight: 700,
-  padding: '18px 16px',
+const TopBlock = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '32px 0',
+  width: 500,
 });
-const TileMark = styled.span({
-  position: 'absolute',
-  right: 16,
-  bottom: 14,
-  width: 44,
-  height: 44,
-  borderRadius: '50%',
-  background: 'radial-gradient(circle at 30% 30%, rgba(254,255,220,0.9), rgba(0,111,255,0.85))',
-  opacity: 0.8,
+const Header = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  alignItems: 'center',
 });
-const Desc = styled.p({ color: c.gray700, marginTop: 8, maxWidth: 700 });
+const Brand = styled.div({ display: 'flex', alignItems: 'center', gap: 14 });
+const MiceLogo = styled.img({ height: 14, width: 'auto' });
+const Cross = styled.span({ ...textStyle.h3_2, color: c.gray900 });
+const Title = styled.h1({ ...textStyle.display, color: c.gray900 });
+
+const Form = styled.form({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  width: '100%',
+});
+const FieldGroup = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const FieldLabel = styled.label({ ...textStyle.bodyLarge, color: c.gray900 });
+const TextInput = styled.input({
+  height: 40,
+  border: `0.5px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  background: c.white,
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const TextArea = styled.textarea({
+  height: 118,
+  border: `0.5px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '14px',
+  resize: 'none',
+  fontFamily: 'inherit',
+  fontSize: 'inherit',
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const SubmitButton = styled(PrimaryButton)({ width: 183, height: 37 });
+
+const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center' });
+const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover' });
+const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
+const InfoIcon = styled.img({ width: 24, height: 24 });
+const InfoText = styled.p({ ...textStyle.body, color: '#000' });
 
 export function BizOperationsPage() {
   return (
-    <BizContent>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-        <span style={{ ...textStyle.overline, color: c.gray700 }}>운영대행 서비스</span>
-        <SectionTitle>기획부터 결과 보고까지 필요한 단계만 맡길 수 있습니다</SectionTitle>
-        <Desc>
-          챌린지 기획, 모집 홍보, 참가자 접수, 심사 운영, 시상식 운영, 결과 보고 중 필요한 범위를
-          선택해 문의해주세요. 담당자가 1영업일 내에 연락드립니다.
-        </Desc>
-      </div>
-      <Grid>
-        {operationSteps.map((step) => (
-          <Tile key={step}>
-            {step}
-            <TileMark aria-hidden />
-          </Tile>
-        ))}
-      </Grid>
-      <div>
-        <PrimaryButton>운영대행 문의하기</PrimaryButton>
-      </div>
-    </BizContent>
+    <Wrap>
+      <TopBlock>
+        <Header>
+          <Brand>
+            <MiceLogo src="/assets/mice-plans-logo.png" alt="MICE PLANS" />
+            <Cross>X</Cross>
+            <Logo size={11} />
+          </Brand>
+          <Title>온라인 상담 및 견적 문의</Title>
+        </Header>
+        <Form id="operations-inquiry" onSubmit={(e) => e.preventDefault()}>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-name">성함</FieldLabel>
+            <TextInput id="op-name" name="name" />
+          </FieldGroup>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-phone">연락처</FieldLabel>
+            <TextInput id="op-phone" name="phone" />
+          </FieldGroup>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-message">문의내용</FieldLabel>
+            <TextArea id="op-message" name="message" />
+          </FieldGroup>
+        </Form>
+        <SubmitButton type="submit" form="operations-inquiry">
+          문의하기
+        </SubmitButton>
+      </TopBlock>
+      <InfoRow>
+        <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
+        <InfoList>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/pin.svg`} alt="" />
+            <InfoText>{orgProfile.address}</InfoText>
+          </InfoItem>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/phone.svg`} alt="" />
+            <InfoText>{orgProfile.phone}</InfoText>
+          </InfoItem>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/mail.svg`} alt="" />
+            <InfoText>{orgProfile.email}</InfoText>
+          </InfoItem>
+        </InfoList>
+      </InfoRow>
+    </Wrap>
   );
 }

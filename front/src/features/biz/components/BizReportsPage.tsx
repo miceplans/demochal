@@ -28,7 +28,7 @@ const ChartCol = styled.div({
   alignItems: 'center',
   gap: 8,
   flex: 1,
-  fontSize: 12,
+  ...textStyle.metaText,
   color: c.gray300,
 });
 const ChartBar = styled.span(({ h }: { h: number }) => ({
@@ -43,6 +43,12 @@ const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
 
 export function BizReportsPage() {
   const [period, setPeriod] = useState('8/25~8/27');
+  const sum = (rows: { exposure: number; clicks: number }[]) => ({
+    exposure: rows.reduce((acc, r) => acc + r.exposure, 0),
+    clicks: rows.reduce((acc, r) => acc + r.clicks, 0),
+  });
+  const dailySum = sum(dailyReport);
+  const hourlySum = sum(hourlyReport);
   return (
     <BizContent>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -60,7 +66,7 @@ export function BizReportsPage() {
           </FieldSelect>
         </span>
         <StatBox style={{ height: 266 }}>
-          <span style={textStyle.bodyStrong}>124,582 클릭수</span>
+          <span style={textStyle.bodyStrong}>{dailySum.clicks.toLocaleString()} 클릭수</span>
           <Chart>
             {chartBars.map((h, i) => (
               <ChartCol key={chartMonths[i]}>
@@ -82,9 +88,9 @@ export function BizReportsPage() {
           </THead>
           <TRow>
             <Col w={180}>합계</Col>
-            <Col w={180}>300,000</Col>
-            <Col w={180}>100,000</Col>
-            <Col w={180}>3%</Col>
+            <Col w={180}>{dailySum.exposure.toLocaleString()}</Col>
+            <Col w={180}>{dailySum.clicks.toLocaleString()}</Col>
+            <Col w={180}>{((dailySum.clicks / dailySum.exposure) * 100).toFixed(1)}%</Col>
           </TRow>
           {dailyReport.map((r) => (
             <TRow key={r.date}>
@@ -107,9 +113,9 @@ export function BizReportsPage() {
           </THead>
           <TRow>
             <Col w={180}>합계</Col>
-            <Col w={180}>2,400,000</Col>
-            <Col w={180}>100,000</Col>
-            <Col w={180}>10%</Col>
+            <Col w={180}>{hourlySum.exposure.toLocaleString()}</Col>
+            <Col w={180}>{hourlySum.clicks.toLocaleString()}</Col>
+            <Col w={180}>{((hourlySum.clicks / hourlySum.exposure) * 100).toFixed(1)}%</Col>
           </TRow>
           {hourlyReport.map((r) => (
             <TRow key={r.hour}>

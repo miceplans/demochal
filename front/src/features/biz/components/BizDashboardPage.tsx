@@ -1,6 +1,7 @@
 'use client';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import {
   BizContent,
   SectionTitle,
@@ -44,7 +45,7 @@ const Thumb = styled.div({
   background: c.gray100,
   flexShrink: 0,
 });
-const Badge = styled.div({ display: 'flex', gap: 9, fontSize: 11 });
+const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
 const BadgeLabel = styled.strong({ flexShrink: 0 });
 const BadgeValue = styled.span({ color: c.gray700 });
 const SideStats = styled.div({
@@ -72,7 +73,7 @@ const CardMeta = styled.div({
   display: 'flex',
   justifyContent: 'space-between',
   marginTop: 'auto',
-  fontSize: 12,
+  ...textStyle.metaText,
   opacity: 0.7,
 });
 const CardChip = styled.span({
@@ -96,7 +97,7 @@ const ChartCol = styled.div({
   alignItems: 'center',
   gap: 8,
   flex: 1,
-  fontSize: 12,
+  ...textStyle.metaText,
   color: c.gray300,
 });
 const ChartBar = styled.span<{ h: number }>(({ h }) => ({
@@ -106,8 +107,8 @@ const ChartBar = styled.span<{ h: number }>(({ h }) => ({
   borderRadius: '4px 4px 0 0',
 }));
 const Row2 = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
-const AdRow = styled(TRow)({ fontSize: 13 });
-const EditLink = styled.span({ color: c.red, fontSize: 12 });
+const AdRow = styled(TRow)({ fontSize: textStyle.subtitle.fontSize });
+const EditLink = styled.span({ ...textStyle.metaText, color: c.red });
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span
     style={{

@@ -1,8 +1,9 @@
 'use client';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/biz/BizShell';
-import { paymentCard, payments, won } from '@/data/biz-design';
+import { paymentCard, paymentHistory, won } from '@/data/biz-design';
 
 const Grid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
 const CardVisual = styled.div({
@@ -22,7 +23,7 @@ const CardMeta = styled.div({
   display: 'flex',
   justifyContent: 'space-between',
   marginTop: 'auto',
-  fontSize: 12,
+  ...textStyle.metaText,
   opacity: 0.7,
 });
 const CardChip = styled.span({
@@ -35,7 +36,6 @@ const CardChip = styled.span({
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0 }}>{children}</span>
 );
-const history = [...payments, ...payments.map((p) => ({ ...p, name: `${p.name} (2회차)` }))];
 
 export function BizBillingPage() {
   return (
@@ -62,8 +62,8 @@ export function BizBillingPage() {
               <Col w={180}>일시</Col>
               <Col w={120}>금액</Col>
             </THead>
-            {history.map((p, i) => (
-              <TRow key={`${p.name}-${i}`}>
+            {paymentHistory.map((p) => (
+              <TRow key={`${p.name}-${p.date}-${p.amount}`}>
                 <Col w={300}>
                   <span
                     style={{
@@ -76,7 +76,7 @@ export function BizBillingPage() {
                     {p.name}
                   </span>
                 </Col>
-                <Col w={180} style={{}}>
+                <Col w={180}>
                   <span style={{ fontSize: 13, color: c.gray500 }}>{p.date}</span>
                 </Col>
                 <Col w={120}>

@@ -42,19 +42,13 @@ const columns: ColumnDef<Challenge, unknown>[] = [
   },
 ];
 
-// 사업자: 내 챌린지 관리 테이블 (TanStack Table).
+// 사업자: 목업 데이터 기반 내 챌린지 관리 테이블 (TanStack Table).
 export function BizChallengesTable() {
-  const { data, isPending, isError, error } = useChallengesQuery();
+  const { data, isPending } = useChallengesQuery();
 
   const rows = useMemo(() => data?.items ?? [], [data]);
 
   if (isPending) return <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>;
-  if (isError)
-    return (
-      <div style={{ padding: '24px 0', color: c.red }}>
-        챌린지 목록을 불러오지 못했습니다. ({error.message})
-      </div>
-    );
 
   return <DataTable data={rows} columns={columns} emptyMessage="등록된 챌린지가 없습니다." />;
 }

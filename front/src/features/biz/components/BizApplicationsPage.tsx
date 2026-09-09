@@ -88,13 +88,15 @@ export function BizApplicationsPage() {
               <Col w={120}>평가상태</Col>
             </THead>
             {applications.map((row) => (
-              <TRow key={row.team}>
+              <TRow key={row.id}>
                 <Col w={150}>{row.team}</Col>
                 <Col w={150}>{row.applicant}</Col>
                 <Col w={150}>{row.status}</Col>
                 <Col w={300}>{row.memo}</Col>
                 <Col w={120}>
-                  <span style={{ color: c.red }}>{row.result}</span>
+                  <span style={{ color: row.result === '합격' ? c.green : row.result === '불합격' ? c.red : c.gray500 }}>
+                    {row.result}
+                  </span>
                 </Col>
               </TRow>
             ))}
