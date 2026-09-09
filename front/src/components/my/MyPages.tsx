@@ -480,7 +480,7 @@ export function NotificationsPage() {
   );
 }
 
-export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
   const paragraphs =
     kind === 'privacy'
       ? (legalCopy as { privacy: string[] }).privacy
@@ -507,39 +507,45 @@ export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protect
     i += hasBody ? 2 : 1;
   }
   return (
-    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : kind === 'advertising-policy' ? '광고 운영 정책' : '이용약관'}>
-      <Content>
-        <Stack gap={24}>
-          <Title style={{ fontSize: 32, fontWeight: 700, lineHeight: 'normal', color: c.gray900 }}>
-            {title}
-          </Title>
-          <p style={{ ...textStyle.body, color: c.gray700, whiteSpace: 'pre-wrap' }}>{intro}</p>
-          {sections.map((s, i) => (
-            <section key={i}>
-              <Heading
-                style={{
-                  ...textStyle.h1_2,
-                  color: c.gray900,
-                  marginBottom: 8,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: s.isChapter ? 0 : 12,
-                }}
-              >
-                {!s.isChapter && (
-                  <Icon src="/assets/icons/BulletIcon.png" width={8} height={23} alt="" />
-                )}
-                {s.heading}
-              </Heading>
-              {s.body && (
-                <p style={{ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' }}>
-                  {s.body}
-                </p>
+    <Content>
+      <Stack gap={24}>
+        <Title style={{ fontSize: 32, fontWeight: 700, lineHeight: 'normal', color: c.gray900 }}>
+          {title}
+        </Title>
+        <p style={{ ...textStyle.body, color: c.gray700, whiteSpace: 'pre-wrap' }}>{intro}</p>
+        {sections.map((s, i) => (
+          <section key={i}>
+            <Heading
+              style={{
+                ...textStyle.h1_2,
+                color: c.gray900,
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: s.isChapter ? 0 : 12,
+              }}
+            >
+              {!s.isChapter && (
+                <Icon src="/assets/icons/BulletIcon.png" width={8} height={23} alt="" />
               )}
-            </section>
-          ))}
-        </Stack>
-      </Content>
+              {s.heading}
+            </Heading>
+            {s.body && (
+              <p style={{ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' }}>
+                {s.body}
+              </p>
+            )}
+          </section>
+        ))}
+      </Stack>
+    </Content>
+  );
+}
+
+export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+  return (
+    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : kind === 'advertising-policy' ? '광고 운영 정책' : '이용약관'}>
+      <LegalPageBody kind={kind} />
     </UserShell>
   );
 }

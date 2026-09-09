@@ -39,7 +39,6 @@ export const paymentCard = {
   masked: '3778 **** **** 1234',
   holder: 'Eddy Cusuma',
   expiry: '12/22',
-  balance: '100,000 ₩',
 };
 export const payments = [
   { name: '한국 마라톤 공모전 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
@@ -55,6 +54,7 @@ export const paymentHistory = [
   { name: '한국 IT 공모전 - 배너 (소) 환불', amount: 60000, date: '2026.08.21 09:41' },
   { name: '충전 - 신용카드', amount: 200000, date: '2026.08.15 15:03' },
 ];
+export const paymentTotal = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
 export const activeAds = [
   { title: '2025 공공데이터 활용 챌린지', status: '진행중', exposure: '45,231', bookmarks: '892' },
   { title: '2025 스타트업 해커톤', status: '준비중', exposure: '—', bookmarks: '—' },

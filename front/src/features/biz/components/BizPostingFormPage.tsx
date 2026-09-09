@@ -1,6 +1,7 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
 import styled from '@emotion/styled';
+import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -151,18 +152,15 @@ const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
 const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
 const ContentsArea = styled.div({
   padding: '12px 16px 16px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-});
-const SampleH1 = styled.p({ fontSize: 24, fontWeight: 700, lineHeight: 1.25 });
-const SampleH2 = styled.p({ fontSize: 18, fontWeight: 700, lineHeight: 1.25 });
-const SampleH3 = styled.p({ fontSize: 16, fontWeight: 700, lineHeight: 1.25 });
-const SampleImage = styled.img({
-  width: '100%',
-  height: 507,
-  objectFit: 'contain',
-  marginTop: 12,
+  outline: 'none',
+  minHeight: 320,
+  cursor: 'text',
+  '& h1': { fontSize: 24, fontWeight: 700, lineHeight: 1.25 },
+  '& h2': { fontSize: 18, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
+  '& h3': { fontSize: 16, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
+  '& p': { fontSize: 15, lineHeight: 1.6, marginTop: 10 },
+  '& img': { width: '100%', height: 507, objectFit: 'contain', marginTop: 12 },
+  '&:empty::before': { content: 'attr(data-placeholder)', color: c.gray300 },
 });
 
 /* ---------- 카테고리 / 주제 ---------- */
@@ -173,29 +171,6 @@ const TwoCol = styled.div({
 });
 const CategoryBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 280px' });
 const TopicBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8, flex: '2 1 0', minWidth: 0 });
-const SelectWrap = styled.div({ position: 'relative' });
-const CategorySelect = styled.select({
-  width: '100%',
-  height: 44,
-  appearance: 'none',
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 8,
-  padding: '0 44px 0 14px',
-  background: c.white,
-  ...textStyle.mListText,
-  cursor: 'pointer',
-  'option': { color: c.gray900 },
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const SelectIcon = styled.img({
-  position: 'absolute',
-  right: 12,
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: 24,
-  height: 24,
-  pointerEvents: 'none',
-});
 const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
 const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
@@ -278,6 +253,7 @@ const chipRows: string[][] = [
   ['#영화/드라마/미디어', '#패션/뷰티', '# 자기계발/학습/독서', '# DIY/공예', '# 종교', '# 기타'],
 ];
 const categories = ['IT/SW', '디자인', '창업/취업', '기획', '광고/마케팅', '대회', '해외'];
+const categoryOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 
 export function BizPostingFormPage() {
   const [roles, setRoles] = useState<string[]>(['', '']);
@@ -399,34 +375,32 @@ export function BizPostingFormPage() {
                   </ToolButton>
                 </ToolGroup>
               </MenuBar>
-              <ContentsArea>
-                <SampleH1>Heading1</SampleH1>
-                <SampleH2>Heading2</SampleH2>
-                <SampleH3>Heading3</SampleH3>
-                <SampleImage src="/mock/figma-posting-poster.png" alt="" />
-              </ContentsArea>
+              <ContentsArea
+                contentEditable
+                suppressContentEditableWarning
+                role="textbox"
+                aria-multiline="true"
+                aria-label="상세정보 본문"
+                data-placeholder="내용을 입력해주세요"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    '<h1>Heading1</h1><h2>Heading2</h2><h3>Heading3</h3><img src="/mock/figma-posting-poster.png" alt="" />',
+                }}
+              />
             </EditorBox>
           </FieldBlock>
 
           <TwoCol>
             <CategoryBlock>
               <FieldLabel>카테고리</FieldLabel>
-              <SelectWrap>
-                <CategorySelect
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  aria-label="카테고리"
-                  style={{ color: category ? c.gray900 : c.gray300 }}
-                >
-                  <option value="" disabled>
-                    종류를 선택하세요
-                  </option>
-                  {categories.map((x) => (
-                    <option key={x}>{x}</option>
-                  ))}
-                </CategorySelect>
-                <SelectIcon src={`${ICON}/Frame.png`} alt="" />
-              </SelectWrap>
+              <Dropdown
+                options={categoryOptions}
+                value={category || undefined}
+                placeholder="종류를 선택하세요"
+                size="L"
+                aria-label="카테고리"
+                onChange={setCategory}
+              />
             </CategoryBlock>
             <TopicBlock>
               <FieldLabel>주제</FieldLabel>

@@ -5,7 +5,6 @@ import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { siteHref } from '@/lib/biz';
 import { usePathname } from 'next/navigation';
 import { admin } from '@/data/biz-design';
 
@@ -209,14 +208,15 @@ const FooterBox = styled.footer({
   gap: 148,
 });
 export function BizFooter() {
+  const hrefOf = useBizHref();
   return (
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         <Logo size={24} />
         <nav style={{ display: 'flex', gap: 12, ...textStyle.body }}>
-          <a href={siteHref('/privacy')}>개인정보처리방침</a>
-          <a href={siteHref('/terms')}>이용약관</a>
-          <a href={siteHref('/advertising')}>광고 운영정책</a>
+          <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
+          <Link href={hrefOf('/terms')}>이용약관</Link>
+          <Link href={hrefOf('/advertising')}>광고 운영정책</Link>
         </nav>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>

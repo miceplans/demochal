@@ -6,6 +6,23 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PrimaryButton, FieldInput, useBizHref } from '@/components/biz/BizShell';
 import { Icon, Toggle } from '@/components/common/Primitives';
+
+function XIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      aria-hidden
+    >
+      <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+  );
+}
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { recentPosting } from '@/data/biz-design';
@@ -262,7 +279,7 @@ export function BizApplicationFormPage() {
               onClick={() => removeQuestion(q.id)}
               aria-label={`질문 ${qi + 1} 삭제`}
             >
-              <Icon name="imgS1Del" size={20} alt="" />
+              <XIcon size={20} />
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
@@ -301,7 +318,7 @@ export function BizApplicationFormPage() {
                         onClick={() => removeOption(q.id, oi)}
                         aria-label={`옵션 ${oi + 1} 삭제`}
                       >
-                        <Icon name="imgS1Del" size={16} alt="" />
+                        <XIcon size={16} />
                       </DeleteQuestionButton>
                     </OptionRow>
                   ))}
