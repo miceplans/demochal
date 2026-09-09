@@ -78,7 +78,11 @@ const AddRoleButton = styled.button({
 
 /* ---------- 입력 필드 ---------- */
 const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
-const FieldBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const FieldBlock = styled.div<{ wide?: boolean }>(({ wide }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: wide ? 10 : 8,
+}));
 const FieldLabel = styled.span({
   fontSize: 18,
   fontWeight: 400,
@@ -107,7 +111,6 @@ const MenuBar = styled.div({
   justifyContent: 'space-between',
   gap: 8,
   padding: 8,
-  borderBottom: '1px solid #e9ecef',
   flexWrap: 'wrap',
 });
 const ToolGroup = styled.div({
@@ -129,10 +132,9 @@ const ToolButton = styled.button({
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
 });
-const ToolIcon = styled.img({ width: 24, height: 24, objectFit: 'contain' });
-const StyleDropdown = styled.button({
+const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
+const DropdownButton = styled.button({
   height: 28,
-  padding: '0 4px 0 8px',
   border: 0,
   borderRadius: 4,
   background: 'transparent',
@@ -144,10 +146,11 @@ const StyleDropdown = styled.button({
   color: c.gray900,
   '&:hover': { background: c.gray100 },
 });
+const DropdownTextButton = styled(DropdownButton)({ padding: '0 4px 0 8px' });
+const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
+const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
 const ContentsArea = styled.div({
   padding: '12px 16px 16px',
-  maxHeight: 640,
-  overflowY: 'auto',
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
@@ -160,16 +163,16 @@ const SampleImage = styled.img({
   height: 507,
   objectFit: 'contain',
   marginTop: 12,
-  background: c.gray50,
 });
 
 /* ---------- 카테고리 / 주제 ---------- */
 const TwoCol = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'minmax(280px, 2fr) 3fr',
+  display: 'flex',
   gap: 20,
-  alignItems: 'start',
+  alignItems: 'flex-start',
 });
+const CategoryBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 280px' });
+const TopicBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8, flex: '2 1 0', minWidth: 0 });
 const SelectWrap = styled.div({ position: 'relative' });
 const CategorySelect = styled.select({
   width: '100%',
@@ -180,8 +183,8 @@ const CategorySelect = styled.select({
   padding: '0 44px 0 14px',
   background: c.white,
   ...textStyle.mListText,
-  color: c.gray900,
   cursor: 'pointer',
+  'option': { color: c.gray900 },
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const SelectIcon = styled.img({
@@ -207,6 +210,7 @@ const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
 }));
 
 /* ---------- 라디오 ---------- */
+const RadioColumn = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
 const RadioOption = styled.label({
   display: 'flex',
   alignItems: 'center',
@@ -223,18 +227,7 @@ const RadioInput = styled.input({
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
 });
-const RadioDot = styled.span<{ on?: boolean }>(({ on }) => ({
-  width: 16,
-  height: 16,
-  borderRadius: '50%',
-  border: `1.5px solid ${on ? c.primary : c.gray300}`,
-  background: on ? c.primary : c.white,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  flexShrink: 0,
-}));
-const RadioCheck = styled.img({ width: 11, height: 11 });
+const RadioIcon = styled.img({ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 });
 const LinkInput = styled.input({
   width: 470,
   maxWidth: '100%',
@@ -246,27 +239,17 @@ const LinkInput = styled.input({
 });
 
 /* ---------- 문의연락처 ---------- */
-const ContactWrap = styled.div({ position: 'relative' });
 const ContactInput = styled.input({
   width: '100%',
   height: 40,
   border: `1px solid ${c.gray200}`,
   borderRadius: 8,
-  padding: '0 44px 0 14px',
+  padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const ContactIcon = styled.img({
-  position: 'absolute',
-  right: 10,
-  top: '50%',
-  transform: 'translateY(-50%)',
-  width: 24,
-  height: 24,
-  pointerEvents: 'none',
 });
 
 /* ---------- 하단 버튼 ---------- */
-const Actions = styled.div({ display: 'flex', justifyContent: 'center', gap: 20 });
+const Actions = styled.div({ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 });
 const CancelButton = styled.button({
   width: 183,
   height: 37,
@@ -288,20 +271,6 @@ const PublishButton = styled.button({
   '&:hover': { background: '#005ee0' },
 });
 
-function ChevronDown() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M4 6l4 4 4-4"
-        stroke="#101010"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
 const chipRows: string[][] = [
   ['# 비즈니스/스타트업', '# 경제/금융/투자', '# 과학/IT/AI', '# 마케팅/PR'],
   ['# 사회/역사', '# 인문/심리', '# 문화/예술/디자인', '# 게임', '# 여행/레저', '세미나', '인턴십'],
@@ -313,6 +282,7 @@ const categories = ['IT/SW', '디자인', '창업/취업', '기획', '광고/마
 export function BizPostingFormPage() {
   const [roles, setRoles] = useState<string[]>(['', '']);
   const [topics, setTopics] = useState<string[]>(['# 비즈니스/스타트업', '# 가족/육아']);
+  const [category, setCategory] = useState('');
   const [recruit, setRecruit] = useState<'semo' | 'external'>('semo');
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
 
@@ -333,14 +303,16 @@ export function BizPostingFormPage() {
         <TitleSection>
           <TitleInput placeholder="제목을 입력해주세요" aria-label="공고 제목" />
           <Roles aria-label="모집 역할">
-            {roles.map((role, i) => (
-              <RoleRow key={i}>
-                <RoleIcon src={`${ICON}/people.png`} alt="" />
-                <RoleInput value={role} onChange={changeRole(i)} aria-label={`모집 역할 ${i + 1}`} />
-              </RoleRow>
-            ))}
+            <RoleRow>
+              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
+              <RoleInput value={roles[0]} onChange={changeRole(0)} aria-label="모집 역할 1" />
+            </RoleRow>
+            <RoleRow>
+              <RoleIcon src={`${ICON}/figma-role-people.svg`} alt="" />
+              <RoleInput value={roles[1]} onChange={changeRole(1)} aria-label="모집 역할 2" />
+            </RoleRow>
             <AddRoleButton type="button" onClick={() => setRoles((s) => [...s, ''])} aria-label="역할 추가">
-              <RoleIcon src={`${ICON}/people.png`} alt="" />
+              <RoleIcon src={`${ICON}/figma-role-add.svg`} alt="" />
             </AddRoleButton>
           </Roles>
         </TitleSection>
@@ -360,43 +332,70 @@ export function BizPostingFormPage() {
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
                 <ToolGroup>
                   <ToolButton type="button" aria-label="되돌리기">
-                    <ToolIcon src={`${ICON}/undo.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-undo.svg`} alt="" />
                   </ToolButton>
                   <ToolButton type="button" aria-label="다시 실행">
-                    <ToolIcon src={`${ICON}/redo.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-redo.svg`} alt="" />
                   </ToolButton>
                 </ToolGroup>
                 <ToolGroup>
-                  <StyleDropdown type="button">
+                  <DropdownTextButton type="button">
                     Normal text
-                    <ChevronDown />
-                  </StyleDropdown>
+                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
+                  </DropdownTextButton>
                 </ToolGroup>
                 <ToolGroup>
-                  <ToolButton type="button" aria-label="비디오 삽입">
-                    <ToolIcon src={`${ICON}/video.svg`} alt="" />
-                  </ToolButton>
+                  <DropdownIconButton type="button" aria-label="텍스트 정렬">
+                    <ToolIcon src={`${ICON}/figma-align-left.svg`} alt="" />
+                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
+                  </DropdownIconButton>
+                </ToolGroup>
+                <ToolGroup>
+                  <DropdownIconButton type="button" aria-label="색상">
+                    <ToolIcon src={`${ICON}/figma-color-picker.svg`} alt="" />
+                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
+                  </DropdownIconButton>
                 </ToolGroup>
                 <ToolGroup>
                   <ToolButton type="button" aria-label="굵게">
-                    <ToolIcon src={`${ICON}/bold.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-bold.svg`} alt="" />
                   </ToolButton>
                   <ToolButton type="button" aria-label="기울임">
-                    <ToolIcon src={`${ICON}/itallic.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-italic.svg`} alt="" />
                   </ToolButton>
                   <ToolButton type="button" aria-label="밑줄">
-                    <ToolIcon src={`${ICON}/bar.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-underline.svg`} alt="" />
                   </ToolButton>
                   <ToolButton type="button" aria-label="취소선">
-                    <ToolIcon src={`${ICON}/menu-bar__button-5.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-strike.svg`} alt="" />
+                  </ToolButton>
+                  <ToolButton type="button" aria-label="인라인 코드">
+                    <ToolIcon src={`${ICON}/figma-code.svg`} alt="" />
+                  </ToolButton>
+                  <ToolButton type="button" aria-label="서식 지우기">
+                    <ToolIcon src={`${ICON}/figma-clear-format.svg`} alt="" />
+                  </ToolButton>
+                </ToolGroup>
+                <ToolGroup>
+                  <ToolButton type="button" aria-label="글머리 기호 목록">
+                    <ToolIcon src={`${ICON}/figma-bullet-list.svg`} alt="" />
+                  </ToolButton>
+                  <ToolButton type="button" aria-label="번호 매기기 목록">
+                    <ToolIcon src={`${ICON}/figma-number-list.svg`} alt="" />
                   </ToolButton>
                 </ToolGroup>
                 <ToolGroup>
                   <ToolButton type="button" aria-label="링크">
-                    <ToolIcon src={`${ICON}/link.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-link.svg`} alt="" />
                   </ToolButton>
                   <ToolButton type="button" aria-label="이미지">
-                    <ToolIcon src={`${ICON}/img.png`} alt="" />
+                    <ToolIcon src={`${ICON}/figma-image.svg`} alt="" />
+                  </ToolButton>
+                  <ToolButton type="button" aria-label="인용">
+                    <ToolIcon src={`${ICON}/figma-quote.svg`} alt="" />
+                  </ToolButton>
+                  <ToolButton type="button" aria-label="구분선">
+                    <ToolIcon src={`${ICON}/figma-rule.svg`} alt="" />
                   </ToolButton>
                 </ToolGroup>
               </MenuBar>
@@ -404,117 +403,125 @@ export function BizPostingFormPage() {
                 <SampleH1>Heading1</SampleH1>
                 <SampleH2>Heading2</SampleH2>
                 <SampleH3>Heading3</SampleH3>
-                <SampleImage src="/mock/mock-poster.png" alt="" />
+                <SampleImage src="/mock/figma-posting-poster.png" alt="" />
               </ContentsArea>
             </EditorBox>
           </FieldBlock>
-        </Fields>
 
-        <TwoCol>
-          <FieldBlock>
-            <FieldLabel>카테고리</FieldLabel>
-            <SelectWrap>
-              <CategorySelect defaultValue="" aria-label="카테고리">
-                <option value="" disabled>
-                  종류를 선택하세요
-                </option>
-                {categories.map((x) => (
-                  <option key={x}>{x}</option>
-                ))}
-              </CategorySelect>
-              <SelectIcon src={`${ICON}/Frame.png`} alt="" />
-            </SelectWrap>
-          </FieldBlock>
-          <FieldBlock>
-            <FieldLabel>주제</FieldLabel>
-            <Chips role="group" aria-label="주제">
-              {chipRows.map((row, i) => (
-                <ChipRow key={i}>
-                  {row.map((topic) => (
-                    <Chip
-                      key={topic}
-                      type="button"
-                      selected={topics.includes(topic)}
-                      aria-pressed={topics.includes(topic)}
-                      onClick={() => toggleTopic(topic)}
-                    >
-                      {topic}
-                    </Chip>
+          <TwoCol>
+            <CategoryBlock>
+              <FieldLabel>카테고리</FieldLabel>
+              <SelectWrap>
+                <CategorySelect
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="카테고리"
+                  style={{ color: category ? c.gray900 : c.gray300 }}
+                >
+                  <option value="" disabled>
+                    종류를 선택하세요
+                  </option>
+                  {categories.map((x) => (
+                    <option key={x}>{x}</option>
                   ))}
-                </ChipRow>
-              ))}
-            </Chips>
+                </CategorySelect>
+                <SelectIcon src={`${ICON}/Frame.png`} alt="" />
+              </SelectWrap>
+            </CategoryBlock>
+            <TopicBlock>
+              <FieldLabel>주제</FieldLabel>
+              <Chips role="group" aria-label="주제">
+                {chipRows.map((row, i) => (
+                  <ChipRow key={i}>
+                    {row.map((topic) => (
+                      <Chip
+                        key={topic}
+                        type="button"
+                        selected={topics.includes(topic)}
+                        aria-pressed={topics.includes(topic)}
+                        onClick={() => toggleTopic(topic)}
+                      >
+                        {topic}
+                      </Chip>
+                    ))}
+                  </ChipRow>
+                ))}
+              </Chips>
+            </TopicBlock>
+          </TwoCol>
+
+          <FieldBlock wide>
+            <FieldLabel>모집방법</FieldLabel>
+            <RadioColumn>
+              <RadioOption>
+                <RadioInput
+                  type="radio"
+                  name="recruit"
+                  checked={recruit === 'semo'}
+                  onChange={() => setRecruit('semo')}
+                />
+                <RadioIcon
+                  src={recruit === 'semo' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  alt=""
+                />
+                세모챌에서 만들기
+              </RadioOption>
+              <RoleRow>
+                <RadioOption>
+                  <RadioInput
+                    type="radio"
+                    name="recruit"
+                    checked={recruit === 'external'}
+                    onChange={() => setRecruit('external')}
+                  />
+                  <RadioIcon
+                    src={recruit === 'external' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                    alt=""
+                  />
+                  외부 링크 추가
+                </RadioOption>
+                <LinkInput placeholder="https://" aria-label="외부 링크" />
+              </RoleRow>
+            </RadioColumn>
           </FieldBlock>
-        </TwoCol>
 
-        <FieldBlock>
-          <FieldLabel>모집방법</FieldLabel>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <RadioOption>
-              <RadioInput
-                type="radio"
-                name="recruit"
-                checked={recruit === 'semo'}
-                onChange={() => setRecruit('semo')}
-              />
-              <RadioDot on={recruit === 'semo'}>
-                {recruit === 'semo' && <RadioCheck src={`${ICON}/check.svg`} alt="" />}
-              </RadioDot>
-              세모챌에서 만들기
-            </RadioOption>
-            <RadioOption>
-              <RadioInput
-                type="radio"
-                name="recruit"
-                checked={recruit === 'external'}
-                onChange={() => setRecruit('external')}
-              />
-              <RadioDot on={recruit === 'external'}>
-                {recruit === 'external' && <RadioCheck src={`${ICON}/check.svg`} alt="" />}
-              </RadioDot>
-              외부 링크 추가
-            </RadioOption>
-            {recruit === 'external' && <LinkInput placeholder="https://" aria-label="외부 링크" />}
-          </div>
-        </FieldBlock>
-
-        <FieldBlock>
-          <FieldLabel>문의연락처</FieldLabel>
-          <ContactWrap>
+          <FieldBlock>
+            <FieldLabel>문의연락처</FieldLabel>
             <ContactInput aria-label="문의연락처" />
-            <ContactIcon src={`${ICON}/adress.png`} alt="" />
-          </ContactWrap>
-        </FieldBlock>
+          </FieldBlock>
 
-        <FieldBlock>
-          <FieldLabel>공개</FieldLabel>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <RadioOption>
-              <RadioInput
-                type="radio"
-                name="visibility"
-                checked={visibility === 'public'}
-                onChange={() => setVisibility('public')}
-              />
-              <RadioDot on={visibility === 'public'}>
-                {visibility === 'public' && <RadioCheck src={`${ICON}/check.svg`} alt="" />}
-              </RadioDot>
-              공개
-            </RadioOption>
-            <RadioOption>
-              <RadioInput
-                type="radio"
-                name="visibility"
-                checked={visibility === 'private'}
-                onChange={() => setVisibility('private')}
-              />
-              <RadioDot on={visibility === 'private'}>
-                {visibility === 'private' && <RadioCheck src={`${ICON}/check.svg`} alt="" />}
-              </RadioDot>
-              비공개
-            </RadioOption>
-          </div>
-        </FieldBlock>
+          <FieldBlock wide>
+            <FieldLabel>공개</FieldLabel>
+            <RadioColumn>
+              <RadioOption>
+                <RadioInput
+                  type="radio"
+                  name="visibility"
+                  checked={visibility === 'public'}
+                  onChange={() => setVisibility('public')}
+                />
+                <RadioIcon
+                  src={visibility === 'public' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  alt=""
+                />
+                공개
+              </RadioOption>
+              <RadioOption>
+                <RadioInput
+                  type="radio"
+                  name="visibility"
+                  checked={visibility === 'private'}
+                  onChange={() => setVisibility('private')}
+                />
+                <RadioIcon
+                  src={visibility === 'private' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  alt=""
+                />
+                비공개
+              </RadioOption>
+            </RadioColumn>
+          </FieldBlock>
+        </Fields>
       </Body>
 
       <Actions>
