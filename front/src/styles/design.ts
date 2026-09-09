@@ -15,4 +15,8 @@ export const colors = {
   gray700: theme.colors.gray[700],
   gray900: theme.colors.gray[900],
 };
+export const shadows = {
+  toast: theme.shadow.toast,
+  focus: theme.shadow.focus,
+};
 export const mobile = '@media (max-width: 480px)';

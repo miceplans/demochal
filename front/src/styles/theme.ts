@@ -27,6 +27,7 @@ declare module '@emotion/react' {
     };
     shadow: {
       toast: string;
+      focus: string;
     };
   }
 }
@@ -57,5 +58,6 @@ export const theme = {
   },
   shadow: {
     toast: '4px 4px 10px 0 rgb(0 0 0 / 20%)',
+    focus: '2px 2px 20px 0 rgb(154 198 255 / 45%)',
   },
 } as const;
