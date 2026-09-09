@@ -31,6 +31,7 @@ const Input = styled.input<{ hasError?: boolean }>`
 
   &:focus {
     border-color: ${(p) => p.theme.colors.semo};
+    box-shadow: ${(p) => p.theme.shadow.focus};
   }
 `;
 

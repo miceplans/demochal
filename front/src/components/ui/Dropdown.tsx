@@ -17,41 +17,40 @@ interface DropdownProps {
   defaultValue?: string;
   placeholder?: string;
   size?: DropdownSize;
+  width?: number | string;
   disabled?: boolean;
   onChange?: (value: string) => void;
   style?: CSSProperties;
   'aria-label'?: string;
 }
 
-const Wrapper = styled.div`
+const Wrapper = styled.div<{ $width: string }>`
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  width: 100%;
+  width: ${({ $width }) => $width};
 `;
 
-const Trigger = styled.button<{ $size: DropdownSize }>`
+const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  padding: ${({ $size }) => ($size === 'L' ? '0 14px' : '6px 14px')};
-  ${({ $size }) => $size === 'L' && 'height: 44px;'}
+  padding: 0 14px;
+  height: ${({ $size }) => ($size === 'L' ? '44px' : '36px')};
   background: ${(p) => p.theme.colors.background};
   border: 0.5px solid #e0e0e0;
   border-radius: 8px;
   font-family: inherit;
   font-size: ${textStyle.body.fontSize}px;
   font-weight: ${textStyle.body.fontWeight};
-  color: #000;
+  color: ${({ $hasValue, theme }) => ($hasValue ? '#111' : theme.colors.gray[500])};
   text-align: left;
   cursor: pointer;
 
   &:focus-visible {
     outline: 2px solid ${(p) => p.theme.colors.foreground};
     outline-offset: -1px;
+    box-shadow: ${(p) => p.theme.shadow.focus};
   }
 
   &:disabled {
@@ -60,12 +59,21 @@ const Trigger = styled.button<{ $size: DropdownSize }>`
   }
 `;
 
-const Chevron = styled.img`
+const Chevron = styled.span`
+  width: 8px;
+  height: 8px;
   flex-shrink: 0;
-  object-fit: contain;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translateY(-2px);
 `;
 
 const Listbox = styled.ul`
+  position: absolute;
+  top: calc(100% + 9px);
+  left: 0;
+  right: 0;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -74,13 +82,18 @@ const Listbox = styled.ul`
   list-style: none;
 `;
 
-const Option = styled.li<{ $radius: string }>`
+const Option = styled.li<{ $radius: string; $active: boolean }>`
+  display: flex;
+  align-items: center;
   padding: 12px 20px;
-  background: ${(p) => p.theme.colors.background};
-  box-shadow: 0 4px 4px 0 rgb(0 0 0 / 10%);
+  background: ${(p) => (p.$active ? p.theme.colors.gray[100] : p.theme.colors.background)};
+  box-shadow: 0 4px 2px rgb(0 0 0 / 10%);
   border-radius: ${({ $radius }) => $radius};
-  font-size: 13px;
+  font-size: ${textStyle.caption.fontSize}px;
+  font-weight: ${textStyle.caption.fontWeight};
+  line-height: normal;
   color: #111;
+  white-space: nowrap;
   cursor: pointer;
 
   &:hover {
@@ -94,8 +107,10 @@ export function Dropdown({
   defaultValue = '',
   placeholder = '요소를 선택하세요',
   size = 'L',
+  width = '100%',
   disabled = false,
   onChange,
+  style,
   'aria-label': ariaLabel,
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
@@ -171,10 +186,16 @@ export function Dropdown({
   };
 
   return (
-    <Wrapper ref={rootRef} onKeyDown={onKeyDown}>
+    <Wrapper
+      ref={rootRef}
+      onKeyDown={onKeyDown}
+      style={style}
+      $width={typeof width === 'number' ? `${width}px` : width}
+    >
       <Trigger
         type="button"
         $size={size}
+        $hasValue={Boolean(selected)}
         disabled={disabled}
         role="combobox"
         aria-haspopup="listbox"
@@ -185,7 +206,7 @@ export function Dropdown({
         onClick={() => (open ? setOpen(false) : openListbox())}
       >
         {selected ? selected.label : placeholder}
-        <Chevron src="/figma-assets/chevron-down.svg" alt="" width={24} height={24} />
+        <Chevron aria-hidden="true" />
       </Trigger>
       {open && options.length > 0 ? (
         <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>
@@ -196,7 +217,9 @@ export function Dropdown({
               role="option"
               aria-selected={option.value === selectedValue}
               $radius={radiusFor(index)}
+              $active={index === activeIndex}
               onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
               onClick={() => select(index)}
             >
               {option.label}
