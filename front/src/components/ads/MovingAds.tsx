@@ -17,6 +17,7 @@ type MovingAdsProps = {
   itemCount: number;
   children: (state: MovingAdsState) => ReactNode;
   interval?: number;
+  paused?: boolean;
 };
 
 /**
@@ -28,6 +29,7 @@ export function MovingAds({
   itemCount,
   children,
   interval = 5000,
+  paused = false,
 }: MovingAdsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   // 첫·마지막 광고를 복제해 끝에서도 한 방향으로 자연스럽게 이어지게 합니다.
@@ -43,7 +45,7 @@ export function MovingAds({
   }, [itemCount]);
 
   useEffect(() => {
-    if (isPaused || itemCount < 2) return;
+    if (isPaused || paused || itemCount < 2) return;
 
     const timerId = window.setInterval(() => {
       setActiveIndex((index) => (index + 1) % itemCount);
@@ -51,7 +53,7 @@ export function MovingAds({
     }, interval);
 
     return () => window.clearInterval(timerId);
-  }, [interval, isPaused, itemCount]);
+  }, [interval, isPaused, paused, itemCount]);
 
   const handleTransitionEnd = useCallback(() => {
     if (railIndex !== 0 && railIndex !== itemCount + 1) return;

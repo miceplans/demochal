@@ -73,10 +73,6 @@ const TooltipCard = styled('div', { shouldForwardProp: (prop) => prop !== 'top' 
   position: 'absolute', zIndex: 20, top, left, width: 250, maxWidth: 'calc(100% - 24px)', transform: 'translateX(-50%)', padding: '14px 16px',
   border: `1px solid ${c.gray200}`, borderRadius: 10, background: c.white, boxShadow: '0 10px 26px rgba(27, 33, 44, .16)',
 }));
-const SelectionCard = styled.div({
-  position: 'fixed', zIndex: 20, bottom: 24, left: '50%', width: 'min(calc(100vw - 32px), 280px)', transform: 'translateX(-50%)', padding: '14px 16px',
-  border: `1px solid ${c.gray200}`, borderRadius: 10, background: c.white, boxShadow: '0 10px 26px rgba(27, 33, 44, .16)',
-});
 const PriceAction = styled.button({ display: 'block', marginTop: 8, padding: 0, border: 0, background: 'transparent', color: c.primary, cursor: 'pointer', ...textStyle.label });
 const PaymentOverlay = styled.div({
   position: 'fixed', zIndex: 100, inset: 0, display: 'grid', placeItems: 'center', padding: 24,
@@ -157,7 +153,6 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
         )}
       </MovingAds>
       {tooltip && <TooltipCard role="tooltip" top={tooltip.top} left={tooltip.left}><strong style={textStyle.bodyStrong}>{adInfo[tooltip.placement].name}</strong><p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>8/25일 ~ 9/24일까지 광고비</p><strong style={{ fontSize: 22 }}>{priceOf(tooltip.placement).toLocaleString()}원</strong>{onSelect && !selectImmediately && <PriceAction type="button" onClick={() => { setTooltip(null); onSelect(tooltip.placement); }}>결제하러 가기 →</PriceAction>}</TooltipCard>}
-      {active && onSelect && !selectImmediately && <SelectionCard role="status"><strong style={textStyle.bodyStrong}>{adInfo[active].name}</strong><p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>8/25일 ~ 9/24일까지 광고비</p><strong style={{ fontSize: 22 }}>{priceOf(active).toLocaleString()}원</strong><PriceAction type="button" onClick={() => onSelect(active)}>지금 결제하기 →</PriceAction></SelectionCard>}
       {active && isPricingPreview && createPortal(<PaymentOverlay role="presentation" onClick={() => setActive(null)}><PaymentDialog role="dialog" aria-modal="true" aria-labelledby="ad-payment-title" onClick={(event) => event.stopPropagation()}><h2 id="ad-payment-title" style={{ margin: 0, ...textStyle.h2_2 }}>단기 결제</h2><p style={{ margin: '10px 0 4px', color: c.gray500, ...textStyle.caption }}>8/25일 ~ 8/27일까지 광고비</p><strong style={{ fontSize: 18 }}>{priceOf(active).toLocaleString()}원</strong><PaymentActions><PaymentButton type="button" onClick={() => setActive(null)}>취소</PaymentButton><PaymentButton type="button" primary onClick={() => setActive(null)}>결제하기</PaymentButton></PaymentActions></PaymentDialog></PaymentOverlay>, document.body)}
     </Canvas>
   );
