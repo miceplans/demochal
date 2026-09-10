@@ -27,7 +27,7 @@ import {
 } from '@/data/biz-design';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 
-const RecentGrid = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 16 });
+const RecentGrid = styled.div({ display: 'flex', alignItems: 'stretch', gap: 16 });
 const RecentHeader = styled.div({
   flex: 1,
   display: 'flex',
@@ -105,7 +105,15 @@ export function BizDashboardPage() {
         <RecentGrid>
           <RecentHeader>
             <Thumb aria-hidden />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                gap: 24,
+                minWidth: 0,
+              }}
+            >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <strong style={{ fontSize: 22 }}>{recentPosting.title}</strong>
                 <span style={{ color: c.gray700 }}>{recentPosting.org}</span>
