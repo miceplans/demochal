@@ -13,3 +13,5 @@ coverage/
 .vercel/
 *.tsbuildinfo
 .aider*
+.vercel
+.env*
