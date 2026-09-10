@@ -95,6 +95,36 @@ const MobileHeader = styled.header({
     borderBottom: `1px solid ${c.gray100}`,
   },
 });
+const MobileTitleBar = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '44px minmax(0, 1fr) 44px',
+  alignItems: 'center',
+  width: '100%',
+  minWidth: 0,
+  minHeight: 44,
+});
+const MobileBackLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 44,
+  height: 44,
+  marginLeft: -10,
+  borderRadius: 6,
+  fontSize: 28,
+  lineHeight: 1,
+  color: c.gray900,
+});
+const MobileTitle = styled.h1({
+  minWidth: 0,
+  margin: 0,
+  overflow: 'hidden',
+  textAlign: 'center',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  ...textStyle.h1_2,
+  fontSize: 18,
+});
 const Bottom = styled.nav({
   display: 'none',
   [mobile]: {
@@ -105,24 +135,20 @@ const Bottom = styled.nav({
     zIndex: 20,
     background: c.white,
     display: 'flex',
-    justifyContent: 'space-around',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    height: 'calc(72px + env(safe-area-inset-bottom))',
-    paddingBottom: 'env(safe-area-inset-bottom)',
+    height: 'calc(78px + env(safe-area-inset-bottom))',
+    padding: '10px 20px calc(20px + env(safe-area-inset-bottom))',
+    boxSizing: 'border-box',
     '& a': {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      width: 56,
-      height: 52,
-      borderRadius: 8,
-    },
-    '& a[aria-current=page]': {
-      background: c.gray50,
-      '& img': {
-        filter:
-          'invert(33%) sepia(96%) saturate(4178%) hue-rotate(207deg) brightness(100%) contrast(106%)',
-      },
+      width: 58,
+      height: 58,
+      padding: 12,
+      borderRadius: 6,
+      boxSizing: 'border-box',
     },
   },
 });
@@ -183,11 +209,11 @@ export function UserShell({
     void useUserStore.persist.rehydrate();
   }, []);
   const navItems = [
-    ['/', '홈', '/assets/icons/search.png'],
-    ['/explore', '공모전 탐색', '/assets/icons/search.png'],
-    ['/teams', '팀 탐색', '/assets/icons/shareIc.png'],
-    ['/notifications', '알림', '/assets/icons/bell.png'],
-    ['/my', 'MY', '/assets/icons/profile.png'],
+    ['/', '홈', '/assets/icons/figma-footer/home.svg'],
+    ['/explore', '공모전 탐색', '/assets/icons/figma-footer/search.svg'],
+    ['/teams', '팀 탐색', '/assets/icons/figma-footer/team.svg'],
+    ['/notifications', '알림', '/assets/icons/figma-footer/alert.svg'],
+    ['/my', 'MY', '/assets/icons/figma-footer/account.svg'],
   ];
   return (
     <>
@@ -243,12 +269,12 @@ export function UserShell({
       </HeaderBox>
       <MobileHeader>
         {title ? (
-          <Row style={{ minHeight: 28 }}>
-            <Link href={back} aria-label="뒤로">
-              <span style={{ display: 'block', fontSize: 20, transform: 'rotate(180deg)' }}>‹</span>
-            </Link>
-            <h1 style={{ fontSize: 18 }}>{title}</h1>
-          </Row>
+          <MobileTitleBar>
+            <MobileBackLink href={back} aria-label="뒤로가기">
+              ‹
+            </MobileBackLink>
+            <MobileTitle>{title}</MobileTitle>
+          </MobileTitleBar>
         ) : (
           <>
             <Logo dot />
@@ -262,7 +288,7 @@ export function UserShell({
       {footer && <Footer />}
       {navigation && (
         <>
-          <MobileOnly style={{ height: 88 }} />
+          <MobileOnly style={{ height: 'calc(78px + env(safe-area-inset-bottom))' }} />
           <Bottom aria-label="하단 메뉴">
             {navItems.map(([href, label, icon]) => (
               <Link
@@ -273,7 +299,7 @@ export function UserShell({
                   (href === '/' ? path === '/' : path.startsWith(href)) ? 'page' : undefined
                 }
               >
-                <Icon src={icon} size={28} alt={label} />
+                <Icon src={icon} size={34} alt={label} />
               </Link>
             ))}
           </Bottom>
