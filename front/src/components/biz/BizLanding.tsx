@@ -4,7 +4,7 @@ import type LocomotiveScroll from 'locomotive-scroll';
 import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { BizGlobalStyles, BizFooter, BizLink, Logo } from '@/components/biz/BizShell';
+import { BizGlobalStyles, BizFooter, BizLink, BizLandingHeader, Logo } from '@/components/biz/BizShell';
 import { DriftWall, type DriftWallItem } from '@/components/biz/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';
 
@@ -229,6 +229,7 @@ export function BizLanding() {
   return (
     <>
       {BizGlobalStyles}
+      <BizLandingHeader />
       <RevealOnScroll>
         <Hero>
           <HeroCopy data-reveal-item>

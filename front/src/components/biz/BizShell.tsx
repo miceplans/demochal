@@ -1,9 +1,9 @@
 'use client';
 import Link from 'next/link';
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
-import { colors as c, shadows as s } from '@/styles/design';
+import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { usePathname } from 'next/navigation';
 import { admin } from '@/data/biz-design';
@@ -57,6 +57,92 @@ export function Logo({ size = 24 }: { size?: number }) {
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: size, width: 'auto', display: 'block' }} />
     </BizBrand>
+  );
+}
+
+const LandingHeaderBar = styled.header<{ floating: boolean }>(({ floating }) => ({
+  position: 'fixed',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  top: floating ? 16 : 0,
+  width: floating ? 'calc(100% - 32px)' : '100%',
+  maxWidth: floating ? 1280 : '100%',
+  height: 64,
+  zIndex: 50,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: floating ? '0 32px' : '0 80px',
+  background: floating ? 'rgba(255, 255, 255, 0.72)' : c.white,
+  backdropFilter: floating ? 'blur(16px)' : 'none',
+  WebkitBackdropFilter: floating ? 'blur(16px)' : 'none',
+  borderRadius: floating ? 16 : 0,
+  border: `0.5px solid ${floating ? 'rgba(223, 226, 231, 0.6)' : c.gray100}`,
+  boxShadow: floating ? '0 16px 40px rgba(16, 20, 30, 0.10)' : 'none',
+  transition:
+    'top 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), padding 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1), background 360ms ease, border-color 360ms ease, box-shadow 360ms ease',
+  [mobile]: {
+    top: floating ? 8 : 0,
+    width: floating ? 'calc(100% - 16px)' : '100%',
+    padding: floating ? '0 16px' : '0 20px',
+  },
+}));
+const HeaderCtas = styled.div({ display: 'flex', gap: 8 });
+const HeaderJoin = styled(BizLink)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 130,
+  height: 37,
+  borderRadius: 6,
+  background: c.primary,
+  color: c.white,
+  ...textStyle.subtitle,
+  fontSize: 13,
+  [mobile]: { width: 'auto', padding: '0 12px' },
+});
+const HeaderSignup = styled(BizLink)({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 130,
+  height: 37,
+  borderRadius: 6,
+  background: c.white,
+  border: `1px solid ${c.gray200}`,
+  color: c.gray900,
+  ...textStyle.overline,
+  fontSize: 12,
+  [mobile]: { width: 'auto', padding: '0 12px' },
+});
+
+export function BizLandingHeader() {
+  const [floating, setFloating] = useState(false);
+
+  useEffect(() => {
+    let ticking = false;
+    const update = () => {
+      setFloating(window.scrollY > 24);
+      ticking = false;
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  return (
+    <LandingHeaderBar floating={floating}>
+      <Logo size={26} />
+      <HeaderCtas>
+        <HeaderJoin href="/login">챌린지 문의하기</HeaderJoin>
+        <HeaderSignup href="/login">가입하기</HeaderSignup>
+      </HeaderCtas>
+    </LandingHeaderBar>
   );
 }
 
@@ -132,7 +218,7 @@ export function BizSidebar() {
   return (
     <SidebarBox>
       <SidebarTop>
-        <Logo size={20} />
+        <Logo size={28} />
         <NavItems aria-label="기업 콘솔 메뉴">
           {menu.map(([href, label]) => (
             <NavItem
@@ -319,7 +405,7 @@ export const StatBox = styled.div({
   flexDirection: 'column',
   gap: 8,
   padding: 20,
-  border: `1px solid ${c.gray200}`,
+  border: `1px solid ${c.gray100}`,
   borderRadius: 12,
   minWidth: 0,
 });
