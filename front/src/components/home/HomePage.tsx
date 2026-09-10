@@ -124,7 +124,7 @@ export function HomePage() {
           </MobileHero>
           <Sections>
             <section>
-              <DesktopOnly style={{ marginBottom: 28 }}>
+              <DesktopOnly style={{ margin: '28px 0' }}>
                 <Row gap={16}>
                   <Dropdown
                     aria-label="분야"

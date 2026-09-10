@@ -52,7 +52,7 @@ export function Icon({
   );
 }
 export const Button = styled(BaseButton, {
-  shouldForwardProp: (prop) => !['tone', 'small', 'variant', 'fullWidth'].includes(prop),
+  shouldForwardProp: (prop) => !['tone', 'small'].includes(prop),
 })<{ tone?: 'primary' | 'outline' | 'plain'; small?: boolean; as?: ElementType }>(
   ({ tone = 'primary', small }) => ({
     borderRadius: 8,
