@@ -187,7 +187,7 @@ export function HomePage() {
             <section>
               <DesktopOnly>
                 <SectionHeader
-                  title="마감임박 D-7"
+                  title="마감임박 D-10"
                   action={<More href="/explore">더보기 →</More>}
                 />
                 <div style={{ height: 16 }} />
