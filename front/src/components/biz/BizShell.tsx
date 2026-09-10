@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { createContext, useContext, useId, type ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s } from '@/styles/design';
@@ -50,48 +50,11 @@ export const BizBrand = styled(Link)({
   gap: 6,
   whiteSpace: 'nowrap',
 });
-function LogoMark({ size }: { size: number }) {
-  const gradientId = useId();
-  const iconSize = size * 0.82;
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        width: size,
-        height: size,
-        alignItems: 'center',
-        justifyContent: 'center',
-        flexShrink: 0,
-      }}
-    >
-      <svg
-        width={iconSize}
-        height={iconSize}
-        viewBox="0 0 24 24"
-        fill="none"
-        style={{ transform: 'rotate(-15deg)' }}
-        aria-hidden
-      >
-        <path
-          d="M10.9158 1.02716C11.3923 0.202964 12.5836 0.202964 13.0601 1.02715L20.3993 15.8626C20.8758 16.6868 20.3077 17.717 19.3271 17.717C18.3465 17.717 11.988 12.2774 11.988 12.2774L4.84164 17.5741C4.71714 17.6664 4.56223 17.7174 4.4117 17.6805C3.61838 17.4864 3.14192 16.6145 3.57664 15.8626L10.9158 1.02716Z"
-          fill={`url(#${gradientId})`}
-        />
-        <defs>
-          <linearGradient id={gradientId} x1="11.9913" y1="0.409012" x2="11.9913" y2="17.717" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#062953" />
-            <stop offset="0.466346" stopColor="#006FFF" />
-            <stop offset="1" stopColor="#FEFFDC" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </span>
-  );
-}
 export function Logo({ size = 24 }: { size?: number }) {
   return (
     <BizBrand href="/" aria-label="SEMO.BIZ 홈">
-      <LogoMark size={size} />
-      <span style={{ fontSize: size, fontWeight: 700, color: '#000' }}>SEMO.BIZ</span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: size, width: 'auto', display: 'block' }} />
     </BizBrand>
   );
 }
