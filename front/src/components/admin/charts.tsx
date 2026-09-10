@@ -2,6 +2,19 @@
 
 import { useState } from 'react';
 import styled from '@emotion/styled';
+import {
+  Area,
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  PolarAngleAxis,
+  RadialBar,
+  RadialBarChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
@@ -11,23 +24,58 @@ import {
   type TrafficRange,
 } from '@/data/admin-design';
 
-/* ---------- path helper (catmull-rom → cubic bezier) ---------- */
+/* ---------- shared tooltip ---------- */
 
-function smoothPath(points: [number, number][]): string {
-  if (points.length < 2) return '';
-  let d = `M ${points[0][0]} ${points[0][1]}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] ?? p2;
-    const c1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const c1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const c2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const c2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2[0]} ${p2[1]}`;
-  }
-  return d;
+interface TooltipEntry {
+  dataKey?: string | number;
+  name?: string | number;
+  value?: string | number;
+  color?: string;
+  stroke?: string;
+  fill?: string;
+}
+
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TooltipEntry[];
+  label?: string | number;
+}) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div
+      style={{
+        background: c.gray900,
+        borderRadius: 6,
+        padding: '8px 12px',
+        color: c.white,
+        fontSize: 12,
+        lineHeight: 1.6,
+        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {label != null && <div style={{ fontWeight: 600, marginBottom: 2 }}>{label}</div>}
+      {payload.map((entry) => (
+        <div key={String(entry.dataKey)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: entry.stroke ?? entry.fill ?? entry.color,
+            }}
+          />
+          <span>
+            {entry.name}: {entry.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 /* ---------- Donut: 유저 광고 비율 ---------- */
@@ -42,37 +90,92 @@ const ChartCard = styled.div({
   background: c.white,
 });
 
+function arcPath(cx: number, cy: number, radius: number, startAngle: number, endAngle: number): string {
+  const toPoint = (angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)] as const;
+  };
+  const [startX, startY] = toPoint(startAngle);
+  const [endX, endY] = toPoint(endAngle);
+  let delta = endAngle - startAngle;
+  if (delta < 0) delta += 360;
+  const largeArc = delta > 180 ? 1 : 0;
+  return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`;
+}
+
+function GaugeBar(props: {
+  cx?: number;
+  cy?: number;
+  innerRadius?: number;
+  outerRadius?: number;
+  endAngle?: number;
+  fill?: string;
+}) {
+  const { cx, cy, innerRadius, outerRadius, endAngle, fill } = props;
+  if (cx == null || cy == null || innerRadius == null || outerRadius == null) return null;
+  const mid = (innerRadius + outerRadius) / 2;
+  const width = outerRadius - innerRadius;
+  const rad = ((endAngle ?? 180) * Math.PI) / 180;
+  const dotX = cx + mid * Math.cos(rad);
+  const dotY = cy + mid * Math.sin(rad);
+  return (
+    <g>
+      <path
+        d={arcPath(cx, cy, mid, 180, 360)}
+        fill="none"
+        stroke="#E5E7EB"
+        strokeWidth={width}
+        strokeLinecap="round"
+      />
+      <path
+        d={arcPath(cx, cy, mid, 180, endAngle ?? 180)}
+        fill="none"
+        stroke={fill}
+        strokeWidth={width}
+        strokeLinecap="round"
+      />
+      <circle cx={dotX} cy={dotY} r={14} fill={c.primary} stroke={c.white} strokeWidth={4} />
+    </g>
+  );
+}
+
 export function AdRatioChart() {
-  const chartWidth = 280;
-  const chartHeight = 168;
-  const radius = 104;
-  const strokeWidth = 26;
   const ratio = adRatio.ratio;
-  const cx = chartWidth / 2;
-  const cy = 140;
-  // Semicircle gauge: 0 = left point (180°), 1 = right point (0°), sweeping over the top.
-  const angle = Math.PI * (1 - ratio);
-  const endX = cx + radius * Math.cos(angle);
-  const endY = cy - radius * Math.sin(angle);
-  const trackPath = `M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${cx + radius} ${cy}`;
-  const valuePath = `M ${cx - radius} ${cy} A ${radius} ${radius} 0 0 1 ${endX} ${endY}`;
+  const percent = Math.round(ratio * 100);
 
   return (
     <ChartCard style={{ width: 420 }}>
       <span style={{ ...textStyle.body, color: c.gray500 }}>유저 광고 비율</span>
       <strong style={{ ...textStyle.h1, color: c.gray900 }}>{adRatio.value}</strong>
-      <div style={{ position: 'relative', width: chartWidth, height: chartHeight, margin: '12px auto 0' }}>
-        <svg
-          width={chartWidth}
-          height={chartHeight}
-          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-          role="img"
-          aria-label={`광고 비율 ${Math.round(ratio * 100)}%`}
+      <div
+        style={{
+          position: 'relative',
+          width: 280,
+          height: 168,
+          margin: '12px auto 0',
+          overflow: 'hidden',
+        }}
+      >
+        <RadialBarChart
+          width={280}
+          height={280}
+          cx={140}
+          cy={140}
+          innerRadius={91}
+          outerRadius={117}
+          data={[{ ratio: percent }]}
+          startAngle={180}
+          endAngle={360}
         >
-          <path d={trackPath} fill="none" stroke="#E5E7EB" strokeWidth={strokeWidth} strokeLinecap="round" />
-          <path d={valuePath} fill="none" stroke={c.primary} strokeWidth={strokeWidth} strokeLinecap="round" />
-          <circle cx={endX} cy={endY} r={14} fill={c.primary} stroke={c.white} strokeWidth={4} />
-        </svg>
+          <PolarAngleAxis type="number" domain={[0, 100]} tick={false} />
+          <RadialBar
+            dataKey="ratio"
+            fill={c.primary}
+            shape={<GaugeBar />}
+            animationDuration={1400}
+            animationEasing="ease-out"
+          />
+        </RadialBarChart>
         <strong
           style={{
             position: 'absolute',
@@ -85,7 +188,7 @@ export function AdRatioChart() {
             color: c.gray900,
           }}
         >
-          {Math.round(ratio * 100)}%
+          {percent}%
         </strong>
       </div>
     </ChartCard>
@@ -134,16 +237,13 @@ const yAxisLabels = ['0', '50k', '100k', '500k', '1M', '5M'];
 export function TrafficChart() {
   const [range, setRange] = useState<TrafficRange>('1year');
   const { labels, primary, secondary } = trafficData[range];
-  const width = 481;
   const height = 160;
   const maxY = Math.max(...primary) * 1.15;
-  const stepX = width / (labels.length - 1);
-  const toPoints = (values: number[]): [number, number][] =>
-    values.map((value, i) => [i * stepX, height - (value / maxY) * height]);
-  const primaryPoints = toPoints(primary);
-  const secondaryPoints = toPoints(secondary);
-  const primaryPath = smoothPath(primaryPoints);
-  const secondaryPath = smoothPath(secondaryPoints);
+  const data = labels.map((label, i) => ({
+    label,
+    primary: primary[i],
+    secondary: secondary[i],
+  }));
 
   return (
     <div
@@ -203,43 +303,51 @@ export function TrafficChart() {
             <span key={label}>{label}</span>
           ))}
         </div>
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <svg
-            viewBox={`0 0 ${width} ${height}`}
-            width="100%"
-            height={height}
-            role="img"
-            aria-label={`${range} 유저 트래픽 추이`}
-          >
-            <defs>
-              <linearGradient id="traffic-area" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={c.primary} stopOpacity="0.18" />
-                <stop offset="1" stopColor={c.primary} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
-              <line
-                key={ratio}
-                x1="0"
-                x2={width}
-                y1={height * ratio}
-                y2={height * ratio}
-                stroke="#E5E7EB"
-                strokeWidth="1"
+        <div style={{ flex: 1, minWidth: 0, height, display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <ResponsiveContainer width="100%" height={height}>
+            <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
+              <defs>
+                <linearGradient id="traffic-area" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={c.primary} stopOpacity="0.18" />
+                  <stop offset="1" stopColor={c.primary} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="#E5E7EB" />
+              <XAxis
+                dataKey="label"
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+                tick={{ fontSize: 9, fill: c.gray900, letterSpacing: '0.06em' }}
               />
-            ))}
-            <path d={`${primaryPath} L ${width} ${height} L 0 ${height} Z`} fill="url(#traffic-area)" />
-            <path d={secondaryPath} fill="none" stroke={c.lightBlue} strokeWidth="2.5" strokeLinecap="round" />
-            <path d={primaryPath} fill="none" stroke={c.primary} strokeWidth="2.5" strokeLinecap="round" />
-            {primaryPoints.map(([x, y], i) => (
-              <circle key={i} cx={x} cy={y} r="2.6" fill={c.white} stroke={c.primary} strokeWidth="2" />
-            ))}
-          </svg>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, letterSpacing: '0.06em', color: c.gray900 }}>
-            {labels.map((label) => (
-              <span key={label}>{label}</span>
-            ))}
-          </div>
+              <YAxis domain={[0, maxY]} hide ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]} />
+              <Tooltip
+                content={<ChartTooltip />}
+                cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="primary"
+                name="일반 유저 트래픽"
+                stroke={c.primary}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                fill="url(#traffic-area)"
+                dot={{ r: 2.6, fill: c.white, stroke: c.primary, strokeWidth: 2 }}
+                activeDot={{ r: 4, fill: c.white, stroke: c.primary, strokeWidth: 2 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="secondary"
+                name="비즈니스 트래픽"
+                stroke={c.lightBlue}
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                dot={false}
+                activeDot={{ r: 4, fill: c.white, stroke: c.lightBlue, strokeWidth: 2 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
@@ -257,21 +365,11 @@ const yLabels = Array.from(
 );
 
 export function ActivityChart() {
-  const width = 1000;
-  const height = 360;
-  const padLeft = 34;
-  const padTop = 20;
-  const padBottom = 32;
-  const maxY = activityChart.yMax;
-  const stepX = width / (months.length - 1);
-  const toPoints = (values: number[]): [number, number][] =>
-    values.map((value, i) => [padLeft + i * stepX, padTop + height - (value / maxY) * height]);
-  const generalPoints = toPoints(generalSeries);
-  const corpPoints = toPoints(corpSeries);
-  const generalPath = smoothPath(generalPoints);
-  const corpPath = smoothPath(corpPoints);
-  const tooltipIndex = activityChart.tooltipIndex;
-  const [tipX, tipY] = generalPoints[tooltipIndex];
+  const data = months.map((month, i) => ({
+    month,
+    general: generalSeries[i],
+    corp: corpSeries[i],
+  }));
 
   return (
     <div
@@ -298,75 +396,63 @@ export function ActivityChart() {
           </Legend>
         </span>
       </div>
-      <svg
-        viewBox={`0 0 ${padLeft + width} ${padTop + height + padBottom}`}
-        width="100%"
-        height={padTop + height + padBottom}
-        role="img"
-        aria-label="월간 활동 추이"
-      >
-        <defs>
-          <linearGradient id="activity-general" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={c.primary} stopOpacity="0.25" />
-            <stop offset="1" stopColor={c.primary} stopOpacity="0.02" />
-          </linearGradient>
-          <linearGradient id="activity-corp" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor={c.lightBlue} stopOpacity="0.6" />
-            <stop offset="1" stopColor={c.lightBlue} stopOpacity="0.05" />
-          </linearGradient>
-        </defs>
-        {yLabels.map((label) => {
-          const y = padTop + height - (label / maxY) * height;
-          return (
-            <g key={label}>
-              <line x1={padLeft} x2={padLeft + width} y1={y} y2={y} stroke="#E5E7EB" strokeWidth="1" />
-              <text x={padLeft - 10} y={y + 4} textAnchor="end" fontSize="12" fill={c.gray500}>
-                {label}
-              </text>
-            </g>
-          );
-        })}
-        <path
-          d={`${corpPath} L ${padLeft + width} ${padTop + height} L ${padLeft} ${padTop + height} Z`}
-          fill="url(#activity-corp)"
-        />
-        <path d={corpPath} fill="none" stroke={c.lightBlue} strokeWidth="3" strokeLinecap="round" />
-        <path
-          d={`${generalPath} L ${padLeft + width} ${padTop + height} L ${padLeft} ${padTop + height} Z`}
-          fill="url(#activity-general)"
-        />
-        <path d={generalPath} fill="none" stroke={c.primary} strokeWidth="3" strokeLinecap="round" />
-        <line
-          x1={tipX}
-          x2={tipX}
-          y1={tipY - 14}
-          y2={padTop + height}
-          stroke={c.gray300}
-          strokeWidth="1.5"
-          strokeDasharray="5 5"
-        />
-        <g>
-          <line x1={tipX - 34} x2={tipX + 34} y1={tipY - 46} y2={tipY - 46} stroke={c.primary} strokeWidth="2" />
-          <line x1={tipX} x2={tipX} y1={tipY - 46} y2={tipY - 38} stroke={c.primary} strokeWidth="2" />
-          <rect x={tipX - 28} y={tipY - 38} width="56" height="24" rx="6" fill={c.gray900} />
-          <text x={tipX} y={tipY - 22} textAnchor="middle" fontSize="12" fontWeight="600" fill={c.white}>
-            {activityChart.tooltipValue}
-          </text>
-          <circle cx={tipX} cy={tipY} r="5" fill={c.white} stroke={c.primary} strokeWidth="3" />
-        </g>
-        {months.map((label, i) => (
-          <text
-            key={label}
-            x={padLeft + i * stepX}
-            y={padTop + height + 24}
-            textAnchor={i === 0 ? 'start' : i === months.length - 1 ? 'end' : 'middle'}
-            fontSize="12"
-            fill={c.gray900}
-          >
-            {label}
-          </text>
-        ))}
-      </svg>
+      <div style={{ width: '100%', height: 360 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+            <defs>
+              <linearGradient id="activity-general" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={c.primary} stopOpacity="0.25" />
+                <stop offset="1" stopColor={c.primary} stopOpacity="0.02" />
+              </linearGradient>
+              <linearGradient id="activity-corp" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={c.lightBlue} stopOpacity="0.6" />
+                <stop offset="1" stopColor={c.lightBlue} stopOpacity="0.05" />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke="#E5E7EB" />
+            <XAxis
+              dataKey="month"
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 12, fill: c.gray900 }}
+              tickMargin={12}
+            />
+            <YAxis
+              domain={[0, activityChart.yMax]}
+              ticks={yLabels}
+              tickLine={false}
+              axisLine={false}
+              tick={{ fontSize: 12, fill: c.gray500 }}
+            />
+            <Tooltip
+              content={<ChartTooltip />}
+              cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="corp"
+              name="기업"
+              stroke={c.lightBlue}
+              strokeWidth={3}
+              strokeLinecap="round"
+              fill="url(#activity-corp)"
+              dot={false}
+              activeDot={{ r: 5, fill: c.white, stroke: c.lightBlue, strokeWidth: 3 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="general"
+              name="일반"
+              stroke={c.primary}
+              strokeWidth={3}
+              strokeLinecap="round"
+              fill="url(#activity-general)"
+              dot={false}
+              activeDot={{ r: 5, fill: c.white, stroke: c.primary, strokeWidth: 3 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
