@@ -51,8 +51,9 @@ export const BizBrand = styled(Link)({
   whiteSpace: 'nowrap',
 });
 export function Logo({ size = 24 }: { size?: number }) {
+  const hrefOf = useBizHref();
   return (
-    <BizBrand href="/" aria-label="SEMO.BIZ 홈">
+    <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: size, width: 'auto', display: 'block' }} />
     </BizBrand>
