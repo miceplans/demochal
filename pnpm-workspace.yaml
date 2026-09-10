@@ -3,7 +3,7 @@ packages:
   - 'server'
   - 'packages/*'
 allowBuilds:
+  esbuild: true
   sharp: false
   unrs-resolver: false
   '@scarf/scarf': false
-  esbuild: true
