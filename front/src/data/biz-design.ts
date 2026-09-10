@@ -146,7 +146,6 @@ export const operationSteps = [
   '시상식 운영',
   '결과 보고',
 ];
-export const flowSteps = ['공고 등록', '검수', '게시', '홍보', '성과 확인'];
 export const won = (n: number) => `${n > 0 ? '+ ' : '- '}${Math.abs(n).toLocaleString()}원`;
 
 // --- 내 챌린지 관리 (공고 관리 테이블 폴백 목업) ---
