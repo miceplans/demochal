@@ -40,7 +40,7 @@ const Wall = styled.div({
   height: 'clamp(420px, 54vw, 640px)',
   overflow: 'hidden',
   position: 'relative',
-  background: '#060010',
+  background: 'transparent',
   perspective: 'var(--dw-perspective)',
   isolation: 'isolate',
   '&::before, &::after': {
@@ -51,10 +51,10 @@ const Wall = styled.div({
     pointerEvents: 'none',
   },
   '&::before': {
-    background: 'linear-gradient(90deg, #060010 0%, transparent 18%, transparent 82%, #060010 100%)',
+    background: 'linear-gradient(90deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 18%, rgba(11,12,19,0) 82%, rgba(11,12,19,1) 100%)',
   },
   '&::after': {
-    background: 'linear-gradient(180deg, #060010 0%, transparent 17%, transparent 75%, #060010 100%)',
+    background: 'linear-gradient(180deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 17%, rgba(11,12,19,0) 75%, rgba(11,12,19,1) 100%)',
   },
   '@media (max-width: 700px)': { height: 440 },
 });
@@ -88,7 +88,7 @@ const factorForColumn = (index: number, variance: number) => {
 
 export function DriftWall({
   items,
-  columns = 4,
+  columns = 6,
   tileWidth = 280,
   tileHeight = 220,
   gap = 16,
