@@ -69,14 +69,6 @@ const PanelHeader = styled.div({
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 8,
-  paddingBottom: 14,
-  borderBottom: '1px solid #E5E7EB',
-});
-const PanelEyebrow = styled.span({
-  ...textStyle.labelSmall,
-  letterSpacing: '0.04em',
-  color: c.gray500,
-  textTransform: 'uppercase',
 });
 const CloseButton = styled.button({
   display: 'inline-flex',
@@ -91,7 +83,7 @@ const CloseButton = styled.button({
   '&:hover': { background: c.gray100, color: c.gray900 },
 });
 const PanelTitle = styled.strong({ ...textStyle.h3_2, color: c.gray900, lineHeight: 1.35 });
-const PanelStatus = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
+const TitleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 });
 const InfoList = styled.dl({
   margin: 0,
   display: 'flex',
@@ -161,18 +153,17 @@ function ReportDetailPanel({ row, onClose }: { row: ReportRow; onClose: () => vo
   return (
     <Panel aria-label={`${row.content} 신고 상세`}>
       <PanelHeader>
-        <PanelEyebrow>신고 상세</PanelEyebrow>
+        <TitleRow>
+          <PanelTitle>{row.content}</PanelTitle>
+          <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
+        </TitleRow>
         <CloseButton type="button" aria-label="신고 상세 닫기" onClick={onClose}>
           <CloseGlyph />
         </CloseButton>
       </PanelHeader>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-        <PanelTitle>{row.content}</PanelTitle>
-        <PanelStatus>
-          <span style={{ ...textStyle.metaText, color: c.gray500 }}>신고 사유</span>
-          <span style={{ ...textStyle.bodySmall2, color: c.gray900 }}>{row.summary}</span>
-          <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
-        </PanelStatus>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ ...textStyle.metaText, color: c.gray500 }}>신고 사유</span>
+        <span style={{ ...textStyle.bodySmall2, color: c.gray900 }}>{row.summary}</span>
       </div>
       <InfoList>
         {details.map(([label, value]) => (

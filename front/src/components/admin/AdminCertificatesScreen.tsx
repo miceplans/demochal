@@ -45,11 +45,16 @@ const Item = styled.li({
   borderTop: `1px solid ${c.gray200}`,
   background: c.white,
 });
+const ThumbWrap = styled.div({
+  position: 'relative',
+  flexShrink: 0,
+});
 const ThumbButton = styled.button({
   padding: 0,
   border: 0,
   background: 'none',
   flexShrink: 0,
+  cursor: 'default',
 });
 const Thumb = styled.img({
   width: 56,
@@ -101,6 +106,7 @@ const Overlay = styled.div({
   alignItems: 'center',
   justifyContent: 'center',
   zIndex: 100,
+  pointerEvents: 'none',
 });
 const Dialog = styled.div({
   background: c.white,
@@ -110,6 +116,7 @@ const Dialog = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
+  pointerEvents: 'auto',
 });
 const PreviewImage = styled.img({
   width: 258,
@@ -133,7 +140,7 @@ function TrophyGlyph() {
 
 export function AdminCertificatesScreen() {
   const [tab, setTab] = useState<(typeof certificateTabs)[number]>('미인증');
-  const [preview, setPreview] = useState<CertificateRow | null>(null);
+  const [hoveredId, setHoveredId] = useState<CertificateRow['id'] | null>(null);
   const rows = certificateRows.filter((row) => row.status === tab);
 
   return (
@@ -160,9 +167,29 @@ export function AdminCertificatesScreen() {
         <List>
           {rows.map((row) => (
             <Item key={row.id}>
-              <ThumbButton onClick={() => setPreview(row)} aria-label={`${row.user} 상장 원본 보기`}>
-                <Thumb src="/assets/certificate.png" alt={`${row.user} 상장`} />
-              </ThumbButton>
+              <ThumbWrap
+                onMouseEnter={() => setHoveredId(row.id)}
+                onMouseLeave={() => setHoveredId((current) => (current === row.id ? null : current))}
+              >
+                <ThumbButton
+                  onFocus={() => setHoveredId(row.id)}
+                  onBlur={() => setHoveredId((current) => (current === row.id ? null : current))}
+                  aria-label={`${row.user} 상장 원본 미리보기`}
+                >
+                  <Thumb src="/assets/certificate.png" alt={`${row.user} 상장`} />
+                </ThumbButton>
+                {hoveredId === row.id ? (
+                  <Overlay role="dialog" aria-modal="true" aria-label={`${row.user} 상장 미리보기`}>
+                    <Dialog>
+                      <PreviewImage src="/assets/certificate.png" alt={`${row.user} 상장 원본`} />
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                        <RejectButton>거부</RejectButton>
+                        <ApproveButton>승인</ApproveButton>
+                      </div>
+                    </Dialog>
+                  </Overlay>
+                ) : null}
+              </ThumbWrap>
               <MiniAvatar aria-hidden>{row.user[0]}</MiniAvatar>
               <UserInfo>
                 <UserName>{row.user}</UserName>
@@ -185,23 +212,6 @@ export function AdminCertificatesScreen() {
           ) : null}
         </List>
       </div>
-
-      {preview ? (
-        <Overlay
-          role="dialog"
-          aria-modal="true"
-          aria-label={`${preview.user} 상장 미리보기`}
-          onClick={() => setPreview(null)}
-        >
-          <Dialog onClick={(event) => event.stopPropagation()}>
-            <PreviewImage src="/assets/certificate.png" alt={`${preview.user} 상장 원본`} />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <RejectButton>거부</RejectButton>
-              <ApproveButton>승인</ApproveButton>
-            </div>
-          </Dialog>
-        </Overlay>
-      ) : null}
     </>
   );
 }
