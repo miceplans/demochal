@@ -111,10 +111,13 @@ const LogoutIcon = styled(Link)({ display: 'inline-flex', color: '#6B7280' });
 
 export const menu: [string, string][] = [
   ['/dashboard', '대시보드'],
+  ['/postings/new', '챌린지 만들기'],
   ['/postings', '공고 관리'],
+  ['/applications', '지원자 관리'],
   ['/ads', '광고 관리'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
+  ['/profile/edit','기업 프로필'],
 ];
 
 export function isMenuActive(route: string, href: string) {
@@ -170,12 +173,12 @@ const FooterBox = styled.footer({
   flexDirection: 'column',
   gap: 148,
 });
-export function BizFooter() {
+export function BizFooter({ logoSize = 24 }: { logoSize?: number }) {
   const hrefOf = useBizHref();
   return (
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Logo size={24} />
+        <Logo size={logoSize} />
         <nav style={{ display: 'flex', gap: 12, ...textStyle.body }}>
           <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
           <Link href={hrefOf('/terms')}>이용약관</Link>

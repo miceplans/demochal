@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
-import { BizGlobalStyles, useBizHref } from '@/components/biz/BizShell';
+import { BizGlobalStyles, BizFooter, useBizHref } from '@/components/biz/BizShell';
 
 const HeaderBox = styled.header({
   background: c.white,
@@ -37,6 +37,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           {children}
         </main>
+        <BizFooter />
       </div>
     </>
   );
