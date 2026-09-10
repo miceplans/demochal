@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p ${PORT:-3000}",
+    "prebuild": "pnpm --filter @semochal/api-client build",
     "build": "next build",
     "start": "next start -p ${PORT:-3000}",
     "lint": "eslint",
