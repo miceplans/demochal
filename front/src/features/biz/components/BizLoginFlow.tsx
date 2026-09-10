@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
@@ -18,9 +18,8 @@ import {
 } from '@/components/biz/BizShell';
 import { admin } from '@/data/biz-design';
 
-const Wrap = styled.div({ minHeight: '100dvh', display: 'flex', flexDirection: 'column' });
+const Wrap = styled.div({ display: 'flex', flexDirection: 'column' });
 const Body = styled.div({
-  flex: 1,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -51,7 +50,7 @@ const CheckBox = styled.input({
   border: `0.5px solid ${c.gray100}`,
 });
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 32 });
-const UploadBox = styled.div({
+const UploadBox = styled.label({
   border: `2px dashed ${c.lightBlue}`,
   background: '#f8f8f8',
   borderRadius: 20,
@@ -64,13 +63,17 @@ const UploadBox = styled.div({
   minHeight: 180,
   ...textStyle.metaText,
   color: c.gray500,
+  cursor: 'pointer',
 });
-const UploadMark = styled.span({
-  width: 57,
-  height: 36,
-  background: `radial-gradient(circle at 50% 120%, ${c.primary} 38%, #191f28 100%)`,
-  clipPath: 'polygon(50% 0, 100% 100%, 0 100%)',
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
 });
+const UploadMark = styled.img({ width: 57, height: 36 });
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
 export function BizLoginFlow() {
@@ -78,15 +81,21 @@ export function BizLoginFlow() {
   const hrefOf = useBizHref();
   const [step, setStep] = useState(0);
   const [agreed, setAgreed] = useState<string[]>([]);
+  const [docFileName, setDocFileName] = useState<string | null>(null);
   const toggle = (v: string) =>
     setAgreed((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]));
+  const pickDoc = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setDocFileName(file.name);
+  };
   return (
     <Wrap>
       {BizGlobalStyles}
       <Body>
         <Card>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-            <Logo size={24} />
+            <Logo size={36} />
             <StepProgressBar steps={stepLabels} currentStep={step} />
             {step === 0 && (
               <section aria-label="약관 동의">
@@ -150,10 +159,13 @@ export function BizLoginFlow() {
               <section aria-label="기관 인증">
                 <Title>기관 인증</Title>
                 <Form>
-                  <UploadBox>
-                    <UploadMark aria-hidden />
-                    사업자등록증 첨부
-                    <OutlineButton type="button">파일 찾기</OutlineButton>
+                  <UploadBox aria-label="사업자등록증 첨부">
+                    <UploadMark src="/assets/icons/fileuploader.png" alt="" aria-hidden />
+                    {docFileName ?? '사업자등록증 첨부'}
+                    <HiddenInput type="file" accept="image/*,.pdf" onChange={pickDoc} />
+                    <OutlineButton type="button" tabIndex={-1}>
+                      파일 찾기
+                    </OutlineButton>
                   </UploadBox>
                   <Field>
                     사업자등록번호
@@ -188,7 +200,7 @@ export function BizLoginFlow() {
           로그인
         </BizLink>
       </p>
-      <BizFooter />
+      <BizFooter logoSize={36} />
     </Wrap>
   );
 }
