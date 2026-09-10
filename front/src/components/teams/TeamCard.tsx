@@ -19,21 +19,18 @@ const Card = styled.article({
     borderRadius: 14,
     '.team-artwork': { display: 'none' },
     '.body': { padding: 14, gap: 10 },
-    h3: { fontWeight: 700 },
   },
 });
 const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
-  [mobile]: {
-    padding: '4px 7px',
-    ...textStyle.mRoleText,
-    lineHeight: 'normal',
-    background: filled ? c.lightGreen : c.gray100,
-    color: filled ? c.green : c.gray500,
-    border: filled ? 'none' : `1px solid #f0f1f3`,
-  },
+  ...textStyle.mBadgeText,
+  lineHeight: 'normal',
+  background: filled ? c.lightBlue : c.gray100,
+  color: filled ? c.primary : c.gray500,
+  border: filled ? 'none' : `1px solid ${c.gray100}`,
+  [mobile]: { padding: '4px 7px' },
 }));
-const Challenge = styled(Muted)({ [mobile]: textStyle.mSubText });
-const Members = styled(Muted)({ [mobile]: { ...textStyle.mSubText, color: c.gray700 } });
+const Challenge = styled(Muted)({ color: c.gray700, [mobile]: textStyle.mSubText });
+const Members = styled(Muted)({ [mobile]: textStyle.mSubText });
 const Apply = styled(Link)({
   color: c.primary,
   ...textStyle.overline,
@@ -53,7 +50,7 @@ export function TeamCard({ team = teams[0] }: { team?: Team }) {
         </Row>
         <Row gap={6}>
           {team.filledRoles.map((role) => (
-            <RoleTag key={role} tone="green" filled>
+            <RoleTag key={role} filled>
               {role}
             </RoleTag>
           ))}

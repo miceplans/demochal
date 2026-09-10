@@ -8,10 +8,12 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
 
 const CategoryTag = styled(Tag)({
-  [mobile]: { padding: '3px 6px', ...textStyle.mMicroTag, lineHeight: 'normal', color: c.gray700 },
+  [mobile]: { padding: '3px 6px', ...textStyle.mTagText, lineHeight: 'normal', color: c.gray700 },
 });
 const TeamTag = styled(Tag)({
-  [mobile]: { padding: '3px 6px', ...textStyle.mMicroTag, lineHeight: 'normal', background: '#eaf3ff' },
+  ...textStyle.mBadgeText,
+  lineHeight: 'normal',
+  [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
 });
 const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
   borderRadius: 12,
@@ -43,12 +45,9 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
     },
     '.card-body': { padding: horizontal ? 0 : 12, gap: horizontal ? 0 : 8, minWidth: 0 },
     '.card-body > a': horizontal ? { marginBottom: 30 } : undefined,
-    h3: {
-      fontSize: horizontal ? textStyle.mFeatureTitle.fontSize : textStyle.mBadgeText.fontSize,
-      lineHeight: horizontal ? 1.4 : textStyle.h3.lineHeight,
-    },
+    h3: horizontal ? textStyle.mFeatureTitle : textStyle.mCardTitle,
     'h3.clamp': { maxWidth: 124 },
-    '.dday': { ...textStyle.mIndexNumber, color: c.primary },
+    '.dday': { ...textStyle.mCounterText, color: c.primary },
     img: { width: 14, height: 14 },
   },
 }));
