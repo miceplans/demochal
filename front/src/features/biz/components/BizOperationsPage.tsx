@@ -111,11 +111,11 @@ export function BizOperationsPage() {
           </InfoItem>
           <InfoItem>
             <InfoIcon src={`${ICON}/phone.svg`} alt="" />
-            <InfoText><MaskedText value={orgProfile.phone} masked={maskPhone(orgProfile.phone)} /></InfoText>
+            <InfoText>{orgProfile.phone}</InfoText>
           </InfoItem>
           <InfoItem>
             <InfoIcon src={`${ICON}/mail.svg`} alt="" />
-            <InfoText><MaskedText value={orgProfile.email} masked={maskEmail(orgProfile.email)} /></InfoText>
+            <InfoText>{orgProfile.email}</InfoText>
           </InfoItem>
         </InfoList>
       </InfoRow>
