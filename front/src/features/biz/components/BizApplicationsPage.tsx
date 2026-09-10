@@ -2,7 +2,6 @@
 import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
-import { textStyle } from '@/styles/typography';
 import {
   BizContent,
   SectionHeader,
@@ -15,8 +14,8 @@ import {
   TableBox,
   THead,
   TRow,
-  FieldSelect,
 } from '@/components/biz/BizShell';
+import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { applications as initialApplications, postingStats, recentPosting, type BizApplication } from '@/data/biz-design';
 
 const Hero = styled.div({
@@ -59,17 +58,6 @@ const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   </span>
 );
 
-const FilterRow = styled.div({ display: 'flex', gap: 8, flexWrap: 'wrap' });
-const FilterChip = styled.button<{ active?: boolean }>(({ active }) => ({
-  border: `1px solid ${active ? c.primary : c.gray200}`,
-  borderRadius: 999,
-  background: active ? c.lightBlue : c.white,
-  color: active ? c.primary : c.gray700,
-  padding: '6px 14px',
-  ...textStyle.finePrint,
-  whiteSpace: 'nowrap',
-}));
-const RowSelect = styled(FieldSelect)({ height: 32, padding: '0 8px', width: '100%' });
 const MemoInput = styled.input({
   width: '100%',
   border: '1px solid transparent',
@@ -80,14 +68,13 @@ const MemoInput = styled.input({
   '&:hover': { background: c.gray50 },
   '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
 });
-const ResultSelect = styled(RowSelect)<{ result: BizApplication['result'] }>(({ result }) => ({
-  color: result === '합격' ? c.green : result === '불합격' ? c.red : c.gray700,
-  fontWeight: 600,
-}));
 
 const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = ['전체', '제출 완료', '검토중', '보완 요청'];
 const STATUS_OPTIONS: BizApplication['status'][] = ['제출 완료', '검토중', '보완 요청'];
 const RESULT_OPTIONS: BizApplication['result'][] = ['미정', '합격', '불합격'];
+const FILTER_OPTIONS: DropdownOption[] = STATUS_FILTERS.map((s) => ({ value: s, label: s }));
+const STATUS_DROPDOWN_OPTIONS: DropdownOption[] = STATUS_OPTIONS.map((s) => ({ value: s, label: s }));
+const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({ value: r, label: r }));
 
 export function BizApplicationsPage() {
   const [rows, setRows] = useState<BizApplication[]>(initialApplications);
@@ -124,23 +111,18 @@ export function BizApplicationsPage() {
             </SideActions>
           </HeaderInfo>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <FilterRow role="tablist" aria-label="신청 상태 필터">
-              {STATUS_FILTERS.map((status) => (
-                <FilterChip
-                  key={status}
-                  type="button"
-                  role="tab"
-                  aria-selected={filter === status}
-                  active={filter === status}
-                  onClick={() => setFilter(status)}
-                >
-                  {status}
-                  {status !== '전체' && ` (${rows.filter((r) => r.status === status).length})`}
-                </FilterChip>
-              ))}
-            </FilterRow>
-            <TableBox>
-              <THead>
+            <div style={{ width: 180 }}>
+              <Dropdown
+                options={FILTER_OPTIONS}
+                value={filter}
+                placeholder="상태별 보기"
+                aria-label="상태별 보기"
+                size="S"
+                onChange={(value) => setFilter(value as (typeof STATUS_FILTERS)[number])}
+              />
+            </div>
+            <TableBox style={{ overflow: 'visible' }}>
+              <THead style={{ borderRadius: '12px 12px 0 0' }}>
                 <Col w={150}>팀명</Col>
                 <Col w={150}>신청자</Col>
                 <Col w={150}>신청 상태</Col>
@@ -148,28 +130,27 @@ export function BizApplicationsPage() {
                 <Col w={120}>평가상태</Col>
               </THead>
               {filteredRows.length === 0 ? (
-                <TRow>
+                <TRow style={{ borderRadius: '0 0 12px 12px' }}>
                   <span style={{ color: c.gray500, width: '100%', textAlign: 'center' }}>
                     해당하는 지원서가 없습니다.
                   </span>
                 </TRow>
               ) : (
-                filteredRows.map((row) => (
-                  <TRow key={row.id}>
+                filteredRows.map((row, index) => (
+                  <TRow
+                    key={row.id}
+                    style={index === filteredRows.length - 1 ? { borderRadius: '0 0 12px 12px' } : undefined}
+                  >
                     <Col w={150}>{row.team}</Col>
                     <Col w={150}>{row.applicant}</Col>
                     <span style={{ width: 150, flexShrink: 0 }}>
-                      <RowSelect
+                      <Dropdown
+                        options={STATUS_DROPDOWN_OPTIONS}
                         aria-label={`${row.team} 신청 상태`}
                         value={row.status}
-                        onChange={(e) => updateRow(row.id, { status: e.target.value as BizApplication['status'] })}
-                      >
-                        {STATUS_OPTIONS.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </RowSelect>
+                        size="S"
+                        onChange={(value) => updateRow(row.id, { status: value as BizApplication['status'] })}
+                      />
                     </span>
                     <span style={{ width: 300, flexShrink: 0 }}>
                       <MemoInput
@@ -180,18 +161,13 @@ export function BizApplicationsPage() {
                       />
                     </span>
                     <span style={{ width: 120, flexShrink: 0 }}>
-                      <ResultSelect
-                        result={row.result}
+                      <Dropdown
+                        options={RESULT_DROPDOWN_OPTIONS}
                         aria-label={`${row.team} 평가상태`}
                         value={row.result}
-                        onChange={(e) => updateRow(row.id, { result: e.target.value as BizApplication['result'] })}
-                      >
-                        {RESULT_OPTIONS.map((r) => (
-                          <option key={r} value={r}>
-                            {r}
-                          </option>
-                        ))}
-                      </ResultSelect>
+                        size="S"
+                        onChange={(value) => updateRow(row.id, { result: value as BizApplication['result'] })}
+                      />
                     </span>
                   </TRow>
                 ))
