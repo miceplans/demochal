@@ -10,46 +10,46 @@ import { operationSteps, serviceCards } from '@/data/biz-design';
 
 const Hero = styled.section({
   background:
-    'radial-gradient(circle at 50% 89%, rgba(255,255,255,0) 65%, rgba(254,255,220,1) 77%, rgba(0,111,255,1) 91%, rgba(25,31,40,1) 100%)',
+    'var(--SEMO-Gradient, radial-gradient(92.85% 92.82% at 50% 88.52%, rgba(255, 255, 255, 0.00) 65.22%, #FEFFDC 76.92%, #006FFF 91.35%, #191F28 100%))',
   padding: '120px 80px',
   display: 'flex',
   minHeight: '100vh',
   flexDirection: 'column',
   justifyContent: 'center',
   gap: 120,
-  scrollSnapAlign: 'start',
 });
 const HeroCopy = styled.div({ display: 'flex', flexDirection: 'column', gap: 36 });
-const HeroTitle = styled.h1({ ...textStyle.display, fontWeight: 400, fontSize: 48 });
+const HeroTitle = styled.h1({ ...textStyle.display, fontWeight: 400 });
 const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 36 });
 const CtaRow = styled.div({ display: 'flex', gap: 16 });
 const Join = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 260,
-  height: 74,
+  width: 180,
+  height: 52,
   borderRadius: 6,
   background: c.primary,
   color: c.white,
   ...textStyle.subtitle,
-  fontSize: 26,
+  fontSize: 18,
 });
 const Consult = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 260,
-  height: 74,
+  width: 180,
+  height: 52,
   borderRadius: 6,
   background: c.white,
   border: `1px solid ${c.gray200}`,
   ...textStyle.overline,
-  fontSize: 24,
+  fontSize: 17,
 });
 const FlowLabel = styled.span({ ...textStyle.overline, color: c.gray700 });
 const Intro = styled.section({
-  background: 'linear-gradient(180deg, #191f28 0%, #0b0c13 19%, #101018 63%, #ffffff 100%)',
+  background:
+    'linear-gradient(180deg, #ffffff 0%, #f0f4fb 10%, #c8d8f6 20%, #40589a 30%, #191f28 40%, #0b0c13 58%, #101018 76%, #ffffff 100%)',
   minHeight: '132vh',
   position: 'relative',
   overflow: 'hidden',
@@ -81,7 +81,6 @@ const Ops = styled.section({
   display: 'flex',
   flexDirection: 'column',
   gap: 28,
-  scrollSnapAlign: 'start',
 });
 const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
@@ -182,9 +181,9 @@ const IntroBackdrop = styled.div({
   zIndex: 0,
   '& > div': { height: '100%' },
   WebkitMaskImage:
-    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 17%, #000000 31%, #000000 63%, rgba(0,0,0,0.86) 78%, transparent 100%)',
+    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 32%, #000000 46%, #000000 64%, rgba(0,0,0,0.86) 78%, transparent 100%)',
   maskImage:
-    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 17%, #000000 31%, #000000 63%, rgba(0,0,0,0.86) 78%, transparent 100%)',
+    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 32%, #000000 46%, #000000 64%, rgba(0,0,0,0.86) 78%, transparent 100%)',
 });
 
 const marketingWallItems: DriftWallItem[] = [
@@ -241,7 +240,7 @@ export function BizLanding() {
           </HeroCopy>
           <CtaRow data-reveal-item>
             <Join href="/login">지금 가입하기</Join>
-            <Consult href="/login">상담받기</Consult>
+            <Consult href="/login">운영 문의하기</Consult>
           </CtaRow>
         </Hero>
       </RevealOnScroll>
