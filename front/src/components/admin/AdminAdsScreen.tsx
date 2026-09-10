@@ -9,19 +9,19 @@ import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { SearchFilter, SelectFilter } from './parts';
 
-const Page = styled.div({ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', margin: '48px 20px 0', maxWidth: 1220 });
-const Header = styled.div({ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, width: 1100 });
+const Page = styled.div({ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', margin: '0 auto', maxWidth: 1220 });
+const Header = styled.div({ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 24, width: '100%' });
 const Title = styled.h1({ margin: '4px 0 0', color: c.gray900, ...textStyle.h1_2 });
 const Filters = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 16 });
 const Dropdowns = styled.div({ display: 'flex', gap: 10 });
-const Table = styled.div({ width: 1100, border: '1px solid #DFE2E7', borderRadius: 12, overflow: 'hidden', background: c.white });
+const Table = styled.div({ width: '100%', border: '1px solid #DFE2E7', borderRadius: 12, overflow: 'hidden', background: c.white });
 const TableRow = styled.div<{ header?: boolean }>(({ header }) => ({
   display: 'grid', gridTemplateColumns: '180px 180px 180px minmax(80px, 1fr)', alignItems: 'center', gap: 16,
   height: header ? 52 : 56, padding: '0 16px', borderTop: header ? 0 : '1px solid #DFE2E7',
   background: header ? c.gray100 : c.white, color: c.gray900, ...(header ? textStyle.h3_2 : textStyle.bodyLarge),
 }));
 const Progress = styled.span({ color: c.primary, ...textStyle.body });
-const Preview = styled.div({ position: 'relative', width: 1220, height: 495, overflow: 'hidden' });
+const Preview = styled.div({ position: 'relative', width: '100%', height: 495, overflow: 'hidden' });
 const PricingLink = styled(Link)({ position: 'absolute', zIndex: 1, top: 83, left: 561, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 98, height: 37, borderRadius: 6, padding: '10px 12px', background: c.primary, color: c.white, textDecoration: 'none', ...textStyle.subtitle });
 
 const ads = [
