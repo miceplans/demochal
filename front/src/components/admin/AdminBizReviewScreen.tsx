@@ -1,8 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { bizRows, bizStats, type BizRow } from '@/data/admin-design';
+import { maskBizNumber } from '@/lib/mask';
+import { MaskedText } from '@/components/ui/MaskedText';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
@@ -26,7 +28,12 @@ const statusBadge: Record<BizRow['status'], 'blue' | 'green' | 'red'> = {
 const columns: AdminColumn<BizRow>[] = [
   { key: 'org', header: '활동유형', width: 100 },
   { key: 'type', header: '유형', width: 80 },
-  { key: 'bizNumber', header: '사업자 번호', width: 110 },
+  {
+    key: 'bizNumber',
+    header: '사업자 번호',
+    width: 110,
+    render: (row) => <MaskedText value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />,
+  },
   { key: 'appliedAt', header: '신청일', width: 60 },
   {
     key: 'nts',
@@ -150,9 +157,9 @@ function CloseGlyph() {
 }
 
 function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) {
-  const details = [
+  const details: [string, ReactNode][] = [
     ['기관 유형', row.type],
-    ['사업자 번호', row.bizNumber],
+    ['사업자 번호', <MaskedText key="bizNumber" value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />],
     ['신청일', row.appliedAt],
     ['NTS 결과', row.nts],
   ];

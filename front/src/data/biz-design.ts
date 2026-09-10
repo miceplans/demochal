@@ -8,7 +8,7 @@ export const admin = {
   id: 'yuiyui6780',
 };
 export const orgProfile = {
-  name: '국가 정보원',
+  name: '(주)마이스 플랜즈',
   address: '부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호',
   phone: '051-783-1170',
   email: 'mice@miceplans.com',
@@ -36,7 +36,7 @@ export const myPostingCards = [
 export const chartMonths = ['7월', '8월', '9월', '10월', '11월', '12월', '1월'];
 export const chartBars = [32, 45, 38, 60, 52, 74, 66];
 export const paymentCard = {
-  masked: '3778 **** **** 1234',
+  number: '3778 1234 5678 1234',
   holder: 'Eddy Cusuma',
   expiry: '12/22',
 };

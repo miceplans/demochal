@@ -1,6 +1,8 @@
 'use client';
 
 import { userRows, type UserRow } from '@/data/admin-design';
+import { maskEmail } from '@/lib/mask';
+import { MaskedText } from '@/components/ui/MaskedText';
 import {
   AdminPageTitle,
   AdminTable,
@@ -13,7 +15,12 @@ import {
 
 const columns: AdminColumn<UserRow>[] = [
   { key: 'name', header: '이름', width: 100 },
-  { key: 'email', header: '이메일', width: 200 },
+  {
+    key: 'email',
+    header: '이메일',
+    width: 200,
+    render: (row) => <MaskedText value={row.email} masked={maskEmail(row.email)} />,
+  },
   { key: 'position', header: '포지션', width: 100 },
   { key: 'reports', header: '신고 누적', width: 80 },
   {

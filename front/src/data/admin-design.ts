@@ -63,14 +63,14 @@ export type BizRow = {
 };
 
 export const bizRows: BizRow[] = [
-  { id: 'b-1', org: '부산문화재단', type: '비영리', bizNumber: '110-**-*****', appliedAt: '05.12', nts: '성공', status: '대기' },
-  { id: 'b-2', org: '경기대학교', type: '학교', bizNumber: '110-**-*****', appliedAt: '05.12', nts: '성공', status: '승인' },
-  { id: 'b-3', org: '한빛 협회', type: '협회', bizNumber: '110-**-*****', appliedAt: '05.12', nts: '실패', status: '거부' },
-  { id: 'b-4', org: '광주디자인진흥원', type: '비영리', bizNumber: '110-**-*****', appliedAt: '05.11', nts: '폐업/폐점', status: '거부' },
-  { id: 'b-5', org: '세모테크', type: '기업', bizNumber: '110-**-*****', appliedAt: '05.11', nts: '인식불가', status: '대기' },
-  { id: 'b-6', org: '한국데이터산업진흥원', type: '비영리', bizNumber: '110-**-*****', appliedAt: '05.10', nts: '성공', status: '승인' },
-  { id: 'b-7', org: '부산대학교', type: '학교', bizNumber: '110-**-*****', appliedAt: '05.10', nts: '성공', status: '승인' },
-  { id: 'b-8', org: '스타트업협회', type: '협회', bizNumber: '110-**-*****', appliedAt: '05.09', nts: '성공', status: '대기' },
+  { id: 'b-1', org: '부산문화재단', type: '비영리', bizNumber: '110-81-60418', appliedAt: '05.12', nts: '성공', status: '대기' },
+  { id: 'b-2', org: '경기대학교', type: '학교', bizNumber: '125-82-02931', appliedAt: '05.12', nts: '성공', status: '승인' },
+  { id: 'b-3', org: '한빛 협회', type: '협회', bizNumber: '302-82-10577', appliedAt: '05.12', nts: '실패', status: '거부' },
+  { id: 'b-4', org: '광주디자인진흥원', type: '비영리', bizNumber: '408-82-55210', appliedAt: '05.11', nts: '폐업/폐점', status: '거부' },
+  { id: 'b-5', org: '세모테크', type: '기업', bizNumber: '621-81-33892', appliedAt: '05.11', nts: '인식불가', status: '대기' },
+  { id: 'b-6', org: '한국데이터산업진흥원', type: '비영리', bizNumber: '114-82-66045', appliedAt: '05.10', nts: '성공', status: '승인' },
+  { id: 'b-7', org: '부산대학교', type: '학교', bizNumber: '605-82-07133', appliedAt: '05.10', nts: '성공', status: '승인' },
+  { id: 'b-8', org: '스타트업협회', type: '협회', bizNumber: '214-82-99107', appliedAt: '05.09', nts: '성공', status: '대기' },
 ];
 
 export type UserRow = {

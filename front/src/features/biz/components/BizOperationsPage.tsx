@@ -4,6 +4,8 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Logo, PrimaryButton } from '@/components/biz/BizShell';
 import { orgProfile } from '@/data/biz-design';
+import { maskEmail, maskPhone } from '@/lib/mask';
+import { MaskedText } from '@/components/ui/MaskedText';
 
 const ICON = '/assets/icons';
 
@@ -109,11 +111,11 @@ export function BizOperationsPage() {
           </InfoItem>
           <InfoItem>
             <InfoIcon src={`${ICON}/phone.svg`} alt="" />
-            <InfoText>{orgProfile.phone}</InfoText>
+            <InfoText><MaskedText value={orgProfile.phone} masked={maskPhone(orgProfile.phone)} /></InfoText>
           </InfoItem>
           <InfoItem>
             <InfoIcon src={`${ICON}/mail.svg`} alt="" />
-            <InfoText>{orgProfile.email}</InfoText>
+            <InfoText><MaskedText value={orgProfile.email} masked={maskEmail(orgProfile.email)} /></InfoText>
           </InfoItem>
         </InfoList>
       </InfoRow>

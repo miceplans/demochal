@@ -13,6 +13,8 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 import { admin, orgProfile } from '@/data/biz-design';
+import { maskEmail, maskPhone } from '@/lib/mask';
+import { MaskedText } from '@/components/ui/MaskedText';
 
 const OrgCard = styled.div({
   border: `1px solid ${c.gray100}`,
@@ -61,11 +63,11 @@ export function BizProfilePage() {
           </TRow>
           <TRow>
             <span>이메일</span>
-            <strong>{admin.email}</strong>
+            <strong><MaskedText value={admin.email} masked={maskEmail(admin.email)} /></strong>
           </TRow>
           <TRow>
             <span>전화번호</span>
-            <strong>{admin.phone}</strong>
+            <strong><MaskedText value={admin.phone} masked={maskPhone(admin.phone)} /></strong>
           </TRow>
           <TRow>
             <span>아이디</span>
@@ -100,8 +102,8 @@ export function BizProfilePage() {
           <OrgMeta>
             <OrgName>{orgProfile.name}</OrgName>
             <OrgRow>{orgProfile.address}</OrgRow>
-            <OrgRow>{orgProfile.phone}</OrgRow>
-            <OrgRow>{orgProfile.email}</OrgRow>
+            <OrgRow><MaskedText value={orgProfile.phone} masked={maskPhone(orgProfile.phone)} /></OrgRow>
+            <OrgRow><MaskedText value={orgProfile.email} masked={maskEmail(orgProfile.email)} /></OrgRow>
           </OrgMeta>
         </OrgCard>
         <Actions style={{ marginTop: 24 }}>

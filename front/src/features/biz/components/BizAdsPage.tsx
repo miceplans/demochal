@@ -12,6 +12,8 @@ import { textStyle } from '@/styles/typography';
 import { BizContent, OutlineButton, PrimaryButton } from '@/components/biz/BizShell';
 import { AdPlacementPreview, type AdPlacement, type AdPreviewView } from '@/components/ads/AdPlacementPreview';
 import { myAds, paymentCard } from '@/data/biz-design';
+import { maskCardNumber } from '@/lib/mask';
+import { MaskedText } from '@/components/ui/MaskedText';
 
 type AdsScreen = 'manage' | 'products' | 'checkout' | 'complete';
 type SelectedAd = { placement: AdPlacement; name: string; price: number; period: string };
@@ -145,7 +147,7 @@ export function BizAdsPage() {
   if (screen === 'checkout' && selectedAd) return <CheckoutBody>
     <HeaderRow><OutlineButton type="button" onClick={() => setScreen('products')}>광고 위치 다시 선택</OutlineButton><h1 style={{ margin: 0, ...textStyle.h1_2 }}>광고 결제</h1></HeaderRow>
     <CheckoutCard><h2 style={{ margin: 0, ...textStyle.h2_2 }}>선택한 광고</h2><CheckoutRow><span>{selectedAd.name}</span><strong>{selectedAd.price.toLocaleString()}원</strong></CheckoutRow><CheckoutRow><span style={{ color: c.gray500 }}>노출 기간</span><span>{selectedAd.period}</span></CheckoutRow></CheckoutCard>
-    <CheckoutCard><h2 style={{ margin: 0, ...textStyle.h2_2 }}>결제수단</h2><PaymentMethod><span><strong>등록된 카드</strong><span style={{ marginLeft: 10, color: c.gray500 }}>{paymentCard.masked}</span></span><span style={{ color: c.primary, ...textStyle.label }}>선택됨</span></PaymentMethod></CheckoutCard>
+    <CheckoutCard><h2 style={{ margin: 0, ...textStyle.h2_2 }}>결제수단</h2><PaymentMethod><span><strong>등록된 카드</strong><span style={{ marginLeft: 10, color: c.gray500 }}><MaskedText value={paymentCard.number} masked={maskCardNumber(paymentCard.number)} /></span></span><span style={{ color: c.primary, ...textStyle.label }}>선택됨</span></PaymentMethod></CheckoutCard>
     <CheckoutCard aria-label="결제 금액"><CheckoutRow><span style={{ color: c.gray500 }}>상품 금액</span><span>{selectedAd.price.toLocaleString()}원</span></CheckoutRow><CheckoutRow><span style={{ color: c.gray500 }}>부가세</span><span>0원</span></CheckoutRow><Divider /><CheckoutRow><strong>총 결제 금액</strong><strong style={{ fontSize: 22, color: c.primary }}>{selectedAd.price.toLocaleString()}원</strong></CheckoutRow></CheckoutCard>
     <PrimaryButton type="button" style={{ height: 52, fontSize: 16 }} onClick={() => setScreen('complete')}>{selectedAd.price.toLocaleString()}원 결제하기</PrimaryButton>
   </CheckoutBody>;
