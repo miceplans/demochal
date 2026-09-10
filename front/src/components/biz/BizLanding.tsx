@@ -15,40 +15,45 @@ const Hero = styled.section({
   display: 'flex',
   minHeight: '100vh',
   flexDirection: 'column',
-  gap: 80,
+  justifyContent: 'center',
+  gap: 120,
+  scrollSnapAlign: 'start',
 });
-const HeroCopy = styled.div({ display: 'flex', flexDirection: 'column', gap: 18 });
-const HeroTitle = styled.h1({ ...textStyle.display, fontWeight: 400 });
-const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 18 });
-const CtaRow = styled.div({ display: 'flex', gap: 8 });
+const HeroCopy = styled.div({ display: 'flex', flexDirection: 'column', gap: 36 });
+const HeroTitle = styled.h1({ ...textStyle.display, fontWeight: 400, fontSize: 48 });
+const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 36 });
+const CtaRow = styled.div({ display: 'flex', gap: 16 });
 const Join = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 130,
-  height: 37,
+  width: 260,
+  height: 74,
   borderRadius: 6,
   background: c.primary,
   color: c.white,
   ...textStyle.subtitle,
+  fontSize: 26,
 });
 const Consult = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 130,
-  height: 37,
+  width: 260,
+  height: 74,
   borderRadius: 6,
   background: c.white,
   border: `1px solid ${c.gray200}`,
   ...textStyle.overline,
+  fontSize: 24,
 });
 const FlowLabel = styled.span({ ...textStyle.overline, color: c.gray700 });
 const Intro = styled.section({
-  background: 'linear-gradient(180deg, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.8) 74%, rgba(0,0,0,0.18) 100%)',
+  background: 'linear-gradient(180deg, #191f28 0%, #0b0c13 19%, #101018 63%, #ffffff 100%)',
   minHeight: '132vh',
   position: 'relative',
   overflow: 'hidden',
+  scrollSnapAlign: 'start',
   [mobile]: { minHeight: 'auto' },
 });
 const IntroLabel = styled.span({ ...textStyle.overline, color: c.gray700 });
@@ -76,6 +81,7 @@ const Ops = styled.section({
   display: 'flex',
   flexDirection: 'column',
   gap: 28,
+  scrollSnapAlign: 'start',
 });
 const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
@@ -175,23 +181,10 @@ const IntroBackdrop = styled.div({
   pointerEvents: 'none',
   zIndex: 0,
   '& > div': { height: '100%' },
-  '&::before, &::after': {
-    content: '""',
-    position: 'absolute',
-    right: 0,
-    left: 0,
-    zIndex: 3,
-  },
-  '&::before': {
-    top: 0,
-    height: '30%',
-    background: 'linear-gradient(180deg, #191f28 0%, rgba(25,31,40,0.94) 16%, rgba(10,9,18,0.52) 52%, rgba(10,9,18,0) 100%)',
-  },
-  '&::after': {
-    bottom: 0,
-    height: '34%',
-    background: 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.16) 32%, rgba(255,255,255,0.72) 72%, #ffffff 100%)',
-  },
+  WebkitMaskImage:
+    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 17%, #000000 31%, #000000 63%, rgba(0,0,0,0.86) 78%, transparent 100%)',
+  maskImage:
+    'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.94) 17%, #000000 31%, #000000 63%, rgba(0,0,0,0.86) 78%, transparent 100%)',
 });
 
 const marketingWallItems: DriftWallItem[] = [
@@ -215,6 +208,11 @@ const operationIcons = [
 
 export function BizLanding() {
   useEffect(() => {
+    document.documentElement.classList.add('biz-landing-scroll');
+    return () => document.documentElement.classList.remove('biz-landing-scroll');
+  }, []);
+
+  useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
     let instance: LocomotiveScroll | undefined;
@@ -237,8 +235,8 @@ export function BizLanding() {
           <HeroCopy data-reveal-item>
             <HeroTitle>쉬운 행사 관리</HeroTitle>
             <BrandRow>
-              <Logo size={40} />
-              <span style={{ ...textStyle.display }}>에서 시작해보세요!</span>
+              <Logo size={80} />
+              <span style={{ ...textStyle.display, fontSize: 48 }}>에서 시작해보세요!</span>
             </BrandRow>
           </HeroCopy>
           <CtaRow data-reveal-item>

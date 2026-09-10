@@ -15,6 +15,10 @@ body {
   overflow-x: clip;
 }
 
+html.biz-landing-scroll {
+  scroll-snap-type: y proximity;
+}
+
 body {
   min-height: 100%;
   display: flex;
