@@ -197,7 +197,7 @@ export function AdminContentsScreen() {
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <FilterBar>
           <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" />
-          <SelectFilter label="종류" options={['공모전', '팀 모집', '수상작']} />
+          <SelectFilter label="종류" options={['챌린지', '팀 모집', '수상작']} />
         </FilterBar>
         <ReportLogTable />
       </section>

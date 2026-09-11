@@ -82,7 +82,7 @@ export function AdminSettingsScreen() {
         </Card>
       ))}
       <div>
-        <ApproveButton onClick={() => toast.success('설정을 저장했어요.')}>저장하기</ApproveButton>
+        <ApproveButton onClick={() => toast.success('설정을 저장했어요')}>저장하기</ApproveButton>
       </div>
     </>
   );

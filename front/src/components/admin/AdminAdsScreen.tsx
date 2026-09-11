@@ -21,15 +21,15 @@ const TableRow = styled.div<{ header?: boolean }>(({ header }) => ({
   background: header ? c.gray100 : c.white, color: c.gray900, ...(header ? textStyle.h3_2 : textStyle.bodyLarge),
 }));
 const Progress = styled.span({ color: c.primary, ...textStyle.body });
-const Preview = styled.div({ position: 'relative', width: '100%', height: 495, overflow: 'hidden' });
+const Preview = styled.div({ position: 'relative', width: '100%', height: 495, overflow: 'hidden',});
 const PricingLink = styled(Link)({ position: 'absolute', zIndex: 1, top: 83, left: 561, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 98, height: 37, borderRadius: 6, padding: '10px 12px', background: c.primary, color: c.white, textDecoration: 'none', ...textStyle.subtitle });
 
 const ads = [
-  { id: '1', location: '상단 빅배너 1', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '2', location: '상단 빅배너 2', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '3', location: '상단 빅배너 3', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '4', location: '상단 빅배너 4', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '5', location: '상단 빅배너 5', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
+  { id: '1', location: '상단 빅배너 1', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '2', location: '상단 빅배너 2', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '3', location: '상단 빅배너 3', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '4', location: '상단 빅배너 4', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '5', location: '상단 빅배너 5', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
 ];
 
 export function AdminAdsScreen() {
@@ -39,7 +39,7 @@ export function AdminAdsScreen() {
   const rows = useMemo(() => ads.filter((ad) => `${ad.location} ${ad.title}`.includes(query) && (!status || ad.status === status)), [query, status]);
   const handleActivity = (value: string) => {
     const label = value === '광고 수정하기' ? value : value === '내보내기' ? value : '광고 중단하기';
-    toast.success(label, '선택한 광고에 적용할 수 있습니다.');
+    toast.success(label, '선택한 광고에 적용할 수 있습니다');
   };
 
   return (
@@ -59,7 +59,7 @@ export function AdminAdsScreen() {
         {rows.map((ad) => <TableRow key={ad.id} role="row"><span role="cell">{ad.location}</span><span role="cell">{ad.title}</span><span role="cell">{ad.price}</span><Progress role="cell">{ad.status}</Progress></TableRow>)}
       </Table>
       <Preview>
-        <Image src="/ads-priview.png" alt="광고 노출 미리보기" fill priority sizes="1220px" style={{ objectFit: 'cover' }} />
+        <Image src="/assets/ads-priview.png" alt="광고 노출 미리보기" fill priority sizes="1220px" style={{ objectFit: 'cover' }} />
         <PricingLink href="/admin/ad-pricing/pricing">광고비 관리</PricingLink>
       </Preview>
     </Page>
