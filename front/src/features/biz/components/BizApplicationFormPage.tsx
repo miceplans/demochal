@@ -237,14 +237,14 @@ export function BizApplicationFormPage() {
 
   const handlePublish = () => {
     if (!title.trim()) {
-      toast.error('신청서 제목을 입력해주세요.');
+      toast.error('신청서 제목을 입력해주세요');
       return;
     }
     if (questions.some((q) => !q.title.trim())) {
-      toast.error('모든 질문의 내용을 입력해주세요.');
+      toast.error('모든 질문의 내용을 입력해주세요');
       return;
     }
-    toast.success('신청서가 게시되었습니다.');
+    toast.success('신청서가 게시되었습니다');
     router.push(hrefOf(`/postings/${recentPosting.id}`));
   };
 

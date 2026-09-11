@@ -56,7 +56,6 @@ const Intro = styled.section({
   scrollSnapAlign: 'start',
   [mobile]: { minHeight: 'auto' },
 });
-const IntroLabel = styled.span({ ...textStyle.overline, color: c.gray700 });
 const IntroTitle = styled.h2({ ...textStyle.display, color: c.white });
 const Cards = styled.div({
   display: 'grid',
@@ -251,7 +250,6 @@ export function BizLanding() {
         </IntroBackdrop>
         <IntroReveal>
           <div data-reveal-item style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
-            <IntroLabel>서비스 소개</IntroLabel>
             <IntroTitle>등록부터 홍보, 성과 확인, 운영대행까지 연결됩니다</IntroTitle>
           </div>
           <Cards>

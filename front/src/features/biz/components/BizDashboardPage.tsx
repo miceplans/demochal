@@ -57,7 +57,14 @@ const SideStats = styled.div({
   flexShrink: 0,
 });
 const BillingGrid = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 32 });
-const ChartBox = styled(StatBox)({ width: 423, flexShrink: 0 });
+const ChartBox = styled(TableBox)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  width: 423,
+  padding: 20,
+  flexShrink: 0,
+});
 const Chart = styled.div({
   display: 'flex',
   alignItems: 'flex-end',

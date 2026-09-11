@@ -41,17 +41,17 @@ export const paymentCard = {
   expiry: '12/22',
 };
 export const payments = [
-  { name: '한국 마라톤 공모전 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
-  { name: '한국 IT 공모전 - 배너 (소)', amount: -100000, date: '2026.08.28 10:05' },
-  { name: '한국 IT 공모전 - 배너 (소) 환불', amount: 100000, date: '2026.08.21 09:41' },
+  { name: '한국 마라톤 챌린지 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
+  { name: '한국 IT 챌린지 - 배너 (소)', amount: -100000, date: '2026.08.28 10:05' },
+  { name: '한국 IT 챌린지 - 배너 (소) 환불', amount: 100000, date: '2026.08.21 09:41' },
 ];
 export const paymentHistory = [
   { name: '2025 스타트업 해커톤 - 메인 배너 (대)', amount: -100000, date: '2026.09.08 16:40' },
   { name: '충전 - 신용카드', amount: 300000, date: '2026.09.05 11:12' },
-  { name: '한국 마라톤 공모전 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
+  { name: '한국 마라톤 챌린지 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
   { name: '디자인 씽킹 해커톤 - 팀원모집중 배너', amount: -40000, date: '2026.08.30 09:30' },
-  { name: '한국 IT 공모전 - 배너 (소)', amount: -60000, date: '2026.08.28 10:05' },
-  { name: '한국 IT 공모전 - 배너 (소) 환불', amount: 60000, date: '2026.08.21 09:41' },
+  { name: '한국 IT 챌린지 - 배너 (소)', amount: -60000, date: '2026.08.28 10:05' },
+  { name: '한국 IT 챌린지 - 배너 (소) 환불', amount: 60000, date: '2026.08.21 09:41' },
   { name: '충전 - 신용카드', amount: 200000, date: '2026.08.15 15:03' },
 ];
 export const paymentTotal = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
@@ -60,8 +60,8 @@ export const activeAds = [
   { title: '2025 스타트업 해커톤', status: '준비중', exposure: '—', bookmarks: '—' },
 ];
 export const myAds = [
-  { title: '한국 마라톤 공모전', price: '100,000원', status: '만료' },
-  { title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
+  { title: '한국 마라톤 챌린지', price: '100,000원', status: '만료' },
+  { title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
 ];
 export const adProducts = [
   {
@@ -98,8 +98,8 @@ export const applications: BizApplication[] = [
   { id: 'ba-3', team: '터미널카카오통', applicant: '이승민의 팀', status: '제출 완료', memo: '팀 구성 확인 필요', result: '미정' },
   { id: 'ba-4', team: '하이웍스', applicant: '박서윤의 팀', status: '보완 요청', memo: '포트폴리오 재제출 요청', result: '미정' },
   { id: 'ba-5', team: '코맷', applicant: '정하늘의 팀', status: '제출 완료', memo: '발표 영상 우수', result: '합격' },
-  { id: 'ba-6', team: '한국 마라톤 공모전', applicant: '김창윤의 팀', status: '검토중', memo: '자료 누락 연락', result: '불합격' },
-  { id: 'ba-7', team: '한국 IT 공모전', applicant: '강다정의 팀', status: '제출 완료', memo: '', result: '합격' },
+  { id: 'ba-6', team: '한국 마라톤 챌린지', applicant: '김창윤의 팀', status: '검토중', memo: '자료 누락 연락', result: '불합격' },
+  { id: 'ba-7', team: '한국 IT 챌린지', applicant: '강다정의 팀', status: '제출 완료', memo: '', result: '합격' },
 ];
 export const dailyReport = [
   { date: '2026-08-25', exposure: 38200, clicks: 1146, ctr: '3.0%' },

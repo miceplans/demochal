@@ -104,7 +104,7 @@ export function BizPostingManagePage() {
         </SideCol>
       </TopRow>
 
-      <section aria-label="공모전 지원현황" style={{ width: '100%' }}>
+      <section aria-label="챌린지 지원현황" style={{ width: '100%' }}>
         <TableBox>
           <THead>
             <span style={{ display: 'flex', gap: 16 }}>

@@ -6,8 +6,6 @@ import { textStyle } from '@/styles/typography';
 import {
   BizContent,
   SectionTitle,
-  StatBox,
-  StatValue,
   TableBox,
   THead,
   TRow,
@@ -37,6 +35,12 @@ const ChartBar = styled.span(({ h }: { h: number }) => ({
   background: c.primary,
   borderRadius: '4px 4px 0 0',
 }));
+const ReportChartBox = styled(TableBox)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: 20,
+});
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0 }}>{children}</span>
 );
@@ -65,7 +69,7 @@ export function BizReportsPage() {
             <option>9/1~9/7</option>
           </FieldSelect>
         </span>
-        <StatBox style={{ height: 266 }}>
+        <ReportChartBox style={{ height: 266 }}>
           <span style={textStyle.bodyStrong}>{dailySum.clicks.toLocaleString()} 클릭수</span>
           <Chart>
             {chartBars.map((h, i) => (
@@ -75,7 +79,7 @@ export function BizReportsPage() {
               </ChartCol>
             ))}
           </Chart>
-        </StatBox>
+        </ReportChartBox>
       </div>
       <section aria-label="일별 리포트">
         <SectionTitle>일별 리포트</SectionTitle>
