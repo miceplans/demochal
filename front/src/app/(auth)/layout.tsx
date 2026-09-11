@@ -1,17 +1,7 @@
 import type { ReactNode } from 'react';
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
-  return (
-    <main
-      style={{
-        display: 'flex',
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '48px 16px',
-      }}
-    >
-      {children}
-    </main>
-  );
+  // Auth pages render their own UserShell (header → main). Wrapping that
+  // shell in a flex <main> makes the header and page body sibling flex items.
+  return <>{children}</>;
 }

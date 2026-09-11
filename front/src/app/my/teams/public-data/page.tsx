@@ -1,4 +1,9 @@
 import { TeamApplicantsPage } from '@/components/my/MyPages';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 export default function Page() {
-  return <TeamApplicantsPage />;
+  return (
+    <RequireAuth>
+      <TeamApplicantsPage />
+    </RequireAuth>
+  );
 }

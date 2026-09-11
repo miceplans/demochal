@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import styled from '@emotion/styled';
 import { UserShell, Logo } from '@/components/common/UserShell';
 import { Button, Icon, Stack, Chip, Wrap } from '@/components/common/Primitives';
@@ -8,6 +9,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
+import { adApi } from '@/lib/ad-api';
 import copy from '@/data/design-copy.json';
 const Login = styled.div({
   minHeight: 610,
@@ -37,15 +39,22 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
     borderRadius: 8,
   },
 }));
-const KakaoCrop = styled.span({
-  width: 13,
-  height: 13,
-  overflow: 'hidden',
-  position: 'relative',
-  mixBlendMode: 'darken',
-  '& img': { position: 'absolute', width: 44.66, height: 44.66, left: -1.4, top: -14.95 },
-});
 export function LoginPage() {
+  const router = useRouter();
+  const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
+  const continueAfterLogin = async () => {
+    try {
+      const user = await adApi.auth.me();
+      router.push(user.onboardingSurvey ? '/' : '/onboarding/activity');
+    } catch {
+      router.push(hasCompletedOnboarding ? '/' : '/onboarding/activity');
+    }
+  };
+  const startGoogleLogin = () => {
+    const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+    window.location.assign(`${apiOrigin.replace(/\/$/, '')}/auth/google`);
+  };
+
   return (
     <UserShell compact navigation={false} footer={false}>
       <Login>
@@ -55,18 +64,24 @@ export function LoginPage() {
         </Stack>
         <Stack gap={8}>
           {['Kakao', 'Google', 'Naver'].map((provider, i) => (
-            <Social key={provider} href="/onboarding/activity" provider={provider}>
-              {i === 0 ? (
-                <KakaoCrop>
-                  <Icon name="imgImage2" size={44.66} />
-                </KakaoCrop>
-              ) : (
-                <Icon
-                  name={i === 1 ? 'imgImage1' : 'imgImage3'}
-                  width={i === 1 ? 11.81 : 17.948}
-                  height={i === 1 ? 12.094 : 17.948}
-                />
-              )}
+            <Social
+              key={provider}
+              href={hasCompletedOnboarding ? '/' : '/onboarding/activity'}
+              provider={provider}
+              onClick={(event) => {
+                event.preventDefault();
+                if (provider === 'Google') {
+                  startGoogleLogin();
+                  return;
+                }
+                void continueAfterLogin();
+              }}
+            >
+              <Icon
+                name={i === 0 ? 'imgImage2' : i === 1 ? 'imgImage1' : 'imgImage3'}
+                width={i === 0 ? 13 : i === 1 ? 12 : 18}
+                height={i === 0 ? 13 : i === 1 ? 13 : 18}
+              />
               <span>{provider}계정으로 계속하기</span>
             </Social>
           ))}
@@ -106,7 +121,14 @@ export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
   const index = steps.indexOf(step);
   const selected = useUserStore((s) => s.survey[step] ?? []);
+  const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
+  const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
+  const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+
+  useEffect(() => {
+    if (hasCompletedOnboarding) router.replace('/');
+  }, [hasCompletedOnboarding, router]);
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',
@@ -177,7 +199,24 @@ export function OnboardingPage({ step }: { step: string }) {
         <Next>
           <Button
             disabled={!selected.length}
-            onClick={() => router.push(index === 3 ? '/' : `/onboarding/${steps[index + 1]}`)}
+            onClick={async () => {
+              if (index === 3) {
+                try {
+                  await adApi.users.saveSurvey({
+                    interests: survey.interests ?? [],
+                    purposes: survey.purpose ?? [],
+                    challengeTypes: survey.challenge ?? [],
+                  });
+                } catch {
+                  // The publishing prototype can be used without an API session;
+                  // local completion still prevents the survey from being shown again.
+                }
+                completeOnboarding();
+                router.replace('/');
+                return;
+              }
+              router.push(`/onboarding/${steps[index + 1]}`);
+            }}
           >
             {index === 3 ? '완료' : '다음'}
           </Button>
