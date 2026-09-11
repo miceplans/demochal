@@ -92,6 +92,21 @@ const Nav = styled.nav({
   '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
 });
+const HeaderActionLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 36,
+  padding: '0 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  transition: 'background 0.15s ease, border-color 0.15s ease',
+  '&:hover': { background: c.gray50, borderColor: c.gray300 },
+});
 const MobileHeader = styled.header({
   display: 'none',
   [mobile]: {
@@ -269,6 +284,8 @@ export function UserShell({
             <>
               <SearchBar />
               <Row gap={20}>
+                <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
+                <HeaderActionLink href="/biz/operations">문의하기</HeaderActionLink>
                 <Link href="/notifications" aria-label="알림">
                   <Icon src="/assets/icons/bell.png" alt="알림" />
                 </Link>
