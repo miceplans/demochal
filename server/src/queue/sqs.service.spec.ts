@@ -1,4 +1,8 @@
-import { DeleteMessageCommand, ReceiveMessageCommand, SendMessageCommand } from '@aws-sdk/client-sqs';
+import {
+  DeleteMessageCommand,
+  ReceiveMessageCommand,
+  SendMessageCommand,
+} from '@aws-sdk/client-sqs';
 import { describe, expect, it, vi } from 'vitest';
 import { SqsService } from './sqs.service.js';
 
@@ -15,7 +19,10 @@ describe('SqsService', () => {
     expect(send).toHaveBeenNthCalledWith(
       1,
       expect.objectContaining({
-        input: { QueueUrl: 'https://example.test/queue', MessageBody: '{"challengeId":"challenge-1"}' },
+        input: {
+          QueueUrl: 'https://example.test/queue',
+          MessageBody: '{"challengeId":"challenge-1"}',
+        },
       }),
     );
     expect(send.mock.calls[0]![0]).toBeInstanceOf(SendMessageCommand);
