@@ -162,11 +162,7 @@ export function HomePage() {
               </DesktopOnly>
               <SectionHeader
                 title="지영님에게 맞는 AI 추천"
-                action={
-                  <DesktopOnly>
-                    <More href="/explore">더보기 →</More>
-                  </DesktopOnly>
-                }
+                action={<More href="/explore">더보기 →</More>}
               />
               <div style={{ height: 16 }} />
               <DesktopOnly>
@@ -198,7 +194,10 @@ export function HomePage() {
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
-                <SectionHeader title="마감임박! 지금 해야하는 챌린지" />
+                <SectionHeader
+                  title="마감임박! 지금 해야하는 챌린지"
+                  action={<More href="/explore">더보기 →</More>}
+                />
                 <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
                   {desktopContests.slice(0, 4).map((contest) => (
                     <ContestCard key={contest.id} contest={contest} horizontal />
