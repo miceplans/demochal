@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell, Content, MyShell, myMenu } from '@/components/common/UserShell';
@@ -21,7 +21,7 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
-import { Identity, Badges, SkillStack, History } from '@/components/profile/ProfileCards';
+import { Identity, Badges, SkillStack, History, AddButton } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import {
   contests,
@@ -35,6 +35,8 @@ import {
   notificationItems,
   notificationTabs,
   contestDetail,
+  stacks,
+  skillCatalog,
 } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
@@ -47,12 +49,17 @@ const MobileMenu = styled.nav({
   flexDirection: 'column',
   gap: 4,
   '& a': {
-    padding: '16px 4px',
+    padding: '16px 8px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     fontWeight: 600,
+    borderRadius: 8,
+    transition: 'background 0.15s ease',
   },
+  '& a:active': { background: c.gray50 },
+  '& a:hover span': { transform: 'translateX(3px)' },
+  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
   borderBottom: `1px solid ${c.gray100}`,
   paddingBottom: 24,
 });
@@ -60,10 +67,197 @@ const Participating = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
-  '& a': { border: `1px solid ${c.gray100}`, borderRadius: 12, padding: 16 },
+  '& a': {
+    border: `1px solid ${c.gray100}`,
+    borderRadius: 12,
+    padding: 16,
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      borderColor: c.gray200,
+      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
+    },
+  },
   [mobile]: { gridTemplateColumns: '1fr' },
 });
+const UploadBox = styled.label({
+  border: `2px dashed ${c.gray100}`,
+  background: '#f8f8f8',
+  borderRadius: 12,
+  padding: 8,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 8,
+  minHeight: 110,
+  ...textStyle.metaText,
+  color: c.gray500,
+  textAlign: 'center',
+  cursor: 'pointer',
+  transition: 'border-color 0.15s ease, background 0.15s ease, transform 0.1s ease',
+  '&:hover': { borderColor: c.gray300 },
+  '&:active': { transform: 'scale(0.99)' },
+});
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+});
+const UploadMark = styled.img({ width: 40, height: 26 });
+const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
+const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
+
+function CertificateModal({
+  open,
+  onClose,
+  onVerified,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onVerified: (label: string) => void;
+}) {
+  const toast = useToast();
+  const [badge, setBadge] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const pickFile = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) setFileName(file.name);
+  };
+  const reset = () => {
+    setBadge(null);
+    setFileName(null);
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!badge) return;
+    onVerified(badge);
+    reset();
+    onClose();
+    toast.success('자격증 인증 요청을 보냈어요', '검토가 끝나면 뱃지가 표시돼요');
+  };
+  return (
+    <Modal
+      open={open}
+      onClose={() => {
+        reset();
+        onClose();
+      }}
+      title="자격증 인증"
+    >
+      <form onSubmit={submit}>
+        <Stack gap={12}>
+          <Wrap>
+            {certificateBadges.map((x) => (
+              <Chip
+                key={x}
+                type="button"
+                selected={badge === x}
+                aria-pressed={badge === x}
+                onClick={() => setBadge(x)}
+              >
+                {x}
+              </Chip>
+            ))}
+          </Wrap>
+          <UploadBox aria-label="증명 파일 첨부">
+            <UploadMark src="/assets/icons/fileuploader.png" alt="" aria-hidden />
+            {fileName ?? '증명 파일 첨부 (이미지, PDF)'}
+            <HiddenInput type="file" accept="image/*,.pdf" onChange={pickFile} required />
+          </UploadBox>
+          <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+            <Button type="button" small tone="plain" onClick={onClose}>
+              취소
+            </Button>
+            <Button type="submit" small disabled={!badge}>
+              인증 요청
+            </Button>
+          </Row>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
+function SkillAddModal({
+  open,
+  onClose,
+  existing,
+  onAdd,
+}: {
+  open: boolean;
+  onClose: () => void;
+  existing: string[];
+  onAdd: (skills: string[]) => void;
+}) {
+  const toast = useToast();
+  const [query, setQuery] = useState('');
+  const [picked, setPicked] = useState<string[]>([]);
+  const options = useMemo(
+    () =>
+      skillCatalog.filter(
+        (x) => !existing.includes(x) && x.toLowerCase().includes(query.trim().toLowerCase()),
+      ),
+    [query, existing],
+  );
+  const close = () => {
+    setQuery('');
+    setPicked([]);
+    onClose();
+  };
+  const togglePick = (skill: string) =>
+    setPicked((s) => (s.includes(skill) ? s.filter((x) => x !== skill) : [...s, skill]));
+  return (
+    <Modal open={open} onClose={close} title="기술 스택 추가" width={420}>
+      <Input
+        aria-label="기술 검색"
+        placeholder="기술 이름으로 검색하세요"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <SkillGrid>
+        {options.map((skill) => (
+          <Chip
+            key={skill}
+            type="button"
+            selected={picked.includes(skill)}
+            aria-pressed={picked.includes(skill)}
+            onClick={() => togglePick(skill)}
+          >
+            {skill}
+          </Chip>
+        ))}
+        {options.length === 0 && <Muted>검색 결과가 없어요.</Muted>}
+      </SkillGrid>
+      <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+        <Button type="button" small tone="plain" onClick={close}>
+          취소
+        </Button>
+        <Button
+          type="button"
+          small
+          disabled={picked.length === 0}
+          onClick={() => {
+            onAdd(picked);
+            toast.success(`기술 ${picked.length}개를 추가했어요`);
+            close();
+          }}
+        >
+          추가하기{picked.length > 0 ? ` (${picked.length})` : ''}
+        </Button>
+      </Row>
+    </Modal>
+  );
+}
+
 export function MyPage() {
+  const [certOpen, setCertOpen] = useState(false);
+  const [skillOpen, setSkillOpen] = useState(false);
+  const [certificates, setCertificates] = useState<string[]>([]);
+  const [mySkills, setMySkills] = useState<string[]>(stacks);
   return (
     <MyShell title="MY">
       <Stack gap={28}>
@@ -73,7 +267,14 @@ export function MyPage() {
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
-        <Badges />
+        <Badges
+          extra={certificates}
+          trailing={
+            <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
+              <Icon name="imgAddSlotIc" size={12} />
+            </AddButton>
+          }
+        />
         <MobileOnly>
           <MobileMenu>
             {myMenu.map(([href, label]) => (
@@ -85,7 +286,14 @@ export function MyPage() {
           </MobileMenu>
         </MobileOnly>
         <Heading>기술 스택</Heading>
-        <SkillStack />
+        <SkillStack
+          skills={mySkills}
+          trailing={
+            <AddButton aria-label="기술 스택 추가하기" onClick={() => setSkillOpen(true)}>
+              <Icon name="imgAddSlotIc" size={12} />
+            </AddButton>
+          }
+        />
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           <Participating>
@@ -115,6 +323,19 @@ export function MyPage() {
           <History compact />
         </MobileOnly>
       </Stack>
+      <CertificateModal
+        open={certOpen}
+        onClose={() => setCertOpen(false)}
+        onVerified={(label) =>
+          setCertificates((prev) => (label && !prev.includes(label) ? [...prev, label] : prev))
+        }
+      />
+      <SkillAddModal
+        open={skillOpen}
+        onClose={() => setSkillOpen(false)}
+        existing={mySkills}
+        onAdd={(skills) => setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])}
+      />
     </MyShell>
   );
 }
@@ -122,7 +343,7 @@ export function MyTeamsPage() {
   return (
     <MyShell title="내 팀">
       <Stack>
-        <Title>내가 만든 팀이 있는 공모전</Title>
+        <Title>내가 만든 팀이 있는 챌린지</Title>
         <ContestGrid style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))' }}>
           {desktopContests.slice(0, 2).map((x) => (
             <ContestCard contest={x} key={x.id} href="/my/teams/public-data" />
@@ -215,7 +436,7 @@ export function InterestsPage() {
             </Wrap>
           </Stack>
         ))}
-        <Button style={{ width: 160 }} onClick={() => toast.success('관심분야를 저장했어요.')}>
+        <Button style={{ width: 160 }} onClick={() => toast.success('관심분야를 저장했어요')}>
           저장하기
         </Button>
       </Stack>
@@ -281,6 +502,8 @@ const Table = styled.table({
   '& th:last-child': { borderRadius: '0 11px 0 0' },
   '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
   '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
+  '& tbody tr': { transition: 'background 0.12s ease' },
+  '& tbody tr:hover': { background: c.gray50 },
   [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
 export function ApplicationsPage() {
@@ -288,11 +511,11 @@ export function ApplicationsPage() {
     <MyShell title="지원현황">
       <Stack gap={40}>
         <section>
-          <Title style={{ marginBottom: 20 }}>공모전 지원 현황</Title>
+          <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
           <Table>
             <thead>
               <tr>
-                <th>공모전</th>
+                <th>챌린지</th>
                 <th>협회</th>
                 <th>결과</th>
               </tr>
@@ -321,7 +544,7 @@ export function ApplicationsPage() {
           <Table>
             <thead>
               <tr>
-                <th>공모전</th>
+                <th>챌린지</th>
                 <th>팀</th>
                 <th>결과</th>
               </tr>
@@ -414,7 +637,7 @@ export function TeamApplicantsPage() {
           onSubmit={(e) => {
             e.preventDefault();
             setOpen(false);
-            toast.info('결과 전송 화면을 확인했어요.', '실제 전송은 연결 후 사용할 수 있어요.');
+            toast.info('결과 전송 화면을 확인했어요', '실제 전송은 연결 후 사용할 수 있어요');
           }}
         >
           <Input
@@ -445,6 +668,15 @@ const NotificationList = styled.div({
   gap: 0,
   borderTop: `1px solid ${c.gray100}`,
 });
+const NotificationItem = styled.div({
+  padding: '18px 8px',
+  borderBottom: `1px solid ${c.gray100}`,
+  borderRadius: 6,
+  cursor: 'pointer',
+  transition: 'background 0.15s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { background: c.gray100 },
+});
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
   const items = notificationItems.filter((x) => tab === '전체' || x.category === tab);
@@ -464,13 +696,10 @@ export function NotificationsPage() {
           </Row>
           <NotificationList>
             {items.map((item) => (
-              <div
-                key={item.id}
-                style={{ padding: '18px 4px', borderBottom: `1px solid ${c.gray100}` }}
-              >
+              <NotificationItem key={item.id}>
                 <Heading style={{ fontSize: 14 }}>{item.title}</Heading>
                 <Muted>{item.body}</Muted>
-              </div>
+              </NotificationItem>
             ))}
           </NotificationList>
           {items.length === 0 && <Muted>알림이 없어요.</Muted>}

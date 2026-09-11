@@ -24,11 +24,17 @@ const StyledButton = styled.button<ButtonProps>`
   cursor: pointer;
   transition:
     background 0.15s ease,
-    opacity 0.15s ease;
+    opacity 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.96);
   }
 
   ${(p) => p.variant === 'primary' && `background: ${p.theme.colors.semo}; color: ${p.theme.colors.background};`}

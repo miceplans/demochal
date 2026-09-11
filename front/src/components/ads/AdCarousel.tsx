@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type TransitionEvent } from 'react';
 import Image from 'next/image';
 import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
@@ -117,7 +117,9 @@ export function AdCarousel({ ariaLabel, items, variant, interval = 5000, priceOv
     setRailIndex(index + 1);
   };
 
-  const handleTransitionEnd = () => {
+  const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+    // 내부 요소(버튼 등)의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
     if (railIndex !== itemCount + 1) return;
     setShouldAnimate(false);
     setRailIndex(1);

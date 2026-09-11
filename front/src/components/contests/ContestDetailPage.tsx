@@ -84,9 +84,9 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
   const share = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
-      toast.success('링크를 복사했어요.');
+      toast.success('링크를 복사했어요');
     } catch {
-      toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요.');
+      toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
     }
   };
   const summary = (
@@ -110,7 +110,7 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
     </>
   );
   return (
-    <UserShell title="공모전 상세" back="/explore">
+    <UserShell title="챌린지 상세" back="/explore">
       <Content>
         <Intro>
           <div className="cover" />

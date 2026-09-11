@@ -70,12 +70,12 @@ export function ApplicationPage() {
   const [role, setRole] = useState(draft?.role ?? '백엔드');
   const [members, setMembers] = useState(draft?.members ?? [{ name: '', role: '백엔드' }]);
   const membersComplete = members.length > 0 && members.every((member) => member.name.trim());
-  const saveDraft = () => { save({ role, members }); toast.success('임시저장했어요.'); };
+  const saveDraft = () => { save({ role, members }); toast.success('임시저장했어요'); };
 
   return (
     <UserShell title="지원서 작성" back="/contests/public-data" footer={false}>
       <Form onSubmit={(event) => {
-        event.preventDefault(); save({ role, members }); toast.success('지원서를 저장했어요.'); router.push('/my/applications');
+        event.preventDefault(); save({ role, members }); toast.success('지원서를 저장했어요'); router.push('/my/applications');
       }}>
         <Content>
           <FormTitle>

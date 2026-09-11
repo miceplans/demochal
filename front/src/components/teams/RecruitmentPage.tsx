@@ -70,7 +70,7 @@ export function RecruitmentPage() {
       <FormContainer
         onSubmit={(e) => {
           e.preventDefault();
-          toast.success('모집글을 저장했어요.');
+          toast.success('모집글을 저장했어요');
           router.push('/my/teams');
         }}
       >

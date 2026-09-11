@@ -115,7 +115,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   onChange={setCategory}
                   options={[
                     { value: '', label: '전체 챌린지' },
-                    { value: '공공데이터', label: '공공데이터 공모전' },
+                    { value: '공공데이터', label: '공공데이터 챌린지' },
                   ]}
                 />
               </div>

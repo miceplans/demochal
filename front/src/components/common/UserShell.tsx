@@ -82,7 +82,14 @@ const Nav = styled.nav({
   display: 'flex',
   gap: 8,
   paddingTop: 4,
-  '& a': { padding: '8px 10px', ...textStyle.body, color: c.gray700, borderRadius: 6 },
+  '& a': {
+    padding: '8px 10px',
+    ...textStyle.body,
+    color: c.gray700,
+    borderRadius: 6,
+    transition: 'background 0.15s ease, color 0.15s ease',
+  },
+  '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
 });
 const MobileHeader = styled.header({
@@ -114,6 +121,8 @@ const MobileBackLink = styled(Link)({
   fontSize: 28,
   lineHeight: 1,
   color: c.gray900,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:active': { transform: 'scale(0.88)' },
 });
 const MobileTitle = styled.h1({
   minWidth: 0,
@@ -149,6 +158,15 @@ const Bottom = styled.nav({
       padding: 12,
       borderRadius: 6,
       boxSizing: 'border-box',
+      transition: 'background 0.15s ease, transform 0.1s ease',
+    },
+    '& a:active': { transform: 'scale(0.88)' },
+    '& a[aria-current=page]': {
+      background: c.gray100,
+      '& img': {
+        filter:
+          'invert(33%) sepia(96%) saturate(4178%) hue-rotate(207deg) brightness(100%) contrast(106%)',
+      },
     },
   },
 });
@@ -210,7 +228,7 @@ export function UserShell({
   }, []);
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
-    ['/explore', '공모전 탐색', '/assets/icons/figma-footer/search.svg'],
+    ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
     ['/teams', '팀 탐색', '/assets/icons/figma-footer/team.svg'],
     ['/notifications', '알림', '/assets/icons/figma-footer/alert.svg'],
     ['/my', 'MY', '/assets/icons/figma-footer/account.svg'],
@@ -240,7 +258,12 @@ export function UserShell({
         }}
       />
       <HeaderBox compact={compact}>
-        <Row style={{ justifyContent: 'space-between', minHeight: compact ? 31 : 56 }}>
+        <Row
+          style={{
+            justifyContent: compact && !navigation ? 'center' : 'space-between',
+            minHeight: compact ? 31 : 56,
+          }}
+        >
           <Logo />
           {!compact && (
             <>
@@ -259,7 +282,7 @@ export function UserShell({
         {!compact && (
           <Nav>
             <Link href="/explore" aria-current={path.startsWith('/explore') ? 'page' : undefined}>
-              공모전 탐색
+              챌린지 탐색
             </Link>
             <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
               팀 탐색
@@ -338,7 +361,9 @@ const MyAside = styled.aside({
     ...textStyle.bodySmall,
     color: c.gray700,
     borderRadius: 8,
+    transition: 'background 0.15s ease, color 0.15s ease',
   },
+  '& a:hover': { background: c.gray50, color: c.gray900 },
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });

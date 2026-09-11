@@ -20,6 +20,8 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
   overflow: 'hidden',
   minWidth: 0,
   background: c.white,
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
   '.artwork': { height: 188, background: c.gray100, borderRadius: '12px 12px 0 0' },
   '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },

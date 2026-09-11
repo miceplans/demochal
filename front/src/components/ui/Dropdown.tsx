@@ -46,6 +46,11 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
   color: ${({ $hasValue, theme }) => ($hasValue ? '#111' : theme.colors.gray[500])};
   text-align: left;
   cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.1s ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
 
   &:focus-visible {
     outline: 2px solid ${(p) => p.theme.colors.foreground};
@@ -59,13 +64,14 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
   }
 `;
 
-const Chevron = styled.span`
+const Chevron = styled.span<{ $open: boolean }>`
   width: 8px;
   height: 8px;
   flex-shrink: 0;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(45deg) translateY(-2px);
+  transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')}) translateY(${(p) => (p.$open ? '2px' : '-2px')});
+  transition: transform 0.18s ease;
 `;
 
 const Listbox = styled.ul`
@@ -80,6 +86,18 @@ const Listbox = styled.ul`
   margin: 0;
   padding: 0;
   list-style: none;
+  transform-origin: top center;
+  animation: semo-listbox-in 0.16s ease-out;
+  @keyframes semo-listbox-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
 `;
 
 const Option = styled.li<{ $radius: string; $active: boolean }>`
@@ -95,6 +113,7 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   color: #111;
   white-space: nowrap;
   cursor: pointer;
+  transition: background 0.12s ease;
 
   &:hover {
     background: ${(p) => p.theme.colors.gray[100]};
@@ -206,7 +225,7 @@ export function Dropdown({
         onClick={() => (open ? setOpen(false) : openListbox())}
       >
         {selected ? selected.label : placeholder}
-        <Chevron aria-hidden="true" />
+        <Chevron aria-hidden="true" $open={open} />
       </Trigger>
       {open && options.length > 0 ? (
         <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>

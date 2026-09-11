@@ -14,12 +14,13 @@ const ICON_SOURCES: Record<string, string> = {
   imgLink1Icon: '/assets/icons/github.svg',
   imgLink2Icon: '/assets/icons/link-external.svg',
   imgLink3Icon: '/assets/icons/document.svg',
+  imgCertificate: '/assets/icons/document.svg',
   imgToastSuccess: '/assets/icons/toast-success.svg',
   imgToastError: '/assets/icons/toast-error.svg',
   imgToastInfo: '/assets/icons/toast-info.svg',
-  imgImage2: '/assets/icons/kakao.svg',
-  imgImage1: '/assets/icons/google.svg',
-  imgImage3: '/assets/icons/naver.svg',
+  imgImage2: '/assets/oauth/kakaoLogo.png',
+  imgImage1: '/assets/oauth/googleLogo.png',
+  imgImage3: '/assets/oauth/naverLogo.png',
 };
 export function Icon({
   name,
@@ -74,6 +75,8 @@ export const Input = styled.input({
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
+  transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+  '&:hover:not(:focus)': { borderColor: c.gray300 },
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
@@ -85,6 +88,8 @@ export const Select = styled.select({
   padding: '0 14px',
   background: c.white,
   color: c.gray700,
+  transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
+  '&:hover:not(:focus)': { borderColor: c.gray300 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const Row = styled.div<{ gap?: number }>(({ gap = 12 }) => ({
@@ -118,6 +123,11 @@ export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   color: selected ? c.white : c.gray700,
   ...textStyle.caption,
   padding: '8px 16px',
+  cursor: 'pointer',
+  transition:
+    'background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease',
+  '&:hover': { background: selected ? c.primary : c.gray50 },
+  '&:active': { transform: 'scale(0.93)' },
 }));
 export const Tag = styled.span<{ tone?: 'blue' | 'green' | 'red' | 'gray' }>(
   ({ tone = 'gray' }) => ({
@@ -150,6 +160,10 @@ export const IconButton = styled.button({
   justifyContent: 'center',
   padding: 4,
   borderRadius: 6,
+  cursor: 'pointer',
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { transform: 'scale(0.85)' },
 });
 export const EmptyArtwork = styled.div({ background: c.gray100, borderRadius: 12 });
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
@@ -184,6 +198,7 @@ export function Toggle({
         borderRadius: 20,
         background: checked ? c.primary : c.gray300,
         flexShrink: 0,
+        transition: 'background 0.2s ease',
       }}
     >
       <span
@@ -194,7 +209,7 @@ export function Toggle({
           borderRadius: '50%',
           background: c.white,
           transform: checked ? 'translateX(20px)' : 'none',
-          transition: 'transform .15s',
+          transition: 'transform .2s cubic-bezier(0.22, 1, 0.36, 1)',
         }}
       />
     </button>
