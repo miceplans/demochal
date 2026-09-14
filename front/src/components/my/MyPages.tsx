@@ -21,7 +21,13 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
-import { Identity, Badges, SkillStack, History, AddButton } from '@/components/profile/ProfileCards';
+import {
+  Identity,
+  Badges,
+  SkillStack,
+  History,
+  AddButton,
+} from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import {
   contests,
@@ -67,22 +73,13 @@ const UploadBox = styled.label({
   borderBottom: `1px solid ${c.gray100}`,
   paddingBottom: 24,
 });
-const Participating = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 20,
-  '& a': {
-    border: `1px solid ${c.gray100}`,
-    borderRadius: 12,
-    padding: 16,
-    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
-    '&:hover': {
-      transform: 'translateY(-3px)',
-      borderColor: c.gray200,
-      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
-    },
-  },
-  [mobile]: { gridTemplateColumns: '1fr' },
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
 });
 const UploadMark = styled.img({ width: 40, height: 26 });
 const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
@@ -315,7 +312,9 @@ export function MyPage() {
         open={skillOpen}
         onClose={() => setSkillOpen(false)}
         existing={mySkills}
-        onAdd={(skills) => setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])}
+        onAdd={(skills) =>
+          setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])
+        }
       />
     </MyShell>
   );
@@ -452,22 +451,6 @@ export function NotificationSettingsPage() {
     </MyShell>
   );
 }
-const Table = styled.table({
-  width: '100%',
-  borderSpacing: 0,
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  ...textStyle.bodySmall,
-  '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
-  '& th:first-child': { borderRadius: '11px 0 0 0' },
-  '& th:last-child': { borderRadius: '0 11px 0 0' },
-  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
-  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
-  '& tbody tr': { transition: 'background 0.12s ease' },
-  '& tbody tr:hover': { background: c.gray50 },
-  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
-});
 export function ApplicationsPage() {
   return (
     <MyShell title="지원현황">
@@ -637,13 +620,6 @@ const NotificationItem = styled.div({
   transition: 'background 0.15s ease',
   '&:hover': { background: c.gray50 },
   '&:active': { background: c.gray100 },
-});
-const NotificationItem = styled.div({
-  padding: '18px 8px',
-  borderBottom: `1px solid ${c.gray100}`,
-  borderRadius: 6,
-  transition: 'background 0.15s ease',
-  '&:hover': { background: c.gray50 },
 });
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
