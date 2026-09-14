@@ -117,6 +117,10 @@ const ProgressFill = styled.div({
   '@keyframes semo-survey-progress': {
     from: { width: 0 },
   },
+  '@media (prefers-reduced-motion: reduce)': {
+    animation: 'none',
+    transition: 'none',
+  },
 });
 const steps = ['activity', 'interests', 'purpose', 'challenge'];
 export function OnboardingPage({ step }: { step: string }) {
