@@ -6,9 +6,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "predev": "pnpm --filter @semochal/api-client build",
     "prebuild": "pnpm --filter @semochal/api-client build",
-    "dev": "pnpm --parallel --filter ./front --filter ./server run dev",
+    "dev": "node scripts/dev.mjs",
     "dev:front": "pnpm --filter ./front dev",
     "dev:server": "pnpm --filter ./server dev",
     "dev:worker": "pnpm --filter ./server dev:worker",

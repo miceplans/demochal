@@ -27,62 +27,6 @@ import {
 } from '@/data/biz-design';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 
-const RecentGrid = styled.div({ display: 'flex', alignItems: 'stretch', gap: 16 });
-const RecentHeader = styled.div({
-  flex: 1,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 24,
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  padding: 24,
-  minWidth: 0,
-});
-const Thumb = styled.div({
-  width: 159,
-  height: 159,
-  borderRadius: 15,
-  background: c.gray100,
-  flexShrink: 0,
-});
-const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
-const BadgeLabel = styled.strong({ flexShrink: 0 });
-const BadgeValue = styled.span({ color: c.gray700 });
-const SideStats = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  width: 253,
-  flexShrink: 0,
-});
-const BillingGrid = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 32 });
-const ChartBox = styled(StatBox)({ width: 423, flexShrink: 0 });
-const Chart = styled.div({
-  display: 'flex',
-  alignItems: 'flex-end',
-  gap: 18,
-  height: 160,
-  marginTop: 'auto',
-});
-const ChartCol = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 8,
-  flex: 1,
-  ...textStyle.metaText,
-  color: c.gray300,
-});
-const ChartBar = styled.span<{ h: number }>(({ h }) => ({
-  width: '100%',
-  height: `${h}%`,
-  background: c.primary,
-  borderRadius: '4px 4px 0 0',
-}));
-const Row2 = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
-const AdRow = styled(TRow)({ fontSize: textStyle.subtitle.fontSize });
-const EditLink = styled.span({ ...textStyle.metaText, color: c.red });
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span
     style={{
@@ -234,3 +178,60 @@ export function BizDashboardPage() {
     </BizContent>
   );
 }
+
+const RecentGrid = styled.div({ display: 'flex', alignItems: 'stretch', gap: 16 });
+const RecentHeader = styled.div({
+  flex: 1,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 24,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  padding: 24,
+  minWidth: 0,
+});
+const Thumb = styled.div({
+  width: 159,
+  height: 159,
+  borderRadius: 15,
+  background: c.gray100,
+  flexShrink: 0,
+});
+const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
+const BadgeLabel = styled.strong({ flexShrink: 0 });
+const BadgeValue = styled.span({ color: c.gray700 });
+const SideStats = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  width: 253,
+  flexShrink: 0,
+});
+const BillingGrid = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 32 });
+const ChartBox = styled(StatBox)({ width: 423, flexShrink: 0 });
+const Chart = styled.div({
+  display: 'flex',
+  alignItems: 'flex-end',
+  gap: 18,
+  height: 160,
+  marginTop: 'auto',
+});
+const ChartCol = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+  ...textStyle.metaText,
+  color: c.gray300,
+});
+const ChartBar = styled.span<{ h: number }>(({ h }) => ({
+  width: '100%',
+  height: `${h}%`,
+  background: c.primary,
+  borderRadius: '4px 4px 0 0',
+}));
+const Row2 = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
+const AdRow = styled(TRow)({ fontSize: textStyle.subtitle.fontSize });
+const EditLink = styled.span({ ...textStyle.metaText, color: c.red });

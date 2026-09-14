@@ -1,0 +1,96 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+
+const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
+const journal = JSON.parse(
+  readFileSync(resolve(drizzleDirectory, 'meta/_journal.json'), 'utf8'),
+) as {
+  entries: Array<{ tag: string }>;
+};
+const baselineTag = journal.entries[0]?.tag;
+
+describe('baseline schema migration', () => {
+  it('tracks and creates every table in the current core schema', () => {
+    expect(journal.entries).toHaveLength(4);
+    expect(baselineTag).toMatch(/^0000_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
+
+    for (const table of [
+      'users',
+      'businesses',
+      'verifications',
+      'challenges',
+      'applications',
+      'orders',
+      'payments',
+      'files',
+      'notifications',
+    ]) {
+      expect(sql).toContain(`CREATE TABLE "${table}"`);
+    }
+
+    expect(sql).toContain('CONSTRAINT "users_email_unique" UNIQUE("email")');
+    expect(sql.match(/uuid PRIMARY KEY DEFAULT gen_random_uuid\(\) NOT NULL/g)).toHaveLength(9);
+    expect(sql).toContain('"password_hash" text NOT NULL');
+    expect(sql).toContain('"start_date" timestamp NOT NULL');
+    expect(sql).toContain('"end_date" timestamp NOT NULL');
+    expect(sql).toContain('"payload" jsonb NOT NULL');
+    expect(sql).toContain('"provider_payment_key" varchar(200) NOT NULL');
+
+    for (const foreignKey of [
+      'applications_challenge_id_challenges_id_fk',
+      'applications_user_id_users_id_fk',
+      'businesses_owner_user_id_users_id_fk',
+      'challenges_business_id_businesses_id_fk',
+      'notifications_user_id_users_id_fk',
+      'orders_application_id_applications_id_fk',
+      'orders_user_id_users_id_fk',
+      'payments_order_id_orders_id_fk',
+      'verifications_business_id_businesses_id_fk',
+    ]) {
+      expect(sql).toContain(foreignKey);
+    }
+  });
+});
+
+describe('0001_add_google_auth migration', () => {
+  it('adds social-login columns to users', () => {
+    const tag = journal.entries[1]?.tag;
+    expect(tag).toMatch(/^0001_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    expect(sql).toContain('ALTER TABLE "users" ADD COLUMN "auth_provider" varchar(20)');
+    expect(sql).toContain('ALTER TABLE "users" ADD COLUMN "google_id" varchar(255)');
+    expect(sql).toContain('ALTER TABLE "users" ALTER COLUMN "password_hash" DROP NOT NULL');
+    expect(sql).toContain('CONSTRAINT "users_google_id_unique" UNIQUE("google_id")');
+  });
+});
+
+describe('0002_add_ads migration', () => {
+  it('creates the ad_products and ads tables', () => {
+    const tag = journal.entries[2]?.tag;
+    expect(tag).toMatch(/^0002_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    expect(sql).toContain('CREATE TABLE "ad_products"');
+    expect(sql).toContain('CREATE TABLE "ads"');
+    expect(sql).toContain('ads_business_id_businesses_id_fk');
+    expect(sql).toContain('ads_product_id_ad_products_id_fk');
+  });
+});
+
+describe('0003_ads_fixes migration', () => {
+  it('adds ad reservation expiry and a one-product-per-placement constraint', () => {
+    const tag = journal.entries[3]?.tag;
+    expect(tag).toMatch(/^0003_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    expect(sql).toContain('ALTER TABLE "ads" ADD COLUMN "expires_at" timestamp');
+    expect(sql).toContain('ad_products_placement_unique');
+  });
+});

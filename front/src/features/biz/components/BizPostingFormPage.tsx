@@ -7,248 +7,9 @@ import { textStyle } from '@/styles/typography';
 
 const ICON = '/assets/icons';
 
-const FormWrap = styled.div({
-  width: '100%',
-  maxWidth: 1100,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-});
-
-const Body = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 60,
-});
-
-/* ---------- 파일 업로더 ---------- */
-const Uploader = styled.label({
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  gap: 4,
-  height: 282,
-  padding: 8,
-  background: '#f8f8f8',
-  border: `2px dashed ${c.lightBlue}`,
-  borderRadius: 20,
-  cursor: 'pointer',
-});
-const UploadMark = styled.img({ width: 58, height: 36, objectFit: 'contain' });
-const UploadText = styled.span({ ...textStyle.mInfoText, color: c.gray500 });
-
-/* ---------- 제목 + 모집 역할 ---------- */
-const TitleSection = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const TitleInput = styled.input({
-  border: 0,
-  outline: 'none',
-  width: '100%',
-  fontSize: 40,
-  fontWeight: 600,
-  '::placeholder': { color: c.gray500 },
-});
-const Roles = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  width: 592,
-  maxWidth: '100%',
-});
-const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
-const RoleInput = styled.input({
-  flex: 1,
-  minWidth: 0,
-  height: 32,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const AddRoleButton = styled.button({
-  width: 24,
-  height: 24,
-  padding: 0,
-  border: 0,
-  background: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-});
-
-/* ---------- 입력 필드 ---------- */
-const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
-const FieldBlock = styled.div<{ wide?: boolean }>(({ wide }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: wide ? 10 : 8,
-}));
-const FieldLabel = styled.span({
-  fontSize: 18,
-  fontWeight: 400,
-  letterSpacing: '-0.01em',
-  color: c.gray900,
-});
-const LineInput = styled.input({
-  width: '100%',
-  height: 40,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 텍스트 에디터 ---------- */
-const EditorBox = styled.div({
-  border: '1px solid #e9ecef',
-  borderRadius: 8,
-  background: c.white,
-  overflow: 'hidden',
-});
-const MenuBar = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-  padding: 8,
-  flexWrap: 'wrap',
-});
-const ToolGroup = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 2,
-  padding: 2,
-  border: '1px solid #e9ecef',
-  borderRadius: 4,
-});
-const ToolButton = styled.button({
-  width: 28,
-  height: 28,
-  border: 0,
-  borderRadius: 4,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  '&:hover': { background: c.gray100 },
-});
-const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
-const DropdownButton = styled.button({
-  height: 28,
-  border: 0,
-  borderRadius: 4,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 2,
-  ...textStyle.bodySmall,
-  color: c.gray900,
-  '&:hover': { background: c.gray100 },
-});
-const DropdownTextButton = styled(DropdownButton)({ padding: '0 4px 0 8px' });
-const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
-const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
-const ContentsArea = styled.div({
-  padding: '12px 16px 16px',
-  outline: 'none',
-  minHeight: 320,
-  cursor: 'text',
-  '& h1': { fontSize: 24, fontWeight: 700, lineHeight: 1.25 },
-  '& h2': { fontSize: 18, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
-  '& h3': { fontSize: 16, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
-  '& p': { fontSize: 15, lineHeight: 1.6, marginTop: 10 },
-  '& img': { width: '100%', height: 507, objectFit: 'contain', marginTop: 12 },
-  '&:empty::before': { content: 'attr(data-placeholder)', color: c.gray300 },
-});
-
-/* ---------- 카테고리 / 주제 ---------- */
-const TwoCol = styled.div({
-  display: 'flex',
-  gap: 20,
-  alignItems: 'flex-start',
-});
-const CategoryBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 280px' });
-const TopicBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8, flex: '2 1 0', minWidth: 0 });
-const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
-const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
-const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
-  padding: '8px 10px',
-  borderRadius: 20,
-  border: selected ? '1px solid transparent' : `1px solid ${c.gray300}`,
-  background: selected ? c.primary : c.white,
-  color: selected ? c.white : c.gray700,
-  fontSize: 12,
-  fontWeight: selected ? 600 : 400,
-  '&:hover': { borderColor: selected ? 'transparent' : c.primary },
-}));
-
-/* ---------- 라디오 ---------- */
-const RadioColumn = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const RadioOption = styled.label({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  cursor: 'pointer',
-  ...textStyle.bodySmall,
-  color: c.gray900,
-});
-const RadioInput = styled.input({
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-});
-const RadioIcon = styled.img({ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 });
-const LinkInput = styled.input({
-  width: 470,
-  maxWidth: '100%',
-  height: 36,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 문의연락처 ---------- */
-const ContactInput = styled.input({
-  width: '100%',
-  height: 40,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 하단 버튼 ---------- */
-const Actions = styled.div({ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 });
-const CancelButton = styled.button({
-  width: 183,
-  height: 37,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
-  background: c.white,
-  color: c.gray900,
-  ...textStyle.overline,
-  '&:hover': { background: c.gray50 },
-});
-const PublishButton = styled.button({
-  width: 183,
-  height: 37,
-  border: 0,
-  borderRadius: 6,
-  background: c.primary,
-  color: c.white,
-  ...textStyle.subtitle,
-  '&:hover': { background: '#005ee0' },
-});
-
 const chipRows: string[][] = [
   ['# 비즈니스/스타트업', '# 경제/금융/투자', '# 과학/IT/AI', '# 마케팅/PR'],
-  ['# 사회/역사', '# 인문/심리', '# 문화/예술/디자인', '# 게임', '# 여행/레저', '세미나', '인턴십'],
+  ['# 사회/역사', '# 인문/심리', '# 문화/예술/디자인', '# 게임', '# 여행/레저', '# 세미나', '# 인턴십'],
   ['# 운동/건강/웰빙', '# 자연/환경', '# 가족/육아', '#동식물/반려동물', '#음식/음료'],
   ['#영화/드라마/미디어', '#패션/뷰티', '# 자기계발/학습/독서', '# DIY/공예', '# 종교', '# 기타'],
 ];
@@ -505,3 +266,242 @@ export function BizPostingFormPage() {
     </FormWrap>
   );
 }
+
+const FormWrap = styled.div({
+  width: '100%',
+  maxWidth: 1100,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+
+const Body = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 60,
+});
+
+/* ---------- 파일 업로더 ---------- */
+const Uploader = styled.label({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 4,
+  height: 282,
+  padding: 8,
+  background: '#f8f8f8',
+  border: `2px dashed ${c.lightBlue}`,
+  borderRadius: 20,
+  cursor: 'pointer',
+});
+const UploadMark = styled.img({ width: 58, height: 36, objectFit: 'contain' });
+const UploadText = styled.span({ ...textStyle.mInfoText, color: c.gray500 });
+
+/* ---------- 제목 + 모집 역할 ---------- */
+const TitleSection = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const TitleInput = styled.input({
+  border: 0,
+  outline: 'none',
+  width: '100%',
+  fontSize: 40,
+  fontWeight: 600,
+  '::placeholder': { color: c.gray500 },
+});
+const Roles = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  width: 592,
+  maxWidth: '100%',
+});
+const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
+const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
+const RoleInput = styled.input({
+  flex: 1,
+  minWidth: 0,
+  height: 32,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const AddRoleButton = styled.button({
+  width: 24,
+  height: 24,
+  padding: 0,
+  border: 0,
+  background: 'none',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+
+/* ---------- 입력 필드 ---------- */
+const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
+const FieldBlock = styled.div<{ wide?: boolean }>(({ wide }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: wide ? 10 : 8,
+}));
+const FieldLabel = styled.span({
+  fontSize: 18,
+  fontWeight: 400,
+  letterSpacing: '-0.01em',
+  color: c.gray900,
+});
+const LineInput = styled.input({
+  width: '100%',
+  height: 40,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+
+/* ---------- 텍스트 에디터 ---------- */
+const EditorBox = styled.div({
+  border: '1px solid #e9ecef',
+  borderRadius: 8,
+  background: c.white,
+  overflow: 'hidden',
+});
+const MenuBar = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  padding: 8,
+  flexWrap: 'wrap',
+});
+const ToolGroup = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 2,
+  padding: 2,
+  border: '1px solid #e9ecef',
+  borderRadius: 4,
+});
+const ToolButton = styled.button({
+  width: 28,
+  height: 28,
+  border: 0,
+  borderRadius: 4,
+  background: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  '&:hover': { background: c.gray100 },
+});
+const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
+const DropdownButton = styled.button({
+  height: 28,
+  border: 0,
+  borderRadius: 4,
+  background: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 2,
+  ...textStyle.bodySmall,
+  color: c.gray900,
+  '&:hover': { background: c.gray100 },
+});
+const DropdownTextButton = styled(DropdownButton)({ padding: '0 4px 0 8px' });
+const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
+const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
+const ContentsArea = styled.div({
+  padding: '12px 16px 16px',
+  outline: 'none',
+  minHeight: 320,
+  cursor: 'text',
+  '& h1': { fontSize: 24, fontWeight: 700, lineHeight: 1.25 },
+  '& h2': { fontSize: 18, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
+  '& h3': { fontSize: 16, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
+  '& p': { fontSize: 15, lineHeight: 1.6, marginTop: 10 },
+  '& img': { width: '100%', height: 507, objectFit: 'contain', marginTop: 12 },
+  '&:empty::before': { content: 'attr(data-placeholder)', color: c.gray300 },
+});
+
+/* ---------- 카테고리 / 주제 ---------- */
+const TwoCol = styled.div({
+  display: 'flex',
+  gap: 20,
+  alignItems: 'flex-start',
+});
+const CategoryBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 280px' });
+const TopicBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8, flex: '2 1 0', minWidth: 0 });
+const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
+const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
+const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
+  padding: '8px 10px',
+  borderRadius: 20,
+  border: selected ? '1px solid transparent' : `1px solid ${c.gray300}`,
+  background: selected ? c.primary : c.white,
+  color: selected ? c.white : c.gray700,
+  fontSize: 12,
+  fontWeight: selected ? 600 : 400,
+  '&:hover': { borderColor: selected ? 'transparent' : c.primary },
+}));
+
+/* ---------- 라디오 ---------- */
+const RadioColumn = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const RadioOption = styled.label({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  cursor: 'pointer',
+  ...textStyle.bodySmall,
+  color: c.gray900,
+});
+const RadioInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+});
+const RadioIcon = styled.img({ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 });
+const LinkInput = styled.input({
+  width: 470,
+  maxWidth: '100%',
+  height: 36,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+
+/* ---------- 문의연락처 ---------- */
+const ContactInput = styled.input({
+  width: '100%',
+  height: 40,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+
+/* ---------- 하단 버튼 ---------- */
+const Actions = styled.div({ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 });
+const CancelButton = styled.button({
+  width: 183,
+  height: 37,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  background: c.white,
+  color: c.gray900,
+  ...textStyle.overline,
+  '&:hover': { background: c.gray50 },
+});
+const PublishButton = styled.button({
+  width: 183,
+  height: 37,
+  border: 0,
+  borderRadius: 6,
+  background: c.primary,
+  color: c.white,
+  ...textStyle.subtitle,
+  '&:hover': { background: '#005ee0' },
+});

@@ -3,9 +3,6 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 
-const THUMB_SIZE = 12;
-const TRACK_HEIGHT = 20;
-
 export interface RangeSliderProps {
   min: number;
   max: number;
@@ -14,6 +11,54 @@ export interface RangeSliderProps {
   onChange: (value: [number, number]) => void;
   minAriaLabel?: string;
   maxAriaLabel?: string;
+}
+
+const THUMB_SIZE = 12;
+const TRACK_HEIGHT = 20;
+
+export function RangeSlider({
+  min,
+  max,
+  step = 1,
+  value,
+  onChange,
+  minAriaLabel = '최솟값',
+  maxAriaLabel = '최댓값',
+}: RangeSliderProps) {
+  const [from, to] = value;
+  const snap = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step));
+  const pos = (v: number) => ((v - min) / (max - min)) * 100;
+  const offset = (p: number) => THUMB_SIZE / 2 - (p / 100) * THUMB_SIZE;
+  const fromPos = pos(from);
+  const toPos = pos(to);
+  return (
+    <Track>
+      <Rail />
+      <Fill
+        $left={`calc(${fromPos}% + ${offset(fromPos)}px)`}
+        $width={`calc(${toPos - fromPos}% - ${((toPos - fromPos) / 100) * THUMB_SIZE}px)`}
+      />
+      <ThumbInput
+        type="range"
+        aria-label={minAriaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={from}
+        onChange={(e) => onChange([Math.min(snap(Number(e.target.value)), to), to])}
+      />
+      <ThumbInput
+        type="range"
+        aria-label={maxAriaLabel}
+        min={min}
+        max={max}
+        step={step}
+        value={to}
+        onChange={(e) => onChange([from, Math.max(snap(Number(e.target.value)), from)])}
+        style={{ zIndex: 2 }}
+      />
+    </Track>
+  );
 }
 
 const Track = styled.div`
@@ -107,48 +152,3 @@ const ThumbInput = styled.input`
     }
   }
 `;
-
-export function RangeSlider({
-  min,
-  max,
-  step = 1,
-  value,
-  onChange,
-  minAriaLabel = '최솟값',
-  maxAriaLabel = '최댓값',
-}: RangeSliderProps) {
-  const [from, to] = value;
-  const snap = (v: number) => Math.max(min, Math.min(max, Math.round(v / step) * step));
-  const pos = (v: number) => ((v - min) / (max - min)) * 100;
-  const offset = (p: number) => THUMB_SIZE / 2 - (p / 100) * THUMB_SIZE;
-  const fromPos = pos(from);
-  const toPos = pos(to);
-  return (
-    <Track>
-      <Rail />
-      <Fill
-        $left={`calc(${fromPos}% + ${offset(fromPos)}px)`}
-        $width={`calc(${toPos - fromPos}% - ${((toPos - fromPos) / 100) * THUMB_SIZE}px)`}
-      />
-      <ThumbInput
-        type="range"
-        aria-label={minAriaLabel}
-        min={min}
-        max={max}
-        step={step}
-        value={from}
-        onChange={(e) => onChange([Math.min(snap(Number(e.target.value)), to), to])}
-      />
-      <ThumbInput
-        type="range"
-        aria-label={maxAriaLabel}
-        min={min}
-        max={max}
-        step={step}
-        value={to}
-        onChange={(e) => onChange([from, Math.max(snap(Number(e.target.value)), from)])}
-        style={{ zIndex: 2 }}
-      />
-    </Track>
-  );
-}

@@ -6,8 +6,6 @@ import { textStyle } from '@/styles/typography';
 import {
   BizContent,
   SectionTitle,
-  StatBox,
-  StatValue,
   TableBox,
   THead,
   TRow,
@@ -15,28 +13,12 @@ import {
 } from '@/components/biz/BizShell';
 import { chartBars, chartMonths, dailyReport, hourlyReport } from '@/data/biz-design';
 
-const Chart = styled.div({
-  display: 'flex',
-  alignItems: 'flex-end',
-  gap: 18,
-  height: 160,
-  marginTop: 'auto',
-});
-const ChartCol = styled.div({
+const ReportChartBox = styled(TableBox)({
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
   gap: 8,
-  flex: 1,
-  ...textStyle.metaText,
-  color: c.gray300,
+  padding: 20,
 });
-const ChartBar = styled.span(({ h }: { h: number }) => ({
-  width: '100%',
-  height: `${h}%`,
-  background: c.primary,
-  borderRadius: '4px 4px 0 0',
-}));
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0 }}>{children}</span>
 );
@@ -65,7 +47,7 @@ export function BizReportsPage() {
             <option>9/1~9/7</option>
           </FieldSelect>
         </span>
-        <StatBox style={{ height: 266 }}>
+        <ReportChartBox style={{ height: 266 }}>
           <span style={textStyle.bodyStrong}>{dailySum.clicks.toLocaleString()} 클릭수</span>
           <Chart>
             {chartBars.map((h, i) => (
@@ -75,7 +57,7 @@ export function BizReportsPage() {
               </ChartCol>
             ))}
           </Chart>
-        </StatBox>
+        </ReportChartBox>
       </div>
       <section aria-label="일별 리포트">
         <SectionTitle>일별 리포트</SectionTitle>
@@ -130,3 +112,26 @@ export function BizReportsPage() {
     </BizContent>
   );
 }
+
+const Chart = styled.div({
+  display: 'flex',
+  alignItems: 'flex-end',
+  gap: 18,
+  height: 160,
+  marginTop: 'auto',
+});
+const ChartCol = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+  ...textStyle.metaText,
+  color: c.gray300,
+});
+const ChartBar = styled.span(({ h }: { h: number }) => ({
+  width: '100%',
+  height: `${h}%`,
+  background: c.primary,
+  borderRadius: '4px 4px 0 0',
+}));

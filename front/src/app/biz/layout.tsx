@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: 'SEMO.BIZ',
     template: '%s | SEMO.BIZ',
   },
-  description: '쉬운 행사 관리 — 공고 등록부터 홍보, 성과 확인, 운영대행까지.',
+  description: '쉬운 행사 관리, 공고 등록부터 홍보, 성과 확인, 운영대행까지.',
 };
 
 export default async function BizLayout({ children }: { children: ReactNode }) {

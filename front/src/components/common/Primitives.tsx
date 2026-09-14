@@ -14,12 +14,13 @@ const ICON_SOURCES: Record<string, string> = {
   imgLink1Icon: '/assets/icons/github.svg',
   imgLink2Icon: '/assets/icons/link-external.svg',
   imgLink3Icon: '/assets/icons/document.svg',
+  imgCertificate: '/assets/icons/document.svg',
   imgToastSuccess: '/assets/icons/toast-success.svg',
   imgToastError: '/assets/icons/toast-error.svg',
   imgToastInfo: '/assets/icons/toast-info.svg',
-  imgImage2: '/assets/icons/kakao.svg',
-  imgImage1: '/assets/icons/google.svg',
-  imgImage3: '/assets/icons/naver.svg',
+  imgImage2: '/assets/oauth/kakao-logo.png',
+  imgImage1: '/assets/oauth/google-logo.png',
+  imgImage3: '/assets/oauth/naver-logo.png',
 };
 export function Icon({
   name,
