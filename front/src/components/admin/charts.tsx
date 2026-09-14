@@ -21,6 +21,7 @@ import {
   activityChart,
   adRatio,
   trafficData,
+  type AdDailyStat,
   type TrafficRange,
 } from '@/data/admin-design';
 
@@ -449,6 +450,73 @@ export function ActivityChart() {
               fill="url(#activity-general)"
               dot={false}
               activeDot={{ r: 5, fill: c.white, stroke: c.primary, strokeWidth: 3 }}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- 광고 개별 리포트 차트 ---------- */
+
+export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
+  return (
+    <div
+      style={{
+        border: '1px solid #DFE2E7',
+        borderRadius: 16,
+        padding: 24,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 16,
+        background: c.white,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <strong style={{ ...textStyle.display, color: c.gray900 }}>광고 성과</strong>
+        <span style={{ display: 'flex', gap: 16 }}>
+          <Legend>
+            <LegendDot color={c.primary} />
+            노출수
+          </Legend>
+          <Legend>
+            <LegendDot color="#22C55E" />
+            클릭수
+          </Legend>
+        </span>
+      </div>
+      <div style={{ width: '100%', height: 280 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <ComposedChart data={daily} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+            <defs>
+              <linearGradient id="ad-report-impressions" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stopColor={c.primary} stopOpacity={0.25} />
+                <stop offset="1" stopColor={c.primary} stopOpacity={0.02} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+            <XAxis dataKey="date" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="left" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
+            <Tooltip content={<ChartTooltip />} />
+            <Area
+              yAxisId="left"
+              type="monotone"
+              dataKey="impressions"
+              name="노출수"
+              stroke={c.primary}
+              strokeWidth={2}
+              fill="url(#ad-report-impressions)"
+            />
+            <Line
+              yAxisId="right"
+              type="monotone"
+              dataKey="clicks"
+              name="클릭수"
+              stroke="#22C55E"
+              strokeWidth={2}
+              dot={false}
             />
           </ComposedChart>
         </ResponsiveContainer>

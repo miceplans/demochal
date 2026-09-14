@@ -5,8 +5,9 @@ import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { admin } from '@/data/biz-design';
+import { adApi } from '@/lib/ad-api';
 
 const BizNavContext = createContext('');
 export function BizNavProvider({ base, children }: { base: string; children: ReactNode }) {
@@ -60,31 +61,32 @@ export function Logo({ size = 24 }: { size?: number }) {
   );
 }
 
-const LandingHeaderBar = styled.header<{ floating: boolean }>(({ floating }) => ({
+const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
+const lerpRgba = (from: [number, number, number, number], to: [number, number, number, number], t: number) =>
+  `rgba(${lerp(from[0], to[0], t).toFixed(1)}, ${lerp(from[1], to[1], t).toFixed(1)}, ${lerp(from[2], to[2], t).toFixed(1)}, ${lerp(from[3], to[3], t).toFixed(3)})`;
+
+const LandingHeaderBar = styled.header<{ progress: number; width: string }>(({ progress: p, width }) => ({
   position: 'fixed',
   left: '50%',
   transform: 'translateX(-50%)',
-  top: floating ? 16 : 0,
-  width: floating ? 'calc(100% - 32px)' : '100%',
-  maxWidth: floating ? 1280 : '100%',
+  top: lerp(0, 16, p),
+  width,
   height: 64,
   zIndex: 50,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  padding: floating ? '0 32px' : '0 80px',
-  background: floating ? 'rgba(255, 255, 255, 0.72)' : c.white,
-  backdropFilter: floating ? 'blur(16px)' : 'none',
-  WebkitBackdropFilter: floating ? 'blur(16px)' : 'none',
-  borderRadius: floating ? 16 : 0,
-  border: `0.5px solid ${floating ? 'rgba(223, 226, 231, 0.6)' : c.gray100}`,
-  boxShadow: floating ? '0 16px 40px rgba(16, 20, 30, 0.10)' : 'none',
-  transition:
-    'top 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), padding 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1), background 360ms ease, border-color 360ms ease, box-shadow 360ms ease',
+  padding: `0 ${lerp(80, 32, p)}px`,
+  background: `rgba(255, 255, 255, ${lerp(1, 0.72, p).toFixed(3)})`,
+  backdropFilter: `blur(${lerp(0, 16, p)}px)`,
+  WebkitBackdropFilter: `blur(${lerp(0, 16, p)}px)`,
+  borderRadius: lerp(0, 16, p),
+  border: `0.5px solid ${lerpRgba([244, 244, 244, 1], [223, 226, 231, 0.6], p)}`,
+  boxShadow: `0 ${lerp(0, 16, p)}px ${lerp(0, 40, p)}px rgba(16, 20, 30, ${lerp(0, 0.1, p).toFixed(3)})`,
+  willChange: 'top, width, padding, border-radius, background, box-shadow',
   [mobile]: {
-    top: floating ? 8 : 0,
-    width: floating ? 'calc(100% - 16px)' : '100%',
-    padding: floating ? '0 16px' : '0 20px',
+    top: lerp(0, 8, p),
+    padding: `0 ${lerp(20, 16, p)}px`,
   },
 }));
 const HeaderCtas = styled.div({ display: 'flex', gap: 8 });
@@ -116,13 +118,17 @@ const HeaderSignup = styled(BizLink)({
   [mobile]: { width: 'auto', padding: '0 12px' },
 });
 
+const FLOAT_SCROLL_RANGE = 96;
+const FLOAT_MAX_WIDTH = 1280;
+
 export function BizLandingHeader() {
-  const [floating, setFloating] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [viewportWidth, setViewportWidth] = useState(0);
 
   useEffect(() => {
     let ticking = false;
     const update = () => {
-      setFloating(window.scrollY > 24);
+      setProgress(Math.min(1, Math.max(0, window.scrollY / FLOAT_SCROLL_RANGE)));
       ticking = false;
     };
     const onScroll = () => {
@@ -130,13 +136,23 @@ export function BizLandingHeader() {
       ticking = true;
       requestAnimationFrame(update);
     };
+    const onResize = () => setViewportWidth(window.innerWidth);
     update();
+    onResize();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onResize);
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
+  const margin = viewportWidth <= 480 ? 16 : 32;
+  const floatingWidth = viewportWidth ? Math.min(viewportWidth - margin, FLOAT_MAX_WIDTH) : 0;
+  const width = viewportWidth ? `${lerp(viewportWidth, floatingWidth, progress)}px` : '100%';
+
   return (
-    <LandingHeaderBar floating={floating}>
+    <LandingHeaderBar progress={progress} width={width}>
       <Logo size={26} />
       <HeaderCtas>
         <HeaderJoin href="/login">챌린지 문의하기</HeaderJoin>
@@ -194,7 +210,13 @@ const Avatar = styled.span({
   flexShrink: 0,
   ...textStyle.caption2,
 });
-const LogoutIcon = styled(Link)({ display: 'inline-flex', color: '#6B7280' });
+const LogoutIcon = styled.button({
+  display: 'inline-flex',
+  color: '#6B7280',
+  background: 'none',
+  border: 0,
+  padding: 0,
+});
 
 export const menu: [string, string][] = [
   ['/dashboard', '대시보드'],
@@ -209,12 +231,20 @@ export const menu: [string, string][] = [
 
 export function isMenuActive(route: string, href: string) {
   if (href === '/dashboard') return route === '/' || route === '/dashboard';
-  return route.startsWith(href);
+  return route === href || route.startsWith(`${href}/`);
 }
 
 export function BizSidebar() {
   const route = routeOf(usePathname());
   const base = useBizBase();
+  const router = useRouter();
+  const activeHref = menu.reduce(
+    (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
+    ''
+  );
+  const logout = () => {
+    void adApi.auth.logout().finally(() => router.push(`${base}/login`));
+  };
   return (
     <SidebarBox>
       <SidebarTop>
@@ -224,8 +254,8 @@ export function BizSidebar() {
             <NavItem
               key={href}
               href={`${base}${href}`}
-              active={isMenuActive(route, href) ? true : undefined}
-              aria-current={isMenuActive(route, href) ? 'page' : undefined}
+              active={href === activeHref ? true : undefined}
+              aria-current={href === activeHref ? 'page' : undefined}
             >
               {label}
             </NavItem>
@@ -240,7 +270,7 @@ export function BizSidebar() {
             <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{admin.company}</span>
           </span>
         </AdminIdentity>
-        <LogoutIcon href={`${base}/login`} aria-label="로그아웃">
+        <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
             <path
               d="M5 21C4.45 21 3.97917 20.8042 3.5875 20.4125C3.19583 20.0208 3 19.55 3 19V5C3 4.45 3.19583 3.97917 3.5875 3.5875C3.97917 3.19583 4.45 3 5 3H11C11.2833 3 11.5208 3.09583 11.7125 3.2875C11.9042 3.47917 12 3.71667 12 4C12 4.28333 11.9042 4.52083 11.7125 4.7125C11.5208 4.90417 11.2833 5 11 5H5V19H11C11.2833 19 11.5208 19.0958 11.7125 19.2875C11.9042 19.4792 12 19.7167 12 20C12 20.2833 11.9042 20.5208 11.7125 20.7125C11.5208 20.9042 11.2833 21 11 21H5ZM17.175 13H10C9.71667 13 9.47917 12.9042 9.2875 12.7125C9.09583 12.5208 9 12.2833 9 12C9 11.7167 9.09583 11.4792 9.2875 11.2875C9.47917 11.0958 9.71667 11 10 11H17.175L15.3 9.125C15.1167 8.94167 15.025 8.71667 15.025 8.45C15.025 8.18333 15.1167 7.95 15.3 7.75C15.4833 7.55 15.7167 7.44583 16 7.4375C16.2833 7.42917 16.525 7.525 16.725 7.725L20.3 11.3C20.5 11.5 20.6 11.7333 20.6 12C20.6 12.2667 20.5 12.5 20.3 12.7L16.725 16.275C16.525 16.475 16.2875 16.5708 16.0125 16.5625C15.7375 16.5542 15.5 16.45 15.3 16.25C15.1167 16.05 15.0292 15.8125 15.0375 15.5375C15.0458 15.2625 15.1417 15.0333 15.325 14.85L17.175 13Z"

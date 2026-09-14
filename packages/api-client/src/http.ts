@@ -1,6 +1,5 @@
 export interface HttpClientOptions {
   baseUrl: string;
-  getAuthToken?: () => string | null | undefined;
 }
 
 export class ApiError extends Error {
@@ -16,14 +15,13 @@ export class HttpClient {
   constructor(private readonly options: HttpClientOptions) {}
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = this.options.getAuthToken?.();
     const headers = new Headers(init.headers);
     headers.set('Content-Type', 'application/json');
-    if (token) headers.set('Authorization', `Bearer ${token}`);
 
     const res = await fetch(`${this.options.baseUrl}${path}`, {
       ...init,
       headers,
+      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -49,6 +47,13 @@ export class HttpClient {
   patch<T>(path: string, body?: unknown) {
     return this.request<T>(path, {
       method: 'PATCH',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  put<T>(path: string, body?: unknown) {
+    return this.request<T>(path, {
+      method: 'PUT',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   }

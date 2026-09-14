@@ -1,4 +1,9 @@
 import { ApplicationPage } from '@/components/applications/ApplicationPage';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 export default function Page() {
-  return <ApplicationPage />;
+  return (
+    <RequireAuth>
+      <ApplicationPage />
+    </RequireAuth>
+  );
 }
