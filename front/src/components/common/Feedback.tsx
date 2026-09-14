@@ -2,6 +2,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
+
 export function Modal({
   open,
   onClose,
