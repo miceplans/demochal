@@ -6,45 +6,18 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 
-export const AdminPageTitle = styled.h1(textStyle.h1_2);
-export const AdminSectionTitle = styled.h2(textStyle.h1_2);
+/* ---------- Table ---------- */
 
-export const SectionHeader = styled.div({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-});
-export const MoreLink = styled.a({
-  ...textStyle.caption,
-  color: c.gray500,
-  textDecoration: 'none',
-  cursor: 'pointer',
-});
+export type AdminColumn<T> = {
+  key: string;
+  header: string;
+  width?: number;
+  render?: (row: T) => ReactNode;
+};
 
-/* ---------- Stat Card ---------- */
+/* ---------- Badge / Buttons ---------- */
 
-const StatBox = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  padding: 18,
-  border: '1px solid #E5E7EB',
-  borderRadius: 16,
-  minWidth: 0,
-  flex: 1,
-  background: c.white,
-});
-const StatLabel = styled.span({ ...textStyle.subtitle, color: '#6B7280' });
-const StatValue = styled.strong({ ...textStyle.h1_2, color: '#111827' });
-const StatMeta = styled.span({ ...textStyle.metaText, color: '#6B7280' });
-const StatDot = styled.span<{ color: string }>(({ color }) => ({
-  width: 9,
-  height: 9,
-  borderRadius: '50%',
-  background: color,
-  flexShrink: 0,
-}));
-
+export type BadgeTone = 'blue' | 'green' | 'red' | 'gray';
 export function StatCard({
   label,
   value,
@@ -67,39 +40,6 @@ export function StatCard({
     </StatBox>
   );
 }
-
-export const StatRow = styled.div({ display: 'flex', gap: 16, alignItems: 'stretch' });
-
-/* ---------- Filter Bar ---------- */
-
-export const FilterBar = styled.div({
-  display: 'flex',
-  gap: 24,
-  flexWrap: 'wrap',
-});
-
-const SearchBox = styled.label({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  width: 360,
-  height: 42,
-  padding: '0 14px',
-  border: '1px solid #E5E7EB',
-  borderRadius: 10,
-  background: c.white,
-  '&:focus-within': { borderColor: c.primary },
-});
-const SearchInput = styled.input({
-  flex: 1,
-  minWidth: 0,
-  border: 0,
-  outline: 'none',
-  background: 'transparent',
-  ...textStyle.body,
-  '&::placeholder': { color: '#6B7280' },
-});
-const SearchGlyph = styled.span({ display: 'inline-flex', color: c.gray500 });
 
 export function SearchFilter({ placeholder, label, value, onChange }: { placeholder: string; label: string; value?: string; onChange?: (value: string) => void }) {
   return (
@@ -138,56 +78,6 @@ export function SelectFilter({
     />
   );
 }
-
-/* ---------- Table ---------- */
-
-export type AdminColumn<T> = {
-  key: string;
-  header: string;
-  width?: number;
-  render?: (row: T) => ReactNode;
-};
-
-const TableBox = styled.div({
-  border: '1px solid #DFE2E7',
-  borderRadius: 8,
-  overflow: 'hidden',
-  background: c.white,
-});
-const HeadRow = styled.div({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 40,
-  padding: '14px 16px',
-  background: c.gray100,
-  ...textStyle.h3_2,
-  color: c.gray900,
-});
-const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boolean }>(({ last, clickable, selected }) => ({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 40,
-  height: 56,
-  padding: '0 16px',
-  background: selected ? '#EFF6FF' : c.white,
-  borderTop: '1px solid #DFE2E7',
-  borderRadius: last ? '0 0 8px 8px' : undefined,
-  ...textStyle.bodyLarge,
-  color: c.gray900,
-  cursor: clickable ? 'pointer' : undefined,
-  transition: clickable ? 'background-color 160ms ease' : undefined,
-  '&:hover': clickable ? { background: selected ? '#DBEAFE' : c.gray50 } : undefined,
-}));
-const Cell = styled('span', { shouldForwardProp: (prop) => prop !== 'width' })<{ width?: number }>(({ width }) => ({
-  width,
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  color: 'inherit',
-}));
 
 export function AdminTable<T extends { id: string }>({
   columns,
@@ -241,9 +131,119 @@ export function AdminTable<T extends { id: string }>({
   );
 }
 
-/* ---------- Badge / Buttons ---------- */
+/* ---------- Stat Card ---------- */
 
-export type BadgeTone = 'blue' | 'green' | 'red' | 'gray';
+const StatBox = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: 18,
+  border: '1px solid #E5E7EB',
+  borderRadius: 16,
+  minWidth: 0,
+  flex: 1,
+  background: c.white,
+});
+const StatLabel = styled.span({ ...textStyle.subtitle, color: '#6B7280' });
+const StatValue = styled.strong({ ...textStyle.h1_2, color: '#111827' });
+const StatMeta = styled.span({ ...textStyle.metaText, color: '#6B7280' });
+const StatDot = styled.span<{ color: string }>(({ color }) => ({
+  width: 9,
+  height: 9,
+  borderRadius: '50%',
+  background: color,
+  flexShrink: 0,
+}));
+
+export const StatRow = styled.div({ display: 'flex', gap: 16, alignItems: 'stretch' });
+
+/* ---------- Filter Bar ---------- */
+
+export const FilterBar = styled.div({
+  display: 'flex',
+  gap: 24,
+  flexWrap: 'wrap',
+});
+
+const SearchBox = styled.label({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  width: 360,
+  height: 42,
+  padding: '0 14px',
+  border: '1px solid #E5E7EB',
+  borderRadius: 10,
+  background: c.white,
+  '&:focus-within': { borderColor: c.primary },
+});
+const SearchInput = styled.input({
+  flex: 1,
+  minWidth: 0,
+  border: 0,
+  outline: 'none',
+  background: 'transparent',
+  ...textStyle.body,
+  '&::placeholder': { color: '#6B7280' },
+});
+const SearchGlyph = styled.span({ display: 'inline-flex', color: c.gray500 });
+
+const TableBox = styled.div({
+  border: '1px solid #DFE2E7',
+  borderRadius: 8,
+  overflow: 'hidden',
+  background: c.white,
+});
+const HeadRow = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 40,
+  padding: '14px 16px',
+  background: c.gray100,
+  ...textStyle.h3_2,
+  color: c.gray900,
+});
+const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boolean }>(({ last, clickable, selected }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 40,
+  height: 56,
+  padding: '0 16px',
+  background: selected ? '#EFF6FF' : c.white,
+  borderTop: '1px solid #DFE2E7',
+  borderRadius: last ? '0 0 8px 8px' : undefined,
+  ...textStyle.bodyLarge,
+  color: c.gray900,
+  cursor: clickable ? 'pointer' : undefined,
+  transition: clickable ? 'background-color 160ms ease' : undefined,
+  '&:hover': clickable ? { background: selected ? '#DBEAFE' : c.gray50 } : undefined,
+}));
+const Cell = styled('span', { shouldForwardProp: (prop) => prop !== 'width' })<{ width?: number }>(({ width }) => ({
+  width,
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: 'inherit',
+}));
+
+export const AdminPageTitle = styled.h1(textStyle.h1_2);
+export const AdminSectionTitle = styled.h2(textStyle.h1_2);
+
+export const SectionHeader = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+});
+export const MoreLink = styled.a({
+  ...textStyle.caption,
+  color: c.gray500,
+  textDecoration: 'none',
+  cursor: 'pointer',
+});
+
 export const Badge = styled.span<{ tone: BadgeTone }>(({ tone }) => ({
   display: 'inline-flex',
   alignItems: 'center',

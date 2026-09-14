@@ -11,6 +11,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   fullWidth?: boolean;
 }
 
+export function Button({ variant = 'primary', fullWidth, ...rest }: ButtonProps) {
+  return <StyledButton variant={variant} fullWidth={fullWidth} {...rest} />;
+}
+
 const StyledButton = styled.button<ButtonProps>`
   display: inline-flex;
   align-items: center;
@@ -39,7 +43,3 @@ const StyledButton = styled.button<ButtonProps>`
 
   ${(p) => p.fullWidth && 'width: 100%;'}
 `;
-
-export function Button({ variant = 'primary', fullWidth, ...rest }: ButtonProps) {
-  return <StyledButton variant={variant} fullWidth={fullWidth} {...rest} />;
-}

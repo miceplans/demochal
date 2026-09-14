@@ -12,8 +12,6 @@ import {
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
 
-const ChartsRow = styled.div({ display: 'flex', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' });
-
 export function AdminDashboardScreen() {
   return (
     <>
@@ -34,3 +32,5 @@ export function AdminDashboardScreen() {
     </>
   );
 }
+
+const ChartsRow = styled.div({ display: 'flex', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' });

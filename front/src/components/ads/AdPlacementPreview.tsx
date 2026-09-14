@@ -18,14 +18,90 @@ type Props = {
 };
 
 const artwork = {
-  pc: { width: 1200, background: '/assets/PCscreen.png' },
-  mobile: { width: 358, background: '/assets/MobileScreen.png' },
+  pc: { width: 1200, background: '/assets/pc-screen.png' },
+  mobile: { width: 358, background: '/assets/mobile-screen.png' },
 } as const;
 
 const adInfo = {
   hero: { name: '홈 상단 배너 광고', fallbackPrice: 100000 },
   gallery: { name: '홈 중간 이미지 광고', fallbackPrice: 60000 },
 } as const;
+
+/** Shared Figma-faithful advertising preview for business and admin screens. */
+export function AdPlacementPreview({ view, price, onSelect, selectImmediately = false }: Props) {
+  const [active, setActive] = useState<AdPlacement | null>(null);
+  const [tooltip, setTooltip] = useState<{ placement: AdPlacement; top: number; left: number } | null>(null);
+  const canvasRef = useRef<HTMLElement>(null);
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => {
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+  }, []);
+
+  const screen = artwork[view];
+  const Slot = view === 'mobile' ? MobileHeroSlot : HeroSlot;
+  const priceOf = (placement: AdPlacement) => price ?? adInfo[placement].fallbackPrice;
+  const isPricingPreview = !onSelect;
+  const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
+    const canvas = canvasRef.current?.getBoundingClientRect();
+    const target = event.currentTarget.getBoundingClientRect();
+    if (!canvas) return;
+    setTooltip({ placement, top: target.bottom - canvas.top + 12, left: target.left - canvas.left + target.width / 2 });
+    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+    tooltipTimer.current = setTimeout(() => {
+      setTooltip((current) => (current?.placement === placement ? null : current));
+      tooltipTimer.current = null;
+    }, 1400);
+  };
+  const handleSlotEnter = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
+    showTooltip(placement)(event);
+    if (isPricingPreview) setActive(placement);
+  };
+  const handleSlotClick = (placement: AdPlacement) => {
+    setActive(placement);
+    if (selectImmediately && onSelect) onSelect(placement);
+  };
+
+  return (
+    <Canvas ref={canvasRef} view={view} aria-label={`${view === 'mobile' ? '모바일' : 'PC'} 사용자 홈 광고 미리보기`}>
+      <MovingAds ariaLabel="홈 상단 광고" itemCount={5} interval={5000}>
+        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+          <HeroViewport>
+            <HeroRail active={railIndex} view={view} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
+              {loopIndexes.map((item, position) => (
+                <Slot key={`${item}-${position}`} type="button" active={active === 'hero'} onMouseEnter={handleSlotEnter('hero')} onFocus={showTooltip('hero')} onBlur={() => setTooltip(null)} onClick={() => handleSlotClick('hero')} aria-label="홈 상단 광고 선택">
+                  <img src="/assets/figma-ads/home-hero.png" alt={position === 1 ? '홈 상단 광고 예시' : ''} />
+                </Slot>
+              ))}
+            </HeroRail>
+            <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+              {Array.from({ length: 5 }, (_, index) => <HeroDot key={index} active={activeIndex === index} />)}
+            </HeroPager>
+          </HeroViewport>
+        )}
+      </MovingAds>
+      <Background src={screen.background} alt="" aria-hidden="true" />
+      <MovingAds ariaLabel="홈 중간 이미지 광고" itemCount={5} interval={5000}>
+        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+          <GalleryViewport>
+            <GalleryRail active={railIndex} view={view} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
+              {loopIndexes.map((item, position) => (
+                <GallerySlot key={`${item}-${position}`} view={view} type="button" active={active === 'gallery'} onMouseEnter={handleSlotEnter('gallery')} onFocus={showTooltip('gallery')} onBlur={() => setTooltip(null)} onClick={() => handleSlotClick('gallery')} aria-label="홈 중간 이미지 광고 선택">
+                  <img src="/assets/figma-ads/home-gallery.png" alt={position === 1 ? '홈 중간 이미지 광고 예시' : ''} />
+                </GallerySlot>
+              ))}
+            </GalleryRail>
+            <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+              {Array.from({ length: 5 }, (_, index) => <HeroDot key={index} active={activeIndex === index} />)}
+            </HeroPager>
+          </GalleryViewport>
+        )}
+      </MovingAds>
+      {tooltip && <TooltipCard role="tooltip" top={tooltip.top} left={tooltip.left}><strong style={textStyle.bodyStrong}>{adInfo[tooltip.placement].name}</strong><p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>8/25일 ~ 9/24일까지 광고비</p><strong style={{ fontSize: 22 }}>{priceOf(tooltip.placement).toLocaleString()}원</strong>{onSelect && !selectImmediately && <PriceAction type="button" onClick={() => { setTooltip(null); onSelect(tooltip.placement); }}>결제하러 가기 →</PriceAction>}</TooltipCard>}
+      {active && isPricingPreview && createPortal(<PaymentOverlay role="presentation" onClick={() => setActive(null)}><PaymentDialog role="dialog" aria-modal="true" aria-labelledby="ad-payment-title" onClick={(event) => event.stopPropagation()}><h2 id="ad-payment-title" style={{ margin: 0, ...textStyle.h2_2 }}>단기 결제</h2><p style={{ margin: '10px 0 4px', color: c.gray500, ...textStyle.caption }}>8/25일 ~ 8/27일까지 광고비</p><strong style={{ fontSize: 18 }}>{priceOf(active).toLocaleString()}원</strong><PaymentActions><PaymentButton type="button" onClick={() => setActive(null)}>취소</PaymentButton><PaymentButton type="button" primary onClick={() => setActive(null)}>결제하기</PaymentButton></PaymentActions></PaymentDialog></PaymentOverlay>, document.body)}
+    </Canvas>
+  );
+}
 
 const Canvas = styled('section', { shouldForwardProp: (prop) => prop !== 'view' })<{ view: AdPreviewView }>(({ view }) => ({
   position: 'relative',
@@ -83,77 +159,3 @@ const PaymentActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1
 const PaymentButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{ primary?: boolean }>(({ primary }) => ({
   height: 26, border: primary ? 0 : `1px solid ${c.gray200}`, borderRadius: 4, background: primary ? c.primary : c.white, color: primary ? c.white : c.gray900, cursor: 'pointer', ...textStyle.caption,
 }));
-
-/** Shared Figma-faithful advertising preview for business and admin screens. */
-export function AdPlacementPreview({ view, price, onSelect, selectImmediately = false }: Props) {
-  const [active, setActive] = useState<AdPlacement | null>(null);
-  const [tooltip, setTooltip] = useState<{ placement: AdPlacement; top: number; left: number } | null>(null);
-  const canvasRef = useRef<HTMLElement>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const screen = artwork[view];
-  const Slot = view === 'mobile' ? MobileHeroSlot : HeroSlot;
-  const priceOf = (placement: AdPlacement) => price ?? adInfo[placement].fallbackPrice;
-  const isPricingPreview = !onSelect;
-  const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
-    const canvas = canvasRef.current?.getBoundingClientRect();
-    const target = event.currentTarget.getBoundingClientRect();
-    if (!canvas) return;
-    setTooltip({ placement, top: target.bottom - canvas.top + 12, left: target.left - canvas.left + target.width / 2 });
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    tooltipTimer.current = setTimeout(() => {
-      setTooltip((current) => (current?.placement === placement ? null : current));
-      tooltipTimer.current = null;
-    }, 1400);
-  };
-  useEffect(() => () => {
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-  }, []);
-  const handleSlotEnter = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
-    showTooltip(placement)(event);
-    if (isPricingPreview) setActive(placement);
-  };
-  const handleSlotClick = (placement: AdPlacement) => {
-    setActive(placement);
-    if (selectImmediately && onSelect) onSelect(placement);
-  };
-
-  return (
-    <Canvas ref={canvasRef} view={view} aria-label={`${view === 'mobile' ? '모바일' : 'PC'} 사용자 홈 광고 미리보기`}>
-      <MovingAds ariaLabel="홈 상단 광고" itemCount={5} interval={5000}>
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
-          <HeroViewport>
-            <HeroRail active={railIndex} view={view} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
-              {loopIndexes.map((item, position) => (
-                <Slot key={`${item}-${position}`} type="button" active={active === 'hero'} onMouseEnter={handleSlotEnter('hero')} onFocus={showTooltip('hero')} onBlur={() => setTooltip(null)} onClick={() => handleSlotClick('hero')} aria-label="홈 상단 광고 선택">
-                  <img src="/assets/figma-ads/home-hero.png" alt={position === 1 ? '홈 상단 광고 예시' : ''} />
-                </Slot>
-              ))}
-            </HeroRail>
-            <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => <HeroDot key={index} active={activeIndex === index} />)}
-            </HeroPager>
-          </HeroViewport>
-        )}
-      </MovingAds>
-      <Background src={screen.background} alt="" aria-hidden="true" />
-      <MovingAds ariaLabel="홈 중간 이미지 광고" itemCount={5} interval={5000}>
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
-          <GalleryViewport>
-            <GalleryRail active={railIndex} view={view} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
-              {loopIndexes.map((item, position) => (
-                <GallerySlot key={`${item}-${position}`} view={view} type="button" active={active === 'gallery'} onMouseEnter={handleSlotEnter('gallery')} onFocus={showTooltip('gallery')} onBlur={() => setTooltip(null)} onClick={() => handleSlotClick('gallery')} aria-label="홈 중간 이미지 광고 선택">
-                  <img src="/assets/figma-ads/home-gallery.png" alt={position === 1 ? '홈 중간 이미지 광고 예시' : ''} />
-                </GallerySlot>
-              ))}
-            </GalleryRail>
-            <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => <HeroDot key={index} active={activeIndex === index} />)}
-            </HeroPager>
-          </GalleryViewport>
-        )}
-      </MovingAds>
-      {tooltip && <TooltipCard role="tooltip" top={tooltip.top} left={tooltip.left}><strong style={textStyle.bodyStrong}>{adInfo[tooltip.placement].name}</strong><p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>8/25일 ~ 9/24일까지 광고비</p><strong style={{ fontSize: 22 }}>{priceOf(tooltip.placement).toLocaleString()}원</strong>{onSelect && !selectImmediately && <PriceAction type="button" onClick={() => { setTooltip(null); onSelect(tooltip.placement); }}>결제하러 가기 →</PriceAction>}</TooltipCard>}
-      {active && isPricingPreview && createPortal(<PaymentOverlay role="presentation" onClick={() => setActive(null)}><PaymentDialog role="dialog" aria-modal="true" aria-labelledby="ad-payment-title" onClick={(event) => event.stopPropagation()}><h2 id="ad-payment-title" style={{ margin: 0, ...textStyle.h2_2 }}>단기 결제</h2><p style={{ margin: '10px 0 4px', color: c.gray500, ...textStyle.caption }}>8/25일 ~ 8/27일까지 광고비</p><strong style={{ fontSize: 18 }}>{priceOf(active).toLocaleString()}원</strong><PaymentActions><PaymentButton type="button" onClick={() => setActive(null)}>취소</PaymentButton><PaymentButton type="button" primary onClick={() => setActive(null)}>결제하기</PaymentButton></PaymentActions></PaymentDialog></PaymentOverlay>, document.body)}
-    </Canvas>
-  );
-}

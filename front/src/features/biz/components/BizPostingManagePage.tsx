@@ -17,35 +17,6 @@ import {
 } from '@/components/biz/BizShell';
 import { applications, postingStats, recentPosting } from '@/data/biz-design';
 
-const TopRow = styled.div({ display: 'flex', gap: 24, alignItems: 'flex-start', width: '100%' });
-const RegistrationBody = styled.div({
-  flex: '1 0 0',
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 24,
-});
-const Thumb = styled.div({
-  flex: '1 0 0',
-  minHeight: 220,
-  borderRadius: 18,
-  background: c.gray100,
-});
-const HeaderInfo = styled.div({
-  display: 'flex',
-  alignItems: 'flex-start',
-  justifyContent: 'space-between',
-  gap: 24,
-  width: '100%',
-});
-const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
-const BadgeLabel = styled.strong({ flexShrink: 0, color: c.gray900 });
-const BadgeValue = styled.span({ color: c.gray700 });
-
-const SideCol = styled.div({ width: 301, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 32 });
-const ActionStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
-const StatStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
     {children}
@@ -143,3 +114,32 @@ export function BizPostingManagePage() {
     </BizContent>
   );
 }
+
+const TopRow = styled.div({ display: 'flex', gap: 24, alignItems: 'flex-start', width: '100%' });
+const RegistrationBody = styled.div({
+  flex: '1 0 0',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+});
+const Thumb = styled.div({
+  flex: '1 0 0',
+  minHeight: 220,
+  borderRadius: 18,
+  background: c.gray100,
+});
+const HeaderInfo = styled.div({
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 24,
+  width: '100%',
+});
+const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
+const BadgeLabel = styled.strong({ flexShrink: 0, color: c.gray900 });
+const BadgeValue = styled.span({ color: c.gray700 });
+
+const SideCol = styled.div({ width: 301, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 32 });
+const ActionStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const StatStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });

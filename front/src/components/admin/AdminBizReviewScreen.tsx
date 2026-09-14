@@ -51,102 +51,7 @@ const columns: AdminColumn<BizRow>[] = [
   },
 ];
 
-const BizWorkspace = styled.div({
-  display: 'flex',
-  alignItems: 'stretch',
-  minWidth: 0,
-  background: c.white,
-  '@media (max-width: 960px)': {
-    flexDirection: 'column',
-  },
-});
-const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{ withPanel?: boolean }>(
-  ({ withPanel }) => ({
-    minWidth: 0,
-    flex: 1,
-    '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
-    '@media (max-width: 960px)': {
-      '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
-    },
-  }),
-);
 const PANEL_WIDTH = 360;
-const Panel = styled.aside({
-  width: PANEL_WIDTH,
-  minWidth: PANEL_WIDTH,
-  boxSizing: 'border-box',
-  background: c.white,
-  border: '1px solid #DFE2E7',
-  borderLeft: 0,
-  borderRadius: '0 8px 8px 0',
-  padding: '20px 24px 24px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 20,
-  '@media (max-width: 960px)': {
-    width: 'auto',
-    minWidth: 0,
-    borderLeft: '1px solid #DFE2E7',
-    borderTop: 0,
-    borderRadius: '0 0 8px 8px',
-  },
-});
-const PanelHeader = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-});
-const CloseButton = styled.button({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 26,
-  height: 26,
-  border: 0,
-  borderRadius: 6,
-  background: 'transparent',
-  color: c.gray500,
-  '&:hover': { background: c.gray100, color: c.gray900 },
-});
-const PanelTitle = styled.strong({ ...textStyle.h3_2, color: c.gray900, lineHeight: 1.35 });
-const TitleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 });
-const InfoList = styled.dl({
-  margin: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  background: c.gray50,
-  border: '1px solid #E5E7EB',
-  borderRadius: 8,
-  padding: '4px 14px',
-});
-const InfoItem = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  padding: '9px 0',
-  '& + &': { borderTop: '1px solid #E5E7EB' },
-});
-const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
-const InfoValue = styled.dd({ margin: 0, ...textStyle.bodySmall, color: c.gray900, textAlign: 'right' });
-const ActionRow = styled.div({
-  display: 'flex',
-  gap: 8,
-  marginTop: 'auto',
-  paddingTop: 4,
-});
-const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
-  flex: 1,
-  height: 36,
-  padding: '0 16px',
-  border: primary ? 0 : '1px solid #E5E7EB',
-  borderRadius: 6,
-  background: primary ? c.primary : c.white,
-  color: primary ? c.white : c.gray700,
-  ...textStyle.buttonLabel,
-  '&:hover': { background: primary ? '#0056C2' : c.gray100 },
-}));
 
 function CloseGlyph() {
   return (
@@ -223,3 +128,100 @@ export function AdminBizReviewScreen() {
     </>
   );
 }
+
+const BizWorkspace = styled.div({
+  display: 'flex',
+  alignItems: 'stretch',
+  minWidth: 0,
+  background: c.white,
+  '@media (max-width: 960px)': {
+    flexDirection: 'column',
+  },
+});
+const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{ withPanel?: boolean }>(
+  ({ withPanel }) => ({
+    minWidth: 0,
+    flex: 1,
+    '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
+    '@media (max-width: 960px)': {
+      '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
+    },
+  }),
+);
+
+const Panel = styled.aside({
+  width: PANEL_WIDTH,
+  minWidth: PANEL_WIDTH,
+  boxSizing: 'border-box',
+  background: c.white,
+  border: '1px solid #DFE2E7',
+  borderLeft: 0,
+  borderRadius: '0 8px 8px 0',
+  padding: '20px 24px 24px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 20,
+  '@media (max-width: 960px)': {
+    width: 'auto',
+    minWidth: 0,
+    borderLeft: '1px solid #DFE2E7',
+    borderTop: 0,
+    borderRadius: '0 0 8px 8px',
+  },
+});
+const PanelHeader = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+});
+const CloseButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 26,
+  height: 26,
+  border: 0,
+  borderRadius: 6,
+  background: 'transparent',
+  color: c.gray500,
+  '&:hover': { background: c.gray100, color: c.gray900 },
+});
+const PanelTitle = styled.strong({ ...textStyle.h3_2, color: c.gray900, lineHeight: 1.35 });
+const TitleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 });
+const InfoList = styled.dl({
+  margin: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  background: c.gray50,
+  border: '1px solid #E5E7EB',
+  borderRadius: 8,
+  padding: '4px 14px',
+});
+const InfoItem = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 12,
+  padding: '9px 0',
+  '& + &': { borderTop: '1px solid #E5E7EB' },
+});
+const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
+const InfoValue = styled.dd({ margin: 0, ...textStyle.bodySmall, color: c.gray900, textAlign: 'right' });
+const ActionRow = styled.div({
+  display: 'flex',
+  gap: 8,
+  marginTop: 'auto',
+  paddingTop: 4,
+});
+const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
+  flex: 1,
+  height: 36,
+  padding: '0 16px',
+  border: primary ? 0 : '1px solid #E5E7EB',
+  borderRadius: 6,
+  background: primary ? c.primary : c.white,
+  color: primary ? c.white : c.gray700,
+  ...textStyle.buttonLabel,
+  '&:hover': { background: primary ? '#0056C2' : c.gray100 },
+}));
