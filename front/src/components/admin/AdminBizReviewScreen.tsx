@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import styled from '@emotion/styled';
-import { bizRows, bizStats, type BizRow } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import type { BizRow } from '@/data/admin-design';
 import { maskBizNumber } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
 import { colors as c } from '@/styles/design';
@@ -100,8 +101,47 @@ function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) 
   );
 }
 
+const statusParam: Record<string, 'pending' | 'approved' | 'rejected'> = {
+  대기: 'pending',
+  승인: 'approved',
+  거부: 'rejected',
+};
+const ntsLabel: Record<string, BizRow['nts']> = {
+  success: '성공',
+  failed: '실패',
+  closed: '폐업/폐점',
+  unrecognized: '인식불가',
+};
+const bizStatusLabel: Record<string, BizRow['status']> = {
+  pending: '대기',
+  approved: '승인',
+  rejected: '거부',
+};
+
 export function AdminBizReviewScreen() {
   const [selected, setSelected] = useState<BizRow | null>(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('');
+
+  const businessesQuery = generated.useListAdminBusinesses({
+    q: query || undefined,
+    status: statusParam[status],
+  });
+
+  const bizRows = useMemo<BizRow[]>(
+    () =>
+      (businessesQuery.data?.data.items ?? []).map((entry, index) => ({
+        id: entry.id ?? String(index),
+        org: entry.org ?? '',
+        type: entry.type ?? '',
+        bizNumber: entry.bizNumber ?? '',
+        appliedAt: entry.appliedAt ?? '',
+        nts: ntsLabel[entry.nts ?? ''] ?? '인식불가',
+        status: bizStatusLabel[entry.status ?? ''] ?? '대기',
+      })),
+    [businessesQuery.data],
+  );
+  const bizStats = businessesQuery.data?.data.stats ?? [];
 
   const selectBiz = (row: BizRow) => setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
@@ -111,13 +151,13 @@ export function AdminBizReviewScreen() {
       <AdminPageTitle>기관 심사</AdminPageTitle>
       <StatRow>
         {bizStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
       <FilterBar>
-        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" />
+        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" value={query} onChange={setQuery} />
         <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
-        <SelectFilter label="상태" options={['대기', '승인', '거부']} />
+        <SelectFilter label="상태" options={['대기', '승인', '거부']} value={status} onChange={setStatus} />
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>

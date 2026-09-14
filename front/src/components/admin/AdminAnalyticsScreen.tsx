@@ -1,11 +1,15 @@
 'use client';
 
 import styled from '@emotion/styled';
-import { analyticsStats } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
 import { AdminPageTitle, StatCard, StatRow } from './parts';
 import { ActivityChart } from './charts';
 
 export function AdminAnalyticsScreen() {
+  const analyticsQuery = generated.useGetAdminAnalytics();
+  const analytics = analyticsQuery.data?.data;
+  const activity = analytics?.activity;
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -13,11 +17,18 @@ export function AdminAnalyticsScreen() {
         <ExportButton>내보내기</ExportButton>
       </div>
       <StatRow>
-        {analyticsStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(analytics?.stats ?? []).map((stat) => (
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
-      <ActivityChart />
+      {activity ? (
+        <ActivityChart
+          months={activity.months ?? []}
+          general={activity.general ?? []}
+          corp={activity.corp ?? []}
+          yMax={activity.yMax ?? 10}
+        />
+      ) : null}
     </>
   );
 }

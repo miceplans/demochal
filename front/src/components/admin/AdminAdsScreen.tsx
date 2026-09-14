@@ -4,24 +4,32 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { SearchFilter, SelectFilter } from './parts';
 
-const ads = [
-  { id: '1', location: '상단 빅배너 1', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '2', location: '상단 빅배너 2', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '3', location: '상단 빅배너 3', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '4', location: '상단 빅배너 4', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-  { id: '5', location: '상단 빅배너 5', title: '한국 IT 공모전', price: '100,000원', status: '진행중' },
-];
+const adStatusParam: Record<string, string> = { 진행중: 'active', 종료: 'ended' };
 
 export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const toast = useToast();
-  const rows = useMemo(() => ads.filter((ad) => `${ad.location} ${ad.title}`.includes(query) && (!status || ad.status === status)), [query, status]);
+
+  const adsQuery = generated.useListAdminAds({ q: query || undefined, status: adStatusParam[status] });
+
+  const rows = useMemo(
+    () =>
+      (adsQuery.data?.data ?? []).map((ad, index) => ({
+        id: ad.id ?? String(index),
+        location: ad.productId ?? '-',
+        title: ad.title ?? '',
+        price: `${(ad.paidAmount ?? 0).toLocaleString()}원`,
+        status: ad.status === 'active' ? '진행중' : '종료',
+      })),
+    [adsQuery.data],
+  );
   const handleActivity = (value: string) => {
     const label = value === '광고 수정하기' ? value : value === '내보내기' ? value : '광고 중단하기';
     toast.success(label, '선택한 광고에 적용할 수 있습니다.');

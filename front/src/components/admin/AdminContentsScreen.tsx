@@ -1,12 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  adminContests,
-  adminTeams,
-} from '@/data/admin-design';
 import {
   AdminPageTitle,
   AdminSectionTitle,
@@ -27,6 +25,12 @@ function ScrapGlyph() {
 }
 
 export function AdminContentsScreen() {
+  const [query, setQuery] = useState('');
+  const contentsQuery = generated.useListAdminContents();
+  const contents = contentsQuery.data?.data;
+  const adminTeams = contents?.teams ?? [];
+  const adminContests = contents?.contests ?? [];
+
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
@@ -47,12 +51,12 @@ export function AdminContentsScreen() {
                   <TeamChallenge>{team.challenge}</TeamChallenge>
                 </div>
                 <RoleBadges>
-                  {team.roles.map((role) => (
+                  {(team.roles ?? []).map((role) => (
                     <RoleBadge key={role} active>
                       {role}
                     </RoleBadge>
                   ))}
-                  {team.otherRoles.map((role) => (
+                  {(team.otherRoles ?? []).map((role) => (
                     <RoleBadge key={role}>{role}</RoleBadge>
                   ))}
                 </RoleBadges>
@@ -91,7 +95,7 @@ export function AdminContentsScreen() {
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <FilterBar>
-          <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" />
+          <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" value={query} onChange={setQuery} />
           <SelectFilter label="종류" options={['공모전', '팀 모집', '수상작']} />
         </FilterBar>
         <ReportLogTable />

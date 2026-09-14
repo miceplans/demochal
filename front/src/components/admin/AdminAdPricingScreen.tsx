@@ -4,9 +4,9 @@ import { useEffect, useId, useRef, useState, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adPricing } from '@/data/admin-design';
 import { desktopContests, teams } from '@/data/user-design';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
@@ -33,8 +33,8 @@ const MOBILE_GALLERY_GAP = 12;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_ITEM + MOBILE_GALLERY_GAP;
 const MOBILE_GALLERY_CENTER = 358 / 2;
 const NEXT_PERIOD_TOTAL = 100_000;
-const AD_ORGANIZATION = '부산광역시';
-const AD_PERIOD = '8/24~9/24';
+
+type AdSlotPricing = Awaited<ReturnType<typeof generated.getAdPricing>>['data'][number];
 
 const digitsOnly = (value: string) => value.replace(/[^0-9]/g, '');
 
@@ -48,17 +48,29 @@ function SectionHeading({ title }: { title: string }) {
 }
 
 export function AdminAdPricingScreen() {
+  const pricingQuery = generated.useGetAdPricing();
+  const heroPricing = pricingQuery.data?.data.find((slot) => slot.slot === 'hero');
+
+  if (!heroPricing) {
+    return <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>;
+  }
+
+  return <AdminAdPricingPanel heroPricing={heroPricing} onSaved={() => pricingQuery.refetch()} />;
+}
+
+function AdminAdPricingPanel({ heroPricing, onSaved }: { heroPricing: AdSlotPricing; onSaved: () => void }) {
   const [view, setView] = useState<PreviewView>('pc');
   const [tooltip, setTooltip] = useState<{ top: number; left: number } | null>(null);
   const [detailAd, setDetailAd] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
-  const [dailyPrice, setDailyPrice] = useState(adPricing.dailyPrice);
+  const [dailyPrice, setDailyPrice] = useState(heroPricing.dailyPrice ?? 0);
   const [draft, setDraft] = useState('');
   const stageRef = useRef<HTMLDivElement>(null);
   const tooltipTimer = useRef<number | null>(null);
   const toast = useToast();
   const titleId = useId();
   const inputId = useId();
+  const updatePricingMutation = generated.useUpdateAdPricing();
 
   const clearTooltipTimer = () => {
     if (tooltipTimer.current !== null) {
@@ -113,9 +125,18 @@ export function AdminAdPricingScreen() {
       toast.error('광고비를 확인해주세요', '0원보다 큰 금액을 입력해 주세요.');
       return;
     }
-    setDailyPrice(nextPrice);
-    setDetailAd(null);
-    toast.success('광고비가 수정되었습니다', `빅배너 하루 광고비 ${nextPrice.toLocaleString()}원`);
+    updatePricingMutation.mutate(
+      { data: [{ slot: 'hero', dailyPrice: nextPrice }] },
+      {
+        onSuccess: () => {
+          setDailyPrice(nextPrice);
+          setDetailAd(null);
+          toast.success('광고비가 수정되었습니다', `빅배너 하루 광고비 ${nextPrice.toLocaleString()}원`);
+          onSaved();
+        },
+        onError: () => toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요'),
+      },
+    );
   };
 
   const renderDots = (activeIndex: number, label: string) => (
@@ -420,11 +441,11 @@ export function AdminAdPricingScreen() {
                     <InfoList>
                       <InfoItem>
                         <InfoLabel>현재 광고사</InfoLabel>
-                        <InfoValue>{AD_ORGANIZATION}</InfoValue>
+                        <InfoValue>{heroPricing.organization ?? '없음'}</InfoValue>
                       </InfoItem>
                       <InfoItem>
                         <InfoLabel>광고 기간</InfoLabel>
-                        <InfoValue>{AD_PERIOD}</InfoValue>
+                        <InfoValue>{heroPricing.period ?? '-'}</InfoValue>
                       </InfoItem>
                     </InfoList>
                     <ReportLink href="/admin/analytics">리포트 보기</ReportLink>
