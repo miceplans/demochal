@@ -19,24 +19,12 @@ function requireClient(): HttpClient {
   return client;
 }
 
-/** Orval mutator — generated 함수의 모든 호출을 공유 HttpClient로 라우팅한다. */
+/**
+ * Orval mutator — generated 함수의 모든 호출을 공유 HttpClient로 라우팅한다.
+ * orval의 fetch 클라이언트 컨벤션대로 {data, status, headers} 엔벨로프를 그대로 반환한다
+ * (생성된 xxxResponse 타입이 이 형태를 기대함 — 컴포넌트에서는 `result.data.data`로 접근).
+ */
 export async function apiFetch<T>(url: string, options: RequestInit = {}): Promise<T> {
   const http = requireClient();
-  const method = (options.method ?? 'GET').toUpperCase();
-  const body = typeof options.body === 'string' ? (JSON.parse(options.body) as unknown) : undefined;
-
-  switch (method) {
-    case 'GET':
-      return http.get<T>(url);
-    case 'POST':
-      return http.post<T>(url, body);
-    case 'PUT':
-      return http.put<T>(url, body);
-    case 'PATCH':
-      return http.patch<T>(url, body);
-    case 'DELETE':
-      return http.delete<T>(url);
-    default:
-      throw new Error(`api-client: unsupported HTTP method "${method}"`);
-  }
+  return http.send(url, options) as Promise<T>;
 }

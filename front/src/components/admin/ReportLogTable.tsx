@@ -1,11 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
-import { reportRows, type ReportRow } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import type { ReportRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useToast } from '@/components/common/Toast';
 import { AdminTable, Badge, type AdminColumn } from './parts';
+
+const targetTypeLabel: Record<string, string> = {
+  challenge: '공모전',
+  team: '팀 모집',
+  award: '수상작',
+};
+
+const reportStatusLabel: Record<string, ReportRow['status']> = {
+  open: '대기',
+  resolved: '승인',
+  dismissed: '거부',
+};
 
 const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red'> = {
   대기: 'blue',
@@ -46,7 +60,17 @@ function CloseGlyph() {
   );
 }
 
-function ReportDetailPanel({ row, onClose }: { row: ReportRow; onClose: () => void }) {
+function ReportDetailPanel({
+  row,
+  onClose,
+  onResolve,
+  pending,
+}: {
+  row: ReportRow;
+  onClose: () => void;
+  onResolve: (action: 'resolve' | 'dismiss') => void;
+  pending: boolean;
+}) {
   const details = [
     ['신고자', row.reporter],
     ['신고 일시', row.reportedAt],
@@ -83,8 +107,10 @@ function ReportDetailPanel({ row, onClose }: { row: ReportRow; onClose: () => vo
       </BodySection>
       {row.status === '대기' ? (
         <ActionRow>
-          <ActionButton type="button">거부</ActionButton>
-          <ActionButton type="button" primary>
+          <ActionButton type="button" disabled={pending} onClick={() => onResolve('dismiss')}>
+            거부
+          </ActionButton>
+          <ActionButton type="button" primary disabled={pending} onClick={() => onResolve('resolve')}>
             승인
           </ActionButton>
         </ActionRow>
@@ -95,6 +121,36 @@ function ReportDetailPanel({ row, onClose }: { row: ReportRow; onClose: () => vo
 
 export function ReportLogTable() {
   const [selected, setSelected] = useState<ReportRow | null>(null);
+  const toast = useToast();
+
+  const reportsQuery = generated.useListAdminReports();
+
+  const rows = useMemo<ReportRow[]>(
+    () =>
+      (reportsQuery.data?.data ?? []).map((report, index) => ({
+        id: report.id ?? String(index),
+        content: report.content ?? '',
+        type: targetTypeLabel[report.targetType ?? ''] ?? '',
+        org: report.org ?? '',
+        summary: report.summary ?? '',
+        status: reportStatusLabel[report.status ?? ''] ?? '대기',
+        reporter: report.reporter ?? '',
+        reportedAt: report.reportedAt ?? '',
+        detail: report.detail ?? '',
+      })),
+    [reportsQuery.data],
+  );
+
+  const resolveMutation = generated.useResolveReport({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        toast.success(variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.');
+        reportsQuery.refetch();
+        setSelected(null);
+      },
+      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
+  });
 
   const selectReport = (row: ReportRow) => setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
@@ -102,9 +158,16 @@ export function ReportLogTable() {
   return (
     <ReportWorkspace>
       <TableArea withPanel={Boolean(selected) || undefined}>
-        <AdminTable columns={columns} rows={reportRows} onRowClick={selectReport} selectedRowId={selected?.id} />
+        <AdminTable columns={columns} rows={rows} onRowClick={selectReport} selectedRowId={selected?.id} />
       </TableArea>
-      {selected ? <ReportDetailPanel row={selected} onClose={closePanel} /> : null}
+      {selected ? (
+        <ReportDetailPanel
+          row={selected}
+          onClose={closePanel}
+          pending={resolveMutation.isPending}
+          onResolve={(action) => resolveMutation.mutate({ id: selected.id, data: { action } })}
+        />
+      ) : null}
     </ReportWorkspace>
   );
 }

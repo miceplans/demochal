@@ -3,7 +3,8 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { adReports, analyticsStats } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import { adReports } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
@@ -33,6 +34,10 @@ function AdReportSection() {
 }
 
 export function AdminAnalyticsScreen() {
+  const analyticsQuery = generated.useGetAdminAnalytics();
+  const analytics = analyticsQuery.data?.data;
+  const activity = analytics?.activity;
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -43,11 +48,18 @@ export function AdminAnalyticsScreen() {
         <AdReportSection />
       </Suspense>
       <StatRow>
-        {analyticsStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(analytics?.stats ?? []).map((stat) => (
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
-      <ActivityChart />
+      {activity ? (
+        <ActivityChart
+          months={activity.months ?? []}
+          general={activity.general ?? []}
+          corp={activity.corp ?? []}
+          yMax={activity.yMax ?? 10}
+        />
+      ) : null}
     </>
   );
 }
