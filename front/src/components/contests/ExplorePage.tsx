@@ -24,55 +24,6 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 
-const Layout = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '260px minmax(0, 1fr)',
-  [mobile]: { display: 'block' },
-});
-const Sidebar = styled.aside({
-  padding: '28px 20px',
-  background: c.gray50,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 44,
-  '& h3': { ...textStyle.subtitle, marginBottom: 12 },
-  '& button': { ...textStyle.metaText, padding: '5px 10px' },
-  [mobile]: { display: 'none' },
-});
-const Results = styled.div({
-  padding: '60px 32px 100px',
-  minWidth: 0,
-  minHeight: 900,
-  [mobile]: { padding: '24px 16px', minHeight: 0 },
-});
-const CheckGrid = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 12,
-  '& label': { ...textStyle.metaText, color: c.gray700, display: 'flex', gap: 8, alignItems: 'center' },
-});
-const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
-  border: 0,
-  background: 'transparent',
-  ...(active ? textStyle.caption2 : textStyle.caption),
-  color: active ? c.primary : c.gray500,
-}));
-const MobileFilters = styled.div({
-  display: 'none',
-  [mobile]: {
-    display: 'flex',
-    gap: 8,
-    marginBottom: 20,
-    flexWrap: 'wrap',
-    '& select': {
-      background: c.gray100,
-      fontSize: textStyle.mSubText.fontSize,
-      borderRadius: 24,
-      height: 34,
-      maxWidth: 110,
-    },
-  },
-});
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
   const [category, setCategory] = useState('');
@@ -320,3 +271,52 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     </UserShell>
   );
 }
+const Layout = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '260px minmax(0, 1fr)',
+  [mobile]: { display: 'block' },
+});
+const Sidebar = styled.aside({
+  padding: '28px 20px',
+  background: c.gray50,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 44,
+  '& h3': { ...textStyle.subtitle, marginBottom: 12 },
+  '& button': { ...textStyle.metaText, padding: '5px 10px' },
+  [mobile]: { display: 'none' },
+});
+const Results = styled.div({
+  padding: '60px 32px 100px',
+  minWidth: 0,
+  minHeight: 900,
+  [mobile]: { padding: '24px 16px', minHeight: 0 },
+});
+const CheckGrid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 12,
+  '& label': { ...textStyle.metaText, color: c.gray700, display: 'flex', gap: 8, alignItems: 'center' },
+});
+const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
+  border: 0,
+  background: 'transparent',
+  ...(active ? textStyle.caption2 : textStyle.caption),
+  color: active ? c.primary : c.gray500,
+}));
+const MobileFilters = styled.div({
+  display: 'none',
+  [mobile]: {
+    display: 'flex',
+    gap: 8,
+    marginBottom: 20,
+    flexWrap: 'wrap',
+    '& select': {
+      background: c.gray100,
+      fontSize: textStyle.mSubText.fontSize,
+      borderRadius: 24,
+      height: 34,
+      maxWidth: 110,
+    },
+  },
+});

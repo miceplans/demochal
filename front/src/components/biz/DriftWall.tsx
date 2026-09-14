@@ -36,51 +36,6 @@ interface DriftWallProps {
   className?: string;
 }
 
-const Wall = styled.div({
-  height: 'clamp(420px, 54vw, 640px)',
-  overflow: 'hidden',
-  position: 'relative',
-  background: 'transparent',
-  perspective: 'var(--dw-perspective)',
-  isolation: 'isolate',
-  '&::before, &::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    zIndex: 2,
-    pointerEvents: 'none',
-  },
-  '&::before': {
-    background: 'linear-gradient(90deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 18%, rgba(11,12,19,0) 82%, rgba(11,12,19,1) 100%)',
-  },
-  '&::after': {
-    background: 'linear-gradient(180deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 17%, rgba(11,12,19,0) 75%, rgba(11,12,19,1) 100%)',
-  },
-  '@media (max-width: 700px)': { height: 440 },
-});
-const Plane = styled.div({
-  position: 'absolute',
-  left: '50%',
-  top: '50%',
-  display: 'flex',
-  gap: 'var(--dw-gap)',
-  width: 'max-content',
-  transformStyle: 'preserve-3d',
-  willChange: 'transform',
-});
-const Column = styled.div({ height: '140%', overflow: 'hidden', width: 'var(--dw-tile-w)' });
-const Track = styled.div({ display: 'flex', flexDirection: 'column', gap: 'var(--dw-gap)', willChange: 'transform' });
-const Tile = styled.div<{ active: boolean }>(({ active }) => ({
-  width: 'var(--dw-tile-w)',
-  height: 'var(--dw-tile-h)',
-  borderRadius: 'var(--dw-radius)',
-  overflow: 'hidden',
-  transform: active ? 'translateZ(var(--dw-lift)) scale(1.04)' : 'translateZ(0)',
-  filter: active ? 'brightness(1.1)' : 'brightness(var(--dw-dim))',
-  transition: 'transform 260ms ease, filter 260ms ease',
-  '& img': { width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none' },
-}));
-
 const factorForColumn = (index: number, variance: number) => {
   const normalized = ((index * 0.6180339887 + 0.35) % 1) * 2 - 1;
   return 1 + variance * normalized;
@@ -209,3 +164,48 @@ export function DriftWall({
     </Wall>
   );
 }
+
+const Wall = styled.div({
+  height: 'clamp(420px, 54vw, 640px)',
+  overflow: 'hidden',
+  position: 'relative',
+  background: 'transparent',
+  perspective: 'var(--dw-perspective)',
+  isolation: 'isolate',
+  '&::before, &::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    zIndex: 2,
+    pointerEvents: 'none',
+  },
+  '&::before': {
+    background: 'linear-gradient(90deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 18%, rgba(11,12,19,0) 82%, rgba(11,12,19,1) 100%)',
+  },
+  '&::after': {
+    background: 'linear-gradient(180deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 17%, rgba(11,12,19,0) 75%, rgba(11,12,19,1) 100%)',
+  },
+  '@media (max-width: 700px)': { height: 440 },
+});
+const Plane = styled.div({
+  position: 'absolute',
+  left: '50%',
+  top: '50%',
+  display: 'flex',
+  gap: 'var(--dw-gap)',
+  width: 'max-content',
+  transformStyle: 'preserve-3d',
+  willChange: 'transform',
+});
+const Column = styled.div({ height: '140%', overflow: 'hidden', width: 'var(--dw-tile-w)' });
+const Track = styled.div({ display: 'flex', flexDirection: 'column', gap: 'var(--dw-gap)', willChange: 'transform' });
+const Tile = styled.div<{ active: boolean }>(({ active }) => ({
+  width: 'var(--dw-tile-w)',
+  height: 'var(--dw-tile-h)',
+  borderRadius: 'var(--dw-radius)',
+  overflow: 'hidden',
+  transform: active ? 'translateZ(var(--dw-lift)) scale(1.04)' : 'translateZ(0)',
+  filter: active ? 'brightness(1.1)' : 'brightness(var(--dw-dim))',
+  transition: 'transform 260ms ease, filter 260ms ease',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', userSelect: 'none' },
+}));

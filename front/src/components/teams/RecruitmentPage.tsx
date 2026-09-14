@@ -19,16 +19,7 @@ import { textStyle } from '@/styles/typography';
 import { roles } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
-export const FormContainer = styled.form({
-  width: 640,
-  maxWidth: 'calc(100% - 32px)',
-  margin: '0 auto',
-  padding: '40px 0',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 32,
-  [mobile]: { padding: '24px 0', gap: 32 },
-});
+
 export function StepLabel({
   number,
   completed,
@@ -59,6 +50,7 @@ export function StepLabel({
     </Row>
   );
 }
+
 export function RecruitmentPage() {
   const draft = useUserStore((s) => s.recruitment);
   const setDraft = useUserStore((s) => s.setRecruitment);
@@ -176,3 +168,14 @@ export function RecruitmentPage() {
     </UserShell>
   );
 }
+
+export const FormContainer = styled.form({
+  width: 640,
+  maxWidth: 'calc(100% - 32px)',
+  margin: '0 auto',
+  padding: '40px 0',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+  [mobile]: { padding: '24px 0', gap: 32 },
+});

@@ -7,52 +7,6 @@ import { type Contest } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
 
-const CategoryTag = styled(Tag)({
-  [mobile]: { padding: '3px 6px', ...textStyle.mTagText, lineHeight: 'normal', color: c.gray700 },
-});
-const TeamTag = styled(Tag)({
-  ...textStyle.mBadgeText,
-  lineHeight: 'normal',
-  [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
-});
-const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
-  borderRadius: 12,
-  overflow: 'hidden',
-  minWidth: 0,
-  background: c.white,
-  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
-  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
-  '.artwork': { height: 188, background: c.gray100, borderRadius: '12px 12px 0 0' },
-  '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
-  '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  '.dday': { color: c.primary, ...textStyle.overline },
-  h3: textStyle.h3,
-  [mobile]: {
-    ...(horizontal
-      ? {
-          display: 'grid',
-          gridTemplateColumns: '100px minmax(0, 1fr)',
-          border: 0,
-          borderRadius: 6,
-          padding: 10,
-          gap: 8,
-          alignItems: 'center',
-        }
-      : { border: '1px solid #f0f1f3' }),
-    '.artwork': {
-      height: horizontal ? 100 : 160,
-      background: horizontal ? c.gray100 : '#d8e3f0',
-      ...(horizontal ? { border: '1px solid #f0f1f3' } : {}),
-      borderRadius: horizontal ? 12 : '12px 12px 0 0',
-    },
-    '.card-body': { padding: horizontal ? 0 : 12, gap: horizontal ? 0 : 8, minWidth: 0 },
-    '.card-body > a': horizontal ? { marginBottom: 30 } : undefined,
-    h3: horizontal ? textStyle.mFeatureTitle : textStyle.mCardTitle,
-    'h3.clamp': { maxWidth: 124 },
-    '.dday': { ...textStyle.mCounterText, color: c.primary },
-    img: { width: 14, height: 14 },
-  },
-}));
 export function ContestCard({
   contest,
   horizontal = false,
@@ -109,6 +63,52 @@ export function ContestCard({
     </Card>
   );
 }
+const CategoryTag = styled(Tag)({
+  [mobile]: { padding: '3px 6px', ...textStyle.mTagText, lineHeight: 'normal', color: c.gray700 },
+});
+const TeamTag = styled(Tag)({
+  ...textStyle.mBadgeText,
+  lineHeight: 'normal',
+  [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
+});
+const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
+  borderRadius: 12,
+  overflow: 'hidden',
+  minWidth: 0,
+  background: c.white,
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  '.artwork': { height: 188, background: c.gray100, borderRadius: '12px 12px 0 0' },
+  '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
+  '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
+  '.dday': { color: c.primary, ...textStyle.overline },
+  h3: textStyle.h3,
+  [mobile]: {
+    ...(horizontal
+      ? {
+          display: 'grid',
+          gridTemplateColumns: '100px minmax(0, 1fr)',
+          border: 0,
+          borderRadius: 6,
+          padding: 10,
+          gap: 8,
+          alignItems: 'center',
+        }
+      : { border: '1px solid #f0f1f3' }),
+    '.artwork': {
+      height: horizontal ? 100 : 160,
+      background: horizontal ? c.gray100 : '#d8e3f0',
+      ...(horizontal ? { border: '1px solid #f0f1f3' } : {}),
+      borderRadius: horizontal ? 12 : '12px 12px 0 0',
+    },
+    '.card-body': { padding: horizontal ? 0 : 12, gap: horizontal ? 0 : 8, minWidth: 0 },
+    '.card-body > a': horizontal ? { marginBottom: 30 } : undefined,
+    h3: horizontal ? textStyle.mFeatureTitle : textStyle.mCardTitle,
+    'h3.clamp': { maxWidth: 124 },
+    '.dday': { ...textStyle.mCounterText, color: c.primary },
+    img: { width: 14, height: 14 },
+  },
+}));
 export const ContestGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',

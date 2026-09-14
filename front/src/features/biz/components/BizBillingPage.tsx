@@ -5,7 +5,6 @@ import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/bi
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { paymentHistory, paymentTotal, won } from '@/data/biz-design';
 
-const Grid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span style={{ width: w, flexShrink: 0 }}>{children}</span>
 );
@@ -56,3 +55,5 @@ export function BizBillingPage() {
     </BizContent>
   );
 }
+
+const Grid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });

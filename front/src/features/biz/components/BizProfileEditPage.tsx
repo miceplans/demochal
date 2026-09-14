@@ -9,100 +9,6 @@ import { orgProfile } from '@/data/biz-design';
 
 const ICON = '/assets/icons';
 
-const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 7 });
-
-const BannerWrap = styled.div({ position: 'relative' });
-const BannerUpload = styled.label({
-  display: 'block',
-  width: '100%',
-  height: 276,
-  borderRadius: 19,
-  background: c.gray100,
-  cursor: 'pointer',
-  overflow: 'hidden',
-});
-const BannerImg = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
-const HiddenInput = styled.input({
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-});
-const LogoRow = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 16,
-  marginTop: -76,
-  marginLeft: 40,
-  position: 'relative',
-});
-const LogoUpload = styled.label({
-  display: 'block',
-  width: 160,
-  height: 160,
-  borderRadius: 15,
-  background: c.gray200,
-  border: `4px solid ${c.white}`,
-  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
-  cursor: 'pointer',
-  overflow: 'hidden',
-  flexShrink: 0,
-});
-const LogoImg = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
-const NameInput = styled.input({
-  border: 0,
-  borderBottom: `1px solid transparent`,
-  background: 'transparent',
-  padding: '0 0 4px',
-  ...textStyle.display,
-  color: c.gray900,
-  width: 320,
-  maxWidth: '100%',
-  '&::placeholder': { color: c.gray500 },
-  '&:hover, &:focus': { borderBottomColor: c.gray300 },
-  '&:focus': { outline: 'none' },
-});
-
-const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center', flexWrap: 'wrap' });
-const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover', flexShrink: 0 });
-const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 280 });
-const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
-const InfoIcon = styled.img({ width: 24, height: 24, flexShrink: 0 });
-const InfoInput = styled.input({
-  flex: 1,
-  height: 36,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 12px',
-  ...textStyle.body,
-  '&::placeholder': { color: c.gray500 },
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-const ToolbarWrap = styled.div({ display: 'flex', justifyContent: 'center' });
-const Toolbar = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 24,
-  padding: '16px 20px',
-  borderRadius: 12,
-  background: c.white,
-  boxShadow: '-4px -4px 5px rgba(0,0,0,0.1), 4px 4px 5px rgba(0,0,0,0.1)',
-});
-const ToolbarButton = styled.button({
-  width: 24,
-  height: 24,
-  padding: 0,
-  border: 0,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-});
-const ToolbarIcon = styled.img({ width: 24, height: 24, objectFit: 'contain' });
-
 const toolbarItems = [
   { key: 'link', label: '링크 추가', icon: 'toolbar-link.svg' },
   { key: 'text', label: '텍스트 추가', icon: 'toolbar-text.svg' },
@@ -204,3 +110,97 @@ export function BizProfileEditPage() {
     </BizContent>
   );
 }
+
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 7 });
+
+const BannerWrap = styled.div({ position: 'relative' });
+const BannerUpload = styled.label({
+  display: 'block',
+  width: '100%',
+  height: 276,
+  borderRadius: 19,
+  background: c.gray100,
+  cursor: 'pointer',
+  overflow: 'hidden',
+});
+const BannerImg = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+});
+const LogoRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  marginTop: -76,
+  marginLeft: 40,
+  position: 'relative',
+});
+const LogoUpload = styled.label({
+  display: 'block',
+  width: 160,
+  height: 160,
+  borderRadius: 15,
+  background: c.gray200,
+  border: `4px solid ${c.white}`,
+  boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+  cursor: 'pointer',
+  overflow: 'hidden',
+  flexShrink: 0,
+});
+const LogoImg = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
+const NameInput = styled.input({
+  border: 0,
+  borderBottom: `1px solid transparent`,
+  background: 'transparent',
+  padding: '0 0 4px',
+  ...textStyle.display,
+  color: c.gray900,
+  width: 320,
+  maxWidth: '100%',
+  '&::placeholder': { color: c.gray500 },
+  '&:hover, &:focus': { borderBottomColor: c.gray300 },
+  '&:focus': { outline: 'none' },
+});
+
+const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center', flexWrap: 'wrap' });
+const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover', flexShrink: 0 });
+const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 280 });
+const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
+const InfoIcon = styled.img({ width: 24, height: 24, flexShrink: 0 });
+const InfoInput = styled.input({
+  flex: 1,
+  height: 36,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 12px',
+  ...textStyle.body,
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+
+const ToolbarWrap = styled.div({ display: 'flex', justifyContent: 'center' });
+const Toolbar = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 24,
+  padding: '16px 20px',
+  borderRadius: 12,
+  background: c.white,
+  boxShadow: '-4px -4px 5px rgba(0,0,0,0.1), 4px 4px 5px rgba(0,0,0,0.1)',
+});
+const ToolbarButton = styled.button({
+  width: 24,
+  height: 24,
+  padding: 0,
+  border: 0,
+  background: 'transparent',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+const ToolbarIcon = styled.img({ width: 24, height: 24, objectFit: 'contain' });

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import type { ReactNode } from 'react';
 import { Providers } from './providers';
 import '../styles/tokens.css';
 import './globals.css';
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
   description: '나에게 맞는 챌린지를 발견하고 함께 도전할 팀을 만나보세요.',
 };
 
-export default function RootLayout({ children }: LayoutProps<'/'>) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
       <body>

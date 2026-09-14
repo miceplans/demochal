@@ -9,18 +9,6 @@ import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
 
-const ExportButton = styled.button({
-  border: 0,
-  borderRadius: 10,
-  background: '#0877FF',
-  color: '#fff',
-  padding: '12px 20px',
-  ...({ fontSize: 14, fontWeight: 600 } as const),
-  '&:hover': { background: '#0056c2' },
-});
-
-const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
-
 function AdReportSection() {
   const searchParams = useSearchParams();
   const adNumber = Number(searchParams.get('ad'));
@@ -63,3 +51,15 @@ export function AdminAnalyticsScreen() {
     </>
   );
 }
+
+const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
+
+const ExportButton = styled.button({
+  border: 0,
+  borderRadius: 10,
+  background: '#0877FF',
+  color: '#fff',
+  padding: '12px 20px',
+  ...({ fontSize: 14, fontWeight: 600 } as const),
+  '&:hover': { background: '#0056c2' },
+});

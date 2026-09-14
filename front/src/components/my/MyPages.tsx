@@ -44,42 +44,6 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import legalCopy from '@/data/design-copy.json';
 
-const MobileMenu = styled.nav({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  '& a': {
-    padding: '16px 8px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontWeight: 600,
-    borderRadius: 8,
-    transition: 'background 0.15s ease',
-  },
-  '& a:active': { background: c.gray50 },
-  '& a:hover span': { transform: 'translateX(3px)' },
-  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
-  paddingBottom: 24,
-});
-const Participating = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 20,
-  '& a': {
-    border: `1px solid ${c.gray100}`,
-    borderRadius: 12,
-    padding: 16,
-    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
-    '&:hover': {
-      transform: 'translateY(-3px)',
-      borderColor: c.gray200,
-      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
-    },
-  },
-  [mobile]: { gridTemplateColumns: '1fr' },
-});
 const UploadBox = styled.label({
   border: `2px dashed ${c.gray100}`,
   background: '#f8f8f8',
@@ -252,6 +216,10 @@ function SkillAddModal({
     </Modal>
   );
 }
+const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
+  value: x,
+  label: x,
+}));
 
 export function MyPage() {
   const [certOpen, setCertOpen] = useState(false);
@@ -339,6 +307,7 @@ export function MyPage() {
     </MyShell>
   );
 }
+
 export function MyTeamsPage() {
   return (
     <MyShell title="내 팀">
@@ -353,10 +322,7 @@ export function MyTeamsPage() {
     </MyShell>
   );
 }
-const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
-  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
-  [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
-}));
+
 export function BookmarksPage() {
   const ids = useUserStore((s) => s.bookmarks);
   const [sort, setSort] = useState('마감임박');
@@ -407,6 +373,7 @@ export function BookmarksPage() {
     </MyShell>
   );
 }
+
 export function InterestsPage() {
   const state = useUserStore();
   const toast = useToast();
@@ -443,25 +410,7 @@ export function InterestsPage() {
     </MyShell>
   );
 }
-const SettingsGroup = styled.section({
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  overflow: 'hidden',
-  '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
-  '.setting': {
-    padding: '16px 20px',
-    display: 'flex',
-    gap: 16,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTop: `1px solid ${c.gray100}`,
-  },
-  [mobile]: {
-    border: 0,
-    '& h2': { background: c.white, padding: '12px 0', fontWeight: 600 },
-    '.setting': { padding: '16px 0' },
-  },
-});
+
 export function NotificationSettingsPage() {
   const values = useUserStore((s) => s.notifications);
   const toggle = useUserStore((s) => s.toggleNotification);
@@ -490,22 +439,6 @@ export function NotificationSettingsPage() {
     </MyShell>
   );
 }
-const Table = styled.table({
-  width: '100%',
-  borderSpacing: 0,
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  ...textStyle.bodySmall,
-  '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
-  '& th:first-child': { borderRadius: '11px 0 0 0' },
-  '& th:last-child': { borderRadius: '0 11px 0 0' },
-  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
-  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
-  '& tbody tr': { transition: 'background 0.12s ease' },
-  '& tbody tr:hover': { background: c.gray50 },
-  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
-});
 export function ApplicationsPage() {
   return (
     <MyShell title="지원현황">
@@ -570,10 +503,7 @@ export function ApplicationsPage() {
     </MyShell>
   );
 }
-const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
-  value: x,
-  label: x,
-}));
+
 export function TeamApplicantsPage() {
   const [results, setResults] = useState<string[]>(teamApplicants.map(() => '미정'));
   const [open, setOpen] = useState(false);
@@ -662,12 +592,6 @@ export function TeamApplicantsPage() {
   );
 }
 
-const NotificationList = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 0,
-  borderTop: `1px solid ${c.gray100}`,
-});
 const NotificationItem = styled.div({
   padding: '18px 8px',
   borderBottom: `1px solid ${c.gray100}`,
@@ -755,7 +679,7 @@ export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-pro
               }}
             >
               {!s.isChapter && (
-                <Icon src="/assets/icons/BulletIcon.png" width={8} height={23} alt="" />
+                <Icon src="/assets/icons/bullet-icon.png" width={8} height={23} alt="" />
               )}
               {s.heading}
             </Heading>
@@ -778,3 +702,90 @@ export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protect
     </UserShell>
   );
 }
+
+const MobileMenu = styled.nav({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  '& a': {
+    padding: '16px 8px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontWeight: 600,
+    borderRadius: 8,
+    transition: 'background 0.15s ease',
+  },
+  '& a:active': { background: c.gray50 },
+  '& a:hover span': { transform: 'translateX(3px)' },
+  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
+  borderBottom: `1px solid ${c.gray100}`,
+  paddingBottom: 24,
+});
+
+const Participating = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 20,
+  '& a': {
+    border: `1px solid ${c.gray100}`,
+    borderRadius: 12,
+    padding: 16,
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      borderColor: c.gray200,
+      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
+    },
+  },
+  [mobile]: { gridTemplateColumns: '1fr' },
+});
+
+const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
+  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
+  [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
+}));
+
+const SettingsGroup = styled.section({
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  overflow: 'hidden',
+  '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
+  '.setting': {
+    padding: '16px 20px',
+    display: 'flex',
+    gap: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTop: `1px solid ${c.gray100}`,
+  },
+  [mobile]: {
+    border: 0,
+    '& h2': { background: c.white, padding: '12px 0', fontWeight: 600 },
+    '.setting': { padding: '16px 0' },
+  },
+});
+
+const Table = styled.table({
+  width: '100%',
+  borderSpacing: 0,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  ...textStyle.bodySmall,
+  '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
+  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
+  '& th:first-child': { borderRadius: '11px 0 0 0' },
+  '& th:last-child': { borderRadius: '0 11px 0 0' },
+  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
+  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
+  '& tbody tr': { transition: 'background 0.12s ease' },
+  '& tbody tr:hover': { background: c.gray50 },
+  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
+});
+
+const NotificationList = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 0,
+  borderTop: `1px solid ${c.gray100}`,
+});

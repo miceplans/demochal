@@ -1,5 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
 import { BusinessesService } from './businesses.service.js';
 import { RegisterBusinessDto } from './dto/register-business.dto.js';
 
@@ -8,10 +7,9 @@ export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Post()
-  register(@Body() dto: RegisterBusinessDto, @Req() req: Request) {
-    // TODO: replace with req.user.id once an auth guard populates it.
-    const ownerUserId = req.header('x-user-id') ?? '';
-    return this.businessesService.register(dto, ownerUserId);
+  register(@Body() dto: RegisterBusinessDto, @Headers('x-user-id') ownerUserId: string | undefined) {
+    // TODO: replace with the authenticated user id once an auth guard populates it.
+    return this.businessesService.register(dto, ownerUserId ?? '');
   }
 
   @Get(':id')

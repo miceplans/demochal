@@ -7,3 +7,5 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
   '@scarf/scarf': false
+overrides:
+  multer: 2.3.0

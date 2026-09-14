@@ -1,10 +1,41 @@
 'use client';
+
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { paymentCard } from '@/data/biz-design';
 import { maskCardNumber } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
+
+export function BizPaymentCard({ label, amount }: { label: string; amount: string }) {
+  return (
+    <CardVisual>
+      <Balance>
+        <BalanceLabel>{label}</BalanceLabel>
+        <BalanceAmount>{amount}</BalanceAmount>
+      </Balance>
+      <Chip src="/assets/card-chip.png" alt="" />
+      <CardMeta>
+        <MetaItem>
+          <MetaLabel>카드 명의</MetaLabel>
+          <MetaValue>{paymentCard.holder}</MetaValue>
+        </MetaItem>
+        <MetaItem>
+          <MetaLabel>유효 기간</MetaLabel>
+          <MetaValue>{paymentCard.expiry}</MetaValue>
+        </MetaItem>
+      </CardMeta>
+      <CardBottom>
+        <CardBottomInner>
+          <CardNo>
+            <MaskedText value={paymentCard.number} masked={maskCardNumber(paymentCard.number)} />
+          </CardNo>
+          <CardBrand src="/assets/card-brand.svg" alt="" />
+        </CardBottomInner>
+      </CardBottom>
+    </CardVisual>
+  );
+}
 
 const CardVisual = styled.div({
   position: 'relative',
@@ -100,33 +131,3 @@ const CardBrand = styled.img({
   height: 28.6,
   display: 'block',
 });
-
-export function BizPaymentCard({ label, amount }: { label: string; amount: string }) {
-  return (
-    <CardVisual>
-      <Balance>
-        <BalanceLabel>{label}</BalanceLabel>
-        <BalanceAmount>{amount}</BalanceAmount>
-      </Balance>
-      <Chip src="/assets/card-chip.png" alt="" />
-      <CardMeta>
-        <MetaItem>
-          <MetaLabel>카드 명의</MetaLabel>
-          <MetaValue>{paymentCard.holder}</MetaValue>
-        </MetaItem>
-        <MetaItem>
-          <MetaLabel>유효 기간</MetaLabel>
-          <MetaValue>{paymentCard.expiry}</MetaValue>
-        </MetaItem>
-      </CardMeta>
-      <CardBottom>
-        <CardBottomInner>
-          <CardNo>
-            <MaskedText value={paymentCard.number} masked={maskCardNumber(paymentCard.number)} />
-          </CardNo>
-          <CardBrand src="/assets/card-brand.svg" alt="" />
-        </CardBottomInner>
-      </CardBottom>
-    </CardVisual>
-  );
-}

@@ -18,6 +18,88 @@ import {
 } from './parts';
 import { ReportLogTable } from './ReportLogTable';
 
+function ScrapGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
+    </svg>
+  );
+}
+
+export function AdminContentsScreen() {
+  return (
+    <>
+      <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SectionHeader>
+          <AdminSectionTitle>확인해야하는 팀</AdminSectionTitle>
+          <MoreLink>더보기 →</MoreLink>
+        </SectionHeader>
+        <CardGrid>
+          {adminTeams.map((team) => (
+            <TeamCard key={team.id}>
+              {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+              <TeamCover />
+              <TeamBody>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <TeamName>{team.name}</TeamName>
+                  <TeamChallenge>{team.challenge}</TeamChallenge>
+                </div>
+                <RoleBadges>
+                  {team.roles.map((role) => (
+                    <RoleBadge key={role} active>
+                      {role}
+                    </RoleBadge>
+                  ))}
+                  {team.otherRoles.map((role) => (
+                    <RoleBadge key={role}>{role}</RoleBadge>
+                  ))}
+                </RoleBadges>
+                <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
+              </TeamBody>
+            </TeamCard>
+          ))}
+        </CardGrid>
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SectionHeader>
+          <AdminSectionTitle>확인해야하는 챌린지</AdminSectionTitle>
+          <MoreLink>더보기 →</MoreLink>
+        </SectionHeader>
+        <CardGrid>
+          {adminContests.map((contest) => (
+            <ContestCard key={contest.id}>
+              {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+              <ContestCover>공고 이미지</ContestCover>
+              <ContestBody>
+                <ContestTitle>{contest.title}</ContestTitle>
+                <TagRow>
+                  <CategoryTag>{contest.category}</CategoryTag>
+                  <DDay>{contest.dday}</DDay>
+                  <TeamCount>{contest.teams}</TeamCount>
+                  <ScrapButton aria-label="스크랩">
+                    <ScrapGlyph />
+                  </ScrapButton>
+                </TagRow>
+              </ContestBody>
+            </ContestCard>
+          ))}
+        </CardGrid>
+      </section>
+
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <FilterBar>
+          <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" />
+          <SelectFilter label="종류" options={['챌린지', '팀 모집', '수상작']} />
+        </FilterBar>
+        <ReportLogTable />
+      </section>
+    </>
+  );
+}
+
 /* ---------- 팀 카드 ---------- */
 
 const CardGrid = styled.div({
@@ -122,85 +204,3 @@ const ScrapButton = styled.button({
 });
 
 /* ---------- 신고 테이블 ---------- */
-
-function ScrapGlyph() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-    </svg>
-  );
-}
-
-export function AdminContentsScreen() {
-  return (
-    <>
-      <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
-
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader>
-          <AdminSectionTitle>확인해야하는 팀</AdminSectionTitle>
-          <MoreLink>더보기 →</MoreLink>
-        </SectionHeader>
-        <CardGrid>
-          {adminTeams.map((team) => (
-            <TeamCard key={team.id}>
-              {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <TeamCover />
-              <TeamBody>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TeamName>{team.name}</TeamName>
-                  <TeamChallenge>{team.challenge}</TeamChallenge>
-                </div>
-                <RoleBadges>
-                  {team.roles.map((role) => (
-                    <RoleBadge key={role} active>
-                      {role}
-                    </RoleBadge>
-                  ))}
-                  {team.otherRoles.map((role) => (
-                    <RoleBadge key={role}>{role}</RoleBadge>
-                  ))}
-                </RoleBadges>
-                <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
-              </TeamBody>
-            </TeamCard>
-          ))}
-        </CardGrid>
-      </section>
-
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <SectionHeader>
-          <AdminSectionTitle>확인해야하는 챌린지</AdminSectionTitle>
-          <MoreLink>더보기 →</MoreLink>
-        </SectionHeader>
-        <CardGrid>
-          {adminContests.map((contest) => (
-            <ContestCard key={contest.id}>
-              {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <ContestCover>공고 이미지</ContestCover>
-              <ContestBody>
-                <ContestTitle>{contest.title}</ContestTitle>
-                <TagRow>
-                  <CategoryTag>{contest.category}</CategoryTag>
-                  <DDay>{contest.dday}</DDay>
-                  <TeamCount>{contest.teams}</TeamCount>
-                  <ScrapButton aria-label="스크랩">
-                    <ScrapGlyph />
-                  </ScrapButton>
-                </TagRow>
-              </ContestBody>
-            </ContestCard>
-          ))}
-        </CardGrid>
-      </section>
-
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <FilterBar>
-          <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" />
-          <SelectFilter label="종류" options={['챌린지', '팀 모집', '수상작']} />
-        </FilterBar>
-        <ReportLogTable />
-      </section>
-    </>
-  );
-}

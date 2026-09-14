@@ -22,6 +22,122 @@ import {
   recentPosting,
 } from '@/data/biz-design';
 
+function exposureAreaPath(width: number, height: number) {
+  const points = [0.55, 0.3, 0.5, 0.65, 0.35, 0.55, 0.2, 0.45, 0.7, 0.4].map((v, i, arr) => {
+    const x = (i / (arr.length - 1)) * width;
+    const y = height - v * height;
+    return [x, y] as const;
+  });
+  const line = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const area = `${line} L${width},${height} L0,${height} Z`;
+  return { line, area };
+}
+
+export function BizPostingsPage() {
+  const router = useRouter();
+  const hrefOf = useBizHref();
+  const { line, area } = exposureAreaPath(280, 100);
+
+  return (
+    <BizContent>
+      <section aria-label="공고 성과 요약">
+        <HeaderRow>
+          <Thumb aria-hidden />
+          <HeaderInfo>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <strong style={{ fontSize: 22, color: c.gray900 }}>{recentPosting.title}</strong>
+                <span style={{ color: c.gray700, fontSize: 15 }}>{recentPosting.org}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Badge>
+                  <BadgeLabel>자격 / 대상</BadgeLabel>
+                  <BadgeValue>{recentPosting.eligibility}</BadgeValue>
+                </Badge>
+                <Badge>
+                  <BadgeLabel>접수기간</BadgeLabel>
+                  <BadgeValue>{recentPosting.period}</BadgeValue>
+                </Badge>
+              </div>
+            </div>
+            <ActionRow>
+              <EditLink href={`/postings/${recentPosting.id}`}>공고 수정</EditLink>
+              <ViewLink href={siteHref('/contests/public-data')}>자세히 보기</ViewLink>
+            </ActionRow>
+          </HeaderInfo>
+        </HeaderRow>
+      </section>
+
+      <StatsRow>
+        <PieBox>
+          <span style={textStyle.h3_2}>지원자 분포</span>
+          <PieRow>
+            <PieCircle pct={applicantDistribution[0].value} aria-hidden />
+            <Legend>
+              {applicantDistribution.map((d, i) => (
+                <LegendRow key={d.label}>
+                  <Dot tone={i === 0 ? 'primary' : 'light'} aria-hidden />
+                  {d.label}
+                  <LegendValue>{d.value}%</LegendValue>
+                </LegendRow>
+              ))}
+            </Legend>
+          </PieRow>
+        </PieBox>
+        <ExposureBox>
+          <span style={{ fontSize: 13, color: c.gray700 }}>공고 노출수</span>
+          <strong style={{ fontSize: 22, color: c.gray900 }}>{postingStats.exposure.value}</strong>
+          <ExposureChart viewBox="0 0 280 100" preserveAspectRatio="none" aria-hidden>
+            <defs>
+              <linearGradient id="exposureFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={c.primary} stopOpacity={0.25} />
+                <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <path d={area} fill="url(#exposureFill)" />
+            <path d={line} fill="none" stroke={c.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          </ExposureChart>
+          <div style={{ display: 'flex', justifyContent: 'space-between', ...textStyle.finePrint, color: c.gray300 }}>
+            {chartMonths.map((m) => (
+              <span key={m}>{m}</span>
+            ))}
+          </div>
+          <span style={{ ...textStyle.finePrint, color: c.green }}>{postingStats.exposure.delta}</span>
+        </ExposureBox>
+      </StatsRow>
+
+      <section aria-label="내가 게시했던 공고">
+        <SectionHeader style={{ marginBottom: 28 }}>
+          <SectionTitle>내가 게시했던 공고</SectionTitle>
+          <PrimaryButton onClick={() => router.push(hrefOf('/postings/new'))}>
+            챌린지 추가
+          </PrimaryButton>
+        </SectionHeader>
+        <PostingsGrid>
+          {myPostingCards.map((card) => (
+            <CardBox key={card.id} href={`/postings/${card.id}`}>
+              <CardThumb closed={card.closed}>
+                {card.closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
+              </CardThumb>
+              <CardBody>
+                <CardTitle>{card.title}</CardTitle>
+                <CardMeta>
+                  <CategoryTag>{card.category}</CategoryTag>
+                  <Dday>{card.dday}</Dday>
+                </CardMeta>
+                <CardBottom>
+                  <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
+                  <TeamBadge>팀 모집 {card.teamCount}건</TeamBadge>
+                </CardBottom>
+              </CardBody>
+            </CardBox>
+          ))}
+        </PostingsGrid>
+      </section>
+    </BizContent>
+  );
+}
+
 const HeaderRow = styled.div({
   display: 'flex',
   gap: 24,
@@ -159,119 +275,3 @@ const TeamBadge = styled.span({
   padding: '4px 8px',
   ...textStyle.finePrint,
 });
-
-function exposureAreaPath(width: number, height: number) {
-  const points = [0.55, 0.3, 0.5, 0.65, 0.35, 0.55, 0.2, 0.45, 0.7, 0.4].map((v, i, arr) => {
-    const x = (i / (arr.length - 1)) * width;
-    const y = height - v * height;
-    return [x, y] as const;
-  });
-  const line = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-  const area = `${line} L${width},${height} L0,${height} Z`;
-  return { line, area };
-}
-
-export function BizPostingsPage() {
-  const router = useRouter();
-  const hrefOf = useBizHref();
-  const { line, area } = exposureAreaPath(280, 100);
-
-  return (
-    <BizContent>
-      <section aria-label="공고 성과 요약">
-        <HeaderRow>
-          <Thumb aria-hidden />
-          <HeaderInfo>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <strong style={{ fontSize: 22, color: c.gray900 }}>{recentPosting.title}</strong>
-                <span style={{ color: c.gray700, fontSize: 15 }}>{recentPosting.org}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Badge>
-                  <BadgeLabel>자격 / 대상</BadgeLabel>
-                  <BadgeValue>{recentPosting.eligibility}</BadgeValue>
-                </Badge>
-                <Badge>
-                  <BadgeLabel>접수기간</BadgeLabel>
-                  <BadgeValue>{recentPosting.period}</BadgeValue>
-                </Badge>
-              </div>
-            </div>
-            <ActionRow>
-              <EditLink href={`/postings/${recentPosting.id}`}>공고 수정</EditLink>
-              <ViewLink href={siteHref('/contests/public-data')}>자세히 보기</ViewLink>
-            </ActionRow>
-          </HeaderInfo>
-        </HeaderRow>
-      </section>
-
-      <StatsRow>
-        <PieBox>
-          <span style={textStyle.h3_2}>지원자 분포</span>
-          <PieRow>
-            <PieCircle pct={applicantDistribution[0].value} aria-hidden />
-            <Legend>
-              {applicantDistribution.map((d, i) => (
-                <LegendRow key={d.label}>
-                  <Dot tone={i === 0 ? 'primary' : 'light'} aria-hidden />
-                  {d.label}
-                  <LegendValue>{d.value}%</LegendValue>
-                </LegendRow>
-              ))}
-            </Legend>
-          </PieRow>
-        </PieBox>
-        <ExposureBox>
-          <span style={{ fontSize: 13, color: c.gray700 }}>공고 노출수</span>
-          <strong style={{ fontSize: 22, color: c.gray900 }}>{postingStats.exposure.value}</strong>
-          <ExposureChart viewBox="0 0 280 100" preserveAspectRatio="none" aria-hidden>
-            <defs>
-              <linearGradient id="exposureFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={c.primary} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <path d={area} fill="url(#exposureFill)" />
-            <path d={line} fill="none" stroke={c.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-          </ExposureChart>
-          <div style={{ display: 'flex', justifyContent: 'space-between', ...textStyle.finePrint, color: c.gray300 }}>
-            {chartMonths.map((m) => (
-              <span key={m}>{m}</span>
-            ))}
-          </div>
-          <span style={{ ...textStyle.finePrint, color: c.green }}>{postingStats.exposure.delta}</span>
-        </ExposureBox>
-      </StatsRow>
-
-      <section aria-label="내가 게시했던 공고">
-        <SectionHeader style={{ marginBottom: 28 }}>
-          <SectionTitle>내가 게시했던 공고</SectionTitle>
-          <PrimaryButton onClick={() => router.push(hrefOf('/postings/new'))}>
-            챌린지 추가
-          </PrimaryButton>
-        </SectionHeader>
-        <PostingsGrid>
-          {myPostingCards.map((card) => (
-            <CardBox key={card.id} href={`/postings/${card.id}`}>
-              <CardThumb closed={card.closed}>
-                {card.closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
-              </CardThumb>
-              <CardBody>
-                <CardTitle>{card.title}</CardTitle>
-                <CardMeta>
-                  <CategoryTag>{card.category}</CategoryTag>
-                  <Dday>{card.dday}</Dday>
-                </CardMeta>
-                <CardBottom>
-                  <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
-                  <TeamBadge>팀 모집 {card.teamCount}건</TeamBadge>
-                </CardBottom>
-              </CardBody>
-            </CardBox>
-          ))}
-        </PostingsGrid>
-      </section>
-    </BizContent>
-  );
-}
