@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import styled from '@emotion/styled';
 import {
   Area,
@@ -16,7 +17,13 @@ import {
 } from 'recharts';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
+import {
+  activityChart,
+  adRatio,
+  trafficData,
+  type AdDailyStat,
+  type TrafficRange,
+} from '@/data/admin-design';
 
 /* ---------- shared tooltip ---------- */
 
@@ -133,13 +140,14 @@ function GaugeBar(props: {
   );
 }
 
-export function AdRatioChart({ value, ratio }: { value: string; ratio: number }) {
+export function AdRatioChart() {
+  const ratio = adRatio.ratio;
   const percent = Math.round(ratio * 100);
 
   return (
     <ChartCard style={{ width: 420 }}>
       <span style={{ ...textStyle.body, color: c.gray500 }}>유저 광고 비율</span>
-      <strong style={{ ...textStyle.h1, color: c.gray900 }}>{value}</strong>
+      <strong style={{ ...textStyle.h1, color: c.gray900 }}>{adRatio.value}</strong>
       <div
         style={{
           position: 'relative',
@@ -227,21 +235,11 @@ const Tab = styled.button<{ active?: boolean }>(({ active }) => ({
 
 const yAxisLabels = ['0', '50k', '100k', '500k', '1M', '5M'];
 
-export function TrafficChart({
-  range,
-  onRangeChange,
-  labels,
-  primary,
-  secondary,
-}: {
-  range: TrafficRange;
-  onRangeChange: (range: TrafficRange) => void;
-  labels: string[];
-  primary: number[];
-  secondary: number[];
-}) {
+export function TrafficChart() {
+  const [range, setRange] = useState<TrafficRange>('1year');
+  const { labels, primary, secondary } = trafficData[range];
   const height = 160;
-  const maxY = Math.max(...primary, 1) * 1.15;
+  const maxY = Math.max(...primary) * 1.15;
   const data = labels.map((label, i) => ({
     label,
     primary: primary[i],
@@ -283,7 +281,7 @@ export function TrafficChart({
               role="tab"
               aria-selected={range === value}
               active={range === value || undefined}
-              onClick={() => onRangeChange(value)}
+              onClick={() => setRange(value)}
             >
               {text}
             </Tab>
@@ -359,22 +357,19 @@ export function TrafficChart({
 
 /* ---------- Area chart: 리포트 활동 ---------- */
 
-export function ActivityChart({
-  months,
-  general,
-  corp,
-  yMax,
-}: {
-  months: string[];
-  general: number[];
-  corp: number[];
-  yMax: number;
-}) {
-  const yLabels = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
+const months = activityChart.months;
+const generalSeries = activityChart.general;
+const corpSeries = activityChart.corp;
+const yLabels = Array.from(
+  { length: activityChart.yMax / 2 + 1 },
+  (_, i) => i * 2,
+);
+
+export function ActivityChart() {
   const data = months.map((month, i) => ({
     month,
-    general: general[i],
-    corp: corp[i],
+    general: generalSeries[i],
+    corp: corpSeries[i],
   }));
 
   return (
@@ -424,7 +419,7 @@ export function ActivityChart({
               tickMargin={12}
             />
             <YAxis
-              domain={[0, yMax]}
+              domain={[0, activityChart.yMax]}
               ticks={yLabels}
               tickLine={false}
               axisLine={false}

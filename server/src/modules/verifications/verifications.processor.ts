@@ -6,6 +6,7 @@ import { NotificationsService } from '../notifications/notifications.service.js'
 import { ClovaOcrClient } from './clients/clova-ocr.client.js';
 import { NtsClient } from './clients/nts.client.js';
 import type { VerificationJobMessage } from './verifications.service.js';
+import { AdminSettingsService } from '../admin/admin-settings.service.js';
 
 // Consumed by worker.ts's SQS poll loop — never invoked over HTTP.
 @Injectable()
@@ -17,6 +18,7 @@ export class VerificationsProcessorService {
     private readonly ocrClient: ClovaOcrClient,
     private readonly ntsClient: NtsClient,
     private readonly notificationsService: NotificationsService,
+    private readonly adminSettingsService: AdminSettingsService,
   ) {}
 
   async process(message: VerificationJobMessage): Promise<void> {
@@ -41,6 +43,11 @@ export class VerificationsProcessorService {
       .where(eq(files.id, verification.documentFileId))
       .limit(1);
 
+    if (await this.adminSettingsService.isEnabled('bizAutoApprove')) {
+      await this.completeVerification(verification, business, 'verified');
+      return;
+    }
+
     await this.db
       .update(verifications)
       .set({ status: 'processing', updatedAt: new Date() })
@@ -55,27 +62,7 @@ export class VerificationsProcessorService {
       );
 
       const status = ntsResult.valid ? 'verified' : 'rejected';
-      await this.db
-        .update(verifications)
-        .set({
-          status,
-          ocrResult: ocrResult.raw,
-          rejectionReason: ntsResult.valid ? null : 'NTS verification failed',
-          updatedAt: new Date(),
-        })
-        .where(eq(verifications.id, verification.id));
-
-      if (business) {
-        await this.db
-          .update(businesses)
-          .set({ verificationStatus: status })
-          .where(eq(businesses.id, business.id));
-
-        await this.notificationsService.create(business.ownerUserId, 'verification.result', {
-          verificationId: verification.id,
-          status,
-        });
-      }
+      await this.completeVerification(verification, business, status, ocrResult.raw, ntsResult.valid ? null : 'NTS verification failed');
     } catch (error) {
       this.logger.error(`Verification ${verification.id} processing failed`, error);
       await this.db
@@ -87,5 +74,24 @@ export class VerificationsProcessorService {
         })
         .where(eq(verifications.id, verification.id));
     }
+  }
+
+  private async completeVerification(
+    verification: typeof verifications.$inferSelect,
+    business: typeof businesses.$inferSelect | undefined,
+    status: 'verified' | 'rejected',
+    ocrResult?: unknown,
+    rejectionReason?: string | null,
+  ) {
+    await this.db
+      .update(verifications)
+      .set({ status, ocrResult: ocrResult ?? null, rejectionReason: rejectionReason ?? null, updatedAt: new Date() })
+      .where(eq(verifications.id, verification.id));
+    if (!business) return;
+    await this.db.update(businesses).set({ verificationStatus: status }).where(eq(businesses.id, business.id));
+    await this.notificationsService.create(business.ownerUserId, 'verification.result', {
+      verificationId: verification.id,
+      status,
+    });
   }
 }

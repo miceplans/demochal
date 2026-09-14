@@ -18,9 +18,9 @@ const ICON_SOURCES: Record<string, string> = {
   imgToastSuccess: '/assets/icons/toast-success.svg',
   imgToastError: '/assets/icons/toast-error.svg',
   imgToastInfo: '/assets/icons/toast-info.svg',
-  imgImage2: '/assets/oauth/kakao-logo.png',
-  imgImage1: '/assets/oauth/google-logo.png',
-  imgImage3: '/assets/oauth/naver-logo.png',
+  imgImage2: '/assets/oauth/kakaoLogo.png',
+  imgImage1: '/assets/oauth/googleLogo.png',
+  imgImage3: '/assets/oauth/naverLogo.png',
 };
 export function Icon({
   name,

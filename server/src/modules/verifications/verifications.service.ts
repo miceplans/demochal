@@ -2,8 +2,10 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { verifications } from '../../db/schema.js';
+import { businesses, verifications } from '../../db/schema.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import { SqsService } from '../../queue/sqs.service.js';
+import { FilesService } from '../files/files.service.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
 
 export interface VerificationJobMessage {
@@ -15,9 +17,12 @@ export class VerificationsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly sqsService: SqsService,
+    private readonly filesService: FilesService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
-  async submit(dto: SubmitVerificationDto) {
+  async submit(dto: SubmitVerificationDto, userId: string) {
+    await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
     const [verification] = await this.db
       .insert(verifications)
       .values({
@@ -44,6 +49,45 @@ export class VerificationsService {
       .where(eq(verifications.id, id))
       .limit(1);
     if (!verification) throw new NotFoundException('Verification not found');
+    return verification;
+  }
+
+  // Manual admin decision (`/admin/biz-review`) — distinct from the automatic
+  // NTS/OCR pipeline in verifications.processor.ts.
+  async approve(id: string) {
+    return this.decide(id, 'approved');
+  }
+
+  async reject(id: string, reason: string) {
+    return this.decide(id, 'rejected', reason);
+  }
+
+  private async decide(id: string, status: 'approved' | 'rejected', reason?: string) {
+    const [verification] = await this.db
+      .update(verifications)
+      .set({ status, rejectionReason: reason ?? null, updatedAt: new Date() })
+      .where(eq(verifications.id, id))
+      .returning();
+    if (!verification) throw new NotFoundException('Verification not found');
+
+    const [business] = await this.db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.id, verification.businessId))
+      .limit(1);
+    if (business) {
+      await this.db
+        .update(businesses)
+        .set({ verificationStatus: status })
+        .where(eq(businesses.id, business.id));
+
+      await this.notificationsService.create(business.ownerUserId, 'verification.result', {
+        verificationId: verification.id,
+        status,
+        reason,
+      });
+    }
+
     return verification;
   }
 }

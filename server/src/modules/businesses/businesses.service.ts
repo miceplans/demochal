@@ -1,20 +1,21 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses } from '../../db/schema.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
+import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 
 @Injectable()
 export class BusinessesService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  // TODO: derive ownerUserId from the authenticated request once auth is implemented.
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
     const [business] = await this.db
       .insert(businesses)
       .values({
         name: dto.name,
         registrationNumber: dto.registrationNumber,
+        type: dto.type,
         ownerUserId,
       })
       .returning();
@@ -28,6 +29,24 @@ export class BusinessesService {
       .where(eq(businesses.id, id))
       .limit(1);
     if (!business) throw new NotFoundException('Business not found');
+    return business;
+  }
+
+  async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
+    const [business] = await this.db
+      .update(businesses)
+      .set({
+        ...(dto.name !== undefined && { name: dto.name }),
+        ...(dto.bannerImageFileId !== undefined && { bannerImageFileId: dto.bannerImageFileId }),
+        ...(dto.logoImageFileId !== undefined && { logoImageFileId: dto.logoImageFileId }),
+        ...(dto.address !== undefined && { address: dto.address }),
+        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.contentBlocks !== undefined && { contentBlocks: dto.contentBlocks }),
+      })
+      .where(and(eq(businesses.id, id), eq(businesses.ownerUserId, ownerUserId)))
+      .returning();
+    if (!business) throw new NotFoundException('Business not found or not owned by user');
     return business;
   }
 }

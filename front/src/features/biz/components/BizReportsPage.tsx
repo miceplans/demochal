@@ -13,6 +13,28 @@ import {
 } from '@/components/biz/BizShell';
 import { chartBars, chartMonths, dailyReport, hourlyReport } from '@/data/biz-design';
 
+const Chart = styled.div({
+  display: 'flex',
+  alignItems: 'flex-end',
+  gap: 18,
+  height: 160,
+  marginTop: 'auto',
+});
+const ChartCol = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 8,
+  flex: 1,
+  ...textStyle.metaText,
+  color: c.gray300,
+});
+const ChartBar = styled.span(({ h }: { h: number }) => ({
+  width: '100%',
+  height: `${h}%`,
+  background: c.primary,
+  borderRadius: '4px 4px 0 0',
+}));
 const ReportChartBox = styled(TableBox)({
   display: 'flex',
   flexDirection: 'column',
@@ -112,26 +134,3 @@ export function BizReportsPage() {
     </BizContent>
   );
 }
-
-const Chart = styled.div({
-  display: 'flex',
-  alignItems: 'flex-end',
-  gap: 18,
-  height: 160,
-  marginTop: 'auto',
-});
-const ChartCol = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 8,
-  flex: 1,
-  ...textStyle.metaText,
-  color: c.gray300,
-});
-const ChartBar = styled.span(({ h }: { h: number }) => ({
-  width: '100%',
-  height: `${h}%`,
-  background: c.primary,
-  borderRadius: '4px 4px 0 0',
-}));
