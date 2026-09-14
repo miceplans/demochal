@@ -37,12 +37,15 @@ export function MovingAds({
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
-  const goTo = useCallback((index: number) => {
-    const nextIndex = ((index % itemCount) + itemCount) % itemCount;
-    setShouldAnimate(true);
-    setActiveIndex(nextIndex);
-    setRailIndex(nextIndex + 1);
-  }, [itemCount]);
+  const goTo = useCallback(
+    (index: number) => {
+      const nextIndex = ((index % itemCount) + itemCount) % itemCount;
+      setShouldAnimate(true);
+      setActiveIndex(nextIndex);
+      setRailIndex(nextIndex + 1);
+    },
+    [itemCount],
+  );
 
   useEffect(() => {
     if (isPaused || paused || itemCount < 2) return;
@@ -63,9 +66,10 @@ export function MovingAds({
     window.requestAnimationFrame(() => setShouldAnimate(true));
   }, [itemCount, railIndex]);
 
-  const loopIndexes = itemCount > 1
-    ? [itemCount - 1, ...Array.from({ length: itemCount }, (_, index) => index), 0]
-    : [0];
+  const loopIndexes =
+    itemCount > 1
+      ? [itemCount - 1, ...Array.from({ length: itemCount }, (_, index) => index), 0]
+      : [0];
 
   return (
     <div
@@ -77,7 +81,15 @@ export function MovingAds({
         if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
       }}
     >
-      {children({ activeIndex, isPaused, goTo, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd })}
+      {children({
+        activeIndex,
+        isPaused,
+        goTo,
+        loopIndexes,
+        railIndex,
+        shouldAnimate,
+        handleTransitionEnd,
+      })}
     </div>
   );
 }

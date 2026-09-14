@@ -95,7 +95,10 @@ export function AdminAdPricingScreen() {
     const target = event.currentTarget.getBoundingClientRect();
     if (!stage) return;
     clearTooltipTimer();
-    setTooltip({ top: target.bottom - stage.top + 12, left: target.left - stage.left + target.width / 2 });
+    setTooltip({
+      top: target.bottom - stage.top + 12,
+      left: target.left - stage.left + target.width / 2,
+    });
   };
 
   const openDetail = (adNumber: number) => {
@@ -143,7 +146,9 @@ export function AdminAdPricingScreen() {
   );
 
   const railSlots = (loopIndexes: number[]) =>
-    loopIndexes.map((item, position) => <div key={`${item}-${position}`}>{heroSlot(item + 1)}</div>);
+    loopIndexes.map((item, position) => (
+      <div key={`${item}-${position}`}>{heroSlot(item + 1)}</div>
+    ));
 
   return (
     <Screen>
@@ -173,7 +178,12 @@ export function AdminAdPricingScreen() {
       <PreviewStage ref={stageRef} data-stage>
         {view === 'pc' ? (
           <PcMock>
-            <MovingAds ariaLabel="홈 상단 광고" itemCount={AD_COUNT} interval={AD_INTERVAL} paused={tooltip !== null}>
+            <MovingAds
+              ariaLabel="홈 상단 광고"
+              itemCount={AD_COUNT}
+              interval={AD_INTERVAL}
+              paused={tooltip !== null}
+            >
               {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
                 <div>
                   <HeroViewport>
@@ -248,7 +258,11 @@ export function AdminAdPricingScreen() {
                   </Section>
                 </SectionStack>
               </StaticContent>
-              <MovingAds ariaLabel="홈 중간 이미지 광고" itemCount={AD_COUNT} interval={AD_INTERVAL}>
+              <MovingAds
+                ariaLabel="홈 중간 이미지 광고"
+                itemCount={AD_COUNT}
+                interval={AD_INTERVAL}
+              >
                 {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
                   <div>
                     <GalleryViewport>
@@ -318,7 +332,11 @@ export function AdminAdPricingScreen() {
                   </MobileRail>
                 </Section>
               </StaticContent>
-              <MovingAds ariaLabel="홈 중간 이미지 광고" itemCount={AD_COUNT} interval={AD_INTERVAL}>
+              <MovingAds
+                ariaLabel="홈 중간 이미지 광고"
+                itemCount={AD_COUNT}
+                interval={AD_INTERVAL}
+              >
                 {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
                   <div>
                     <GalleryViewport>
@@ -370,80 +388,82 @@ export function AdminAdPricingScreen() {
         )}
       </PreviewStage>
 
-      {dialogOpen && typeof document !== 'undefined' && createPortal(
-        <Backdrop
-          role="presentation"
-          onMouseDown={() => {
-            if (editing) setEditing(false);
-            else setDetailAd(null);
-          }}
-        >
-          <Dialog
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            onMouseDown={(event) => event.stopPropagation()}
+      {dialogOpen &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <Backdrop
+            role="presentation"
+            onMouseDown={() => {
+              if (editing) setEditing(false);
+              else setDetailAd(null);
+            }}
           >
-            {editing ? (
-              <DialogBody>
-                <DialogTitle id={titleId}>광고비 수정</DialogTitle>
-                <ModalText>빅배너 -{detailAd}번의 하루 광고비를 설정해 주세요.</ModalText>
-                <label style={{ display: 'grid', gap: 8 }} htmlFor={inputId}>
-                  <span style={{ ...textStyle.subtitle, color: '#101010' }}>하루 광고비</span>
-                  <PriceField>
-                    <PriceInput
-                      id={inputId}
-                      inputMode="numeric"
-                      autoFocus
-                      value={draft ? Number(digitsOnly(draft)).toLocaleString() : ''}
-                      onChange={(event) => setDraft(digitsOnly(event.target.value))}
-                      aria-label="하루 광고비"
-                    />
-                    <Won>원</Won>
-                  </PriceField>
-                </label>
-                <DialogActions>
-                  <DialogButton type="button" onClick={() => setEditing(false)}>
-                    취소
-                  </DialogButton>
-                  <DialogButton type="button" primary onClick={savePrice}>
-                    저장
-                  </DialogButton>
-                </DialogActions>
-              </DialogBody>
-            ) : (
-              <>
-                <DialogThumb aria-hidden="true" />
+            <Dialog
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              {editing ? (
                 <DialogBody>
-                  <DialogTitle id={titleId}>빅배너 -{detailAd}번 금액</DialogTitle>
-                  <InfoRow>
-                    <InfoList>
-                      <InfoItem>
-                        <InfoLabel>현재 광고사</InfoLabel>
-                        <InfoValue>{AD_ORGANIZATION}</InfoValue>
-                      </InfoItem>
-                      <InfoItem>
-                        <InfoLabel>광고 기간</InfoLabel>
-                        <InfoValue>{AD_PERIOD}</InfoValue>
-                      </InfoItem>
-                    </InfoList>
-                    <ReportLink href="/admin/analytics">리포트 보기</ReportLink>
-                  </InfoRow>
+                  <DialogTitle id={titleId}>광고비 수정</DialogTitle>
+                  <ModalText>빅배너 -{detailAd}번의 하루 광고비를 설정해 주세요.</ModalText>
+                  <label style={{ display: 'grid', gap: 8 }} htmlFor={inputId}>
+                    <span style={{ ...textStyle.subtitle, color: '#101010' }}>하루 광고비</span>
+                    <PriceField>
+                      <PriceInput
+                        id={inputId}
+                        inputMode="numeric"
+                        autoFocus
+                        value={draft ? Number(digitsOnly(draft)).toLocaleString() : ''}
+                        onChange={(event) => setDraft(digitsOnly(event.target.value))}
+                        aria-label="하루 광고비"
+                      />
+                      <Won>원</Won>
+                    </PriceField>
+                  </label>
                   <DialogActions>
-                    <DialogButton type="button" onClick={() => setDetailAd(null)}>
+                    <DialogButton type="button" onClick={() => setEditing(false)}>
                       취소
                     </DialogButton>
-                    <DialogButton type="button" primary onClick={startEditing}>
-                      금액 수정하기
+                    <DialogButton type="button" primary onClick={savePrice}>
+                      저장
                     </DialogButton>
                   </DialogActions>
                 </DialogBody>
-              </>
-            )}
-          </Dialog>
-        </Backdrop>,
-        document.body,
-      )}
+              ) : (
+                <>
+                  <DialogThumb aria-hidden="true" />
+                  <DialogBody>
+                    <DialogTitle id={titleId}>빅배너 -{detailAd}번 금액</DialogTitle>
+                    <InfoRow>
+                      <InfoList>
+                        <InfoItem>
+                          <InfoLabel>현재 광고사</InfoLabel>
+                          <InfoValue>{AD_ORGANIZATION}</InfoValue>
+                        </InfoItem>
+                        <InfoItem>
+                          <InfoLabel>광고 기간</InfoLabel>
+                          <InfoValue>{AD_PERIOD}</InfoValue>
+                        </InfoItem>
+                      </InfoList>
+                      <ReportLink href="/admin/analytics">리포트 보기</ReportLink>
+                    </InfoRow>
+                    <DialogActions>
+                      <DialogButton type="button" onClick={() => setDetailAd(null)}>
+                        취소
+                      </DialogButton>
+                      <DialogButton type="button" primary onClick={startEditing}>
+                        금액 수정하기
+                      </DialogButton>
+                    </DialogActions>
+                  </DialogBody>
+                </>
+              )}
+            </Dialog>
+          </Backdrop>,
+          document.body,
+        )}
     </Screen>
   );
 }
@@ -462,36 +482,61 @@ const ViewSwitchGroup = styled.div({
   background: c.white,
   borderRadius: 6,
 });
-const ViewButton = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{ active: boolean }>(
-  ({ active }) => ({
-    border: 0,
-    borderRadius: 6,
-    padding: '10px 20px',
-    background: active ? c.primary : 'transparent',
-    color: active ? c.white : c.gray900,
-    cursor: 'pointer',
-    ...textStyle.subtitle,
-  }),
-);
+const ViewButton = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active: boolean;
+}>(({ active }) => ({
+  border: 0,
+  borderRadius: 6,
+  padding: '10px 20px',
+  background: active ? c.primary : 'transparent',
+  color: active ? c.white : c.gray900,
+  cursor: 'pointer',
+  ...textStyle.subtitle,
+}));
 
-const PreviewStage = styled.div({ position: 'relative', display: 'flex', justifyContent: 'center', width: '100%' });
+const PreviewStage = styled.div({
+  position: 'relative',
+  display: 'flex',
+  justifyContent: 'center',
+  width: '100%',
+});
 
-const PcMock = styled.div({ width: 'min(100%, 1220px)', display: 'flex', flexDirection: 'column', gap: 60 });
-const MobileMock = styled.div({ width: 'min(100%, 358px)', display: 'flex', flexDirection: 'column', gap: 32 });
+const PcMock = styled.div({
+  width: 'min(100%, 1220px)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 60,
+});
+const MobileMock = styled.div({
+  width: 'min(100%, 358px)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+});
 
 const HeroViewport = styled.div({ overflow: 'hidden' });
 const CenterRail = styled('div', {
   shouldForwardProp: (prop) =>
-    prop !== 'index' && prop !== 'animate' && prop !== 'step' && prop !== 'itemWidth' && prop !== 'center' && prop !== 'gap',
-})<{ index: number; animate: boolean; step: number; itemWidth: number; center: number; gap: number }>(
-  ({ index, animate, step, itemWidth, center, gap }) => ({
-    display: 'flex',
-    gap,
-    '& > *': { flex: `0 0 ${itemWidth}px` },
-    transform: `translateX(${center - index * step - itemWidth / 2}px)`,
-    transition: animate ? 'transform 420ms ease' : 'none',
-  }),
-);
+    prop !== 'index' &&
+    prop !== 'animate' &&
+    prop !== 'step' &&
+    prop !== 'itemWidth' &&
+    prop !== 'center' &&
+    prop !== 'gap',
+})<{
+  index: number;
+  animate: boolean;
+  step: number;
+  itemWidth: number;
+  center: number;
+  gap: number;
+}>(({ index, animate, step, itemWidth, center, gap }) => ({
+  display: 'flex',
+  gap,
+  '& > *': { flex: `0 0 ${itemWidth}px` },
+  transform: `translateX(${center - index * step - itemWidth / 2}px)`,
+  transition: animate ? 'transform 420ms ease' : 'none',
+}));
 const MobileHeroRail = styled('div', {
   shouldForwardProp: (prop) => prop !== 'index' && prop !== 'animate',
 })<{ index: number; animate: boolean }>(({ index, animate }) => ({
@@ -501,54 +546,56 @@ const MobileHeroRail = styled('div', {
   transition: animate ? 'transform 420ms ease' : 'none',
 }));
 
-const HeroCard = styled('button', { shouldForwardProp: (prop) => prop !== 'compact' })<{ compact?: boolean }>(
-  ({ compact }) => ({
-    position: 'relative',
-    display: 'flex',
-    width: '100%',
-    height: compact ? 170 : 252,
-    padding: compact ? 16 : 20,
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-    gap: compact ? 6 : 16,
-    border: 0,
-    borderRadius: 12,
-    cursor: 'pointer',
-    textAlign: 'left',
-    backgroundImage: `linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%), url(${HERO_IMAGE})`,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    transition: 'box-shadow 180ms ease',
-    '&:hover': { boxShadow: '0 12px 28px rgba(27, 33, 44, .18)' },
-    '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 3 },
-  }),
-);
-const HeroLabel = styled('span', { shouldForwardProp: (prop) => prop !== 'compact' })<{ compact?: boolean }>(
-  ({ compact }) => ({
-    fontSize: compact ? 14 : 24,
-    fontWeight: 400,
-    lineHeight: 1.3,
-    color: '#101010',
-  }),
-);
-const HeroPrice = styled('strong', { shouldForwardProp: (prop) => prop !== 'compact' })<{ compact?: boolean }>(
-  ({ compact }) => ({
-    fontSize: compact ? 28 : 48,
-    fontWeight: 600,
-    lineHeight: 1.3,
-    letterSpacing: '-0.01em',
-    color: '#101010',
-  }),
-);
+const HeroCard = styled('button', { shouldForwardProp: (prop) => prop !== 'compact' })<{
+  compact?: boolean;
+}>(({ compact }) => ({
+  position: 'relative',
+  display: 'flex',
+  width: '100%',
+  height: compact ? 170 : 252,
+  padding: compact ? 16 : 20,
+  flexDirection: 'column',
+  justifyContent: 'flex-end',
+  gap: compact ? 6 : 16,
+  border: 0,
+  borderRadius: 12,
+  cursor: 'pointer',
+  textAlign: 'left',
+  backgroundImage: `linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%), url(${HERO_IMAGE})`,
+  backgroundSize: 'cover',
+  backgroundPosition: 'center',
+  transition: 'box-shadow 180ms ease',
+  '&:hover': { boxShadow: '0 12px 28px rgba(27, 33, 44, .18)' },
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 3 },
+}));
+const HeroLabel = styled('span', { shouldForwardProp: (prop) => prop !== 'compact' })<{
+  compact?: boolean;
+}>(({ compact }) => ({
+  fontSize: compact ? 14 : 24,
+  fontWeight: 400,
+  lineHeight: 1.3,
+  color: '#101010',
+}));
+const HeroPrice = styled('strong', { shouldForwardProp: (prop) => prop !== 'compact' })<{
+  compact?: boolean;
+}>(({ compact }) => ({
+  fontSize: compact ? 28 : 48,
+  fontWeight: 600,
+  lineHeight: 1.3,
+  letterSpacing: '-0.01em',
+  color: '#101010',
+}));
 
 const Pager = styled.div({ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 });
-const Dot = styled('span', { shouldForwardProp: (prop) => prop !== 'active' })<{ active: boolean }>(({ active }) => ({
-  width: active ? 18 : 6,
-  height: 6,
-  borderRadius: 99,
-  background: active ? c.primary : c.gray200,
-  transition: 'width 180ms ease, background 180ms ease',
-}));
+const Dot = styled('span', { shouldForwardProp: (prop) => prop !== 'active' })<{ active: boolean }>(
+  ({ active }) => ({
+    width: active ? 18 : 6,
+    height: 6,
+    borderRadius: 99,
+    background: active ? c.primary : c.gray200,
+    transition: 'width 180ms ease, background 180ms ease',
+  }),
+);
 
 const Tooltip = styled.div({
   position: 'absolute',
@@ -589,11 +636,20 @@ const Sections = styled.div({
   flexDirection: 'column',
   gap: 60,
 });
-const MobileBody = styled.div({ display: 'flex', flexDirection: 'column', gap: 32, padding: '0 16px' });
+const MobileBody = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+  padding: '0 16px',
+});
 const SectionStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 28 });
 const FilterRow = styled.div({ display: 'flex', gap: 16 });
 const Section = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
-const SectionHead = styled.div({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+const SectionHead = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+});
 const SectionTitle = styled.h2({ margin: 0, fontSize: 18, fontWeight: 700, color: '#101010' });
 const MoreLabel = styled.span({ ...textStyle.secondaryText, color: '#858A99' });
 
@@ -617,7 +673,11 @@ const GalleryItem = styled.div({
 });
 const MobileGalleryItem = styled(GalleryItem)({ height: 74, borderRadius: 3 });
 
-const TeamGrid = styled.div({ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 16 });
+const TeamGrid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: 16,
+});
 const TeamStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 12 });
 
 const Backdrop = styled.div({
@@ -648,10 +708,19 @@ const DialogThumb = styled.div({
 });
 const DialogBody = styled.div({ display: 'flex', flexDirection: 'column', gap: 15 });
 const DialogTitle = styled.h2({ margin: 0, ...textStyle.h1_2, color: '#101010' });
-const InfoRow = styled.div({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+const InfoRow = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+});
 const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const InfoItem = styled.div({ display: 'flex', alignItems: 'baseline' });
-const InfoLabel = styled.span({ display: 'inline-block', width: 80, ...textStyle.caption2, color: '#101010' });
+const InfoLabel = styled.span({
+  display: 'inline-block',
+  width: 80,
+  ...textStyle.caption2,
+  color: '#101010',
+});
 const InfoValue = styled.span({ ...textStyle.caption, color: '#101010' });
 const ReportLink = styled(Link)({
   display: 'inline-flex',
@@ -665,18 +734,18 @@ const ReportLink = styled(Link)({
   ...textStyle.mFeatureTitle,
 });
 const DialogActions = styled.div({ display: 'flex', gap: 15 });
-const DialogButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{ primary?: boolean }>(
-  ({ primary }) => ({
-    flex: 1,
-    height: 37,
-    border: primary ? 0 : `1px solid #DFE2E7`,
-    borderRadius: 6,
-    background: primary ? c.primary : c.white,
-    color: primary ? c.white : '#101010',
-    cursor: 'pointer',
-    ...(primary ? textStyle.mFeatureTitle : textStyle.overline),
-  }),
-);
+const DialogButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{
+  primary?: boolean;
+}>(({ primary }) => ({
+  flex: 1,
+  height: 37,
+  border: primary ? 0 : `1px solid #DFE2E7`,
+  borderRadius: 6,
+  background: primary ? c.primary : c.white,
+  color: primary ? c.white : '#101010',
+  cursor: 'pointer',
+  ...(primary ? textStyle.mFeatureTitle : textStyle.overline),
+}));
 const ModalText = styled.p({ margin: 0, ...textStyle.caption, color: '#101010' });
 const PriceField = styled.div({
   display: 'flex',

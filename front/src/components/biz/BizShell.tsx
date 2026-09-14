@@ -55,7 +55,11 @@ export function Logo({ size = 24 }: { size?: number }) {
   return (
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: size, width: 'auto', display: 'block' }} />
+      <img
+        src="/assets/SEMOBIZ.png"
+        alt="SEMO.BIZ"
+        style={{ height: size, width: 'auto', display: 'block' }}
+      />
     </BizBrand>
   );
 }
@@ -162,8 +166,9 @@ const SidebarBox = styled.aside({
 });
 const SidebarTop = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
 const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', width: 183 });
-const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(
-  ({ active }) => ({
+const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
   display: 'block',
   padding: '10px 12px',
   borderRadius: 6,
@@ -204,7 +209,7 @@ export const menu: [string, string][] = [
   ['/ads', '광고 관리'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
-  ['/profile/edit','기업 프로필'],
+  ['/profile/edit', '기업 프로필'],
 ];
 
 export function isMenuActive(route: string, href: string) {

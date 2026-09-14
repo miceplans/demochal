@@ -7,7 +7,10 @@ export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Post()
-  register(@Body() dto: RegisterBusinessDto, @Headers('x-user-id') ownerUserId: string | undefined) {
+  register(
+    @Body() dto: RegisterBusinessDto,
+    @Headers('x-user-id') ownerUserId: string | undefined,
+  ) {
     // TODO: replace with the authenticated user id once an auth guard populates it.
     return this.businessesService.register(dto, ownerUserId ?? '');
   }

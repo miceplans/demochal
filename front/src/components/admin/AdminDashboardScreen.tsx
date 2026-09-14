@@ -4,11 +4,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { dashboardStats } from '@/data/admin-design';
-import {
-  AdminSectionTitle,
-  StatCard,
-  StatRow,
-} from './parts';
+import { AdminSectionTitle, StatCard, StatRow } from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
 

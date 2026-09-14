@@ -28,7 +28,9 @@ function exposureAreaPath(width: number, height: number) {
     const y = height - v * height;
     return [x, y] as const;
   });
-  const line = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+  const line = points
+    .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`)
+    .join(' ');
   const area = `${line} L${width},${height} L0,${height} Z`;
   return { line, area };
 }
@@ -95,14 +97,30 @@ export function BizPostingsPage() {
               </linearGradient>
             </defs>
             <path d={area} fill="url(#exposureFill)" />
-            <path d={line} fill="none" stroke={c.primary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d={line}
+              fill="none"
+              stroke={c.primary}
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </ExposureChart>
-          <div style={{ display: 'flex', justifyContent: 'space-between', ...textStyle.finePrint, color: c.gray300 }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              ...textStyle.finePrint,
+              color: c.gray300,
+            }}
+          >
             {chartMonths.map((m) => (
               <span key={m}>{m}</span>
             ))}
           </div>
-          <span style={{ ...textStyle.finePrint, color: c.green }}>{postingStats.exposure.delta}</span>
+          <span style={{ ...textStyle.finePrint, color: c.green }}>
+            {postingStats.exposure.delta}
+          </span>
         </ExposureBox>
       </StatsRow>
 
@@ -258,7 +276,11 @@ const CardBody = styled.div({
   borderRadius: '0 0 6px 6px',
 });
 const CardTitle = styled.p({ ...textStyle.h3_2, color: c.gray900 });
-const CardMeta = styled.div({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' });
+const CardMeta = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+});
 const CategoryTag = styled.span({
   background: c.gray100,
   color: c.gray700,
@@ -267,7 +289,11 @@ const CategoryTag = styled.span({
   ...textStyle.finePrint,
 });
 const Dday = styled.span({ color: c.primary, ...textStyle.overline });
-const CardBottom = styled.div({ display: 'flex', alignItems: 'center', justifyContent: 'space-between' });
+const CardBottom = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+});
 const TeamBadge = styled.span({
   background: c.lightBlue,
   color: c.primary,
