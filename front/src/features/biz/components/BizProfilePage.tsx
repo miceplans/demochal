@@ -16,35 +16,6 @@ import { admin, orgProfile } from '@/data/biz-design';
 import { maskEmail, maskPhone } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
 
-const OrgCard = styled.div({
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  padding: 32,
-  display: 'flex',
-  gap: 32,
-  alignItems: 'center',
-  background: `linear-gradient(180deg, transparent 55%, ${c.gray900})`,
-  position: 'relative',
-  overflow: 'hidden',
-});
-const OrgThumb = styled.div({
-  width: 159,
-  height: 159,
-  borderRadius: 15,
-  background: c.gray100,
-  flexShrink: 0,
-});
-const OrgMeta = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  color: c.white,
-  position: 'relative',
-});
-const OrgName = styled.strong(textStyle.display);
-const OrgRow = styled.span({ display: 'flex', alignItems: 'center', gap: 8, ...textStyle.body });
-const Actions = styled.div({ display: 'flex', justifyContent: 'center' });
-
 export function BizProfilePage() {
   const router = useRouter();
   const hrefOf = useBizHref();
@@ -115,3 +86,32 @@ export function BizProfilePage() {
     </BizContent>
   );
 }
+
+const OrgCard = styled.div({
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  padding: 32,
+  display: 'flex',
+  gap: 32,
+  alignItems: 'center',
+  background: `linear-gradient(180deg, transparent 55%, ${c.gray900})`,
+  position: 'relative',
+  overflow: 'hidden',
+});
+const OrgThumb = styled.div({
+  width: 159,
+  height: 159,
+  borderRadius: 15,
+  background: c.gray100,
+  flexShrink: 0,
+});
+const OrgMeta = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  color: c.white,
+  position: 'relative',
+});
+const OrgName = styled.strong(textStyle.display);
+const OrgRow = styled.span({ display: 'flex', alignItems: 'center', gap: 8, ...textStyle.body });
+const Actions = styled.div({ display: 'flex', justifyContent: 'center' });

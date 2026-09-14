@@ -1,13 +1,13 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { FilesService } from './files.service.js';
-import { PresignedUploadRequest } from './dto/presigned-upload-request.dto.js';
+import { RequestUploadDto } from './dto/request-upload.dto.js';
 
 @Controller('files')
 export class FilesController {
   constructor(private readonly filesService: FilesService) {}
 
   @Post('presign')
-  requestUpload(@Body() dto: PresignedUploadRequest) {
+  requestUpload(@Body() dto: RequestUploadDto) {
     return this.filesService.requestUpload(dto);
   }
 

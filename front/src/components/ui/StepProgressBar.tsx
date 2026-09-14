@@ -15,6 +15,27 @@ export interface StepProgressBarProps {
 
 const DOT_SIZE = 32;
 
+export function StepProgressBar({ steps, currentStep, ...rest }: StepProgressBarProps) {
+  return (
+    <List aria-label={rest['aria-label']}>
+      {steps.map((label, i) => {
+        const state: StepState = i < currentStep ? 'done' : i === currentStep ? 'current' : 'todo';
+        return (
+          <Fragment key={label}>
+            {i > 0 && <Bar aria-hidden />}
+            <Step>
+              <Dot state={state}>
+                {state === 'done' ? <Check src="/assets/icons/check.svg" alt="" /> : i + 1}
+              </Dot>
+              <Label state={state}>{label}</Label>
+            </Step>
+          </Fragment>
+        );
+      })}
+    </List>
+  );
+}
+
 const List = styled.ol({
   display: 'flex',
   justifyContent: 'space-between',
@@ -52,24 +73,3 @@ const Label = styled.span<{ state: StepState }>(({ state }) => ({
   ...textStyle.mMicroTag,
   color: state === 'current' ? c.primary : c.gray700,
 }));
-
-export function StepProgressBar({ steps, currentStep, ...rest }: StepProgressBarProps) {
-  return (
-    <List aria-label={rest['aria-label']}>
-      {steps.map((label, i) => {
-        const state: StepState = i < currentStep ? 'done' : i === currentStep ? 'current' : 'todo';
-        return (
-          <Fragment key={label}>
-            {i > 0 && <Bar aria-hidden />}
-            <Step>
-              <Dot state={state}>
-                {state === 'done' ? <Check src="/assets/icons/check.svg" alt="" /> : i + 1}
-              </Dot>
-              <Label state={state}>{label}</Label>
-            </Step>
-          </Fragment>
-        );
-      })}
-    </List>
-  );
-}

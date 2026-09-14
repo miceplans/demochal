@@ -17,46 +17,6 @@ interface DataTableProps<TData> {
   emptyMessage?: string;
 }
 
-const TableWrapper = styled.div`
-  width: 100%;
-  overflow-x: auto;
-  border: 1px solid ${(p) => p.theme.colors.gray[200]};
-  border-radius: 10px;
-  background: ${(p) => p.theme.colors.background};
-`;
-
-const Table = styled.table`
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-`;
-
-const Th = styled.th<{ sortable?: boolean }>`
-  text-align: left;
-  padding: 12px 14px;
-  background: ${(p) => p.theme.colors.gray[100]};
-  color: ${(p) => p.theme.colors.gray[700]};
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: ${(p) => (p.sortable ? 'pointer' : 'default')};
-  border-bottom: 1px solid ${(p) => p.theme.colors.gray[200]};
-`;
-
-const Td = styled.td`
-  padding: 12px 14px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.gray[100]};
-  color: ${(p) => p.theme.colors.gray[900]};
-  white-space: nowrap;
-`;
-
-const EmptyRow = styled.tr`
-  td {
-    text-align: center;
-    padding: 40px 14px;
-    color: ${(p) => p.theme.colors.gray[500]};
-  }
-`;
-
 // Generic sortable data table for admin / business screens.
 // Columns are declared per page via TanStack Table's ColumnDef.
 export function DataTable<TData>({
@@ -115,3 +75,43 @@ export function DataTable<TData>({
     </TableWrapper>
   );
 }
+
+const TableWrapper = styled.div`
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid ${(p) => p.theme.colors.gray[200]};
+  border-radius: 10px;
+  background: ${(p) => p.theme.colors.background};
+`;
+
+const Table = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+`;
+
+const Th = styled.th<{ sortable?: boolean }>`
+  text-align: left;
+  padding: 12px 14px;
+  background: ${(p) => p.theme.colors.gray[100]};
+  color: ${(p) => p.theme.colors.gray[700]};
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: ${(p) => (p.sortable ? 'pointer' : 'default')};
+  border-bottom: 1px solid ${(p) => p.theme.colors.gray[200]};
+`;
+
+const Td = styled.td`
+  padding: 12px 14px;
+  border-bottom: 1px solid ${(p) => p.theme.colors.gray[100]};
+  color: ${(p) => p.theme.colors.gray[900]};
+  white-space: nowrap;
+`;
+
+const EmptyRow = styled.tr`
+  td {
+    text-align: center;
+    padding: 40px 14px;
+    color: ${(p) => p.theme.colors.gray[500]};
+  }
+`;

@@ -11,34 +11,8 @@ import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { adApi } from '@/lib/ad-api';
 import copy from '@/data/design-copy.json';
-const Login = styled.div({
-  minHeight: 610,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 40,
-  [mobile]: { minHeight: 'calc(100dvh - 72px)', padding: '40px 16px', gap: 64 },
-});
-const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  gap: 16,
-  height: 30,
-  width: 276,
-  borderRadius: 4,
-  ...textStyle.label,
-  background: provider === 'Kakao' ? '#fee500' : provider === 'Naver' ? '#06be34' : c.white,
-  color: provider === 'Naver' ? c.white : c.gray900,
-  border: provider === 'Google' ? `1px solid ${c.gray200}` : 0,
-  [mobile]: {
-    width: 'min(358px, calc(100vw - 32px))',
-    height: 48,
-    fontSize: textStyle.mCardTitle.fontSize,
-    borderRadius: 8,
-  },
-}));
+const steps = ['activity', 'interests', 'purpose', 'challenge'];
+const EMPTY: string[] = [];
 export function LoginPage() {
   const router = useRouter();
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
@@ -56,7 +30,7 @@ export function LoginPage() {
   };
 
   return (
-    <UserShell compact navigation={false} footer={false}>
+    <UserShell compact navigation={false} footer={false} centerHeader>
       <Login>
         <Stack gap={4} style={{ alignItems: 'center' }}>
           <Logo dot />
@@ -77,11 +51,7 @@ export function LoginPage() {
                 void continueAfterLogin();
               }}
             >
-              <Icon
-                name={i === 0 ? 'imgImage2' : i === 1 ? 'imgImage1' : 'imgImage3'}
-                width={i === 0 ? 13 : i === 1 ? 12 : 18}
-                height={i === 0 ? 13 : i === 1 ? 13 : 18}
-              />
+              <Icon name={i === 0 ? 'imgImage2' : i === 1 ? 'imgImage1' : 'imgImage3'} size={18} />
               <span>{provider}계정으로 계속하기</span>
             </Social>
           ))}
@@ -90,66 +60,19 @@ export function LoginPage() {
     </UserShell>
   );
 }
-const Survey = styled.div({
-  width: 600,
-  maxWidth: 'calc(100% - 32px)',
-  margin: '0 auto',
-  padding: '80px 0',
-  minHeight: 676,
-  [mobile]: { padding: '44px 0 110px', minHeight: 'calc(100dvh - 64px)' },
-});
-const Choices = styled(Wrap)({
-  gap: 8,
-  '& button': { borderRadius: 8, padding: '12px 20px' },
-  [mobile]: { '& button': { padding: '10px 14px' } },
-});
-const Next = styled.div({
-  marginTop: 40,
-  display: 'flex',
-  justifyContent: 'flex-end',
-  [mobile]: {
-    position: 'fixed',
-    left: 16,
-    right: 16,
-    bottom: 16,
-    zIndex: 25,
-    '& button': { width: '100%', height: 52, borderRadius: 14 },
-  },
-});
-const ProgressTrack = styled.div({
-  height: 6,
-  background: c.lightBlue,
-  borderRadius: 30,
-  marginTop: 16,
-  marginBottom: 64,
-});
-const ProgressFill = styled.div({
-  height: 6,
-  background: c.primary,
-  borderRadius: 30,
-  transition: 'width 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
-  animation: 'semo-survey-progress 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
-  '@keyframes semo-survey-progress': {
-    from: { width: 0 },
-  },
-  '@media (prefers-reduced-motion: reduce)': {
-    animation: 'none',
-    transition: 'none',
-  },
-});
-const steps = ['activity', 'interests', 'purpose', 'challenge'];
 export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
-  const index = steps.indexOf(step);
-  const selected = useUserStore((s) => s.survey[step] ?? []);
+  const selected = useUserStore((s) => s.survey[step] ?? EMPTY);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const index = steps.indexOf(step);
 
   useEffect(() => {
     if (hasCompletedOnboarding) router.replace('/');
   }, [hasCompletedOnboarding, router]);
+
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',
@@ -160,7 +83,7 @@ export function OnboardingPage({ step }: { step: string }) {
   const toggle = (x: string) =>
     setSurvey(step, selected.includes(x) ? selected.filter((v) => v !== x) : [...selected, x]);
   return (
-    <UserShell compact navigation={false} footer={false}>
+    <UserShell compact navigation={false} footer={false} header={false}>
       <Survey>
         <Logo dot />
         <ProgressTrack
@@ -189,6 +112,26 @@ export function OnboardingPage({ step }: { step: string }) {
               '청소년',
             ].map((x) => ({ value: x, label: x }))}
           />
+        ) : index === 2 ? (
+          <PurposeGrid role="group" aria-label="참여 목적">
+            {options.map((x) => {
+              const isSelected = selected.includes(x);
+              return (
+                <PurposeOption
+                  key={x}
+                  type="button"
+                  selected={isSelected}
+                  aria-pressed={isSelected}
+                  onClick={() => toggle(x)}
+                >
+                  <PurposeCheck selected={isSelected}>
+                    {isSelected && <Icon src="/assets/icons/check.svg" size={10} alt="" />}
+                  </PurposeCheck>
+                  {x}
+                </PurposeOption>
+              );
+            })}
+          </PurposeGrid>
         ) : (
           <Choices>
             {options.map((x) => (
@@ -232,3 +175,114 @@ export function OnboardingPage({ step }: { step: string }) {
     </UserShell>
   );
 }
+const Login = styled.div({
+  minHeight: 610,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 40,
+  [mobile]: { minHeight: 'calc(100dvh - 72px)', padding: '40px 16px', gap: 64 },
+});
+const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 16,
+  height: 30,
+  width: 276,
+  borderRadius: 4,
+  ...textStyle.label,
+  background: provider === 'Kakao' ? '#fee500' : provider === 'Naver' ? '#06be34' : c.white,
+  color: provider === 'Naver' ? c.white : c.gray900,
+  border: provider === 'Google' ? `1px solid ${c.gray200}` : 0,
+  [mobile]: {
+    width: 'min(358px, calc(100vw - 32px))',
+    height: 48,
+    fontSize: textStyle.mCardTitle.fontSize,
+    borderRadius: 8,
+  },
+}));
+const Survey = styled.div({
+  width: 600,
+  maxWidth: 'calc(100% - 32px)',
+  margin: '0 auto',
+  padding: '80px 0',
+  minHeight: 676,
+  [mobile]: { padding: '44px 0 110px', minHeight: 'calc(100dvh - 64px)' },
+});
+const Choices = styled(Wrap)({
+  gap: 8,
+  '& button': {
+    borderRadius: 20,
+    borderWidth: 0.5,
+    padding: '8px 10px',
+    fontSize: 12,
+  },
+  '& button[aria-pressed="true"]': { fontWeight: 600 },
+});
+const PurposeGrid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  columnGap: 30,
+  rowGap: 16,
+  width: '100%',
+  [mobile]: { gridTemplateColumns: '1fr', columnGap: 0, rowGap: 12 },
+});
+const PurposeOption = styled.button<{ selected: boolean }>(() => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  border: 0,
+  background: 'none',
+  padding: 0,
+  textAlign: 'left' as const,
+  cursor: 'pointer',
+  ...textStyle.caption,
+  color: c.gray700,
+}));
+const PurposeCheck = styled.span<{ selected: boolean }>(({ selected }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 16,
+  height: 16,
+  flexShrink: 0,
+  borderRadius: 3,
+  border: selected ? 0 : `0.5px solid ${c.gray100}`,
+  background: selected ? c.primary : c.white,
+}));
+const Next = styled.div({
+  marginTop: 40,
+  display: 'flex',
+  justifyContent: 'flex-end',
+  [mobile]: {
+    position: 'fixed',
+    left: 16,
+    right: 16,
+    bottom: 16,
+    zIndex: 25,
+    '& button': { width: '100%', height: 52, borderRadius: 14 },
+  },
+});
+const ProgressTrack = styled.div({
+  height: 6,
+  background: c.lightBlue,
+  borderRadius: 30,
+  marginTop: 16,
+  marginBottom: 64,
+});
+const ProgressFill = styled.div({
+  height: 6,
+  background: c.primary,
+  borderRadius: 30,
+  transition: 'width 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+  animation: 'semo-survey-progress 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+  '@keyframes semo-survey-progress': {
+    from: { width: 0 },
+  },
+  '@media (prefers-reduced-motion: reduce)': {
+    animation: 'none',
+    transition: 'none',
+  },
+});

@@ -26,48 +26,6 @@ export const AdminGlobalStyles = (
   />
 );
 
-const SidebarBox = styled.aside({
-  width: 220,
-  minWidth: 220,
-  background: c.white,
-  borderRight: '1px solid #E5E7EB',
-  padding: '28px 18px',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  position: 'sticky',
-  top: 0,
-  height: '100dvh',
-  overflowY: 'auto',
-});
-
-const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 6 });
-
-const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 24 });
-const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(({ active }) => ({
-  padding: '10px 12px',
-  borderRadius: 6,
-  ...textStyle.subtitle,
-  color: '#111111',
-  background: active
-    ? 'linear-gradient(90deg, rgba(11,110,255,0.1) 0%, rgba(255,255,255,0.1) 100%)'
-    : 'transparent',
-}));
-
-const ProfileRow = styled.div({ display: 'flex', alignItems: 'center', gap: 10 });
-const Avatar = styled.span({
-  width: 34,
-  height: 34,
-  borderRadius: '50%',
-  background: '#EFF6FF',
-  color: c.primary,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  ...textStyle.caption2,
-});
-const GearIcon = styled.span({ display: 'inline-flex', marginLeft: 'auto', color: c.gray500 });
-
 function AdminSidebar() {
   const pathname = usePathname() ?? '';
   return (
@@ -128,3 +86,45 @@ export function AdminShell({ children }: { children: ReactNode }) {
     </>
   );
 }
+
+const SidebarBox = styled.aside({
+  width: 220,
+  minWidth: 220,
+  background: c.white,
+  borderRight: '1px solid #E5E7EB',
+  padding: '28px 18px',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  position: 'sticky',
+  top: 0,
+  height: '100dvh',
+  overflowY: 'auto',
+});
+
+const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 6 });
+
+const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 24 });
+const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(({ active }) => ({
+  padding: '10px 12px',
+  borderRadius: 6,
+  ...textStyle.subtitle,
+  color: '#111111',
+  background: active
+    ? 'linear-gradient(90deg, rgba(11,110,255,0.1) 0%, rgba(255,255,255,0.1) 100%)'
+    : 'transparent',
+}));
+
+const ProfileRow = styled.div({ display: 'flex', alignItems: 'center', gap: 10 });
+const Avatar = styled.span({
+  width: 34,
+  height: 34,
+  borderRadius: '50%',
+  background: '#EFF6FF',
+  color: c.primary,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  ...textStyle.caption2,
+});
+const GearIcon = styled.span({ display: 'inline-flex', marginLeft: 'auto', color: c.gray500 });

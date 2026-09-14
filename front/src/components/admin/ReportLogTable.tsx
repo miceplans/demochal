@@ -1,11 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
-import { reportRows, type ReportRow } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import type { ReportRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useToast } from '@/components/common/Toast';
 import { AdminTable, Badge, type AdminColumn } from './parts';
+
+const targetTypeLabel: Record<string, string> = {
+  challenge: '공모전',
+  team: '팀 모집',
+  award: '수상작',
+};
+
+const reportStatusLabel: Record<string, ReportRow['status']> = {
+  open: '대기',
+  resolved: '승인',
+  dismissed: '거부',
+};
 
 const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red'> = {
   대기: 'blue',
@@ -20,6 +34,143 @@ const columns: AdminColumn<ReportRow>[] = [
   { key: 'summary', header: '신고요약', width: 150 },
   { key: 'status', header: '상태', width: 100, render: (row) => <Badge tone={statusBadge[row.status]}>{row.status}</Badge> },
 ];
+
+const PANEL_WIDTH = 360;
+const panelShell = {
+  width: PANEL_WIDTH,
+  minWidth: PANEL_WIDTH,
+  boxSizing: 'border-box',
+  background: c.white,
+  border: '1px solid #DFE2E7',
+  borderLeft: 0,
+  borderRadius: '0 8px 8px 0',
+  '@media (max-width: 960px)': {
+    width: 'auto',
+    minWidth: 0,
+    borderLeft: '1px solid #DFE2E7',
+    borderTop: 0,
+    borderRadius: '0 0 8px 8px',
+  },
+} as const;
+function CloseGlyph() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
+}
+
+function ReportDetailPanel({
+  row,
+  onClose,
+  onResolve,
+  pending,
+}: {
+  row: ReportRow;
+  onClose: () => void;
+  onResolve: (action: 'resolve' | 'dismiss') => void;
+  pending: boolean;
+}) {
+  const details = [
+    ['신고자', row.reporter],
+    ['신고 일시', row.reportedAt],
+    ['콘텐츠 유형', row.type],
+    ['등록 기관', row.org],
+  ];
+
+  return (
+    <Panel aria-label={`${row.content} 신고 상세`}>
+      <PanelHeader>
+        <TitleRow>
+          <PanelTitle>{row.content}</PanelTitle>
+          <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
+        </TitleRow>
+        <CloseButton type="button" aria-label="신고 상세 닫기" onClick={onClose}>
+          <CloseGlyph />
+        </CloseButton>
+      </PanelHeader>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span style={{ ...textStyle.metaText, color: c.gray500 }}>신고 사유</span>
+        <span style={{ ...textStyle.bodySmall2, color: c.gray900 }}>{row.summary}</span>
+      </div>
+      <InfoList>
+        {details.map(([label, value]) => (
+          <InfoItem key={label}>
+            <InfoLabel>{label}</InfoLabel>
+            <InfoValue>{value}</InfoValue>
+          </InfoItem>
+        ))}
+      </InfoList>
+      <BodySection>
+        <BodyLabel>신고 내용</BodyLabel>
+        <ReportBody>{row.detail}</ReportBody>
+      </BodySection>
+      {row.status === '대기' ? (
+        <ActionRow>
+          <ActionButton type="button" disabled={pending} onClick={() => onResolve('dismiss')}>
+            거부
+          </ActionButton>
+          <ActionButton type="button" primary disabled={pending} onClick={() => onResolve('resolve')}>
+            승인
+          </ActionButton>
+        </ActionRow>
+      ) : null}
+    </Panel>
+  );
+}
+
+export function ReportLogTable() {
+  const [selected, setSelected] = useState<ReportRow | null>(null);
+  const toast = useToast();
+
+  const reportsQuery = generated.useListAdminReports();
+
+  const rows = useMemo<ReportRow[]>(
+    () =>
+      (reportsQuery.data?.data ?? []).map((report, index) => ({
+        id: report.id ?? String(index),
+        content: report.content ?? '',
+        type: targetTypeLabel[report.targetType ?? ''] ?? '',
+        org: report.org ?? '',
+        summary: report.summary ?? '',
+        status: reportStatusLabel[report.status ?? ''] ?? '대기',
+        reporter: report.reporter ?? '',
+        reportedAt: report.reportedAt ?? '',
+        detail: report.detail ?? '',
+      })),
+    [reportsQuery.data],
+  );
+
+  const resolveMutation = generated.useResolveReport({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        toast.success(variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.');
+        reportsQuery.refetch();
+        setSelected(null);
+      },
+      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
+  });
+
+  const selectReport = (row: ReportRow) => setSelected((current) => (current?.id === row.id ? null : row));
+  const closePanel = () => setSelected(null);
+
+  return (
+    <ReportWorkspace>
+      <TableArea withPanel={Boolean(selected) || undefined}>
+        <AdminTable columns={columns} rows={rows} onRowClick={selectReport} selectedRowId={selected?.id} />
+      </TableArea>
+      {selected ? (
+        <ReportDetailPanel
+          row={selected}
+          onClose={closePanel}
+          pending={resolveMutation.isPending}
+          onResolve={(action) => resolveMutation.mutate({ id: selected.id, data: { action } })}
+        />
+      ) : null}
+    </ReportWorkspace>
+  );
+}
 
 const ReportWorkspace = styled.div({
   display: 'flex',
@@ -40,23 +191,6 @@ const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPan
     },
   }),
 );
-const PANEL_WIDTH = 360;
-const panelShell = {
-  width: PANEL_WIDTH,
-  minWidth: PANEL_WIDTH,
-  boxSizing: 'border-box',
-  background: c.white,
-  border: '1px solid #DFE2E7',
-  borderLeft: 0,
-  borderRadius: '0 8px 8px 0',
-  '@media (max-width: 960px)': {
-    width: 'auto',
-    minWidth: 0,
-    borderLeft: '1px solid #DFE2E7',
-    borderTop: 0,
-    borderRadius: '0 0 8px 8px',
-  },
-} as const;
 const Panel = styled.aside({
   ...panelShell,
   padding: '20px 24px 24px',
@@ -133,74 +267,3 @@ const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
   ...textStyle.buttonLabel,
   '&:hover': { background: primary ? '#0056C2' : c.gray100 },
 }));
-
-function CloseGlyph() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
-function ReportDetailPanel({ row, onClose }: { row: ReportRow; onClose: () => void }) {
-  const details = [
-    ['신고자', row.reporter],
-    ['신고 일시', row.reportedAt],
-    ['콘텐츠 유형', row.type],
-    ['등록 기관', row.org],
-  ];
-
-  return (
-    <Panel aria-label={`${row.content} 신고 상세`}>
-      <PanelHeader>
-        <TitleRow>
-          <PanelTitle>{row.content}</PanelTitle>
-          <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
-        </TitleRow>
-        <CloseButton type="button" aria-label="신고 상세 닫기" onClick={onClose}>
-          <CloseGlyph />
-        </CloseButton>
-      </PanelHeader>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ ...textStyle.metaText, color: c.gray500 }}>신고 사유</span>
-        <span style={{ ...textStyle.bodySmall2, color: c.gray900 }}>{row.summary}</span>
-      </div>
-      <InfoList>
-        {details.map(([label, value]) => (
-          <InfoItem key={label}>
-            <InfoLabel>{label}</InfoLabel>
-            <InfoValue>{value}</InfoValue>
-          </InfoItem>
-        ))}
-      </InfoList>
-      <BodySection>
-        <BodyLabel>신고 내용</BodyLabel>
-        <ReportBody>{row.detail}</ReportBody>
-      </BodySection>
-      {row.status === '대기' ? (
-        <ActionRow>
-          <ActionButton type="button">거부</ActionButton>
-          <ActionButton type="button" primary>
-            승인
-          </ActionButton>
-        </ActionRow>
-      ) : null}
-    </Panel>
-  );
-}
-
-export function ReportLogTable() {
-  const [selected, setSelected] = useState<ReportRow | null>(null);
-
-  const selectReport = (row: ReportRow) => setSelected((current) => (current?.id === row.id ? null : row));
-  const closePanel = () => setSelected(null);
-
-  return (
-    <ReportWorkspace>
-      <TableArea withPanel={Boolean(selected) || undefined}>
-        <AdminTable columns={columns} rows={reportRows} onRowClick={selectReport} selectedRowId={selected?.id} />
-      </TableArea>
-      {selected ? <ReportDetailPanel row={selected} onClose={closePanel} /> : null}
-    </ReportWorkspace>
-  );
-}

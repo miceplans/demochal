@@ -207,7 +207,8 @@ export interface Ad {
 }
 
 export interface CreateAdRequest {
-  expectedDailyPrice?: number;
+  /** The price the caller confirmed before submitting; the server 409s if it has since changed. */
+  expectedDailyPrice: number;
   productId: string;
   imageFileId?: string;
   landingUrl?: string;

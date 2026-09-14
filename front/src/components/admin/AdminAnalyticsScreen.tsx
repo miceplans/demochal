@@ -3,23 +3,12 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { adReports, analyticsStats } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import { adReports } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
-
-const ExportButton = styled.button({
-  border: 0,
-  borderRadius: 10,
-  background: '#0877FF',
-  color: '#fff',
-  padding: '12px 20px',
-  ...({ fontSize: 14, fontWeight: 600 } as const),
-  '&:hover': { background: '#0056c2' },
-});
-
-const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
 
 function AdReportSection() {
   const searchParams = useSearchParams();
@@ -45,6 +34,10 @@ function AdReportSection() {
 }
 
 export function AdminAnalyticsScreen() {
+  const analyticsQuery = generated.useGetAdminAnalytics();
+  const analytics = analyticsQuery.data?.data;
+  const activity = analytics?.activity;
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -55,11 +48,30 @@ export function AdminAnalyticsScreen() {
         <AdReportSection />
       </Suspense>
       <StatRow>
-        {analyticsStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(analytics?.stats ?? []).map((stat) => (
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
-      <ActivityChart />
+      {activity ? (
+        <ActivityChart
+          months={activity.months ?? []}
+          general={activity.general ?? []}
+          corp={activity.corp ?? []}
+          yMax={activity.yMax ?? 10}
+        />
+      ) : null}
     </>
   );
 }
+
+const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
+
+const ExportButton = styled.button({
+  border: 0,
+  borderRadius: 10,
+  background: '#0877FF',
+  color: '#fff',
+  padding: '12px 20px',
+  ...({ fontSize: 14, fontWeight: 600 } as const),
+  '&:hover': { background: '#0056c2' },
+});

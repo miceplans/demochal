@@ -9,6 +9,57 @@ import { MaskedText } from '@/components/ui/MaskedText';
 
 const ICON = '/assets/icons';
 
+export function BizOperationsPage() {
+  return (
+    <Wrap>
+      <TopBlock>
+        <Header>
+          <Brand>
+            <MiceLogo src="/assets/mice-plans-logo.png" alt="MICE PLANS" />
+            <Cross>X</Cross>
+            <Logo size={11} />
+          </Brand>
+          <Title>온라인 상담 및 견적 문의</Title>
+        </Header>
+        <Form id="operations-inquiry" onSubmit={(e) => e.preventDefault()}>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-name">성함</FieldLabel>
+            <TextInput id="op-name" name="name" />
+          </FieldGroup>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-phone">연락처</FieldLabel>
+            <TextInput id="op-phone" name="phone" />
+          </FieldGroup>
+          <FieldGroup>
+            <FieldLabel htmlFor="op-message">문의내용</FieldLabel>
+            <TextArea id="op-message" name="message" />
+          </FieldGroup>
+        </Form>
+        <SubmitButton type="submit" form="operations-inquiry">
+          문의하기
+        </SubmitButton>
+      </TopBlock>
+      <InfoRow>
+        <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
+        <InfoList>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/pin.svg`} alt="" />
+            <InfoText>{orgProfile.address}</InfoText>
+          </InfoItem>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/phone.svg`} alt="" />
+            <InfoText>{orgProfile.phone}</InfoText>
+          </InfoItem>
+          <InfoItem>
+            <InfoIcon src={`${ICON}/mail.svg`} alt="" />
+            <InfoText>{orgProfile.email}</InfoText>
+          </InfoItem>
+        </InfoList>
+      </InfoRow>
+    </Wrap>
+  );
+}
+
 const Wrap = styled.div({
   display: 'flex',
   flexDirection: 'column',
@@ -71,54 +122,3 @@ const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 
 const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
 const InfoIcon = styled.img({ width: 24, height: 24 });
 const InfoText = styled.p({ ...textStyle.body, color: '#000' });
-
-export function BizOperationsPage() {
-  return (
-    <Wrap>
-      <TopBlock>
-        <Header>
-          <Brand>
-            <MiceLogo src="/assets/mice-plans-logo.png" alt="MICE PLANS" />
-            <Cross>X</Cross>
-            <Logo size={11} />
-          </Brand>
-          <Title>온라인 상담 및 견적 문의</Title>
-        </Header>
-        <Form id="operations-inquiry" onSubmit={(e) => e.preventDefault()}>
-          <FieldGroup>
-            <FieldLabel htmlFor="op-name">성함</FieldLabel>
-            <TextInput id="op-name" name="name" />
-          </FieldGroup>
-          <FieldGroup>
-            <FieldLabel htmlFor="op-phone">연락처</FieldLabel>
-            <TextInput id="op-phone" name="phone" />
-          </FieldGroup>
-          <FieldGroup>
-            <FieldLabel htmlFor="op-message">문의내용</FieldLabel>
-            <TextArea id="op-message" name="message" />
-          </FieldGroup>
-        </Form>
-        <SubmitButton type="submit" form="operations-inquiry">
-          문의하기
-        </SubmitButton>
-      </TopBlock>
-      <InfoRow>
-        <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
-        <InfoList>
-          <InfoItem>
-            <InfoIcon src={`${ICON}/pin.svg`} alt="" />
-            <InfoText>{orgProfile.address}</InfoText>
-          </InfoItem>
-          <InfoItem>
-            <InfoIcon src={`${ICON}/phone.svg`} alt="" />
-            <InfoText>{orgProfile.phone}</InfoText>
-          </InfoItem>
-          <InfoItem>
-            <InfoIcon src={`${ICON}/mail.svg`} alt="" />
-            <InfoText>{orgProfile.email}</InfoText>
-          </InfoItem>
-        </InfoList>
-      </InfoRow>
-    </Wrap>
-  );
-}

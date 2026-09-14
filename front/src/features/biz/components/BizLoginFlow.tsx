@@ -18,62 +18,6 @@ import {
 } from '@/components/biz/BizShell';
 import { admin } from '@/data/biz-design';
 
-const Wrap = styled.div({ display: 'flex', flexDirection: 'column' });
-const Body = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  padding: '80px 120px',
-});
-const Card = styled.div({
-  width: 426,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  minHeight: 480,
-});
-const Title = styled.h1({ ...textStyle.h1_2, marginBottom: 24 });
-const Form = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const CheckRow = styled.label({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  ...textStyle.caption,
-  color: c.gray700,
-  cursor: 'pointer',
-});
-const CheckBox = styled.input({
-  accentColor: c.primary,
-  width: 16,
-  height: 16,
-  borderRadius: 3,
-  border: `0.5px solid ${c.gray100}`,
-});
-const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 32 });
-const UploadBox = styled.label({
-  border: `2px dashed ${c.lightBlue}`,
-  background: '#f8f8f8',
-  borderRadius: 20,
-  padding: 8,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 10,
-  minHeight: 180,
-  ...textStyle.metaText,
-  color: c.gray500,
-  cursor: 'pointer',
-});
-const HiddenInput = styled.input({
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-});
-const UploadMark = styled.img({ width: 57, height: 36 });
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
 export function BizLoginFlow() {
@@ -204,3 +148,59 @@ export function BizLoginFlow() {
     </Wrap>
   );
 }
+const Wrap = styled.div({ display: 'flex', flexDirection: 'column' });
+const Body = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: '80px 120px',
+});
+const Card = styled.div({
+  width: 426,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  minHeight: 480,
+});
+const Title = styled.h1({ ...textStyle.h1_2, marginBottom: 24 });
+const Form = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const CheckRow = styled.label({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  ...textStyle.caption,
+  color: c.gray700,
+  cursor: 'pointer',
+});
+const CheckBox = styled.input({
+  accentColor: c.primary,
+  width: 16,
+  height: 16,
+  borderRadius: 3,
+  border: `0.5px solid ${c.gray100}`,
+});
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 32 });
+const UploadBox = styled.label({
+  border: `2px dashed ${c.lightBlue}`,
+  background: '#f8f8f8',
+  borderRadius: 20,
+  padding: 8,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 10,
+  minHeight: 180,
+  ...textStyle.metaText,
+  color: c.gray500,
+  cursor: 'pointer',
+});
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+});
+const UploadMark = styled.img({ width: 57, height: 36 });

@@ -6,7 +6,7 @@ import { v4 as uuid } from 'uuid';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { files } from '../../db/schema.js';
-import type { PresignedUploadRequest } from './dto/presigned-upload-request.dto.js';
+import type { RequestUploadDto } from './dto/request-upload.dto.js';
 
 @Injectable()
 export class FilesService {
@@ -14,7 +14,7 @@ export class FilesService {
 
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async requestUpload(dto: PresignedUploadRequest) {
+  async requestUpload(dto: RequestUploadDto) {
     const bucket = dto.bucket === 'private' ? env.s3PrivateBucket : env.s3PublicBucket;
     const key = `${dto.bucket}/${uuid()}-${dto.fileName}`;
 
