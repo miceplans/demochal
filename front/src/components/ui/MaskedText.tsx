@@ -11,16 +11,6 @@ interface MaskedTextProps extends HTMLAttributes<HTMLSpanElement> {
   masked?: string;
 }
 
-const Root = styled.span`
-  cursor: pointer;
-
-  &:focus-visible {
-    outline: 2px solid ${(p) => p.theme.colors.semo};
-    outline-offset: 2px;
-    border-radius: 2px;
-  }
-`;
-
 export function MaskedText({ value, masked, ...rest }: MaskedTextProps) {
   const [revealed, setRevealed] = useState(false);
   const hiddenText = masked ?? maskAll(value);
@@ -40,3 +30,13 @@ export function MaskedText({ value, masked, ...rest }: MaskedTextProps) {
     </Root>
   );
 }
+
+const Root = styled.span`
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid ${(p) => p.theme.colors.semo};
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+`;

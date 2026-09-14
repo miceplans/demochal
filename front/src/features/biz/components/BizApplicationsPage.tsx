@@ -18,32 +18,13 @@ import {
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { applications as initialApplications, postingStats, recentPosting, type BizApplication } from '@/data/biz-design';
 
-const Hero = styled.div({
-  height: 236,
-  borderRadius: 12,
-  background: `linear-gradient(120deg, ${c.gray100}, ${c.lightBlue})`,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: c.gray500,
-});
-const TopGrid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
-const HeaderInfo = styled.div({
-  flex: 1,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 24,
-  minWidth: 0,
-});
-const Side = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-  width: 321,
-  flexShrink: 0,
-});
-const SideActions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = ['전체', '제출 완료', '검토중', '보완 요청'];
+const STATUS_OPTIONS: BizApplication['status'][] = ['제출 완료', '검토중', '보완 요청'];
+const RESULT_OPTIONS: BizApplication['result'][] = ['미정', '합격', '불합격'];
+const FILTER_OPTIONS: DropdownOption[] = STATUS_FILTERS.map((s) => ({ value: s, label: s }));
+const STATUS_DROPDOWN_OPTIONS: DropdownOption[] = STATUS_OPTIONS.map((s) => ({ value: s, label: s }));
+const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({ value: r, label: r }));
+
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
   <span
     style={{
@@ -57,24 +38,6 @@ const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
     {children}
   </span>
 );
-
-const MemoInput = styled.input({
-  width: '100%',
-  border: '1px solid transparent',
-  borderRadius: 6,
-  padding: '6px 8px',
-  background: 'transparent',
-  color: 'inherit',
-  '&:hover': { background: c.gray50 },
-  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
-});
-
-const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = ['전체', '제출 완료', '검토중', '보완 요청'];
-const STATUS_OPTIONS: BizApplication['status'][] = ['제출 완료', '검토중', '보완 요청'];
-const RESULT_OPTIONS: BizApplication['result'][] = ['미정', '합격', '불합격'];
-const FILTER_OPTIONS: DropdownOption[] = STATUS_FILTERS.map((s) => ({ value: s, label: s }));
-const STATUS_DROPDOWN_OPTIONS: DropdownOption[] = STATUS_OPTIONS.map((s) => ({ value: s, label: s }));
-const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({ value: r, label: r }));
 
 export function BizApplicationsPage() {
   const [rows, setRows] = useState<BizApplication[]>(initialApplications);
@@ -191,3 +154,41 @@ export function BizApplicationsPage() {
     </BizContent>
   );
 }
+
+const Hero = styled.div({
+  height: 236,
+  borderRadius: 12,
+  background: `linear-gradient(120deg, ${c.gray100}, ${c.lightBlue})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray500,
+});
+const TopGrid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
+const HeaderInfo = styled.div({
+  flex: 1,
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 24,
+  minWidth: 0,
+});
+const Side = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  width: 321,
+  flexShrink: 0,
+});
+const SideActions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+
+const MemoInput = styled.input({
+  width: '100%',
+  border: '1px solid transparent',
+  borderRadius: 6,
+  padding: '6px 8px',
+  background: 'transparent',
+  color: 'inherit',
+  '&:hover': { background: c.gray50 },
+  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
+});

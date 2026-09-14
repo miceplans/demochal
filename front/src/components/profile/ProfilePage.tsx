@@ -6,21 +6,7 @@ import { Button, Heading, Stack, Icon, Row } from '@/components/common/Primitive
 import { Badges, Identity, SkillStack, History } from './ProfileCards';
 import { profileUser } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
-const Grid = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '320px minmax(0,1fr)',
-  gap: 32,
-  [mobile]: { display: 'flex', flexDirection: 'column', gap: 32 },
-});
-const Profile = styled.div({
-  padding: 24,
-  border: `1px solid ${c.gray100}`,
-  borderRadius: 12,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 24,
-  [mobile]: { border: 0, padding: 0 },
-});
+
 export function ProfilePage() {
   return (
     <UserShell title="프로필" compact>
@@ -63,3 +49,20 @@ export function ProfilePage() {
     </UserShell>
   );
 }
+
+const Grid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '320px minmax(0,1fr)',
+  gap: 32,
+  [mobile]: { display: 'flex', flexDirection: 'column', gap: 32 },
+});
+
+const Profile = styled.div({
+  padding: 24,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+  [mobile]: { border: 0, padding: 0 },
+});

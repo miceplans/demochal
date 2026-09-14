@@ -12,61 +12,19 @@ import { desktopContests, teams } from '@/data/user-design';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
-const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });
-const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
-  locked: boolean;
-}>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
-const MobileHero = styled(Link)({
-  display: 'none',
-  [mobile]: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-    height: 150,
-    padding: 20,
-    marginBottom: 16,
-    background: c.lightBlue,
-    borderRadius: 6,
-    '& h2': textStyle.h2_2,
-    '& p': textStyle.metaText,
-  },
-});
-const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
-  maxWidth: 1200,
-  margin: '0 auto',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 60,
-  [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
+const noopSubscribe = () => () => {};
+const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
+const getAdPreviewPriceServerSnapshot = () => null;
+
+const heroAds = Array.from({ length: 3 }, () => ({
+  src: '/assets/figma-ads/home-hero.png',
+  alt: 'PIZZ FLEX 브랜드 광고',
 }));
-const Rail = styled.div({
-  display: 'flex',
-  gap: 16,
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
-  '& > article': { flex: '0 0 416px' },
-  [mobile]: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 8,
-    '& > article': { flex: 'none' },
-  },
-});
-const TeamRail = styled.div({
-  display: 'flex',
-  gap: 16,
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
-  '& > article': { flex: '0 0 362px' },
-  [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
-});
-const More = styled(Link)({
-  ...textStyle.secondaryText,
-  color: c.gray500,
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 2,
-});
+
+const galleryAds = Array.from({ length: 6 }, () => ({
+  src: '/assets/figma-ads/home-gallery.png',
+  alt: '경기도사회적경제원 행사 광고',
+}));
 
 function MoreIcon() {
   return (
@@ -81,20 +39,6 @@ function MoreIcon() {
     </svg>
   );
 }
-
-const noopSubscribe = () => () => {};
-const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
-const getAdPreviewPriceServerSnapshot = () => null;
-
-const heroAds = Array.from({ length: 3 }, () => ({
-  src: '/assets/figma-ads/home-hero.png',
-  alt: 'PIZZ FLEX 브랜드 광고',
-}));
-
-const galleryAds = Array.from({ length: 6 }, () => ({
-  src: '/assets/figma-ads/home-gallery.png',
-  alt: '경기도사회적경제원 행사 광고',
-}));
 
 export function HomePage() {
   const adPriceParam = useSyncExternalStore(
@@ -246,3 +190,59 @@ export function HomePage() {
     </PreviewLock>
   );
 }
+
+const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });
+const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
+  locked: boolean;
+}>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
+const MobileHero = styled(Link)({
+  display: 'none',
+  [mobile]: {
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+    height: 150,
+    padding: 20,
+    marginBottom: 16,
+    background: c.lightBlue,
+    borderRadius: 6,
+    '& h2': textStyle.h2_2,
+    '& p': textStyle.metaText,
+  },
+});
+const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
+  maxWidth: 1200,
+  margin: '0 auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 60,
+  [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
+}));
+const Rail = styled.div({
+  display: 'flex',
+  gap: 16,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+  '& > article': { flex: '0 0 416px' },
+  [mobile]: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gap: 8,
+    '& > article': { flex: 'none' },
+  },
+});
+const TeamRail = styled.div({
+  display: 'flex',
+  gap: 16,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+  '& > article': { flex: '0 0 362px' },
+  [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
+});
+const More = styled(Link)({
+  ...textStyle.secondaryText,
+  color: c.gray500,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 2,
+});

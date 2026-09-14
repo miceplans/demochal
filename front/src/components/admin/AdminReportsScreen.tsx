@@ -13,32 +13,6 @@ import {
 } from './parts';
 import { ReportLogTable } from './ReportLogTable';
 
-const TitleRow = styled.div({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
-
-const ExportButton = styled.button({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  height: 40,
-  padding: '0 16px',
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 6,
-  background: c.white,
-  color: c.gray900,
-  cursor: 'pointer',
-  ...textStyle.subtitle,
-  '&:hover': { background: c.gray50 },
-});
-
-const Backdrop = styled.div({ position: 'fixed', zIndex: 100, inset: 0, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(17, 24, 39, .46)' });
-const Modal = styled.div({ width: 'min(100%, 416px)', padding: 28, borderRadius: 12, background: c.white, boxShadow: '0 20px 48px rgba(17, 24, 39, .22)' });
-const ModalContent = styled.div({ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' });
-const ExcelLogo = styled.img({ width: 64, height: 64, objectFit: 'contain' });
-const ModalTitle = styled.h2({ margin: '16px 0 0', ...textStyle.h2_2, color: c.gray900 });
-const ModalText = styled.p({ margin: '10px 0 0', color: c.gray500, ...textStyle.body });
-const ModalActions = styled.div({ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 28 });
-const ModalButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{ primary?: boolean }>(({ primary }) => ({ height: 40, padding: '0 18px', border: primary ? 0 : `1px solid ${c.gray300}`, borderRadius: 6, background: primary ? c.primary : c.white, color: primary ? c.white : c.gray900, cursor: 'pointer', ...textStyle.subtitle }));
-
 function DownloadGlyph() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -86,3 +60,29 @@ export function AdminReportsScreen() {
     </>
   );
 }
+
+const TitleRow = styled.div({ display: 'flex', justifyContent: 'space-between', alignItems: 'center' });
+
+const ExportButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  height: 40,
+  padding: '0 16px',
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 6,
+  background: c.white,
+  color: c.gray900,
+  cursor: 'pointer',
+  ...textStyle.subtitle,
+  '&:hover': { background: c.gray50 },
+});
+
+const Backdrop = styled.div({ position: 'fixed', zIndex: 100, inset: 0, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(17, 24, 39, .46)' });
+const Modal = styled.div({ width: 'min(100%, 416px)', padding: 28, borderRadius: 12, background: c.white, boxShadow: '0 20px 48px rgba(17, 24, 39, .22)' });
+const ModalContent = styled.div({ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' });
+const ExcelLogo = styled.img({ width: 64, height: 64, objectFit: 'contain' });
+const ModalTitle = styled.h2({ margin: '16px 0 0', ...textStyle.h2_2, color: c.gray900 });
+const ModalText = styled.p({ margin: '10px 0 0', color: c.gray500, ...textStyle.body });
+const ModalActions = styled.div({ display: 'flex', justifyContent: 'center', gap: 8, marginTop: 28 });
+const ModalButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{ primary?: boolean }>(({ primary }) => ({ height: 40, padding: '0 18px', border: primary ? 0 : `1px solid ${c.gray300}`, borderRadius: 6, background: primary ? c.primary : c.white, color: primary ? c.white : c.gray900, cursor: 'pointer', ...textStyle.subtitle }));

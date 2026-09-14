@@ -1,6 +1,6 @@
 import { IsIn, IsString } from 'class-validator';
 
-export class PresignedUploadRequest {
+export class RequestUploadDto {
   @IsIn(['public', 'private'])
   bucket!: 'public' | 'private';
 

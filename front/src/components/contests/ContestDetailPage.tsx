@@ -21,62 +21,6 @@ import { useToast } from '@/components/common/Toast';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
-const Intro = styled.div({
-  display: 'flex',
-  gap: 24,
-  marginBottom: 60,
-  '.cover': { width: 315, height: 220, borderRadius: 12, background: c.gray100 },
-  '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
-  '.facts': { marginTop: 'auto', ...textStyle.metaText, color: c.gray700, lineHeight: 1.8 },
-  [mobile]: {
-    flexDirection: 'column',
-    gap: 24,
-    marginBottom: 24,
-    '.cover': {
-      width: 'calc(100% + 32px)',
-      height: 200,
-      margin: '-24px -16px 0',
-      background: '#d8e4f0',
-      borderRadius: 0,
-    },
-    '.facts': { display: 'none' },
-    '.intro-body': { gap: 12 },
-  },
-});
-const Columns = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
-  gap: 24,
-  [mobile]: { display: 'flex', flexDirection: 'column' },
-});
-const Tabs = styled.nav({
-  display: 'flex',
-  gap: 24,
-  borderBottom: `1px solid ${c.gray100}`,
-  marginBottom: 20,
-  '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
-  '& a[aria-current=page]': { color: c.primary, borderBottom: `2px solid ${c.primary}` },
-});
-const Summary = styled.div({
-  background: c.gray50,
-  borderRadius: 12,
-  padding: 16,
-  marginTop: 16,
-  ...textStyle.caption,
-  '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
-  '& dt': { color: c.gray500 },
-  '& dd': { textAlign: 'right', fontWeight: 600 },
-});
-const Related = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
-  gap: 16,
-  marginTop: 16,
-  [mobile]: {
-    gridTemplateColumns: 'repeat(2,minmax(0,1fr))',
-    '& > article:nth-of-type(n+3)': { display: 'none' },
-  },
-});
 export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
   const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
   const toggle = useUserStore((s) => s.toggleBookmark);
@@ -129,7 +73,7 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
                 북마크
               </Button>
               <Button small tone="plain" onClick={share}>
-                <Icon src="/assets/icons/shareIc.png" size={14} alt="공유" />
+                <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
             </Row>
@@ -207,3 +151,59 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
     </UserShell>
   );
 }
+const Intro = styled.div({
+  display: 'flex',
+  gap: 24,
+  marginBottom: 60,
+  '.cover': { width: 315, height: 220, borderRadius: 12, background: c.gray100 },
+  '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
+  '.facts': { marginTop: 'auto', ...textStyle.metaText, color: c.gray700, lineHeight: 1.8 },
+  [mobile]: {
+    flexDirection: 'column',
+    gap: 24,
+    marginBottom: 24,
+    '.cover': {
+      width: 'calc(100% + 32px)',
+      height: 200,
+      margin: '-24px -16px 0',
+      background: '#d8e4f0',
+      borderRadius: 0,
+    },
+    '.facts': { display: 'none' },
+    '.intro-body': { gap: 12 },
+  },
+});
+const Columns = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
+  gap: 24,
+  [mobile]: { display: 'flex', flexDirection: 'column' },
+});
+const Tabs = styled.nav({
+  display: 'flex',
+  gap: 24,
+  borderBottom: `1px solid ${c.gray100}`,
+  marginBottom: 20,
+  '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
+  '& a[aria-current=page]': { color: c.primary, borderBottom: `2px solid ${c.primary}` },
+});
+const Summary = styled.div({
+  background: c.gray50,
+  borderRadius: 12,
+  padding: 16,
+  marginTop: 16,
+  ...textStyle.caption,
+  '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
+  '& dt': { color: c.gray500 },
+  '& dd': { textAlign: 'right', fontWeight: 600 },
+});
+const Related = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
+  gap: 16,
+  marginTop: 16,
+  [mobile]: {
+    gridTemplateColumns: 'repeat(2,minmax(0,1fr))',
+    '& > article:nth-of-type(n+3)': { display: 'none' },
+  },
+});

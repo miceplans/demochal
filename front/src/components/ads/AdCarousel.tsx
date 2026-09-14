@@ -18,6 +18,71 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
+/** 홈의 상단·중간 광고에 공통으로 쓰는 자동 순환 광고 캐러셀입니다. */
+export function AdCarousel({ ariaLabel, items, variant, interval = 5000, priceOverlay }: AdCarouselProps) {
+  const [railIndex, setRailIndex] = useState(1);
+  const [shouldAnimate, setShouldAnimate] = useState(true);
+  const [isPaused, setIsPaused] = useState(false);
+  const itemCount = items.length;
+
+  useEffect(() => {
+    if (isPaused || itemCount < 2) return;
+    const timer = window.setInterval(() => {
+      setRailIndex((index) => index + 1);
+    }, interval);
+    return () => window.clearInterval(timer);
+  }, [interval, isPaused, itemCount]);
+
+  const slides = [items[itemCount - 1], ...items, items[0]];
+  const Viewport = variant === 'hero' ? HeroViewport : GalleryViewport;
+  const goTo = (index: number) => {
+    setShouldAnimate(true);
+    setRailIndex(index + 1);
+  };
+
+  const handleTransitionEnd = () => {
+    if (railIndex !== itemCount + 1) return;
+    setShouldAnimate(false);
+    setRailIndex(1);
+    // 복제한 첫 광고로 이동한 뒤, 애니메이션 없이 실제 첫 광고로 되돌립니다.
+    // 두 프레임을 분리해야 브라우저가 되돌아가는 위치를 화면에 그리지 않습니다.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setShouldAnimate(true));
+    });
+  };
+
+  if (itemCount === 0) return null;
+
+  return (
+    <section
+      aria-label={ariaLabel}
+      style={priceOverlay ? { pointerEvents: 'auto' } : undefined}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocusCapture={() => setIsPaused(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
+      }}
+    >
+      <Viewport>
+        <Rail activeIndex={railIndex} variant={variant} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
+          {slides.map((item, index) => (
+            <SlideButton key={`${item.src}-${index}`} type="button" onClick={() => goTo((index - 1 + itemCount) % itemCount)}>
+              <Image src={item.src} alt={index === railIndex ? item.alt : ''} width={variant === 'hero' ? 1059 : 315} height={variant === 'hero' ? 252 : 190} />
+            </SlideButton>
+          ))}
+        </Rail>
+        {variant === 'hero' && priceOverlay ? (
+          <PriceOverlay>
+            <PriceOverlayLabel>{priceOverlay.label}</PriceOverlayLabel>
+            <PriceOverlayValue>{priceOverlay.value}</PriceOverlayValue>
+          </PriceOverlay>
+        ) : null}
+      </Viewport>
+    </section>
+  );
+}
+
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
@@ -92,68 +157,3 @@ const SlideButton = styled.button({
   cursor: 'pointer',
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: 3 },
 });
-
-/** 홈의 상단·중간 광고에 공통으로 쓰는 자동 순환 광고 캐러셀입니다. */
-export function AdCarousel({ ariaLabel, items, variant, interval = 5000, priceOverlay }: AdCarouselProps) {
-  const [railIndex, setRailIndex] = useState(1);
-  const [shouldAnimate, setShouldAnimate] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
-  const itemCount = items.length;
-
-  useEffect(() => {
-    if (isPaused || itemCount < 2) return;
-    const timer = window.setInterval(() => {
-      setRailIndex((index) => index + 1);
-    }, interval);
-    return () => window.clearInterval(timer);
-  }, [interval, isPaused, itemCount]);
-
-  if (itemCount === 0) return null;
-
-  const slides = [items[itemCount - 1], ...items, items[0]];
-  const Viewport = variant === 'hero' ? HeroViewport : GalleryViewport;
-  const goTo = (index: number) => {
-    setShouldAnimate(true);
-    setRailIndex(index + 1);
-  };
-
-  const handleTransitionEnd = () => {
-    if (railIndex !== itemCount + 1) return;
-    setShouldAnimate(false);
-    setRailIndex(1);
-    // 복제한 첫 광고로 이동한 뒤, 애니메이션 없이 실제 첫 광고로 되돌립니다.
-    // 두 프레임을 분리해야 브라우저가 되돌아가는 위치를 화면에 그리지 않습니다.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setShouldAnimate(true));
-    });
-  };
-
-  return (
-    <section
-      aria-label={ariaLabel}
-      style={priceOverlay ? { pointerEvents: 'auto' } : undefined}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onFocusCapture={() => setIsPaused(true)}
-      onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
-      }}
-    >
-      <Viewport>
-        <Rail activeIndex={railIndex} variant={variant} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
-          {slides.map((item, index) => (
-            <SlideButton key={`${item.src}-${index}`} type="button" onClick={() => goTo((index - 1 + itemCount) % itemCount)}>
-              <Image src={item.src} alt={index === railIndex ? item.alt : ''} width={variant === 'hero' ? 1059 : 315} height={variant === 'hero' ? 252 : 190} />
-            </SlideButton>
-          ))}
-        </Rail>
-        {variant === 'hero' && priceOverlay ? (
-          <PriceOverlay>
-            <PriceOverlayLabel>{priceOverlay.label}</PriceOverlayLabel>
-            <PriceOverlayValue>{priceOverlay.value}</PriceOverlayValue>
-          </PriceOverlay>
-        ) : null}
-      </Viewport>
-    </section>
-  );
-}

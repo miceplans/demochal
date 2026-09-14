@@ -8,13 +8,6 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { loginSchema, type LoginFormValues } from '../schema';
 
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-`;
-
 // 화면 시연용 로그인: 유효성 검사만 수행하고 서버에는 요청하지 않는다.
 export function LoginForm() {
   const router = useRouter();
@@ -57,3 +50,10 @@ export function LoginForm() {
     </Form>
   );
 }
+
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+`;

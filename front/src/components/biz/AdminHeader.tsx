@@ -5,12 +5,6 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { BizGlobalStyles, BizFooter, useBizHref } from '@/components/biz/BizShell';
 
-const HeaderBox = styled.header({
-  background: c.white,
-  borderBottom: `1px solid ${c.gray100}`,
-  padding: '14px max(24px, calc((100% - 1200px) / 2))',
-});
-
 export function AdminHeader() {
   const hrefOf = useBizHref();
   return (
@@ -42,3 +36,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
     </>
   );
 }
+
+const HeaderBox = styled.header({
+  background: c.white,
+  borderBottom: `1px solid ${c.gray100}`,
+  padding: '14px max(24px, calc((100% - 1200px) / 2))',
+});
