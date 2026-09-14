@@ -1,35 +1,46 @@
-import { Body, Controller, Get, Post, Query, UseGuards } from '@nestjs/common';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
+import { BusinessesService } from '../businesses/businesses.service.js';
+import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
 import { RegisterPaymentCardDto } from './dto/register-payment-card.dto.js';
+import { PaymentHistoryQueryDto } from './dto/payment-history-query.dto.js';
 
-@Controller()
-@UseGuards(JwtAuthGuard)
+@Controller('billing')
 export class BillingController {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly billingHistoryService: BillingHistoryService,
+    private readonly businessesService: BusinessesService,
+  ) {}
 
-  @Get('billing/cards')
-  listCards(@CurrentUser() user: AuthenticatedUser) {
-    return this.billingService.listCards(user.id);
+  @Get('cards')
+  async listCards(@CurrentUser() user: AuthUser) {
+    const business = await this.businessesService.findByOwner(user.id);
+    if (!business) throw new ForbiddenException('Business account required');
+    return this.billingService.listCards(business.id);
   }
 
-  @Post('billing/cards')
-  registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.billingService.registerCard(dto, user.id);
+  @Post('cards')
+  @HttpCode(201)
+  async registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthUser) {
+    const business = await this.businessesService.findByOwner(user.id);
+    if (!business) throw new ForbiddenException('Business account required');
+    return this.billingService.registerCard(business.id, dto);
   }
 
-  @Get('billing/history')
-  getHistory(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('from') from?: string,
-    @Query('to') to?: string,
-  ) {
-    return this.billingService.getHistory(user.id, from, to);
-  }
-
-  @Get('biz/dashboard')
-  getBizDashboard(@CurrentUser() user: AuthenticatedUser) {
-    return this.billingService.getBizDashboard(user.id);
+  @Get('history')
+  async listHistory(@Query() query: PaymentHistoryQueryDto, @CurrentUser() user: AuthUser) {
+    const business = await this.businessesService.findByOwner(user.id);
+    if (!business) throw new ForbiddenException('Business account required');
+    return this.billingHistoryService.forBusiness(business.id, query);
   }
 }

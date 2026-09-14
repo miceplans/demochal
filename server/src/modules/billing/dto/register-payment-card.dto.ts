@@ -1,19 +1,17 @@
-import { IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsOptional, IsString, Length } from 'class-validator';
 
 export class RegisterPaymentCardDto {
   @IsString()
-  @MaxLength(500)
+  @Length(1, 255)
   billingKey!: string;
 
   @IsOptional()
   @IsString()
-  @MaxLength(100)
+  @Length(1, 100)
   cardName?: string;
 
-  // Not in the documented request schema, but required here: Toss returns the masked
-  // card number to the client at billing-key-issue time, and the server has no other
-  // way to obtain it (raw card numbers never reach us — PCI scope stays with Toss).
+  /** Masked number from Toss's billing-key-issue response; raw card numbers never reach us. */
   @IsString()
-  @MaxLength(30)
+  @Length(1, 30)
   maskedNumber!: string;
 }

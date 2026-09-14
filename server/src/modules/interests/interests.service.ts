@@ -1,39 +1,46 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
-
-type NotificationSettingsInput = Record<string, { enabled: boolean }>;
+import type { SaveInterestsDto } from './dto/save-interests.dto.js';
+import type { SaveNotificationSettingsDto } from './dto/save-notification-settings.dto.js';
 
 @Injectable()
 export class InterestsService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async saveInterests(userId: string, categories: string[]) {
-    const [user] = await this.db
-      .update(users)
-      .set({ interestCategories: categories })
-      .where(eq(users.id, userId))
-      .returning();
-    if (!user) throw new NotFoundException('User not found');
-    return { categories: user.interestCategories as string[] };
+  async saveInterests(userId: string, dto: SaveInterestsDto) {
+    await this.db.update(users).set({ interests: dto.categories }).where(eq(users.id, userId));
+    return { categories: dto.categories };
   }
 
-  async saveNotificationSettings(userId: string, settings: NotificationSettingsInput) {
-    const flat: Record<string, boolean> = {};
-    for (const [key, value] of Object.entries(settings ?? {})) {
-      if (typeof value?.enabled !== 'boolean') {
-        throw new BadRequestException(`"${key}" must be an object with a boolean "enabled" field`);
-      }
-      flat[key] = value.enabled;
-    }
-
-    const [user] = await this.db
+  // The client contract wraps each setting as { enabled }, but the stored
+  // jsonb is a flat Record<string, boolean>.
+  async saveNotificationSettings(userId: string, dto: SaveNotificationSettingsDto) {
+    this.assertSettingsShape(dto);
+    const flattened = Object.fromEntries(
+      Object.entries(dto).map(([key, value]) => [key, value.enabled]),
+    );
+    await this.db
       .update(users)
-      .set({ notificationSettings: flat })
-      .where(eq(users.id, userId))
-      .returning();
-    if (!user) throw new NotFoundException('User not found');
-    return user.notificationSettings as Record<string, boolean>;
+      .set({ notificationSettings: flattened })
+      .where(eq(users.id, userId));
+    return flattened;
+  }
+
+  private assertSettingsShape(input: unknown): asserts input is SaveNotificationSettingsDto {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+      throw new BadRequestException('Body must be an object of { enabled: boolean } settings');
+    }
+    for (const [key, value] of Object.entries(input)) {
+      if (
+        typeof value !== 'object' ||
+        value === null ||
+        Array.isArray(value) ||
+        typeof (value as { enabled?: unknown }).enabled !== 'boolean'
+      ) {
+        throw new BadRequestException(`Setting "${key}" must be an object with a boolean "enabled" flag`);
+      }
+    }
   }
 }

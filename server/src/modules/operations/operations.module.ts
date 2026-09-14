@@ -5,5 +5,6 @@ import { OperationsService } from './operations.service.js';
 @Module({
   controllers: [OperationsController],
   providers: [OperationsService],
+  exports: [OperationsService],
 })
 export class OperationsModule {}

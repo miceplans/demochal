@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import { AdsModule } from '../ads/ads.module.js';
-import { ChallengesModule } from '../challenges/challenges.module.js';
+import { BusinessesModule } from '../businesses/businesses.module.js';
 import { BillingController } from './billing.controller.js';
+import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
-import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
-  imports: [ChallengesModule, AdsModule, AuthModule],
+  imports: [BusinessesModule],
   controllers: [BillingController],
-  providers: [BillingService],
+  providers: [BillingService, BillingHistoryService],
+  // BillingHistoryService is shared with the biz dashboard (single history query).
+  exports: [BillingHistoryService],
 })
 export class BillingModule {}

@@ -1,8 +1,7 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString } from 'class-validator';
 
 export class RejectVerificationDto {
   @IsString()
-  @MinLength(1)
-  @MaxLength(500)
+  @IsNotEmpty()
   reason!: string;
 }

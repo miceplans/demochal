@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { BookmarksController } from './bookmarks.controller.js';
 import { BookmarksService } from './bookmarks.service.js';
-import { AuthModule } from '../auth/auth.module.js';
+import { ChallengeBookmarksController } from './challenge-bookmarks.controller.js';
 
 @Module({
-  imports: [AuthModule],
-  controllers: [BookmarksController],
+  controllers: [BookmarksController, ChallengeBookmarksController],
   providers: [BookmarksService],
+  exports: [BookmarksService],
 })
 export class BookmarksModule {}

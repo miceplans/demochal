@@ -1,19 +1,15 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
-
-const STATUSES = ['submitted', 'reviewing', 'needs_revision', 'accepted', 'rejected'] as const;
-const EVALUATIONS = ['undecided', 'pass', 'fail'] as const;
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateApplicationDto {
   @IsOptional()
-  @IsIn(STATUSES)
-  status?: (typeof STATUSES)[number];
+  @IsIn(['submitted', 'reviewing', 'needs_revision', 'accepted', 'rejected'])
+  status?: 'submitted' | 'reviewing' | 'needs_revision' | 'accepted' | 'rejected';
 
   @IsOptional()
-  @IsIn(EVALUATIONS)
-  evaluation?: (typeof EVALUATIONS)[number];
+  @IsIn(['undecided', 'pass', 'fail'])
+  evaluation?: 'undecided' | 'pass' | 'fail';
 
   @IsOptional()
   @IsString()
-  @MaxLength(2000)
   managerMemo?: string;
 }

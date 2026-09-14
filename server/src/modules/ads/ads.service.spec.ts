@@ -1,124 +1,149 @@
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AdsService } from './ads.service.js';
-import { AdminAdsService } from '../admin/admin-ads.service.js';
-import { OrdersService } from '../orders/orders.service.js';
-import { adPeriod, adToday } from './ad-period.js';
-import { adProducts, ads, notifications, orders } from '../../db/schema.js';
-import type { Database } from '../../db/drizzle.provider.js';
 
-// A scripted DB double keeps assertions at the service boundary: rows written,
-// transaction use and the row lock that serializes concurrent reservations.
-function database(reads: unknown[][]) {
-  const writes: { table: unknown; value: any }[] = [];
-  const locks: string[] = [];
-  function query(rows: unknown[]) {
-    const chain: any = {
-      then: (resolve: (value: unknown[]) => unknown) => Promise.resolve(rows).then(resolve),
-    };
-    for (const method of ['from', 'where', 'limit', 'innerJoin', 'orderBy'])
-      chain[method] = () => chain;
-    chain.for = (mode: string) => {
-      locks.push(mode);
-      return chain;
-    };
-    return chain;
-  }
+function createDbStub(existingAd?: Record<string, unknown>) {
+  const limit = vi.fn().mockResolvedValue(existingAd ? [existingAd] : []);
+  const set = vi.fn();
+  const returning = vi.fn();
   const db: any = {
-    select: () => query(reads.shift() ?? []),
-    insert: (table: unknown) => ({
-      values: (value: unknown) => {
-        writes.push({ table, value });
-        return {
-          ...query([]),
-          returning: () => Promise.resolve([{ id: 'new-ad', ...(value as object) }]),
-        };
-      },
-    }),
-    update: (table: unknown) => ({
-      set: (value: unknown) => {
-        writes.push({ table, value });
-        return query([]);
-      },
-    }),
-    transaction: vi.fn(async (run: (tx: unknown) => unknown) => run(db)),
+    select: vi.fn(() => ({
+      from: vi.fn(() => ({ where: vi.fn(() => ({ limit })) })),
+    })),
+    update: vi.fn(() => ({
+      set: vi.fn((value: unknown) => {
+        set(value);
+        return { where: vi.fn(() => ({ returning })) };
+      }),
+    })),
   };
-  return { db: db as Database, writes, locks };
+  return { db, limit, set, returning };
 }
-const product = { id: 'hero', name: '배너', dailyPrice: 7000 };
-const dto = {
-  productId: 'hero',
-  startDate: '2099-09-11',
-  endDate: '2099-09-13',
-  expectedDailyPrice: 7000,
-};
-afterEach(() => vi.useRealTimers());
 
-describe('advertising contracts', () => {
-  it('charges the new buyer the current price and freezes the same amount on the ad and order', async () => {
-    const { db, writes, locks } = database([[{ id: 'business' }], [product], []]);
-    const result = await new AdsService(db).create(dto, 'buyer');
-    expect(result.paidAmount).toBe(21000);
-    expect(writes.find((write) => write.table === orders)?.value.amount).toBe(21000);
-    expect(db.transaction).toHaveBeenCalledOnce();
-    expect(locks).toEqual(['update']);
+function createBusinessesStub(business?: { id: string }) {
+  return { findByOwner: vi.fn().mockResolvedValue(business) };
+}
+
+const OWNER = { id: 'user-1', email: 'biz@x.com', name: 'Biz', role: 'business' };
+const ADMIN = { id: 'admin-1', email: 'a@x.com', name: 'Admin', role: 'admin' };
+const AD = { id: 'ad-1', businessId: 'biz-1', status: 'active', title: '히어로 광고' };
+
+describe('AdsService.updateStatus', () => {
+  it('rejects a non-owning business with 403', async () => {
+    const { db, set, returning } = createDbStub(AD);
+    returning.mockResolvedValue([AD]);
+    const businesses = createBusinessesStub({ id: 'biz-other' });
+    const service = new AdsService(db, businesses as any);
+
+    await expect(
+      service.updateStatus('ad-1', { status: 'paused' }, OWNER),
+    ).rejects.toThrow('Only the owning business');
+
+    expect(set).not.toHaveBeenCalled();
   });
-  it('rejects a conflicting reservation without creating an ad or order', async () => {
-    const { db, writes } = database([[{ id: 'business' }], [product], [{ id: 'existing' }]]);
-    await expect(new AdsService(db).create(dto, 'buyer')).rejects.toThrow('이미 계약된');
-    expect(writes).toEqual([]);
+
+  it('rejects a business user with no business with 403', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, createBusinessesStub(undefined) as any);
+
+    await expect(
+      service.updateStatus('ad-1', { status: 'paused' }, OWNER),
+    ).rejects.toThrow('Only the owning business');
   });
-  it('requires the buyer to review a changed price', async () => {
-    const { db, writes } = database([[{ id: 'business' }], [{ ...product, dailyPrice: 9000 }]]);
-    await expect(new AdsService(db).create(dto, 'buyer')).rejects.toThrow('단가가 변경');
-    expect(writes).toEqual([]);
+
+  it('rejects activating an unpaid preparing ad with 400', async () => {
+    const { db, set, returning } = createDbStub({ ...AD, status: 'preparing' });
+    returning.mockResolvedValue([{ ...AD, status: 'active' }]);
+    const businesses = createBusinessesStub({ id: 'biz-1' });
+    const service = new AdsService(db, businesses as any);
+
+    await expect(
+      service.updateStatus('ad-1', { status: 'active' }, OWNER),
+    ).rejects.toThrow('Unpaid ads cannot be activated directly');
+
+    expect(set).not.toHaveBeenCalled();
   });
-  it('notifies existing buyers without rewriting their paid amount or dates', async () => {
-    const { db, writes } = database([
-      [product],
-      [{ userId: 'A', ad: { id: 'A-ad', paidAmount: 15000 } }],
-    ]);
-    const service = new AdminAdsService(db);
-    vi.spyOn(service, 'getAdPricing').mockResolvedValue([]);
-    await service.updateAdPricing([{ slot: 'hero', dailyPrice: 9000 }]);
-    expect(writes.filter((write) => write.table === ads || write.table === orders)).toEqual([]);
-    expect(writes.find((write) => write.table === adProducts)?.value).toEqual({ dailyPrice: 9000 });
-    expect(writes.find((write) => write.table === notifications)?.value).toMatchObject({
-      userId: 'A',
-      payload: { paidAmount: 15000, dailyPrice: 9000, previousDailyPrice: 7000 },
-    });
+
+  it('lets the owning business pause an active ad', async () => {
+    const { db, set, returning } = createDbStub(AD);
+    returning.mockResolvedValue([{ ...AD, status: 'paused' }]);
+    const businesses = createBusinessesStub({ id: 'biz-1' });
+    const service = new AdsService(db, businesses as any);
+
+    const updated = await service.updateStatus('ad-1', { status: 'paused' }, OWNER);
+
+    expect(set).toHaveBeenCalledWith({ status: 'paused' });
+    expect(updated).toEqual({ ...AD, status: 'paused' });
   });
-  it('does not notify if the price did not change', async () => {
-    const { db, writes } = database([[product]]);
-    const service = new AdminAdsService(db);
-    vi.spyOn(service, 'getAdPricing').mockResolvedValue([]);
-    await service.updateAdPricing([{ slot: 'hero', dailyPrice: 7000 }]);
-    expect(writes).toEqual([]);
+
+  it('lets an admin change any ad', async () => {
+    const { db, returning } = createDbStub(AD);
+    returning.mockResolvedValue([{ ...AD, status: 'ended' }]);
+    const businesses = createBusinessesStub(undefined);
+    const service = new AdsService(db, businesses as any);
+
+    await expect(
+      service.updateStatus('ad-1', { status: 'ended' }, ADMIN),
+    ).resolves.toEqual({ ...AD, status: 'ended' });
   });
-  it('does not reactivate an ended ad on a duplicate payment webhook', async () => {
-    const { db, writes } = database([[{ id: 'order', status: 'paid', adId: 'ended-ad' }]]);
-    await new OrdersService(db).markPaid('order');
-    expect(writes).toEqual([]);
+
+  it('throws 404 for unknown ads', async () => {
+    const { db } = createDbStub(undefined);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(
+      service.updateStatus('missing', { status: 'paused' }, OWNER),
+    ).rejects.toThrow('Ad not found');
   });
-  it('rejects payment for a released reservation', async () => {
-    const { db, writes } = database([
-      [{ id: 'order', status: 'pending', adId: 'ended-ad' }],
-      [{ status: 'ended' }],
-    ]);
-    await expect(new OrdersService(db).markPaid('order')).rejects.toThrow('종료되거나 취소된');
-    expect(writes).toEqual([]);
+});
+
+describe('AdsService.report', () => {
+  const businesses = () => createBusinessesStub({ id: 'biz-1' });
+
+  it('rejects a non-owning business with 403', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-other' }) as any);
+
+    await expect(service.report('ad-1', {}, OWNER)).rejects.toThrow('Only the owning business');
   });
-  it('counts the last exposure day and supports a one-day contract', () => {
-    expect(adPeriod('2099-09-11', '2099-09-11').days).toBe(1);
-    expect(adPeriod(dto.startDate, dto.endDate).days).toBe(3);
+
+  it('returns honest zeros: 7-day default range, 24 hourly slots, empty monthlyClicks', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, businesses() as any);
+
+    const report = await service.report('ad-1', {}, OWNER);
+
+    expect(report.totals).toEqual({ impressions: 0, clicks: 0, ctr: 0 });
+    expect(report.daily).toHaveLength(7);
+    const today = new Date().toISOString().slice(0, 10);
+    const sixDaysAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+    expect(report.daily![0]!.date).toBe(sixDaysAgo);
+    expect(report.daily![6]!.date).toBe(today);
+    for (const row of report.daily!) {
+      expect(row).toMatchObject({ impressions: 0, clicks: 0, ctr: 0 });
+    }
+    expect(report.hourly).toHaveLength(24);
+    expect(report.hourly![0]).toEqual({ hour: 0, label: '0시~1시', impressions: 0, clicks: 0, ctr: 0 });
+    expect(report.hourly![23]).toEqual({ hour: 23, label: '23시~24시', impressions: 0, clicks: 0, ctr: 0 });
+    expect(report.monthlyClicks).toEqual([]);
   });
-  it('rejects reversed, impossible and past dates', () => {
-    expect(() => adPeriod('2099-09-13', '2099-09-11')).toThrow();
-    expect(() => adPeriod('2099-02-30', '2099-03-03')).toThrow();
-    expect(() => adPeriod('2000-01-01', '2000-01-02')).toThrow();
+
+  it('honours an explicit from/to range', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, businesses() as any);
+
+    const report = await service.report('ad-1', { from: '2026-09-01', to: '2026-09-03' }, OWNER);
+
+    expect(report.daily.map((row) => row.date)).toEqual(['2026-09-01', '2026-09-02', '2026-09-03']);
   });
-  it('changes the booking day at Korean midnight', () => {
-    expect(adToday(new Date('2026-09-10T15:00:00Z')).toISOString()).toBe(
-      '2026-09-11T00:00:00.000Z',
-    );
+
+  it('caps the range at 31 days', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, businesses() as any);
+
+    const report = await service.report('ad-1', { from: '2026-01-01', to: '2026-09-14' }, OWNER);
+
+    expect(report.daily).toHaveLength(31);
+    expect(report.daily[0]!.date).toBe('2026-08-15');
+    expect(report.daily[30]!.date).toBe('2026-09-14');
   });
 });

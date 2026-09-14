@@ -1,4 +1,4 @@
-import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class ResolveReportDto {
   @IsIn(['resolve', 'dismiss'])
@@ -6,6 +6,5 @@ export class ResolveReportDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(1000)
   note?: string;
 }

@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class SuspendUserDto {
   @IsBoolean()
@@ -6,6 +6,5 @@ export class SuspendUserDto {
 
   @IsOptional()
   @IsString()
-  @MaxLength(500)
   reason?: string;
 }
