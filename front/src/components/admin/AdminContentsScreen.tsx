@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -28,8 +28,20 @@ export function AdminContentsScreen() {
   const [query, setQuery] = useState('');
   const contentsQuery = generated.useListAdminContents();
   const contents = contentsQuery.data?.data;
-  const adminTeams = contents?.teams ?? [];
-  const adminContests = contents?.contests ?? [];
+
+  const normalizedQuery = query.trim().toLowerCase();
+  const adminTeams = useMemo(() => {
+    const teams = contents?.teams ?? [];
+    if (!normalizedQuery) return teams;
+    return teams.filter((team) =>
+      [team.name, team.challenge].some((text) => text?.toLowerCase().includes(normalizedQuery)),
+    );
+  }, [contents?.teams, normalizedQuery]);
+  const adminContests = useMemo(() => {
+    const contests = contents?.contests ?? [];
+    if (!normalizedQuery) return contests;
+    return contests.filter((contest) => contest.title?.toLowerCase().includes(normalizedQuery));
+  }, [contents?.contests, normalizedQuery]);
 
   return (
     <>

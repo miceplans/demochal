@@ -10,7 +10,18 @@ import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { SearchFilter, SelectFilter } from './parts';
 
-const adStatusParam: Record<string, string> = { 진행중: 'active', 종료: 'ended' };
+const adStatusLabel: Record<string, string> = {
+  active: '진행중',
+  preparing: '준비중',
+  paused: '중단',
+  ended: '종료',
+};
+const adStatusParam: Record<string, string> = {
+  진행중: 'active',
+  준비중: 'preparing',
+  중단: 'paused',
+  종료: 'ended',
+};
 
 export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
@@ -26,7 +37,7 @@ export function AdminAdsScreen() {
         location: ad.productId ?? '-',
         title: ad.title ?? '',
         price: `${(ad.paidAmount ?? 0).toLocaleString()}원`,
-        status: ad.status === 'active' ? '진행중' : '종료',
+        status: adStatusLabel[ad.status ?? ''] ?? '종료',
       })),
     [adsQuery.data],
   );
@@ -42,7 +53,7 @@ export function AdminAdsScreen() {
         <Filters>
           <SearchFilter placeholder="기관명/담당자 검색" label="기관명 또는 담당자 검색" value={query} onChange={setQuery} />
           <Dropdowns>
-            <SelectFilter label="상태" options={['진행중', '종료']} value={status} onChange={setStatus} />
+            <SelectFilter label="상태" options={['진행중', '준비중', '중단', '종료']} value={status} onChange={setStatus} />
             <SelectFilter label="활동" options={['광고 수정하기', '내보내기', '광고 중단하기']} onChange={handleActivity} />
           </Dropdowns>
         </Filters>
