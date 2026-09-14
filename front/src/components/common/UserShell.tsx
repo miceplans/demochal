@@ -240,7 +240,12 @@ export function UserShell({
         }}
       />
       <HeaderBox compact={compact}>
-        <Row style={{ justifyContent: 'space-between', minHeight: compact ? 31 : 56 }}>
+        <Row
+          style={{
+            justifyContent: compact && !navigation ? 'center' : 'space-between',
+            minHeight: compact ? 31 : 56,
+          }}
+        >
           <Logo />
           {!compact && (
             <>

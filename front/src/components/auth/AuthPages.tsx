@@ -37,14 +37,6 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
     borderRadius: 8,
   },
 }));
-const KakaoCrop = styled.span({
-  width: 13,
-  height: 13,
-  overflow: 'hidden',
-  position: 'relative',
-  mixBlendMode: 'darken',
-  '& img': { position: 'absolute', width: 44.66, height: 44.66, left: -1.4, top: -14.95 },
-});
 export function LoginPage() {
   return (
     <UserShell compact navigation={false} footer={false}>
@@ -56,17 +48,7 @@ export function LoginPage() {
         <Stack gap={8}>
           {['Kakao', 'Google', 'Naver'].map((provider, i) => (
             <Social key={provider} href="/onboarding/activity" provider={provider}>
-              {i === 0 ? (
-                <KakaoCrop>
-                  <Icon name="imgImage2" size={44.66} />
-                </KakaoCrop>
-              ) : (
-                <Icon
-                  name={i === 1 ? 'imgImage1' : 'imgImage3'}
-                  width={i === 1 ? 11.81 : 17.948}
-                  height={i === 1 ? 12.094 : 17.948}
-                />
-              )}
+              <Icon name={i === 0 ? 'imgImage2' : i === 1 ? 'imgImage1' : 'imgImage3'} size={18} />
               <span>{provider}계정으로 계속하기</span>
             </Social>
           ))}
