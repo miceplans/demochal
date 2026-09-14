@@ -65,6 +65,12 @@ const HistoryCard = styled(Link)({
   border: `1px solid ${c.gray100}`,
   borderRadius: 12,
   padding: 16,
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    borderColor: c.gray200,
+    boxShadow: '0 6px 16px rgb(0 0 0 / 8%)',
+  },
   '& .thumb': { width: 80, height: 60, background: c.gray100, borderRadius: 8, flexShrink: 0 },
   '& h3': { ...textStyle.mBlockTitle, marginBottom: 6 },
   [mobile]: { padding: 14, '& .thumb': { width: 64, height: 48 } },

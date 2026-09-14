@@ -47,12 +47,17 @@ const MobileMenu = styled.nav({
   flexDirection: 'column',
   gap: 4,
   '& a': {
-    padding: '16px 4px',
+    padding: '16px 8px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     fontWeight: 600,
+    borderRadius: 8,
+    transition: 'background 0.15s ease',
   },
+  '& a:active': { background: c.gray50 },
+  '& a:hover span': { transform: 'translateX(3px)' },
+  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
   borderBottom: `1px solid ${c.gray100}`,
   paddingBottom: 24,
 });
@@ -60,7 +65,17 @@ const Participating = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
-  '& a': { border: `1px solid ${c.gray100}`, borderRadius: 12, padding: 16 },
+  '& a': {
+    border: `1px solid ${c.gray100}`,
+    borderRadius: 12,
+    padding: 16,
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      borderColor: c.gray200,
+      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
+    },
+  },
   [mobile]: { gridTemplateColumns: '1fr' },
 });
 export function MyPage() {
@@ -281,6 +296,8 @@ const Table = styled.table({
   '& th:last-child': { borderRadius: '0 11px 0 0' },
   '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
   '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
+  '& tbody tr': { transition: 'background 0.12s ease' },
+  '& tbody tr:hover': { background: c.gray50 },
   [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
 export function ApplicationsPage() {
@@ -306,7 +323,13 @@ export function ApplicationsPage() {
                   <td>{row.org}</td>
                   <td>
                     <Tag
-                      tone={row.result === '예선 통과' ? 'green' : row.result === '심사중' ? 'blue' : 'red'}
+                      tone={
+                        row.result === '예선 통과'
+                          ? 'green'
+                          : row.result === '심사중'
+                            ? 'blue'
+                            : 'red'
+                      }
                     >
                       {row.result}
                     </Tag>
@@ -333,7 +356,9 @@ export function ApplicationsPage() {
                   <td>{row.team}</td>
                   <td>
                     <Tag
-                      tone={row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'}
+                      tone={
+                        row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'
+                      }
                     >
                       {row.result}
                     </Tag>
@@ -445,6 +470,15 @@ const NotificationList = styled.div({
   gap: 0,
   borderTop: `1px solid ${c.gray100}`,
 });
+const NotificationItem = styled.div({
+  padding: '18px 8px',
+  borderBottom: `1px solid ${c.gray100}`,
+  borderRadius: 6,
+  cursor: 'pointer',
+  transition: 'background 0.15s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { background: c.gray100 },
+});
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
   const items = notificationItems.filter((x) => tab === '전체' || x.category === tab);
@@ -464,13 +498,10 @@ export function NotificationsPage() {
           </Row>
           <NotificationList>
             {items.map((item) => (
-              <div
-                key={item.id}
-                style={{ padding: '18px 4px', borderBottom: `1px solid ${c.gray100}` }}
-              >
+              <NotificationItem key={item.id}>
                 <Heading style={{ fontSize: 14 }}>{item.title}</Heading>
                 <Muted>{item.body}</Muted>
-              </div>
+              </NotificationItem>
             ))}
           </NotificationList>
           {items.length === 0 && <Muted>알림이 없어요.</Muted>}
@@ -480,7 +511,11 @@ export function NotificationsPage() {
   );
 }
 
-export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+export function LegalPageBody({
+  kind,
+}: {
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+}) {
   const paragraphs =
     kind === 'privacy'
       ? (legalCopy as { privacy: string[] }).privacy
@@ -542,9 +577,23 @@ export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-pro
   );
 }
 
-export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+export function LegalPage({
+  kind,
+}: {
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+}) {
   return (
-    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : kind === 'advertising-policy' ? '광고 운영 정책' : '이용약관'}>
+    <UserShell
+      title={
+        kind === 'privacy'
+          ? '개인정보처리방침'
+          : kind === 'youth-protection'
+            ? '청소년 보호 정책'
+            : kind === 'advertising-policy'
+              ? '광고 운영 정책'
+              : '이용약관'
+      }
+    >
       <LegalPageBody kind={kind} />
     </UserShell>
   );

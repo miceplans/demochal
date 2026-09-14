@@ -10,7 +10,16 @@ const Dialog = styled.dialog({
   width: 360,
   maxWidth: 'calc(100vw - 32px)',
   color: c.gray900,
-  '&::backdrop': { background: 'rgb(0 0 0 / .3)' },
+  '&::backdrop': { background: 'rgb(0 0 0 / .3)', animation: 'semo-backdrop-in .2s ease-out' },
+  '&[open]': { animation: 'semo-modal-in .22s cubic-bezier(0.22, 1, 0.36, 1)' },
+  '@keyframes semo-modal-in': {
+    from: { opacity: 0, transform: 'translateY(12px) scale(0.97)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@keyframes semo-backdrop-in': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
 });
 export function Modal({
   open,

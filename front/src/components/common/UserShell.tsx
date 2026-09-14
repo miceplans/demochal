@@ -82,7 +82,14 @@ const Nav = styled.nav({
   display: 'flex',
   gap: 8,
   paddingTop: 4,
-  '& a': { padding: '8px 10px', ...textStyle.body, color: c.gray700, borderRadius: 6 },
+  '& a': {
+    padding: '8px 10px',
+    ...textStyle.body,
+    color: c.gray700,
+    borderRadius: 6,
+    transition: 'background 0.15s ease, color 0.15s ease',
+  },
+  '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
 });
 const MobileHeader = styled.header({
@@ -114,6 +121,8 @@ const MobileBackLink = styled(Link)({
   fontSize: 28,
   lineHeight: 1,
   color: c.gray900,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:active': { transform: 'scale(0.88)' },
 });
 const MobileTitle = styled.h1({
   minWidth: 0,
@@ -149,7 +158,9 @@ const Bottom = styled.nav({
       padding: 12,
       borderRadius: 6,
       boxSizing: 'border-box',
+      transition: 'background 0.15s ease, transform 0.1s ease',
     },
+    '& a:active': { transform: 'scale(0.88)' },
   },
 });
 const FooterBox = styled.footer({
@@ -338,7 +349,9 @@ const MyAside = styled.aside({
     ...textStyle.bodySmall,
     color: c.gray700,
     borderRadius: 8,
+    transition: 'background 0.15s ease, color 0.15s ease',
   },
+  '& a:hover': { background: c.gray50, color: c.gray900 },
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });
