@@ -8,6 +8,20 @@
       "when": 1789345244171,
       "tag": "0000_windy_tyrannus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789347900000,
+      "tag": "0001_add_google_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789358400000,
+      "tag": "0002_add_ads",
+      "breakpoints": true
     }
   ]
 }

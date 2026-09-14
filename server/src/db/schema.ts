@@ -107,3 +107,31 @@ export const notifications = pgTable('notifications', {
   readAt: timestamp('read_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const adProducts = pgTable('ad_products', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
+  description: text('description'),
+  placement: varchar('placement', { length: 20 }).notNull(), // hero | gallery | team
+  dailyPrice: integer('daily_price').notNull(),
+  previewImageUrl: text('preview_image_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const ads = pgTable('ads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  businessId: uuid('business_id')
+    .notNull()
+    .references(() => businesses.id),
+  productId: uuid('product_id')
+    .notNull()
+    .references(() => adProducts.id),
+  title: varchar('title', { length: 200 }),
+  imageFileId: uuid('image_file_id'),
+  landingUrl: text('landing_url'),
+  startDate: timestamp('start_date').notNull(),
+  endDate: timestamp('end_date').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('preparing'), // preparing | active | paused | ended
+  paidAmount: integer('paid_amount').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});

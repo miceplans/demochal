@@ -12,6 +12,7 @@ import { OrdersModule } from './modules/orders/orders.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FilesModule } from './modules/files/files.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { AdsModule } from './modules/ads/ads.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -29,6 +30,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     PaymentsModule,
     FilesModule,
     NotificationsModule,
+    AdsModule,
   ],
 })
 export class AppModule {}
