@@ -12,7 +12,7 @@
     "dev:front": "pnpm --filter ./front dev",
     "dev:server": "pnpm --filter ./server dev",
     "dev:worker": "pnpm --filter ./server dev:worker",
-    "build": "pnpm --filter ./front --filter ./server --filter ./packages/* run build",
+    "build": "pnpm --filter ./front --filter ./server --filter './packages/*' run build",
     "lint": "pnpm --filter ./front --filter ./server run lint",
     "typecheck": "pnpm -r run typecheck",
     "format": "prettier --write .",
