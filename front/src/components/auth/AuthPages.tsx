@@ -116,6 +116,27 @@ const Next = styled.div({
     '& button': { width: '100%', height: 52, borderRadius: 14 },
   },
 });
+const ProgressTrack = styled.div({
+  height: 6,
+  background: c.lightBlue,
+  borderRadius: 30,
+  marginTop: 16,
+  marginBottom: 64,
+});
+const ProgressFill = styled.div({
+  height: 6,
+  background: c.primary,
+  borderRadius: 30,
+  transition: 'width 0.45s cubic-bezier(0.22, 1, 0.36, 1)',
+  animation: 'semo-survey-progress 0.6s cubic-bezier(0.22, 1, 0.36, 1)',
+  '@keyframes semo-survey-progress': {
+    from: { width: 0 },
+  },
+  '@media (prefers-reduced-motion: reduce)': {
+    animation: 'none',
+    transition: 'none',
+  },
+});
 const steps = ['activity', 'interests', 'purpose', 'challenge'];
 export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
@@ -142,29 +163,15 @@ export function OnboardingPage({ step }: { step: string }) {
     <UserShell compact navigation={false} footer={false}>
       <Survey>
         <Logo dot />
-        <div
+        <ProgressTrack
           role="progressbar"
           aria-label="관심 설문 진행"
           aria-valuemin={0}
           aria-valuemax={4}
           aria-valuenow={index + 1}
-          style={{
-            height: 6,
-            background: c.lightBlue,
-            borderRadius: 30,
-            marginTop: 16,
-            marginBottom: 64,
-          }}
         >
-          <div
-            style={{
-              height: 6,
-              width: `${(index + 1) * 25}%`,
-              background: c.primary,
-              borderRadius: 30,
-            }}
-          />
-        </div>
+          <ProgressFill style={{ width: `${(index + 1) * 25}%` }} />
+        </ProgressTrack>
         <h1 style={{ ...textStyle.h1, marginBottom: 20 }}>{titles[index]}</h1>
         {index === 0 ? (
           <Dropdown
