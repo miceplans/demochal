@@ -12,6 +12,12 @@ export interface VerificationJobMessage {
   verificationId: string;
 }
 
+export function verificationStatusPresentation(status: string) {
+  if (status === 'verified') return { displayStatus: '승인', detailStatus: '승인' };
+  if (status === 'rejected') return { displayStatus: '가승인', detailStatus: '실패' };
+  return { displayStatus: '가승인', detailStatus: '인증 대기' };
+}
+
 @Injectable()
 export class VerificationsService {
   constructor(
@@ -39,7 +45,7 @@ export class VerificationsService {
     // TODO: SQS_VERIFICATIONS_QUEUE_URL must be set once the queue exists in AWS.
     await this.sqsService.sendMessage(env.sqsVerificationsQueueUrl, message);
 
-    return verification;
+    return { ...verification, ...verificationStatusPresentation(verification!.status) };
   }
 
   async findById(id: string) {
@@ -49,7 +55,7 @@ export class VerificationsService {
       .where(eq(verifications.id, id))
       .limit(1);
     if (!verification) throw new NotFoundException('Verification not found');
-    return verification;
+    return { ...verification, ...verificationStatusPresentation(verification.status) };
   }
 
   // Manual admin decision (`/admin/biz-review`) — distinct from the automatic

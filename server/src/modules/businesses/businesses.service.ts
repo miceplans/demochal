@@ -4,6 +4,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses } from '../../db/schema.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
+import { verificationStatusPresentation } from '../verifications/verifications.service.js';
 
 @Injectable()
 export class BusinessesService {
@@ -19,7 +20,7 @@ export class BusinessesService {
         ownerUserId,
       })
       .returning();
-    return business;
+    return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
   }
 
   async findById(id: string) {
@@ -29,7 +30,7 @@ export class BusinessesService {
       .where(eq(businesses.id, id))
       .limit(1);
     if (!business) throw new NotFoundException('Business not found');
-    return business;
+    return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
@@ -47,6 +48,6 @@ export class BusinessesService {
       .where(and(eq(businesses.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .returning();
     if (!business) throw new NotFoundException('Business not found or not owned by user');
-    return business;
+    return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 }

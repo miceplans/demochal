@@ -54,15 +54,26 @@ export class VerificationsProcessorService {
       .where(eq(verifications.id, verification.id));
 
     try {
-      // TODO: resolve a real, temporary URL for the document instead of the raw key.
-      const ocrResult = await this.ocrClient.recognizeBusinessLicense(document?.key ?? '');
+      // NTS can verify from the registration number. OCR enriches the request
+      // when it is configured, but a missing OCR integration must not reject a
+      // legitimate verification outright.
+      const ocrResult =
+        document && this.ocrClient.isConfigured()
+          ? await this.ocrClient.recognizeBusinessLicense(document.key)
+          : { raw: {} };
       const ntsResult = await this.ntsClient.verifyBusinessRegistration(
         ocrResult.registrationNumber ?? business?.registrationNumber ?? '',
         ocrResult.businessName ?? business?.name ?? '',
       );
 
       const status = ntsResult.valid ? 'verified' : 'rejected';
-      await this.completeVerification(verification, business, status, ocrResult.raw, ntsResult.valid ? null : 'NTS verification failed');
+      await this.completeVerification(
+        verification,
+        business,
+        status,
+        { ...ocrResult.raw, nts: ntsResult.raw ?? null },
+        ntsResult.valid ? null : ntsResult.message ?? 'NTS verification failed',
+      );
     } catch (error) {
       this.logger.error(`Verification ${verification.id} processing failed`, error);
       await this.db
@@ -89,9 +100,15 @@ export class VerificationsProcessorService {
       .where(eq(verifications.id, verification.id));
     if (!business) return;
     await this.db.update(businesses).set({ verificationStatus: status }).where(eq(businesses.id, business.id));
+    const approved = status === 'verified';
     await this.notificationsService.create(business.ownerUserId, 'verification.result', {
       verificationId: verification.id,
       status,
+      displayStatus: approved ? '승인' : '가승인',
+      detailStatus: approved ? '승인' : '실패',
+      message: approved
+        ? '사업자 인증이 완료되어 승인되었습니다.'
+        : '사업자 인증에 실패했습니다. 상세 상태를 확인해 주세요.',
     });
   }
 }

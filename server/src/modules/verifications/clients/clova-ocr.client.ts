@@ -11,8 +11,12 @@ export interface OcrResult {
 // https://api.ncloud-docs.com/docs/ai-application-service-ocr
 @Injectable()
 export class ClovaOcrClient {
+  isConfigured(): boolean {
+    return Boolean(env.clovaOcrApiUrl && env.clovaOcrSecretKey);
+  }
+
   async recognizeBusinessLicense(_fileUrl: string): Promise<OcrResult> {
-    if (!env.clovaOcrApiUrl || !env.clovaOcrSecretKey) {
+    if (!this.isConfigured()) {
       throw new Error('CLOVA_OCR_API_URL / CLOVA_OCR_SECRET_KEY is not configured');
     }
     throw new Error('Not implemented yet');
