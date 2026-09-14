@@ -1,4 +1,9 @@
 import { NotificationSettingsPage } from '@/components/my/MyPages';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 export default function Page() {
-  return <NotificationSettingsPage />;
+  return (
+    <RequireAuth>
+      <NotificationSettingsPage />
+    </RequireAuth>
+  );
 }

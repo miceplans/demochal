@@ -4,46 +4,27 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { SearchFilter, SelectFilter } from './parts';
 
-const adStatusLabel: Record<string, string> = {
-  active: '진행중',
-  preparing: '준비중',
-  paused: '중단',
-  ended: '종료',
-};
-const adStatusParam: Record<string, string> = {
-  진행중: 'active',
-  준비중: 'preparing',
-  중단: 'paused',
-  종료: 'ended',
-};
+const ads = [
+  { id: '1', location: '상단 빅배너 1', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '2', location: '상단 빅배너 2', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '3', location: '상단 빅배너 3', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '4', location: '상단 빅배너 4', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+  { id: '5', location: '상단 빅배너 5', title: '한국 IT 챌린지', price: '100,000원', status: '진행중' },
+];
 
 export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const toast = useToast();
-
-  const adsQuery = generated.useListAdminAds({ q: query || undefined, status: adStatusParam[status] });
-
-  const rows = useMemo(
-    () =>
-      (adsQuery.data?.data ?? []).map((ad, index) => ({
-        id: ad.id ?? String(index),
-        location: ad.productId ?? '-',
-        title: ad.title ?? '',
-        price: `${(ad.paidAmount ?? 0).toLocaleString()}원`,
-        status: adStatusLabel[ad.status ?? ''] ?? '종료',
-      })),
-    [adsQuery.data],
-  );
+  const rows = useMemo(() => ads.filter((ad) => `${ad.location} ${ad.title}`.includes(query) && (!status || ad.status === status)), [query, status]);
   const handleActivity = (value: string) => {
     const label = value === '광고 수정하기' ? value : value === '내보내기' ? value : '광고 중단하기';
-    toast.success(label, '선택한 광고에 적용할 수 있습니다.');
+    toast.success(label, '선택한 광고에 적용할 수 있습니다');
   };
 
   return (
@@ -53,7 +34,7 @@ export function AdminAdsScreen() {
         <Filters>
           <SearchFilter placeholder="기관명/담당자 검색" label="기관명 또는 담당자 검색" value={query} onChange={setQuery} />
           <Dropdowns>
-            <SelectFilter label="상태" options={['진행중', '준비중', '중단', '종료']} value={status} onChange={setStatus} />
+            <SelectFilter label="상태" options={['진행중', '종료']} value={status} onChange={setStatus} />
             <SelectFilter label="활동" options={['광고 수정하기', '내보내기', '광고 중단하기']} onChange={handleActivity} />
           </Dropdowns>
         </Filters>
@@ -63,7 +44,7 @@ export function AdminAdsScreen() {
         {rows.map((ad) => <TableRow key={ad.id} role="row"><span role="cell">{ad.location}</span><span role="cell">{ad.title}</span><span role="cell">{ad.price}</span><Progress role="cell">{ad.status}</Progress></TableRow>)}
       </Table>
       <Preview>
-        <Image src="/ads-priview.png" alt="광고 노출 미리보기" fill priority sizes="1220px" style={{ objectFit: 'cover' }} />
+        <Image src="/assets/ads-priview.png" alt="광고 노출 미리보기" fill priority sizes="1220px" style={{ objectFit: 'cover' }} />
         <PricingLink href="/admin/ad-pricing/pricing">광고비 관리</PricingLink>
       </Preview>
     </Page>

@@ -6,6 +6,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { useState, type ReactNode } from 'react';
 import { EmotionRegistry } from '@/lib/emotion-registry';
 import { ToastProvider, useToast } from '@/components/common/Toast';
+import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
 import { theme } from '@/styles/theme';
 
 function QueryProvider({ children }: { children: ReactNode }) {
@@ -14,10 +15,10 @@ function QueryProvider({ children }: { children: ReactNode }) {
     () =>
       new QueryClient({
         queryCache: new QueryCache({
-          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요.'),
+          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요'),
         }),
         mutationCache: new MutationCache({
-          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요.'),
+          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요'),
         }),
         defaultOptions: {
           queries: {
@@ -37,7 +38,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <EmotionRegistry>
       <ThemeProvider theme={theme}>
         <ToastProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <InputSecurityBoundary>
+            <QueryProvider>{children}</QueryProvider>
+          </InputSecurityBoundary>
         </ToastProvider>
       </ThemeProvider>
     </EmotionRegistry>

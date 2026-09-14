@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode, type TransitionEvent } from 'react';
 
 export type MovingAdsState = {
   activeIndex: number;
@@ -9,7 +9,7 @@ export type MovingAdsState = {
   loopIndexes: number[];
   railIndex: number;
   shouldAnimate: boolean;
-  handleTransitionEnd: () => void;
+  handleTransitionEnd: (event: TransitionEvent<HTMLElement>) => void;
 };
 
 type MovingAdsProps = {
@@ -17,7 +17,6 @@ type MovingAdsProps = {
   itemCount: number;
   children: (state: MovingAdsState) => ReactNode;
   interval?: number;
-  paused?: boolean;
 };
 
 /**
@@ -29,7 +28,6 @@ export function MovingAds({
   itemCount,
   children,
   interval = 5000,
-  paused = false,
 }: MovingAdsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   // 첫·마지막 광고를 복제해 끝에서도 한 방향으로 자연스럽게 이어지게 합니다.
@@ -45,7 +43,7 @@ export function MovingAds({
   }, [itemCount]);
 
   useEffect(() => {
-    if (isPaused || paused || itemCount < 2) return;
+    if (isPaused || itemCount < 2) return;
 
     const timerId = window.setInterval(() => {
       setActiveIndex((index) => (index + 1) % itemCount);
@@ -53,9 +51,11 @@ export function MovingAds({
     }, interval);
 
     return () => window.clearInterval(timerId);
-  }, [interval, isPaused, paused, itemCount]);
+  }, [interval, isPaused, itemCount]);
 
-  const handleTransitionEnd = useCallback(() => {
+  const handleTransitionEnd = useCallback((event: TransitionEvent<HTMLElement>) => {
+    // 카드 hover 등 내부 요소의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
     if (railIndex !== 0 && railIndex !== itemCount + 1) return;
 
     setShouldAnimate(false);
