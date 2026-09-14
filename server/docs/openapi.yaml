@@ -1,0 +1,2196 @@
+openapi: 3.0.3
+info:
+  title: semochal API 기능 명세서
+  version: 0.0.1
+  description: |
+    챌린지(공모전) 매칭 플랫폼 semochal의 기능 명세서.
+
+    - **사용자 영역**: 홈/탐색, 팀 모집, 챌린지 지원, 마이페이지(북마크·관심분야·알림·프로필)
+    - **기업 영역(SEMO.BIZ)**: 기관 가입/인증, 공고(챌린지) 관리, 지원서 관리, 광고/결제, 운영대행 문의
+    - **관리자 영역**: 기관 심사, 인증 관리, 광고 관리/광고비, 사용자 관리, 신고 처리, 리포트, 설정
+
+    구현 상태 표기:
+    - `implemented` — `server/src/modules`의 컨트롤러에 실제 구현된 엔드포인트
+    - `planned` — 프론트 화면(`front/src/app`)에서 사용되지만 아직 백엔드 미구현(목업 데이터 기반)
+
+    인증 방식: 로그인 시 설정되는 HttpOnly 세션 쿠키의 JWT를 사용한다.
+servers:
+  - url: http://localhost:3001
+    description: 로컬 개발 서버
+tags:
+  - name: Health
+    description: 인프라 헬스체크
+  - name: Auth
+    description: 로그인/인증 (사용자·기업 공통)
+  - name: Users
+    description: 사용자 프로필/온보 설문
+  - name: Challenges
+    description: 챌린지(공모전) 탐색·등록
+  - name: Teams
+    description: 팀 모집글
+  - name: Applications
+    description: 챌린지/팀 지원서
+  - name: Bookmarks
+    description: 챌린지 북마크(스크랩)
+  - name: Interests
+    description: 관심분야·알림 설정
+  - name: Notifications
+    description: 알림 조회
+  - name: Businesses
+    description: 기업(기관) 등록/조회
+  - name: Verifications
+    description: 기관 인증(사업자등록증 OCR 심사)
+  - name: Ads
+    description: 광고 상품·노출·리포트
+  - name: Orders
+    description: 주문
+  - name: Payments
+    description: 결제(토스 웹훅)
+  - name: Billing
+    description: 결제수단·결제 내역
+  - name: Operations
+    description: 운영대행 문의
+  - name: Files
+    description: 파일 업로드(Presigned URL)
+  - name: Admin
+    description: 관리자(대시보드·심사·사용자·신고·분석·설정)
+
+paths:
+  # ---------------------------------------------------------------- Health
+  /health:
+    get:
+      tags: [Health]
+      summary: 헬스체크
+      operationId: checkHealth
+      x-impl-status: implemented
+      description: DB에 `select 1`을 실행해 연결을 확인한다. DB에 닿지 못하면 503(ALB 타깃그룹이 인스턴스를 unhealthy로 판단).
+      responses:
+        '200':
+          description: 서비스 정상 (DB 연결 확인됨)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: ok }
+                  timestamp: { type: string, format: date-time }
+        '503':
+          description: DB에 연결할 수 없음
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: error }
+                  timestamp: { type: string, format: date-time }
+
+  # ---------------------------------------------------------------- Auth
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: 이메일 회원가입
+      operationId: register
+      x-impl-status: implemented
+      description: |
+        이메일/비밀번호로 계정을 생성한다. **원래 명세에는 없던 엔드포인트** — 실제 운영 화면은
+        소셜 로그인(`/auth/social/{provider}`, 아직 planned)이 기본 가입 경로이지만, 그 경로가
+        구현되기 전까지 `/auth/login`을 실제로 발급/검증 가능하게 만들기 위해 추가했다.
+        bcrypt로 해시한 비밀번호를 저장하고 가입 즉시 HttpOnly 세션 쿠키를 설정한다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                name: { type: string }
+      responses:
+        '201':
+          description: 가입 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '409':
+          description: 이미 가입된 이메일
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: 이메일 로그인
+      operationId: login
+      x-impl-status: implemented
+      description: |
+        이메일/비밀번호로 로그인하여 HttpOnly 세션 쿠키(JWT, 7일 유효)를 설정한다.
+        bcrypt로 저장된 해시와 비교하며, 일치하지 않으면 401을 반환한다.
+        실제 운영 화면은 소셜 로그인(카카오/구글/네이버)이 기본이며, `/onboarding/*` 4단계 설문 후 가입 완료.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401':
+          description: 인증 실패 (이메일 없음 또는 비밀번호 불일치)
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: 내 인증 정보 조회
+      operationId: getMyAuthInfo
+      x-impl-status: implemented
+      description: HttpOnly 세션 쿠키의 JWT를 검증해 현재 로그인 사용자를 조회한다.
+      responses:
+        '200':
+          description: 현재 사용자 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: 로그아웃
+      operationId: logout
+      x-impl-status: implemented
+      description: HttpOnly 세션 쿠키를 만료시킨다.
+      responses:
+        '204': { description: 로그아웃 성공 }
+  /auth/social/{provider}:
+    post:
+      tags: [Auth]
+      summary: 소셜 로그인 (카카오/구글/네이버)
+      operationId: socialLogin
+      x-impl-status: planned
+      description: |
+        프론트 로그인 화면(`/(auth)/login`)의 소셜 로그인 버튼용.
+        OAuth 콜백 코드를 교환하여 토큰 발급 + 신규 사용자는 온보(`/onboarding/activity` → `/onboarding/challenge`)으로 진입.
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema: { type: string, enum: [kakao, google, naver] }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, description: OAuth 인가 코드 }
+                redirectUri: { type: string }
+      responses:
+        '200':
+          description: 로그인 성공 (신규 가입자는 isNewUser=true)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken: { type: string }
+                  isNewUser: { type: boolean }
+                  user: { $ref: '#/components/schemas/User' }
+
+  # ---------------------------------------------------------------- Users
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: 사용자 조회
+      operationId: getUser
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 사용자 정보 (공개 프로필 `/profile` 화면의 Identity/뱃지/기술스택/수상이력 표시용)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /users/me:
+    patch:
+      tags: [Users]
+      summary: 내 프로필 수정
+      operationId: updateMyProfile
+      x-impl-status: implemented
+      description: |
+        마이페이지(`/my`) 프로필 편집용. 기술 스택 추가, 자격증/뱃지 인증 요청, 외부 링크 관리.
+        공개 프로필(`/profile`)에 노출되는 Identity(이름/역할/지역), 출품·수상 이력 포함.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                role: { type: string, description: 포지션 (기획/디자인/개발 등) }
+                region: { type: string }
+                stacks: { type: array, items: { type: string } }
+                externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
+                awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
+      responses:
+        '200':
+          description: 수정된 사용자 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+  /users/me/survey:
+    put:
+      tags: [Users]
+      summary: 온보 설문 저장 (4단계)
+      operationId: saveOnboardingSurvey
+      x-impl-status: implemented
+      description: |
+        가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
+        프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OnboardingSurvey' }
+      responses:
+        '200':
+          description: 저장 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnboardingSurvey' }
+
+  # ---------------------------------------------------------------- Challenges
+  /challenges:
+    get:
+      tags: [Challenges]
+      summary: 챌린지 목록 조회 (커서 페이지네이션)
+      operationId: listChallenges
+      x-impl-status: implemented
+      description: |
+        생성일 내림차순 키셋 페이지네이션. 탐색 화면(`/explore`)의 필터(분야/대상/주최기관/상금 범위),
+        정렬(마감임박/최신/인기), 검색어, "마감된 챌린지 포함"은 쿼리 확장으로 지원 예정.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string, format: date-time }
+          description: 이전 페이지의 nextCursor (ISO 8601)
+        - name: limit
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: 챌린지 페이지
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
+                  nextCursor:
+                    { type: string, nullable: true, description: 다음 페이지 커서 (없으면 null) }
+    post:
+      tags: [Challenges]
+      summary: 챌린지 등록 (기업)
+      operationId: createChallenge
+      x-impl-status: implemented
+      description: |
+        기업 공고 등록(`/biz/postings/new`). 포스터 업로드는 `POST /files/presign` 선행,
+        모집 역할·해시태그·신청폼(질문 유형 6가지)은 향후 스키마 확장 예정.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateChallengeRequest' }
+      responses:
+        '201':
+          description: 등록된 챌린지 (status=draft)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+  /challenges/{id}:
+    get:
+      tags: [Challenges]
+      summary: 챌린지 상세 조회
+      operationId: getChallenge
+      x-impl-status: implemented
+      description: |
+        상세 화면(`/contests/{id}`): 정보 탭(주최/자격/접수기간/D-day/포스터/상세/요약)과
+        팀모집 탭(연결된 팀 모집글), 유사 챌린지 3개, 북마크/공유(클립보드) 포함.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 챌린지 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /challenges/{id}/stats:
+    get:
+      tags: [Challenges]
+      summary: 챌린지 통계 (클릭수·북마크·노출·지원자 분포·월별 노출 추이)
+      operationId: getChallengeStats
+      x-impl-status: implemented
+      description: |
+        기업 공고 관리(`/biz/postings/{id}`, `/biz/postings`)의 그래프 데이터를 한 번에 반환한다.
+        - `clicks` / `bookmarks`: 사이드 StatBox (값 + 전주 대비 증감) — 상세 조회(`GET /challenges/{id}`)
+          호출과 북마크 테이블에서 실집계.
+        - `applicantDistribution`: 지원자 분포 파이차트 (conic-gradient, label + 백분율) — `applications.role`
+          기준 실집계.
+        - `monthlyExposure`: 공고 노출수 영역차트 (SVG area chart) 겸 월별 바차트 — 라벨('7월') + 값 배열
+        - **주의**: 카드 노출(임프레션) 전용 계측 비콘이 아직 없어 `exposure`는 현재 `clicks`(상세 진입)와
+          동일한 신호를 재사용한다. 카드 노출과 클릭을 분리하려면 프론트에 별도 임프레션 비콘 호출이 필요하다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 통계 데이터
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChallengeStats' }
+  /challenges/{id}/similar:
+    get:
+      tags: [Challenges]
+      summary: 유사 챌린지 조회
+      operationId: listSimilarChallenges
+      x-impl-status: implemented
+      description: 챌린지 상세 하단의 유사 챌린지 3개 추천.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 유사 챌린지 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
+
+  # ---------------------------------------------------------------- Teams
+  /teams:
+    get:
+      tags: [Teams]
+      summary: 팀 모집글 목록 조회
+      operationId: listTeams
+      x-impl-status: implemented
+      description: |
+        팀 탐색 화면(`/teams`). 필터: 챌린지/필요역할/지역, "팀 찾기" 검색.
+        홈(`/`)의 팀 모집 섹션, 챌린지 상세 팀모집 탭에서도 사용.
+      parameters:
+        - name: challengeId
+          in: query
+          schema: { type: string, format: uuid }
+        - name: role
+          in: query
+          schema: { type: string, description: 필요 역할 (기획/디자인/개발 등) }
+        - name: region
+          in: query
+          schema: { type: string }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 팀 모집글 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Team' } }
+    post:
+      tags: [Teams]
+      summary: 팀 모집글 작성
+      operationId: createTeam
+      x-impl-status: implemented
+      description: |
+        모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 한줄 → 필요 역할 슬롯(추가/삭제) → 내 역할.
+        프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + `/my/teams` 이동.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTeamRequest' }
+      responses:
+        '201':
+          description: 작성된 모집글
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Team' }
+  /teams/{id}:
+    get:
+      tags: [Teams]
+      summary: 팀 모집글 상세 조회
+      operationId: getTeam
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 팀 모집글 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Team' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Applications
+  /applications:
+    post:
+      tags: [Applications]
+      summary: 챌린지 참가 신청
+      operationId: applyChallenge
+      x-impl-status: implemented
+      description: |
+        지원서 작성 화면(`/applications/new`): 역할 선택, 팀원 구성(이름 입력/추가/삭제), 임시저장 후 제출.
+        지원서 본문(역할/팀원)과 신청폼 응답(기업이 만든 구글폼 스타일 질문)은 향후 스키마 확장 예정.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+          description: 인증 가드 도입 전 임시 사용자 식별 (TODO)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApplyChallengeRequest' }
+      responses:
+        '201':
+          description: 생성된 신청 (status=pending)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+  /applications/me:
+    get:
+      tags: [Applications]
+      summary: 내 지원 현황 조회
+      operationId: listMyApplications
+      x-impl-status: implemented
+      description: |
+        마이페이지 지원현황(`/my/applications`): 챌린지 지원(결과 태그: 예선통과/심사중/탈락)과
+        팀 지원현황(확정/검토중/거절) 두 테이블. 팀 지원은 향후 별도 확장.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 내 신청 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Application' } }
+  /applications/{id}:
+    get:
+      tags: [Applications]
+      summary: 지원서 상세 조회
+      operationId: getApplication
+      x-impl-status: implemented
+      description: 기업 지원서 관리(`/biz/applications`)의 행 클릭 상세.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 지원서 상세 (신청자/팀/상태/담당자 메모/평가상태)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Applications]
+      summary: 지원서 상태 변경 (검토중/보완요청/합격/불합격 + 담당자 메모)
+      operationId: updateApplication
+      x-impl-status: implemented
+      description: |
+        기업 지원서 관리 화면의 상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격),
+        담당자 메모 입력, 납볍하기(엑셀 export). 팀 지원 결과 전송(채팅방 링크)도 이 흐름의 확장.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  { type: string, enum: [submitted, reviewing, needs_revision, accepted, rejected] }
+                evaluation: { type: string, enum: [undecided, pass, fail] }
+                managerMemo: { type: string }
+      responses:
+        '200':
+          description: 변경된 지원서
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Application' }
+
+  # ---------------------------------------------------------------- Bookmarks
+  /bookmarks:
+    get:
+      tags: [Bookmarks]
+      summary: 내 북마크 목록 조회
+      operationId: listMyBookmarks
+      x-impl-status: implemented
+      description: 북마크 화면(`/my/bookmarks`)의 챌린지 그리드(정렬, 모바일 1·2열 토글).
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+        - name: sort
+          in: query
+          schema: { type: string, enum: [deadline, latest, popular] }
+      responses:
+        '200':
+          description: 북마크한 챌린지 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
+  /challenges/{id}/bookmark:
+    put:
+      tags: [Bookmarks]
+      summary: 챌린지 북마크 토글
+      operationId: toggleBookmark
+      x-impl-status: implemented
+      description: 챌린지 상세의 북마크(스크랩) 버튼. 현재 프론트는 `useUserStore.bookmarks`에 로컬 저장.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [bookmarked]
+              properties:
+                bookmarked: { type: boolean }
+      responses:
+        '200':
+          description: 토글 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bookmarked: { type: boolean }
+
+  # ---------------------------------------------------------------- Interests
+  /interests:
+    put:
+      tags: [Interests]
+      summary: 관심분야 저장
+      operationId: saveInterests
+      x-impl-status: implemented
+      description: |
+        관심분야 화면(`/my/interests`)의 Chip 그룹 토글 + 저장하기.
+        홈의 AI 추천 챌린지 개인화와 연계.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [categories]
+              properties:
+                categories: { type: array, items: { type: string } }
+      responses:
+        '200':
+          description: 저장된 관심분야
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  categories: { type: array, items: { type: string } }
+  /notification-settings:
+    put:
+      tags: [Interests]
+      summary: 알림 설정 저장
+      operationId: saveNotificationSettings
+      x-impl-status: implemented
+      description: 알림 설정 화면(`/my/notifications`)의 그룹별 Toggle(팀매칭/마감임박/공고 등) on/off.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: object
+                properties:
+                  enabled: { type: boolean }
+      responses:
+        '200':
+          description: 저장된 알림 설정
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: { type: boolean } }
+
+  # ---------------------------------------------------------------- Notifications
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: 내 알림 목록 조회
+      operationId: listMyNotifications
+      x-impl-status: implemented
+      description: |
+        알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
+        푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+        - name: type
+          in: query
+          schema:
+            { type: string, description: '알림 유형 필터 (team_matching | deadline | posting 등)' }
+      responses:
+        '200':
+          description: 알림 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+
+  # ---------------------------------------------------------------- Businesses
+  /businesses:
+    post:
+      tags: [Businesses]
+      summary: 기업(기관) 등록
+      operationId: registerBusiness
+      x-impl-status: implemented
+      description: |
+        기업 회원가입 3단계(`/biz/login`: 약관 동의 → 계정 정보 → 기관 인증)의 마지막 단계.
+        등록 후 `verificationStatus=pending`이며, 사업자등록증 인증(`POST /verifications`)을 거쳐 승인된다.
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+          description: 소유자 사용자 ID (인증 가드 도입 전 임시)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterBusinessRequest' }
+      responses:
+        '201':
+          description: 등록된 기업
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Business' }
+  /businesses/{id}:
+    get:
+      tags: [Businesses]
+      summary: 기업 상세 조회
+      operationId: getBusiness
+      x-impl-status: implemented
+      description: 기업 프로필(`/biz/profile`)의 내 기업 정보 카드용.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 기업 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Business' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Businesses]
+      summary: 기업 프로필 수정
+      operationId: updateBusiness
+      x-impl-status: implemented
+      description: |
+        기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign`),
+        기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                bannerImageFileId: { type: string, format: uuid }
+                logoImageFileId: { type: string, format: uuid }
+                address: { type: string }
+                phone: { type: string }
+                email: { type: string, format: email }
+                contentBlocks: { type: array, items: { $ref: '#/components/schemas/ContentBlock' } }
+      responses:
+        '200':
+          description: 수정된 기업 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Business' }
+
+  # ---------------------------------------------------------------- Verifications
+  /verifications:
+    post:
+      tags: [Verifications]
+      summary: 기관 인증 서류 제출 (사업자등록증)
+      operationId: submitVerification
+      x-impl-status: implemented
+      description: |
+        기업 가입의 기관 인증 단계. 파일 업로드(`POST /files/presign` → S3 PUT) 후 fileId로 제출.
+        제출 즉시 SQS(`SQS_VERIFICATIONS_QUEUE_URL`)로 OCR 심사 잡을 발송하고 `status=pending`으로 생성된다.
+        관리자 심사(`/admin/biz-review`)에서 승인/거부된다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitVerificationRequest' }
+      responses:
+        '201':
+          description: 생성된 인증 요청
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+  /verifications/{id}:
+    get:
+      tags: [Verifications]
+      summary: 인증 요청 상태 조회
+      operationId: getVerification
+      x-impl-status: implemented
+      description: OCR 결과(`ocrResult`)와 거부 사유(`rejectionReason`) 포함. 기업 프로필의 "인증 서류" 상태 표시용.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 인증 요청 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Files
+  /files/presign:
+    post:
+      tags: [Files]
+      summary: Presigned 업로드 URL 발급
+      operationId: requestPresignedUpload
+      x-impl-status: implemented
+      description: |
+        S3 PUT presigned URL(유효 5분)을 발급하고 files 레코드를 생성한다.
+        용도: 기관 인증 서류, 챌린지 포스터, 기업 배너/로고, 프로필 자격증 첨부 등.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PresignedUploadRequest' }
+      responses:
+        '201':
+          description: 업로드 URL과 파일 메타
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  uploadUrl: { type: string, description: S3 PUT용 presigned URL (5분 유효) }
+                  fileId: { type: string, format: uuid }
+                  key: { type: string }
+  /files/{id}:
+    get:
+      tags: [Files]
+      summary: 파일 메타 조회
+      operationId: getFile
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 파일 메타 (private 버킷의 실제 다운로드는 별도 presigned GET 필요)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileMeta' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Orders / Payments
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: 주문 조회
+      operationId: getOrder
+      x-impl-status: implemented
+      description: 광고 결제 등의 주문 정보. 주문 생성 엔드포인트는 향후 광고 결제 플로우(`/biz/ads` checkout) 연동 시 추가.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 주문 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /payments/webhook/toss:
+    post:
+      tags: [Payments]
+      summary: 토스 결제 웹훅 수신
+      operationId: handleTossWebhook
+      x-impl-status: implemented
+      description: |
+        토스페이먼츠 웹훅. `status=DONE`이면 해당 주문을 paid로 처리.
+        **TODO**: 웹훅 신원 미검증 — 토스 시크릿키로 `GET /v1/payments/{paymentKey}` 조회 후 상태 확인 필요.
+        CANCELED/PARTIAL_CANCELED/EXPIRED 및 Payment 레코드 저장도 TODO.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TossWebhookPayload' }
+      responses:
+        '200':
+          description: 수신 확인
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received: { type: boolean }
+
+  # ---------------------------------------------------------------- Billing
+  /biz/dashboard:
+    get:
+      tags: [Billing]
+      summary: 기업 대시보드 종합 조회
+      operationId: getBizDashboard
+      x-impl-status: implemented
+      description: |
+        기업 대시보드(`/biz/dashboard`)의 모든 위젯을 한 번에 반환한다.
+        - `recentPosting` + `stats`: 나의 가장 최근 공고 카드와 클릭수/북마크 StatBox (실집계, `GET /challenges/{id}/stats`와 동일 소스)
+        - `monthlyAdExposure`: 광고 노출수 월별 바차트 (라벨 + 값) — 임프레션 비콘이 없어 정직하게 0으로 채워진다 (`GET /ads/{id}/report` 참고)
+        - `payments` + `paymentTotal`: 결제 내역(최근 3건, 광고 결제는 음수) — 충전/환불 플로우는 스펙 어디에도
+          엔드포인트가 없어 아직 발생할 수 없으므로 항상 음수만 나타난다
+        - `activeAds`: 진행중인 광고 테이블
+      parameters:
+        - name: x-user-id
+          in: header
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 대시보드 위젯 데이터
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BizDashboard' }
+  /billing/cards:
+    get:
+      tags: [Billing]
+      summary: 결제수단 목록 조회
+      operationId: listPaymentCards
+      x-impl-status: implemented
+      description: 대시보드/결제수단(`/biz/billing`)의 마스킹된 카드 표시(BizPaymentCard).
+      responses:
+        '200':
+          description: 등록된 결제수단 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PaymentCard' } }
+    post:
+      tags: [Billing]
+      summary: 결제수단 등록
+      operationId: registerPaymentCard
+      x-impl-status: implemented
+      description: |
+        토스페이먼츠 빌링키 발급 후 저장. 카드번호는 마스킹되어 반환된다.
+        서버는 원본 카드번호를 절대 받지 않으므로(PCI 범위는 토스에 남음) `maskedNumber`는
+        빌링키 발급 시 토스가 클라이언트에 직접 내려주는 값을 그대로 전달받아야 한다 —
+        원 스키마엔 없던 implemented 확장 필드.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [billingKey, maskedNumber]
+              properties:
+                billingKey: { type: string, description: 토스 빌링키 }
+                cardName: { type: string }
+                maskedNumber: { type: string, example: '****-****-****-1234' }
+      responses:
+        '201':
+          description: 등록된 결제수단
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentCard' }
+  /billing/history:
+    get:
+      tags: [Billing]
+      summary: 결제 내역 조회
+      operationId: listPaymentHistory
+      x-impl-status: implemented
+      description: |
+        결제 내역(`/biz/billing`) 테이블(결제 항목/일시/금액)과 대시보드 요약용.
+        amount 부호 규약: 결제(출금)는 음수, 충전·환불은 양수 — 화면에서 녹색(+)·빨간색(-)으로 구분 표시.
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: 결제 내역 목록과 잔액 합계
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/PaymentHistoryItem' } }
+                  total:
+                    type: integer
+                    description: 잔액 합계 (amount 누적, 원)
+
+  # ---------------------------------------------------------------- Ads
+  /ads/products:
+    get:
+      tags: [Ads]
+      summary: 광고 상품(노출 위치) 목록 조회
+      operationId: listAdProducts
+      x-impl-status: implemented
+      description: |
+        광고 추가 플로우(`/biz/ads`)의 노출 위치 선택(AdPlacementPreview, PC/모바일 뷰 토글).
+        placement 종류: `hero`(홈 상단 대형 배너), `gallery`(홈 중간 이미지 갤러리),
+        `team`(팀 탐색 페이지 배너). 각 상품은 관리자가 설정한 일일 단가(`dailyPrice`)로
+        단가 × 기간 일수 = 결제 금액(일일 5,000원 × N일 형태의 단기 결제 팝업)을 계산한다.
+      responses:
+        '200':
+          description: 광고 상품 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdProduct' } }
+  /ads:
+    get:
+      tags: [Ads]
+      summary: 내 광고 목록 조회
+      operationId: listMyAds
+      x-impl-status: implemented
+      description: 광고 관리 화면(`/biz/ads`)의 진행중인 광고 테이블과 대시보드 차트용.
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, paused, ended] }
+      responses:
+        '200':
+          description: 광고 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Ad' } }
+    post:
+      tags: [Ads]
+      summary: 광고 등록 (기간 선택 + 결제)
+      operationId: createAd
+      x-impl-status: implemented
+      description: |
+        단기 결제 팝업(react-day-picker 기간 선택, 일일 단가 × 기간 = 결제 금액) → 결제수단 확인 → 완료.
+        주문 생성(`orders.adId`) → 토스 결제 → 웹훅(`POST /payments/webhook/toss`)이
+        주문을 paid로 바꾸면 `OrdersService.markPaid`가 이 광고를 자동으로 `active`로 전환한다.
+        생성 직후에는 결제 대기 상태인 `preparing`으로 반환된다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, startDate, endDate]
+              properties:
+                productId: { type: string }
+                expectedDailyPrice: { type: integer, minimum: 0, description: 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청. }
+                imageFileId: { type: string, format: uuid }
+                landingUrl: { type: string }
+                startDate: { type: string, format: date }
+                endDate: { type: string, format: date }
+                title:
+                  {
+                    type: string,
+                    description: 'implemented 확장 — 원 스키마엔 title/challengeId가 없어 Ad.title의 출처가 비어 있었음. 생략 시 "{상품명} 광고"로 대체.',
+                  }
+      responses:
+        '201':
+          description: 생성된 광고 (결제 대기). 계약과 주문 금액은 생성 시점 단가로 고정. 종료일 포함 일 단위 계약이며 기존 계약 종료일 다음 날부터 예약 가능.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ad' }
+        '409':
+          description: 기존 계약과 기간 중복 또는 확인한 단가가 변경됨
+  /ads/{id}:
+    patch:
+      tags: [Ads]
+      summary: 광고 상태 변경 (중단 등)
+      operationId: updateAd
+      x-impl-status: implemented
+      description: 관리자 광고 관리(`/admin/ad-pricing`)의 활동 메뉴(수정/납볍/중단)와 기업측 중단.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [active, paused, ended] }
+      responses:
+        '200':
+          description: 변경된 광고
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ad' }
+  /ads/{id}/report:
+    get:
+      tags: [Ads]
+      summary: 광고 성과 리포트 (기간별)
+      operationId: getAdReport
+      x-impl-status: implemented
+      description: |
+        기업 리포트(`/biz/reports`)와 관리자 리포트(`/admin/analytics?ad=N`).
+        - `totals`: 화면 상단의 합계 행(일별/시간별 테이블 상단 '합계' 로우와 동일 — 서버 계산 권장)
+        - `daily`: 일별 리포트 테이블(날짜/노출/클릭/클릭률)
+        - `hourly`: 시간 리포트 테이블(시간대/노출/클릭/클릭률, 0시~24시 24개 슬롯)
+        - `monthlyClicks`: 상단 월별 클릭수 바차트(라벨 + 값)
+        기간 선택 옵션(8/25~8/27, 8/25~8/31, 9/1~9/7 등)은 `from`/`to` 쿼리로 처리.
+        **주의**: 노출/클릭 계측 비콘이 아직 없음(광고는 `AdCarousel`/`MovingAds`에서 클라이언트 렌더링만
+        되고 서버로 이벤트를 보내지 않음) — 응답 구조는 실제 스키마와 동일하되 모든 지표가 정직하게 0으로
+        채워진다. 실측치가 필요하면 프론트에 임프레션/클릭 비콘 호출을 추가해야 한다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: 일별/시간별 성과 데이터
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdReport' }
+
+  # ---------------------------------------------------------------- Operations
+  /operations/inquiries:
+    post:
+      tags: [Operations]
+      summary: 운영대행 문의 접수
+      operationId: submitOperationsInquiry
+      x-impl-status: implemented
+      description: |
+        운영대행 페이지(`/biz/operations`, MICE PLANS X SEMO)의 온라인 상담/견적 문의 폼
+        (성함/연락처/문의내용). 회사 위치 지도·주소·연락처는 정적 정보.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, contact, content]
+              properties:
+                name: { type: string }
+                contact: { type: string, description: 전화번호 또는 이메일 }
+                content: { type: string }
+      responses:
+        '201':
+          description: 접수 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  received: { type: boolean }
+
+  # ---------------------------------------------------------------- Admin
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: 관리자 대시보드 통계
+      operationId: getAdminDashboard
+      x-impl-status: implemented
+      description: |
+        관리자 대시보드(`/admin`)의 위젯 데이터 묶음.
+        - `stats`: 통계 카드 4종(승인된 기관/진행 중 챌린지/누적 제출물/신규 가입자) — label + 값 + 보조 문구
+        - `adRatio`: '유저 광고 비율' 반원 게이지 (RadialBarChart) — `ratio`는 0~1, 화면에서 ×100 퍼센트 표기
+        - `traffic`: '유저 트래픽' 라인·영역 혼합 차트(ComposedChart) — `range` 쿼리로 7일/30일/1년 전환,
+          primary(일반 유저)·secondary(비즈니스) 두 개 시리즈
+        - `reports`: 신고 로그 테이블(ReportLogTable)
+      parameters:
+        - name: range
+          in: query
+          schema: { type: string, enum: [7days, 30days, 1year], default: 1year }
+          description: '트래픽 차트 기간 (탭: 7 days / 30 days / 1년)'
+      responses:
+        '200':
+          description: 대시보드 위젯 데이터
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminDashboard' }
+  /admin/businesses:
+    get:
+      tags: [Admin]
+      summary: 기관 심사 목록 + 심사 현황 통계 조회
+      operationId: listAdminBusinesses
+      x-impl-status: implemented
+      description: |
+        기관 심사(`/admin/biz-review`).
+        - `stats`: 상단 통계 카드 4종(전체 신청/승인/거부/대기) — dot 색상 포함
+        - `items`: 기관 테이블 — 활동유형(org)/유형/사업자번호(마스킹)/신청일/NTS OCR 결과/상태 뱃지.
+          행 클릭 시 우측 상세 패널(기관 정보 + 대기 상태일 때 승인/거부 버튼) 표시.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: type
+          in: query
+          schema: { type: string, description: 기관 유형 (비영리/학교/협회/기업) }
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, approved, rejected] }
+      responses:
+        '200':
+          description: 기관 심사 목록과 통계
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats: { $ref: '#/components/schemas/AdminStatCardList' }
+                  items: { type: array, items: { $ref: '#/components/schemas/BizReviewEntry' } }
+  /admin/verifications/{id}/approve:
+    post:
+      tags: [Admin]
+      summary: 기관 인증 승인
+      operationId: approveVerification
+      x-impl-status: implemented
+      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 승인 처리된 인증 요청
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+  /admin/verifications/{id}/reject:
+    post:
+      tags: [Admin]
+      summary: 기관 인증 거부
+      operationId: rejectVerification
+      x-impl-status: implemented
+      description: 거부 사유(`rejectionReason`) 기록 + 기업에 알림.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string }
+      responses:
+        '200':
+          description: 거부 처리된 인증 요청
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Verification' }
+  /admin/certificates:
+    get:
+      tags: [Admin]
+      summary: 상장(자격/수상) 인증 목록 조회
+      operationId: listAdminCertificates
+      x-impl-status: implemented
+      description: '인증 관리(`/admin/certificates`): 미인증/인증/거부 탭, 사용자 검색/유형 필터, 상장 썸네일.'
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, verified, rejected] }
+        - name: q
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 인증 요청 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/CertificateEntry' }
+  /admin/certificates/{id}/verify:
+    post:
+      tags: [Admin]
+      summary: 상장 인증 승인/거부
+      operationId: verifyCertificate
+      x-impl-status: implemented
+      description: |
+        상장 인증(`/admin/certificates`): 탭(미인증/인증/거부) + 사용자 검색/유형(수상 실적/출품 이력) 필터.
+        썸네일 클릭 시 원본 이미지 오버레이 → 승인/거부. 승인 시 사용자 프로필 뱃지 부여.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [approve, reject] }
+                reason: { type: string }
+      responses:
+        '200':
+          description: 처리 완료된 인증 항목
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CertificateEntry' }
+  /admin/ads:
+    get:
+      tags: [Admin]
+      summary: 전체 광고 목록 조회
+      operationId: listAdminAds
+      x-impl-status: implemented
+      description: '광고 관리(`/admin/ad-pricing`): 검색/상태/활동 필터, 광고 수정·납볍·중단.'
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: 광고 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Ad' } }
+  /admin/ad-pricing:
+    get:
+      tags: [Admin]
+      summary: 광고 단가 조회
+      operationId: getAdPricing
+      x-impl-status: implemented
+      description: |
+        광고비 관리(`/admin/ad-pricing/pricing`): PC/모바일 뷰 토글로 홈 화면 미리보기(MovingAds 캐러셀,
+        챌린지/팀 카드)를 재현. 슬롯 클릭 → 다이얼로그(현재 광고사/기간, '리포트 보기' → `/admin/analytics?ad=N`)
+        → 금액 수정하기에서 하루 광고비 입력/저장.
+      responses:
+        '200':
+          description: 슬롯별 단가 정보
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdSlotPricing' }
+    put:
+      tags: [Admin]
+      summary: 광고 단가 수정
+      operationId: updateAdPricing
+      x-impl-status: implemented
+      description: 슬롯 클릭 다이얼로그에서 하루 광고비 입력/저장 (`adPricing.dailyPrice`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                required: [slot, dailyPrice]
+                properties:
+                  slot: { type: string, enum: [hero, gallery, team] }
+                  dailyPrice: { type: integer, description: 일일 광고비 (원) }
+      responses:
+        '200':
+          description: 저장된 단가
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdSlotPricing' } }
+  /admin/users:
+    get:
+      tags: [Admin]
+      summary: 사용자 목록 조회
+      operationId: listAdminUsers
+      x-impl-status: implemented
+      description: |
+        사용자 관리(`/admin/users`): 이름/이메일(마스킹)/포지션/신고 누적/상태(활성·정지) 테이블,
+        가입일/뱃지/활동상태 필터.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [active, suspended] }
+      responses:
+        '200':
+          description: 사용자 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+  /admin/users/{id}/suspend:
+    post:
+      tags: [Admin]
+      summary: 사용자 정지/해제
+      operationId: suspendUser
+      x-impl-status: implemented
+      description: 상태 뱃지(활성·정지) 토글.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [suspended]
+              properties:
+                suspended: { type: boolean }
+                reason: { type: string }
+      responses:
+        '200':
+          description: 변경된 사용자
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUserEntry' }
+  /admin/reports:
+    get:
+      tags: [Admin]
+      summary: 신고 로그 조회
+      operationId: listAdminReports
+      x-impl-status: implemented
+      description: |
+        신고 처리(`/admin/reports`)와 대시보드/콘텐츠 모니터링의 신고 로그 테이블(ReportLogTable).
+        검색/필터 + 엑셀 납볍. 상태 한글 표기: 대기·승인(조치)·거부(기각).
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, resolved, dismissed] }
+      responses:
+        '200':
+          description: 신고 목록
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Report' }
+  /admin/reports/{id}/resolve:
+    post:
+      tags: [Admin]
+      summary: 신고 처리 (조치/기각)
+      operationId: resolveReport
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action: { type: string, enum: [resolve, dismiss] }
+                note: { type: string }
+      responses:
+        '200':
+          description: 처리된 신고
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+  /admin/contents:
+    get:
+      tags: [Admin]
+      summary: 콘텐츠 모니터링 조회
+      operationId: listAdminContents
+      x-impl-status: implemented
+      description: |
+        콘텐츠 모니터링(`/admin/contents`).
+        - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트)
+        - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트)
+        - `reports`: 신고 로그 테이블
+      responses:
+        '200':
+          description: 모니터링 대상 콘텐츠
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams: { type: array, items: { $ref: '#/components/schemas/AdminTeamCard' } }
+                  contests:
+                    { type: array, items: { $ref: '#/components/schemas/AdminContestCard' } }
+                  reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+  /admin/analytics:
+    get:
+      tags: [Admin]
+      summary: 전체 리포트/분석
+      operationId: getAdminAnalytics
+      x-impl-status: implemented
+      description: |
+        리포트(`/admin/analytics`).
+        - `?ad=N` 지정 시: 빅배버 N번 광고 리포트 — 기관·기간, 통계 카드 4종(노출수/클릭수/CTR/집행 광고비),
+          일별 성과 차트(AdReportChart: 노출 영역 + 클릭 라인, 이중 Y축)
+        - `stats`: 전체 통계 카드 3종(신규 가입자/신규 챌린지/플랫폼 수익)
+        - `activity`: 활동 차트(ActivityChart, 월별 일반/기업 이중 영역차트, yMax 상한)
+        - 납볍하기 버튼
+      parameters:
+        - name: ad
+          in: query
+          schema:
+            type: integer
+            description: '광고 번호 (특정 광고 리포트 시, ?ad=N)'
+        - name: from
+          in: query
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: 분석 데이터
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  adReport:
+                    {
+                      nullable: true,
+                      description: '?ad=N 지정 시에만 포함',
+                      allOf: [{ $ref: '#/components/schemas/AdminAdReport' }],
+                    }
+                  stats: { $ref: '#/components/schemas/AdminStatCardList' }
+                  activity: { $ref: '#/components/schemas/ActivityChart' }
+  /admin/settings:
+    get:
+      tags: [Admin]
+      summary: 관리자 설정 조회
+      operationId: getAdminSettings
+      x-impl-status: implemented
+      description: |
+        설정(`/admin/settings`). `groups`는 설정 항목 메타(제목/키/라벨/설명)를,
+        `values`는 현재 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
+        contestAutoPublish(공고 자동 게시), maintenanceMode(점검 모드), reportAlert(신고 접수 알림) 등.
+      responses:
+        '200':
+          description: 설정 값
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSettings' }
+    put:
+      tags: [Admin]
+      summary: 관리자 설정 저장
+      operationId: updateAdminSettings
+      x-impl-status: implemented
+      description: 변경된 키만 partial로 본문에 담아 저장. 저장하기 버튼은 토스트 피드백.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: { type: boolean }
+      responses:
+        '200':
+          description: 저장된 설정
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminSettings' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT 액세스 토큰(향후 도입). 현재는 `x-user-id` 헤더로 사용자를 식별하는 개발 중 상태.
+  responses:
+    NotFound:
+      description: 리소스를 찾을 수 없음
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode: { type: integer, example: 404 }
+              message: { type: string, example: Not found }
+    Unauthorized:
+      description: 인증 실패
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode: { type: integer, example: 401 }
+              message: { type: string, example: Unauthorized }
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string }
+        role: { type: string, enum: [user, business, admin], description: 사용자 | 기업 | 관리자 }
+        createdAt: { type: string, format: date-time }
+        # 아래는 planned 프로필 확장 (프론트 목업 기준)
+        position: { type: string, description: 포지션 }
+        region: { type: string }
+        stacks: { type: array, items: { type: string } }
+        badges:
+          {
+            type: array,
+            items: { type: string },
+            description: 깃허브 인증/포트폴리오/출품이력/자격 인증 뱃지,
+          }
+        externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
+        awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
+    ExternalLink:
+      type: object
+      properties:
+        label: { type: string }
+        url: { type: string }
+    AwardRecord:
+      type: object
+      properties:
+        title: { type: string }
+        organization: { type: string }
+        date: { type: string }
+        prize: { type: string, description: 수상 등급 }
+    OnboardingSurvey:
+      type: object
+      description: 가입 후 4단계 설문 (useUserStore.survey)
+      properties:
+        isActive: { type: boolean, description: 1단계 활동 여부 }
+        interests: { type: array, items: { type: string }, description: 2단계 관심 분야 Chip }
+        purposes: { type: array, items: { type: string }, description: 3단계 목적 Chip }
+        challengeTypes: { type: array, items: { type: string }, description: 4단계 도전 유형 Chip }
+    Challenge:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        businessId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        price: { type: integer, description: 참가비 (원) }
+        capacity: { type: integer, description: 모집 인원 }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        status: { type: string, enum: [draft, published, closed], description: 등록 시 draft }
+        createdAt: { type: string, format: date-time }
+        category: { type: string, description: 'implemented — 생성 시 저장, 유사 챌린지 추천에 사용' }
+        # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
+        posterFileId: { type: string, format: uuid }
+        organizer: { type: string }
+        eligibility: { type: string, description: 지원 자격 }
+        hashtags: { type: array, items: { type: string } }
+        recruitMethod:
+          { type: string, enum: [seMOchall, external], description: 세모챌 내 신청폼 | 외부 링크 }
+        recruitUrl: { type: string }
+        contact: { type: string, description: 문의 연락처 }
+        roles: { type: array, items: { type: string }, description: 모집 역할 }
+        applicationFormId:
+          { type: string, format: uuid, description: 신청폼 (질문 유형 6가지 빌더) }
+    CreateChallengeRequest:
+      type: object
+      required: [businessId, title, description, price, capacity, startDate, endDate]
+      properties:
+        businessId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        price: { type: integer, minimum: 1 }
+        capacity: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        category:
+          {
+            type: string,
+            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
+          }
+    Team:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeId: { type: string, format: uuid }
+        leaderUserId: { type: string, format: uuid }
+        title: { type: string, description: 팀 소개 한줄 }
+        region: { type: string }
+        openRoles:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/TeamRoleSlot' },
+            description: 필요 역할 슬롯,
+          }
+        status: { type: string, enum: [recruiting, closed] }
+        createdAt: { type: string, format: date-time }
+    TeamRoleSlot:
+      type: object
+      properties:
+        role: { type: string }
+        count: { type: integer }
+    CreateTeamRequest:
+      type: object
+      required: [challengeId, title, myRole]
+      properties:
+        challengeId: { type: string, format: uuid }
+        title: { type: string }
+        openRoles: { type: array, items: { $ref: '#/components/schemas/TeamRoleSlot' } }
+        myRole: { type: string, description: 내 역할 }
+        region: { type: string }
+    Application:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        challengeId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        status: { type: string, enum: [pending, accepted, rejected], description: 등록 시 pending }
+        createdAt: { type: string, format: date-time }
+        # planned 확장 (지원서 화면/기업 지원관리 목업 기준)
+        role: { type: string, description: 지원 역할 }
+        teammates: { type: array, items: { type: string }, description: 팀원 구성 }
+        evaluation: { type: string, enum: [undecided, pass, fail] }
+        managerMemo: { type: string }
+    ApplyChallengeRequest:
+      type: object
+      required: [challengeId]
+      properties:
+        challengeId: { type: string, format: uuid }
+        role: { type: string }
+        teammates: { type: array, items: { type: string } }
+        formAnswers:
+          {
+            type: array,
+            items: { type: object, additionalProperties: true },
+            description: 신청폼 응답 (planned),
+          }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        type: { type: string, description: '알림 유형 (team_matching | deadline | posting 등)' }
+        payload: { type: object, additionalProperties: true }
+        readAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+    Business:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        ownerUserId: { type: string, format: uuid }
+        name: { type: string }
+        registrationNumber:
+          type: string
+          description: 사업자등록번호 (10자리, 관리자 화면에서 마스킹 표시)
+        verificationStatus: { type: string, enum: [pending, approved, rejected] }
+        createdAt: { type: string, format: date-time }
+        # planned 확장 (기업 프로필 편집 목업 기준)
+        bannerImageFileId: { type: string, format: uuid }
+        logoImageFileId: { type: string, format: uuid }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        contentBlocks: { type: array, items: { $ref: '#/components/schemas/ContentBlock' } }
+    ContentBlock:
+      type: object
+      description: 기업 프로필 콘텐츠 블록 (링크/텍스트/파일/레이아웃/이미지 툴바)
+      properties:
+        type: { type: string, enum: [link, text, file, layout, image] }
+        content: { type: object, additionalProperties: true }
+    RegisterBusinessRequest:
+      type: object
+      required: [name, registrationNumber]
+      properties:
+        name: { type: string }
+        registrationNumber: { type: string, minLength: 10, maxLength: 10 }
+    Verification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        businessId: { type: string, format: uuid }
+        documentFileId: { type: string, format: uuid }
+        status: { type: string, enum: [pending, approved, rejected] }
+        ocrResult:
+          {
+            type: object,
+            additionalProperties: true,
+            nullable: true,
+            description: OCR 추출 결과 (jsonb),
+          }
+        rejectionReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    SubmitVerificationRequest:
+      type: object
+      required: [businessId, documentFileId]
+      properties:
+        businessId: { type: string, format: uuid }
+        documentFileId:
+          { type: string, format: uuid, description: presign 업로드 후 발급받은 파일 ID }
+    FileMeta:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        bucket: { type: string, enum: [public, private] }
+        key: { type: string }
+        contentType: { type: string }
+        createdAt: { type: string, format: date-time }
+    PresignedUploadRequest:
+      type: object
+      required: [bucket, contentType, fileName]
+      properties:
+        bucket: { type: string, enum: [public, private] }
+        contentType: { type: string }
+        fileName: { type: string }
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        applicationId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        amount: { type: integer, description: 결제 금액 (원) }
+        status: { type: string, enum: [pending, paid, canceled] }
+        createdAt: { type: string, format: date-time }
+    TossWebhookPayload:
+      type: object
+      required: [eventType, data]
+      properties:
+        eventType: { type: string, description: 이벤트 유형 }
+        data:
+          type: object
+          required: [paymentKey, orderId, status]
+          properties:
+            paymentKey: { type: string }
+            orderId: { type: string }
+            status: { type: string, description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED' }
+    PaymentCard:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        cardName: { type: string }
+        maskedNumber: { type: string, example: '****-****-****-1234' }
+    PaymentHistoryItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name:
+          {
+            type: string,
+            description: '결제 항목 (예: 2025 스타트업 해커톤 - 메인 배너 (대), 충전 - 신용카드)',
+          }
+        amount:
+          {
+            type: integer,
+            description: '부호 있는 금액 (원) — 결제는 음수, 충전·환불은 양수',
+            example: -100000,
+          }
+        paidAt: { type: string, format: date-time }
+        status: { type: string, enum: [paid, refunded, failed] }
+    AdProduct:
+      type: object
+      properties:
+        reservedPeriods:
+          type: array
+          description: 결제 대기, 진행 중, 일시 정지 계약의 예약 불가 기간. 종료일 포함.
+          items:
+            type: object
+            required: [startDate, endDate]
+            properties:
+              startDate: { type: string, format: date-time }
+              endDate: { type: string, format: date-time }
+        id: { type: string }
+        name: { type: string, description: '상품명 (예: 메인 배너 (대))' }
+        description:
+          type: string
+          description: '노출 설명 (예: 홈 상단 대형 배너, 마감 임박 공고 우선 노출)'
+        placement:
+          {
+            type: string,
+            enum: [hero, gallery, team],
+            description: '노출 위치 — hero: 홈 상단, gallery: 홈 중간 갤러리, team: 팀 탐색 페이지,',
+          }
+        dailyPrice:
+          type: integer
+          description: 일일 광고비 (원, 관리자가 설정한 단가)
+        previewImageUrl: { type: string, description: PC/모바일 뷰 미리보기 이미지 }
+    Ad:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        businessId: { type: string, format: uuid }
+        productId: { type: string }
+        title: { type: string, description: 광고명 (연결된 챌린지명) }
+        imageFileId: { type: string, format: uuid }
+        landingUrl: { type: string }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+        status:
+          {
+            type: string,
+            enum: [active, preparing, paused, ended],
+            description: 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용,
+          }
+        impressions: { type: integer, nullable: true, description: 누적 노출수 (준비중이면 null) }
+        bookmarks: { type: integer, nullable: true, description: 누적 북마크수 (준비중이면 null) }
+        paidAmount: { type: integer, description: 결제 금액 (원) }
+    AdReport:
+      type: object
+      properties:
+        totals: { $ref: '#/components/schemas/MetricTotals' }
+        daily:
+          type: array
+          items: { $ref: '#/components/schemas/DailyMetric' }
+        hourly:
+          type: array
+          description: 24시간 슬롯 (0시~1시 … 23시~24시)
+          items: { $ref: '#/components/schemas/HourlyMetric' }
+        monthlyClicks:
+          type: array
+          items: { $ref: '#/components/schemas/MonthlyBar' }
+          description: 상단 월별 클릭수 바차트 (라벨 + 값)
+    MetricTotals:
+      type: object
+      description: 일별/시간별 테이블 상단 '합계' 행 — 서버에서 계산해 남긴다
+      properties:
+        impressions: { type: integer }
+        clicks: { type: integer }
+        ctr: { type: number, description: '합계 클릭률 (%) = clicks / impressions × 100' }
+    HourlyMetric:
+      type: object
+      properties:
+        hour: { type: integer, description: 시간대 시작 시각 (0~23) }
+        label: { type: string, description: '"화면 표기용 라벨 (예: ''9시~10시'')"' }
+        impressions: { type: integer, description: 노출수 }
+        clicks: { type: integer, description: 클릭수 }
+        ctr: { type: number, description: 클릭률 (%) }
+    MonthlyBar:
+      type: object
+      description: 월별 바차트/영역차트 공용 포인트 (라벨 + 값)
+      properties:
+        label: { type: string, description: '"월 라벨 (예: ''7월'')"' }
+        value: { type: integer }
+    StatWithDelta:
+      type: object
+      description: |
+        StatBox 위젯 — 값과 전주 대비 증감을 함께 표시
+        (예: 클릭수 8,341번 / +8.2% 전주 대비).
+        서버는 원시 수치와 퍼센트를 남기고, 화면에서 '8,341번' 형태로 포맷팅.
+      properties:
+        value: { type: integer }
+        deltaPercent: { type: number, description: '전주 대비 증감률 (%) — 음수면 감소' }
+    ChallengeStats:
+      type: object
+      description: 공고 관리 화면의 그래프 데이터 묶음
+      properties:
+        clicks: { $ref: '#/components/schemas/StatWithDelta' }
+        bookmarks: { $ref: '#/components/schemas/StatWithDelta' }
+        exposure:
+          {
+            allOf: [{ $ref: '#/components/schemas/StatWithDelta' }],
+            description: '노출수 (예: 124,582 조회수 / +12.5% 전주 대비)',
+          }
+        applicantDistribution:
+          type: array
+          description: 지원자 분포 파이차트 — value는 백분율(0~100), 합계 100
+          items: { $ref: '#/components/schemas/LabelValue' }
+        monthlyExposure:
+          type: array
+          items: { $ref: '#/components/schemas/MonthlyBar' }
+          description: 공고 노출수 영역차트 겸 월별 바차트 (chartMonths/chartBars와 동일 형태)
+    BizDashboard:
+      type: object
+      description: 기업 대시보드(`/biz/dashboard`) 위젯 데이터 묶음
+      properties:
+        recentPosting: { $ref: '#/components/schemas/Challenge' }
+        stats:
+          type: object
+          properties:
+            clicks: { $ref: '#/components/schemas/StatWithDelta' }
+            bookmarks: { $ref: '#/components/schemas/StatWithDelta' }
+            exposure: { $ref: '#/components/schemas/StatWithDelta' }
+        monthlyAdExposure:
+          type: array
+          items: { $ref: '#/components/schemas/MonthlyBar' }
+          description: 광고 노출수 월별 바차트 (chartMonths/chartBars와 동일 형태)
+        payments:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentHistoryItem' }
+          description: 최근 결제 내역 (대시보드는 상위 3건)
+        paymentTotal: { type: integer, description: 잔액 합계 (원) }
+        activeAds: { type: array, items: { $ref: '#/components/schemas/Ad' } }
+    DailyMetric:
+      type: object
+      properties:
+        date: { type: string, format: date }
+        impressions: { type: integer, description: 노출수 }
+        clicks: { type: integer, description: 클릭수 }
+        ctr: { type: number, description: 클릭률 (%) }
+    LabelValue:
+      type: object
+      properties:
+        label: { type: string }
+        value: { type: number }
+    AdminStatCard:
+      type: object
+      description: |
+        관리자 화면 통계 카드 (StatRow/StatCard) — label + 포맷된 값 + 보조 문구 + 도트 색.
+        서버는 value를 원시 수치로, 포맷('1,248'·'₩42.8M')은 화면에서 처리하는 것을 권장.
+      properties:
+        label: { type: string, description: '카드 제목 (예: 승인된 기관)' }
+        value: { type: string, description: '표시 값 (예: 1,248 / ₩42.8M)' }
+        meta: { type: string, description: '보조 문구 (예: +12 이번 주 / 월간)' }
+        dot: { type: string, nullable: true, description: '도트 색상 (hex, 예: #0877FF)' }
+    AdminStatCardList:
+      type: array
+      items: { $ref: '#/components/schemas/AdminStatCard' }
+    AdRatioGauge:
+      type: object
+      description: |
+        '유저 광고 비율' 반원 게이지 (RadialBarChart + GaugeBar). ratio 0~1 → 화면에서 퍼센트로 변환.
+      properties:
+        value: { type: string, description: "중앙 상단 금액 (예: '100,000 ₩')" }
+        ratio: { type: number, description: '게이지 비율 (0~1, 예: 0.72 → 72%)' }
+    TrafficSeries:
+      type: object
+      description: |
+        '유저 트래픽' 차트 데이터 — 라벨 배열 + 일반 유저(primary)·비즈니스(secondary) 두 시리즈.
+        labels[i]와 primary[i]/secondary[i]가 인덱스로 대응 (recharts 데이터 조립 방식).
+      properties:
+        labels:
+          {
+            type: array,
+            items: { type: string },
+            description: "X축 라벨 (예: 'JAN'~'DEC' 또는 '1일'~'7일')",
+          }
+        primary: { type: array, items: { type: number }, description: 일반 유저 트래픽 }
+        secondary: { type: array, items: { type: number }, description: 비즈니스 트래픽 }
+    BizReviewEntry:
+      type: object
+      description: 기관 심사 테이블 행 (BizRow). 사업자번호는 서버에서 마스킹 후 전달.
+      properties:
+        id: { type: string, format: uuid }
+        org: { type: string, description: 기관명 (활동유형 컬럼) }
+        type: { type: string, description: 기관 유형 (비영리/학교/협회/기업) }
+        bizNumber: { type: string, description: '마스킹된 사업자번호 (예: 110-81-*****)' }
+        appliedAt: { type: string, description: '신청일 (예: 05.12)' }
+        nts:
+          {
+            type: string,
+            enum: [success, failed, closed, unrecognized],
+            description: 'NTS OCR 검증 결과 — 성공/실패/폐업·폐점/인식불가 (실패 계열은 빨간색 표기)',
+          }
+        status:
+          {
+            type: string,
+            enum: [pending, approved, rejected],
+            description: 심사 상태 — 대기(파랑)/승인(초록)/거부(빨강) 뱃지,
+          }
+    CertificateEntry:
+      type: object
+      description: 상장(자격/수상) 인증 항목 (CertificateRow)
+      properties:
+        id: { type: string, format: uuid }
+        user: { type: string, description: 신청 사용자 이름 }
+        award: { type: string, description: '상장 제목 (예: 2025 공공데이터 활용 대회 대상)' }
+        category: { type: string, enum: [award, participation], description: 수상 실적 | 출품 이력 }
+        fileId: { type: string, format: uuid, description: 상장 이미지 (썸네일/원본 오버레이) }
+        status: { type: string, enum: [pending, verified, rejected], description: 미인증/인증/거부 }
+    AdminTeamCard:
+      type: object
+      description: 콘텐츠 모니터링 '확인해야하는 팀' 카드 (AdminTeamCard)
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        challenge: { type: string, description: 소속 챌린지명 }
+        members: { type: string, description: "'2/4명 참여중' 형태" }
+        roles: { type: array, items: { type: string }, description: 모집 완료된 역할 뱃지 }
+        otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
+        unread: { type: boolean, description: 미확인 도트 표시 여부 }
+    AdminContestCard:
+      type: object
+      description: 콘텐츠 모니터링 '확인해야하는 챌린지' 카드 (AdminContestCard)
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        category: { type: string }
+        dday: { type: string, description: "'D-7' 형태" }
+        teams: { type: string, description: "'팀 모집 3건' 형태" }
+        unread: { type: boolean }
+    AdminUserEntry:
+      type: object
+      description: 사용자 관리 테이블 행 (UserRow) — 이메일 마스킹, 신고 누적 포함
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, description: 마스킹된 이메일 }
+        position: { type: string, description: 포지션 (프론트엔드/백엔드/디자이너/기획 등) }
+        reports: { type: integer, description: 신고 누적 건수 }
+        status: { type: string, enum: [active, suspended], description: 활성/정지 뱃지 }
+    AdSlotPricing:
+      type: object
+      description: 광고비 관리 슬롯 항목 — 슬롯별 단가와 현재 광고 정보
+      properties:
+        slot: { type: string, enum: [hero, gallery, team] }
+        dailyPrice: { type: integer, description: 일일 광고비 (원) }
+        currentAdId: { type: string, format: uuid, nullable: true }
+        organization: { type: string, nullable: true, description: '현재 광고사 (예: 부산광역시)' }
+        period: { type: string, nullable: true, description: "노출 기간 (예: '8/24~9/24')" }
+    AdminAdReport:
+      type: object
+      description: 빅배너 N번 광고 리포트 (AdReportData) — `?ad=N` 조회 시 반환
+      properties:
+        adNumber: { type: integer, description: 빅배너 번호 }
+        organization: { type: string, description: 광고 기관 }
+        period: { type: string }
+        stats: { $ref: '#/components/schemas/AdminStatCardList' }
+        daily:
+          type: array
+          description: 일별 노출·클릭 (AdReportChart — 노출 영역차트 + 클릭 라인, 이중 Y축)
+          items: { $ref: '#/components/schemas/DailyMetric' }
+    ActivityChart:
+      type: object
+      description: |
+        활동 차트 (ActivityChart) — 월별 일반/기업 이중 영역차트 (recharts ComposedChart).
+        months[i]와 general[i]/corp[i]가 인덱스로 대응.
+      properties:
+        months: { type: array, items: { type: string }, description: "월 라벨 (예: 'JAN'~'JUN')" }
+        general: { type: array, items: { type: number }, description: 일반 사용자 활동 }
+        corp: { type: array, items: { type: number }, description: 기업 사용자 활동 }
+        yMax: { type: number, description: Y축 상한 (ticks는 0~yMax까지 2 간격으로 생성)' }
+    AdminSettings:
+      type: object
+      description: 관리자 설정 (`/admin/settings`)
+      properties:
+        profile:
+          type: object
+          description: 관리자 계정 정보 카드
+          properties:
+            name: { type: string }
+            role: { type: string, description: '역할 (예: Super Admin)' }
+            email: { type: string, format: email }
+            twoFactorEnabled: { type: boolean, description: 2단계 인증 사용 여부 }
+        groups:
+          type: array
+          description: 설정 그룹 (서비스 설정/알림 설정)
+          items:
+            type: object
+            properties:
+              title: { type: string }
+              rows:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    key: { type: string, description: '설정 키 (예: bizAutoApprove)' }
+                    label: { type: string }
+                    description: { type: string }
+        values:
+          type: object
+          additionalProperties: { type: boolean }
+          description: 현재 설정 값 (키 → on/off)
+    AdminDashboard:
+      type: object
+      description: 관리자 대시보드(`/admin`) 위젯 데이터 묶음
+      properties:
+        stats: { $ref: '#/components/schemas/AdminStatCardList' }
+        adRatio: { $ref: '#/components/schemas/AdRatioGauge' }
+        traffic: { $ref: '#/components/schemas/TrafficSeries' }
+        reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+    Report:
+      type: object
+      description: 신고 로그 행 (ReportRow)
+      properties:
+        id: { type: string, format: uuid }
+        content: { type: string, description: '신고 대상 콘텐츠명 (예: 2025 AI챌린지)' }
+        targetType:
+          { type: string, enum: [challenge, team, award], description: 챌린지/팀 모집/수상작 }
+        org: { type: string, description: 소속 (기관명 또는 개인) }
+        summary: { type: string, description: '신고 사유 요약 (예: 피싱 의심)' }
+        detail: { type: string, description: 신고 상세 내용 }
+        reporter: { type: string, description: '신고자 (마스킹, 예: 김*아)' }
+        reportedAt: { type: string, format: date-time }
+        status:
+          {
+            type: string,
+            enum: [open, resolved, dismissed],
+            description: '처리 상태 — 대기/승인(조치 완료)/거부(기각)',
+          }

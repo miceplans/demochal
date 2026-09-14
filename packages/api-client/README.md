@@ -3,18 +3,34 @@
 Shared types + typed HTTP client used by `front/` to call `server/`. `front/` must
 never call `fetch` directly against the API — always go through this package.
 
-## Current state (manual)
+## Structure
 
-`src/types.ts` and `src/client.ts` are hand-written and mirror the NestJS
-controllers in `server/src/**`. Keep them in sync manually for now.
+- `src/types.ts`, `src/client.ts`, `src/http.ts` — hand-written client
+  (`createApiClient`). Kept for compatibility; will be retired once the generated
+  client covers the used surface.
+- `src/generated/` — **orval-generated** from the OpenAPI spec. Regenerate with
+  `pnpm generate` after editing `server/docs/openapi.yaml`.
+  `orval.config.ts` uses `client: 'react-query'`, so every operation becomes a
+  TanStack Query hook (`useXxxQuery`, `useXxxMutation`; cursor-paginated GETs also
+  get `useXxxInfinite`).
+- `src/mutator.ts` — orval mutator. Routes every generated call through the
+  shared `HttpClient` (baseUrl + auth cookie handling stay in one place).
 
-## Planned automation
+## Using the generated hooks
 
-1. `server/` generates an OpenAPI spec (e.g. via `@nestjs/swagger`'s
-   `SwaggerModule.createDocument`) and writes it to `server/openapi.json`.
-2. This package runs `openapi-typescript server/openapi.json -o src/generated/schema.d.ts`
-   (or similar) to generate types.
-3. `client.ts` is rewritten as a thin wrapper (e.g. `openapi-fetch`) over the
-   generated schema instead of hand-written method signatures.
+```tsx
+import { generated } from '@semochal/api-client';
 
-This is intentionally deferred until the API surface stabilizes.
+const { data, isLoading } = generated.useListChallenges({ limit: 20 });
+const { data: nextPage, fetchNextPage } = generated.useListChallengesInfinite({ limit: 20 });
+const login = generated.useLogin({ mutation: { onSuccess: () => router.push('/') } });
+```
+
+`configureGeneratedApi()` must run once before the first generated call —
+`front/src/lib/api.ts` already does this at module scope and is imported by
+`front/src/app/providers.tsx`. The generated hooks share the app-wide
+`QueryClient` from `front/src/app/providers.tsx` (staleTime, error toast, etc.).
+
+Note: the spec covers both implemented and `planned` endpoints (see
+`x-impl-status` in `server/docs/openapi.yaml`). Generated hooks for `planned`
+endpoints exist but the server does not implement them yet.
