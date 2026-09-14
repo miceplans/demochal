@@ -474,10 +474,8 @@ const NotificationItem = styled.div({
   padding: '18px 8px',
   borderBottom: `1px solid ${c.gray100}`,
   borderRadius: 6,
-  cursor: 'pointer',
   transition: 'background 0.15s ease',
   '&:hover': { background: c.gray50 },
-  '&:active': { background: c.gray100 },
 });
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
