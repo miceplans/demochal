@@ -1,17 +1,20 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adProducts, ads } from '../../db/schema.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 
-const RESERVING_STATUSES = ['preparing', 'active'] as const;
+// Unpaid ('preparing') reservations stop blocking a placement's dates this
+// long after creation, so an abandoned checkout can't lock inventory forever.
+const PREPARING_TTL_MS = 30 * 60 * 1000;
 
 // Seeded once so the biz console has something to reserve until an admin
 // product-management screen exists (tracked separately, out of scope here).
@@ -41,17 +44,16 @@ export class AdsService implements OnModuleInit {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async onModuleInit() {
-    const existing = await this.db.select().from(adProducts).limit(1);
-    if (existing.length > 0) return;
-    await this.db.insert(adProducts).values(DEFAULT_PRODUCTS);
+    // placement has a unique constraint, so concurrent boots racing this
+    // insert converge on one row per placement instead of duplicating rows.
+    await this.db.insert(adProducts).values(DEFAULT_PRODUCTS).onConflictDoNothing({
+      target: adProducts.placement,
+    });
   }
 
   async listProducts() {
     const products = await this.db.select().from(adProducts);
-    const reserving = await this.db
-      .select()
-      .from(ads)
-      .where(inArray(ads.status, [...RESERVING_STATUSES]));
+    const reserving = await this.db.select().from(ads).where(this.reservingCondition());
 
     return products.map((product) => ({
       ...product,
@@ -78,43 +80,65 @@ export class AdsService implements OnModuleInit {
   async create(dto: CreateAdDto, businessId: string) {
     if (!businessId) throw new UnauthorizedException('Business authentication is required');
 
-    const [product] = await this.db
-      .select()
-      .from(adProducts)
-      .where(eq(adProducts.id, dto.productId))
-      .limit(1);
-    if (!product) throw new NotFoundException('Ad product not found');
+    return this.db.transaction(async (tx) => {
+      // Lock the product row so a second concurrent create() for the same
+      // placement waits here instead of racing this transaction's overlap
+      // check.
+      const [product] = await tx
+        .select()
+        .from(adProducts)
+        .where(eq(adProducts.id, dto.productId))
+        .for('update')
+        .limit(1);
+      if (!product) throw new NotFoundException('Ad product not found');
 
-    const startDate = new Date(dto.startDate);
-    const endDate = new Date(dto.endDate);
-    if (endDate < startDate) throw new BadRequestException('endDate must not be before startDate');
+      if (dto.expectedDailyPrice !== product.dailyPrice) {
+        throw new ConflictException({
+          message: 'Ad pricing has changed since this quote was shown; please re-confirm.',
+          currentDailyPrice: product.dailyPrice,
+        });
+      }
 
-    const reserving = await this.db
-      .select()
-      .from(ads)
-      .where(and(eq(ads.productId, dto.productId), inArray(ads.status, [...RESERVING_STATUSES])));
-    const hasOverlap = reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate);
-    if (hasOverlap) {
-      throw new BadRequestException('Selected dates overlap an existing reservation for this placement');
-    }
+      const startDate = new Date(dto.startDate);
+      const endDate = new Date(dto.endDate);
+      if (endDate < startDate) {
+        throw new BadRequestException('endDate must not be before startDate');
+      }
 
-    const days = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
-    const paidAmount = days * product.dailyPrice;
+      const reserving = await tx
+        .select()
+        .from(ads)
+        .where(and(eq(ads.productId, dto.productId), this.reservingCondition()));
+      const hasOverlap = reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate);
+      if (hasOverlap) {
+        throw new BadRequestException('Selected dates overlap an existing reservation for this placement');
+      }
 
-    const [ad] = await this.db
-      .insert(ads)
-      .values({
-        businessId,
-        productId: dto.productId,
-        title: dto.title ?? product.name,
-        imageFileId: dto.imageFileId,
-        landingUrl: dto.landingUrl,
-        startDate,
-        endDate,
-        status: 'preparing',
-        paidAmount,
-      })
-      .returning();
-    return ad;
+      const days = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
+      const paidAmount = days * product.dailyPrice;
+
+      const [ad] = await tx
+        .insert(ads)
+        .values({
+          businessId,
+          productId: dto.productId,
+          title: dto.title ?? product.name,
+          imageFileId: dto.imageFileId,
+          landingUrl: dto.landingUrl,
+          startDate,
+          endDate,
+          status: 'preparing',
+          expiresAt: new Date(Date.now() + PREPARING_TTL_MS),
+          paidAmount,
+        })
+        .returning();
+      return ad;
+    });
+  }
+
+  // Rows that currently occupy a placement's calendar: paid/active ads, plus
+  // preparing ads whose payment window hasn't expired yet.
+  private reservingCondition() {
+    return or(eq(ads.status, 'active'), and(eq(ads.status, 'preparing'), gt(ads.expiresAt, new Date())));
   }
 }

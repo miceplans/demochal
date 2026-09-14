@@ -22,8 +22,9 @@ export class CreateAdDto {
   @IsDateString()
   endDate!: string;
 
-  @IsOptional()
+  // Required: the price the buyer confirmed before submitting. The server
+  // rejects the request (409) if it no longer matches the product's price.
   @IsInt()
   @IsPositive()
-  expectedDailyPrice?: number;
+  expectedDailyPrice!: number;
 }

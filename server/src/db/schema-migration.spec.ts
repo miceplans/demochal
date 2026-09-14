@@ -12,7 +12,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(3);
+    expect(journal.entries).toHaveLength(4);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -80,5 +80,17 @@ describe('0002_add_ads migration', () => {
     expect(sql).toContain('CREATE TABLE "ads"');
     expect(sql).toContain('ads_business_id_businesses_id_fk');
     expect(sql).toContain('ads_product_id_ad_products_id_fk');
+  });
+});
+
+describe('0003_ads_fixes migration', () => {
+  it('adds ad reservation expiry and a one-product-per-placement constraint', () => {
+    const tag = journal.entries[3]?.tag;
+    expect(tag).toMatch(/^0003_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    expect(sql).toContain('ALTER TABLE "ads" ADD COLUMN "expires_at" timestamp');
+    expect(sql).toContain('ad_products_placement_unique');
   });
 });
