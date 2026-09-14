@@ -30,8 +30,22 @@ export const applicantDistribution = [
   { label: '대학생', value: 25 },
 ];
 export const myPostingCards = [
-  { id: 'ch-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', dday: 'D-7', teamCount: 3, closed: true },
-  { id: 'ch-3', title: '디자인 씽킹 해커톤', category: '디자인', dday: 'D-3', teamCount: 5, closed: false },
+  {
+    id: 'ch-1',
+    title: '2025 공공데이터 활용 대회',
+    category: 'IT/SW',
+    dday: 'D-7',
+    teamCount: 3,
+    closed: true,
+  },
+  {
+    id: 'ch-3',
+    title: '디자인 씽킹 해커톤',
+    category: '디자인',
+    dday: 'D-3',
+    teamCount: 5,
+    closed: false,
+  },
 ];
 export const chartMonths = ['7월', '8월', '9월', '10월', '11월', '12월', '1월'];
 export const chartBars = [32, 45, 38, 60, 52, 74, 66];
@@ -93,13 +107,62 @@ export type BizApplication = {
 };
 
 export const applications: BizApplication[] = [
-  { id: 'ba-1', team: '빌스택스', applicant: '김창윤의 팀', status: '제출 완료', memo: '자료 누락 연락', result: '불합격' },
-  { id: 'ba-2', team: '크롬클로드피그마', applicant: '강다정의 팀', status: '검토중', memo: '1차 서류 통과', result: '미정' },
-  { id: 'ba-3', team: '터미널카카오통', applicant: '이승민의 팀', status: '제출 완료', memo: '팀 구성 확인 필요', result: '미정' },
-  { id: 'ba-4', team: '하이웍스', applicant: '박서윤의 팀', status: '보완 요청', memo: '포트폴리오 재제출 요청', result: '미정' },
-  { id: 'ba-5', team: '코맷', applicant: '정하늘의 팀', status: '제출 완료', memo: '발표 영상 우수', result: '합격' },
-  { id: 'ba-6', team: '한국 마라톤 공모전', applicant: '김창윤의 팀', status: '검토중', memo: '자료 누락 연락', result: '불합격' },
-  { id: 'ba-7', team: '한국 IT 공모전', applicant: '강다정의 팀', status: '제출 완료', memo: '', result: '합격' },
+  {
+    id: 'ba-1',
+    team: '빌스택스',
+    applicant: '김창윤의 팀',
+    status: '제출 완료',
+    memo: '자료 누락 연락',
+    result: '불합격',
+  },
+  {
+    id: 'ba-2',
+    team: '크롬클로드피그마',
+    applicant: '강다정의 팀',
+    status: '검토중',
+    memo: '1차 서류 통과',
+    result: '미정',
+  },
+  {
+    id: 'ba-3',
+    team: '터미널카카오통',
+    applicant: '이승민의 팀',
+    status: '제출 완료',
+    memo: '팀 구성 확인 필요',
+    result: '미정',
+  },
+  {
+    id: 'ba-4',
+    team: '하이웍스',
+    applicant: '박서윤의 팀',
+    status: '보완 요청',
+    memo: '포트폴리오 재제출 요청',
+    result: '미정',
+  },
+  {
+    id: 'ba-5',
+    team: '코맷',
+    applicant: '정하늘의 팀',
+    status: '제출 완료',
+    memo: '발표 영상 우수',
+    result: '합격',
+  },
+  {
+    id: 'ba-6',
+    team: '한국 마라톤 공모전',
+    applicant: '김창윤의 팀',
+    status: '검토중',
+    memo: '자료 누락 연락',
+    result: '불합격',
+  },
+  {
+    id: 'ba-7',
+    team: '한국 IT 공모전',
+    applicant: '강다정의 팀',
+    status: '제출 완료',
+    memo: '',
+    result: '합격',
+  },
 ];
 export const dailyReport = [
   { date: '2026-08-25', exposure: 38200, clicks: 1146, ctr: '3.0%' },

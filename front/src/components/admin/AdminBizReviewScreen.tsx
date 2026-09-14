@@ -55,7 +55,16 @@ const PANEL_WIDTH = 360;
 
 function CloseGlyph() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
@@ -64,7 +73,10 @@ function CloseGlyph() {
 function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) {
   const details: [string, ReactNode][] = [
     ['기관 유형', row.type],
-    ['사업자 번호', <MaskedText key="bizNumber" value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />],
+    [
+      '사업자 번호',
+      <MaskedText key="bizNumber" value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />,
+    ],
     ['신청일', row.appliedAt],
     ['NTS 결과', row.nts],
   ];
@@ -103,7 +115,8 @@ function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) 
 export function AdminBizReviewScreen() {
   const [selected, setSelected] = useState<BizRow | null>(null);
 
-  const selectBiz = (row: BizRow) => setSelected((current) => (current?.id === row.id ? null : row));
+  const selectBiz = (row: BizRow) =>
+    setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
 
   return (
@@ -121,7 +134,12 @@ export function AdminBizReviewScreen() {
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>
-          <AdminTable columns={columns} rows={bizRows} onRowClick={selectBiz} selectedRowId={selected?.id} />
+          <AdminTable
+            columns={columns}
+            rows={bizRows}
+            onRowClick={selectBiz}
+            selectedRowId={selected?.id}
+          />
         </TableArea>
         {selected ? <BizDetailPanel row={selected} onClose={closePanel} /> : null}
       </BizWorkspace>
@@ -138,16 +156,16 @@ const BizWorkspace = styled.div({
     flexDirection: 'column',
   },
 });
-const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{ withPanel?: boolean }>(
-  ({ withPanel }) => ({
-    minWidth: 0,
-    flex: 1,
-    '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
-    '@media (max-width: 960px)': {
-      '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
-    },
-  }),
-);
+const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{
+  withPanel?: boolean;
+}>(({ withPanel }) => ({
+  minWidth: 0,
+  flex: 1,
+  '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
+  '@media (max-width: 960px)': {
+    '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
+  },
+}));
 
 const Panel = styled.aside({
   width: PANEL_WIDTH,
@@ -207,7 +225,12 @@ const InfoItem = styled.div({
   '& + &': { borderTop: '1px solid #E5E7EB' },
 });
 const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
-const InfoValue = styled.dd({ margin: 0, ...textStyle.bodySmall, color: c.gray900, textAlign: 'right' });
+const InfoValue = styled.dd({
+  margin: 0,
+  ...textStyle.bodySmall,
+  color: c.gray900,
+  textAlign: 'right',
+});
 const ActionRow = styled.div({
   display: 'flex',
   gap: 8,
