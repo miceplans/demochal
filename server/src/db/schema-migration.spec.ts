@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(7);
+    expect(journal.entries).toHaveLength(8);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -199,6 +199,36 @@ describe('0006_schema_contract_completion migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "leader_role" varchar(50)');
     expect(sql).not.toMatch(/DROP TABLE/);
     expect(sql).not.toMatch(/DROP COLUMN/);
+  });
+});
+
+describe('0007_jsonb_column_defaults migration', () => {
+  it('backfills and constrains the jsonb columns left nullable by 0004_nasty_switch', () => {
+    const tag = journal.entries[7]?.tag;
+    expect(tag).toBe('0007_jsonb_column_defaults');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    for (const [table, column, defaultValue] of [
+      ['users', 'stacks', "'[]'::jsonb"],
+      ['users', 'badges', "'[]'::jsonb"],
+      ['users', 'external_links', "'[]'::jsonb"],
+      ['users', 'award_history', "'[]'::jsonb"],
+      ['users', 'interests', "'[]'::jsonb"],
+      ['users', 'notification_settings', "'{}'::jsonb"],
+      ['businesses', 'content_blocks', "'[]'::jsonb"],
+      ['applications', 'teammates', "'[]'::jsonb"],
+    ] as const) {
+      expect(sql).toContain(
+        `UPDATE "${table}" SET "${column}" = ${defaultValue} WHERE "${column}" IS NULL`,
+      );
+      expect(sql).toContain(
+        `ALTER TABLE "${table}" ALTER COLUMN "${column}" SET DEFAULT ${defaultValue}`,
+      );
+      expect(sql).toContain(`ALTER TABLE "${table}" ALTER COLUMN "${column}" SET NOT NULL`);
+    }
+
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 
