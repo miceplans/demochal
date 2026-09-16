@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 type UserState = {
+  isLoggedIn: boolean;
   bookmarks: string[];
   interests: string[];
   roles: string[];
@@ -12,6 +13,8 @@ type UserState = {
   hasCompletedOnboarding: boolean;
   recruitment: { challenge: string; introduction: string; role: string };
   applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
+  login: () => void;
+  logout: () => void;
   toggleBookmark: (id: string) => void;
   togglePreference: (key: 'interests' | 'roles' | 'audience', value: string) => void;
   toggleNotification: (key: string) => void;
@@ -24,6 +27,7 @@ type UserState = {
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
+      isLoggedIn: false,
       bookmarks: ['contest-1', 'contest-2', 'contest-3', 'contest-4', 'contest-5', 'contest-6'],
       interests: ['IT · 소프트웨어', '데이터 · AI'],
       roles: ['프론트엔드', '백엔드'],
@@ -41,6 +45,8 @@ export const useUserStore = create<UserState>()(
       hasCompletedOnboarding: false,
       recruitment: { challenge: '', introduction: '', role: '프론트엔드' },
       applicationDraft: null,
+      login: () => set({ isLoggedIn: true }),
+      logout: () => set({ isLoggedIn: false }),
       toggleBookmark: (id) =>
         set((s) => ({
           bookmarks: s.bookmarks.includes(id)
@@ -62,6 +68,7 @@ export const useUserStore = create<UserState>()(
     {
       name: 'semo-user-publishing',
       partialize: ({
+        isLoggedIn,
         bookmarks,
         interests,
         roles,
@@ -72,6 +79,7 @@ export const useUserStore = create<UserState>()(
         recruitment,
         applicationDraft,
       }) => ({
+        isLoggedIn,
         bookmarks,
         interests,
         roles,

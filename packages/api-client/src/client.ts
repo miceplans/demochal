@@ -44,8 +44,7 @@ export function createApiClient(options: HttpClientOptions) {
     users: {
       get: (id: string) => http.get<User>(`/users/${id}`),
       updateMe: (body: UpdateProfileRequest) => http.patch<User>('/users/me', body),
-      saveSurvey: (body: OnboardingSurvey) =>
-        http.put<OnboardingSurvey>('/users/me/survey', body),
+      saveSurvey: (body: OnboardingSurvey) => http.put<OnboardingSurvey>('/users/me/survey', body),
     },
     businesses: {
       get: (id: string) => http.get<Business>(`/businesses/${id}`),
@@ -71,7 +70,14 @@ export function createApiClient(options: HttpClientOptions) {
       create: (
         body: Pick<
           Challenge,
-          'businessId' | 'title' | 'description' | 'price' | 'capacity' | 'startDate' | 'endDate' | 'category'
+          | 'businessId'
+          | 'title'
+          | 'description'
+          | 'price'
+          | 'capacity'
+          | 'startDate'
+          | 'endDate'
+          | 'category'
         >,
       ) => http.post<Challenge>('/challenges', body),
       getStats: (id: string) => http.get<ChallengeStats>(`/challenges/${id}/stats`),

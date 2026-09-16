@@ -20,8 +20,8 @@
 export interface RegisterBusinessRequest {
   name: string;
   /**
-     * @minLength 10
-     * @maxLength 10
-     */
+   * @minLength 10
+   * @maxLength 10
+   */
   registrationNumber: string;
 }

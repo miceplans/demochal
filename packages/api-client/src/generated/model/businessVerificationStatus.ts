@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type BusinessVerificationStatus = typeof BusinessVerificationStatus[keyof typeof BusinessVerificationStatus];
-
+export type BusinessVerificationStatus =
+  (typeof BusinessVerificationStatus)[keyof typeof BusinessVerificationStatus];
 
 export const BusinessVerificationStatus = {
   pending: 'pending',
