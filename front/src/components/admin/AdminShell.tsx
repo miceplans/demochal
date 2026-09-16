@@ -37,9 +37,16 @@ function AdminSidebar() {
         <NavItems aria-label="관리자 메뉴">
           {adminMenu.map(([href, label]) => {
             const active =
-              href === '/admin' ? pathname === '/admin' && label === '대시보드' : pathname.startsWith(href);
+              href === '/admin'
+                ? pathname === '/admin' && label === '대시보드'
+                : pathname.startsWith(href);
             return (
-              <NavItem key={label} href={href} active={active || undefined} aria-current={active ? 'page' : undefined}>
+              <NavItem
+                key={label}
+                href={href}
+                active={active || undefined}
+                aria-current={active ? 'page' : undefined}
+              >
                 {label}
               </NavItem>
             );
@@ -53,7 +60,16 @@ function AdminSidebar() {
           <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{adminUser.role}</span>
         </span>
         <GearIcon aria-hidden>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
           </svg>
@@ -105,7 +121,9 @@ const SidebarBox = styled.aside({
 const BrandRow = styled.div({ display: 'flex', alignItems: 'center', gap: 6 });
 
 const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 24 });
-const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(({ active }) => ({
+const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
   padding: '10px 12px',
   borderRadius: 6,
   ...textStyle.subtitle,

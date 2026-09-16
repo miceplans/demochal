@@ -6,11 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { TrafficRange } from '@/data/admin-design';
-import {
-  AdminSectionTitle,
-  StatCard,
-  StatRow,
-} from './parts';
+import { AdminSectionTitle, StatCard, StatRow } from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
 
@@ -22,7 +18,10 @@ export function AdminDashboardScreen() {
   return (
     <>
       <ChartsRow>
-        <AdRatioChart value={dashboard?.adRatio?.value ?? '0 ₩'} ratio={dashboard?.adRatio?.ratio ?? 0} />
+        <AdRatioChart
+          value={dashboard?.adRatio?.value ?? '0 ₩'}
+          ratio={dashboard?.adRatio?.ratio ?? 0}
+        />
         <TrafficChart
           range={range}
           onRangeChange={setRange}
@@ -33,7 +32,13 @@ export function AdminDashboardScreen() {
       </ChartsRow>
       <StatRow>
         {(dashboard?.stats ?? []).map((stat) => (
-          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

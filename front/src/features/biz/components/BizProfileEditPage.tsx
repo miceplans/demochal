@@ -168,7 +168,13 @@ const NameInput = styled.input({
 });
 
 const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center', flexWrap: 'wrap' });
-const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover', flexShrink: 0 });
+const MapImg = styled.img({
+  width: 300,
+  height: 184,
+  borderRadius: 8,
+  objectFit: 'cover',
+  flexShrink: 0,
+});
 const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 280 });
 const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
 const InfoIcon = styled.img({ width: 24, height: 24, flexShrink: 0 });

@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type GetAdminDashboardRange = typeof GetAdminDashboardRange[keyof typeof GetAdminDashboardRange];
-
+export type GetAdminDashboardRange =
+  (typeof GetAdminDashboardRange)[keyof typeof GetAdminDashboardRange];
 
 export const GetAdminDashboardRange = {
   '7days': '7days',

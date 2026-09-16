@@ -296,7 +296,13 @@ const CheckGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
   gap: 12,
-  '& label': { ...textStyle.metaText, color: c.gray700, display: 'flex', gap: 8, alignItems: 'center' },
+  '& label': {
+    ...textStyle.metaText,
+    color: c.gray700,
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+  },
 });
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
   border: 0,

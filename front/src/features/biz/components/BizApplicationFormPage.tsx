@@ -28,7 +28,13 @@ import { useToast } from '@/components/common/Toast';
 import { recentPosting } from '@/data/biz-design';
 
 type QuestionType = 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
-type Question = { id: string; title: string; type: QuestionType; options: string[]; required: boolean };
+type Question = {
+  id: string;
+  title: string;
+  type: QuestionType;
+  options: string[];
+  required: boolean;
+};
 
 const QUESTION_TYPES: DropdownOption[] = [
   { value: 'dropdown', label: '드롭다운' },
@@ -38,7 +44,8 @@ const QUESTION_TYPES: DropdownOption[] = [
   { value: 'short', label: '단문형 질문' },
   { value: 'long', label: '장문형 질문' },
 ];
-const isChoiceType = (type: QuestionType) => type === 'dropdown' || type === 'checkbox' || type === 'radio';
+const isChoiceType = (type: QuestionType) =>
+  type === 'dropdown' || type === 'checkbox' || type === 'radio';
 
 const Page = styled.div({
   width: '100%',
@@ -47,9 +54,26 @@ const Page = styled.div({
   gap: 24,
   alignItems: 'flex-start',
 });
-const Main = styled.div({ flex: '1 0 0', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 24 });
-const TopBar = styled.div({ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24 });
-const TitleCol = styled.div({ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 });
+const Main = styled.div({
+  flex: '1 0 0',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+});
+const TopBar = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 24,
+});
+const TitleCol = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  minWidth: 0,
+  flex: 1,
+});
 const TitleInput = styled.input({
   border: 0,
   outline: 'none',
@@ -117,7 +141,12 @@ const QuestionTitleInput = styled.input({
 
 const OptionsList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const OptionRow = styled.div({ display: 'flex', alignItems: 'center', gap: 10 });
-const DragHandle = styled.span({ color: c.gray300, flexShrink: 0, letterSpacing: -2, fontSize: 14 });
+const DragHandle = styled.span({
+  color: c.gray300,
+  flexShrink: 0,
+  letterSpacing: -2,
+  fontSize: 14,
+});
 const AddOptionButton = styled.button({
   display: 'flex',
   alignItems: 'center',
@@ -158,7 +187,12 @@ const PreviewUpload = styled.div({
   ...textStyle.finePrint,
 });
 
-const RequiredRow = styled.label({ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' });
+const RequiredRow = styled.label({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  cursor: 'pointer',
+});
 
 const Toolbar = styled.aside({
   position: 'sticky',
@@ -216,13 +250,23 @@ export function BizApplicationFormPage() {
   };
   const changeType = (id: string, type: QuestionType) => {
     setQuestions((qs) =>
-      qs.map((q) => (q.id === id ? { ...q, type, options: isChoiceType(type) ? (q.options.length ? q.options : ['', '']) : q.options } : q)),
+      qs.map((q) =>
+        q.id === id
+          ? {
+              ...q,
+              type,
+              options: isChoiceType(type) ? (q.options.length ? q.options : ['', '']) : q.options,
+            }
+          : q,
+      ),
     );
   };
   const changeOption = (id: string, index: number) => (e: ChangeEvent<HTMLInputElement>) => {
     setQuestions((qs) =>
       qs.map((q) =>
-        q.id === id ? { ...q, options: q.options.map((o, i) => (i === index ? e.target.value : o)) } : q,
+        q.id === id
+          ? { ...q, options: q.options.map((o, i) => (i === index ? e.target.value : o)) }
+          : q,
       ),
     );
   };
@@ -328,8 +372,12 @@ export function BizApplicationFormPage() {
                   </AddOptionButton>
                 </OptionsList>
               )}
-              {q.type === 'short' && <PreviewInput disabled placeholder="단답형 텍스트" aria-hidden />}
-              {q.type === 'long' && <PreviewTextarea disabled placeholder="장문형 텍스트" aria-hidden />}
+              {q.type === 'short' && (
+                <PreviewInput disabled placeholder="단답형 텍스트" aria-hidden />
+              )}
+              {q.type === 'long' && (
+                <PreviewTextarea disabled placeholder="장문형 텍스트" aria-hidden />
+              )}
               {q.type === 'file' && <PreviewUpload aria-hidden>파일 업로드 필드</PreviewUpload>}
 
               <RequiredRow>
