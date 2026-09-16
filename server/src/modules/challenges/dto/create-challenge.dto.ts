@@ -1,13 +1,23 @@
-import { IsDateString, IsInt, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+  MaxLength,
+} from 'class-validator';
 
 export class CreateChallengeDto {
   @IsUUID()
   businessId!: string;
 
   @IsString()
+  @MaxLength(200)
   title!: string;
 
   @IsString()
+  @MaxLength(20_000)
   description!: string;
 
   @IsInt()
@@ -23,4 +33,9 @@ export class CreateChallengeDto {
 
   @IsDateString()
   endDate!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  category?: string;
 }

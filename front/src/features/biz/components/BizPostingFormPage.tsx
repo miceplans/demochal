@@ -9,7 +9,15 @@ const ICON = '/assets/icons';
 
 const chipRows: string[][] = [
   ['# 비즈니스/스타트업', '# 경제/금융/투자', '# 과학/IT/AI', '# 마케팅/PR'],
-  ['# 사회/역사', '# 인문/심리', '# 문화/예술/디자인', '# 게임', '# 여행/레저', '# 세미나', '# 인턴십'],
+  [
+    '# 사회/역사',
+    '# 인문/심리',
+    '# 문화/예술/디자인',
+    '# 게임',
+    '# 여행/레저',
+    '# 세미나',
+    '# 인턴십',
+  ],
   ['# 운동/건강/웰빙', '# 자연/환경', '# 가족/육아', '#동식물/반려동물', '#음식/음료'],
   ['#영화/드라마/미디어', '#패션/뷰티', '# 자기계발/학습/독서', '# DIY/공예', '# 종교', '# 기타'],
 ];
@@ -48,7 +56,11 @@ export function BizPostingFormPage() {
               <RoleIcon src={`${ICON}/figma-role-people.svg`} alt="" />
               <RoleInput value={roles[1]} onChange={changeRole(1)} aria-label="모집 역할 2" />
             </RoleRow>
-            <AddRoleButton type="button" onClick={() => setRoles((s) => [...s, ''])} aria-label="역할 추가">
+            <AddRoleButton
+              type="button"
+              onClick={() => setRoles((s) => [...s, ''])}
+              aria-label="역할 추가"
+            >
               <RoleIcon src={`${ICON}/figma-role-add.svg`} alt="" />
             </AddRoleButton>
           </Roles>
@@ -196,7 +208,11 @@ export function BizPostingFormPage() {
                   onChange={() => setRecruit('semo')}
                 />
                 <RadioIcon
-                  src={recruit === 'semo' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  src={
+                    recruit === 'semo'
+                      ? `${ICON}/figma-radio-on.svg`
+                      : `${ICON}/figma-radio-off.svg`
+                  }
                   alt=""
                 />
                 세모챌에서 만들기
@@ -210,7 +226,11 @@ export function BizPostingFormPage() {
                     onChange={() => setRecruit('external')}
                   />
                   <RadioIcon
-                    src={recruit === 'external' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                    src={
+                      recruit === 'external'
+                        ? `${ICON}/figma-radio-on.svg`
+                        : `${ICON}/figma-radio-off.svg`
+                    }
                     alt=""
                   />
                   외부 링크 추가
@@ -236,7 +256,11 @@ export function BizPostingFormPage() {
                   onChange={() => setVisibility('public')}
                 />
                 <RadioIcon
-                  src={visibility === 'public' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  src={
+                    visibility === 'public'
+                      ? `${ICON}/figma-radio-on.svg`
+                      : `${ICON}/figma-radio-off.svg`
+                  }
                   alt=""
                 />
                 공개
@@ -249,7 +273,11 @@ export function BizPostingFormPage() {
                   onChange={() => setVisibility('private')}
                 />
                 <RadioIcon
-                  src={visibility === 'private' ? `${ICON}/figma-radio-on.svg` : `${ICON}/figma-radio-off.svg`}
+                  src={
+                    visibility === 'private'
+                      ? `${ICON}/figma-radio-on.svg`
+                      : `${ICON}/figma-radio-off.svg`
+                  }
                   alt=""
                 />
                 비공개
@@ -429,8 +457,19 @@ const TwoCol = styled.div({
   gap: 20,
   alignItems: 'flex-start',
 });
-const CategoryBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, flex: '1 1 280px' });
-const TopicBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8, flex: '2 1 0', minWidth: 0 });
+const CategoryBlock = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  flex: '1 1 280px',
+});
+const TopicBlock = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  flex: '2 1 0',
+  minWidth: 0,
+});
 const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
 const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
@@ -484,7 +523,12 @@ const ContactInput = styled.input({
 });
 
 /* ---------- 하단 버튼 ---------- */
-const Actions = styled.div({ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8 });
+const Actions = styled.div({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 8,
+});
 const CancelButton = styled.button({
   width: 183,
   height: 37,
