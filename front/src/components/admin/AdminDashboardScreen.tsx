@@ -1,23 +1,39 @@
 'use client';
 
+import { useState } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { dashboardStats } from '@/data/admin-design';
-import { AdminSectionTitle, StatCard, StatRow } from './parts';
+import type { TrafficRange } from '@/data/admin-design';
+import {
+  AdminSectionTitle,
+  StatCard,
+  StatRow,
+} from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
 
 export function AdminDashboardScreen() {
+  const [range, setRange] = useState<TrafficRange>('1year');
+  const dashboardQuery = generated.useGetAdminDashboard({ range });
+  const dashboard = dashboardQuery.data?.data;
+
   return (
     <>
       <ChartsRow>
-        <AdRatioChart />
-        <TrafficChart />
+        <AdRatioChart value={dashboard?.adRatio?.value ?? '0 ₩'} ratio={dashboard?.adRatio?.ratio ?? 0} />
+        <TrafficChart
+          range={range}
+          onRangeChange={setRange}
+          labels={dashboard?.traffic?.labels ?? []}
+          primary={dashboard?.traffic?.primary ?? []}
+          secondary={dashboard?.traffic?.secondary ?? []}
+        />
       </ChartsRow>
       <StatRow>
-        {dashboardStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(dashboard?.stats ?? []).map((stat) => (
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

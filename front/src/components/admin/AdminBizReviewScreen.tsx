@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import styled from '@emotion/styled';
-import { bizRows, bizStats, type BizRow } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
+import type { BizRow } from '@/data/admin-design';
 import { maskBizNumber } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useToast } from '@/components/common/Toast';
 import {
   AdminPageTitle,
   AdminTable,
@@ -70,7 +72,22 @@ function CloseGlyph() {
   );
 }
 
-function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) {
+function BizDetailPanel({
+  row,
+  onClose,
+  onApprove,
+  onReject,
+  pending,
+}: {
+  row: BizRow;
+  onClose: () => void;
+  onApprove: () => void;
+  onReject: (reason: string) => void;
+  pending: boolean;
+}) {
+  const [rejecting, setRejecting] = useState(false);
+  const [reason, setReason] = useState('');
+
   const details: [string, ReactNode][] = [
     ['기관 유형', row.type],
     [
@@ -100,10 +117,36 @@ function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) 
           </InfoItem>
         ))}
       </InfoList>
-      {row.status === '대기' ? (
+      {row.status === '대기' && rejecting ? (
+        <RejectForm>
+          <RejectLabel htmlFor="biz-reject-reason">거부 사유</RejectLabel>
+          <RejectTextarea
+            id="biz-reject-reason"
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            placeholder="거부 사유를 입력해주세요"
+            rows={3}
+          />
+          <ActionRow>
+            <ActionButton type="button" onClick={() => setRejecting(false)} disabled={pending}>
+              취소
+            </ActionButton>
+            <ActionButton
+              type="button"
+              primary
+              disabled={pending || !reason.trim()}
+              onClick={() => onReject(reason.trim())}
+            >
+              거부 확정
+            </ActionButton>
+          </ActionRow>
+        </RejectForm>
+      ) : row.status === '대기' ? (
         <ActionRow>
-          <ActionButton type="button">거부</ActionButton>
-          <ActionButton type="button" primary>
+          <ActionButton type="button" onClick={() => setRejecting(true)} disabled={pending}>
+            거부
+          </ActionButton>
+          <ActionButton type="button" primary onClick={onApprove} disabled={pending}>
             승인
           </ActionButton>
         </ActionRow>
@@ -112,25 +155,87 @@ function BizDetailPanel({ row, onClose }: { row: BizRow; onClose: () => void }) 
   );
 }
 
+const statusParam: Record<string, 'pending' | 'approved' | 'rejected'> = {
+  대기: 'pending',
+  승인: 'approved',
+  거부: 'rejected',
+};
+const ntsLabel: Record<string, BizRow['nts']> = {
+  success: '성공',
+  failed: '실패',
+  closed: '폐업/폐점',
+  unrecognized: '인식불가',
+};
+const bizStatusLabel: Record<string, BizRow['status']> = {
+  pending: '대기',
+  approved: '승인',
+  rejected: '거부',
+};
+
 export function AdminBizReviewScreen() {
   const [selected, setSelected] = useState<BizRow | null>(null);
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('');
+  const toast = useToast();
+
+  const businessesQuery = generated.useListAdminBusinesses({
+    q: query || undefined,
+    status: statusParam[status],
+  });
+
+  const bizRows = useMemo<BizRow[]>(
+    () =>
+      (businessesQuery.data?.data.items ?? []).map((entry, index) => ({
+        id: entry.id ?? String(index),
+        org: entry.org ?? '',
+        type: entry.type ?? '',
+        bizNumber: entry.bizNumber ?? '',
+        appliedAt: entry.appliedAt ?? '',
+        nts: ntsLabel[entry.nts ?? ''] ?? '인식불가',
+        status: bizStatusLabel[entry.status ?? ''] ?? '대기',
+      })),
+    [businessesQuery.data],
+  );
+  const bizStats = businessesQuery.data?.data.stats ?? [];
 
   const selectBiz = (row: BizRow) =>
     setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
+
+  const approveMutation = generated.useApproveVerification({
+    mutation: {
+      onSuccess: () => {
+        toast.success('기관 심사를 승인했어요.');
+        businessesQuery.refetch();
+        closePanel();
+      },
+      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
+  });
+  const rejectMutation = generated.useRejectVerification({
+    mutation: {
+      onSuccess: () => {
+        toast.success('기관 심사를 거부했어요.');
+        businessesQuery.refetch();
+        closePanel();
+      },
+      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
+  });
+  const actionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <>
       <AdminPageTitle>기관 심사</AdminPageTitle>
       <StatRow>
         {bizStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
         ))}
       </StatRow>
       <FilterBar>
-        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" />
+        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" value={query} onChange={setQuery} />
         <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
-        <SelectFilter label="상태" options={['대기', '승인', '거부']} />
+        <SelectFilter label="상태" options={['대기', '승인', '거부']} value={status} onChange={setStatus} />
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>
@@ -141,7 +246,15 @@ export function AdminBizReviewScreen() {
             selectedRowId={selected?.id}
           />
         </TableArea>
-        {selected ? <BizDetailPanel row={selected} onClose={closePanel} /> : null}
+        {selected ? (
+          <BizDetailPanel
+            row={selected}
+            onClose={closePanel}
+            pending={actionPending}
+            onApprove={() => approveMutation.mutate({ id: selected.id })}
+            onReject={(reason) => rejectMutation.mutate({ id: selected.id, data: { reason } })}
+          />
+        ) : null}
       </BizWorkspace>
     </>
   );
@@ -236,6 +349,23 @@ const ActionRow = styled.div({
   gap: 8,
   marginTop: 'auto',
   paddingTop: 4,
+});
+const RejectForm = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  marginTop: 'auto',
+  paddingTop: 4,
+});
+const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
+const RejectTextarea = styled.textarea({
+  resize: 'vertical',
+  padding: '10px 12px',
+  border: '1px solid #E5E7EB',
+  borderRadius: 8,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
   flex: 1,

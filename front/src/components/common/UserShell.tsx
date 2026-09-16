@@ -99,7 +99,7 @@ export function UserShell({
   const path = usePathname();
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
-    ['/explore', '공모전 탐색', '/assets/icons/figma-footer/search.svg'],
+    ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
     ['/teams', '팀 탐색', '/assets/icons/figma-footer/team.svg'],
     ['/notifications', '알림', '/assets/icons/figma-footer/alert.svg'],
     ['/my', 'MY', '/assets/icons/figma-footer/account.svg'],
@@ -145,6 +145,8 @@ export function UserShell({
                 <>
                   <SearchBar />
                   <Row gap={20}>
+                    <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
+                    <HeaderActionLink href="/biz/operations">문의하기</HeaderActionLink>
                     <Link href="/notifications" aria-label="알림">
                       <Icon src="/assets/icons/bell.png" alt="알림" />
                     </Link>
@@ -161,7 +163,7 @@ export function UserShell({
                   href="/explore"
                   aria-current={path.startsWith('/explore') ? 'page' : undefined}
                 >
-                  공모전 탐색
+                  챌린지 탐색
                 </Link>
                 <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
                   팀 탐색
@@ -275,8 +277,30 @@ const Nav = styled.nav({
   display: 'flex',
   gap: 8,
   paddingTop: 4,
-  '& a': { padding: '8px 10px', ...textStyle.body, color: c.gray700, borderRadius: 6 },
+  '& a': {
+    padding: '8px 10px',
+    ...textStyle.body,
+    color: c.gray700,
+    borderRadius: 6,
+    transition: 'background 0.15s ease, color 0.15s ease',
+  },
+  '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
+});
+const HeaderActionLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 36,
+  padding: '0 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  transition: 'background 0.15s ease, border-color 0.15s ease',
+  '&:hover': { background: c.gray50, borderColor: c.gray300 },
 });
 const MobileHeader = styled.header({
   display: 'none',
@@ -307,6 +331,8 @@ const MobileBackLink = styled(Link)({
   fontSize: 28,
   lineHeight: 1,
   color: c.gray900,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:active': { transform: 'scale(0.88)' },
 });
 const MobileTitle = styled.h1({
   minWidth: 0,
@@ -342,6 +368,15 @@ const Bottom = styled.nav({
       padding: 12,
       borderRadius: 6,
       boxSizing: 'border-box',
+      transition: 'background 0.15s ease, transform 0.1s ease',
+    },
+    '& a:active': { transform: 'scale(0.88)' },
+    '& a[aria-current=page]': {
+      background: c.gray100,
+      '& img': {
+        filter:
+          'invert(33%) sepia(96%) saturate(4178%) hue-rotate(207deg) brightness(100%) contrast(106%)',
+      },
     },
   },
 });
@@ -379,7 +414,9 @@ const MyAside = styled.aside({
     ...textStyle.bodySmall,
     color: c.gray700,
     borderRadius: 8,
+    transition: 'background 0.15s ease, color 0.15s ease',
   },
+  '& a:hover': { background: c.gray50, color: c.gray900 },
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });

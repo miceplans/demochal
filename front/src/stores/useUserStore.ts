@@ -9,6 +9,7 @@ type UserState = {
   notifications: Record<string, boolean>;
   query: string;
   survey: Record<string, string[]>;
+  hasCompletedOnboarding: boolean;
   recruitment: { challenge: string; introduction: string; role: string };
   applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
   toggleBookmark: (id: string) => void;
@@ -16,6 +17,7 @@ type UserState = {
   toggleNotification: (key: string) => void;
   setQuery: (value: string) => void;
   setSurvey: (step: string, values: string[]) => void;
+  completeOnboarding: () => void;
   setRecruitment: (value: UserState['recruitment']) => void;
   saveApplication: (value: NonNullable<UserState['applicationDraft']>) => void;
 };
@@ -36,6 +38,7 @@ export const useUserStore = create<UserState>()(
       },
       query: '',
       survey: {},
+      hasCompletedOnboarding: false,
       recruitment: { challenge: '', introduction: '', role: '프론트엔드' },
       applicationDraft: null,
       toggleBookmark: (id) =>
@@ -52,6 +55,7 @@ export const useUserStore = create<UserState>()(
         set((s) => ({ notifications: { ...s.notifications, [key]: !s.notifications[key] } })),
       setQuery: (query) => set({ query }),
       setSurvey: (step, values) => set((s) => ({ survey: { ...s.survey, [step]: values } })),
+      completeOnboarding: () => set({ hasCompletedOnboarding: true }),
       setRecruitment: (recruitment) => set({ recruitment }),
       saveApplication: (applicationDraft) => set({ applicationDraft }),
     }),
@@ -64,6 +68,7 @@ export const useUserStore = create<UserState>()(
         audience,
         notifications,
         survey,
+        hasCompletedOnboarding,
         recruitment,
         applicationDraft,
       }) => ({
@@ -73,6 +78,7 @@ export const useUserStore = create<UserState>()(
         audience,
         notifications,
         survey,
+        hasCompletedOnboarding,
         recruitment,
         applicationDraft,
       }),

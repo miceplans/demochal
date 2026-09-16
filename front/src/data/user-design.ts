@@ -3,7 +3,7 @@
 export type Contest = { id: string; title: string; category: string; days: number; teams: number };
 export const contests: Contest[] = [
   { id: 'contest-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', days: 7, teams: 3 },
-  { id: 'contest-2', title: '청년 창업 아이디어 공모전', category: '창업', days: 12, teams: 5 },
+  { id: 'contest-2', title: '청년 창업 아이디어 챌린지', category: '창업', days: 12, teams: 5 },
   { id: 'contest-3', title: '글로벌 스타트업 챌린지', category: '창업', days: 20, teams: 2 },
   { id: 'contest-4', title: 'AI 이미지 인식 해커톤', category: 'IT/SW', days: 9, teams: 4 },
   { id: 'contest-5', title: '디자인 씽킹 해커톤', category: '디자인', days: 7, teams: 1 },
@@ -43,7 +43,7 @@ export const teams: Team[] = [
   {
     id: 'team-3',
     name: '프로젝트팀 C',
-    challenge: '공공데이터 공모전',
+    challenge: '공공데이터 챌린지',
     members: '1/4명 참여중',
     filledRoles: ['기획', '디자이너'],
     recruitingRoles: ['백엔드', '프론트엔드'],
@@ -51,7 +51,7 @@ export const teams: Team[] = [
   {
     id: 'team-4',
     name: '프로젝트팀 D',
-    challenge: '청년 창업 공모전',
+    challenge: '청년 창업 챌린지',
     members: '2/5명 참여중',
     filledRoles: ['기획', '백엔드'],
     recruitingRoles: ['프론트엔드', '디자이너'],
@@ -79,6 +79,36 @@ export const categories = [
 ];
 export const roles = ['프론트엔드', '백엔드', '디자이너', '기획자', '풀스택'];
 export const stacks = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Figma', 'Python'];
+export const skillCatalog = [
+  'React',
+  'TypeScript',
+  'JavaScript',
+  'Next.js',
+  'Vue',
+  'Node.js',
+  'Python',
+  'Java',
+  'Kotlin',
+  'Swift',
+  'Go',
+  'Django',
+  'Spring',
+  'Express',
+  'GraphQL',
+  'Figma',
+  'Photoshop',
+  'AWS',
+  'Docker',
+  'Kubernetes',
+  'Git',
+  'MySQL',
+  'PostgreSQL',
+  'MongoDB',
+  'TensorFlow',
+  'Pandas',
+  'Flutter',
+  'Unity',
+];
 export const preferenceGroups = [
   {
     key: 'interests' as const,
@@ -227,7 +257,7 @@ export const myApplications = [
 export const contestApplications: ContestApplication[] = [
   {
     id: 'ca-1',
-    contest: '한국 마라톤 공모전',
+    contest: '한국 마라톤 챌린지',
     org: '한국 마라톤 협회',
     result: '예선 통과',
     href: '/contests/public-data',
@@ -263,8 +293,8 @@ export type TeamApplication = {
 };
 
 export const teamApplications: TeamApplication[] = [
-  { id: 'ta-1', contest: '한국 마라톤 공모전', team: '김창윤의 팀', result: '불합격' },
-  { id: 'ta-2', contest: '한국 IT 공모전', team: '강다정의 팀', result: '확정' },
+  { id: 'ta-1', contest: '한국 마라톤 챌린지', team: '김창윤의 팀', result: '불합격' },
+  { id: 'ta-2', contest: '한국 IT 챌린지', team: '강다정의 팀', result: '확정' },
   { id: 'ta-3', contest: 'AI 이미지 인식 해커톤', team: '프로젝트팀 B', result: '검토중' },
 ];
 
@@ -329,7 +359,7 @@ export const notificationItems: NotificationItem[] = [
 
 export const notificationTabs = ['전체', '팀매칭', '마감', '공고'] as const;
 
-// --- 공모전 상세 ---
+// --- 챌린지 상세 ---
 
 export const contestDetail = {
   title: '2025 공공데이터 활용 창업 대회',

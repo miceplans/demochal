@@ -1,6 +1,5 @@
 export interface HttpClientOptions {
   baseUrl: string;
-  getAuthToken?: () => string | null | undefined;
 }
 
 export class ApiError extends Error {
@@ -12,18 +11,24 @@ export class ApiError extends Error {
   }
 }
 
+export interface HttpEnvelope<T> {
+  data: T;
+  status: number;
+  headers: Headers;
+}
+
 export class HttpClient {
   constructor(private readonly options: HttpClientOptions) {}
 
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const token = this.options.getAuthToken?.();
+  /** Raw fetch that resolves the full {data, status, headers} envelope — used by the orval mutator. */
+  async send<T>(path: string, init: RequestInit = {}): Promise<HttpEnvelope<T>> {
     const headers = new Headers(init.headers);
     headers.set('Content-Type', 'application/json');
-    if (token) headers.set('Authorization', `Bearer ${token}`);
 
     const res = await fetch(`${this.options.baseUrl}${path}`, {
       ...init,
       headers,
+      credentials: 'include',
     });
 
     if (!res.ok) {
@@ -31,8 +36,13 @@ export class HttpClient {
       throw new ApiError(res.status, body);
     }
 
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
+    const data = res.status === 204 ? (undefined as T) : ((await res.json()) as T);
+    return { data, status: res.status, headers: res.headers };
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
+    const { data } = await this.send<T>(path, init);
+    return data;
   }
 
   get<T>(path: string) {
@@ -49,6 +59,13 @@ export class HttpClient {
   patch<T>(path: string, body?: unknown) {
     return this.request<T>(path, {
       method: 'PATCH',
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  put<T>(path: string, body?: unknown) {
+    return this.request<T>(path, {
+      method: 'PUT',
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   }
