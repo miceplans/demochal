@@ -77,7 +77,7 @@ export class PaymentsService {
       throw new BadGatewayException('Toss payment verification is not configured');
 
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
-    let response: Response;
+    let response: Awaited<ReturnType<typeof fetch>>;
     try {
       response = await fetch(
         `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}`,
