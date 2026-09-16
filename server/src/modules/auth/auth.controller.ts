@@ -21,6 +21,7 @@ import {
 } from './auth.cookie.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
@@ -101,7 +102,7 @@ export class AuthController {
         throw new UnauthorizedException('Google login was cancelled or could not be verified');
       }
 
-      const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+      const tokenResponse = await fetchJson(GOOGLE_TOKEN_URL, {
         method: 'POST',
         headers: { 'content-type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
@@ -110,13 +111,13 @@ export class AuthController {
           client_secret: env.googleClientSecret,
           redirect_uri: env.googleRedirectUri,
           grant_type: 'authorization_code',
-        }),
+        }).toString(),
       });
       const token = (await tokenResponse.json()) as { access_token?: string };
       if (!tokenResponse.ok || !token.access_token)
         throw new UnauthorizedException('Google token exchange failed');
 
-      const userInfoResponse = await fetch(GOOGLE_USERINFO_URL, {
+      const userInfoResponse = await fetchJson(GOOGLE_USERINFO_URL, {
         headers: { authorization: `Bearer ${token.access_token}` },
       });
       const profile = (await userInfoResponse.json()) as {

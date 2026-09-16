@@ -41,12 +41,36 @@ export function StatCard({
   );
 }
 
-export function SearchFilter({ placeholder, label, value, onChange }: { placeholder: string; label: string; value?: string; onChange?: (value: string) => void }) {
+export function SearchFilter({
+  placeholder,
+  label,
+  value,
+  onChange,
+}: {
+  placeholder: string;
+  label: string;
+  value?: string;
+  onChange?: (value: string) => void;
+}) {
   return (
     <SearchBox>
-      <SearchInput type="search" placeholder={placeholder} aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)} />
+      <SearchInput
+        type="search"
+        placeholder={placeholder}
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange?.(event.target.value)}
+      />
       <SearchGlyph aria-hidden>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        >
           <circle cx="11" cy="11" r="8" />
           <path d="m21 21-4.3-4.3" />
         </svg>
@@ -66,7 +90,10 @@ export function SelectFilter({
   value?: string;
   onChange?: (value: string) => void;
 }) {
-  const dropdownOptions: DropdownOption[] = options.map((option) => ({ value: option, label: option }));
+  const dropdownOptions: DropdownOption[] = options.map((option) => ({
+    value: option,
+    label: option,
+  }));
   return (
     <Dropdown
       options={dropdownOptions}
@@ -204,30 +231,34 @@ const HeadRow = styled.div({
   ...textStyle.h3_2,
   color: c.gray900,
 });
-const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boolean }>(({ last, clickable, selected }) => ({
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: 40,
-  height: 56,
-  padding: '0 16px',
-  background: selected ? '#EFF6FF' : c.white,
-  borderTop: '1px solid #DFE2E7',
-  borderRadius: last ? '0 0 8px 8px' : undefined,
-  ...textStyle.bodyLarge,
-  color: c.gray900,
-  cursor: clickable ? 'pointer' : undefined,
-  transition: clickable ? 'background-color 160ms ease' : undefined,
-  '&:hover': clickable ? { background: selected ? '#DBEAFE' : c.gray50 } : undefined,
-}));
-const Cell = styled('span', { shouldForwardProp: (prop) => prop !== 'width' })<{ width?: number }>(({ width }) => ({
-  width,
-  minWidth: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  color: 'inherit',
-}));
+const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boolean }>(
+  ({ last, clickable, selected }) => ({
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 40,
+    height: 56,
+    padding: '0 16px',
+    background: selected ? '#EFF6FF' : c.white,
+    borderTop: '1px solid #DFE2E7',
+    borderRadius: last ? '0 0 8px 8px' : undefined,
+    ...textStyle.bodyLarge,
+    color: c.gray900,
+    cursor: clickable ? 'pointer' : undefined,
+    transition: clickable ? 'background-color 160ms ease' : undefined,
+    '&:hover': clickable ? { background: selected ? '#DBEAFE' : c.gray50 } : undefined,
+  }),
+);
+const Cell = styled('span', { shouldForwardProp: (prop) => prop !== 'width' })<{ width?: number }>(
+  ({ width }) => ({
+    width,
+    minWidth: 0,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    color: 'inherit',
+  }),
+);
 
 export const AdminPageTitle = styled.h1(textStyle.h1_2);
 export const AdminSectionTitle = styled.h2(textStyle.h1_2);
@@ -254,8 +285,15 @@ export const Badge = styled.span<{ tone: BadgeTone }>(({ tone }) => ({
   whiteSpace: 'nowrap',
   ...textStyle.overline,
   background:
-    tone === 'blue' ? c.lightBlue : tone === 'green' ? c.lightGreen : tone === 'red' ? c.lightRed : c.gray100,
-  color: tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
+    tone === 'blue'
+      ? c.lightBlue
+      : tone === 'green'
+        ? c.lightGreen
+        : tone === 'red'
+          ? c.lightRed
+          : c.gray100,
+  color:
+    tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
 }));
 
 export const ApproveButton = styled.button({

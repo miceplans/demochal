@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type PaymentHistoryItemStatus = typeof PaymentHistoryItemStatus[keyof typeof PaymentHistoryItemStatus];
-
+export type PaymentHistoryItemStatus =
+  (typeof PaymentHistoryItemStatus)[keyof typeof PaymentHistoryItemStatus];
 
 export const PaymentHistoryItemStatus = {
   paid: 'paid',

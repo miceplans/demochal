@@ -24,7 +24,17 @@ const tabToStatus: Record<(typeof certificateTabs)[number], 'pending' | 'verifie
 
 function TrophyGlyph() {
   return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
       <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
       <path d="M4 22h16" />
@@ -53,7 +63,8 @@ export function AdminCertificatesScreen() {
         user: cert.user ?? '',
         award: cert.award ?? '',
         category: cert.category === 'participation' ? '출품 이력' : '수상 실적',
-        status: cert.status === 'verified' ? '인증' : cert.status === 'rejected' ? '거부' : '미인증',
+        status:
+          cert.status === 'verified' ? '인증' : cert.status === 'rejected' ? '거부' : '미인증',
       })),
     [certificatesQuery.data],
   );
@@ -61,7 +72,9 @@ export function AdminCertificatesScreen() {
   const verifyMutation = generated.useVerifyCertificate({
     mutation: {
       onSuccess: (_data, variables) => {
-        toast.success(variables.data.action === 'approve' ? '인증을 승인했어요.' : '인증을 거부했어요.');
+        toast.success(
+          variables.data.action === 'approve' ? '인증을 승인했어요.' : '인증을 거부했어요.',
+        );
         certificatesQuery.refetch();
         setPreview(null);
       },
@@ -69,13 +82,19 @@ export function AdminCertificatesScreen() {
     },
   });
 
-  const verify = (id: string, action: 'approve' | 'reject') => verifyMutation.mutate({ id, data: { action } });
+  const verify = (id: string, action: 'approve' | 'reject') =>
+    verifyMutation.mutate({ id, data: { action } });
 
   return (
     <>
       <AdminPageTitle>상장 인증</AdminPageTitle>
       <FilterBar>
-        <SearchFilter placeholder="사용자 검색" label="사용자 검색" value={query} onChange={setQuery} />
+        <SearchFilter
+          placeholder="사용자 검색"
+          label="사용자 검색"
+          value={query}
+          onChange={setQuery}
+        />
         <SelectFilter label="상장 유형" options={['수상 실적', '출품 이력']} />
       </FilterBar>
       <TabBar role="tablist" aria-label="상장 인증 상태">
@@ -95,7 +114,10 @@ export function AdminCertificatesScreen() {
         <List>
           {rows.map((row) => (
             <Item key={row.id}>
-              <ThumbButton onClick={() => setPreview(row)} aria-label={`${row.user} 상장 원본 보기`}>
+              <ThumbButton
+                onClick={() => setPreview(row)}
+                aria-label={`${row.user} 상장 원본 보기`}
+              >
                 <Thumb src="/assets/certificate.png" alt={`${row.user} 상장`} />
               </ThumbButton>
               <MiniAvatar aria-hidden>{row.user[0]}</MiniAvatar>
@@ -108,10 +130,16 @@ export function AdminCertificatesScreen() {
                 {row.category}
               </HistoryPill>
               <Actions>
-                <RejectButton onClick={() => verify(row.id, 'reject')} disabled={verifyMutation.isPending}>
+                <RejectButton
+                  onClick={() => verify(row.id, 'reject')}
+                  disabled={verifyMutation.isPending}
+                >
                   거부
                 </RejectButton>
-                <ApproveButton onClick={() => verify(row.id, 'approve')} disabled={verifyMutation.isPending}>
+                <ApproveButton
+                  onClick={() => verify(row.id, 'approve')}
+                  disabled={verifyMutation.isPending}
+                >
                   승인
                 </ApproveButton>
               </Actions>
@@ -135,10 +163,16 @@ export function AdminCertificatesScreen() {
           <Dialog onClick={(event) => event.stopPropagation()}>
             <PreviewImage src="/assets/certificate.png" alt={`${preview.user} 상장 원본`} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <RejectButton onClick={() => verify(preview.id, 'reject')} disabled={verifyMutation.isPending}>
+              <RejectButton
+                onClick={() => verify(preview.id, 'reject')}
+                disabled={verifyMutation.isPending}
+              >
                 거부
               </RejectButton>
-              <ApproveButton onClick={() => verify(preview.id, 'approve')} disabled={verifyMutation.isPending}>
+              <ApproveButton
+                onClick={() => verify(preview.id, 'approve')}
+                disabled={verifyMutation.isPending}
+              >
                 승인
               </ApproveButton>
             </div>

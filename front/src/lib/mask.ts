@@ -29,7 +29,10 @@ export function maskPhone(value: string): string {
   return segments
     .map((segment, index) => {
       if (index === 0) return segment;
-      if (index === segments.length - 1) return segment.length <= 4 ? segment : `${STAR.repeat(segment.length - 4)}${segment.slice(-4)}`;
+      if (index === segments.length - 1)
+        return segment.length <= 4
+          ? segment
+          : `${STAR.repeat(segment.length - 4)}${segment.slice(-4)}`;
       return STAR.repeat(segment.length);
     })
     .join('-');

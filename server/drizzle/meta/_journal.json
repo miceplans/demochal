@@ -43,6 +43,12 @@
       "when": 1789450000000,
       "tag": "0005_reconcile_auth_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "tag": "0006_schema_contract_completion",
+      "when": 1789524040494,
+      "breakpoints": true
     }
   ]
 }
