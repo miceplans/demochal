@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { fetchJson } from '../../../common/http/fetch-json.js';
 import { env } from '../../../config/env.js';
 
 export interface OcrResult {
@@ -19,7 +20,7 @@ export class ClovaOcrClient {
     }
     const fileName = new URL(fileUrl).pathname.split('/').pop() || 'business-license';
     const extension = fileName.split('.').pop()?.toLowerCase() || 'jpg';
-    const response = await fetch(env.clovaOcrApiUrl, {
+    const response = await fetchJson(env.clovaOcrApiUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-OCR-SECRET': env.clovaOcrSecretKey },
       body: JSON.stringify({
