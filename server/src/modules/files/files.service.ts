@@ -13,10 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { files } from '../../db/schema.js';
-import {
-  type AllowedUploadContentType,
-  type PresignedUploadRequest,
-} from './dto/presigned-upload-request.dto.js';
+import { type AllowedUploadContentType, type RequestUploadDto } from './dto/request-upload.dto.js';
 
 const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/jpeg': 'jpg',
@@ -50,20 +47,21 @@ export class FilesService {
 
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  async requestUpload(dto: PresignedUploadRequest, uploaderUserId: string) {
+  async requestUpload(dto: RequestUploadDto, uploaderUserId: string) {
     if (dto.bucket === 'public' && dto.contentType === 'application/pdf') {
       throw new BadRequestException('PDF files can only be uploaded to the private bucket.');
     }
 
-    // Never write an untrusted object directly to the public bucket.  A caller
-    // must finalize it, which verifies the actual bytes before promotion.
+    // Never write an untrusted object directly to the public bucket: the bytes
+    // always land in the private bucket first, and finalizeUpload() promotes
+    // them only after verifying the actual bytes. The files table has a single
+    // `bucket` column, so it records the intended destination up front.
     const key = `pending/${uuid()}.${EXTENSION_BY_CONTENT_TYPE[dto.contentType]}`;
 
     const [file] = await this.db
       .insert(files)
       .values({
-        bucket: 'private',
-        requestedBucket: dto.bucket,
+        bucket: dto.bucket,
         key,
         contentType: dto.contentType,
         uploadStatus: 'pending',
@@ -111,8 +109,9 @@ export class FilesService {
       throw new NotFoundException('Uploaded file is invalid');
     }
 
-    const targetBucket =
-      file.requestedBucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
+    // The row's bucket is the caller's intended destination; the bytes only
+    // leave the private bucket once the checks above have passed.
+    const targetBucket = file.bucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
     const targetKey =
       targetBucket === env.s3PrivateBucket
         ? file.key
@@ -132,7 +131,7 @@ export class FilesService {
 
     const [readyFile] = await this.db
       .update(files)
-      .set({ bucket: file.requestedBucket, key: targetKey, uploadStatus: 'ready' })
+      .set({ key: targetKey, uploadStatus: 'ready' })
       .where(eq(files.id, id))
       .returning();
     return readyFile!;

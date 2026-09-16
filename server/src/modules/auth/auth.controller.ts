@@ -22,6 +22,7 @@ import {
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { env } from '../../config/env.js';
+import { Public } from '../../common/auth/public.decorator.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
 const GOOGLE_STATE_COOKIE_OPTIONS = {
@@ -42,6 +43,7 @@ export class AuthController {
   // Not yet in openapi.yaml: email/password login has no signup path there
   // (production signup is social-only, still `planned`). Added so /auth/login
   // and /auth/me are actually exercisable in the meantime.
+  @Public()
   @Post('register')
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
     const { accessToken, user } = await this.authService.register(
@@ -53,6 +55,7 @@ export class AuthController {
     return { user };
   }
 
+  @Public()
   @Post('login')
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
     const { accessToken, user } = await this.authService.login(dto.email, dto.password);
@@ -60,11 +63,13 @@ export class AuthController {
     return { user };
   }
 
+  @Public()
   @Get('me')
   me(@Req() request: Request) {
     return this.authService.me(getAuthToken(request) ?? '');
   }
 
+  @Public()
   @Get('google')
   googleLogin(@Res() response: Response) {
     this.assertGoogleConfigured();
@@ -86,6 +91,7 @@ export class AuthController {
     response.redirect(authorizationUrl.toString());
   }
 
+  @Public()
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string | undefined,
@@ -144,6 +150,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('logout')
   @HttpCode(204)
   logout(@Res({ passthrough: true }) response: Response) {

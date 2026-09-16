@@ -6,23 +6,30 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import type { Request } from 'express';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
+import { getAuthToken } from '../../modules/auth/auth.cookie.js';
+import type { AuthUser } from './current-user.decorator.js';
 import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
-import { extractSessionToken } from './session.js';
-import { verifySessionToken } from './jwt.js';
-import type { AuthUser } from './current-user.decorator.js';
 
-// Global guard: JWT from the HttpOnly session cookie (or Authorization
-// Bearer), loaded fresh from the DB so role changes and suspensions take
-// effect immediately. Replaces the x-user-id header prototype.
+interface TokenPayload {
+  sub: string;
+  email: string;
+  role: string;
+}
+
+// Global guard: verifies the signed JWT from the HttpOnly auth cookie with the
+// shared JwtService, then reloads the user from the DB so role changes and
+// suspensions take effect immediately.
 @Injectable()
 export class AuthGuard implements CanActivate {
   constructor(
+    private readonly jwtService: JwtService,
     private readonly reflector: Reflector,
     @Inject(DRIZZLE) private readonly db: Database,
   ) {}
@@ -38,14 +45,19 @@ export class AuthGuard implements CanActivate {
     ]);
 
     const request = context.switchToHttp().getRequest<Request & { user?: AuthUser }>();
-    const token = extractSessionToken(request);
+    const token = getAuthToken(request);
     if (!token) {
       if (isPublic) return true;
       throw new UnauthorizedException('Authentication required');
     }
 
-    const payload = verifySessionToken(token);
-    if (!payload) throw new UnauthorizedException('Invalid or expired session');
+    let payload: TokenPayload;
+    try {
+      payload = await this.jwtService.verifyAsync<TokenPayload>(token);
+      if (!payload.sub) throw new Error('Invalid token payload');
+    } catch {
+      throw new UnauthorizedException('Invalid or expired session');
+    }
 
     const [user] = await this.db
       .select({
@@ -68,7 +80,7 @@ export class AuthGuard implements CanActivate {
       throw new ForbiddenException('Insufficient permissions');
     }
 
-    request.user = user;
+    request.user = { id: user.id, email: user.email, name: user.name, role: user.role };
     return true;
   }
 }

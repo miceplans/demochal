@@ -18,7 +18,7 @@ export class CertificatesService {
       .insert(certificates)
       .values({
         userId,
-        title: dto.award,
+        title: dto.title,
         category: dto.category,
         fileId: dto.fileId,
         status: 'pending',

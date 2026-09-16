@@ -58,19 +58,21 @@ describe('PaymentsService', () => {
     );
   });
 
-  it('ignores non-DONE webhook events', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'PARTIAL_CANCELED', amount: 50000 }),
-    });
+  it('relabels an existing payment on cancel events without touching orders', async () => {
     const { db, insertValues } = createDbStub();
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    db.update = vi.fn().mockReturnValue({ set });
     const orders = createOrdersStub();
     const service = new PaymentsService(db, orders as any);
 
     await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
 
+    expect(orders.markPaid).not.toHaveBeenCalled();
     expect(orders.markCancelled).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
+    expect(set).toHaveBeenCalledWith({ status: 'refunded' });
+    expect(where).toHaveBeenCalled();
   });
 
   it('rejects webhooks Toss cannot confirm', async () => {

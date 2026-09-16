@@ -2,8 +2,8 @@ import { IsIn, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateCertificateDto {
   @IsString()
-  @MaxLength(200)
-  award!: string;
+  @MaxLength(300)
+  title!: string;
 
   @IsIn(['award', 'participation'])
   category!: 'award' | 'participation';

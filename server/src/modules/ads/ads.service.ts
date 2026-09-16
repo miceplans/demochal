@@ -23,23 +23,22 @@ const PREPARING_TTL_MS = 30 * 60 * 1000;
 
 // Seeded once so the biz console has something to reserve until an admin
 // product-management screen exists (tracked separately, out of scope here).
+// ad_products.id is a server-generated uuid (gen_random_uuid), so the seed
+// leaves it out and lets the default fill it.
 const DEFAULT_PRODUCTS = [
   {
-    id: 'hero',
     name: '홈 히어로 배너',
     placement: 'hero',
     dailyPrice: 100_000,
     description: '홈 화면 최상단 히어로 배너 노출',
   },
   {
-    id: 'gallery',
     name: '갤러리 노출',
     placement: 'gallery',
     dailyPrice: 50_000,
     description: '홈 화면 갤러리 영역 노출',
   },
   {
-    id: 'team',
     name: '팀 모집 홍보',
     placement: 'team',
     dailyPrice: 30_000,
@@ -198,6 +197,32 @@ export class AdsService implements OnModuleInit {
     if (diffDays(start, end) > 30) start = addDays(end, -30);
     if (start.getTime() > end.getTime()) start = end;
 
+    return this.buildReport(start, end);
+  }
+
+  /**
+   * 관리자 분석 화면용 리포트. 노출/클릭 계측 비콘이 없어 노출·클릭·CTR은
+   * 정직하게 0이며, 집행 광고비만 실제로 쿼리 가능한 지표(이 광고의 결제 완료
+   * 주문 합계)로 채운다.
+   */
+  async getReportForAdmin(id: string) {
+    await this.findById(id);
+    const end = new Date();
+    const start = addDays(end, -6);
+
+    const paidOrders = await this.db
+      .select({ amount: orders.amount })
+      .from(orders)
+      .where(and(eq(orders.adId, id), eq(orders.status, 'paid')));
+    const spend = paidOrders.reduce((sum, order) => sum + order.amount, 0);
+
+    return {
+      ...this.buildReport(start, end),
+      totals: { impressions: 0, clicks: 0, ctr: 0, spend },
+    };
+  }
+
+  private buildReport(start: Date, end: Date) {
     const zero = { impressions: 0, clicks: 0, ctr: 0 };
     const daily = enumerateDays(start, end).map((date) => ({ date, ...zero }));
     const hourly = Array.from({ length: 24 }, (_, hour) => ({
@@ -206,12 +231,6 @@ export class AdsService implements OnModuleInit {
       ...zero,
     }));
     return { totals: { ...zero }, daily, hourly, monthlyClicks: [] };
-  }
-
-  async getReportForAdmin(id: string) {
-    await this.findById(id);
-    const zero = { impressions: 0, clicks: 0, ctr: 0 };
-    return { totals: zero, daily: [], hourly: [], monthlyClicks: [] };
   }
 
   // Rows that currently occupy a placement's calendar: paid/active ads, plus

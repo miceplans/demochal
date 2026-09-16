@@ -15,6 +15,6 @@ export class AdminAnalyticsController {
 
   @Get('analytics')
   getAnalytics(@Query('ad') ad?: string, @Query('from') from?: string, @Query('to') to?: string) {
-    return this.adminAnalyticsService.getAnalytics(ad ? Number(ad) : undefined, from, to);
+    return this.adminAnalyticsService.getAnalytics(ad, from, to);
   }
 }

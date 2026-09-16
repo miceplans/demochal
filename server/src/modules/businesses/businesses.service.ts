@@ -16,7 +16,6 @@ export class BusinessesService {
       .values({
         name: dto.name,
         registrationNumber: dto.registrationNumber,
-        type: dto.type,
         ownerUserId,
       })
       .returning();

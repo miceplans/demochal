@@ -1,4 +1,4 @@
-import { IsArray, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { IsArray, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class ApplyChallengeDto {
   @IsUUID()
@@ -13,9 +13,4 @@ export class ApplyChallengeDto {
   @IsArray()
   @IsString({ each: true })
   teammates?: string[];
-
-  @IsOptional()
-  @IsArray()
-  @IsObject({ each: true })
-  formAnswers?: Record<string, unknown>[];
 }

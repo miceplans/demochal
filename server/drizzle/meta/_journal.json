@@ -36,6 +36,20 @@
       "when": 1789370390237,
       "tag": "0004_nasty_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789521361086,
+      "tag": "0005_challenge_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789523000000,
+      "tag": "0006_jsonb_defaults",
+      "breakpoints": true
     }
   ]
 }

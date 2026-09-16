@@ -15,6 +15,7 @@ import { getAuthToken } from '../../modules/auth/auth.cookie.js';
 const EXEMPT_PATHS = new Set([
   '/health',
   '/auth/login',
+  '/auth/logout',
   '/auth/me',
   '/auth/google',
   '/auth/google/callback',

@@ -46,12 +46,13 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!user) throw new UnauthorizedException('Invalid email or password');
+    if (!user?.passwordHash) throw new UnauthorizedException('Invalid email or password');
 
     const passwordMatches = await compare(password, user.passwordHash);
     if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
 
-    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+    if (user.status === 'suspended')
+      throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
     const [accessToken, publicUser] = await Promise.all([
       this.issueToken(user),
@@ -65,7 +66,7 @@ export class AuthService {
     const [byGoogleSubject] = await this.db
       .select()
       .from(users)
-      .where(eq(users.googleSubject, profile.subject))
+      .where(eq(users.googleId, profile.subject))
       .limit(1);
 
     let user = byGoogleSubject;
@@ -79,7 +80,7 @@ export class AuthService {
         // A verified Google email may be safely associated with the same local account.
         [user] = await this.db
           .update(users)
-          .set({ googleSubject: profile.subject })
+          .set({ googleId: profile.subject })
           .where(eq(users.id, byEmail.id))
           .returning();
       } else {
@@ -93,13 +94,15 @@ export class AuthService {
             email: profile.email,
             name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Google 사용자',
             passwordHash,
-            googleSubject: profile.subject,
+            authProvider: 'google',
+            googleId: profile.subject,
           })
           .returning();
       }
     }
     if (!user) throw new Error('Failed to create or link Google user');
-    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+    if (user.status === 'suspended')
+      throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
     const [accessToken, publicUser] = await Promise.all([
       this.issueToken(user),
@@ -124,7 +127,7 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('User no longer exists');
     }
-    if (profile.suspended) {
+    if (profile.status === 'suspended') {
       throw new ForbiddenException(profile.suspendedReason ?? '정지된 계정입니다.');
     }
     return profile;

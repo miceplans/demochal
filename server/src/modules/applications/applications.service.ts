@@ -25,7 +25,6 @@ export class ApplicationsService {
           userId,
           role: dto.role,
           teammates: dto.teammates ?? [],
-          formAnswers: dto.formAnswers ?? [],
         })
         .returning();
       if (!application) throw new Error('Failed to create application');

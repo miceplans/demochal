@@ -24,7 +24,7 @@ export class GoogleOAuthClient {
   }
 
   redirectUri() {
-    return `${env.apiPublicUrl}/auth/google/callback`;
+    return env.googleRedirectUri;
   }
 
   authorizationUrl(state?: string) {

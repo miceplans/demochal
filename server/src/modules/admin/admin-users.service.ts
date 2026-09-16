@@ -17,7 +17,9 @@ export class AdminUsersService {
     const conditions = [
       eq(users.role, 'user'),
       filters.q ? ilike(users.name, `%${filters.q}%`) : undefined,
-      filters.status ? eq(users.suspended, filters.status === 'suspended') : undefined,
+      // Suspension lives in users.status ('suspended' | 'active') — the old
+      // boolean `suspended` column never existed in the DB.
+      filters.status ? eq(users.status, filters.status) : undefined,
     ].filter((c) => c !== undefined);
 
     const rows = await this.db
@@ -25,11 +27,13 @@ export class AdminUsersService {
       .from(users)
       .where(and(...conditions));
 
+    // reports has no per-target-user link, so "신고 누적" counts the reports
+    // the user filed (reporter_user_id), not reports filed against them.
     const reportCounts = await this.db
-      .select({ userId: reports.reportedUserId, count: count() })
+      .select({ userId: reports.reporterUserId, count: count() })
       .from(reports)
-      .where(isNotNull(reports.reportedUserId))
-      .groupBy(reports.reportedUserId);
+      .where(isNotNull(reports.reporterUserId))
+      .groupBy(reports.reporterUserId);
     const reportsByUserId = new Map(reportCounts.map((row) => [row.userId!, Number(row.count)]));
 
     return rows.map((user) => ({
@@ -38,14 +42,18 @@ export class AdminUsersService {
       email: maskEmail(user.email),
       position: user.position,
       reports: reportsByUserId.get(user.id) ?? 0,
-      status: user.suspended ? ('suspended' as const) : ('active' as const),
+      status: user.status === 'suspended' ? ('suspended' as const) : ('active' as const),
     }));
   }
 
   async suspend(id: string, suspended: boolean, reason?: string) {
     const [user] = await this.db
       .update(users)
-      .set({ suspended, suspendedReason: suspended ? (reason ?? null) : null })
+      .set({
+        status: suspended ? 'suspended' : 'active',
+        suspendedReason: suspended ? (reason ?? null) : null,
+        suspendedAt: suspended ? new Date() : null,
+      })
       .where(eq(users.id, id))
       .returning();
     if (!user) throw new NotFoundException('User not found');
@@ -56,7 +64,7 @@ export class AdminUsersService {
       email: maskEmail(user.email),
       position: user.position,
       reports: await this.countReportsForUser(user.id),
-      status: user.suspended ? ('suspended' as const) : ('active' as const),
+      status: user.status === 'suspended' ? ('suspended' as const) : ('active' as const),
     };
   }
 
@@ -64,7 +72,7 @@ export class AdminUsersService {
     const [result] = await this.db
       .select({ count: count() })
       .from(reports)
-      .where(eq(reports.reportedUserId, userId));
+      .where(eq(reports.reporterUserId, userId));
     return Number(result?.count ?? 0);
   }
 }

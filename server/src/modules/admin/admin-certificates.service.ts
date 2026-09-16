@@ -51,7 +51,7 @@ export class AdminCertificatesService {
       .limit(1);
 
     if (status === 'verified' && user) {
-      const badges = new Set(user.badges as string[]);
+      const badges = new Set(user.badges ?? []);
       badges.add(certificate.title);
       await this.db
         .update(users)

@@ -18,7 +18,7 @@ export class AdminContentsService {
     const [teamRows, challengeRows, reportRows] = await Promise.all([
       this.db.select().from(teams).orderBy(desc(teams.createdAt)).limit(RECENT_LIMIT),
       this.db.select().from(challenges).orderBy(desc(challenges.createdAt)).limit(RECENT_LIMIT),
-      this.adminReportsService.list({}),
+      this.adminReportsService.list({ limit: 5 }),
     ]);
 
     const teamCards = await Promise.all(

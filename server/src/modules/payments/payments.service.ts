@@ -37,7 +37,13 @@ export class PaymentsService {
   ) {}
 
   async handleTossWebhook(payload: TossWebhookPayload): Promise<void> {
-    if (payload.data.status !== 'DONE' || !payload.data.paymentKey || !payload.data.orderId) return;
+    const { status, paymentKey, orderId } = payload.data;
+    if (!paymentKey || !orderId) return;
+
+    if (status !== 'DONE') {
+      await this.reflectCancellation(status, paymentKey);
+      return;
+    }
 
     const [order, tossPayment] = await Promise.all([
       this.ordersService.findByIdInternal(payload.data.orderId),
@@ -70,6 +76,24 @@ export class PaymentsService {
     }
 
     await this.ordersService.markPaid(order.id);
+  }
+
+  /**
+   * Cancel/expire events only relabel an already-recorded payment; they never
+   * create a row. Unrecognized event statuses are ignored.
+   */
+  private async reflectCancellation(eventStatus: string, paymentKey: string): Promise<void> {
+    const status =
+      eventStatus === 'PARTIAL_CANCELED'
+        ? 'refunded'
+        : eventStatus === 'CANCELED' || eventStatus === 'EXPIRED' || eventStatus === 'ABORTED'
+          ? 'cancelled'
+          : null;
+    if (!status) return;
+    await this.db
+      .update(payments)
+      .set({ status })
+      .where(eq(payments.providerPaymentKey, paymentKey));
   }
 
   private async getTossPayment(paymentKey: string): Promise<TossPayment> {

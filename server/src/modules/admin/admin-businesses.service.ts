@@ -15,9 +15,11 @@ export class AdminBusinessesService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async list(filters: ListFilters) {
+    // The businesses table has no `type` column (BizReviewEntry.type is
+    // hardcoded '기업'), so the query param is accepted but not filtered on.
+    void filters.type;
     const conditions = [
       filters.q ? ilike(businesses.name, `%${filters.q}%`) : undefined,
-      filters.type ? eq(businesses.type, filters.type) : undefined,
       filters.status ? eq(businesses.verificationStatus, filters.status) : undefined,
     ].filter((c) => c !== undefined);
 
@@ -39,7 +41,7 @@ export class AdminBusinessesService {
         return {
           id: business.id,
           org: business.name,
-          type: business.type ?? '기업',
+          type: '기업',
           bizNumber: maskBizNumber(business.registrationNumber),
           appliedAt: formatShortDate(latestVerification?.createdAt ?? business.createdAt),
           // Derived from verification.status — the OCR pipeline doesn't persist a distinct

@@ -23,6 +23,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
+import { AuthGuard } from './common/auth/auth.guard.js';
 import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
 
 // Full module tree, served over HTTP by main.ts.
@@ -52,6 +53,9 @@ import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
     AdminSettingsModule,
     AdminModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: MaintenanceGuard }],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
+  ],
 })
 export class AppModule {}

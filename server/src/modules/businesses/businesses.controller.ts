@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../../common/auth/public.decorator.js';
 import { BusinessesService } from './businesses.service.js';
 import { RegisterBusinessDto } from './dto/register-business.dto.js';
 import { UpdateBusinessDto } from './dto/update-business.dto.js';
@@ -15,6 +16,7 @@ export class BusinessesController {
     return this.businessesService.register(dto, user.id);
   }
 
+  @Public()
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.businessesService.findById(id);

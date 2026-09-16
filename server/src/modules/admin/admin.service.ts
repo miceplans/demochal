@@ -641,7 +641,7 @@ export class AdminService {
     const [revenueRow] = await this.db
       .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
       .from(payments)
-      .where(eq(payments.status, 'done'));
+      .where(eq(payments.status, 'paid'));
 
     const now = new Date();
     const months = Array.from({ length: 6 }, (_, i) => {

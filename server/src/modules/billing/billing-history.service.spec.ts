@@ -35,7 +35,7 @@ const ROWS = [
     id: 'pay-1',
     name: '홈 히어로 배너 광고',
     amount: 100_000,
-    status: 'done',
+    status: 'paid',
     approvedAt: new Date('2026-09-10T09:00:00Z'),
   },
   {

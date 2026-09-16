@@ -51,12 +51,12 @@ export class JwtAuthGuard implements CanActivate {
     // Re-checked on every request (not just at login) so suspending an account
     // takes effect immediately for tokens issued before the suspension.
     const [user] = await this.db
-      .select({ suspended: users.suspended, suspendedReason: users.suspendedReason })
+      .select({ status: users.status, suspendedReason: users.suspendedReason })
       .from(users)
       .where(eq(users.id, payload.sub))
       .limit(1);
     if (!user) throw new UnauthorizedException('User no longer exists');
-    if (user.suspended) {
+    if (user.status === 'suspended') {
       throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
     }
 

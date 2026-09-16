@@ -1,38 +1,32 @@
-import {
-  boolean,
-  integer,
-  jsonb,
-  pgTable,
-  serial,
-  text,
-  timestamp,
-  uuid,
-  varchar,
-} from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
 
 type OpenRole = { role: string; count: number };
+type ExternalLink = { label: string; url: string };
+type AwardRecord = { title: string; organization: string; date: string; prize: string };
+type ContentBlock = { type: string; content: Record<string, unknown> };
+
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
   name: varchar('name', { length: 100 }).notNull(),
   role: varchar('role', { length: 20 }).notNull().default('user'),
-  passwordHash: text('password_hash').notNull(),
-  googleSubject: varchar('google_subject', { length: 255 }).unique(),
+  passwordHash: text('password_hash'),
+  authProvider: varchar('auth_provider', { length: 20 }).notNull().default('local'),
+  googleId: varchar('google_id', { length: 255 }).unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   position: varchar('position', { length: 100 }),
   region: varchar('region', { length: 100 }),
   stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
   badges: jsonb('badges').$type<string[]>().notNull().default([]),
-  externalLinks: jsonb('external_links').notNull().default([]),
-  awardHistory: jsonb('award_history').notNull().default([]),
-  onboardingSurvey: jsonb('onboarding_survey'),
+  externalLinks: jsonb('external_links').$type<ExternalLink[]>().notNull().default([]),
+  awardHistory: jsonb('award_history').$type<AwardRecord[]>().notNull().default([]),
+  onboardingSurvey: jsonb('onboarding_survey').$type<object | null>(),
   interests: jsonb('interests').$type<string[]>().notNull().default([]),
   notificationSettings: jsonb('notification_settings')
     .$type<Record<string, boolean>>()
     .notNull()
     .default({}),
   status: varchar('status', { length: 20 }).notNull().default('active'),
-  suspended: boolean('suspended').notNull().default(false),
   suspendedReason: text('suspended_reason'),
   suspendedAt: timestamp('suspended_at'),
 });
@@ -45,13 +39,12 @@ export const businesses = pgTable('businesses', {
   registrationNumber: varchar('registration_number', { length: 20 }).notNull(),
   verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  type: varchar('type', { length: 50 }),
   bannerImageFileId: uuid('banner_image_file_id'),
   logoImageFileId: uuid('logo_image_file_id'),
   address: varchar('address', { length: 300 }),
   phone: varchar('phone', { length: 30 }),
   email: varchar('email', { length: 255 }),
-  contentBlocks: jsonb('content_blocks').notNull().default([]),
+  contentBlocks: jsonb('content_blocks').$type<ContentBlock[]>().notNull().default([]),
 });
 export const verifications = pgTable('verifications', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -97,9 +90,8 @@ export const teams = pgTable('teams', {
     .notNull()
     .references(() => users.id),
   title: varchar('title', { length: 200 }).notNull(),
-  leaderRole: varchar('leader_role', { length: 50 }),
   region: varchar('region', { length: 100 }),
-  openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
+  openRoles: jsonb('open_roles').$type<OpenRole[] | null>(),
   status: varchar('status', { length: 20 }).notNull().default('recruiting'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -126,8 +118,7 @@ export const applications = pgTable('applications', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   role: varchar('role', { length: 100 }),
-  teammates: jsonb('teammates').notNull().default([]),
-  formAnswers: jsonb('form_answers').notNull().default([]),
+  teammates: jsonb('teammates').$type<string[]>().notNull().default([]),
   evaluation: varchar('evaluation', { length: 20 }).notNull().default('undecided'),
   managerMemo: text('manager_memo'),
 });
@@ -142,30 +133,29 @@ export const bookmarks = pgTable('bookmarks', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const adProducts = pgTable('ad_products', {
-  id: varchar('id', { length: 50 }).primaryKey(),
-  name: varchar('name', { length: 100 }).notNull(),
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 200 }).notNull(),
   description: text('description'),
-  placement: varchar('placement', { length: 20 }).notNull(),
+  placement: varchar('placement', { length: 20 }).notNull().unique(),
   dailyPrice: integer('daily_price').notNull(),
   previewImageUrl: text('preview_image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const ads = pgTable('ads', {
   id: uuid('id').defaultRandom().primaryKey(),
-  adNumber: serial('ad_number').notNull(),
   businessId: uuid('business_id')
     .notNull()
     .references(() => businesses.id),
-  productId: varchar('product_id', { length: 50 })
+  productId: uuid('product_id')
     .notNull()
     .references(() => adProducts.id),
-  title: varchar('title', { length: 200 }).notNull(),
+  title: varchar('title', { length: 200 }),
   imageFileId: uuid('image_file_id'),
   landingUrl: text('landing_url'),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('preparing'),
-  paidAmount: integer('paid_amount').notNull().default(0),
+  paidAmount: integer('paid_amount').notNull(),
   expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -194,7 +184,6 @@ export const payments = pgTable('payments', {
 export const files = pgTable('files', {
   id: uuid('id').defaultRandom().primaryKey(),
   bucket: varchar('bucket', { length: 20 }).notNull(),
-  requestedBucket: varchar('requested_bucket', { length: 20 }).notNull(),
   key: text('key').notNull(),
   contentType: varchar('content_type', { length: 100 }).notNull(),
   uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
@@ -208,6 +197,6 @@ export const paymentCards = pgTable('payment_cards', {
     .references(() => businesses.id),
   cardName: varchar('card_name', { length: 100 }),
   maskedNumber: varchar('masked_number', { length: 30 }).notNull(),
-  billingKey: text('billing_key').notNull(),
+  billingKey: varchar('billing_key', { length: 255 }).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

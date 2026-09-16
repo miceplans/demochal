@@ -1,13 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, lt, ne } from 'drizzle-orm';
+import { and, count, desc, eq, lt, ne, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import {
-  applications,
-  bookmarks,
-  businesses,
-  challengeViews,
-  challenges,
-} from '../../db/schema.js';
+import { applications, bookmarks, businesses, challenges } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
@@ -56,18 +50,14 @@ export class ChallengesService {
 
   async findById(id: string) {
     const challenge = await this.getOrThrow(id);
-    // Every detail fetch is a real "click" into the posting — see challengeViews' comment in schema.ts.
-    await this.db.insert(challengeViews).values({ challengeId: id });
+    // Every detail fetch is a real "click" into the posting. The DB keeps only a
+    // running counter on the challenge row (no per-view event table), which is
+    // what backs the "popular" bookmark sort and the dashboard click stats.
+    await this.db
+      .update(challenges)
+      .set({ viewCount: sql`${challenges.viewCount} + 1` })
+      .where(eq(challenges.id, id));
     return challenge;
-  }
-
-  async stats(id: string) {
-    await this.getOrThrow(id);
-    const [views] = await this.db
-      .select({ count: count() })
-      .from(challengeViews)
-      .where(eq(challengeViews.challengeId, id));
-    return { views: Number(views?.count ?? 0) };
   }
 
   async create(dto: CreateChallengeDto, ownerUserId: string) {
@@ -120,16 +110,17 @@ export class ChallengesService {
   }
 
   async getStats(id: string) {
-    await this.getOrThrow(id);
+    const challenge = await this.getOrThrow(id);
     const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
 
-    const [clicks, bookmarkStats, applicantDistribution, monthlyExposure] = await Promise.all([
-      this.statWithDelta(challengeViews, eq(challengeViews.challengeId, id), sevenDaysAgo),
-      this.statWithDelta(bookmarks, eq(bookmarks.challengeId, id), sevenDaysAgo),
+    const [bookmarkStats, applicantDistribution] = await Promise.all([
+      this.bookmarkStatWithDelta(id, sevenDaysAgo),
       this.getApplicantDistribution(id),
-      this.getMonthlyViewCounts(id),
     ]);
 
+    // Detail-view total is the challenge's own counter; with no per-view event
+    // table the week-over-week delta is unknowable, so it stays 0 (not fabricated).
+    const clicks = { value: challenge.viewCount, deltaPercent: 0 };
     return {
       clicks,
       bookmarks: bookmarkStats,
@@ -137,7 +128,7 @@ export class ChallengesService {
       // so "exposure" reuses the same click/view signal rather than a fabricated number.
       exposure: clicks,
       applicantDistribution,
-      monthlyExposure,
+      monthlyExposure: this.getMonthlyExposure(),
     };
   }
 
@@ -166,19 +157,15 @@ export class ChallengesService {
     return [...byCategory, ...backfill];
   }
 
-  private async statWithDelta(
-    table: typeof challengeViews | typeof bookmarks,
-    whereEq: ReturnType<typeof eq>,
-    sevenDaysAgo: Date,
-  ) {
+  private async bookmarkStatWithDelta(challengeId: string, sevenDaysAgo: Date) {
     const totalRows = await this.db
       .select({ value: count() })
-      .from(table as typeof challengeViews)
-      .where(whereEq);
+      .from(bookmarks)
+      .where(eq(bookmarks.challengeId, challengeId));
     const beforeRows = await this.db
       .select({ value: count() })
-      .from(table as typeof challengeViews)
-      .where(and(whereEq, lt(table.createdAt, sevenDaysAgo)));
+      .from(bookmarks)
+      .where(and(eq(bookmarks.challengeId, challengeId), lt(bookmarks.createdAt, sevenDaysAgo)));
 
     const value = Number(totalRows[0]?.value ?? 0);
     const beforeValue = Number(beforeRows[0]?.value ?? 0);
@@ -202,25 +189,15 @@ export class ChallengesService {
     }));
   }
 
-  private async getMonthlyViewCounts(challengeId: string) {
+  // The DB stores only the running view counter, so a per-month exposure
+  // history cannot be derived — the chart keeps its real month labels at 0
+  // rather than inventing a distribution (see the /stats note in openapi.yaml).
+  private getMonthlyExposure() {
     const now = new Date();
-    const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const rows = await this.db
-      .select({ createdAt: challengeViews.createdAt })
-      .from(challengeViews)
-      .where(
-        and(eq(challengeViews.challengeId, challengeId), gte(challengeViews.createdAt, rangeStart)),
-      );
-
     const months: { label: string; value: number }[] = [];
     for (let i = 5; i >= 0; i -= 1) {
       const bucket = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const value = rows.filter(
-        (row) =>
-          row.createdAt.getFullYear() === bucket.getFullYear() &&
-          row.createdAt.getMonth() === bucket.getMonth(),
-      ).length;
-      months.push({ label: `${bucket.getMonth() + 1}월`, value });
+      months.push({ label: `${bucket.getMonth() + 1}월`, value: 0 });
     }
     return months;
   }

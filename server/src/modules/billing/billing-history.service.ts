@@ -52,7 +52,12 @@ export class BillingHistoryService {
       name: row.name ?? '주문',
       amount: -row.amount,
       paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
-      status: row.status === 'done' ? 'paid' : row.status === 'cancelled' ? 'refunded' : 'failed',
+      status:
+        row.status === 'paid'
+          ? 'paid'
+          : row.status === 'refunded' || row.status === 'cancelled'
+            ? 'refunded'
+            : 'failed',
     }));
     const total = items.reduce((sum, item) => sum + item.amount, 0);
     return { items, total };

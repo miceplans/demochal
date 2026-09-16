@@ -12,7 +12,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(5);
+    expect(journal.entries).toHaveLength(7);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -123,5 +123,21 @@ describe('0004 platform extension migration', () => {
     expect(sql).toContain('CONSTRAINT "bookmarks_user_id_challenge_id_unique"');
     expect(sql).toContain('CONSTRAINT "team_members_team_id_user_id_unique"');
     expect(sql).toContain('orders_ad_id_ads_id_fk');
+  });
+});
+
+describe('0006_jsonb_defaults migration', () => {
+  it('backfills, defaults, and constrains the platform jsonb columns', () => {
+    const tag = journal.entries[6]?.tag;
+    expect(tag).toMatch(/^0006_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    expect(sql).toContain('UPDATE "users" SET "interests" = \'[]\'::jsonb');
+    expect(sql).toContain('ALTER TABLE "users" ALTER COLUMN "badges" SET NOT NULL');
+    expect(sql).toContain(
+      'ALTER TABLE "users" ALTER COLUMN "notification_settings" SET DEFAULT \'{}\'::jsonb',
+    );
+    expect(sql).toContain('ALTER TABLE "applications" ALTER COLUMN "teammates" SET NOT NULL');
   });
 });

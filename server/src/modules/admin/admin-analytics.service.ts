@@ -1,12 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, eq, gte, lt } from 'drizzle-orm';
+import { and, asc, count, eq, gte, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { ads, applications, businesses, challenges, users } from '../../db/schema.js';
 import { AdsService } from '../ads/ads.service.js';
 import { formatCount, formatShortDate, formatWon } from './admin-format.util.js';
 import { AdminReportsService } from './admin-reports.service.js';
 
-const AD_SLOT_COUNT = 3; // hero | gallery | team — see ad_products seed in drizzle/0004_ads.sql.
+const AD_SLOT_COUNT = 3; // hero | gallery | team — see ad_products seed in drizzle/0002_add_ads.sql.
 const DAY_MS = 86_400_000;
 
 @Injectable()
@@ -60,13 +60,13 @@ export class AdminAnalyticsService {
     };
 
     const traffic = await this.getTrafficSeries(range);
-    const reports = await this.adminReportsService.list({});
+    const reports = await this.adminReportsService.list({ limit: 5 });
 
     return { stats, adRatio, traffic, reports };
   }
 
-  async getAnalytics(adNumber?: number, from?: string, to?: string) {
-    const adReport = adNumber ? await this.getAdReport(adNumber) : null;
+  async getAnalytics(adParam?: string, from?: string, to?: string) {
+    const adReport = adParam ? await this.getAdReport(adParam) : null;
 
     const start = from ? new Date(from) : new Date(Date.now() - 30 * DAY_MS);
     const end = to ? new Date(to) : new Date();
@@ -96,19 +96,39 @@ export class AdminAnalyticsService {
     return { adReport, stats, activity };
   }
 
-  private async getAdReport(adNumber: number) {
-    const [ad] = await this.db.select().from(ads).where(eq(ads.adNumber, adNumber)).limit(1);
-    if (!ad) throw new NotFoundException('Ad not found');
-    const [business] = await this.db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, ad.businessId))
-      .limit(1);
+  // The ads table has no ad_number column (that was a ghost migration); the
+  // "banner number" is the ad's 1-based rank in createdAt order, resolved from
+  // either the uuid or the numeric parameter — same rule as AdminService.
+  private async getAdReport(adParam: string) {
+    let adNumber: number | null = null;
+    let row: { ad: typeof ads.$inferSelect; organization: string | null } | undefined = (
+      await this.db
+        .select({ ad: ads, organization: businesses.name })
+        .from(ads)
+        .innerJoin(businesses, eq(ads.businessId, businesses.id))
+        .where(eq(ads.id, adParam))
+        .limit(1)
+    )[0];
 
+    if (row) {
+      const allAds = await this.db.select({ id: ads.id }).from(ads).orderBy(asc(ads.createdAt));
+      adNumber = allAds.findIndex((candidate) => candidate.id === row!.ad.id) + 1;
+    } else if (/^\d+$/.test(adParam)) {
+      adNumber = Number.parseInt(adParam, 10);
+      const allAds = await this.db
+        .select({ ad: ads, organization: businesses.name })
+        .from(ads)
+        .innerJoin(businesses, eq(ads.businessId, businesses.id))
+        .orderBy(asc(ads.createdAt));
+      row = allAds[adNumber - 1];
+    }
+
+    if (!row || adNumber === null) throw new NotFoundException('Ad not found');
+    const ad = row.ad;
     const report = await this.adsService.getReportForAdmin(ad.id);
     return {
-      adNumber: ad.adNumber,
-      organization: business?.name ?? '',
+      adNumber,
+      organization: row.organization ?? '',
       period: `${formatShortDate(ad.startDate)}~${formatShortDate(ad.endDate)}`,
       stats: [
         {
