@@ -104,8 +104,7 @@ const CardBottom = styled.div({
   top: 157.28,
   width: 350,
   height: 66.72,
-  background:
-    'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%)',
+  background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 100%)',
   borderRadius: '0 0 25px 25px',
 });
 

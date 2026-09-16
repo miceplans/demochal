@@ -86,7 +86,10 @@ export function DriftWall({
     });
   }, [columnsOfItems, gap, height, tileHeight]);
   const baseVelocity = useMemo(
-    () => columnsOfItems.map((_, index) => speed * factorForColumn(index, variance) * (index % 2 === 0 ? 1 : -1)),
+    () =>
+      columnsOfItems.map(
+        (_, index) => speed * factorForColumn(index, variance) * (index % 2 === 0 ? 1 : -1),
+      ),
     [columnsOfItems, speed, variance],
   );
 
@@ -114,17 +117,28 @@ export function DriftWall({
       const dt = lastTime.current === null ? 0 : Math.min(0.05, (now - lastTime.current) / 1000);
       lastTime.current = now;
       const smoothing = 1 - Math.exp(-dt / 0.12);
-      dampedPointer.current.x += (pointer.current.x * parallax * 8 - dampedPointer.current.x) * smoothing;
-      dampedPointer.current.y += (pointer.current.y * parallax * 8 - dampedPointer.current.y) * smoothing;
+      dampedPointer.current.x +=
+        (pointer.current.x * parallax * 8 - dampedPointer.current.x) * smoothing;
+      dampedPointer.current.y +=
+        (pointer.current.y * parallax * 8 - dampedPointer.current.y) * smoothing;
       if (planeRef.current) {
         planeRef.current.style.transform = `translate(-50%, -50%) scale(1.18) rotateX(${tilt - dampedPointer.current.y}deg) rotateY(${turn + dampedPointer.current.x}deg) translateZ(${-depth}px)`;
       }
       if (!reducedMotion) {
         meta.forEach(({ copyHeight }, index) => {
-          const target = isHovered.current && (pauseOnHover || hoveredColumn.current === index) ? 0 : baseVelocity[index];
-          velocities.current[index] += (target - velocities.current[index]) * (1 - Math.exp(-dt / (target ? 0.28 : 0.16)));
-          offsets.current[index] = ((offsets.current[index] + velocities.current[index] * dt) % copyHeight + copyHeight) % copyHeight;
-          if (tracks.current[index]) tracks.current[index]!.style.transform = `translate3d(0, ${-offsets.current[index]}px, 0)`;
+          const target =
+            isHovered.current && (pauseOnHover || hoveredColumn.current === index)
+              ? 0
+              : baseVelocity[index];
+          velocities.current[index] +=
+            (target - velocities.current[index]) * (1 - Math.exp(-dt / (target ? 0.28 : 0.16)));
+          offsets.current[index] =
+            (((offsets.current[index] + velocities.current[index] * dt) % copyHeight) +
+              copyHeight) %
+            copyHeight;
+          if (tracks.current[index])
+            tracks.current[index]!.style.transform =
+              `translate3d(0, ${-offsets.current[index]}px, 0)`;
         });
       }
       raf.current = requestAnimationFrame(animate);
@@ -136,27 +150,79 @@ export function DriftWall({
     };
   }, [baseVelocity, depth, meta, parallax, pauseOnHover, reducedMotion, tilt, turn]);
 
-  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    const rect = containerRef.current?.getBoundingClientRect();
-    if (!rect || reducedMotion) return;
-    pointer.current = { x: (event.clientX - rect.left) / rect.width - 0.5, y: (event.clientY - rect.top) / rect.height - 0.5 };
-  }, [reducedMotion]);
+  const onPointerMove = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      if (!rect || reducedMotion) return;
+      pointer.current = {
+        x: (event.clientX - rect.left) / rect.width - 0.5,
+        y: (event.clientY - rect.top) / rect.height - 0.5,
+      };
+    },
+    [reducedMotion],
+  );
   const variables = {
-    '--dw-tile-w': `${tileWidth}px`, '--dw-tile-h': `${tileHeight}px`, '--dw-gap': `${gap}px`,
-    '--dw-radius': `${radius}px`, '--dw-perspective': `${perspective}px`, '--dw-lift': '64px', '--dw-dim': 0.65,
+    '--dw-tile-w': `${tileWidth}px`,
+    '--dw-tile-h': `${tileHeight}px`,
+    '--dw-gap': `${gap}px`,
+    '--dw-radius': `${radius}px`,
+    '--dw-perspective': `${perspective}px`,
+    '--dw-lift': '64px',
+    '--dw-dim': 0.65,
   } as CSSProperties;
 
   if (columnsOfItems.length === 0) return null;
   return (
-    <Wall ref={containerRef} className={className} style={variables} onPointerMove={onPointerMove} onPointerEnter={() => { isHovered.current = true; }} onPointerLeave={() => { isHovered.current = false; hoveredColumn.current = -1; pointer.current = { x: 0, y: 0 }; setActiveId(null); }} aria-label="행사 이미지 드리프트 월">
+    <Wall
+      ref={containerRef}
+      className={className}
+      style={variables}
+      onPointerMove={onPointerMove}
+      onPointerEnter={() => {
+        isHovered.current = true;
+      }}
+      onPointerLeave={() => {
+        isHovered.current = false;
+        hoveredColumn.current = -1;
+        pointer.current = { x: 0, y: 0 };
+        setActiveId(null);
+      }}
+      aria-label="행사 이미지 드리프트 월"
+    >
       <Plane ref={planeRef}>
         {columnsOfItems.map((column, columnIndex) => (
           <Column key={columnIndex}>
-            <Track ref={(element) => { tracks.current[columnIndex] = element; }}>
-              {Array.from({ length: meta[columnIndex]?.copies ?? 2 }, (_, copyIndex) => column.map((item, itemIndex) => {
-                const id = `${columnIndex}-${copyIndex}-${itemIndex}`;
-                return <Tile key={id} active={activeId === id} onPointerEnter={() => { hoveredColumn.current = columnIndex; setActiveId(id); }} onPointerLeave={() => { hoveredColumn.current = -1; setActiveId(null); }}><img src={item.image} alt={item.title ?? ''} draggable={false} loading="lazy" /></Tile>;
-              }))}
+            <Track
+              ref={(element) => {
+                tracks.current[columnIndex] = element;
+              }}
+            >
+              {Array.from({ length: meta[columnIndex]?.copies ?? 2 }, (_, copyIndex) =>
+                column.map((item, itemIndex) => {
+                  const id = `${columnIndex}-${copyIndex}-${itemIndex}`;
+                  return (
+                    <Tile
+                      key={id}
+                      active={activeId === id}
+                      onPointerEnter={() => {
+                        hoveredColumn.current = columnIndex;
+                        setActiveId(id);
+                      }}
+                      onPointerLeave={() => {
+                        hoveredColumn.current = -1;
+                        setActiveId(null);
+                      }}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.title ?? ''}
+                        draggable={false}
+                        loading="lazy"
+                      />
+                    </Tile>
+                  );
+                }),
+              )}
             </Track>
           </Column>
         ))}
@@ -180,10 +246,12 @@ const Wall = styled.div({
     pointerEvents: 'none',
   },
   '&::before': {
-    background: 'linear-gradient(90deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 18%, rgba(11,12,19,0) 82%, rgba(11,12,19,1) 100%)',
+    background:
+      'linear-gradient(90deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 18%, rgba(11,12,19,0) 82%, rgba(11,12,19,1) 100%)',
   },
   '&::after': {
-    background: 'linear-gradient(180deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 17%, rgba(11,12,19,0) 75%, rgba(11,12,19,1) 100%)',
+    background:
+      'linear-gradient(180deg, rgba(11,12,19,1) 0%, rgba(11,12,19,0) 17%, rgba(11,12,19,0) 75%, rgba(11,12,19,1) 100%)',
   },
   '@media (max-width: 700px)': { height: 440 },
 });
@@ -198,7 +266,12 @@ const Plane = styled.div({
   willChange: 'transform',
 });
 const Column = styled.div({ height: '140%', overflow: 'hidden', width: 'var(--dw-tile-w)' });
-const Track = styled.div({ display: 'flex', flexDirection: 'column', gap: 'var(--dw-gap)', willChange: 'transform' });
+const Track = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--dw-gap)',
+  willChange: 'transform',
+});
 const Tile = styled.div<{ active: boolean }>(({ active }) => ({
   width: 'var(--dw-tile-w)',
   height: 'var(--dw-tile-h)',

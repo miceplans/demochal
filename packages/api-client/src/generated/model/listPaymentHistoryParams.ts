@@ -18,6 +18,6 @@
  */
 
 export type ListPaymentHistoryParams = {
-from?: string;
-to?: string;
+  from?: string;
+  to?: string;
 };
