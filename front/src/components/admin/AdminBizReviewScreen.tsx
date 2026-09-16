@@ -229,13 +229,29 @@ export function AdminBizReviewScreen() {
       <AdminPageTitle>기관 심사</AdminPageTitle>
       <StatRow>
         {bizStats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
       <FilterBar>
-        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" value={query} onChange={setQuery} />
+        <SearchFilter
+          placeholder="기관명/담당자 검색"
+          label="기관명/담당자 검색"
+          value={query}
+          onChange={setQuery}
+        />
         <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
-        <SelectFilter label="상태" options={['대기', '승인', '거부']} value={status} onChange={setStatus} />
+        <SelectFilter
+          label="상태"
+          options={['대기', '승인', '거부']}
+          value={status}
+          onChange={setStatus}
+        />
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>

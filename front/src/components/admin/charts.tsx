@@ -84,7 +84,13 @@ const ChartCard = styled.div({
   background: c.white,
 });
 
-function arcPath(cx: number, cy: number, radius: number, startAngle: number, endAngle: number): string {
+function arcPath(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+): string {
   const toPoint = (angle: number) => {
     const rad = (angle * Math.PI) / 180;
     return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)] as const;
@@ -203,7 +209,9 @@ const Legend = styled.span({
   fontSize: 11,
   color: c.gray900,
 });
-const LegendDot = styled('span', { shouldForwardProp: (prop) => prop !== 'color' })<{ color: string }>(({ color }) => ({
+const LegendDot = styled('span', { shouldForwardProp: (prop) => prop !== 'color' })<{
+  color: string;
+}>(({ color }) => ({
   width: 8,
   height: 8,
   borderRadius: '50%',
@@ -262,7 +270,9 @@ export function TrafficChart({
         background: c.white,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <strong style={{ ...textStyle.h2, color: c.gray900 }}>유저 트래픽</strong>
           <span style={{ display: 'flex', gap: 10 }}>
@@ -306,7 +316,9 @@ export function TrafficChart({
             <span key={label}>{label}</span>
           ))}
         </div>
-        <div style={{ flex: 1, minWidth: 0, height, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div
+          style={{ flex: 1, minWidth: 0, height, display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
           <ResponsiveContainer width="100%" height={height}>
             <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <defs>
@@ -323,7 +335,11 @@ export function TrafficChart({
                 interval={0}
                 tick={{ fontSize: 9, fill: c.gray900, letterSpacing: '0.06em' }}
               />
-              <YAxis domain={[0, maxY]} hide ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]} />
+              <YAxis
+                domain={[0, maxY]}
+                hide
+                ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]}
+              />
               <Tooltip
                 content={<ChartTooltip />}
                 cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
@@ -501,9 +517,25 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
-            <YAxis yAxisId="left" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip content={<ChartTooltip />} />
             <Area
               yAxisId="left"

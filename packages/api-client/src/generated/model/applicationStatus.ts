@@ -20,8 +20,7 @@
 /**
  * 등록 시 pending
  */
-export type ApplicationStatus = typeof ApplicationStatus[keyof typeof ApplicationStatus];
-
+export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
 
 export const ApplicationStatus = {
   pending: 'pending',

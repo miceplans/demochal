@@ -32,7 +32,12 @@ const columns: AdminColumn<ReportRow>[] = [
   { key: 'type', header: '유형', width: 100 },
   { key: 'org', header: '등록기관', width: 200 },
   { key: 'summary', header: '신고요약', width: 150 },
-  { key: 'status', header: '상태', width: 100, render: (row) => <Badge tone={statusBadge[row.status]}>{row.status}</Badge> },
+  {
+    key: 'status',
+    header: '상태',
+    width: 100,
+    render: (row) => <Badge tone={statusBadge[row.status]}>{row.status}</Badge>,
+  },
 ];
 
 const PANEL_WIDTH = 360;
@@ -54,7 +59,16 @@ const panelShell = {
 } as const;
 function CloseGlyph() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
@@ -110,7 +124,12 @@ function ReportDetailPanel({
           <ActionButton type="button" disabled={pending} onClick={() => onResolve('dismiss')}>
             거부
           </ActionButton>
-          <ActionButton type="button" primary disabled={pending} onClick={() => onResolve('resolve')}>
+          <ActionButton
+            type="button"
+            primary
+            disabled={pending}
+            onClick={() => onResolve('resolve')}
+          >
             승인
           </ActionButton>
         </ActionRow>
@@ -144,7 +163,9 @@ export function ReportLogTable() {
   const resolveMutation = generated.useResolveReport({
     mutation: {
       onSuccess: (_data, variables) => {
-        toast.success(variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.');
+        toast.success(
+          variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.',
+        );
         reportsQuery.refetch();
         setSelected(null);
       },
@@ -152,13 +173,19 @@ export function ReportLogTable() {
     },
   });
 
-  const selectReport = (row: ReportRow) => setSelected((current) => (current?.id === row.id ? null : row));
+  const selectReport = (row: ReportRow) =>
+    setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
 
   return (
     <ReportWorkspace>
       <TableArea withPanel={Boolean(selected) || undefined}>
-        <AdminTable columns={columns} rows={rows} onRowClick={selectReport} selectedRowId={selected?.id} />
+        <AdminTable
+          columns={columns}
+          rows={rows}
+          onRowClick={selectReport}
+          selectedRowId={selected?.id}
+        />
       </TableArea>
       {selected ? (
         <ReportDetailPanel
@@ -181,16 +208,16 @@ const ReportWorkspace = styled.div({
     flexDirection: 'column',
   },
 });
-const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{ withPanel?: boolean }>(
-  ({ withPanel }) => ({
-    minWidth: 0,
-    flex: 1,
-    '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
-    '@media (max-width: 960px)': {
-      '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
-    },
-  }),
-);
+const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{
+  withPanel?: boolean;
+}>(({ withPanel }) => ({
+  minWidth: 0,
+  flex: 1,
+  '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
+  '@media (max-width: 960px)': {
+    '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
+  },
+}));
 const Panel = styled.aside({
   ...panelShell,
   padding: '20px 24px 24px',
@@ -236,9 +263,18 @@ const InfoItem = styled.div({
   '& + &': { borderTop: '1px solid #E5E7EB' },
 });
 const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
-const InfoValue = styled.dd({ margin: 0, ...textStyle.bodySmall, color: c.gray900, textAlign: 'right' });
+const InfoValue = styled.dd({
+  margin: 0,
+  ...textStyle.bodySmall,
+  color: c.gray900,
+  textAlign: 'right',
+});
 const BodySection = styled.section({ display: 'flex', flexDirection: 'column', gap: 8 });
-const BodyLabel = styled.span({ ...textStyle.labelSmall, color: c.gray500, letterSpacing: '0.04em' });
+const BodyLabel = styled.span({
+  ...textStyle.labelSmall,
+  color: c.gray500,
+  letterSpacing: '0.04em',
+});
 const ReportBody = styled.p({
   margin: 0,
   padding: '12px 14px',

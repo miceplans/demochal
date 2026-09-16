@@ -20,8 +20,8 @@
 /**
  * 세모챌 내 신청폼 | 외부 링크
  */
-export type ChallengeRecruitMethod = typeof ChallengeRecruitMethod[keyof typeof ChallengeRecruitMethod];
-
+export type ChallengeRecruitMethod =
+  (typeof ChallengeRecruitMethod)[keyof typeof ChallengeRecruitMethod];
 
 export const ChallengeRecruitMethod = {
   seMOchall: 'seMOchall',
