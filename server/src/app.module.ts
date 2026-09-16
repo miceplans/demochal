@@ -17,6 +17,7 @@ import { CertificatesModule } from './modules/certificates/certificates.module.j
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { BillingModule } from './modules/billing/billing.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -39,6 +40,7 @@ import { AdminModule } from './modules/admin/admin.module.js';
     ReportsModule,
     AdminSettingsModule,
     AdminModule,
+    BillingModule,
   ],
 })
 export class AppModule {}
