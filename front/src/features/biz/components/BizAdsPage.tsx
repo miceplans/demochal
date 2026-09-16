@@ -17,6 +17,8 @@ import {
 } from '@/components/ads/AdPlacementPreview';
 import type { Ad, AdProduct, Notification } from '@semochal/api-client';
 import { adApi, adError } from '@/lib/ad-api';
+import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import { useToast } from '@/components/common/Toast';
 
 type AdsScreen = 'manage' | 'products' | 'complete';
 type SelectedAd = {
@@ -45,6 +47,20 @@ export function BizAdsPage() {
   const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [processing, setProcessing] = useState(false);
+  const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
+  const [adName, setAdName] = useState('');
+  const previewUrls = useRef<Set<string>>(new Set());
+  const toast = useToast();
+
+  useEffect(
+    () => () => {
+      previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
   useEffect(() => {
     adApi.ads
       .listMine()
@@ -117,6 +133,41 @@ export function BizAdsPage() {
     (period) =>
       period.startDate.slice(0, 10) <= paymentEnd && period.endDate.slice(0, 10) >= paymentStart,
   );
+
+  const handleSelectPlacement = (placement: AdPlacement) => {
+    if (uploadedImages[placement]) {
+      void openPayment(placement);
+      return;
+    }
+    setUploadPlacement((current) => (current === placement ? null : placement));
+  };
+
+  const handleImagePicked =
+    (placement: AdPlacement) =>
+    async (file: File): Promise<void> => {
+      setProcessing(true);
+      try {
+        const image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
+        const previous = uploadedImages[placement];
+        if (previous) {
+          URL.revokeObjectURL(previous);
+          previewUrls.current.delete(previous);
+        }
+        previewUrls.current.add(image.previewUrl);
+        setUploadedImages((current) => ({ ...current, [placement]: image.previewUrl }));
+        setUploadPlacement(null);
+        toast.success(
+          '업로드 되었습니다',
+          `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
+        );
+        setAdName('');
+        setNameModalPlacement(placement);
+      } catch {
+        toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
+      } finally {
+        setProcessing(false);
+      }
+    };
   const submitReservation = async () => {
     if (!selectedAd || submitting || overlaps) return;
     setSubmitting(true);
@@ -306,7 +357,14 @@ export function BizAdsPage() {
           </ViewTab>
         </ViewToggle>
       </HeaderRow>
-      <AdPlacementPreview view={view} onSelect={openPayment} />
+      <AdPlacementPreview
+        view={view}
+        onSelect={handleSelectPlacement}
+        uploadPlacement={uploadPlacement}
+        uploadedImages={uploadedImages}
+        onImagePicked={handleImagePicked}
+        processing={processing}
+      />
       {paymentOpen &&
         selectedAd &&
         typeof document !== 'undefined' &&
@@ -408,27 +466,175 @@ export function BizAdsPage() {
           </PaymentBackdrop>,
           document.body,
         )}
+      {nameModalPlacement &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <NameBackdrop role="presentation" onMouseDown={() => setNameModalPlacement(null)}>
+            <NamePopup
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="ad-name-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h2 id="ad-name-title" style={{ margin: 0, ...textStyle.display }}>
+                광고명
+              </h2>
+              <NameFields>
+                <NameInput
+                  value={adName}
+                  onChange={(event) => setAdName(event.target.value)}
+                  placeholder="광고명을 입력해주세요"
+                  aria-label="광고명"
+                  maxLength={30}
+                  autoFocus
+                />
+                <PositionField>
+                  <PositionSelect
+                    value={nameModalPlacement}
+                    onChange={(event) => setNameModalPlacement(event.target.value as AdPlacement)}
+                    aria-label="광고 위치"
+                  >
+                    <option value="hero">홈 상단 배너 광고</option>
+                    <option value="gallery">홈 중간 이미지 광고</option>
+                  </PositionSelect>
+                  <PositionIcon src="/assets/icons/figma-chevron-down.svg" alt="" />
+                </PositionField>
+              </NameFields>
+              <PopupActions>
+                <PopupAction type="button" secondary onClick={() => setNameModalPlacement(null)}>
+                  취소
+                </PopupAction>
+                <PopupAction
+                  type="button"
+                  disabled={!adName.trim()}
+                  onClick={() => {
+                    const placement = nameModalPlacement;
+                    setNameModalPlacement(null);
+                    void openPayment(placement);
+                  }}
+                >
+                  등록하기
+                </PopupAction>
+              </PopupActions>
+            </NamePopup>
+          </NameBackdrop>,
+          document.body,
+        )}
     </BizContent>
   );
 }
 
-const ViewToggle = styled.div({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 20px', borderRadius: 6, background: c.white });
-const ViewTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{ active: boolean }>(({ active }) => ({ width: 80, border: 0, borderRadius: 6, padding: 10, background: active ? c.primary : 'transparent', color: active ? c.white : c.gray900, ...textStyle.subtitle }));
+const ViewToggle = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 20px',
+  borderRadius: 6,
+  background: c.white,
+});
+const ViewTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active: boolean;
+}>(({ active }) => ({
+  width: 80,
+  border: 0,
+  borderRadius: 6,
+  padding: 10,
+  background: active ? c.primary : 'transparent',
+  color: active ? c.white : c.gray900,
+  ...textStyle.subtitle,
+}));
 const ManageBody = styled(BizContent)({ maxWidth: 1100, gap: 48 });
-const HeaderRow = styled.div({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 });
+const HeaderRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+});
 const ManageSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
-const AdsTable = styled.div({ overflow: 'hidden', border: `1px solid ${c.gray200}`, borderRadius: 12 });
-const TableRow = styled.div({ display: 'grid', gridTemplateColumns: '180px 180px 1fr', alignItems: 'center', minHeight: 56, padding: '0 16px', borderTop: `1px solid ${c.gray200}`, ...textStyle.body });
-const TableHead = styled(TableRow)({ minHeight: 48, borderTop: 0, background: c.gray100, ...textStyle.h1 });
+const AdsTable = styled.div({
+  overflow: 'hidden',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 12,
+});
+const TableRow = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '180px 180px 1fr',
+  alignItems: 'center',
+  minHeight: 56,
+  padding: '0 16px',
+  borderTop: `1px solid ${c.gray200}`,
+  ...textStyle.body,
+});
+const TableHead = styled(TableRow)({
+  minHeight: 48,
+  borderTop: 0,
+  background: c.gray100,
+  ...textStyle.h1,
+});
 const CheckoutBody = styled(BizContent)({ maxWidth: 680, gap: 24, paddingTop: 36 });
-const SuccessIcon = styled.div({ width: 56, height: 56, borderRadius: '50%', display: 'grid', placeItems: 'center', margin: '0 auto', background: '#e7f2ff', color: c.primary, fontSize: 28, fontWeight: 700 });
-const PaymentBackdrop = styled.div({ position: 'fixed', zIndex: 100, inset: 0, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(17, 24, 39, .46)' });
-const PaymentPopup = styled.div({ width: 'min(100%, 384px)', padding: 30, borderRadius: 9, background: c.white, boxShadow: '0 20px 48px rgba(17, 24, 39, .22)' });
-const PaymentDate = styled.div({ display: 'flex', alignItems: 'center', gap: 4, color: c.gray900, ...textStyle.metaText });
+const SuccessIcon = styled.div({
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  display: 'grid',
+  placeItems: 'center',
+  margin: '0 auto',
+  background: '#e7f2ff',
+  color: c.primary,
+  fontSize: 28,
+  fontWeight: 700,
+});
+const PaymentBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 24, 39, .46)',
+});
+const PaymentPopup = styled.div({
+  width: 'min(100%, 384px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+});
+const PaymentDate = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  color: c.gray900,
+  ...textStyle.metaText,
+});
 const PaymentDateText = styled.span({ color: c.gray900, ...textStyle.metaText });
-const CalendarToggle = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(({ active }) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, padding: 0, border: 0, borderRadius: 6, background: active ? c.gray100 : 'transparent', cursor: 'pointer' }));
+const CalendarToggle = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 22,
+  height: 22,
+  padding: 0,
+  border: 0,
+  borderRadius: 6,
+  background: active ? c.gray100 : 'transparent',
+  cursor: 'pointer',
+}));
 const CalendarIcon = styled.img({ width: 15, height: 15 });
-const CalendarPopover = styled.div({ position: 'absolute', zIndex: 10, top: 'calc(100% + 6px)', left: 0, width: 'max-content', padding: 14, borderRadius: 10, background: c.white, border: `1px solid ${c.gray200}`, boxShadow: '0 12px 28px rgba(17, 24, 39, .18)' });
+const CalendarPopover = styled.div({
+  position: 'absolute',
+  zIndex: 10,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 'max-content',
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `1px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
 const CalendarDayPicker = styled(DayPicker)({
   '--rdp-accent-color': c.primary,
   '--rdp-accent-background-color': c.lightBlue,
@@ -451,4 +657,73 @@ const CalendarDayPicker = styled(DayPicker)({
   '.rdp-outside .rdp-day_button': { color: c.gray300 },
   '.rdp-chevron': { fill: c.gray700 },
 });
-const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'secondary' })<{ secondary?: boolean }>(({ secondary }) => ({ height: 37, border: secondary ? `1px solid ${c.gray200}` : 0, borderRadius: 6, background: secondary ? c.white : c.primary, color: secondary ? c.gray900 : c.white, cursor: 'pointer', fontSize: secondary ? 12 : 13, fontWeight: 600, lineHeight: secondary ? 'normal' : 1.4 }));
+const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'secondary' })<{
+  secondary?: boolean;
+}>(({ secondary }) => ({
+  height: 37,
+  border: secondary ? `1px solid ${c.gray200}` : 0,
+  borderRadius: 6,
+  background: secondary ? c.white : c.primary,
+  color: secondary ? c.gray900 : c.white,
+  cursor: 'pointer',
+  fontSize: secondary ? 12 : 13,
+  fontWeight: 600,
+  lineHeight: secondary ? 'normal' : 1.4,
+  '&:disabled': { opacity: 0.4, cursor: 'not-allowed' },
+}));
+const NameBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 17, 17, .2)',
+});
+const NamePopup = styled.div({
+  width: 'min(100%, 427px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+const NameFields = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const NameInput = styled.input({
+  width: '100%',
+  height: 44,
+  padding: '0 14px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  ...textStyle.body,
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const PositionField = styled.div({ position: 'relative', display: 'flex' });
+const PositionSelect = styled.select({
+  width: '100%',
+  height: 44,
+  padding: '0 34px 0 14px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  cursor: 'pointer',
+  ...textStyle.body,
+  appearance: 'none',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const PositionIcon = styled.img({
+  position: 'absolute',
+  top: '50%',
+  right: 12,
+  width: 14,
+  height: 14,
+  transform: 'translateY(-50%)',
+  pointerEvents: 'none',
+});
+const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });
