@@ -12,7 +12,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(4);
+    expect(journal.entries).toHaveLength(6);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -55,6 +55,19 @@ describe('baseline schema migration', () => {
   });
 });
 
+describe('0005_reconcile_auth_reports migration', () => {
+  it('adds the OAuth and report contract without destructive DDL', () => {
+    const tag = journal.entries[5]?.tag;
+    expect(tag).toBe('0005_reconcile_auth_reports');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "google_subject"');
+    expect(sql).toContain('ALTER COLUMN "password_hash" DROP NOT NULL');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "target_id"');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "reported_user_id"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
 describe('0001_add_google_auth migration', () => {
   it('adds social-login columns to users', () => {
     const tag = journal.entries[1]?.tag;
@@ -92,5 +105,36 @@ describe('0003_ads_fixes migration', () => {
 
     expect(sql).toContain('ALTER TABLE "ads" ADD COLUMN "expires_at" timestamp');
     expect(sql).toContain('ad_products_placement_unique');
+  });
+});
+
+describe('0004 platform extension migration', () => {
+  it('creates the engagement/biz/admin tables and widens orders and profiles', () => {
+    const tag = journal.entries[4]?.tag;
+    expect(tag).toMatch(/^0004_/);
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+    for (const table of [
+      'teams',
+      'team_members',
+      'bookmarks',
+      'payment_cards',
+      'inquiries',
+      'certificates',
+      'reports',
+      'admin_settings',
+    ]) {
+      expect(sql).toContain(`CREATE TABLE "${table}"`);
+    }
+
+    expect(sql).toContain('ALTER TABLE "orders" ALTER COLUMN "application_id" DROP NOT NULL');
+    expect(sql).toContain('ALTER TABLE "orders" ADD COLUMN "ad_id" uuid');
+    expect(sql).toContain('ALTER TABLE "challenges" ADD COLUMN "category" varchar(100)');
+    expect(sql).toContain('ALTER TABLE "challenges" ADD COLUMN "view_count" integer DEFAULT 0');
+    expect(sql).toContain('ALTER TABLE "users" ADD COLUMN "onboarding_survey" jsonb');
+    expect(sql).toContain('CONSTRAINT "bookmarks_user_id_challenge_id_unique"');
+    expect(sql).toContain('CONSTRAINT "team_members_team_id_user_id_unique"');
+    expect(sql).toContain('orders_ad_id_ads_id_fk');
   });
 });
