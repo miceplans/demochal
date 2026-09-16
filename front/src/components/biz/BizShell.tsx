@@ -56,39 +56,49 @@ export function Logo({ size = 24 }: { size?: number }) {
   return (
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: size, width: 'auto', display: 'block' }} />
+      <img
+        src="/assets/SEMOBIZ.png"
+        alt="SEMO.BIZ"
+        style={{ height: size, width: 'auto', display: 'block' }}
+      />
     </BizBrand>
   );
 }
 
 const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
-const lerpRgba = (from: [number, number, number, number], to: [number, number, number, number], t: number) =>
+const lerpRgba = (
+  from: [number, number, number, number],
+  to: [number, number, number, number],
+  t: number,
+) =>
   `rgba(${lerp(from[0], to[0], t).toFixed(1)}, ${lerp(from[1], to[1], t).toFixed(1)}, ${lerp(from[2], to[2], t).toFixed(1)}, ${lerp(from[3], to[3], t).toFixed(3)})`;
 
-const LandingHeaderBar = styled.header<{ progress: number; width: string }>(({ progress: p, width }) => ({
-  position: 'fixed',
-  left: '50%',
-  transform: 'translateX(-50%)',
-  top: lerp(0, 16, p),
-  width,
-  height: 64,
-  zIndex: 50,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: `0 ${lerp(80, 32, p)}px`,
-  background: `rgba(255, 255, 255, ${lerp(1, 0.72, p).toFixed(3)})`,
-  backdropFilter: `blur(${lerp(0, 16, p)}px)`,
-  WebkitBackdropFilter: `blur(${lerp(0, 16, p)}px)`,
-  borderRadius: lerp(0, 16, p),
-  border: `0.5px solid ${lerpRgba([244, 244, 244, 1], [223, 226, 231, 0.6], p)}`,
-  boxShadow: `0 ${lerp(0, 16, p)}px ${lerp(0, 40, p)}px rgba(16, 20, 30, ${lerp(0, 0.1, p).toFixed(3)})`,
-  willChange: 'top, width, padding, border-radius, background, box-shadow',
-  [mobile]: {
-    top: lerp(0, 8, p),
-    padding: `0 ${lerp(20, 16, p)}px`,
-  },
-}));
+const LandingHeaderBar = styled.header<{ progress: number; width: string }>(
+  ({ progress: p, width }) => ({
+    position: 'fixed',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    top: lerp(0, 16, p),
+    width,
+    height: 64,
+    zIndex: 50,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: `0 ${lerp(80, 32, p)}px`,
+    background: `rgba(255, 255, 255, ${lerp(1, 0.72, p).toFixed(3)})`,
+    backdropFilter: `blur(${lerp(0, 16, p)}px)`,
+    WebkitBackdropFilter: `blur(${lerp(0, 16, p)}px)`,
+    borderRadius: lerp(0, 16, p),
+    border: `0.5px solid ${lerpRgba([244, 244, 244, 1], [223, 226, 231, 0.6], p)}`,
+    boxShadow: `0 ${lerp(0, 16, p)}px ${lerp(0, 40, p)}px rgba(16, 20, 30, ${lerp(0, 0.1, p).toFixed(3)})`,
+    willChange: 'top, width, padding, border-radius, background, box-shadow',
+    [mobile]: {
+      top: lerp(0, 8, p),
+      padding: `0 ${lerp(20, 16, p)}px`,
+    },
+  }),
+);
 const HeaderCtas = styled.div({ display: 'flex', gap: 8 });
 const HeaderJoin = styled(BizLink)({
   display: 'flex',
@@ -178,8 +188,9 @@ const SidebarBox = styled.aside({
 });
 const SidebarTop = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
 const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', width: 183 });
-const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(
-  ({ active }) => ({
+const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
   display: 'block',
   padding: '10px 12px',
   borderRadius: 6,
@@ -226,7 +237,7 @@ export const menu: [string, string][] = [
   ['/ads', '광고 관리'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
-  ['/profile/edit','기업 프로필'],
+  ['/profile/edit', '기업 프로필'],
 ];
 
 export function isMenuActive(route: string, href: string) {
@@ -240,7 +251,7 @@ export function BizSidebar() {
   const router = useRouter();
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
-    ''
+    '',
   );
   const logout = () => {
     void adApi.auth.logout().finally(() => router.push(`${base}/login`));
