@@ -22,4 +22,15 @@ export const env = {
   ntsApiKey: process.env.NTS_API_KEY ?? '',
 
   jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
+
+  googleClientId: process.env.GOOGLE_CLIENT_ID ?? '',
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET ?? '',
+  googleRedirectUri:
+    process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3001/auth/google/callback',
+
+  frontendOrigins: (process.env.FRONTEND_ORIGIN ?? 'http://localhost:3000')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean),
+  apiPublicUrl: process.env.API_PUBLIC_URL ?? 'http://localhost:3001',
 };
