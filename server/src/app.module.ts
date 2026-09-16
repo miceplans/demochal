@@ -13,6 +13,10 @@ import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FilesModule } from './modules/files/files.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { AdsModule } from './modules/ads/ads.module.js';
+import { CertificatesModule } from './modules/certificates/certificates.module.js';
+import { ReportsModule } from './modules/reports/reports.module.js';
+import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
+import { AdminModule } from './modules/admin/admin.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -31,6 +35,10 @@ import { AdsModule } from './modules/ads/ads.module.js';
     FilesModule,
     NotificationsModule,
     AdsModule,
+    CertificatesModule,
+    ReportsModule,
+    AdminSettingsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}
