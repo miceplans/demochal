@@ -23,24 +23,22 @@ type MovingAdsProps = {
  * 광고 슬롯처럼 일정 간격으로 이동하는 UI를 위한 공통 컨트롤러입니다.
  * 마우스를 올리거나 키보드 포커스가 머무는 동안에는 자동 이동을 멈춥니다.
  */
-export function MovingAds({
-  ariaLabel,
-  itemCount,
-  children,
-  interval = 5000,
-}: MovingAdsProps) {
+export function MovingAds({ ariaLabel, itemCount, children, interval = 5000 }: MovingAdsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   // 첫·마지막 광고를 복제해 끝에서도 한 방향으로 자연스럽게 이어지게 합니다.
   const [railIndex, setRailIndex] = useState(1);
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
-  const goTo = useCallback((index: number) => {
-    const nextIndex = ((index % itemCount) + itemCount) % itemCount;
-    setShouldAnimate(true);
-    setActiveIndex(nextIndex);
-    setRailIndex(nextIndex + 1);
-  }, [itemCount]);
+  const goTo = useCallback(
+    (index: number) => {
+      const nextIndex = ((index % itemCount) + itemCount) % itemCount;
+      setShouldAnimate(true);
+      setActiveIndex(nextIndex);
+      setRailIndex(nextIndex + 1);
+    },
+    [itemCount],
+  );
 
   useEffect(() => {
     if (isPaused || itemCount < 2) return;
@@ -53,19 +51,23 @@ export function MovingAds({
     return () => window.clearInterval(timerId);
   }, [interval, isPaused, itemCount]);
 
-  const handleTransitionEnd = useCallback((event: TransitionEvent<HTMLElement>) => {
-    // 카드 hover 등 내부 요소의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
-    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
-    if (railIndex !== 0 && railIndex !== itemCount + 1) return;
+  const handleTransitionEnd = useCallback(
+    (event: TransitionEvent<HTMLElement>) => {
+      // 카드 hover 등 내부 요소의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
+      if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
+      if (railIndex !== 0 && railIndex !== itemCount + 1) return;
 
-    setShouldAnimate(false);
-    setRailIndex(railIndex === 0 ? itemCount : 1);
-    window.requestAnimationFrame(() => setShouldAnimate(true));
-  }, [itemCount, railIndex]);
+      setShouldAnimate(false);
+      setRailIndex(railIndex === 0 ? itemCount : 1);
+      window.requestAnimationFrame(() => setShouldAnimate(true));
+    },
+    [itemCount, railIndex],
+  );
 
-  const loopIndexes = itemCount > 1
-    ? [itemCount - 1, ...Array.from({ length: itemCount }, (_, index) => index), 0]
-    : [0];
+  const loopIndexes =
+    itemCount > 1
+      ? [itemCount - 1, ...Array.from({ length: itemCount }, (_, index) => index), 0]
+      : [0];
 
   return (
     <div
@@ -77,7 +79,15 @@ export function MovingAds({
         if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
       }}
     >
-      {children({ activeIndex, isPaused, goTo, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd })}
+      {children({
+        activeIndex,
+        isPaused,
+        goTo,
+        loopIndexes,
+        railIndex,
+        shouldAnimate,
+        handleTransitionEnd,
+      })}
     </div>
   );
 }

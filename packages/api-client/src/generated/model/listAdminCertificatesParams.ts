@@ -19,6 +19,6 @@
 import type { ListAdminCertificatesStatus } from './listAdminCertificatesStatus';
 
 export type ListAdminCertificatesParams = {
-status?: ListAdminCertificatesStatus;
-q?: string;
+  status?: ListAdminCertificatesStatus;
+  q?: string;
 };

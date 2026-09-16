@@ -412,23 +412,117 @@ export function BizAdsPage() {
   );
 }
 
-const ViewToggle = styled.div({ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 20px', borderRadius: 6, background: c.white });
-const ViewTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{ active: boolean }>(({ active }) => ({ width: 80, border: 0, borderRadius: 6, padding: 10, background: active ? c.primary : 'transparent', color: active ? c.white : c.gray900, ...textStyle.subtitle }));
+const ViewToggle = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 20px',
+  borderRadius: 6,
+  background: c.white,
+});
+const ViewTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active: boolean;
+}>(({ active }) => ({
+  width: 80,
+  border: 0,
+  borderRadius: 6,
+  padding: 10,
+  background: active ? c.primary : 'transparent',
+  color: active ? c.white : c.gray900,
+  ...textStyle.subtitle,
+}));
 const ManageBody = styled(BizContent)({ maxWidth: 1100, gap: 48 });
-const HeaderRow = styled.div({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 });
+const HeaderRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+});
 const ManageSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
-const AdsTable = styled.div({ overflow: 'hidden', border: `1px solid ${c.gray200}`, borderRadius: 12 });
-const TableRow = styled.div({ display: 'grid', gridTemplateColumns: '180px 180px 1fr', alignItems: 'center', minHeight: 56, padding: '0 16px', borderTop: `1px solid ${c.gray200}`, ...textStyle.body });
-const TableHead = styled(TableRow)({ minHeight: 48, borderTop: 0, background: c.gray100, ...textStyle.h1 });
+const AdsTable = styled.div({
+  overflow: 'hidden',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 12,
+});
+const TableRow = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '180px 180px 1fr',
+  alignItems: 'center',
+  minHeight: 56,
+  padding: '0 16px',
+  borderTop: `1px solid ${c.gray200}`,
+  ...textStyle.body,
+});
+const TableHead = styled(TableRow)({
+  minHeight: 48,
+  borderTop: 0,
+  background: c.gray100,
+  ...textStyle.h1,
+});
 const CheckoutBody = styled(BizContent)({ maxWidth: 680, gap: 24, paddingTop: 36 });
-const SuccessIcon = styled.div({ width: 56, height: 56, borderRadius: '50%', display: 'grid', placeItems: 'center', margin: '0 auto', background: '#e7f2ff', color: c.primary, fontSize: 28, fontWeight: 700 });
-const PaymentBackdrop = styled.div({ position: 'fixed', zIndex: 100, inset: 0, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(17, 24, 39, .46)' });
-const PaymentPopup = styled.div({ width: 'min(100%, 384px)', padding: 30, borderRadius: 9, background: c.white, boxShadow: '0 20px 48px rgba(17, 24, 39, .22)' });
-const PaymentDate = styled.div({ display: 'flex', alignItems: 'center', gap: 4, color: c.gray900, ...textStyle.metaText });
+const SuccessIcon = styled.div({
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  display: 'grid',
+  placeItems: 'center',
+  margin: '0 auto',
+  background: '#e7f2ff',
+  color: c.primary,
+  fontSize: 28,
+  fontWeight: 700,
+});
+const PaymentBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 24, 39, .46)',
+});
+const PaymentPopup = styled.div({
+  width: 'min(100%, 384px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+});
+const PaymentDate = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  color: c.gray900,
+  ...textStyle.metaText,
+});
 const PaymentDateText = styled.span({ color: c.gray900, ...textStyle.metaText });
-const CalendarToggle = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{ active?: boolean }>(({ active }) => ({ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, padding: 0, border: 0, borderRadius: 6, background: active ? c.gray100 : 'transparent', cursor: 'pointer' }));
+const CalendarToggle = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 22,
+  height: 22,
+  padding: 0,
+  border: 0,
+  borderRadius: 6,
+  background: active ? c.gray100 : 'transparent',
+  cursor: 'pointer',
+}));
 const CalendarIcon = styled.img({ width: 15, height: 15 });
-const CalendarPopover = styled.div({ position: 'absolute', zIndex: 10, top: 'calc(100% + 6px)', left: 0, width: 'max-content', padding: 14, borderRadius: 10, background: c.white, border: `1px solid ${c.gray200}`, boxShadow: '0 12px 28px rgba(17, 24, 39, .18)' });
+const CalendarPopover = styled.div({
+  position: 'absolute',
+  zIndex: 10,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 'max-content',
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `1px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
 const CalendarDayPicker = styled(DayPicker)({
   '--rdp-accent-color': c.primary,
   '--rdp-accent-background-color': c.lightBlue,
@@ -451,4 +545,16 @@ const CalendarDayPicker = styled(DayPicker)({
   '.rdp-outside .rdp-day_button': { color: c.gray300 },
   '.rdp-chevron': { fill: c.gray700 },
 });
-const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'secondary' })<{ secondary?: boolean }>(({ secondary }) => ({ height: 37, border: secondary ? `1px solid ${c.gray200}` : 0, borderRadius: 6, background: secondary ? c.white : c.primary, color: secondary ? c.gray900 : c.white, cursor: 'pointer', fontSize: secondary ? 12 : 13, fontWeight: 600, lineHeight: secondary ? 'normal' : 1.4 }));
+const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'secondary' })<{
+  secondary?: boolean;
+}>(({ secondary }) => ({
+  height: 37,
+  border: secondary ? `1px solid ${c.gray200}` : 0,
+  borderRadius: 6,
+  background: secondary ? c.white : c.primary,
+  color: secondary ? c.gray900 : c.white,
+  cursor: 'pointer',
+  fontSize: secondary ? 12 : 13,
+  fontWeight: 600,
+  lineHeight: secondary ? 'normal' : 1.4,
+}));
