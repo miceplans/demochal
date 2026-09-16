@@ -20,8 +20,7 @@
 /**
  * 등록 시 draft
  */
-export type ChallengeStatus = typeof ChallengeStatus[keyof typeof ChallengeStatus];
-
+export type ChallengeStatus = (typeof ChallengeStatus)[keyof typeof ChallengeStatus];
 
 export const ChallengeStatus = {
   draft: 'draft',
