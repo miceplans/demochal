@@ -25,6 +25,50 @@ import {
   type BizApplication,
 } from '@/data/biz-design';
 
+const Hero = styled.div({
+  height: 236,
+  borderRadius: 12,
+  background: `linear-gradient(120deg, ${c.gray100}, ${c.lightBlue})`,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray500,
+});
+const TopGrid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
+const Side = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+  width: 321,
+  flexShrink: 0,
+});
+const SideActions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const StatStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
+  <span
+    style={{
+      width: w,
+      flexShrink: 0,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }}
+  >
+    {children}
+  </span>
+);
+
+const MemoInput = styled.input({
+  width: '100%',
+  border: '1px solid transparent',
+  borderRadius: 6,
+  padding: '6px 8px',
+  background: 'transparent',
+  color: 'inherit',
+  '&:hover': { background: c.gray50 },
+  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
+});
+
 const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = [
   '전체',
   '제출 완료',
@@ -42,20 +86,6 @@ const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({
   value: r,
   label: r,
 }));
-const StatStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
-  <span
-    style={{
-      width: w,
-      flexShrink: 0,
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    }}
-  >
-    {children}
-  </span>
-);
 
 export function BizApplicationsPage() {
   const router = useRouter();
@@ -187,33 +217,3 @@ export function BizApplicationsPage() {
     </BizContent>
   );
 }
-
-const Hero = styled.div({
-  height: 236,
-  borderRadius: 12,
-  background: `linear-gradient(120deg, ${c.gray100}, ${c.lightBlue})`,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  color: c.gray500,
-});
-const TopGrid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
-const Side = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 32,
-  width: 321,
-  flexShrink: 0,
-});
-const SideActions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
-
-const MemoInput = styled.input({
-  width: '100%',
-  border: '1px solid transparent',
-  borderRadius: 6,
-  padding: '6px 8px',
-  background: 'transparent',
-  color: 'inherit',
-  '&:hover': { background: c.gray50 },
-  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
-});

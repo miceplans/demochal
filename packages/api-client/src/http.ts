@@ -11,17 +11,10 @@ export class ApiError extends Error {
   }
 }
 
-export interface HttpEnvelope<T> {
-  data: T;
-  status: number;
-  headers: Headers;
-}
-
 export class HttpClient {
   constructor(private readonly options: HttpClientOptions) {}
 
-  /** Raw fetch that resolves the full {data, status, headers} envelope — used by the orval mutator. */
-  async send<T>(path: string, init: RequestInit = {}): Promise<HttpEnvelope<T>> {
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers = new Headers(init.headers);
     headers.set('Content-Type', 'application/json');
 
@@ -36,13 +29,8 @@ export class HttpClient {
       throw new ApiError(res.status, body);
     }
 
-    const data = res.status === 204 ? (undefined as T) : ((await res.json()) as T);
-    return { data, status: res.status, headers: res.headers };
-  }
-
-  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
-    const { data } = await this.send<T>(path, init);
-    return data;
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
   }
 
   get<T>(path: string) {

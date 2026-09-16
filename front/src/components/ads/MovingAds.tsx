@@ -17,13 +17,20 @@ type MovingAdsProps = {
   itemCount: number;
   children: (state: MovingAdsState) => ReactNode;
   interval?: number;
+  paused?: boolean;
 };
 
 /**
  * 광고 슬롯처럼 일정 간격으로 이동하는 UI를 위한 공통 컨트롤러입니다.
- * 마우스를 올리거나 키보드 포커스가 머무는 동안에는 자동 이동을 멈춥니다.
+ * 마우스를 올리거나 키보드 포커스가 머무는 동안, 혹은 paused가 true면 자동 이동을 멈춥니다.
  */
-export function MovingAds({ ariaLabel, itemCount, children, interval = 5000 }: MovingAdsProps) {
+export function MovingAds({
+  ariaLabel,
+  itemCount,
+  children,
+  interval = 5000,
+  paused = false,
+}: MovingAdsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   // 첫·마지막 광고를 복제해 끝에서도 한 방향으로 자연스럽게 이어지게 합니다.
   const [railIndex, setRailIndex] = useState(1);
@@ -41,7 +48,7 @@ export function MovingAds({ ariaLabel, itemCount, children, interval = 5000 }: M
   );
 
   useEffect(() => {
-    if (isPaused || itemCount < 2) return;
+    if (isPaused || paused || itemCount < 2) return;
 
     const timerId = window.setInterval(() => {
       setActiveIndex((index) => (index + 1) % itemCount);
@@ -49,7 +56,7 @@ export function MovingAds({ ariaLabel, itemCount, children, interval = 5000 }: M
     }, interval);
 
     return () => window.clearInterval(timerId);
-  }, [interval, isPaused, itemCount]);
+  }, [interval, isPaused, paused, itemCount]);
 
   const handleTransitionEnd = useCallback(
     (event: TransitionEvent<HTMLElement>) => {

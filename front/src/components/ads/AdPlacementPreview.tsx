@@ -6,6 +6,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { MovingAds } from './MovingAds';
+import { AdImageUploader } from './AdImageUploader';
 
 export type AdPreviewView = 'mobile' | 'pc';
 export type AdPlacement = 'hero' | 'gallery';
@@ -15,6 +16,10 @@ type Props = {
   price?: number;
   onSelect?: (placement: AdPlacement) => void;
   selectImmediately?: boolean;
+  uploadPlacement?: AdPlacement | null;
+  uploadedImages?: Partial<Record<AdPlacement, string>>;
+  onImagePicked?: (placement: AdPlacement, file: File) => void;
+  processing?: boolean;
 };
 
 const artwork = {
@@ -28,7 +33,16 @@ const adInfo = {
 } as const;
 
 /** Shared Figma-faithful advertising preview for business and admin screens. */
-export function AdPlacementPreview({ view, price, onSelect, selectImmediately = false }: Props) {
+export function AdPlacementPreview({
+  view,
+  price,
+  onSelect,
+  selectImmediately = false,
+  uploadPlacement = null,
+  uploadedImages = {},
+  onImagePicked,
+  processing = false,
+}: Props) {
   const [active, setActive] = useState<AdPlacement | null>(null);
   const [tooltip, setTooltip] = useState<{
     placement: AdPlacement;
@@ -80,7 +94,12 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
       view={view}
       aria-label={`${view === 'mobile' ? '모바일' : 'PC'} 사용자 홈 광고 미리보기`}
     >
-      <MovingAds ariaLabel="홈 상단 광고" itemCount={5} interval={5000}>
+      <MovingAds
+        ariaLabel="홈 상단 광고"
+        itemCount={5}
+        interval={5000}
+        paused={uploadPlacement === 'hero'}
+      >
         {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
           <HeroViewport>
             <HeroRail
@@ -89,23 +108,43 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
               style={{ transition: shouldAnimate ? undefined : 'none' }}
               onTransitionEnd={handleTransitionEnd}
             >
-              {loopIndexes.map((item, position) => (
-                <Slot
-                  key={`${item}-${position}`}
-                  type="button"
-                  active={active === 'hero'}
-                  onMouseEnter={handleSlotEnter('hero')}
-                  onFocus={showTooltip('hero')}
-                  onBlur={() => setTooltip(null)}
-                  onClick={() => handleSlotClick('hero')}
-                  aria-label="홈 상단 광고 선택"
-                >
-                  <img
-                    src="/assets/figma-ads/home-hero.png"
-                    alt={position === 1 ? '홈 상단 광고 예시' : ''}
-                  />
-                </Slot>
-              ))}
+              {loopIndexes.map((item, position) => {
+                if (uploadPlacement === 'hero') {
+                  return (
+                    <HeroSlotFrame key={`${item}-${position}`} view={view}>
+                      <AdImageUploader
+                        compact={view === 'mobile'}
+                        busy={processing}
+                        onFileSelected={(file) => onImagePicked?.('hero', file)}
+                      />
+                    </HeroSlotFrame>
+                  );
+                }
+                const uploaded = uploadedImages.hero;
+                return (
+                  <Slot
+                    key={`${item}-${position}`}
+                    type="button"
+                    active={active === 'hero'}
+                    onMouseEnter={handleSlotEnter('hero')}
+                    onFocus={showTooltip('hero')}
+                    onBlur={() => setTooltip(null)}
+                    onClick={() => handleSlotClick('hero')}
+                    aria-label="홈 상단 광고 선택"
+                  >
+                    <img
+                      src={uploaded ?? '/assets/figma-ads/home-hero.png'}
+                      alt={
+                        uploaded
+                          ? '업로드한 홈 상단 광고 이미지'
+                          : position === 1
+                            ? '홈 상단 광고 예시'
+                            : ''
+                      }
+                    />
+                  </Slot>
+                );
+              })}
             </HeroRail>
             <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
               {Array.from({ length: 5 }, (_, index) => (
@@ -116,7 +155,12 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
         )}
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
-      <MovingAds ariaLabel="홈 중간 이미지 광고" itemCount={5} interval={5000}>
+      <MovingAds
+        ariaLabel="홈 중간 이미지 광고"
+        itemCount={5}
+        interval={5000}
+        paused={uploadPlacement === 'gallery'}
+      >
         {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
           <GalleryViewport>
             <GalleryRail
@@ -125,24 +169,44 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
               style={{ transition: shouldAnimate ? undefined : 'none' }}
               onTransitionEnd={handleTransitionEnd}
             >
-              {loopIndexes.map((item, position) => (
-                <GallerySlot
-                  key={`${item}-${position}`}
-                  view={view}
-                  type="button"
-                  active={active === 'gallery'}
-                  onMouseEnter={handleSlotEnter('gallery')}
-                  onFocus={showTooltip('gallery')}
-                  onBlur={() => setTooltip(null)}
-                  onClick={() => handleSlotClick('gallery')}
-                  aria-label="홈 중간 이미지 광고 선택"
-                >
-                  <img
-                    src="/assets/figma-ads/home-gallery.png"
-                    alt={position === 1 ? '홈 중간 이미지 광고 예시' : ''}
-                  />
-                </GallerySlot>
-              ))}
+              {loopIndexes.map((item, position) => {
+                if (uploadPlacement === 'gallery') {
+                  return (
+                    <GallerySlotFrame key={`${item}-${position}`} view={view}>
+                      <AdImageUploader
+                        compact
+                        busy={processing}
+                        onFileSelected={(file) => onImagePicked?.('gallery', file)}
+                      />
+                    </GallerySlotFrame>
+                  );
+                }
+                const uploaded = uploadedImages.gallery;
+                return (
+                  <GallerySlot
+                    key={`${item}-${position}`}
+                    view={view}
+                    type="button"
+                    active={active === 'gallery'}
+                    onMouseEnter={handleSlotEnter('gallery')}
+                    onFocus={showTooltip('gallery')}
+                    onBlur={() => setTooltip(null)}
+                    onClick={() => handleSlotClick('gallery')}
+                    aria-label="홈 중간 이미지 광고 선택"
+                  >
+                    <img
+                      src={uploaded ?? '/assets/figma-ads/home-gallery.png'}
+                      alt={
+                        uploaded
+                          ? '업로드한 홈 중간 광고 이미지'
+                          : position === 1
+                            ? '홈 중간 광고 예시'
+                            : ''
+                      }
+                    />
+                  </GallerySlot>
+                );
+              })}
             </GalleryRail>
             <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
               {Array.from({ length: 5 }, (_, index) => (
@@ -167,7 +231,7 @@ export function AdPlacementPreview({ view, price, onSelect, selectImmediately = 
                 onSelect(tooltip.placement);
               }}
             >
-              결제하러 가기 →
+              {uploadedImages[tooltip.placement] ? '결제하러 가기 →' : '광고 이미지 업로드 →'}
             </PriceAction>
           )}
         </TooltipCard>
@@ -239,6 +303,19 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 4 },
 }));
 const MobileHeroSlot = styled(HeroSlot)({ height: 150 });
+const HeroSlotFrame = styled('div', { shouldForwardProp: (prop) => prop !== 'view' })<{
+  view: AdPreviewView;
+}>(({ view }) => ({
+  position: 'relative',
+  display: 'block',
+  width: '100%',
+  height: view === 'mobile' ? 150 : 'clamp(150px, 21vw, 252px)',
+  padding: 8,
+  overflow: 'hidden',
+  border: `4px dashed ${c.primary}`,
+  borderRadius: 20,
+  background: c.white,
+}));
 const HeroViewport = styled.div({ overflow: 'hidden', padding: '8px 0', margin: '-8px 0' });
 const HeroRail = styled('div', {
   shouldForwardProp: (prop) => prop !== 'active' && prop !== 'view',
@@ -251,7 +328,7 @@ const HeroRail = styled('div', {
       ? `translateX(calc(${-active * 100}% + ${active * 136 + 80}px))`
       : `translateX(${-active * 100}%)`,
   transition: 'transform 420ms ease',
-  '& > button': { flex: view === 'pc' ? '0 0 calc(100% - 160px)' : '0 0 100%' },
+  '& > *': { flex: view === 'pc' ? '0 0 calc(100% - 160px)' : '0 0 100%' },
 }));
 const HeroPager = styled.div({ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 });
 const HeroDot = styled('span', { shouldForwardProp: (prop) => prop !== 'active' })<{
@@ -307,6 +384,18 @@ const GallerySlot = styled('button', {
   },
   '&:hover': { transform: 'scale(1.04)', zIndex: 2 },
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 4 },
+}));
+const GallerySlotFrame = styled('div', { shouldForwardProp: (prop) => prop !== 'view' })<{
+  view: AdPreviewView;
+}>(({ view }) => ({
+  position: 'relative',
+  display: 'block',
+  flex: `0 0 ${view === 'mobile' ? 122 : 314}px`,
+  padding: view === 'mobile' ? 3 : 8,
+  overflow: 'hidden',
+  border: `4px dashed ${c.primary}`,
+  borderRadius: 20,
+  background: c.white,
 }));
 const TooltipCard = styled('div', {
   shouldForwardProp: (prop) => prop !== 'top' && prop !== 'left',

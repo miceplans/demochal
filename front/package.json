@@ -14,11 +14,12 @@
     "@emotion/cache": "^11.13.5",
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.9.1",
     "@semochal/api-client": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-table": "^8.20.6",
     "@tanstack/react-virtual": "^3.1.4",
+    "browser-image-compression": "^2.0.2",
     "locomotive-scroll": "5.0.1",
     "next": "16.3.4",
     "react": "19.2.8",
@@ -26,7 +27,7 @@
     "react-dom": "19.2.8",
     "react-hook-form": "^7.54.2",
     "recharts": "^3.10.1",
-    "zod": "^3.24.1",
+    "zod": "^4.6.1",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

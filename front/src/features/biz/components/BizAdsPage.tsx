@@ -17,6 +17,9 @@ import {
 } from '@/components/ads/AdPlacementPreview';
 import type { Ad, AdProduct, Notification } from '@semochal/api-client';
 import { adApi, adError } from '@/lib/ad-api';
+import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import type { CompressedAdImage } from '@/lib/image-compression';
+import { useToast } from '@/components/common/Toast';
 
 type AdsScreen = 'manage' | 'products' | 'complete';
 type SelectedAd = {
@@ -45,6 +48,22 @@ export function BizAdsPage() {
   const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [adTitles, setAdTitles] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [processing, setProcessing] = useState(false);
+  const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
+  const [adName, setAdName] = useState('');
+  const previewUrls = useRef<Set<string>>(new Set());
+  const toast = useToast();
+
+  useEffect(
+    () => () => {
+      previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
   useEffect(() => {
     adApi.ads
       .listMine()
@@ -92,7 +111,7 @@ export function BizAdsPage() {
       }
       setSelectedAd({
         placement,
-        name: product.name,
+        name: adTitles[placement]?.trim() || product.name,
         price: product.dailyPrice,
         period: start,
         product,
@@ -117,6 +136,56 @@ export function BizAdsPage() {
     (period) =>
       period.startDate.slice(0, 10) <= paymentEnd && period.endDate.slice(0, 10) >= paymentStart,
   );
+
+  const handleSelectPlacement = (placement: AdPlacement) => {
+    if (uploadedImages[placement]) {
+      void openPayment(placement);
+      return;
+    }
+    setUploadPlacement((current) => (current === placement ? null : placement));
+  };
+
+  const handleImagePicked = async (placement: AdPlacement, file: File): Promise<void> => {
+    setProcessing(true);
+    let image: CompressedAdImage | undefined;
+    try {
+      image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
+      const presigned = await adApi.files.requestUpload({
+        bucket: 'public',
+        contentType: image.file.type,
+        fileName: image.file.name,
+        sizeBytes: image.file.size,
+      });
+      const uploadRes = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
+      await adApi.files.finalizeUpload(presigned.fileId);
+
+      const previous = uploadedImages[placement];
+      if (previous) {
+        URL.revokeObjectURL(previous);
+        previewUrls.current.delete(previous);
+      }
+      previewUrls.current.add(image.previewUrl);
+      setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.fileId }));
+      setUploadPlacement(null);
+      toast.success(
+        '업로드 되었습니다',
+        `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
+      );
+      setAdName(adTitles[placement] ?? '');
+      setNameModalPlacement(placement);
+    } catch {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
+    } finally {
+      setProcessing(false);
+    }
+  };
   const submitReservation = async () => {
     if (!selectedAd || submitting || overlaps) return;
     setSubmitting(true);
@@ -127,6 +196,8 @@ export function BizAdsPage() {
         startDate: paymentStart,
         endDate: paymentEnd,
         expectedDailyPrice: selectedAd.product.dailyPrice,
+        title: selectedAd.name,
+        imageFileId: uploadedFileIds[selectedAd.placement],
       });
       setContracts((items) => [ad, ...items]);
       setSelectedAd({
@@ -306,7 +377,14 @@ export function BizAdsPage() {
           </ViewTab>
         </ViewToggle>
       </HeaderRow>
-      <AdPlacementPreview view={view} onSelect={openPayment} />
+      <AdPlacementPreview
+        view={view}
+        onSelect={handleSelectPlacement}
+        uploadPlacement={uploadPlacement}
+        uploadedImages={uploadedImages}
+        onImagePicked={handleImagePicked}
+        processing={processing}
+      />
       {paymentOpen &&
         selectedAd &&
         typeof document !== 'undefined' &&
@@ -406,6 +484,62 @@ export function BizAdsPage() {
               </div>
             </PaymentPopup>
           </PaymentBackdrop>,
+          document.body,
+        )}
+      {nameModalPlacement &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <NameBackdrop role="presentation" onMouseDown={() => setNameModalPlacement(null)}>
+            <NamePopup
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="ad-name-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h2 id="ad-name-title" style={{ margin: 0, ...textStyle.display }}>
+                광고명
+              </h2>
+              <NameFields>
+                <NameInput
+                  value={adName}
+                  onChange={(event) => setAdName(event.target.value)}
+                  placeholder="광고명을 입력해주세요"
+                  aria-label="광고명"
+                  maxLength={30}
+                  autoFocus
+                />
+                <PositionField>
+                  <PositionSelect
+                    value={nameModalPlacement}
+                    disabled
+                    aria-label="광고 위치"
+                    title="업로드한 이미지에 맞춰 지정된 위치예요"
+                  >
+                    <option value="hero">홈 상단 배너 광고</option>
+                    <option value="gallery">홈 중간 이미지 광고</option>
+                  </PositionSelect>
+                  <PositionIcon src="/assets/icons/figma-chevron-down.svg" alt="" />
+                </PositionField>
+              </NameFields>
+              <PopupActions>
+                <PopupAction type="button" secondary onClick={() => setNameModalPlacement(null)}>
+                  취소
+                </PopupAction>
+                <PopupAction
+                  type="button"
+                  disabled={!adName.trim()}
+                  onClick={() => {
+                    const placement = nameModalPlacement;
+                    setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
+                    setNameModalPlacement(null);
+                    void openPayment(placement);
+                  }}
+                >
+                  등록하기
+                </PopupAction>
+              </PopupActions>
+            </NamePopup>
+          </NameBackdrop>,
           document.body,
         )}
     </BizContent>
@@ -557,4 +691,62 @@ const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'se
   fontSize: secondary ? 12 : 13,
   fontWeight: 600,
   lineHeight: secondary ? 'normal' : 1.4,
+  '&:disabled': { opacity: 0.4, cursor: 'not-allowed' },
 }));
+const NameBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 17, 17, .2)',
+});
+const NamePopup = styled.div({
+  width: 'min(100%, 427px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+const NameFields = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const NameInput = styled.input({
+  width: '100%',
+  height: 44,
+  padding: '0 14px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  ...textStyle.body,
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const PositionField = styled.div({ position: 'relative', display: 'flex' });
+const PositionSelect = styled.select({
+  width: '100%',
+  height: 44,
+  padding: '0 34px 0 14px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  cursor: 'pointer',
+  ...textStyle.body,
+  appearance: 'none',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
+});
+const PositionIcon = styled.img({
+  position: 'absolute',
+  top: '50%',
+  right: 12,
+  width: 14,
+  height: 14,
+  transform: 'translateY(-50%)',
+  pointerEvents: 'none',
+});
+const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });
