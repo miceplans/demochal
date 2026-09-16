@@ -6,6 +6,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
+import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { payments } from '../../db/schema.js';
@@ -77,9 +78,9 @@ export class PaymentsService {
       throw new BadGatewayException('Toss payment verification is not configured');
 
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
-    let response: Awaited<ReturnType<typeof fetch>>;
+    let response;
     try {
-      response = await fetch(
+      response = await fetchJson(
         `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}`,
         {
           headers: { Authorization: `Basic ${authorization}` },

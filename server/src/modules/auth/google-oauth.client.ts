@@ -1,4 +1,5 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 
 export interface GoogleTokenResponse {
@@ -42,7 +43,7 @@ export class GoogleOAuthClient {
 
   async exchangeCode(code: string, redirectUri?: string): Promise<GoogleUserInfo> {
     this.assertConfigured();
-    const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+    const tokenResponse = await fetchJson(GOOGLE_TOKEN_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
@@ -58,7 +59,7 @@ export class GoogleOAuthClient {
     }
     const { access_token } = (await tokenResponse.json()) as GoogleTokenResponse;
 
-    const profileResponse = await fetch(GOOGLE_USERINFO_URL, {
+    const profileResponse = await fetchJson(GOOGLE_USERINFO_URL, {
       headers: { Authorization: `Bearer ${access_token}` },
     });
     if (!profileResponse.ok) {
