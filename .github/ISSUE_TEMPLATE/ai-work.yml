@@ -1,0 +1,57 @@
+name: AI work item
+description: AI worker가 구현할 수 있는 명세 기반 작업
+title: ''
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: '분석을 완료한 뒤에만 작성하세요. 구현 가능한 작업에는 `ai-ready`, 사람 판단이 필요한 작업에는 `needs-human` label을 추가합니다.'
+  - type: textarea
+    id: goal
+    attributes: { label: Goal }
+    validations: { required: true }
+  - type: textarea
+    id: background
+    attributes: { label: Background / Problem }
+    validations: { required: true }
+  - type: textarea
+    id: current-behavior
+    attributes: { label: Current Behavior }
+    validations: { required: true }
+  - type: textarea
+    id: expected-behavior
+    attributes: { label: Expected Behavior }
+    validations: { required: true }
+  - type: textarea
+    id: scope
+    attributes: { label: Implementation Scope }
+    validations: { required: true }
+  - type: textarea
+    id: acceptance
+    attributes: { label: Acceptance Criteria, description: '검증 가능한 체크리스트로 작성' }
+    validations: { required: true }
+  - type: textarea
+    id: files
+    attributes: { label: Relevant Files / 예상 영향 범위 }
+    validations: { required: true }
+  - type: textarea
+    id: tests
+    attributes: { label: Test Requirements }
+    validations: { required: true }
+  - type: textarea
+    id: out-of-scope
+    attributes: { label: Out of Scope }
+    validations: { required: true }
+  - type: textarea
+    id: dependencies
+    attributes: { label: Dependencies, value: 'None' }
+    validations: { required: true }
+  - type: textarea
+    id: risks
+    attributes: { label: Risk / Regression Points }
+    validations: { required: true }
+  - type: textarea
+    id: conflict-surface
+    attributes:
+      { label: Conflict Surface, description: '동시 작업과 충돌할 수 있는 파일·모듈. 없으면 None' }
+    validations: { required: true }
