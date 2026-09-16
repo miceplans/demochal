@@ -1,0 +1,44 @@
+name: PR AI orchestration
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_run:
+    workflows: [PR validation]
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  risk-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ai-pr-risk-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch PR risk analysis to the trusted AI runner
+        run: node scripts/ai-dispatch.mjs pr-risk
+        env:
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
+
+  ci-repair:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ai-ci-repair-${{ github.event.workflow_run.id }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch failed validation to the trusted AI runner
+        run: node scripts/ai-dispatch.mjs ci-repair
+        env:
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}

@@ -1,0 +1,56 @@
+name: Issue AI orchestration
+
+on:
+  issues:
+    types: [opened, labeled]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  mark-triage:
+    if: github.event.action == 'opened'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Mark issue for AI triage
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['ai-triage'],
+            });
+
+  triage:
+    if: github.event.action == 'labeled' && github.event.label.name == 'ai-triage'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ai-triage-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch triage to the trusted AI runner
+        run: node scripts/ai-dispatch.mjs triage
+        env:
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
+
+  worker:
+    if: github.event.action == 'labeled' && github.event.label.name == 'ai-ready'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ai-worker-${{ github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch worker to the trusted AI runner
+        run: node scripts/ai-dispatch.mjs worker
+        env:
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
