@@ -22,13 +22,7 @@ export const AddButton = styled.button({
   '&:hover': { background: c.gray50, color: c.gray700 },
   '&:active': { transform: 'scale(0.85)' },
 });
-export function Badges({
-  extra = [],
-  trailing,
-}: {
-  extra?: string[];
-  trailing?: ReactNode;
-}) {
+export function Badges({ extra = [], trailing }: { extra?: string[]; trailing?: ReactNode }) {
   return (
     <Wrap>
       <Tag>

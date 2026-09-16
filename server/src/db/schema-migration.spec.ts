@@ -1,6 +1,9 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { Table } from 'drizzle-orm';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
+import * as schema from './schema.js';
 
 const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
 const journal = JSON.parse(
@@ -12,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(6);
+    expect(journal.entries).toHaveLength(7);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -136,5 +139,81 @@ describe('0004 platform extension migration', () => {
     expect(sql).toContain('CONSTRAINT "bookmarks_user_id_challenge_id_unique"');
     expect(sql).toContain('CONSTRAINT "team_members_team_id_user_id_unique"');
     expect(sql).toContain('orders_ad_id_ads_id_fk');
+  });
+});
+
+describe('migration chain coverage', () => {
+  it('creates every table declared in the ORM schema across the whole chain', () => {
+    const chainSql = journal.entries
+      .map((entry) => readFileSync(resolve(drizzleDirectory, `${entry.tag}.sql`), 'utf8'))
+      .join('\n');
+
+    for (const table of [
+      'users',
+      'businesses',
+      'verifications',
+      'challenges',
+      'challenge_views',
+      'applications',
+      'orders',
+      'payments',
+      'files',
+      'notifications',
+      'ad_products',
+      'ads',
+      'teams',
+      'team_members',
+      'bookmarks',
+      'payment_cards',
+      'inquiries',
+      'certificates',
+      'reports',
+      'admin_settings',
+    ]) {
+      expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
+    }
+  });
+
+  it('has no orphan migration files outside the journal chain', () => {
+    const sqlFiles = readdirSync(drizzleDirectory).filter((file) => file.endsWith('.sql'));
+    const journalTags = new Set(journal.entries.map((entry) => `${entry.tag}.sql`));
+    expect(sqlFiles.sort()).toEqual([...journalTags].sort());
+  });
+});
+
+describe('0006_schema_contract_completion migration', () => {
+  it('closes the remaining ORM contract gaps without destructive DDL', () => {
+    const tag = journal.entries[6]?.tag;
+    expect(tag).toBe('0006_schema_contract_completion');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "suspended" boolean');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "requested_bucket" varchar(20)');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "challenge_views"');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "challenge_views_challenge_id_idx"');
+    expect(sql).toContain('ALTER TABLE "ad_products" ALTER COLUMN "id" TYPE varchar(50)');
+    expect(sql).toContain('ALTER TABLE "ads" ALTER COLUMN "product_id" TYPE varchar(50)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "ad_number" serial');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "form_answers" jsonb');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "type" varchar(50)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "leader_role" varchar(50)');
+    expect(sql).not.toMatch(/DROP TABLE/);
+    expect(sql).not.toMatch(/DROP COLUMN/);
+  });
+});
+
+describe('ORM column coverage', () => {
+  it('mentions every column declared in the ORM schema somewhere in the chain', () => {
+    const chainSql = journal.entries
+      .map((entry) => readFileSync(resolve(drizzleDirectory, `${entry.tag}.sql`), 'utf8'))
+      .join('\n');
+
+    for (const exported of Object.values(schema)) {
+      if (!(exported instanceof Table)) continue;
+      const { name: tableName, columns } = getTableConfig(exported);
+      for (const column of columns) {
+        expect(chainSql, `${tableName}.${column.name}`).toContain(`"${column.name}"`);
+      }
+    }
   });
 });

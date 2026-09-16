@@ -49,7 +49,13 @@ export function AdminAnalyticsScreen() {
       </Suspense>
       <StatRow>
         {(analytics?.stats ?? []).map((stat) => (
-          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
       {activity ? (
