@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type FileMetaBucket = typeof FileMetaBucket[keyof typeof FileMetaBucket];
-
+export type FileMetaBucket = (typeof FileMetaBucket)[keyof typeof FileMetaBucket];
 
 export const FileMetaBucket = {
   public: 'public',

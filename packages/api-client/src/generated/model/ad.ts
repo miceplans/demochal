@@ -31,14 +31,14 @@ export interface Ad {
   /** 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용 */
   status?: AdStatus;
   /**
-     * 누적 노출수 (준비중이면 null)
-     * @nullable
-     */
+   * 누적 노출수 (준비중이면 null)
+   * @nullable
+   */
   impressions?: number | null;
   /**
-     * 누적 북마크수 (준비중이면 null)
-     * @nullable
-     */
+   * 누적 북마크수 (준비중이면 null)
+   * @nullable
+   */
   bookmarks?: number | null;
   /** 결제 금액 (원) */
   paidAmount?: number;

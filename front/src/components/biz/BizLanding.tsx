@@ -4,19 +4,49 @@ import type LocomotiveScroll from 'locomotive-scroll';
 import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { BizGlobalStyles, BizFooter, BizLink, BizLandingHeader, Logo } from '@/components/biz/BizShell';
+import {
+  BizGlobalStyles,
+  BizFooter,
+  BizLink,
+  BizLandingHeader,
+  Logo,
+} from '@/components/biz/BizShell';
 import { DriftWall, type DriftWallItem } from '@/components/biz/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';
 
 const marketingWallItems: DriftWallItem[] = [
-  { image: '/assets/marketing/20260106094601_b8e20646fcbee92c1af44d84c36a93b7.jpg', title: '행사 현장' },
-  { image: '/assets/marketing/20260106092933_3ebed32cf4087a5572de6508f7f03ba4.jpg', title: '행사 프로그램' },
-  { image: '/assets/marketing/20260106093101_bbbe2da73ae39d285be65d0a7036e17b.jpg', title: '참가자 경험' },
-  { image: '/assets/marketing/20260106094035_287ee8162ac77e2c1b3ae85dae5891db.jpg', title: '브랜드 이벤트' },
-  { image: '/assets/marketing/20260106093234_fdad2fc1267991ab5ad848ba0520f1fb.jpg', title: '무대 행사' },
-  { image: '/assets/marketing/20260105165859_22a1a3377c734cf7b25b82acd1b5427c.jpg', title: '현장 운영' },
-  { image: '/assets/marketing/20260106095026_bf2f23432086c175d5a891272f4739d2.jpg', title: '행사 공간' },
-  { image: '/assets/marketing/20250211134854_7cb7bfcaa55a265897a1510943a43a60.jpg', title: '행사 네트워크' },
+  {
+    image: '/assets/marketing/20260106094601_b8e20646fcbee92c1af44d84c36a93b7.jpg',
+    title: '행사 현장',
+  },
+  {
+    image: '/assets/marketing/20260106092933_3ebed32cf4087a5572de6508f7f03ba4.jpg',
+    title: '행사 프로그램',
+  },
+  {
+    image: '/assets/marketing/20260106093101_bbbe2da73ae39d285be65d0a7036e17b.jpg',
+    title: '참가자 경험',
+  },
+  {
+    image: '/assets/marketing/20260106094035_287ee8162ac77e2c1b3ae85dae5891db.jpg',
+    title: '브랜드 이벤트',
+  },
+  {
+    image: '/assets/marketing/20260106093234_fdad2fc1267991ab5ad848ba0520f1fb.jpg',
+    title: '무대 행사',
+  },
+  {
+    image: '/assets/marketing/20260105165859_22a1a3377c734cf7b25b82acd1b5427c.jpg',
+    title: '현장 운영',
+  },
+  {
+    image: '/assets/marketing/20260106095026_bf2f23432086c175d5a891272f4739d2.jpg',
+    title: '행사 공간',
+  },
+  {
+    image: '/assets/marketing/20250211134854_7cb7bfcaa55a265897a1510943a43a60.jpg',
+    title: '행사 네트워크',
+  },
 ];
 const operationIcons = [
   '/assets/landing-icons/landing-documents.png',
@@ -239,7 +269,8 @@ const Reveal = styled.div<{ visible: boolean }>(({ visible }) => ({
   '& [data-reveal-item]': {
     opacity: visible ? 1 : 0,
     transform: visible ? 'translateY(0)' : 'translateY(28px)',
-    transition: 'opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1)',
+    transition:
+      'opacity 620ms cubic-bezier(0.22, 1, 0.36, 1), transform 620ms cubic-bezier(0.22, 1, 0.36, 1)',
   },
   '& [data-reveal-item]:nth-of-type(2)': { transitionDelay: visible ? '100ms' : '0ms' },
   '& [data-reveal-item]:nth-of-type(3)': { transitionDelay: visible ? '200ms' : '0ms' },

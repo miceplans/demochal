@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListMyAdsStatus = typeof ListMyAdsStatus[keyof typeof ListMyAdsStatus];
-
+export type ListMyAdsStatus = (typeof ListMyAdsStatus)[keyof typeof ListMyAdsStatus];
 
 export const ListMyAdsStatus = {
   active: 'active',

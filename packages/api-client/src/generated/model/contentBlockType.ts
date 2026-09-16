@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ContentBlockType = typeof ContentBlockType[keyof typeof ContentBlockType];
-
+export type ContentBlockType = (typeof ContentBlockType)[keyof typeof ContentBlockType];
 
 export const ContentBlockType = {
   link: 'link',
