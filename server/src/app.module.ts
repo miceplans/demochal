@@ -18,6 +18,9 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { BillingModule } from './modules/billing/billing.module.js';
+import { TeamsModule } from './modules/teams/teams.module.js';
+import { BookmarksModule } from './modules/bookmarks/bookmarks.module.js';
+import { InterestsModule } from './modules/interests/interests.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -41,6 +44,9 @@ import { BillingModule } from './modules/billing/billing.module.js';
     AdminSettingsModule,
     AdminModule,
     BillingModule,
+    TeamsModule,
+    BookmarksModule,
+    InterestsModule,
   ],
 })
 export class AppModule {}
