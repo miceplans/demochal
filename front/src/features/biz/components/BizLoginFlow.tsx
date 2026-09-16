@@ -5,6 +5,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { StepProgressBar } from '@/components/ui/StepProgressBar';
+import { useToast } from '@/components/common/Toast';
 import {
   BizGlobalStyles,
   BizLink,
@@ -23,15 +24,29 @@ const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 export function BizLoginFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
+  const toast = useToast();
   const [step, setStep] = useState(0);
   const [agreed, setAgreed] = useState<string[]>([]);
   const [docFileName, setDocFileName] = useState<string | null>(null);
+  const [registrationNumber, setRegistrationNumber] = useState('');
   const toggle = (v: string) =>
     setAgreed((s) => (s.includes(v) ? s.filter((x) => x !== v) : [...s, v]));
   const pickDoc = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setDocFileName(file.name);
+  };
+  const completeVerification = () => {
+    if (!/^\d{10}$/.test(registrationNumber.replace(/\D/g, ''))) {
+      toast.error('사업자등록번호를 확인해주세요.', '숫자 10자리를 입력해 주세요.');
+      return;
+    }
+    if (!docFileName) {
+      toast.error('사업자등록증을 첨부해주세요.');
+      return;
+    }
+    toast.success('사업자 인증에 성공했어요.');
+    router.push(hrefOf('/dashboard'));
   };
   return (
     <Wrap>
@@ -113,7 +128,12 @@ export function BizLoginFlow() {
                   </UploadBox>
                   <Field>
                     사업자등록번호
-                    <FieldInput placeholder="617-81-98126" />
+                    <FieldInput
+                      value={registrationNumber}
+                      onChange={(event) => setRegistrationNumber(event.target.value)}
+                      placeholder="617-81-98126"
+                      inputMode="numeric"
+                    />
                   </Field>
                 </Form>
               </section>
@@ -133,7 +153,7 @@ export function BizLoginFlow() {
                 다음
               </PrimaryButton>
             ) : (
-              <PrimaryButton onClick={() => router.push(hrefOf('/dashboard'))}>다음</PrimaryButton>
+              <PrimaryButton onClick={completeVerification}>다음</PrimaryButton>
             )}
           </Actions>
         </Card>

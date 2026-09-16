@@ -19,6 +19,6 @@
 import type { ListAdminReportsStatus } from './listAdminReportsStatus';
 
 export type ListAdminReportsParams = {
-q?: string;
-status?: ListAdminReportsStatus;
+  q?: string;
+  status?: ListAdminReportsStatus;
 };

@@ -1,5 +1,5 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { notifications } from '../../db/schema.js';
 
@@ -22,5 +22,23 @@ export class NotificationsService {
       .from(notifications)
       .where(eq(notifications.userId, userId))
       .orderBy(desc(notifications.createdAt));
+  }
+
+  async markRead(id: string, userId: string) {
+    const [notification] = await this.db
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
+      .returning();
+    if (!notification) throw new NotFoundException('Notification not found');
+    return notification;
+  }
+
+  async markAllRead(userId: string) {
+    await this.db
+      .update(notifications)
+      .set({ readAt: new Date() })
+      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
+    return { read: true };
   }
 }

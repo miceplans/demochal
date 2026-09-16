@@ -25,9 +25,9 @@ export interface Verification {
   documentFileId?: string;
   status?: VerificationStatus;
   /**
-     * OCR 추출 결과 (jsonb)
-     * @nullable
-     */
+   * OCR 추출 결과 (jsonb)
+   * @nullable
+   */
   ocrResult?: VerificationOcrResult;
   /** @nullable */
   rejectionReason?: string | null;

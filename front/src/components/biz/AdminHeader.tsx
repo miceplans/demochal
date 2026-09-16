@@ -26,9 +26,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <>
       {BizGlobalStyles}
-      <div style={{ minWidth: 0, minHeight: '100dvh', display: 'flex', flexDirection: 'column', background: c.white }}>
+      <div
+        style={{
+          minWidth: 0,
+          minHeight: '100dvh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: c.white,
+        }}
+      >
         <AdminHeader />
-        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <main
+          style={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+          }}
+        >
           {children}
         </main>
         <BizFooter />
