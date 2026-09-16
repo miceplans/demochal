@@ -1,19 +1,32 @@
-import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from './businesses.service.js';
 import { RegisterBusinessDto } from './dto/register-business.dto.js';
+import { UpdateBusinessDto } from './dto/update-business.dto.js';
 
 @Controller('businesses')
 export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
 
   @Post()
-  register(@Body() dto: RegisterBusinessDto, @Headers('x-user-id') ownerUserId: string | undefined) {
-    // TODO: replace with the authenticated user id once an auth guard populates it.
-    return this.businessesService.register(dto, ownerUserId ?? '');
+  @UseGuards(JwtAuthGuard)
+  register(@Body() dto: RegisterBusinessDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.businessesService.register(dto, user.id);
   }
 
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.businessesService.findById(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateBusinessDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.businessesService.update(id, dto, user.id);
   }
 }
