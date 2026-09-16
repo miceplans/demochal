@@ -14,7 +14,7 @@
     "@emotion/cache": "^11.13.5",
     "@emotion/react": "^11.13.5",
     "@emotion/styled": "^11.13.5",
-    "@hookform/resolvers": "^3.9.1",
+    "@hookform/resolvers": "^5.9.1",
     "@semochal/api-client": "workspace:*",
     "@tanstack/react-query": "^5.62.11",
     "@tanstack/react-table": "^8.20.6",

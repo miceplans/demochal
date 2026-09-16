@@ -18,6 +18,7 @@ import {
 import type { Ad, AdProduct, Notification } from '@semochal/api-client';
 import { adApi, adError } from '@/lib/ad-api';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 
 type AdsScreen = 'manage' | 'products' | 'complete';
@@ -49,6 +50,8 @@ export function BizAdsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [adTitles, setAdTitles] = useState<Partial<Record<AdPlacement, string>>>({});
   const [processing, setProcessing] = useState(false);
   const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
   const [adName, setAdName] = useState('');
@@ -108,7 +111,7 @@ export function BizAdsPage() {
       }
       setSelectedAd({
         placement,
-        name: product.name,
+        name: adTitles[placement]?.trim() || product.name,
         price: product.dailyPrice,
         period: start,
         product,
@@ -142,32 +145,47 @@ export function BizAdsPage() {
     setUploadPlacement((current) => (current === placement ? null : placement));
   };
 
-  const handleImagePicked =
-    (placement: AdPlacement) =>
-    async (file: File): Promise<void> => {
-      setProcessing(true);
-      try {
-        const image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
-        const previous = uploadedImages[placement];
-        if (previous) {
-          URL.revokeObjectURL(previous);
-          previewUrls.current.delete(previous);
-        }
-        previewUrls.current.add(image.previewUrl);
-        setUploadedImages((current) => ({ ...current, [placement]: image.previewUrl }));
-        setUploadPlacement(null);
-        toast.success(
-          '업로드 되었습니다',
-          `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
-        );
-        setAdName('');
-        setNameModalPlacement(placement);
-      } catch {
-        toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
-      } finally {
-        setProcessing(false);
+  const handleImagePicked = async (placement: AdPlacement, file: File): Promise<void> => {
+    setProcessing(true);
+    let image: CompressedAdImage | undefined;
+    try {
+      image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
+      const presigned = await adApi.files.requestUpload({
+        bucket: 'public',
+        contentType: image.file.type,
+        fileName: image.file.name,
+        sizeBytes: image.file.size,
+      });
+      const uploadRes = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
+      await adApi.files.finalizeUpload(presigned.fileId);
+
+      const previous = uploadedImages[placement];
+      if (previous) {
+        URL.revokeObjectURL(previous);
+        previewUrls.current.delete(previous);
       }
-    };
+      previewUrls.current.add(image.previewUrl);
+      setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.fileId }));
+      setUploadPlacement(null);
+      toast.success(
+        '업로드 되었습니다',
+        `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
+      );
+      setAdName(adTitles[placement] ?? '');
+      setNameModalPlacement(placement);
+    } catch {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
+    } finally {
+      setProcessing(false);
+    }
+  };
   const submitReservation = async () => {
     if (!selectedAd || submitting || overlaps) return;
     setSubmitting(true);
@@ -178,6 +196,8 @@ export function BizAdsPage() {
         startDate: paymentStart,
         endDate: paymentEnd,
         expectedDailyPrice: selectedAd.product.dailyPrice,
+        title: selectedAd.name,
+        imageFileId: uploadedFileIds[selectedAd.placement],
       });
       setContracts((items) => [ad, ...items]);
       setSelectedAd({
@@ -491,8 +511,9 @@ export function BizAdsPage() {
                 <PositionField>
                   <PositionSelect
                     value={nameModalPlacement}
-                    onChange={(event) => setNameModalPlacement(event.target.value as AdPlacement)}
+                    disabled
                     aria-label="광고 위치"
+                    title="업로드한 이미지에 맞춰 지정된 위치예요"
                   >
                     <option value="hero">홈 상단 배너 광고</option>
                     <option value="gallery">홈 중간 이미지 광고</option>
@@ -509,6 +530,7 @@ export function BizAdsPage() {
                   disabled={!adName.trim()}
                   onClick={() => {
                     const placement = nameModalPlacement;
+                    setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
                     setNameModalPlacement(null);
                     void openPayment(placement);
                   }}
@@ -716,6 +738,7 @@ const PositionSelect = styled.select({
   ...textStyle.body,
   appearance: 'none',
   '&:focus': { outline: 'none', borderColor: c.primary },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
 });
 const PositionIcon = styled.img({
   position: 'absolute',
