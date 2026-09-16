@@ -31,3 +31,16 @@ ALTER TABLE "ad_products" ALTER COLUMN "id" TYPE varchar(50) USING "id"::text;
 ALTER TABLE "ads" ALTER COLUMN "product_id" TYPE varchar(50) USING "product_id"::text;
 --> statement-breakpoint
 ALTER TABLE "ads" ADD CONSTRAINT "ads_product_id_ad_products_id_fk" FOREIGN KEY ("product_id") REFERENCES "ad_products"("id");
+--> statement-breakpoint
+-- ads: 복구 체인이 누락한 노출 번호 (serial). ORM 계약상 NOT NULL 이며
+-- GET /ads/products 등 전체 조회 SELECT 에 항상 포함됨
+ALTER TABLE "ads" ADD COLUMN IF NOT EXISTS "ad_number" serial;
+--> statement-breakpoint
+-- applications: 지원서 폼 답변. NOT NULL + 빈 배열 기본값 (ORM 계약)
+ALTER TABLE "applications" ADD COLUMN IF NOT EXISTS "form_answers" jsonb NOT NULL DEFAULT '[]'::jsonb;
+--> statement-breakpoint
+-- businesses: 사업자 유형 (nullable, varchar(50))
+ALTER TABLE "businesses" ADD COLUMN IF NOT EXISTS "type" varchar(50);
+--> statement-breakpoint
+-- teams: 팀장 역할 (nullable, varchar(50))
+ALTER TABLE "teams" ADD COLUMN IF NOT EXISTS "leader_role" varchar(50);

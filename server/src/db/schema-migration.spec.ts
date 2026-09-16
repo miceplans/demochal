@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { Table } from 'drizzle-orm';
+import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
+import * as schema from './schema.js';
 
 const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
 const journal = JSON.parse(
@@ -190,7 +193,27 @@ describe('0006_schema_contract_completion migration', () => {
     expect(sql).toContain('CREATE INDEX IF NOT EXISTS "challenge_views_challenge_id_idx"');
     expect(sql).toContain('ALTER TABLE "ad_products" ALTER COLUMN "id" TYPE varchar(50)');
     expect(sql).toContain('ALTER TABLE "ads" ALTER COLUMN "product_id" TYPE varchar(50)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "ad_number" serial');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "form_answers" jsonb');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "type" varchar(50)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "leader_role" varchar(50)');
     expect(sql).not.toMatch(/DROP TABLE/);
     expect(sql).not.toMatch(/DROP COLUMN/);
+  });
+});
+
+describe('ORM column coverage', () => {
+  it('mentions every column declared in the ORM schema somewhere in the chain', () => {
+    const chainSql = journal.entries
+      .map((entry) => readFileSync(resolve(drizzleDirectory, `${entry.tag}.sql`), 'utf8'))
+      .join('\n');
+
+    for (const exported of Object.values(schema)) {
+      if (!(exported instanceof Table)) continue;
+      const { name: tableName, columns } = getTableConfig(exported);
+      for (const column of columns) {
+        expect(chainSql, `${tableName}.${column.name}`).toContain(`"${column.name}"`);
+      }
+    }
   });
 });
