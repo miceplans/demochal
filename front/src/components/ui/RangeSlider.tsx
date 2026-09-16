@@ -112,7 +112,7 @@ const ThumbInput = styled.input`
     height: ${THUMB_SIZE}px;
     margin-top: ${(TRACK_HEIGHT - THUMB_SIZE) / 2}px;
     border-radius: 50%;
-    background: ${c.gray200};
+    background: ${c.gray100};
     border: 0;
     box-shadow: none;
     cursor: pointer;
@@ -136,7 +136,7 @@ const ThumbInput = styled.input`
     width: ${THUMB_SIZE}px;
     height: ${THUMB_SIZE}px;
     border-radius: 50%;
-    background: ${c.gray200};
+    background: ${c.gray100};
     border: 0;
     box-shadow: none;
     cursor: pointer;
