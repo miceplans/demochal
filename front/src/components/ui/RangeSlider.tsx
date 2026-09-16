@@ -75,7 +75,7 @@ const Rail = styled.div`
   height: 4px;
   transform: translateY(-50%);
   border-radius: 100px;
-  background: ${c.primary}33;
+  background: linear-gradient(180deg, ${c.gray100}, ${c.gray200});
 `;
 
 const Fill = styled.div<{ $left: string; $width: string }>`
@@ -114,7 +114,7 @@ const ThumbInput = styled.input`
     border-radius: 50%;
     background: ${c.gray100};
     border: 0;
-    box-shadow: none;
+    box-shadow: 0 3px 12px ${c.gray900}73;
     cursor: pointer;
     transition:
       background 0.15s ease,
@@ -138,7 +138,7 @@ const ThumbInput = styled.input`
     border-radius: 50%;
     background: ${c.gray100};
     border: 0;
-    box-shadow: none;
+    box-shadow: 0 3px 12px ${c.gray900}73;
     cursor: pointer;
     transition:
       background 0.15s ease,
