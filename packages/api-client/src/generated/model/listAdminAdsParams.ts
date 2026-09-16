@@ -18,6 +18,6 @@
  */
 
 export type ListAdminAdsParams = {
-q?: string;
-status?: string;
+  q?: string;
+  status?: string;
 };

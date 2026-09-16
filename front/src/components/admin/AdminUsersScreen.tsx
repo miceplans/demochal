@@ -65,10 +65,20 @@ export function AdminUsersScreen() {
     <>
       <AdminPageTitle>사용자 관리</AdminPageTitle>
       <FilterBar>
-        <SearchFilter placeholder="이름/이메일 검색" label="이름/이메일 검색" value={query} onChange={setQuery} />
+        <SearchFilter
+          placeholder="이름/이메일 검색"
+          label="이름/이메일 검색"
+          value={query}
+          onChange={setQuery}
+        />
         <SelectFilter label="가입일 범위" options={['최근 7일', '최근 30일', '최근 1년', '전체']} />
         <SelectFilter label="포지션 뱃지" options={['기획', '프론트엔드', '백엔드', '디자이너']} />
-        <SelectFilter label="활동 상태" options={['활성', '정지']} value={statusLabel} onChange={setStatusLabel} />
+        <SelectFilter
+          label="활동 상태"
+          options={['활성', '정지']}
+          value={statusLabel}
+          onChange={setStatusLabel}
+        />
       </FilterBar>
       {usersQuery.isPending ? (
         <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>

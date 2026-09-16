@@ -17,4 +17,4 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type SaveNotificationSettings200 = {[key: string]: boolean};
+export type SaveNotificationSettings200 = { [key: string]: boolean };

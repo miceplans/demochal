@@ -1,4 +1,12 @@
-import { IsDateString, IsInt, IsOptional, IsPositive, IsString, IsUrl, IsUUID } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUrl,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateAdDto {
   @IsUUID()

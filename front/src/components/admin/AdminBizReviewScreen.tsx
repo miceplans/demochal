@@ -57,7 +57,16 @@ const PANEL_WIDTH = 360;
 
 function CloseGlyph() {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      aria-hidden
+    >
       <path d="M18 6 6 18M6 6l12 12" />
     </svg>
   );
@@ -81,7 +90,10 @@ function BizDetailPanel({
 
   const details: [string, ReactNode][] = [
     ['기관 유형', row.type],
-    ['사업자 번호', <MaskedText key="bizNumber" value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />],
+    [
+      '사업자 번호',
+      <MaskedText key="bizNumber" value={row.bizNumber} masked={maskBizNumber(row.bizNumber)} />,
+    ],
     ['신청일', row.appliedAt],
     ['NTS 결과', row.nts],
   ];
@@ -186,7 +198,8 @@ export function AdminBizReviewScreen() {
   );
   const bizStats = businessesQuery.data?.data.stats ?? [];
 
-  const selectBiz = (row: BizRow) => setSelected((current) => (current?.id === row.id ? null : row));
+  const selectBiz = (row: BizRow) =>
+    setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
 
   const approveMutation = generated.useApproveVerification({
@@ -216,17 +229,38 @@ export function AdminBizReviewScreen() {
       <AdminPageTitle>기관 심사</AdminPageTitle>
       <StatRow>
         {bizStats.map((stat) => (
-          <StatCard key={stat.label} label={stat.label ?? ''} value={stat.value ?? ''} meta={stat.meta ?? ''} dot={stat.dot ?? undefined} />
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
       <FilterBar>
-        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" value={query} onChange={setQuery} />
+        <SearchFilter
+          placeholder="기관명/담당자 검색"
+          label="기관명/담당자 검색"
+          value={query}
+          onChange={setQuery}
+        />
         <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
-        <SelectFilter label="상태" options={['대기', '승인', '거부']} value={status} onChange={setStatus} />
+        <SelectFilter
+          label="상태"
+          options={['대기', '승인', '거부']}
+          value={status}
+          onChange={setStatus}
+        />
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>
-          <AdminTable columns={columns} rows={bizRows} onRowClick={selectBiz} selectedRowId={selected?.id} />
+          <AdminTable
+            columns={columns}
+            rows={bizRows}
+            onRowClick={selectBiz}
+            selectedRowId={selected?.id}
+          />
         </TableArea>
         {selected ? (
           <BizDetailPanel
@@ -251,16 +285,16 @@ const BizWorkspace = styled.div({
     flexDirection: 'column',
   },
 });
-const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{ withPanel?: boolean }>(
-  ({ withPanel }) => ({
-    minWidth: 0,
-    flex: 1,
-    '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
-    '@media (max-width: 960px)': {
-      '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
-    },
-  }),
-);
+const TableArea = styled('div', { shouldForwardProp: (prop) => prop !== 'withPanel' })<{
+  withPanel?: boolean;
+}>(({ withPanel }) => ({
+  minWidth: 0,
+  flex: 1,
+  '& > [role="table"]': { borderRadius: withPanel ? '8px 0 0 8px' : 8 },
+  '@media (max-width: 960px)': {
+    '& > [role="table"]': { borderRadius: withPanel ? '8px 8px 0 0' : 8 },
+  },
+}));
 
 const Panel = styled.aside({
   width: PANEL_WIDTH,
@@ -320,7 +354,12 @@ const InfoItem = styled.div({
   '& + &': { borderTop: '1px solid #E5E7EB' },
 });
 const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
-const InfoValue = styled.dd({ margin: 0, ...textStyle.bodySmall, color: c.gray900, textAlign: 'right' });
+const InfoValue = styled.dd({
+  margin: 0,
+  ...textStyle.bodySmall,
+  color: c.gray900,
+  textAlign: 'right',
+});
 const ActionRow = styled.div({
   display: 'flex',
   gap: 8,

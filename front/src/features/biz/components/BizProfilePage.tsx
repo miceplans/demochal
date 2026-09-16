@@ -34,11 +34,15 @@ export function BizProfilePage() {
           </TRow>
           <TRow>
             <span>이메일</span>
-            <strong><MaskedText value={admin.email} masked={maskEmail(admin.email)} /></strong>
+            <strong>
+              <MaskedText value={admin.email} masked={maskEmail(admin.email)} />
+            </strong>
           </TRow>
           <TRow>
             <span>전화번호</span>
-            <strong><MaskedText value={admin.phone} masked={maskPhone(admin.phone)} /></strong>
+            <strong>
+              <MaskedText value={admin.phone} masked={maskPhone(admin.phone)} />
+            </strong>
           </TRow>
           <TRow>
             <span>아이디</span>
@@ -73,8 +77,12 @@ export function BizProfilePage() {
           <OrgMeta>
             <OrgName>{orgProfile.name}</OrgName>
             <OrgRow>{orgProfile.address}</OrgRow>
-            <OrgRow><MaskedText value={orgProfile.phone} masked={maskPhone(orgProfile.phone)} /></OrgRow>
-            <OrgRow><MaskedText value={orgProfile.email} masked={maskEmail(orgProfile.email)} /></OrgRow>
+            <OrgRow>
+              <MaskedText value={orgProfile.phone} masked={maskPhone(orgProfile.phone)} />
+            </OrgRow>
+            <OrgRow>
+              <MaskedText value={orgProfile.email} masked={maskEmail(orgProfile.email)} />
+            </OrgRow>
           </OrgMeta>
         </OrgCard>
         <Actions style={{ marginTop: 24 }}>

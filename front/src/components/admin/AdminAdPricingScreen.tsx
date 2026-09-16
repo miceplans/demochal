@@ -777,4 +777,3 @@ export function AdminAdPricingScreen() {
     </Screen>
   );
 }
-
