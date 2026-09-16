@@ -9,6 +9,13 @@ import { TextField } from '@/components/ui/TextField';
 import { adApi } from '@/lib/ad-api';
 import { loginSchema, type LoginFormValues } from '../schema';
 
+const Form = styled.form`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+`;
+
 export function LoginForm() {
   const router = useRouter();
 
@@ -56,10 +63,3 @@ export function LoginForm() {
     </Form>
   );
 }
-
-const Form = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  width: 100%;
-`;

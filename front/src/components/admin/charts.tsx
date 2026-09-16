@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import styled from '@emotion/styled';
 import {
   Area,
@@ -16,7 +17,13 @@ import {
 } from 'recharts';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
+import {
+  activityChart,
+  adRatio,
+  trafficData,
+  type AdDailyStat,
+  type TrafficRange,
+} from '@/data/admin-design';
 
 /* ---------- shared tooltip ---------- */
 
@@ -139,7 +146,13 @@ function GaugeBar(props: {
   );
 }
 
-export function AdRatioChart({ value, ratio }: { value: string; ratio: number }) {
+export function AdRatioChart({
+  value = adRatio.value,
+  ratio = adRatio.ratio,
+}: {
+  value?: string;
+  ratio?: number;
+}) {
   const percent = Math.round(ratio * 100);
 
   return (
@@ -236,20 +249,27 @@ const Tab = styled.button<{ active?: boolean }>(({ active }) => ({
 const yAxisLabels = ['0', '50k', '100k', '500k', '1M', '5M'];
 
 export function TrafficChart({
-  range,
+  range: controlledRange,
   onRangeChange,
-  labels,
-  primary,
-  secondary,
+  labels: controlledLabels,
+  primary: controlledPrimary,
+  secondary: controlledSecondary,
 }: {
-  range: TrafficRange;
-  onRangeChange: (range: TrafficRange) => void;
-  labels: string[];
-  primary: number[];
-  secondary: number[];
+  range?: TrafficRange;
+  onRangeChange?: (range: TrafficRange) => void;
+  labels?: string[];
+  primary?: number[];
+  secondary?: number[];
 }) {
+  const [localRange, setLocalRange] = useState<TrafficRange>('1year');
+  const range = controlledRange ?? localRange;
+  const setRange = onRangeChange ?? setLocalRange;
+  const fallback = trafficData[range];
+  const labels = controlledLabels?.length ? controlledLabels : fallback.labels;
+  const primary = controlledPrimary?.length ? controlledPrimary : fallback.primary;
+  const secondary = controlledSecondary?.length ? controlledSecondary : fallback.secondary;
   const height = 160;
-  const maxY = Math.max(...primary, 1) * 1.15;
+  const maxY = Math.max(...primary) * 1.15;
   const data = labels.map((label, i) => ({
     label,
     primary: primary[i],
@@ -293,7 +313,7 @@ export function TrafficChart({
               role="tab"
               aria-selected={range === value}
               active={range === value || undefined}
-              onClick={() => onRangeChange(value)}
+              onClick={() => setRange(value)}
             >
               {text}
             </Tab>
@@ -375,22 +395,16 @@ export function TrafficChart({
 
 /* ---------- Area chart: 리포트 활동 ---------- */
 
-export function ActivityChart({
-  months,
-  general,
-  corp,
-  yMax,
-}: {
-  months: string[];
-  general: number[];
-  corp: number[];
-  yMax: number;
-}) {
-  const yLabels = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
+const months = activityChart.months;
+const generalSeries = activityChart.general;
+const corpSeries = activityChart.corp;
+const yLabels = Array.from({ length: activityChart.yMax / 2 + 1 }, (_, i) => i * 2);
+
+export function ActivityChart() {
   const data = months.map((month, i) => ({
     month,
-    general: general[i],
-    corp: corp[i],
+    general: generalSeries[i],
+    corp: corpSeries[i],
   }));
 
   return (
@@ -440,7 +454,7 @@ export function ActivityChart({
               tickMargin={12}
             />
             <YAxis
-              domain={[0, yMax]}
+              domain={[0, activityChart.yMax]}
               ticks={yLabels}
               tickLine={false}
               axisLine={false}

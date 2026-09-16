@@ -24,136 +24,6 @@ interface DropdownProps {
   'aria-label'?: string;
 }
 
-export function Dropdown({
-  options,
-  value,
-  defaultValue = '',
-  placeholder = '요소를 선택하세요',
-  size = 'L',
-  width = '100%',
-  disabled = false,
-  onChange,
-  style,
-  'aria-label': ariaLabel,
-}: DropdownProps) {
-  const [open, setOpen] = useState(false);
-  const [internalValue, setInternalValue] = useState(defaultValue);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const listboxId = useId();
-
-  useEffect(() => {
-    if (!open) return;
-    const onMouseDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    return () => document.removeEventListener('mousedown', onMouseDown);
-  }, [open]);
-
-  const openListbox = () => {
-    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
-    setOpen(true);
-  };
-
-  const select = (index: number) => {
-    const option = options[index];
-    if (!option) return;
-    setInternalValue(option.value);
-    setOpen(false);
-    onChange?.(option.value);
-  };
-
-  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled) return;
-    switch (event.key) {
-      case 'Enter':
-      case ' ':
-        event.preventDefault();
-        if (open) select(activeIndex);
-        else openListbox();
-        break;
-      case 'ArrowDown':
-        event.preventDefault();
-        if (!open) openListbox();
-        else setActiveIndex((i) => Math.min(i + 1, options.length - 1));
-        break;
-      case 'ArrowUp':
-        event.preventDefault();
-        if (open) setActiveIndex((i) => Math.max(i - 1, 0));
-        break;
-      case 'Home':
-        if (open) setActiveIndex(0);
-        break;
-      case 'End':
-        if (open) setActiveIndex(Math.max(options.length - 1, 0));
-        break;
-      case 'Escape':
-        if (open) setOpen(false);
-        break;
-      case 'Tab':
-        setOpen(false);
-        break;
-    }
-  };
-
-  const radiusFor = (index: number) => {
-    if (options.length === 1) return '8px';
-    if (index === 0) return '8px 8px 0 0';
-    if (index === options.length - 1) return '0 0 8px 8px';
-    return '0';
-  };
-
-  const selectedValue = value !== undefined ? value : internalValue;
-  const selectedIndex = options.findIndex((option) => option.value === selectedValue);
-  const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
-
-  return (
-    <Wrapper
-      ref={rootRef}
-      onKeyDown={onKeyDown}
-      style={style}
-      $width={typeof width === 'number' ? `${width}px` : width}
-    >
-      <Trigger
-        type="button"
-        $size={size}
-        $hasValue={Boolean(selected)}
-        disabled={disabled}
-        role="combobox"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        aria-controls={listboxId}
-        aria-activedescendant={open ? `${listboxId}-option-${activeIndex}` : undefined}
-        aria-label={ariaLabel}
-        onClick={() => (open ? setOpen(false) : openListbox())}
-      >
-        {selected ? selected.label : placeholder}
-        <Chevron aria-hidden="true" $open={open} />
-      </Trigger>
-      {open && options.length > 0 ? (
-        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>
-          {options.map((option, index) => (
-            <Option
-              key={option.value}
-              id={`${listboxId}-option-${index}`}
-              role="option"
-              aria-selected={option.value === selectedValue}
-              $radius={radiusFor(index)}
-              $active={index === activeIndex}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActiveIndex(index)}
-              onClick={() => select(index)}
-            >
-              {option.label}
-            </Option>
-          ))}
-        </Listbox>
-      ) : null}
-    </Wrapper>
-  );
-}
-
 const Wrapper = styled.div<{ $width: string }>`
   position: relative;
   width: ${({ $width }) => $width};
@@ -252,3 +122,133 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
     background: ${(p) => p.theme.colors.gray[100]};
   }
 `;
+
+export function Dropdown({
+  options,
+  value,
+  defaultValue = '',
+  placeholder = '요소를 선택하세요',
+  size = 'L',
+  width = '100%',
+  disabled = false,
+  onChange,
+  style,
+  'aria-label': ariaLabel,
+}: DropdownProps) {
+  const [open, setOpen] = useState(false);
+  const [internalValue, setInternalValue] = useState(defaultValue);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const listboxId = useId();
+
+  const selectedValue = value !== undefined ? value : internalValue;
+  const selectedIndex = options.findIndex((option) => option.value === selectedValue);
+  const selected = selectedIndex >= 0 ? options[selectedIndex] : undefined;
+
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [open]);
+
+  const openListbox = () => {
+    setActiveIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    setOpen(true);
+  };
+
+  const select = (index: number) => {
+    const option = options[index];
+    if (!option) return;
+    setInternalValue(option.value);
+    setOpen(false);
+    onChange?.(option.value);
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (disabled) return;
+    switch (event.key) {
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        if (open) select(activeIndex);
+        else openListbox();
+        break;
+      case 'ArrowDown':
+        event.preventDefault();
+        if (!open) openListbox();
+        else setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+        break;
+      case 'ArrowUp':
+        event.preventDefault();
+        if (open) setActiveIndex((i) => Math.max(i - 1, 0));
+        break;
+      case 'Home':
+        if (open) setActiveIndex(0);
+        break;
+      case 'End':
+        if (open) setActiveIndex(Math.max(options.length - 1, 0));
+        break;
+      case 'Escape':
+        if (open) setOpen(false);
+        break;
+      case 'Tab':
+        setOpen(false);
+        break;
+    }
+  };
+
+  const radiusFor = (index: number) => {
+    if (options.length === 1) return '8px';
+    if (index === 0) return '8px 8px 0 0';
+    if (index === options.length - 1) return '0 0 8px 8px';
+    return '0';
+  };
+
+  return (
+    <Wrapper
+      ref={rootRef}
+      onKeyDown={onKeyDown}
+      style={style}
+      $width={typeof width === 'number' ? `${width}px` : width}
+    >
+      <Trigger
+        type="button"
+        $size={size}
+        $hasValue={Boolean(selected)}
+        disabled={disabled}
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls={listboxId}
+        aria-activedescendant={open ? `${listboxId}-option-${activeIndex}` : undefined}
+        aria-label={ariaLabel}
+        onClick={() => (open ? setOpen(false) : openListbox())}
+      >
+        {selected ? selected.label : placeholder}
+        <Chevron aria-hidden="true" $open={open} />
+      </Trigger>
+      {open && options.length > 0 ? (
+        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>
+          {options.map((option, index) => (
+            <Option
+              key={option.value}
+              id={`${listboxId}-option-${index}`}
+              role="option"
+              aria-selected={option.value === selectedValue}
+              $radius={radiusFor(index)}
+              $active={index === activeIndex}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => select(index)}
+            >
+              {option.label}
+            </Option>
+          ))}
+        </Listbox>
+      ) : null}
+    </Wrapper>
+  );
+}

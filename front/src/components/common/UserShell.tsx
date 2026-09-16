@@ -9,13 +9,13 @@ import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
 
-export const myMenu = [
-  ['/my/teams', '내 팀'],
-  ['/my/bookmarks', '북마크 챌린지'],
-  ['/my/applications', '지원현황'],
-  ['/my/interests', '관심분야 설정'],
-  ['/my/notifications', '알림 설정'],
-];
+const Brand = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  ...textStyle.display,
+  whiteSpace: 'nowrap',
+});
 export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: boolean }) {
   return (
     <Brand href="/" aria-label="SEMO 홈">
@@ -29,223 +29,6 @@ export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: bool
     </Brand>
   );
 }
-function SearchBar() {
-  const query = useUserStore((s) => s.query),
-    setQuery = useUserStore((s) => s.setQuery);
-  const router = useRouter();
-  return (
-    <Search
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
-        router.push('/explore');
-      }}
-    >
-      <Icon src="/assets/icons/search.png" size={16} alt="검색" />
-      <Input
-        aria-label="챌린지, 팀, 분야 검색"
-        placeholder="챌린지, 팀, 분야를 검색하세요"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-      />
-    </Search>
-  );
-}
-export function Footer() {
-  return (
-    <FooterBox>
-      <Row style={{ justifyContent: 'space-between' }}>
-        <Logo dot mono />
-        <Row>
-          <Link href="/privacy">개인정보처리방침</Link>
-          <Link href="/terms">이용약관</Link>
-          <Link href="/youth">청소년 보호 정책</Link>
-        </Row>
-      </Row>
-      <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div style={{ lineHeight: 1.65, maxWidth: 329 }}>
-          대표 유철한
-          <br />
-          사업자등록번호 617-81-98126
-          <br />
-          부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
-          <br />
-          051-783-1170 / mice@miceplans.com
-        </div>
-        <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
-      </Row>
-    </FooterBox>
-  );
-}
-export function UserShell({
-  children,
-  title,
-  compact = false,
-  footer = true,
-  navigation = true,
-  centerHeader = false,
-  header = true,
-  back = '/my',
-}: {
-  children: ReactNode;
-  title?: string;
-  compact?: boolean;
-  footer?: boolean;
-  navigation?: boolean;
-  centerHeader?: boolean;
-  header?: boolean;
-  back?: string;
-}) {
-  const path = usePathname();
-  const navItems = [
-    ['/', '홈', '/assets/icons/figma-footer/home.svg'],
-    ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
-    ['/teams', '팀 탐색', '/assets/icons/figma-footer/team.svg'],
-    ['/notifications', '알림', '/assets/icons/figma-footer/alert.svg'],
-    ['/my', 'MY', '/assets/icons/figma-footer/account.svg'],
-  ];
-  useEffect(() => {
-    void useUserStore.persist.rehydrate();
-  }, []);
-  return (
-    <>
-      <Global
-        styles={{
-          '@font-face': {
-            fontFamily: 'Pretendard',
-            src: 'url(/fonts/PretendardVariable.woff2) format("woff2")',
-            fontWeight: '100 900',
-            fontStyle: 'normal',
-            fontDisplay: 'swap',
-          },
-          body: { ...textStyle.body, color: c.gray900, background: c.white },
-          'button,input,select,textarea': {
-            fontFamily: 'Pretendard',
-            fontSize: 'inherit',
-            color: 'inherit',
-          },
-          button: { cursor: 'pointer' },
-          'button:disabled': { cursor: 'not-allowed' },
-          ':focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 3 },
-          'input,select,textarea': { accentColor: c.primary },
-          img: { display: 'block' },
-        }}
-      />
-      {header && (
-        <>
-          <HeaderBox compact={compact}>
-            <Row
-              style={{
-                justifyContent: compact && centerHeader ? 'center' : 'space-between',
-                minHeight: compact ? 31 : 56,
-              }}
-            >
-              <Logo />
-              {!compact && (
-                <>
-                  <SearchBar />
-                  <Row gap={20}>
-                    <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
-                    <HeaderActionLink href="/biz/operations">문의하기</HeaderActionLink>
-                    <Link href="/notifications" aria-label="알림">
-                      <Icon src="/assets/icons/bell.png" alt="알림" />
-                    </Link>
-                    <Link href="/my" aria-label="내 프로필">
-                      <Icon src="/assets/icons/profile.png" alt="프로필" />
-                    </Link>
-                  </Row>
-                </>
-              )}
-            </Row>
-            {!compact && (
-              <Nav>
-                <Link
-                  href="/explore"
-                  aria-current={path.startsWith('/explore') ? 'page' : undefined}
-                >
-                  챌린지 탐색
-                </Link>
-                <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
-                  팀 탐색
-                </Link>
-              </Nav>
-            )}
-          </HeaderBox>
-          <MobileHeader>
-            {title ? (
-              <MobileTitleBar>
-                <MobileBackLink href={back} aria-label="뒤로가기">
-                  ‹
-                </MobileBackLink>
-                <MobileTitle>{title}</MobileTitle>
-              </MobileTitleBar>
-            ) : (
-              <>
-                <Logo dot />
-                {!compact && <SearchBar />}
-              </>
-            )}
-          </MobileHeader>
-        </>
-      )}
-      <main style={{ minWidth: 0, flex: 1 }}>
-        <div>{children}</div>
-      </main>
-      {footer && <Footer />}
-      {navigation && (
-        <>
-          <MobileOnly style={{ height: 'calc(78px + env(safe-area-inset-bottom))' }} />
-          <Bottom aria-label="하단 메뉴">
-            {navItems.map(([href, label, icon]) => (
-              <Link
-                key={href}
-                href={href}
-                aria-label={label}
-                aria-current={
-                  (href === '/' ? path === '/' : path.startsWith(href)) ? 'page' : undefined
-                }
-              >
-                <Icon src={icon} size={34} alt={label} />
-              </Link>
-            ))}
-          </Bottom>
-        </>
-      )}
-    </>
-  );
-}
-export function MyShell({ children, title }: { children: ReactNode; title: string }) {
-  const path = usePathname();
-  return (
-    <UserShell compact title={title}>
-      <MyGrid>
-        <MyAside>
-          <Link href="/my">
-            <Row>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gray100 }} />
-              황지영
-            </Row>
-          </Link>
-          {myMenu.map(([href, label]) => (
-            <Link href={href} key={href} aria-current={path.startsWith(href) ? 'page' : undefined}>
-              {label}
-            </Link>
-          ))}
-        </MyAside>
-        <div style={{ minWidth: 0 }}>
-          <MyContent>{children}</MyContent>
-        </div>
-      </MyGrid>
-    </UserShell>
-  );
-}
-const Brand = styled(Link)({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  ...textStyle.display,
-  whiteSpace: 'nowrap',
-});
 const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
   background: c.white,
   borderBottom: `1px solid ${c.gray100}`,
@@ -273,6 +56,28 @@ const Search = styled.form({
     '& input': { background: 'transparent' },
   },
 });
+function SearchBar() {
+  const query = useUserStore((s) => s.query),
+    setQuery = useUserStore((s) => s.setQuery);
+  const router = useRouter();
+  return (
+    <Search
+      role="search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        router.push('/explore');
+      }}
+    >
+      <Icon src="/assets/icons/search.png" size={16} alt="검색" />
+      <Input
+        aria-label="챌린지, 팀, 분야 검색"
+        placeholder="챌린지, 팀, 분야를 검색하세요"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+    </Search>
+  );
+}
 const Nav = styled.nav({
   display: 'flex',
   gap: 8,
@@ -286,21 +91,6 @@ const Nav = styled.nav({
   },
   '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
-});
-const HeaderActionLink = styled(Link)({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  minHeight: 36,
-  padding: '0 12px',
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
-  color: c.gray900,
-  ...textStyle.bodySmall,
-  fontWeight: 600,
-  whiteSpace: 'nowrap',
-  transition: 'background 0.15s ease, border-color 0.15s ease',
-  '&:hover': { background: c.gray50, borderColor: c.gray300 },
 });
 const MobileHeader = styled.header({
   display: 'none',
@@ -391,12 +181,169 @@ const FooterBox = styled.footer({
   ...textStyle.body,
   [mobile]: { display: 'none' },
 });
+export function Footer() {
+  return (
+    <FooterBox>
+      <Row style={{ justifyContent: 'space-between' }}>
+        <Logo dot mono />
+        <Row>
+          <Link href="/privacy">개인정보처리방침</Link>
+          <Link href="/terms">이용약관</Link>
+          <Link href="/youth">청소년 보호 정책</Link>
+        </Row>
+      </Row>
+      <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <div style={{ lineHeight: 1.65, maxWidth: 329 }}>
+          대표 유철한
+          <br />
+          사업자등록번호 617-81-98126
+          <br />
+          부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
+          <br />
+          051-783-1170 / mice@miceplans.com
+        </div>
+        <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
+      </Row>
+    </FooterBox>
+  );
+}
+export function UserShell({
+  children,
+  title,
+  compact = false,
+  footer = true,
+  navigation = true,
+  back = '/my',
+}: {
+  children: ReactNode;
+  title?: string;
+  compact?: boolean;
+  footer?: boolean;
+  navigation?: boolean;
+  back?: string;
+}) {
+  const path = usePathname();
+  useEffect(() => {
+    void useUserStore.persist.rehydrate();
+  }, []);
+  const navItems = [
+    ['/', '홈', '/assets/icons/figma-footer/home.svg'],
+    ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
+    ['/teams', '팀 탐색', '/assets/icons/figma-footer/team.svg'],
+    ['/notifications', '알림', '/assets/icons/figma-footer/alert.svg'],
+    ['/my', 'MY', '/assets/icons/figma-footer/account.svg'],
+  ];
+  return (
+    <>
+      <Global
+        styles={{
+          '@font-face': {
+            fontFamily: 'Pretendard',
+            src: 'url(/fonts/PretendardVariable.woff2) format("woff2")',
+            fontWeight: '100 900',
+            fontStyle: 'normal',
+            fontDisplay: 'swap',
+          },
+          body: { ...textStyle.body, color: c.gray900, background: c.white },
+          'button,input,select,textarea': {
+            fontFamily: 'Pretendard',
+            fontSize: 'inherit',
+            color: 'inherit',
+          },
+          button: { cursor: 'pointer' },
+          'button:disabled': { cursor: 'not-allowed' },
+          ':focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 3 },
+          'input,select,textarea': { accentColor: c.primary },
+          img: { display: 'block' },
+        }}
+      />
+      <HeaderBox compact={compact}>
+        <Row
+          style={{
+            justifyContent: compact && !navigation ? 'center' : 'space-between',
+            minHeight: compact ? 31 : 56,
+          }}
+        >
+          <Logo />
+          {!compact && (
+            <>
+              <SearchBar />
+              <Row gap={20}>
+                <Link href="/notifications" aria-label="알림">
+                  <Icon src="/assets/icons/bell.png" alt="알림" />
+                </Link>
+                <Link href="/my" aria-label="내 프로필">
+                  <Icon src="/assets/icons/profile.png" alt="프로필" />
+                </Link>
+              </Row>
+            </>
+          )}
+        </Row>
+        {!compact && (
+          <Nav>
+            <Link href="/explore" aria-current={path.startsWith('/explore') ? 'page' : undefined}>
+              챌린지 탐색
+            </Link>
+            <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
+              팀 탐색
+            </Link>
+          </Nav>
+        )}
+      </HeaderBox>
+      <MobileHeader>
+        {title ? (
+          <MobileTitleBar>
+            <MobileBackLink href={back} aria-label="뒤로가기">
+              ‹
+            </MobileBackLink>
+            <MobileTitle>{title}</MobileTitle>
+          </MobileTitleBar>
+        ) : (
+          <>
+            <Logo dot />
+            {!compact && <SearchBar />}
+          </>
+        )}
+      </MobileHeader>
+      <main style={{ minWidth: 0, flex: 1 }}>
+        <div>{children}</div>
+      </main>
+      {footer && <Footer />}
+      {navigation && (
+        <>
+          <MobileOnly style={{ height: 'calc(78px + env(safe-area-inset-bottom))' }} />
+          <Bottom aria-label="하단 메뉴">
+            {navItems.map(([href, label, icon]) => (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
+                aria-current={
+                  (href === '/' ? path === '/' : path.startsWith(href)) ? 'page' : undefined
+                }
+              >
+                <Icon src={icon} size={34} alt={label} />
+              </Link>
+            ))}
+          </Bottom>
+        </>
+      )}
+    </>
+  );
+}
 export const Content = styled.div({
   width: 'min(1200px, calc(100% - 48px))',
   margin: '0 auto',
   padding: '40px 0',
   [mobile]: { width: '100%', padding: '24px 16px' },
 });
+export const myMenu = [
+  ['/my/teams', '내 팀'],
+  ['/my/bookmarks', '북마크 챌린지'],
+  ['/my/applications', '지원현황'],
+  ['/my/interests', '관심분야 설정'],
+  ['/my/notifications', '알림 설정'],
+];
 const MyGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: '240px minmax(0, 1fr)',
@@ -420,4 +367,29 @@ const MyAside = styled.aside({
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });
+export function MyShell({ children, title }: { children: ReactNode; title: string }) {
+  const path = usePathname();
+  return (
+    <UserShell compact title={title}>
+      <MyGrid>
+        <MyAside>
+          <Link href="/my">
+            <Row>
+              <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gray100 }} />
+              황지영
+            </Row>
+          </Link>
+          {myMenu.map(([href, label]) => (
+            <Link href={href} key={href} aria-current={path.startsWith(href) ? 'page' : undefined}>
+              {label}
+            </Link>
+          ))}
+        </MyAside>
+        <div style={{ minWidth: 0 }}>
+          <MyContent>{children}</MyContent>
+        </div>
+      </MyGrid>
+    </UserShell>
+  );
+}
 const MyContent = styled.div({ padding: '32px', [mobile]: { padding: '20px 16px' } });
