@@ -20,11 +20,15 @@ function collectParamValues(node: any, acc: unknown[] = []): unknown[] {
     acc.push(node);
     return acc;
   }
-  if (node?.constructor?.name === 'Param' && (node.value instanceof Date || typeof node.value === 'string')) {
+  if (
+    node?.constructor?.name === 'Param' &&
+    (node.value instanceof Date || typeof node.value === 'string')
+  ) {
     acc.push(node.value);
     return acc;
   }
-  if (Array.isArray(node?.queryChunks)) node.queryChunks.forEach((c: any) => collectParamValues(c, acc));
+  if (Array.isArray(node?.queryChunks))
+    node.queryChunks.forEach((c: any) => collectParamValues(c, acc));
   return acc;
 }
 
@@ -46,9 +50,15 @@ describe('BillingService', () => {
     const cards = await service.listCards('biz-1');
 
     // Column projection must exclude billingKey entirely.
-    expect(Object.keys(getProjection() as Record<string, unknown>)).toEqual(['id', 'cardName', 'maskedNumber']);
+    expect(Object.keys(getProjection() as Record<string, unknown>)).toEqual([
+      'id',
+      'cardName',
+      'maskedNumber',
+    ]);
     expect(collectParamValues(where.mock.calls[0]![0])).toContain('biz-1');
-    expect(cards).toEqual([{ id: 'card-1', cardName: '국민카드', maskedNumber: '****-****-****-1234' }]);
+    expect(cards).toEqual([
+      { id: 'card-1', cardName: '국민카드', maskedNumber: '****-****-****-1234' },
+    ]);
     expect(JSON.stringify(cards)).not.toContain('billingKey');
   });
 

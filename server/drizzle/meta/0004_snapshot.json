@@ -60,9 +60,7 @@
         "ad_products_placement_unique": {
           "name": "ad_products_placement_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "placement"
-          ]
+          "columns": ["placement"]
         }
       },
       "policies": {},
@@ -188,12 +186,8 @@
           "name": "ads_business_id_businesses_id_fk",
           "tableFrom": "ads",
           "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["business_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -201,12 +195,8 @@
           "name": "ads_product_id_ad_products_id_fk",
           "tableFrom": "ads",
           "tableTo": "ad_products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["product_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -286,12 +276,8 @@
           "name": "applications_challenge_id_challenges_id_fk",
           "tableFrom": "applications",
           "tableTo": "challenges",
-          "columnsFrom": [
-            "challenge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["challenge_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -299,12 +285,8 @@
           "name": "applications_user_id_users_id_fk",
           "tableFrom": "applications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -352,12 +334,8 @@
           "name": "bookmarks_user_id_users_id_fk",
           "tableFrom": "bookmarks",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -365,12 +343,8 @@
           "name": "bookmarks_challenge_id_challenges_id_fk",
           "tableFrom": "bookmarks",
           "tableTo": "challenges",
-          "columnsFrom": [
-            "challenge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["challenge_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -380,10 +354,7 @@
         "bookmarks_user_id_challenge_id_unique": {
           "name": "bookmarks_user_id_challenge_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "user_id",
-            "challenge_id"
-          ]
+          "columns": ["user_id", "challenge_id"]
         }
       },
       "policies": {},
@@ -476,12 +447,8 @@
           "name": "businesses_owner_user_id_users_id_fk",
           "tableFrom": "businesses",
           "tableTo": "users",
-          "columnsFrom": [
-            "owner_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["owner_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -554,12 +521,8 @@
           "name": "certificates_user_id_users_id_fk",
           "tableFrom": "certificates",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -567,12 +530,8 @@
           "name": "certificates_file_id_files_id_fk",
           "tableFrom": "certificates",
           "tableTo": "files",
-          "columnsFrom": [
-            "file_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["file_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -670,12 +629,8 @@
           "name": "challenges_business_id_businesses_id_fk",
           "tableFrom": "challenges",
           "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["business_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -742,12 +697,8 @@
           "name": "files_uploader_user_id_users_id_fk",
           "tableFrom": "files",
           "tableTo": "users",
-          "columnsFrom": [
-            "uploader_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["uploader_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -852,12 +803,8 @@
           "name": "notifications_user_id_users_id_fk",
           "tableFrom": "notifications",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -924,12 +871,8 @@
           "name": "orders_application_id_applications_id_fk",
           "tableFrom": "orders",
           "tableTo": "applications",
-          "columnsFrom": [
-            "application_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["application_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -937,12 +880,8 @@
           "name": "orders_ad_id_ads_id_fk",
           "tableFrom": "orders",
           "tableTo": "ads",
-          "columnsFrom": [
-            "ad_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["ad_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -950,12 +889,8 @@
           "name": "orders_user_id_users_id_fk",
           "tableFrom": "orders",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1015,12 +950,8 @@
           "name": "payment_cards_business_id_businesses_id_fk",
           "tableFrom": "payment_cards",
           "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["business_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1030,9 +961,7 @@
         "payment_cards_billing_key_unique": {
           "name": "payment_cards_billing_key_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "billing_key"
-          ]
+          "columns": ["billing_key"]
         }
       },
       "policies": {},
@@ -1095,12 +1024,8 @@
           "name": "payments_order_id_orders_id_fk",
           "tableFrom": "payments",
           "tableTo": "orders",
-          "columnsFrom": [
-            "order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["order_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1197,12 +1122,8 @@
           "name": "reports_reporter_user_id_users_id_fk",
           "tableFrom": "reports",
           "tableTo": "users",
-          "columnsFrom": [
-            "reporter_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reporter_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1263,12 +1184,8 @@
           "name": "team_members_team_id_teams_id_fk",
           "tableFrom": "team_members",
           "tableTo": "teams",
-          "columnsFrom": [
-            "team_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["team_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1276,12 +1193,8 @@
           "name": "team_members_user_id_users_id_fk",
           "tableFrom": "team_members",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1291,10 +1204,7 @@
         "team_members_team_id_user_id_unique": {
           "name": "team_members_team_id_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "team_id",
-            "user_id"
-          ]
+          "columns": ["team_id", "user_id"]
         }
       },
       "policies": {},
@@ -1363,12 +1273,8 @@
           "name": "teams_challenge_id_challenges_id_fk",
           "tableFrom": "teams",
           "tableTo": "challenges",
-          "columnsFrom": [
-            "challenge_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["challenge_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1376,12 +1282,8 @@
           "name": "teams_leader_user_id_users_id_fk",
           "tableFrom": "teams",
           "tableTo": "users",
-          "columnsFrom": [
-            "leader_user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["leader_user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1529,16 +1431,12 @@
         "users_email_unique": {
           "name": "users_email_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         },
         "users_google_id_unique": {
           "name": "users_google_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "google_id"
-          ]
+          "columns": ["google_id"]
         }
       },
       "policies": {},
@@ -1608,12 +1506,8 @@
           "name": "verifications_business_id_businesses_id_fk",
           "tableFrom": "verifications",
           "tableTo": "businesses",
-          "columnsFrom": [
-            "business_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["business_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }

@@ -122,7 +122,9 @@ export class AdsService implements OnModuleInit {
         .where(and(eq(ads.productId, dto.productId), this.reservingCondition()));
       const hasOverlap = reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate);
       if (hasOverlap) {
-        throw new BadRequestException('Selected dates overlap an existing reservation for this placement');
+        throw new BadRequestException(
+          'Selected dates overlap an existing reservation for this placement',
+        );
       }
 
       const days = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
@@ -167,7 +169,9 @@ export class AdsService implements OnModuleInit {
     // 결제 전 preparing 광고를 직접 active로 바꾸는 건 불가 — 활성화는 결제
     // 웹훅(OrdersService.markPaid)이 담당한다.
     if (dto.status === 'active' && ad.status === 'preparing') {
-      throw new BadRequestException('Unpaid ads cannot be activated directly; complete payment first');
+      throw new BadRequestException(
+        'Unpaid ads cannot be activated directly; complete payment first',
+      );
     }
     const [updated] = await this.db
       .update(ads)
@@ -213,7 +217,10 @@ export class AdsService implements OnModuleInit {
   // Rows that currently occupy a placement's calendar: paid/active ads, plus
   // preparing ads whose payment window hasn't expired yet.
   private reservingCondition() {
-    return or(eq(ads.status, 'active'), and(eq(ads.status, 'preparing'), gt(ads.expiresAt, new Date())));
+    return or(
+      eq(ads.status, 'active'),
+      and(eq(ads.status, 'preparing'), gt(ads.expiresAt, new Date())),
+    );
   }
 }
 

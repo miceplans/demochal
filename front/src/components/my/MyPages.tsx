@@ -21,7 +21,13 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
-import { Identity, Badges, SkillStack, History, AddButton } from '@/components/profile/ProfileCards';
+import {
+  Identity,
+  Badges,
+  SkillStack,
+  History,
+  AddButton,
+} from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import {
   contests,
@@ -334,7 +340,9 @@ export function MyPage() {
         open={skillOpen}
         onClose={() => setSkillOpen(false)}
         existing={mySkills}
-        onAdd={(skills) => setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])}
+        onAdd={(skills) =>
+          setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])
+        }
       />
     </MyShell>
   );
@@ -529,7 +537,13 @@ export function ApplicationsPage() {
                   <td>{row.org}</td>
                   <td>
                     <Tag
-                      tone={row.result === '예선 통과' ? 'green' : row.result === '심사중' ? 'blue' : 'red'}
+                      tone={
+                        row.result === '예선 통과'
+                          ? 'green'
+                          : row.result === '심사중'
+                            ? 'blue'
+                            : 'red'
+                      }
                     >
                       {row.result}
                     </Tag>
@@ -556,7 +570,9 @@ export function ApplicationsPage() {
                   <td>{row.team}</td>
                   <td>
                     <Tag
-                      tone={row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'}
+                      tone={
+                        row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'
+                      }
                     >
                       {row.result}
                     </Tag>
@@ -709,7 +725,11 @@ export function NotificationsPage() {
   );
 }
 
-export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+export function LegalPageBody({
+  kind,
+}: {
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+}) {
   const paragraphs =
     kind === 'privacy'
       ? (legalCopy as { privacy: string[] }).privacy
@@ -771,9 +791,23 @@ export function LegalPageBody({ kind }: { kind: 'privacy' | 'terms' | 'youth-pro
   );
 }
 
-export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' }) {
+export function LegalPage({
+  kind,
+}: {
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+}) {
   return (
-    <UserShell title={kind === 'privacy' ? '개인정보처리방침' : kind === 'youth-protection' ? '청소년 보호 정책' : kind === 'advertising-policy' ? '광고 운영 정책' : '이용약관'}>
+    <UserShell
+      title={
+        kind === 'privacy'
+          ? '개인정보처리방침'
+          : kind === 'youth-protection'
+            ? '청소년 보호 정책'
+            : kind === 'advertising-policy'
+              ? '광고 운영 정책'
+              : '이용약관'
+      }
+    >
       <LegalPageBody kind={kind} />
     </UserShell>
   );

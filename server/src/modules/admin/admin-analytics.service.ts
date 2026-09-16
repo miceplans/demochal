@@ -20,8 +20,16 @@ export class AdminAnalyticsService {
   async getDashboard(range: '7days' | '30days' | '1year') {
     const [approvedBusinesses, publishedChallenges, totalApplications, newUsers] =
       await Promise.all([
-        this.db.select({ value: count() }).from(businesses).where(eq(businesses.verificationStatus, 'approved')).then(firstCount),
-        this.db.select({ value: count() }).from(challenges).where(eq(challenges.status, 'published')).then(firstCount),
+        this.db
+          .select({ value: count() })
+          .from(businesses)
+          .where(eq(businesses.verificationStatus, 'approved'))
+          .then(firstCount),
+        this.db
+          .select({ value: count() })
+          .from(challenges)
+          .where(eq(challenges.status, 'published'))
+          .then(firstCount),
         this.db.select({ value: count() }).from(applications).then(firstCount),
         this.db
           .select({ value: count() })
@@ -32,7 +40,12 @@ export class AdminAnalyticsService {
 
     const stats = [
       { label: '승인된 기관', value: formatCount(approvedBusinesses), meta: null, dot: '#0877FF' },
-      { label: '진행 중 챌린지', value: formatCount(publishedChallenges), meta: null, dot: '#22C55E' },
+      {
+        label: '진행 중 챌린지',
+        value: formatCount(publishedChallenges),
+        meta: null,
+        dot: '#22C55E',
+      },
       { label: '누적 제출물', value: formatCount(totalApplications), meta: null, dot: '#8B5CF6' },
       { label: '신규 가입자', value: formatCount(newUsers), meta: '최근 7일', dot: '#F59E0B' },
     ];
@@ -98,7 +111,12 @@ export class AdminAnalyticsService {
       organization: business?.name ?? '',
       period: `${formatShortDate(ad.startDate)}~${formatShortDate(ad.endDate)}`,
       stats: [
-        { label: '노출수', value: formatCount(report.totals.impressions), meta: null, dot: '#0877FF' },
+        {
+          label: '노출수',
+          value: formatCount(report.totals.impressions),
+          meta: null,
+          dot: '#0877FF',
+        },
         { label: '클릭수', value: formatCount(report.totals.clicks), meta: null, dot: '#22C55E' },
         { label: 'CTR', value: `${report.totals.ctr.toFixed(1)}%`, meta: null, dot: '#8B5CF6' },
         { label: '집행 광고비', value: formatWon(ad.paidAmount), meta: null, dot: '#F59E0B' },
@@ -129,7 +147,9 @@ export class AdminAnalyticsService {
         this.countUsersByRole('business', bucketStart, bucketEnd),
       ]);
 
-      labels.push(range === '1year' ? `${bucketStart.getMonth() + 1}월` : formatShortDate(bucketStart));
+      labels.push(
+        range === '1year' ? `${bucketStart.getMonth() + 1}월` : formatShortDate(bucketStart),
+      );
       primary.push(primaryCount);
       secondary.push(secondaryCount);
     }

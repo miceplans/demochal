@@ -44,12 +44,19 @@ export class AdminCertificatesService {
       .returning();
     if (!certificate) throw new NotFoundException('Certificate not found');
 
-    const [user] = await this.db.select().from(users).where(eq(users.id, certificate.userId)).limit(1);
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, certificate.userId))
+      .limit(1);
 
     if (status === 'verified' && user) {
       const badges = new Set(user.badges as string[]);
       badges.add(certificate.title);
-      await this.db.update(users).set({ badges: [...badges] }).where(eq(users.id, user.id));
+      await this.db
+        .update(users)
+        .set({ badges: [...badges] })
+        .where(eq(users.id, user.id));
     }
 
     return {

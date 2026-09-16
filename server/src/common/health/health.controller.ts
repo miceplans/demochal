@@ -13,7 +13,10 @@ export class HealthController {
     } catch {
       // ALB target-group health checks key off this status: a DB outage must
       // fail the check (503), not report a false "ok".
-      throw new ServiceUnavailableException({ status: 'error', timestamp: new Date().toISOString() });
+      throw new ServiceUnavailableException({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+      });
     }
     return { status: 'ok', timestamp: new Date().toISOString() };
   }

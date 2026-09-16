@@ -66,7 +66,12 @@ describe('BizService', () => {
       { id: 'p4', amount: -40 },
     ];
     const activeAds = [{ id: 'ad-1', status: 'active' }];
-    const deps = createDeps({ business: { id: 'biz-1' }, stats, history: { items: historyItems, total: -100 }, activeAds });
+    const deps = createDeps({
+      business: { id: 'biz-1' },
+      stats,
+      history: { items: historyItems, total: -100 },
+      activeAds,
+    });
     const service = new BizService(
       db,
       deps.businessesService as any,

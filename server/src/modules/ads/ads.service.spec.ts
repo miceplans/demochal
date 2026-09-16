@@ -34,9 +34,9 @@ describe('AdsService.updateStatus', () => {
     const businesses = createBusinessesStub({ id: 'biz-other' });
     const service = new AdsService(db, businesses as any);
 
-    await expect(
-      service.updateStatus('ad-1', { status: 'paused' }, OWNER),
-    ).rejects.toThrow('Only the owning business');
+    await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
+      'Only the owning business',
+    );
 
     expect(set).not.toHaveBeenCalled();
   });
@@ -45,9 +45,9 @@ describe('AdsService.updateStatus', () => {
     const { db } = createDbStub(AD);
     const service = new AdsService(db, createBusinessesStub(undefined) as any);
 
-    await expect(
-      service.updateStatus('ad-1', { status: 'paused' }, OWNER),
-    ).rejects.toThrow('Only the owning business');
+    await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
+      'Only the owning business',
+    );
   });
 
   it('rejects activating an unpaid preparing ad with 400', async () => {
@@ -56,9 +56,9 @@ describe('AdsService.updateStatus', () => {
     const businesses = createBusinessesStub({ id: 'biz-1' });
     const service = new AdsService(db, businesses as any);
 
-    await expect(
-      service.updateStatus('ad-1', { status: 'active' }, OWNER),
-    ).rejects.toThrow('Unpaid ads cannot be activated directly');
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
+      'Unpaid ads cannot be activated directly',
+    );
 
     expect(set).not.toHaveBeenCalled();
   });
@@ -81,18 +81,19 @@ describe('AdsService.updateStatus', () => {
     const businesses = createBusinessesStub(undefined);
     const service = new AdsService(db, businesses as any);
 
-    await expect(
-      service.updateStatus('ad-1', { status: 'ended' }, ADMIN),
-    ).resolves.toEqual({ ...AD, status: 'ended' });
+    await expect(service.updateStatus('ad-1', { status: 'ended' }, ADMIN)).resolves.toEqual({
+      ...AD,
+      status: 'ended',
+    });
   });
 
   it('throws 404 for unknown ads', async () => {
     const { db } = createDbStub(undefined);
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
 
-    await expect(
-      service.updateStatus('missing', { status: 'paused' }, OWNER),
-    ).rejects.toThrow('Ad not found');
+    await expect(service.updateStatus('missing', { status: 'paused' }, OWNER)).rejects.toThrow(
+      'Ad not found',
+    );
   });
 });
 
@@ -122,8 +123,20 @@ describe('AdsService.report', () => {
       expect(row).toMatchObject({ impressions: 0, clicks: 0, ctr: 0 });
     }
     expect(report.hourly).toHaveLength(24);
-    expect(report.hourly![0]).toEqual({ hour: 0, label: '0시~1시', impressions: 0, clicks: 0, ctr: 0 });
-    expect(report.hourly![23]).toEqual({ hour: 23, label: '23시~24시', impressions: 0, clicks: 0, ctr: 0 });
+    expect(report.hourly![0]).toEqual({
+      hour: 0,
+      label: '0시~1시',
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+    });
+    expect(report.hourly![23]).toEqual({
+      hour: 23,
+      label: '23시~24시',
+      impressions: 0,
+      clicks: 0,
+      ctr: 0,
+    });
     expect(report.monthlyClicks).toEqual([]);
   });
 

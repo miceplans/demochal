@@ -33,7 +33,12 @@ describe('PaymentsService', () => {
   it('marks the order paid and persists a done payment for DONE', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'DONE', orderId: 'order-1', paymentKey: 'pay-key-1', totalAmount: 50000 }),
+      json: async () => ({
+        status: 'DONE',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
     });
     const { db, insertValues } = createDbStub();
     const orders = createOrdersStub();
@@ -82,7 +87,15 @@ describe('PaymentsService', () => {
   });
 
   it('does not duplicate an existing payment row', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'DONE', orderId: 'order-1', paymentKey: 'pay-key-1', totalAmount: 50000 }) });
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'DONE',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
     const { db, insertValues } = createDbStub({ id: 'payment-1' });
     const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
     db.update = vi.fn().mockReturnValue({ set });

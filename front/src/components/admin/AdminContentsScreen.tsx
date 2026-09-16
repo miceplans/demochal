@@ -3,10 +3,7 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  adminContests,
-  adminTeams,
-} from '@/data/admin-design';
+import { adminContests, adminTeams } from '@/data/admin-design';
 import {
   AdminPageTitle,
   AdminSectionTitle,
@@ -125,7 +122,17 @@ const ScrapButton = styled.button({
 
 function ScrapGlyph() {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
       <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
     </svg>
   );

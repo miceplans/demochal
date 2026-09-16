@@ -7,10 +7,16 @@ const KEY_LENGTH = 64;
 
 function scryptAsync(password: string, salt: Buffer, keyLength: number): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    scryptCallback(password, salt, keyLength, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P }, (err, key) => {
-      if (err) reject(err);
-      else resolve(key);
-    });
+    scryptCallback(
+      password,
+      salt,
+      keyLength,
+      { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P },
+      (err, key) => {
+        if (err) reject(err);
+        else resolve(key);
+      },
+    );
   });
 }
 
@@ -30,10 +36,16 @@ export async function verifyPassword(password: string, stored: string | null): P
   const salt = Buffer.from(saltB64!, 'base64url');
   const expected = Buffer.from(hashB64!, 'base64url');
   const derived = await new Promise<Buffer>((resolve, reject) => {
-    scryptCallback(password, salt, expected.length, { N: Number(n), r: Number(r), p: Number(p) }, (err, key) => {
-      if (err) reject(err);
-      else resolve(key);
-    });
+    scryptCallback(
+      password,
+      salt,
+      expected.length,
+      { N: Number(n), r: Number(r), p: Number(p) },
+      (err, key) => {
+        if (err) reject(err);
+        else resolve(key);
+      },
+    );
   });
   return timingSafeEqual(derived, expected);
 }

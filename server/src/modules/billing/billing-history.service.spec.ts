@@ -19,7 +19,10 @@ function collectValues(node: any, acc: unknown[] = []): unknown[] {
     return acc;
   }
   // drizzle wraps bound params in a Param holder rather than inlining them.
-  if (node?.constructor?.name === 'Param' && (node.value instanceof Date || typeof node.value === 'string')) {
+  if (
+    node?.constructor?.name === 'Param' &&
+    (node.value instanceof Date || typeof node.value === 'string')
+  ) {
     acc.push(node.value);
     return acc;
   }
@@ -28,8 +31,20 @@ function collectValues(node: any, acc: unknown[] = []): unknown[] {
 }
 
 const ROWS = [
-  { id: 'pay-1', name: '홈 히어로 배너 광고', amount: 100_000, status: 'done', approvedAt: new Date('2026-09-10T09:00:00Z') },
-  { id: 'pay-2', name: null, amount: 50_000, status: 'cancelled', approvedAt: new Date('2026-09-05T09:00:00Z') },
+  {
+    id: 'pay-1',
+    name: '홈 히어로 배너 광고',
+    amount: 100_000,
+    status: 'done',
+    approvedAt: new Date('2026-09-10T09:00:00Z'),
+  },
+  {
+    id: 'pay-2',
+    name: null,
+    amount: 50_000,
+    status: 'cancelled',
+    approvedAt: new Date('2026-09-05T09:00:00Z'),
+  },
   { id: 'pay-3', name: '개발자 챌린지', amount: 30_000, status: 'failed', approvedAt: null },
   { id: 'pay-4', name: '갤러리 광고', amount: 20_000, status: 'ready', approvedAt: null },
 ];
@@ -42,8 +57,20 @@ describe('BillingHistoryService', () => {
     const { items, total } = await service.forBusiness('biz-1', {});
 
     expect(items).toEqual([
-      { id: 'pay-1', name: '홈 히어로 배너 광고', amount: -100_000, paidAt: '2026-09-10T09:00:00.000Z', status: 'paid' },
-      { id: 'pay-2', name: '주문', amount: -50_000, paidAt: '2026-09-05T09:00:00.000Z', status: 'refunded' },
+      {
+        id: 'pay-1',
+        name: '홈 히어로 배너 광고',
+        amount: -100_000,
+        paidAt: '2026-09-10T09:00:00.000Z',
+        status: 'paid',
+      },
+      {
+        id: 'pay-2',
+        name: '주문',
+        amount: -50_000,
+        paidAt: '2026-09-05T09:00:00.000Z',
+        status: 'refunded',
+      },
       { id: 'pay-3', name: '개발자 챌린지', amount: -30_000, paidAt: null, status: 'failed' },
       // 'ready' (unpaid) rows surface as 'failed' per the status mapping contract.
       { id: 'pay-4', name: '갤러리 광고', amount: -20_000, paidAt: null, status: 'failed' },
@@ -69,7 +96,9 @@ describe('BillingHistoryService', () => {
 
     await service.forBusiness('biz-1', { from: '2026-09-01', to: '2026-09-30' });
 
-    const dates = collectValues(where.mock.calls[0]![0]).filter((v): v is Date => v instanceof Date);
+    const dates = collectValues(where.mock.calls[0]![0]).filter(
+      (v): v is Date => v instanceof Date,
+    );
     expect(dates).toHaveLength(2);
     expect(dates[0]).toEqual(new Date('2026-09-01T00:00:00.000Z'));
     expect(dates[1]).toEqual(new Date('2026-09-30T23:59:59.999Z'));

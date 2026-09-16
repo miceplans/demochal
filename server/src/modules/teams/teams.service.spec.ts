@@ -31,7 +31,12 @@ function createDbStub() {
 }
 
 const leader: AuthUser = { id: 'user-leader', email: 'l@x.com', name: 'Leader', role: 'user' };
-const applicant: AuthUser = { id: 'user-applicant', email: 'a@x.com', name: 'Applicant', role: 'user' };
+const applicant: AuthUser = {
+  id: 'user-applicant',
+  email: 'a@x.com',
+  name: 'Applicant',
+  role: 'user',
+};
 
 const createDto = {
   challengeId: 'challenge-1',
@@ -57,13 +62,24 @@ describe('TeamsService', () => {
         region: '부산',
         openRoles: [{ role: '디자인', count: 1 }],
       },
-      { id: 'team-3', challengeId: 'challenge-2', title: 'ai 스터디', region: '서울', openRoles: null },
+      {
+        id: 'team-3',
+        challengeId: 'challenge-2',
+        title: 'ai 스터디',
+        region: '서울',
+        openRoles: null,
+      },
     ];
     const db = createDbStub();
     db.select.mockReturnValue(selectChain(rows));
     const service = new TeamsService(db, createNotificationsStub() as any);
 
-    const result = await service.list({ challengeId: 'challenge-1', region: '서울', q: '해커톤', role: '개발' });
+    const result = await service.list({
+      challengeId: 'challenge-1',
+      region: '서울',
+      q: '해커톤',
+      role: '개발',
+    });
 
     expect(result.map((team) => team.id)).toEqual(['team-1']);
   });
@@ -151,7 +167,13 @@ describe('TeamsService', () => {
   });
 
   it('join inserts a pending member and notifies the leader', async () => {
-    const memberRow = { id: 'member-2', teamId: 'team-1', userId: applicant.id, role: '개발', status: 'pending' };
+    const memberRow = {
+      id: 'member-2',
+      teamId: 'team-1',
+      userId: applicant.id,
+      role: '개발',
+      status: 'pending',
+    };
     const db = createDbStub();
     db.select
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
@@ -169,11 +191,11 @@ describe('TeamsService', () => {
       role: '개발',
       status: 'pending',
     });
-    expect(notifications.create).toHaveBeenCalledWith(
-      leader.id,
-      'team_matching',
-      { teamId: 'team-1', applicantUserId: applicant.id, role: '개발' },
-    );
+    expect(notifications.create).toHaveBeenCalledWith(leader.id, 'team_matching', {
+      teamId: 'team-1',
+      applicantUserId: applicant.id,
+      role: '개발',
+    });
     expect(result).toEqual(memberRow);
   });
 
@@ -185,7 +207,9 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: 'member-1', userId: applicant.id }]));
     const returning = vi.fn().mockResolvedValue([{ id: 'member-1', status: 'accepted' }]);
-    db.update = vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }) });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }),
+    });
     const notifications = createNotificationsStub();
     const service = new TeamsService(db, notifications as any);
 
@@ -205,7 +229,9 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(selectChain([{ id: 'member-1', userId: applicant.id }]));
     const updated = { id: 'member-1', status: 'rejected' };
     const returning = vi.fn().mockResolvedValue([updated]);
-    db.update = vi.fn().mockReturnValue({ set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }) });
+    db.update = vi.fn().mockReturnValue({
+      set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }),
+    });
     const notifications = createNotificationsStub();
     const service = new TeamsService(db, notifications as any);
 

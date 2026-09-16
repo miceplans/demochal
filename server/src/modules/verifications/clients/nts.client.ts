@@ -58,7 +58,9 @@ export class NtsClient {
     return {
       valid,
       status: result?.b_stt ?? (!result ? 'unrecognized' : undefined),
-      message: valid ? undefined : result?.tax_type ?? result?.b_stt ?? '국세청에서 사업자 상태를 확인할 수 없습니다.',
+      message: valid
+        ? undefined
+        : (result?.tax_type ?? result?.b_stt ?? '국세청에서 사업자 상태를 확인할 수 없습니다.'),
       raw: result,
     };
   }

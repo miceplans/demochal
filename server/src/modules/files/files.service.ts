@@ -26,7 +26,8 @@ const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
 };
 
 function hasExpectedMagicBytes(contentType: AllowedUploadContentType, bytes: Uint8Array): boolean {
-  const startsWith = (...signature: number[]) => signature.every((byte, index) => bytes[index] === byte);
+  const startsWith = (...signature: number[]) =>
+    signature.every((byte, index) => bytes[index] === byte);
   switch (contentType) {
     case 'image/jpeg':
       return startsWith(0xff, 0xd8, 0xff);
@@ -89,8 +90,14 @@ export class FilesService {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus === 'ready') return file;
 
-    const head = await this.s3.send(new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
-    if (head.ContentType !== file.contentType || !head.ContentLength || head.ContentLength > 10 * 1024 * 1024) {
+    const head = await this.s3.send(
+      new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
+    );
+    if (
+      head.ContentType !== file.contentType ||
+      !head.ContentLength ||
+      head.ContentLength > 10 * 1024 * 1024
+    ) {
       await this.rejectUpload(file.key, id);
       throw new NotFoundException('Uploaded file is invalid');
     }
@@ -104,7 +111,8 @@ export class FilesService {
       throw new NotFoundException('Uploaded file is invalid');
     }
 
-    const targetBucket = file.requestedBucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
+    const targetBucket =
+      file.requestedBucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
     const targetKey =
       targetBucket === env.s3PrivateBucket
         ? file.key
@@ -148,11 +156,7 @@ export class FilesService {
   }
 
   private async findOwnedFile(id: string, userId: string) {
-    const [file] = await this.db
-      .select()
-      .from(files)
-      .where(eq(files.id, id))
-      .limit(1);
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
     if (!file || file.uploaderUserId !== userId) throw new NotFoundException('File not found');
     return file;
   }

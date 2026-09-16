@@ -59,7 +59,28 @@ function toPublicUser(user: UserRow) {
 }
 
 function toPublicProfile(user: UserRow) {
-  const { id, name, role, position, region, stacks, badges, externalLinks, awardHistory, createdAt } =
-    user;
-  return { id, name, role, position, region, stacks, badges, externalLinks, awardHistory, createdAt };
+  const {
+    id,
+    name,
+    role,
+    position,
+    region,
+    stacks,
+    badges,
+    externalLinks,
+    awardHistory,
+    createdAt,
+  } = user;
+  return {
+    id,
+    name,
+    role,
+    position,
+    region,
+    stacks,
+    badges,
+    externalLinks,
+    awardHistory,
+    createdAt,
+  };
 }

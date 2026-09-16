@@ -39,7 +39,9 @@ export class InterestsService {
         Array.isArray(value) ||
         typeof (value as { enabled?: unknown }).enabled !== 'boolean'
       ) {
-        throw new BadRequestException(`Setting "${key}" must be an object with a boolean "enabled" flag`);
+        throw new BadRequestException(
+          `Setting "${key}" must be an object with a boolean "enabled" flag`,
+        );
       }
     }
   }

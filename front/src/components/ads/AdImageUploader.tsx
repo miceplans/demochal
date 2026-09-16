@@ -12,7 +12,12 @@ type Props = {
   onFileSelected: (file: File) => void;
 };
 
-export function AdImageUploader({ busy = false, compact = false, label = '파일 찾기', onFileSelected }: Props) {
+export function AdImageUploader({
+  busy = false,
+  compact = false,
+  label = '파일 찾기',
+  onFileSelected,
+}: Props) {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -57,7 +62,9 @@ export function AdImageUploader({ busy = false, compact = false, label = '파일
   );
 }
 
-const DropZone = styled('label', { shouldForwardProp: (prop) => prop !== 'compact' && prop !== 'dragOver' })<{
+const DropZone = styled('label', {
+  shouldForwardProp: (prop) => prop !== 'compact' && prop !== 'dragOver',
+})<{
   compact: boolean;
   dragOver: boolean;
 }>(({ compact, dragOver }) => ({
@@ -78,7 +85,9 @@ const DropZone = styled('label', { shouldForwardProp: (prop) => prop !== 'compac
   transition: 'border-color 120ms ease, background 120ms ease',
   '&:hover, &:focus-within': { borderColor: c.primary },
 }));
-const UploadIcon = styled('img', { shouldForwardProp: (prop) => prop !== 'compact' })<{ compact: boolean }>(({ compact }) => ({
+const UploadIcon = styled('img', { shouldForwardProp: (prop) => prop !== 'compact' })<{
+  compact: boolean;
+}>(({ compact }) => ({
   width: compact ? 40 : 58,
   height: 'auto',
   objectFit: 'contain',

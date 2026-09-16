@@ -91,7 +91,13 @@ const ChartCard = styled.div({
   background: c.white,
 });
 
-function arcPath(cx: number, cy: number, radius: number, startAngle: number, endAngle: number): string {
+function arcPath(
+  cx: number,
+  cy: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+): string {
   const toPoint = (angle: number) => {
     const rad = (angle * Math.PI) / 180;
     return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)] as const;
@@ -140,14 +146,19 @@ function GaugeBar(props: {
   );
 }
 
-export function AdRatioChart() {
-  const ratio = adRatio.ratio;
+export function AdRatioChart({
+  value = adRatio.value,
+  ratio = adRatio.ratio,
+}: {
+  value?: string;
+  ratio?: number;
+}) {
   const percent = Math.round(ratio * 100);
 
   return (
     <ChartCard style={{ width: 420 }}>
       <span style={{ ...textStyle.body, color: c.gray500 }}>유저 광고 비율</span>
-      <strong style={{ ...textStyle.h1, color: c.gray900 }}>{adRatio.value}</strong>
+      <strong style={{ ...textStyle.h1, color: c.gray900 }}>{value}</strong>
       <div
         style={{
           position: 'relative',
@@ -211,7 +222,9 @@ const Legend = styled.span({
   fontSize: 11,
   color: c.gray900,
 });
-const LegendDot = styled('span', { shouldForwardProp: (prop) => prop !== 'color' })<{ color: string }>(({ color }) => ({
+const LegendDot = styled('span', { shouldForwardProp: (prop) => prop !== 'color' })<{
+  color: string;
+}>(({ color }) => ({
   width: 8,
   height: 8,
   borderRadius: '50%',
@@ -235,9 +248,26 @@ const Tab = styled.button<{ active?: boolean }>(({ active }) => ({
 
 const yAxisLabels = ['0', '50k', '100k', '500k', '1M', '5M'];
 
-export function TrafficChart() {
-  const [range, setRange] = useState<TrafficRange>('1year');
-  const { labels, primary, secondary } = trafficData[range];
+export function TrafficChart({
+  range: controlledRange,
+  onRangeChange,
+  labels: controlledLabels,
+  primary: controlledPrimary,
+  secondary: controlledSecondary,
+}: {
+  range?: TrafficRange;
+  onRangeChange?: (range: TrafficRange) => void;
+  labels?: string[];
+  primary?: number[];
+  secondary?: number[];
+}) {
+  const [localRange, setLocalRange] = useState<TrafficRange>('1year');
+  const range = controlledRange ?? localRange;
+  const setRange = onRangeChange ?? setLocalRange;
+  const fallback = trafficData[range];
+  const labels = controlledLabels?.length ? controlledLabels : fallback.labels;
+  const primary = controlledPrimary?.length ? controlledPrimary : fallback.primary;
+  const secondary = controlledSecondary?.length ? controlledSecondary : fallback.secondary;
   const height = 160;
   const maxY = Math.max(...primary) * 1.15;
   const data = labels.map((label, i) => ({
@@ -260,7 +290,9 @@ export function TrafficChart() {
         background: c.white,
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+      <div
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}
+      >
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <strong style={{ ...textStyle.h2, color: c.gray900 }}>유저 트래픽</strong>
           <span style={{ display: 'flex', gap: 10 }}>
@@ -304,7 +336,9 @@ export function TrafficChart() {
             <span key={label}>{label}</span>
           ))}
         </div>
-        <div style={{ flex: 1, minWidth: 0, height, display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div
+          style={{ flex: 1, minWidth: 0, height, display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
           <ResponsiveContainer width="100%" height={height}>
             <ComposedChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 4 }}>
               <defs>
@@ -321,7 +355,11 @@ export function TrafficChart() {
                 interval={0}
                 tick={{ fontSize: 9, fill: c.gray900, letterSpacing: '0.06em' }}
               />
-              <YAxis domain={[0, maxY]} hide ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]} />
+              <YAxis
+                domain={[0, maxY]}
+                hide
+                ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]}
+              />
               <Tooltip
                 content={<ChartTooltip />}
                 cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
@@ -360,10 +398,7 @@ export function TrafficChart() {
 const months = activityChart.months;
 const generalSeries = activityChart.general;
 const corpSeries = activityChart.corp;
-const yLabels = Array.from(
-  { length: activityChart.yMax / 2 + 1 },
-  (_, i) => i * 2,
-);
+const yLabels = Array.from({ length: activityChart.yMax / 2 + 1 }, (_, i) => i * 2);
 
 export function ActivityChart() {
   const data = months.map((month, i) => ({
@@ -496,9 +531,25 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-            <XAxis dataKey="date" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
-            <YAxis yAxisId="left" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, color: '#6B7280' }} tickLine={false} axisLine={false} />
+            <XAxis
+              dataKey="date"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="left"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              tick={{ fontSize: 12, color: '#6B7280' }}
+              tickLine={false}
+              axisLine={false}
+            />
             <Tooltip content={<ChartTooltip />} />
             <Area
               yAxisId="left"

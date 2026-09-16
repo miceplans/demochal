@@ -27,7 +27,10 @@ export const users = pgTable('users', {
   awardHistory: jsonb('award_history').notNull().default([]),
   onboardingSurvey: jsonb('onboarding_survey'),
   interests: jsonb('interests').$type<string[]>().notNull().default([]),
-  notificationSettings: jsonb('notification_settings').$type<Record<string, boolean>>().notNull().default({}),
+  notificationSettings: jsonb('notification_settings')
+    .$type<Record<string, boolean>>()
+    .notNull()
+    .default({}),
   status: varchar('status', { length: 20 }).notNull().default('active'),
   suspended: boolean('suspended').notNull().default(false),
   suspendedReason: text('suspended_reason'),

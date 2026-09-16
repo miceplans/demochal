@@ -1,7 +1,13 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, count, desc, eq, gte, lt, ne } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { applications, bookmarks, businesses, challengeViews, challenges } from '../../db/schema.js';
+import {
+  applications,
+  bookmarks,
+  businesses,
+  challengeViews,
+  challenges,
+} from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
@@ -83,7 +89,9 @@ export class ChallengesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         category: dto.category,
-        status: (await this.adminSettingsService.isEnabled('contestAutoPublish')) ? 'published' : 'draft',
+        status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
+          ? 'published'
+          : 'draft',
       })
       .returning();
     return challenge;
@@ -200,7 +208,9 @@ export class ChallengesService {
     const rows = await this.db
       .select({ createdAt: challengeViews.createdAt })
       .from(challengeViews)
-      .where(and(eq(challengeViews.challengeId, challengeId), gte(challengeViews.createdAt, rangeStart)));
+      .where(
+        and(eq(challengeViews.challengeId, challengeId), gte(challengeViews.createdAt, rangeStart)),
+      );
 
     const months: { label: string; value: number }[] = [];
     for (let i = 5; i >= 0; i -= 1) {

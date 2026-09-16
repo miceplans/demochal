@@ -18,7 +18,12 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
-import { applications as initialApplications, postingStats, recentPosting, type BizApplication } from '@/data/biz-design';
+import {
+  applications as initialApplications,
+  postingStats,
+  recentPosting,
+  type BizApplication,
+} from '@/data/biz-design';
 
 const Hero = styled.div({
   height: 236,
@@ -64,12 +69,23 @@ const MemoInput = styled.input({
   '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
 });
 
-const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = ['전체', '제출 완료', '검토중', '보완 요청'];
+const STATUS_FILTERS: Array<BizApplication['status'] | '전체'> = [
+  '전체',
+  '제출 완료',
+  '검토중',
+  '보완 요청',
+];
 const STATUS_OPTIONS: BizApplication['status'][] = ['제출 완료', '검토중', '보완 요청'];
 const RESULT_OPTIONS: BizApplication['result'][] = ['미정', '합격', '불합격'];
 const FILTER_OPTIONS: DropdownOption[] = STATUS_FILTERS.map((s) => ({ value: s, label: s }));
-const STATUS_DROPDOWN_OPTIONS: DropdownOption[] = STATUS_OPTIONS.map((s) => ({ value: s, label: s }));
-const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({ value: r, label: r }));
+const STATUS_DROPDOWN_OPTIONS: DropdownOption[] = STATUS_OPTIONS.map((s) => ({
+  value: s,
+  label: s,
+}));
+const RESULT_DROPDOWN_OPTIONS: DropdownOption[] = RESULT_OPTIONS.map((r) => ({
+  value: r,
+  label: r,
+}));
 
 export function BizApplicationsPage() {
   const router = useRouter();
@@ -102,10 +118,15 @@ export function BizApplicationsPage() {
         </div>
         <Side>
           <SideActions>
-            <PrimaryButton onClick={() => router.push(hrefOf(`/postings/${recentPosting.id}/form`))}>
+            <PrimaryButton
+              onClick={() => router.push(hrefOf(`/postings/${recentPosting.id}/form`))}
+            >
               신청폼 만들기
             </PrimaryButton>
-            <OutlineButton type="button" onClick={() => router.push(hrefOf(`/postings/${recentPosting.id}`))}>
+            <OutlineButton
+              type="button"
+              onClick={() => router.push(hrefOf(`/postings/${recentPosting.id}`))}
+            >
               챌린지 편집하기
             </OutlineButton>
           </SideActions>
@@ -152,7 +173,9 @@ export function BizApplicationsPage() {
             filteredRows.map((row, index) => (
               <TRow
                 key={row.id}
-                style={index === filteredRows.length - 1 ? { borderRadius: '0 0 12px 12px' } : undefined}
+                style={
+                  index === filteredRows.length - 1 ? { borderRadius: '0 0 12px 12px' } : undefined
+                }
               >
                 <Col w={150}>{row.team}</Col>
                 <Col w={150}>{row.applicant}</Col>
@@ -162,7 +185,9 @@ export function BizApplicationsPage() {
                     aria-label={`${row.team} 신청 상태`}
                     value={row.status}
                     size="S"
-                    onChange={(value) => updateRow(row.id, { status: value as BizApplication['status'] })}
+                    onChange={(value) =>
+                      updateRow(row.id, { status: value as BizApplication['status'] })
+                    }
                   />
                 </span>
                 <span style={{ width: 300, flexShrink: 0 }}>
@@ -179,7 +204,9 @@ export function BizApplicationsPage() {
                     aria-label={`${row.team} 평가상태`}
                     value={row.result}
                     size="S"
-                    onChange={(value) => updateRow(row.id, { result: value as BizApplication['result'] })}
+                    onChange={(value) =>
+                      updateRow(row.id, { result: value as BizApplication['result'] })
+                    }
                   />
                 </span>
               </TRow>

@@ -16,7 +16,13 @@ export class CertificatesService {
     await this.filesService.assertOwnedReadyPrivate(dto.fileId, userId);
     const [certificate] = await this.db
       .insert(certificates)
-      .values({ userId, title: dto.award, category: dto.category, fileId: dto.fileId, status: 'pending' })
+      .values({
+        userId,
+        title: dto.award,
+        category: dto.category,
+        fileId: dto.fileId,
+        status: 'pending',
+      })
       .returning();
     return certificate!;
   }

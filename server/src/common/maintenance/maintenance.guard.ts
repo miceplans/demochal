@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import type { Request } from 'express';
 import { AdminSettingsService } from '../../modules/admin/admin-settings.service.js';
@@ -24,7 +29,10 @@ export class MaintenanceGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<Request>();
-    if (EXEMPT_PATHS.has(request.path) || !(await this.adminSettingsService.isEnabled('maintenanceMode'))) {
+    if (
+      EXEMPT_PATHS.has(request.path) ||
+      !(await this.adminSettingsService.isEnabled('maintenanceMode'))
+    ) {
       return true;
     }
 

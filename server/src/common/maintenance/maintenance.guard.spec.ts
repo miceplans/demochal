@@ -14,10 +14,7 @@ describe('MaintenanceGuard', () => {
     async (path) => {
       const adminSettingsService = { isEnabled: vi.fn() };
       const jwtService = { verifyAsync: vi.fn() };
-      const guard = new MaintenanceGuard(
-        adminSettingsService as never,
-        jwtService as never,
-      );
+      const guard = new MaintenanceGuard(adminSettingsService as never, jwtService as never);
 
       await expect(guard.canActivate(contextFor(path))).resolves.toBe(true);
       expect(adminSettingsService.isEnabled).not.toHaveBeenCalled();

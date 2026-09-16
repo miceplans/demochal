@@ -1,5 +1,13 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsEmail, IsObject, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEmail,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 
 export class UpdateBusinessDto {
   @IsOptional()

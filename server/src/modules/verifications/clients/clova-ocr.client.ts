@@ -23,7 +23,9 @@ export class ClovaOcrClient {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-OCR-SECRET': env.clovaOcrSecretKey },
       body: JSON.stringify({
-        version: 'V2', requestId: crypto.randomUUID(), timestamp: Date.now(),
+        version: 'V2',
+        requestId: crypto.randomUUID(),
+        timestamp: Date.now(),
         images: [{ format: extension, name: fileName, url: fileUrl }],
       }),
     });
@@ -34,13 +36,18 @@ export class ClovaOcrClient {
     }
     const raw = (image.businessLicense?.result ?? {}) as Record<string, unknown>;
     const text = JSON.stringify(raw);
-    const registrationNumber = readText(raw.businessNumber) ?? readText(raw.registrationNumber) ?? text.match(/\d{3}-\d{2}-\d{5}/)?.[0];
+    const registrationNumber =
+      readText(raw.businessNumber) ??
+      readText(raw.registrationNumber) ??
+      text.match(/\d{3}-\d{2}-\d{5}/)?.[0];
     return { businessName: readText(raw.businessName), registrationNumber, raw };
   }
 }
 
 function readText(value: unknown): string | undefined {
-  return typeof value === 'object' && value !== null && typeof (value as { text?: unknown }).text === 'string'
+  return typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { text?: unknown }).text === 'string'
     ? (value as { text: string }).text
     : undefined;
 }

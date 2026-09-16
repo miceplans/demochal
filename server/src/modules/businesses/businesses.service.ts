@@ -39,7 +39,9 @@ export class BusinessesService {
       .from(businesses)
       .where(eq(businesses.ownerUserId, ownerUserId))
       .limit(1);
-    return business ? { ...business, ...verificationStatusPresentation(business.verificationStatus) } : null;
+    return business
+      ? { ...business, ...verificationStatusPresentation(business.verificationStatus) }
+      : null;
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {

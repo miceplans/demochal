@@ -1,4 +1,10 @@
-import { BadGatewayException, Inject, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -67,15 +73,19 @@ export class PaymentsService {
   }
 
   private async getTossPayment(paymentKey: string): Promise<TossPayment> {
-    if (!env.tossSecretKey) throw new BadGatewayException('Toss payment verification is not configured');
+    if (!env.tossSecretKey)
+      throw new BadGatewayException('Toss payment verification is not configured');
 
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
     let response: Response;
     try {
-      response = await fetch(`https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}`, {
-        headers: { Authorization: `Basic ${authorization}` },
-        signal: AbortSignal.timeout(10_000),
-      });
+      response = await fetch(
+        `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}`,
+        {
+          headers: { Authorization: `Basic ${authorization}` },
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
     } catch {
       throw new BadGatewayException('Toss payment verification failed');
     }

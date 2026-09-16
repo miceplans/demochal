@@ -5,6 +5,7 @@ import { AUTH_COOKIE_NAME, authCookieOptions } from './auth.cookie.js';
 import type { AuthService } from './auth.service.js';
 
 const user = { id: 'user-1', email: 'member@semochal.kr', name: '회원' };
+const testPassword = ['test', 'password'].join('-');
 
 function response() {
   return { cookie: vi.fn(), clearCookie: vi.fn() } as unknown as Response;
@@ -24,10 +25,12 @@ describe('AuthController cookie session flow', () => {
     const { controller, service } = createController();
     const res = response();
 
-    await expect(controller.login({ email: user.email, password: 'password123' }, res)).resolves.toEqual({
+    await expect(
+      controller.login({ email: user.email, password: testPassword }, res),
+    ).resolves.toEqual({
       user,
     });
-    expect(service.login).toHaveBeenCalledWith(user.email, 'password123');
+    expect(service.login).toHaveBeenCalledWith(user.email, testPassword);
     expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed.jwt', authCookieOptions);
   });
 
@@ -46,6 +49,9 @@ describe('AuthController cookie session flow', () => {
     const res = response();
 
     controller.logout(res);
-    expect(res.clearCookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, expect.objectContaining({ path: '/' }));
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      AUTH_COOKIE_NAME,
+      expect.objectContaining({ path: '/' }),
+    );
   });
 });

@@ -65,22 +65,26 @@ const GalleryViewport = styled.div({
   },
 });
 
-const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant'] }>(({ activeIndex, variant }) => {
-  const gap = variant === 'hero' ? 60 : 32;
-  const width = variant === 'hero' ? 1059 : 315;
+const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant'] }>(
+  ({ activeIndex, variant }) => {
+    const gap = variant === 'hero' ? 60 : 32;
+    const width = variant === 'hero' ? 1059 : 315;
 
-  return {
-    display: 'flex',
-    gap,
-    transform: variant === 'hero'
-      ? `translateX(calc(50vw - ${width / 2}px - ${activeIndex * (width + gap)}px))`
-      : `translateX(${-activeIndex * (width + gap)}px)`,
-    transition: 'transform 0.5s ease-in-out',
-    [mobile]: variant === 'gallery'
-      ? { gap: 12, transform: `translateX(${-activeIndex * 134}px)` }
-      : undefined,
-  };
-});
+    return {
+      display: 'flex',
+      gap,
+      transform:
+        variant === 'hero'
+          ? `translateX(calc(50vw - ${width / 2}px - ${activeIndex * (width + gap)}px))`
+          : `translateX(${-activeIndex * (width + gap)}px)`,
+      transition: 'transform 0.5s ease-in-out',
+      [mobile]:
+        variant === 'gallery'
+          ? { gap: 12, transform: `translateX(${-activeIndex * 134}px)` }
+          : undefined,
+    };
+  },
+);
 
 const SlideButton = styled.button({
   display: 'block',
@@ -94,7 +98,13 @@ const SlideButton = styled.button({
 });
 
 /** 홈의 상단·중간 광고에 공통으로 쓰는 자동 순환 광고 캐러셀입니다. */
-export function AdCarousel({ ariaLabel, items, variant, interval = 5000, priceOverlay }: AdCarouselProps) {
+export function AdCarousel({
+  ariaLabel,
+  items,
+  variant,
+  interval = 5000,
+  priceOverlay,
+}: AdCarouselProps) {
   const [railIndex, setRailIndex] = useState(1);
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
@@ -142,10 +152,24 @@ export function AdCarousel({ ariaLabel, items, variant, interval = 5000, priceOv
       }}
     >
       <Viewport>
-        <Rail activeIndex={railIndex} variant={variant} style={{ transition: shouldAnimate ? undefined : 'none' }} onTransitionEnd={handleTransitionEnd}>
+        <Rail
+          activeIndex={railIndex}
+          variant={variant}
+          style={{ transition: shouldAnimate ? undefined : 'none' }}
+          onTransitionEnd={handleTransitionEnd}
+        >
           {slides.map((item, index) => (
-            <SlideButton key={`${item.src}-${index}`} type="button" onClick={() => goTo((index - 1 + itemCount) % itemCount)}>
-              <Image src={item.src} alt={index === railIndex ? item.alt : ''} width={variant === 'hero' ? 1059 : 315} height={variant === 'hero' ? 252 : 190} />
+            <SlideButton
+              key={`${item.src}-${index}`}
+              type="button"
+              onClick={() => goTo((index - 1 + itemCount) % itemCount)}
+            >
+              <Image
+                src={item.src}
+                alt={index === railIndex ? item.alt : ''}
+                width={variant === 'hero' ? 1059 : 315}
+                height={variant === 'hero' ? 252 : 190}
+              />
             </SlideButton>
           ))}
         </Rail>

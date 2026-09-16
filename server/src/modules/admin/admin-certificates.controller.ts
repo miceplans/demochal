@@ -10,10 +10,7 @@ export class AdminCertificatesController {
   constructor(private readonly adminCertificatesService: AdminCertificatesService) {}
 
   @Get()
-  list(
-    @Query('status') status?: 'pending' | 'verified' | 'rejected',
-    @Query('q') q?: string,
-  ) {
+  list(@Query('status') status?: 'pending' | 'verified' | 'rejected', @Query('q') q?: string) {
     return this.adminCertificatesService.list({ status, q });
   }
 

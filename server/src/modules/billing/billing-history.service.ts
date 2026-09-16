@@ -27,9 +27,7 @@ export class BillingHistoryService {
    * 없는 행(결제 대기/실패)은 COALESCE로 정렬 시 맨 아래로 본다.
    */
   async forBusiness(businessId: string, range: PaymentHistoryRange) {
-    const conditions = [
-      or(eq(ads.businessId, businessId), eq(challenges.businessId, businessId)),
-    ];
+    const conditions = [or(eq(ads.businessId, businessId), eq(challenges.businessId, businessId))];
     if (range.from) conditions.push(gte(payments.approvedAt, new Date(range.from)));
     if (range.to) conditions.push(lte(payments.approvedAt, new Date(`${range.to}T23:59:59.999Z`)));
 

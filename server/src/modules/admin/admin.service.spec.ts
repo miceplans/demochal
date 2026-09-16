@@ -1,11 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  AdminService,
-  maskBizNumber,
-  maskEmail,
-  maskReporterName,
-} from './admin.service.js';
+import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
 
 /**
  * Auto-chaining thenable stand-in for a drizzle query builder: every method
@@ -28,7 +23,9 @@ function chainable(resolved: unknown, spies: Record<string, (args: unknown[]) =>
 }
 
 /** Scripted drizzle stub: each db.select()/update()/insert() pops the next queued result. */
-function createDbStub(options: { select?: unknown[]; update?: unknown[]; insert?: unknown[] } = {}) {
+function createDbStub(
+  options: { select?: unknown[]; update?: unknown[]; insert?: unknown[] } = {},
+) {
   const selectQueue = [...(options.select ?? [])];
   const updateQueue = [...(options.update ?? [])];
   const insertQueue = [...(options.insert ?? [])];
@@ -128,9 +125,7 @@ describe('AdminService — verifications', () => {
     const { db } = createDbStub({ select: [[]] });
     const { service } = createService(db);
 
-    await expect(service.approveVerification('missing')).rejects.toBeInstanceOf(
-      NotFoundException,
-    );
+    await expect(service.approveVerification('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
 
@@ -163,9 +158,7 @@ describe('AdminService — certificates', () => {
       fileId: 'f1',
       status: 'verified',
     });
-    expect(setCalls[1]).toEqual([
-      { badges: ['기존 뱃지', certificateRow.title] },
-    ]);
+    expect(setCalls[1]).toEqual([{ badges: ['기존 뱃지', certificateRow.title] }]);
   });
 
   it('approve does not duplicate an existing badge', async () => {
@@ -255,9 +248,7 @@ describe('AdminService — users', () => {
 
     const result = await service.suspendUser('u1', { suspended: false });
 
-    expect(setCalls[0]).toEqual([
-      { status: 'active', suspendedReason: null, suspendedAt: null },
-    ]);
+    expect(setCalls[0]).toEqual([{ status: 'active', suspendedReason: null, suspendedAt: null }]);
     expect(result).toEqual({
       id: 'u1',
       name: '김수아',
@@ -381,9 +372,7 @@ describe('AdminService — reports', () => {
 
     const result = await service.resolveReport('r1', { action: 'dismiss' });
 
-    expect(setCalls[0]).toEqual([
-      expect.objectContaining({ status: 'dismissed', note: null }),
-    ]);
+    expect(setCalls[0]).toEqual([expect.objectContaining({ status: 'dismissed', note: null })]);
     expect(result.status).toBe('dismissed');
   });
 

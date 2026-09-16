@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  ForbiddenException,
-  Get,
-  HttpCode,
-  Post,
-  Query,
-} from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, HttpCode, Post, Query } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { BillingHistoryService } from './billing-history.service.js';

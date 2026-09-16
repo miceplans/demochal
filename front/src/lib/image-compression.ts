@@ -24,7 +24,10 @@ export function formatBytes(bytes: number): string {
   return `${(bytes / 1024 ** 2).toFixed(1)}MB`;
 }
 
-export async function compressToWebP(file: File, preset: AdImagePreset): Promise<CompressedAdImage> {
+export async function compressToWebP(
+  file: File,
+  preset: AdImagePreset,
+): Promise<CompressedAdImage> {
   if (!file.type.startsWith('image/')) {
     throw new Error('이미지 파일만 업로드할 수 있어요.');
   }
@@ -33,7 +36,9 @@ export async function compressToWebP(file: File, preset: AdImagePreset): Promise
     useWebWorker: true,
     ...preset,
   });
-  const webpFile = new File([compressed], `${file.name.replace(/\.[^.]+$/, '')}.webp`, { type: 'image/webp' });
+  const webpFile = new File([compressed], `${file.name.replace(/\.[^.]+$/, '')}.webp`, {
+    type: 'image/webp',
+  });
   return {
     compressedSize: webpFile.size,
     file: webpFile,

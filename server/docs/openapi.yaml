@@ -1050,7 +1050,12 @@ paths:
               required: [productId, startDate, endDate]
               properties:
                 productId: { type: string }
-                expectedDailyPrice: { type: integer, minimum: 0, description: 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청. }
+                expectedDailyPrice:
+                  {
+                    type: integer,
+                    minimum: 0,
+                    description: 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청.,
+                  }
                 imageFileId: { type: string, format: uuid }
                 landingUrl: { type: string }
                 startDate: { type: string, format: date }
@@ -1658,7 +1663,8 @@ components:
         endDate: { type: string, format: date-time }
         status: { type: string, enum: [draft, published, closed], description: 등록 시 draft }
         createdAt: { type: string, format: date-time }
-        category: { type: string, description: 'implemented — 생성 시 저장, 유사 챌린지 추천에 사용' }
+        category:
+          { type: string, description: 'implemented — 생성 시 저장, 유사 챌린지 추천에 사용' }
         # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
         posterFileId: { type: string, format: uuid }
         organizer: { type: string }

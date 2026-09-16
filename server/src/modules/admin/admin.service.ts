@@ -256,15 +256,16 @@ export class AdminService {
       const ocrDump = businessVerifications
         .map((row) => JSON.stringify(row.ocrResult ?? {}))
         .join('');
-      const nts = ocrDump.includes('폐업자') || ocrDump.includes('휴업자')
-        ? 'closed'
-        : businessVerifications.some(
-              (row) => row.status === 'approved' || row.status === 'verified',
-            )
-          ? 'success'
-          : businessVerifications.some((row) => row.status === 'rejected')
-            ? 'failed'
-            : 'unrecognized';
+      const nts =
+        ocrDump.includes('폐업자') || ocrDump.includes('휴업자')
+          ? 'closed'
+          : businessVerifications.some(
+                (row) => row.status === 'approved' || row.status === 'verified',
+              )
+            ? 'success'
+            : businessVerifications.some((row) => row.status === 'rejected')
+              ? 'failed'
+              : 'unrecognized';
       const appliedAt = latest?.createdAt ?? business.createdAt;
       return {
         id: business.id,
@@ -337,9 +338,7 @@ export class AdminService {
     const conditions = [];
     if (status) conditions.push(eq(certificates.status, status));
     if (q) {
-      conditions.push(
-        or(ilike(certificates.title, `%${q}%`), ilike(users.name, `%${q}%`)),
-      );
+      conditions.push(or(ilike(certificates.title, `%${q}%`), ilike(users.name, `%${q}%`)));
     }
     const rows = await this.db
       .select({ certificate: certificates, userName: users.name })
@@ -610,10 +609,7 @@ export class AdminService {
 
     const now = Date.now();
     const contestCards = contestRows.map((challenge) => {
-      const daysLeft = Math.max(
-        0,
-        Math.ceil((challenge.endDate.getTime() - now) / 86_400_000),
-      );
+      const daysLeft = Math.max(0, Math.ceil((challenge.endDate.getTime() - now) / 86_400_000));
       return {
         id: challenge.id,
         title: challenge.title,
@@ -686,9 +682,7 @@ export class AdminService {
 
   private async buildAdReport(adParam: string): Promise<AdminAdReport> {
     let adNumber: number | null = null;
-    let row:
-      | { ad: typeof ads.$inferSelect; organization: string | null }
-      | undefined = (
+    let row: { ad: typeof ads.$inferSelect; organization: string | null } | undefined = (
       await this.db
         .select({ ad: ads, organization: businesses.name })
         .from(ads)

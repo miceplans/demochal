@@ -72,7 +72,7 @@ export class VerificationsProcessorService {
         business,
         status,
         { ...ocrResult.raw, nts: ntsResult.raw ?? null },
-        ntsResult.valid ? null : ntsResult.message ?? 'NTS verification failed',
+        ntsResult.valid ? null : (ntsResult.message ?? 'NTS verification failed'),
       );
     } catch (error) {
       this.logger.error(`Verification ${verification.id} processing failed`, error);
@@ -96,10 +96,18 @@ export class VerificationsProcessorService {
   ) {
     await this.db
       .update(verifications)
-      .set({ status, ocrResult: ocrResult ?? null, rejectionReason: rejectionReason ?? null, updatedAt: new Date() })
+      .set({
+        status,
+        ocrResult: ocrResult ?? null,
+        rejectionReason: rejectionReason ?? null,
+        updatedAt: new Date(),
+      })
       .where(eq(verifications.id, verification.id));
     if (!business) return;
-    await this.db.update(businesses).set({ verificationStatus: status }).where(eq(businesses.id, business.id));
+    await this.db
+      .update(businesses)
+      .set({ verificationStatus: status })
+      .where(eq(businesses.id, business.id));
     const approved = status === 'verified';
     await this.notificationsService.create(business.ownerUserId, 'verification.result', {
       verificationId: verification.id,

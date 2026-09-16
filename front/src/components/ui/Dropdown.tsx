@@ -46,7 +46,9 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
   color: ${({ $hasValue, theme }) => ($hasValue ? '#111' : theme.colors.gray[500])};
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 0.15s ease, transform 0.1s ease;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.1s ease;
 
   &:active:not(:disabled) {
     transform: scale(0.98);
@@ -70,7 +72,8 @@ const Chevron = styled.span<{ $open: boolean }>`
   flex-shrink: 0;
   border-right: 1.5px solid currentColor;
   border-bottom: 1.5px solid currentColor;
-  transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')}) translateY(${(p) => (p.$open ? '2px' : '-2px')});
+  transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')})
+    translateY(${(p) => (p.$open ? '2px' : '-2px')});
   transition: transform 0.18s ease;
 `;
 
