@@ -28,6 +28,7 @@ const envSchema = z
 
     JWT_SECRET: z.string().min(1).optional(),
     FRONTEND_ORIGIN: z.string().default('http://localhost:3000'),
+    API_PUBLIC_URL: z.string().url().default('http://localhost:3001'),
 
     GOOGLE_CLIENT_ID: z.string().default(''),
     GOOGLE_CLIENT_SECRET: z.string().default(''),
@@ -74,6 +75,7 @@ export const env = {
   frontendOrigins: raw.FRONTEND_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
+  apiPublicUrl: raw.API_PUBLIC_URL,
 
   googleClientId: raw.GOOGLE_CLIENT_ID,
   googleClientSecret: raw.GOOGLE_CLIENT_SECRET,

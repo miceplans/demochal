@@ -9,6 +9,8 @@ import {
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
+
+type OpenRole = { role: string; count: number };
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: varchar('email', { length: 255 }).notNull().unique(),
@@ -19,15 +21,17 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   position: varchar('position', { length: 100 }),
   region: varchar('region', { length: 100 }),
-  stacks: jsonb('stacks').notNull().default([]),
-  badges: jsonb('badges').notNull().default([]),
+  stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
+  badges: jsonb('badges').$type<string[]>().notNull().default([]),
   externalLinks: jsonb('external_links').notNull().default([]),
   awardHistory: jsonb('award_history').notNull().default([]),
   onboardingSurvey: jsonb('onboarding_survey'),
-  interestCategories: jsonb('interest_categories').notNull().default([]),
-  notificationSettings: jsonb('notification_settings').notNull().default({}),
+  interests: jsonb('interests').$type<string[]>().notNull().default([]),
+  notificationSettings: jsonb('notification_settings').$type<Record<string, boolean>>().notNull().default({}),
+  status: varchar('status', { length: 20 }).notNull().default('active'),
   suspended: boolean('suspended').notNull().default(false),
   suspendedReason: text('suspended_reason'),
+  suspendedAt: timestamp('suspended_at'),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -72,6 +76,7 @@ export const challenges = pgTable('challenges', {
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   category: varchar('category', { length: 100 }),
+  viewCount: integer('view_count').notNull().default(0),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -91,7 +96,7 @@ export const teams = pgTable('teams', {
   title: varchar('title', { length: 200 }).notNull(),
   leaderRole: varchar('leader_role', { length: 50 }),
   region: varchar('region', { length: 100 }),
-  openRoles: jsonb('open_roles').notNull().default([]),
+  openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
   status: varchar('status', { length: 20 }).notNull().default('recruiting'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -140,6 +145,7 @@ export const adProducts = pgTable('ad_products', {
   placement: varchar('placement', { length: 20 }).notNull(),
   dailyPrice: integer('daily_price').notNull(),
   previewImageUrl: text('preview_image_url'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const ads = pgTable('ads', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -157,6 +163,7 @@ export const ads = pgTable('ads', {
   endDate: timestamp('end_date').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('preparing'),
   paidAmount: integer('paid_amount').notNull().default(0),
+  expiresAt: timestamp('expires_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const orders = pgTable('orders', {

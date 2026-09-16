@@ -55,6 +55,15 @@ export class ChallengesService {
     return challenge;
   }
 
+  async stats(id: string) {
+    await this.getOrThrow(id);
+    const [views] = await this.db
+      .select({ count: count() })
+      .from(challengeViews)
+      .where(eq(challengeViews.challengeId, id));
+    return { views: Number(views?.count ?? 0) };
+  }
+
   async create(dto: CreateChallengeDto, ownerUserId: string) {
     const [business] = await this.db
       .select({ id: businesses.id })

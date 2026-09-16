@@ -28,7 +28,7 @@ export class AdminCertificatesService {
     return rows.map((row) => ({
       id: row.certificate.id,
       user: row.userName,
-      award: row.certificate.award,
+      award: row.certificate.title,
       category: row.certificate.category,
       fileId: row.certificate.fileId,
       status: row.certificate.status,
@@ -48,14 +48,14 @@ export class AdminCertificatesService {
 
     if (status === 'verified' && user) {
       const badges = new Set(user.badges as string[]);
-      badges.add(certificate.award);
+      badges.add(certificate.title);
       await this.db.update(users).set({ badges: [...badges] }).where(eq(users.id, user.id));
     }
 
     return {
       id: certificate.id,
       user: user?.name,
-      award: certificate.award,
+      award: certificate.title,
       category: certificate.category,
       fileId: certificate.fileId,
       status: certificate.status,

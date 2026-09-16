@@ -25,18 +25,21 @@ const PREPARING_TTL_MS = 30 * 60 * 1000;
 // product-management screen exists (tracked separately, out of scope here).
 const DEFAULT_PRODUCTS = [
   {
+    id: 'hero',
     name: '홈 히어로 배너',
     placement: 'hero',
     dailyPrice: 100_000,
     description: '홈 화면 최상단 히어로 배너 노출',
   },
   {
+    id: 'gallery',
     name: '갤러리 노출',
     placement: 'gallery',
     dailyPrice: 50_000,
     description: '홈 화면 갤러리 영역 노출',
   },
   {
+    id: 'team',
     name: '팀 모집 홍보',
     placement: 'team',
     dailyPrice: 30_000,
@@ -199,6 +202,12 @@ export class AdsService implements OnModuleInit {
       ...zero,
     }));
     return { totals: { ...zero }, daily, hourly, monthlyClicks: [] };
+  }
+
+  async getReportForAdmin(id: string) {
+    await this.findById(id);
+    const zero = { impressions: 0, clicks: 0, ctr: 0 };
+    return { totals: zero, daily: [], hourly: [], monthlyClicks: [] };
   }
 
   // Rows that currently occupy a placement's calendar: paid/active ads, plus

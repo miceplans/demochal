@@ -33,6 +33,15 @@ export class BusinessesService {
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
+  async findByOwner(ownerUserId: string) {
+    const [business] = await this.db
+      .select()
+      .from(businesses)
+      .where(eq(businesses.ownerUserId, ownerUserId))
+      .limit(1);
+    return business ? { ...business, ...verificationStatusPresentation(business.verificationStatus) } : null;
+  }
+
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
     const [business] = await this.db
       .update(businesses)
