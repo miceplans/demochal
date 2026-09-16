@@ -12,6 +12,7 @@ interface NtsStatusResponse {
   status_code?: string;
   data?: Array<{
     b_no?: string;
+    valid?: string;
     b_stt?: string;
     b_stt_cd?: string;
     tax_type?: string;
@@ -48,15 +49,15 @@ export class NtsClient {
       body: JSON.stringify({ b_no: [businessNumber] }),
     });
     const body = (await response.json().catch(() => ({}))) as NtsStatusResponse;
-    if (!response.ok || body.status_code !== 'OK') {
+    if (!response.ok || (body.status_code !== undefined && body.status_code !== 'OK')) {
       throw new Error(`NTS status lookup failed (${body.status_code ?? response.status})`);
     }
 
     const result = body.data?.[0];
-    const valid = result?.b_stt_cd === '01';
+    const valid = result?.b_stt_cd ? result.b_stt_cd === '01' : result?.valid === '01';
     return {
       valid,
-      status: result?.b_stt,
+      status: result?.b_stt ?? (!result ? 'unrecognized' : undefined),
       message: valid ? undefined : result?.tax_type ?? result?.b_stt ?? '국세청에서 사업자 상태를 확인할 수 없습니다.',
       raw: result,
     };

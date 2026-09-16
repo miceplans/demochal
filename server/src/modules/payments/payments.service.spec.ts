@@ -18,6 +18,7 @@ function createDbStub(existingPayment?: { id: string }) {
 
 function createOrdersStub() {
   return {
+    findByIdInternal: vi.fn().mockResolvedValue({ id: 'order-1', amount: 50000 }),
     markPaid: vi.fn().mockResolvedValue({}),
     markCancelled: vi.fn().mockResolvedValue({}),
   };
@@ -32,7 +33,7 @@ describe('PaymentsService', () => {
   it('marks the order paid and persists a done payment for DONE', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'DONE', amount: 50000, approvedAt: '2026-09-14T00:00:00Z' }),
+      json: async () => ({ status: 'DONE', orderId: 'order-1', paymentKey: 'pay-key-1', totalAmount: 50000 }),
     });
     const { db, insertValues } = createDbStub();
     const orders = createOrdersStub();
@@ -47,12 +48,12 @@ describe('PaymentsService', () => {
         orderId: 'order-1',
         providerPaymentKey: 'pay-key-1',
         amount: 50000,
-        status: 'done',
+        status: 'paid',
       }),
     );
   });
 
-  it('maps cancellations to order status and payment rows', async () => {
+  it('ignores non-DONE webhook events', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ status: 'PARTIAL_CANCELED', amount: 50000 }),
@@ -63,25 +64,25 @@ describe('PaymentsService', () => {
 
     await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
 
-    expect(orders.markCancelled).toHaveBeenCalledWith('order-1', 'refunded');
-    expect(insertValues).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }));
+    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
   });
 
-  it('ignores webhooks Toss cannot confirm', async () => {
+  it('rejects webhooks Toss cannot confirm', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 404 });
     const { db, insertValues } = createDbStub();
     const orders = createOrdersStub();
     const service = new PaymentsService(db, orders as any);
 
-    await service.handleTossWebhook(webhook('DONE'));
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('verification failed');
 
     expect(orders.markPaid).not.toHaveBeenCalled();
     expect(orders.markCancelled).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
   });
 
-  it('updates an existing payment row instead of duplicating it', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'DONE', amount: 1 }) });
+  it('does not duplicate an existing payment row', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ status: 'DONE', orderId: 'order-1', paymentKey: 'pay-key-1', totalAmount: 50000 }) });
     const { db, insertValues } = createDbStub({ id: 'payment-1' });
     const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
     db.update = vi.fn().mockReturnValue({ set });
@@ -90,6 +91,6 @@ describe('PaymentsService', () => {
     await service.handleTossWebhook(webhook('DONE'));
 
     expect(insertValues).not.toHaveBeenCalled();
-    expect(db.update).toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
   });
 });
