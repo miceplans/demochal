@@ -90,7 +90,7 @@ paths:
       tags: [Auth]
       summary: 이메일 회원가입
       operationId: register
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         이메일/비밀번호로 계정을 생성한다. **원래 명세에는 없던 엔드포인트** — 실제 운영 화면은
         소셜 로그인(`/auth/social/{provider}`, 아직 planned)이 기본 가입 경로이지만, 그 경로가
@@ -168,7 +168,7 @@ paths:
       tags: [Auth]
       summary: 로그아웃
       operationId: logout
-      x-impl-status: planned
+      x-impl-status: implemented
       description: HttpOnly 세션 쿠키를 만료시킨다.
       responses:
         '204': { description: 로그아웃 성공 }
@@ -232,7 +232,7 @@ paths:
       tags: [Users]
       summary: 내 프로필 수정
       operationId: updateMyProfile
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         마이페이지(`/my`) 프로필 편집용. 기술 스택 추가, 자격증/뱃지 인증 요청, 외부 링크 관리.
         공개 프로필(`/profile`)에 노출되는 Identity(이름/역할/지역), 출품·수상 이력 포함.
@@ -260,7 +260,7 @@ paths:
       tags: [Users]
       summary: 온보 설문 저장 (4단계)
       operationId: saveOnboardingSurvey
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
         프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
@@ -350,7 +350,7 @@ paths:
       tags: [Challenges]
       summary: 챌린지 통계 (클릭수·북마크·노출·지원자 분포·월별 노출 추이)
       operationId: getChallengeStats
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기업 공고 관리(`/biz/postings/{id}`, `/biz/postings`)의 그래프 데이터를 한 번에 반환한다.
         - `clicks` / `bookmarks`: 사이드 StatBox (값 + 전주 대비 증감) — 상세 조회(`GET /challenges/{id}`)
@@ -376,7 +376,7 @@ paths:
       tags: [Challenges]
       summary: 유사 챌린지 조회
       operationId: listSimilarChallenges
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 챌린지 상세 하단의 유사 챌린지 3개 추천.
       parameters:
         - name: id
@@ -396,7 +396,7 @@ paths:
       tags: [Teams]
       summary: 팀 모집글 목록 조회
       operationId: listTeams
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         팀 탐색 화면(`/teams`). 필터: 챌린지/필요역할/지역, "팀 찾기" 검색.
         홈(`/`)의 팀 모집 섹션, 챌린지 상세 팀모집 탭에서도 사용.
@@ -423,7 +423,7 @@ paths:
       tags: [Teams]
       summary: 팀 모집글 작성
       operationId: createTeam
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 한줄 → 필요 역할 슬롯(추가/삭제) → 내 역할.
         프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + `/my/teams` 이동.
@@ -443,7 +443,7 @@ paths:
       tags: [Teams]
       summary: 팀 모집글 상세 조회
       operationId: getTeam
-      x-impl-status: planned
+      x-impl-status: implemented
       parameters:
         - name: id
           in: path
@@ -507,7 +507,7 @@ paths:
       tags: [Applications]
       summary: 지원서 상세 조회
       operationId: getApplication
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 기업 지원서 관리(`/biz/applications`)의 행 클릭 상세.
       parameters:
         - name: id
@@ -525,7 +525,7 @@ paths:
       tags: [Applications]
       summary: 지원서 상태 변경 (검토중/보완요청/합격/불합격 + 담당자 메모)
       operationId: updateApplication
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기업 지원서 관리 화면의 상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격),
         담당자 메모 입력, 납볍하기(엑셀 export). 팀 지원 결과 전송(채팅방 링크)도 이 흐름의 확장.
@@ -558,7 +558,7 @@ paths:
       tags: [Bookmarks]
       summary: 내 북마크 목록 조회
       operationId: listMyBookmarks
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 북마크 화면(`/my/bookmarks`)의 챌린지 그리드(정렬, 모바일 1·2열 토글).
       parameters:
         - name: x-user-id
@@ -578,7 +578,7 @@ paths:
       tags: [Bookmarks]
       summary: 챌린지 북마크 토글
       operationId: toggleBookmark
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 챌린지 상세의 북마크(스크랩) 버튼. 현재 프론트는 `useUserStore.bookmarks`에 로컬 저장.
       parameters:
         - name: id
@@ -613,7 +613,7 @@ paths:
       tags: [Interests]
       summary: 관심분야 저장
       operationId: saveInterests
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         관심분야 화면(`/my/interests`)의 Chip 그룹 토글 + 저장하기.
         홈의 AI 추천 챌린지 개인화와 연계.
@@ -644,7 +644,7 @@ paths:
       tags: [Interests]
       summary: 알림 설정 저장
       operationId: saveNotificationSettings
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 알림 설정 화면(`/my/notifications`)의 그룹별 Toggle(팀매칭/마감임박/공고 등) on/off.
       parameters:
         - name: x-user-id
@@ -741,7 +741,7 @@ paths:
       tags: [Businesses]
       summary: 기업 프로필 수정
       operationId: updateBusiness
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign`),
         기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
@@ -909,7 +909,7 @@ paths:
       tags: [Billing]
       summary: 기업 대시보드 종합 조회
       operationId: getBizDashboard
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기업 대시보드(`/biz/dashboard`)의 모든 위젯을 한 번에 반환한다.
         - `recentPosting` + `stats`: 나의 가장 최근 공고 카드와 클릭수/북마크 StatBox (실집계, `GET /challenges/{id}/stats`와 동일 소스)
@@ -932,7 +932,7 @@ paths:
       tags: [Billing]
       summary: 결제수단 목록 조회
       operationId: listPaymentCards
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 대시보드/결제수단(`/biz/billing`)의 마스킹된 카드 표시(BizPaymentCard).
       responses:
         '200':
@@ -944,7 +944,7 @@ paths:
       tags: [Billing]
       summary: 결제수단 등록
       operationId: registerPaymentCard
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         토스페이먼츠 빌링키 발급 후 저장. 카드번호는 마스킹되어 반환된다.
         서버는 원본 카드번호를 절대 받지 않으므로(PCI 범위는 토스에 남음) `maskedNumber`는
@@ -972,7 +972,7 @@ paths:
       tags: [Billing]
       summary: 결제 내역 조회
       operationId: listPaymentHistory
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         결제 내역(`/biz/billing`) 테이블(결제 항목/일시/금액)과 대시보드 요약용.
         amount 부호 규약: 결제(출금)는 음수, 충전·환불은 양수 — 화면에서 녹색(+)·빨간색(-)으로 구분 표시.
@@ -1002,7 +1002,7 @@ paths:
       tags: [Ads]
       summary: 광고 상품(노출 위치) 목록 조회
       operationId: listAdProducts
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         광고 추가 플로우(`/biz/ads`)의 노출 위치 선택(AdPlacementPreview, PC/모바일 뷰 토글).
         placement 종류: `hero`(홈 상단 대형 배너), `gallery`(홈 중간 이미지 갤러리),
@@ -1019,7 +1019,7 @@ paths:
       tags: [Ads]
       summary: 내 광고 목록 조회
       operationId: listMyAds
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 광고 관리 화면(`/biz/ads`)의 진행중인 광고 테이블과 대시보드 차트용.
       parameters:
         - name: status
@@ -1035,7 +1035,7 @@ paths:
       tags: [Ads]
       summary: 광고 등록 (기간 선택 + 결제)
       operationId: createAd
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         단기 결제 팝업(react-day-picker 기간 선택, 일일 단가 × 기간 = 결제 금액) → 결제수단 확인 → 완료.
         주문 생성(`orders.adId`) → 토스 결제 → 웹훅(`POST /payments/webhook/toss`)이
@@ -1078,7 +1078,7 @@ paths:
       tags: [Ads]
       summary: 광고 상태 변경 (중단 등)
       operationId: updateAd
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 관리자 광고 관리(`/admin/ad-pricing`)의 활동 메뉴(수정/납볍/중단)와 기업측 중단.
       parameters:
         - name: id
@@ -1105,7 +1105,7 @@ paths:
       tags: [Ads]
       summary: 광고 성과 리포트 (기간별)
       operationId: getAdReport
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기업 리포트(`/biz/reports`)와 관리자 리포트(`/admin/analytics?ad=N`).
         - `totals`: 화면 상단의 합계 행(일별/시간별 테이블 상단 '합계' 로우와 동일 — 서버 계산 권장)
@@ -1140,7 +1140,7 @@ paths:
       tags: [Operations]
       summary: 운영대행 문의 접수
       operationId: submitOperationsInquiry
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         운영대행 페이지(`/biz/operations`, MICE PLANS X SEMO)의 온라인 상담/견적 문의 폼
         (성함/연락처/문의내용). 회사 위치 지도·주소·연락처는 정적 정보.
@@ -1172,7 +1172,7 @@ paths:
       tags: [Admin]
       summary: 관리자 대시보드 통계
       operationId: getAdminDashboard
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         관리자 대시보드(`/admin`)의 위젯 데이터 묶음.
         - `stats`: 통계 카드 4종(승인된 기관/진행 중 챌린지/누적 제출물/신규 가입자) — label + 값 + 보조 문구
@@ -1196,7 +1196,7 @@ paths:
       tags: [Admin]
       summary: 기관 심사 목록 + 심사 현황 통계 조회
       operationId: listAdminBusinesses
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         기관 심사(`/admin/biz-review`).
         - `stats`: 상단 통계 카드 4종(전체 신청/승인/거부/대기) — dot 색상 포함
@@ -1227,7 +1227,7 @@ paths:
       tags: [Admin]
       summary: 기관 인증 승인
       operationId: approveVerification
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
       parameters:
         - name: id
@@ -1245,7 +1245,7 @@ paths:
       tags: [Admin]
       summary: 기관 인증 거부
       operationId: rejectVerification
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 거부 사유(`rejectionReason`) 기록 + 기업에 알림.
       parameters:
         - name: id
@@ -1272,7 +1272,7 @@ paths:
       tags: [Admin]
       summary: 상장(자격/수상) 인증 목록 조회
       operationId: listAdminCertificates
-      x-impl-status: planned
+      x-impl-status: implemented
       description: '인증 관리(`/admin/certificates`): 미인증/인증/거부 탭, 사용자 검색/유형 필터, 상장 썸네일.'
       parameters:
         - name: status
@@ -1294,7 +1294,7 @@ paths:
       tags: [Admin]
       summary: 상장 인증 승인/거부
       operationId: verifyCertificate
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         상장 인증(`/admin/certificates`): 탭(미인증/인증/거부) + 사용자 검색/유형(수상 실적/출품 이력) 필터.
         썸네일 클릭 시 원본 이미지 오버레이 → 승인/거부. 승인 시 사용자 프로필 뱃지 부여.
@@ -1324,7 +1324,7 @@ paths:
       tags: [Admin]
       summary: 전체 광고 목록 조회
       operationId: listAdminAds
-      x-impl-status: planned
+      x-impl-status: implemented
       description: '광고 관리(`/admin/ad-pricing`): 검색/상태/활동 필터, 광고 수정·납볍·중단.'
       parameters:
         - name: q
@@ -1344,7 +1344,7 @@ paths:
       tags: [Admin]
       summary: 광고 단가 조회
       operationId: getAdPricing
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         광고비 관리(`/admin/ad-pricing/pricing`): PC/모바일 뷰 토글로 홈 화면 미리보기(MovingAds 캐러셀,
         챌린지/팀 카드)를 재현. 슬롯 클릭 → 다이얼로그(현재 광고사/기간, '리포트 보기' → `/admin/analytics?ad=N`)
@@ -1361,7 +1361,7 @@ paths:
       tags: [Admin]
       summary: 광고 단가 수정
       operationId: updateAdPricing
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 슬롯 클릭 다이얼로그에서 하루 광고비 입력/저장 (`adPricing.dailyPrice`).
       requestBody:
         required: true
@@ -1386,7 +1386,7 @@ paths:
       tags: [Admin]
       summary: 사용자 목록 조회
       operationId: listAdminUsers
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         사용자 관리(`/admin/users`): 이름/이메일(마스킹)/포지션/신고 누적/상태(활성·정지) 테이블,
         가입일/뱃지/활동상태 필터.
@@ -1408,7 +1408,7 @@ paths:
       tags: [Admin]
       summary: 사용자 정지/해제
       operationId: suspendUser
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 상태 뱃지(활성·정지) 토글.
       parameters:
         - name: id
@@ -1436,7 +1436,7 @@ paths:
       tags: [Admin]
       summary: 신고 로그 조회
       operationId: listAdminReports
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         신고 처리(`/admin/reports`)와 대시보드/콘텐츠 모니터링의 신고 로그 테이블(ReportLogTable).
         검색/필터 + 엑셀 납볍. 상태 한글 표기: 대기·승인(조치)·거부(기각).
@@ -1460,7 +1460,7 @@ paths:
       tags: [Admin]
       summary: 신고 처리 (조치/기각)
       operationId: resolveReport
-      x-impl-status: planned
+      x-impl-status: implemented
       parameters:
         - name: id
           in: path
@@ -1487,7 +1487,7 @@ paths:
       tags: [Admin]
       summary: 콘텐츠 모니터링 조회
       operationId: listAdminContents
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         콘텐츠 모니터링(`/admin/contents`).
         - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트)
@@ -1510,7 +1510,7 @@ paths:
       tags: [Admin]
       summary: 전체 리포트/분석
       operationId: getAdminAnalytics
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         리포트(`/admin/analytics`).
         - `?ad=N` 지정 시: 빅배버 N번 광고 리포트 — 기관·기간, 통계 카드 4종(노출수/클릭수/CTR/집행 광고비),
@@ -1551,7 +1551,7 @@ paths:
       tags: [Admin]
       summary: 관리자 설정 조회
       operationId: getAdminSettings
-      x-impl-status: planned
+      x-impl-status: implemented
       description: |
         설정(`/admin/settings`). `groups`는 설정 항목 메타(제목/키/라벨/설명)를,
         `values`는 현재 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
@@ -1566,7 +1566,7 @@ paths:
       tags: [Admin]
       summary: 관리자 설정 저장
       operationId: updateAdminSettings
-      x-impl-status: planned
+      x-impl-status: implemented
       description: 변경된 키만 partial로 본문에 담아 저장. 저장하기 버튼은 토스트 피드백.
       requestBody:
         required: true
