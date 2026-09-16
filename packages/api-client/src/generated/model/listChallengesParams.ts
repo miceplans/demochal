@@ -18,9 +18,9 @@
  */
 
 export type ListChallengesParams = {
-/**
- * 이전 페이지의 nextCursor (ISO 8601)
- */
-cursor?: string;
-limit?: number;
+  /**
+   * 이전 페이지의 nextCursor (ISO 8601)
+   */
+  cursor?: string;
+  limit?: number;
 };

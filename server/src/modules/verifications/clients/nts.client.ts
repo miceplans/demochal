@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { fetchJson } from '../../../common/http/fetch-json.js';
 import { env } from '../../../config/env.js';
 
 export interface NtsCheckResult {
@@ -43,7 +44,7 @@ export class NtsClient {
     url.searchParams.set('serviceKey', env.ntsApiKey);
     url.searchParams.set('returnType', 'JSON');
 
-    const response = await fetch(url, {
+    const response = await fetchJson(url.toString(), {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: JSON.stringify({ b_no: [businessNumber] }),

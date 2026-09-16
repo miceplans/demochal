@@ -18,7 +18,15 @@ import {
 import { applications, postingStats, recentPosting } from '@/data/biz-design';
 
 const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
-  <span style={{ width: w, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+  <span
+    style={{
+      width: w,
+      flexShrink: 0,
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+    }}
+  >
     {children}
   </span>
 );
@@ -100,7 +108,12 @@ export function BizPostingManagePage() {
                 <Col w={120}>
                   <span
                     style={{
-                      color: row.result === '합격' ? c.green : row.result === '불합격' ? c.red : c.gray500,
+                      color:
+                        row.result === '합격'
+                          ? c.green
+                          : row.result === '불합격'
+                            ? c.red
+                            : c.gray500,
                     }}
                   >
                     {row.result}
@@ -140,6 +153,12 @@ const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
 const BadgeLabel = styled.strong({ flexShrink: 0, color: c.gray900 });
 const BadgeValue = styled.span({ color: c.gray700 });
 
-const SideCol = styled.div({ width: 301, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 32 });
+const SideCol = styled.div({
+  width: 301,
+  flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
+});
 const ActionStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const StatStack = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
