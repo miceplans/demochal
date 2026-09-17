@@ -8,6 +8,7 @@ import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
+import { generated } from '@semochal/api-client';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -91,6 +92,20 @@ const Nav = styled.nav({
   },
   '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
+});
+const HeaderActionLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 36,
+  padding: '0 12px',
+  borderRadius: 6,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  fontWeight: 600,
+  whiteSpace: 'nowrap',
+  transition: 'background 0.15s ease',
+  '&:hover': { background: c.gray50 },
 });
 const MobileHeader = styled.header({
   display: 'none',
@@ -226,6 +241,8 @@ export function UserShell({
   useEffect(() => {
     void useUserStore.persist.rehydrate();
   }, []);
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const isLoggedIn = auth?.status === 200;
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
     ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
@@ -269,12 +286,21 @@ export function UserShell({
             <>
               <SearchBar />
               <Row gap={20}>
-                <Link href="/notifications" aria-label="알림">
-                  <Icon src="/assets/icons/bell.png" alt="알림" />
-                </Link>
-                <Link href="/my" aria-label="내 프로필">
-                  <Icon src="/assets/icons/profile.png" alt="프로필" />
-                </Link>
+                {isLoggedIn ? (
+                  <>
+                    <Link href="/notifications" aria-label="알림">
+                      <Icon src="/assets/icons/bell.png" alt="알림" />
+                    </Link>
+                    <Link href="/my" aria-label="내 프로필">
+                      <Icon src="/assets/icons/profile.png" alt="프로필" />
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <HeaderActionLink href="/biz">챌린지 만들기</HeaderActionLink>
+                    <HeaderActionLink href="/biz">문의하기</HeaderActionLink>
+                  </>
+                )}
               </Row>
             </>
           )}
