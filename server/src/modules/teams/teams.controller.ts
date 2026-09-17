@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
-import { Public } from '../../common/auth/public.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../auth/public.decorator.js';
 import { CreateTeamDto } from './dto/create-team.dto.js';
 import { JoinTeamDto } from './dto/join-team.dto.js';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
@@ -22,7 +23,7 @@ export class TeamsController {
   }
 
   @Post()
-  create(@Body() dto: CreateTeamDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateTeamDto, @CurrentUser() user: AuthenticatedUser) {
     return this.teamsService.create(dto, user.id);
   }
 
@@ -33,7 +34,7 @@ export class TeamsController {
   }
 
   @Post(':id/join')
-  join(@Param('id') id: string, @Body() dto: JoinTeamDto, @CurrentUser() user: AuthUser) {
+  join(@Param('id') id: string, @Body() dto: JoinTeamDto, @CurrentUser() user: AuthenticatedUser) {
     return this.teamsService.join(id, dto.role, user.id);
   }
 
@@ -42,7 +43,7 @@ export class TeamsController {
     @Param('id') id: string,
     @Param('memberId') memberId: string,
     @Body() dto: UpdateTeamMemberDto,
-    @CurrentUser() user: AuthUser,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.teamsService.updateMember(id, memberId, dto, user);
   }

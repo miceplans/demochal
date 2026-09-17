@@ -11,7 +11,7 @@ import {
 import { and, desc, eq, gt, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adProducts, ads, orders } from '../../db/schema.js';
-import type { AuthUser } from '../../common/auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
@@ -160,7 +160,7 @@ export class AdsService implements OnModuleInit {
     return ad;
   }
 
-  async updateStatus(id: string, dto: UpdateAdDto, user: AuthUser) {
+  async updateStatus(id: string, dto: UpdateAdDto, user: AuthenticatedUser) {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
     if (user.role !== 'admin' && (!business || business.id !== ad.businessId)) {
@@ -185,7 +185,7 @@ export class AdsService implements OnModuleInit {
    * 광고 성과 리포트. 노출/클릭 계측 비콘이 아직 없어(광고는 클라이언트에서만
    * 렌더링) 구조는 실제 스키마와 동일하되 모든 지표가 정직하게 0으로 채워진다.
    */
-  async report(id: string, query: AdReportQueryDto, user: AuthUser) {
+  async report(id: string, query: AdReportQueryDto, user: AuthenticatedUser) {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
     if (user.role !== 'admin' && (!business || business.id !== ad.businessId)) {

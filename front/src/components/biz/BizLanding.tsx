@@ -227,12 +227,12 @@ const marketingWallItems: DriftWallItem[] = [
   },
 ];
 const operationIcons = [
-  '/assets/LandingIcons/LandingDocuments.png',
-  '/assets/LandingIcons/LandingMegaphone.png',
-  '/assets/LandingIcons/LandingApplicant.png',
-  '/assets/LandingIcons/LandingCheck.png',
-  '/assets/LandingIcons/LandingAward.png',
-  '/assets/LandingIcons/LandingPerson.png',
+  '/assets/landing-icons/landing-documents.png',
+  '/assets/landing-icons/landing-megaphone.png',
+  '/assets/landing-icons/landing-applicant.png',
+  '/assets/landing-icons/landing-check.png',
+  '/assets/landing-icons/landing-award.png',
+  '/assets/landing-icons/landing-person.png',
 ];
 
 export function BizLanding() {
