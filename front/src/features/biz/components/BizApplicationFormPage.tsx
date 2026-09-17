@@ -306,7 +306,6 @@ export function BizApplicationFormPage() {
             <MetaInput
               value={meta}
               onChange={(e) => setMeta(e.target.value)}
-              placeholder="기관명 · 접수기간"
               aria-label="신청서 안내문구"
             />
           </TitleCol>

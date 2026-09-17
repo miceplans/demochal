@@ -17,7 +17,6 @@ import {
   BizFooter,
   useBizHref,
 } from '@/components/biz/BizShell';
-import { admin } from '@/data/biz-design';
 
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
@@ -85,27 +84,23 @@ export function BizLoginFlow() {
                 <Form>
                   <Field>
                     성함
-                    <FieldInput defaultValue={admin.name} />
+                    <FieldInput />
                   </Field>
                   <Field>
                     소속
-                    <FieldInput defaultValue={admin.company} />
+                    <FieldInput />
                   </Field>
                   <Field>
                     이메일
-                    <FieldInput
-                      type="email"
-                      defaultValue={admin.email}
-                      placeholder="example@miceplans.com"
-                    />
+                    <FieldInput type="email" />
                   </Field>
                   <Field>
                     전화번호
-                    <FieldInput defaultValue={admin.phone} />
+                    <FieldInput />
                   </Field>
                   <Field>
                     아이디
-                    <FieldInput defaultValue={admin.id} />
+                    <FieldInput />
                   </Field>
                   <Field>
                     비밀번호
@@ -131,7 +126,6 @@ export function BizLoginFlow() {
                     <FieldInput
                       value={registrationNumber}
                       onChange={(event) => setRegistrationNumber(event.target.value)}
-                      placeholder="617-81-98126"
                       inputMode="numeric"
                     />
                   </Field>

@@ -235,7 +235,7 @@ export function BizPostingFormPage() {
                   />
                   외부 링크 추가
                 </RadioOption>
-                <LinkInput placeholder="https://" aria-label="외부 링크" />
+                <LinkInput aria-label="외부 링크" />
               </RoleRow>
             </RadioColumn>
           </FieldBlock>
