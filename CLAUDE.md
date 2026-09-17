@@ -15,7 +15,7 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 ## Server 규칙 (`server/`)
 
 - **구조**: NestJS 모듈 — auth, users, businesses, verifications, challenges, applications, orders, payments, files, notifications, ads. `DbModule`/`QueueModule`은 `@Global`. 인증은 전역 `AuthGuard`(HttpOnly 쿠키 JWT)이며 매 요청 DB에서 유저를 다시 로드해 권한 변경이 즉시 반영된다(`common/auth/auth.guard.ts`) — 이 동작을 우회하는 캐싱을 추가하지 않는다. 공개 엔드포인트는 `@Public()`, 권한은 `@Roles()`로 표시.
-- **Drizzle**: 스키마는 현재 `server/src/db/schema.ts` 단일 파일(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`)하고 **현재는 수동 실행** — 코드에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
+- **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`)하고 **현재는 수동 실행** — 코드에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
 - **워커**: `worker.ts`는 SQS(`SQS_VERIFICATIONS_QUEUE_URL`) 폧 루프만 돌리고 HTTP를 열지 않는다. 워커 전용 로직은 `worker.module.ts`에 등록된 모듈(현재 verifications, notifications)에만 둔다.
 - **설정**: `config/env.ts`는 검증 없는 process.env 읽기(TODO: zod). 신규 환경변수는 여기 + `server/.env.example`에 함께 추가.
 
