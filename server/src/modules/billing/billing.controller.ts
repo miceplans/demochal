@@ -1,5 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, Post, Query } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
@@ -15,7 +16,7 @@ export class BillingController {
   ) {}
 
   @Get('cards')
-  async listCards(@CurrentUser() user: AuthUser) {
+  async listCards(@CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('Business account required');
     return this.billingService.listCards(business.id);
@@ -23,14 +24,17 @@ export class BillingController {
 
   @Post('cards')
   @HttpCode(201)
-  async registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthUser) {
+  async registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('Business account required');
     return this.billingService.registerCard(business.id, dto);
   }
 
   @Get('history')
-  async listHistory(@Query() query: PaymentHistoryQueryDto, @CurrentUser() user: AuthUser) {
+  async listHistory(
+    @Query() query: PaymentHistoryQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('Business account required');
     return this.billingHistoryService.forBusiness(business.id, query);

@@ -74,7 +74,7 @@ export function HomePage() {
                     aria-label="분야"
                     size="S"
                     width={104}
-                    defaultValue="분야"
+                    placeholder="분야"
                     options={[
                       { value: '분야', label: '분야' },
                       { value: 'IT/SW', label: 'IT/SW' },
@@ -85,7 +85,7 @@ export function HomePage() {
                     aria-label="연도"
                     size="S"
                     width={104}
-                    defaultValue="2025년"
+                    placeholder="2025년"
                     options={[
                       { value: '2025년', label: '2025년' },
                       { value: '2024년', label: '2024년' },
@@ -95,7 +95,7 @@ export function HomePage() {
                     aria-label="수상등급"
                     size="S"
                     width={104}
-                    defaultValue="수상등급"
+                    placeholder="수상등급"
                     options={[
                       { value: '수상등급', label: '수상등급' },
                       { value: '대상', label: '대상' },

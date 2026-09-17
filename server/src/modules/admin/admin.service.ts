@@ -17,7 +17,7 @@ import {
   adminSettings,
   type reports as reportsTable,
 } from '../../db/schema.js';
-import type { AuthUser } from '../../common/auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
@@ -463,7 +463,7 @@ export class AdminService {
   async listUsers(q?: string, status?: string) {
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)));
-    if (status) conditions.push(eq(users.status, status));
+    if (status) conditions.push(eq(users.suspended, status === 'suspended'));
     const rows = await this.db
       .select()
       .from(users)
@@ -488,7 +488,7 @@ export class AdminService {
       email: maskEmail(row.email),
       position: row.position ?? '',
       reports: countByUser.get(row.id) ?? 0,
-      status: row.status,
+      status: row.suspended ? ('suspended' as const) : ('active' as const),
     }));
   }
 
@@ -497,8 +497,8 @@ export class AdminService {
       .update(users)
       .set(
         dto.suspended
-          ? { status: 'suspended', suspendedReason: dto.reason ?? null, suspendedAt: new Date() }
-          : { status: 'active', suspendedReason: null, suspendedAt: null },
+          ? { suspended: true, suspendedReason: dto.reason ?? null, suspendedAt: new Date() }
+          : { suspended: false, suspendedReason: null, suspendedAt: null },
       )
       .where(eq(users.id, id));
 
@@ -515,7 +515,7 @@ export class AdminService {
       email: maskEmail(user.email),
       position: user.position ?? '',
       reports: filedCount?.count ?? 0,
-      status: user.status,
+      status: user.suspended ? ('suspended' as const) : ('active' as const),
     };
   }
 
@@ -731,7 +731,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------ settings
 
-  async getSettings(user: AuthUser) {
+  async getSettings(user: AuthenticatedUser) {
     const [row] = await this.db
       .select()
       .from(adminSettings)
@@ -749,7 +749,7 @@ export class AdminService {
     };
   }
 
-  async updateSettings(values: Record<string, boolean>, user: AuthUser) {
+  async updateSettings(values: Record<string, boolean>, user: AuthenticatedUser) {
     // The body is a free-form key→boolean map; drop anything that isn't a boolean.
     const clean = Object.fromEntries(
       Object.entries(values ?? {}).filter(([, value]) => typeof value === 'boolean'),
@@ -773,7 +773,7 @@ export class AdminService {
 
   // -------------------------------------------------------- user-facing writes
 
-  async createCertificate(dto: CreateCertificateDto, user: AuthUser) {
+  async createCertificate(dto: CreateCertificateDto, user: AuthenticatedUser) {
     const [row] = await this.db
       .insert(certificates)
       .values({
@@ -787,7 +787,7 @@ export class AdminService {
     return row;
   }
 
-  async createReport(dto: CreateReportDto, user: AuthUser) {
+  async createReport(dto: CreateReportDto, user: AuthenticatedUser) {
     const [row] = await this.db
       .insert(reports)
       .values({

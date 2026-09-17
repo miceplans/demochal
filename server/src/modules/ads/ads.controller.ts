@@ -8,8 +8,9 @@ import {
   Query,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
-import { Public } from '../../common/auth/public.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../auth/public.decorator.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
@@ -30,25 +31,36 @@ export class AdsController {
   }
 
   @Get()
-  async listMine(@Query('status') status: string | undefined, @CurrentUser() user: AuthUser) {
+  async listMine(
+    @Query('status') status: string | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const business = await this.businessesService.findByOwner(user.id);
     return this.adsService.listMine(business?.id ?? '', status);
   }
 
   @Post()
-  async create(@Body() dto: CreateAdDto, @CurrentUser() user: AuthUser) {
+  async create(@Body() dto: CreateAdDto, @CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new UnauthorizedException('Business account required');
     return this.adsService.create(dto, business.id, user.id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() dto: UpdateAdDto, @CurrentUser() user: AuthUser) {
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.adsService.updateStatus(id, dto, user);
   }
 
   @Get(':id/report')
-  report(@Param('id') id: string, @Query() query: AdReportQueryDto, @CurrentUser() user: AuthUser) {
+  report(
+    @Param('id') id: string,
+    @Query() query: AdReportQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.adsService.report(id, query, user);
   }
 }

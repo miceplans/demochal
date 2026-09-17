@@ -38,6 +38,10 @@ export class PaymentsService {
   ) {}
 
   async handleTossWebhook(payload: TossWebhookPayload): Promise<void> {
+    // TODO: only DONE is handled. CANCELED / PARTIAL_CANCELED / EXPIRED / WAITING_FOR_DEPOSIT
+    // and other non-DONE statuses (https://docs.tosspayments.com/reference#status) are silently
+    // ignored here — cancellation/refund reconciliation against `orders`/`payments` isn't
+    // implemented yet.
     if (payload.data.status !== 'DONE' || !payload.data.paymentKey || !payload.data.orderId) return;
 
     const [order, tossPayment] = await Promise.all([

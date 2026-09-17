@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(8);
+    expect(journal.entries).toHaveLength(9);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -229,6 +229,17 @@ describe('0007_jsonb_column_defaults migration', () => {
     }
 
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0008_drop_users_status migration', () => {
+  it('drops the dead users status column without touching other tables', () => {
+    const tag = journal.entries[8]?.tag;
+    expect(tag).toBe('0008_drop_users_status');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('DROP COLUMN IF EXISTS "status"');
+    expect(sql).not.toMatch(/DROP TABLE/);
   });
 });
 
