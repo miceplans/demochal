@@ -24,7 +24,6 @@ export class UsersService {
     return toPublicProfile(user);
   }
 
-  // TODO: derive userId from the authenticated request once auth is implemented.
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     const [user] = await this.db
       .update(users)
