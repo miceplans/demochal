@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, ParseArrayPipe, Post, Put, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseArrayPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
-import { Roles } from '../../common/auth/roles.decorator.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { AdminRoleGuard } from './admin-role.guard.js';
 import { AdminService } from './admin.service.js';
 import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
@@ -8,7 +19,7 @@ import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
 
-@Roles('admin')
+@UseGuards(JwtAuthGuard, AdminRoleGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
