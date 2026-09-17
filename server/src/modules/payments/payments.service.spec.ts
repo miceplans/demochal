@@ -16,9 +16,11 @@ function createDbStub(existingPayment?: { id: string; status?: string }) {
   return { db, insertValues, limit };
 }
 
-function createOrdersStub() {
+function createOrdersStub(orderStatus: string = 'pending') {
   return {
-    findByIdInternal: vi.fn().mockResolvedValue({ id: 'order-1', amount: 50000 }),
+    findByIdInternal: vi
+      .fn()
+      .mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
     markPaid: vi.fn().mockResolvedValue({}),
     markCancelled: vi.fn().mockResolvedValue({}),
   };
@@ -179,5 +181,67 @@ describe('PaymentsService', () => {
     expect(insertValues).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
+  });
+
+  it('cancels a pending order and persists an expired payment for EXPIRED', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'EXPIRED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('EXPIRED'));
+
+    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
+    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'order-1',
+        providerPaymentKey: 'pay-key-1',
+        amount: 50000,
+        status: 'expired',
+      }),
+    );
+  });
+
+  it('ignores an EXPIRED webhook for an order a DONE webhook already settled', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'EXPIRED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub('paid');
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('EXPIRED'));
+
+    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it('does not verify with Toss or change state for WAITING_FOR_DEPOSIT', async () => {
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+    const fetchCallsBefore = fetchMock.mock.calls.length;
+
+    await service.handleTossWebhook(webhook('WAITING_FOR_DEPOSIT'));
+
+    expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
+    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
   });
 });
