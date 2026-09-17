@@ -1,12 +1,15 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, verifications } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
-import { SqsService } from '../../queue/sqs.service.js';
+import { OutboxService } from '../../outbox/outbox.service.js';
 import { FilesService } from '../files/files.service.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
+
+// Outbox event type for a submitted verification's SQS job — shared with
+// OutboxRelayService's `relay(eventType, queueUrl)` call in worker.ts.
+export const VERIFICATION_SUBMITTED_EVENT = 'verification.submitted';
 
 export interface VerificationJobMessage {
   verificationId: string;
@@ -22,30 +25,35 @@ export function verificationStatusPresentation(status: string) {
 export class VerificationsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
-    private readonly sqsService: SqsService,
+    private readonly outboxService: OutboxService,
     private readonly filesService: FilesService,
     private readonly notificationsService: NotificationsService,
   ) {}
 
   async submit(dto: SubmitVerificationDto, userId: string) {
     await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
-    const [verification] = await this.db
-      .insert(verifications)
-      .values({
-        businessId: dto.businessId,
-        documentFileId: dto.documentFileId,
-        status: 'pending',
-      })
-      .returning();
 
-    // insert().returning() always yields the inserted row.
-    const message: VerificationJobMessage = {
-      verificationId: verification!.id,
-    };
-    // TODO: SQS_VERIFICATIONS_QUEUE_URL must be set once the queue exists in AWS.
-    await this.sqsService.sendMessage(env.sqsVerificationsQueueUrl, message);
+    const verification = await this.db.transaction(async (tx) => {
+      const [verification] = await tx
+        .insert(verifications)
+        .values({
+          businessId: dto.businessId,
+          documentFileId: dto.documentFileId,
+          status: 'pending',
+        })
+        .returning();
 
-    return { ...verification, ...verificationStatusPresentation(verification!.status) };
+      // insert().returning() always yields the inserted row.
+      const message: VerificationJobMessage = { verificationId: verification!.id };
+      // Enqueued in the same transaction as the row above, so a crash right
+      // after commit can never lose the SQS job — OutboxRelayService (driven
+      // from worker.ts) sends it once SQS_VERIFICATIONS_QUEUE_URL is set.
+      await this.outboxService.enqueue(tx, VERIFICATION_SUBMITTED_EVENT, message);
+
+      return verification!;
+    });
+
+    return { ...verification, ...verificationStatusPresentation(verification.status) };
   }
 
   async findById(id: string) {

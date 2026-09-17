@@ -215,6 +215,20 @@ export const files = pgTable('files', {
   uploaderUserId: uuid('uploader_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+// Outbox pattern: a DB transaction inserts its business row and an outbox row
+// together, so an external side effect (SQS, webhook relay, ...) is never
+// lost to a crash between the DB commit and the send. A poller (currently
+// OutboxRelayService, driven from worker.ts) sends pending rows and marks
+// them sent; status values: pending | sent | failed.
+export const outboxEvents = pgTable('outbox_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+  payload: jsonb('payload').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  sentAt: timestamp('sent_at'),
+});
 export const paymentCards = pgTable('payment_cards', {
   id: uuid('id').defaultRandom().primaryKey(),
   businessId: uuid('business_id')
