@@ -202,11 +202,11 @@ cmd_quality_gate_result() {
 }
 
 cmd_pr_risk() {
-  local pr="$1" risk="$2" report="$3" label
+  local pr="$1" risk="$2" report="$3" label existing
   [[ -f "$report" ]] || die "PR risk report file not found: $report"
   label="risk:$risk"
   [[ " ${RISK_LABELS[*]} " == *" $label "* ]] || die "risk must be low, medium, high, or critical"
-  for label in "${RISK_LABELS[@]}"; do gh pr edit "$pr" --remove-label "$label" >/dev/null 2>&1 || true; done
+  for existing in "${RISK_LABELS[@]}"; do gh pr edit "$pr" --remove-label "$existing" >/dev/null 2>&1 || true; done
   gh pr edit "$pr" --add-label "$label"
   gh pr comment "$pr" --body-file "$report"
 }
