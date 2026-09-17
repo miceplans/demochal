@@ -1,6 +1,6 @@
 # infra/
 
-AWS 배포/IaC 관련 파일을 위한 디렉토리. 현재는 비어 있음.
+AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성은 `ap-northeast-2`의 비용 우선 Single-AZ 스테이징 전용입니다. ALB와 RDS subnet group의 AWS 제약 때문에 두 AZ에 subnet은 만들지만, ECS API/worker와 RDS primary는 첫 번째 AZ에만 둡니다.
 
 ## 예정 구성
 
@@ -9,7 +9,17 @@ AWS 배포/IaC 관련 파일을 위한 디렉토리. 현재는 비어 있음.
 - NAT Gateway, RDS Multi-AZ는 초기 단계에서 제외 (필요해지면 도입)
 - SQS (verifications 큐) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
 
-구성은 추후 Terraform 또는 콘솔로 예정.
+## 적용 전 준비
+
+Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등록을 자동 수행하지 않습니다. 실제 적용은 승인된 운영자가 별도 세션에서 수행합니다.
+
+1. `infra/terraform/staging.tfvars.example`을 복사해 로컬 `staging.tfvars`를 만들고 실제 도메인, hosted zone ID, image digest를 넣습니다. 이 파일에는 secret 값을 넣지 않습니다.
+2. API/worker 이미지를 각각 ECR에 immutable digest로 push합니다.
+3. `terraform init -backend=false`, `terraform fmt -check`, `terraform validate`를 실행합니다. 원격 state backend는 운영자가 암호화된 S3+DynamoDB backend로 별도 구성한 뒤 설정합니다.
+4. 승인된 `terraform apply` 후 `app_secret_arn`에 JSON secret을 수동으로 저장합니다. 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `TOSS_SECRET_KEY`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
+5. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
+
+ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, ECR image 2개 보존, CloudWatch 7일 보존입니다.
 
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 

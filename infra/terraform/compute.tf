@@ -1,0 +1,203 @@
+resource "aws_ecr_repository" "api" {
+  name                 = "${local.name_prefix}-api"
+  image_tag_mutability = "IMMUTABLE"
+  image_scanning_configuration { scan_on_push = true }
+}
+
+resource "aws_ecr_lifecycle_policy" "api" {
+  repository = aws_ecr_repository.api.name
+  policy     = jsonencode({ rules = [{ rulePriority = 1, description = "Keep only two test images", selection = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 2 }, action = { type = "expire" } }] })
+}
+
+resource "aws_ecr_repository" "worker" {
+  name                 = "${local.name_prefix}-worker"
+  image_tag_mutability = "IMMUTABLE"
+  image_scanning_configuration { scan_on_push = true }
+}
+
+resource "aws_ecr_lifecycle_policy" "worker" {
+  repository = aws_ecr_repository.worker.name
+  policy     = jsonencode({ rules = [{ rulePriority = 1, description = "Keep only two test images", selection = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 2 }, action = { type = "expire" } }] })
+}
+
+resource "aws_ecs_cluster" "this" { name = local.name_prefix }
+
+resource "aws_cloudwatch_log_group" "api" {
+  name              = "/ecs/${local.name_prefix}/api"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "worker" {
+  name              = "/ecs/${local.name_prefix}/worker"
+  retention_in_days = 7
+}
+
+data "aws_iam_policy_document" "task_assume_role" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "execution" {
+  name               = "${local.name_prefix}-ecs-execution"
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+}
+
+resource "aws_iam_role_policy_attachment" "execution" {
+  role       = aws_iam_role.execution.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+data "aws_iam_policy_document" "execution_secrets" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.app.arn]
+  }
+}
+
+resource "aws_iam_role_policy" "execution_secrets" {
+  name   = "read-app-secrets"
+  role   = aws_iam_role.execution.id
+  policy = data.aws_iam_policy_document.execution_secrets.json
+}
+
+resource "aws_iam_role" "task" {
+  name               = "${local.name_prefix}-ecs-task"
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+}
+
+data "aws_iam_policy_document" "task" {
+  statement {
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    resources = [aws_sqs_queue.verifications.arn]
+  }
+  statement {
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.private.arn}/*", "${aws_s3_bucket.public.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "task" {
+  name   = "application-s3-sqs"
+  role   = aws_iam_role.task.id
+  policy = data.aws_iam_policy_document.task.json
+}
+
+resource "aws_lb" "api" {
+  name               = "${local.name_prefix}-api"
+  load_balancer_type = "application"
+  internal           = false
+  security_groups    = [aws_security_group.alb.id]
+  subnets            = values(aws_subnet.public)[*].id
+}
+
+resource "aws_lb_target_group" "api" {
+  name        = "${local.name_prefix}-api"
+  port        = 3001
+  protocol    = "HTTP"
+  target_type = "ip"
+  vpc_id      = aws_vpc.this.id
+  health_check {
+    path    = "/health"
+    matcher = "200"
+  }
+}
+
+resource "aws_acm_certificate" "api" {
+  domain_name       = var.api_domain_name
+  validation_method = "DNS"
+}
+
+resource "aws_route53_record" "certificate" {
+  for_each = { for dvo in aws_acm_certificate.api.domain_validation_options : dvo.domain_name => dvo }
+  zone_id  = var.hosted_zone_id
+  name     = each.value.resource_record_name
+  type     = each.value.resource_record_type
+  records  = [each.value.resource_record_value]
+  ttl      = 60
+}
+
+resource "aws_acm_certificate_validation" "api" {
+  certificate_arn         = aws_acm_certificate.api.arn
+  validation_record_fqdns = values(aws_route53_record.certificate)[*].fqdn
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.api.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = aws_acm_certificate_validation.api.certificate_arn
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+}
+
+locals {
+  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "TOSS_SECRET_KEY", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
+  app_secrets = [for key in local.secret_keys : { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }]
+  common_environment = [
+    { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
+    { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
+    { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
+    { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" }
+  ]
+}
+
+resource "aws_ecs_task_definition" "api" {
+  family                   = "${local.name_prefix}-api"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+  container_definitions    = jsonencode([{ name = "api", image = var.api_image, essential = true, portMappings = [{ containerPort = 3001 }], environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.api.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "api" } } }])
+}
+
+resource "aws_ecs_task_definition" "worker" {
+  family                   = "${local.name_prefix}-worker"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.task.arn
+  container_definitions    = jsonencode([{ name = "worker", image = var.worker_image, essential = true, environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.worker.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "worker" } } }])
+}
+
+resource "aws_ecs_service" "api" {
+  name            = "api"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.api.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = [aws_subnet.public["0"].id]
+    security_groups  = [aws_security_group.api_task.id]
+    assign_public_ip = true
+  }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.api.arn
+    container_name   = "api"
+    container_port   = 3001
+  }
+  depends_on = [aws_lb_listener.https]
+}
+
+resource "aws_ecs_service" "worker" {
+  name            = "worker"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  desired_count   = var.worker_desired_count
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets          = [aws_subnet.public["0"].id]
+    security_groups  = [aws_security_group.worker_task.id]
+    assign_public_ip = true
+  }
+}

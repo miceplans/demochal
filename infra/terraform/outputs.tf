@@ -1,0 +1,9 @@
+output "api_alb_dns_name" { value = aws_lb.api.dns_name }
+output "api_url" { value = "https://${var.api_domain_name}" }
+output "cloudfront_public_content_domain" { value = aws_cloudfront_distribution.public.domain_name }
+output "private_bucket_name" { value = aws_s3_bucket.private.id }
+output "public_bucket_name" { value = aws_s3_bucket.public.id }
+output "verifications_queue_url" { value = aws_sqs_queue.verifications.url }
+output "app_secret_arn" { value = aws_secretsmanager_secret.app.arn }
+output "api_ecr_repository_url" { value = aws_ecr_repository.api.repository_url }
+output "worker_ecr_repository_url" { value = aws_ecr_repository.worker.repository_url }

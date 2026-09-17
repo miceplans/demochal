@@ -1,0 +1,8 @@
+# Copy to a local, ignored staging.tfvars file. Do not put credentials or secret values here.
+api_image       = "ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/semochal-staging-api@sha256:REPLACE"
+worker_image    = "ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/semochal-staging-worker@sha256:REPLACE"
+frontend_origin = "https://staging.example.com"
+api_domain_name = "api-staging.example.com"
+hosted_zone_id  = "ZREPLACE"
+alarm_email     = "ops@example.com"
+worker_desired_count = 0
