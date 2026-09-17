@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
 import { CreateCertificateDto } from './dto/create-certificate.dto.js';
 
@@ -9,7 +10,7 @@ export class CertificatesController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  create(@Body() dto: CreateCertificateDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateCertificateDto, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.createCertificate(dto, user);
   }
 }

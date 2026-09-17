@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { AuthUser } from '../../common/auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { TeamsService } from './teams.service.js';
 
 function createNotificationsStub() {
@@ -30,8 +30,13 @@ function createDbStub() {
   return db;
 }
 
-const leader: AuthUser = { id: 'user-leader', email: 'l@x.com', name: 'Leader', role: 'user' };
-const applicant: AuthUser = {
+const leader: AuthenticatedUser = {
+  id: 'user-leader',
+  email: 'l@x.com',
+  name: 'Leader',
+  role: 'user',
+};
+const applicant: AuthenticatedUser = {
   id: 'user-applicant',
   email: 'a@x.com',
   name: 'Applicant',
@@ -217,7 +222,7 @@ describe('TeamsService', () => {
       service.updateMember('team-1', 'member-1', { status: 'accepted' }, applicant),
     ).rejects.toThrow(ForbiddenException);
 
-    const admin: AuthUser = { ...applicant, role: 'admin' };
+    const admin: AuthenticatedUser = { ...applicant, role: 'admin' };
     await service.updateMember('team-1', 'member-1', { status: 'accepted' }, admin);
     expect(returning).toHaveBeenCalled();
   });

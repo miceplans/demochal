@@ -1,14 +1,25 @@
-import { Body, Controller, Get, Param, ParseArrayPipe, Post, Put, Query } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
-import { Roles } from '../../common/auth/roles.decorator.js';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseArrayPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
+import { AdminRoleGuard } from './admin-role.guard.js';
 import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
 
-@Roles('admin')
+@UseGuards(AdminRoleGuard)
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
@@ -95,12 +106,12 @@ export class AdminController {
   }
 
   @Get('settings')
-  getSettings(@CurrentUser() user: AuthUser) {
+  getSettings(@CurrentUser() user: AuthenticatedUser) {
     return this.adminService.getSettings(user);
   }
 
   @Put('settings')
-  updateSettings(@Body() values: Record<string, boolean>, @CurrentUser() user: AuthUser) {
+  updateSettings(@Body() values: Record<string, boolean>, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.updateSettings(values, user);
   }
 }
