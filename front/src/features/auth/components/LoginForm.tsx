@@ -43,7 +43,6 @@ export function LoginForm() {
       <TextField
         label="이메일"
         type="email"
-        placeholder="example@semochal.kr"
         autoComplete="email"
         error={errors.email?.message}
         {...register('email')}
