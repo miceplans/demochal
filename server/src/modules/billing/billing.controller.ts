@@ -1,5 +1,15 @@
-import { Body, Controller, ForbiddenException, Get, HttpCode, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  HttpCode,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
@@ -7,6 +17,7 @@ import { RegisterPaymentCardDto } from './dto/register-payment-card.dto.js';
 import { PaymentHistoryQueryDto } from './dto/payment-history-query.dto.js';
 
 @Controller('billing')
+@UseGuards(JwtAuthGuard)
 export class BillingController {
   constructor(
     private readonly billingService: BillingService,

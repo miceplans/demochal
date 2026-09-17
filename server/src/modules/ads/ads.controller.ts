@@ -7,9 +7,11 @@ import {
   Post,
   Query,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
 import { Public } from '../../common/auth/public.decorator.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
@@ -17,6 +19,7 @@ import { CreateAdDto } from './dto/create-ad.dto.js';
 import { UpdateAdDto } from './dto/update-ad.dto.js';
 
 @Controller('ads')
+@UseGuards(JwtAuthGuard)
 export class AdsController {
   constructor(
     private readonly adsService: AdsService,

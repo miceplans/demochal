@@ -1,12 +1,14 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
 import { Public } from '../../common/auth/public.decorator.js';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { CreateTeamDto } from './dto/create-team.dto.js';
 import { JoinTeamDto } from './dto/join-team.dto.js';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
 import { TeamsService } from './teams.service.js';
 
 @Controller('teams')
+@UseGuards(JwtAuthGuard)
 export class TeamsController {
   constructor(private readonly teamsService: TeamsService) {}
 
