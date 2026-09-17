@@ -199,13 +199,13 @@ describe('AdminService — certificates', () => {
 });
 
 describe('AdminService — users', () => {
-  it('suspend sets status/reason/at and returns the masked entry', async () => {
+  it('suspend sets suspended/reason/at and returns the masked entry', async () => {
     const userRow = {
       id: 'u1',
       name: '김수아',
       email: 'kim.dev@gmail.com',
       position: null,
-      status: 'suspended',
+      suspended: true,
     };
     const { db, setCalls } = createDbStub({
       select: [[userRow], [{ count: 3 }]],
@@ -217,7 +217,7 @@ describe('AdminService — users', () => {
 
     expect(setCalls[0]).toEqual([
       expect.objectContaining({
-        status: 'suspended',
+        suspended: true,
         suspendedReason: 'spam',
         suspendedAt: expect.any(Date),
       }),
@@ -238,7 +238,7 @@ describe('AdminService — users', () => {
       name: '김수아',
       email: 'kim.dev@gmail.com',
       position: '프론트엔드',
-      status: 'active',
+      suspended: false,
     };
     const { db, setCalls } = createDbStub({
       select: [[userRow], [{ count: 0 }]],
@@ -248,7 +248,7 @@ describe('AdminService — users', () => {
 
     const result = await service.suspendUser('u1', { suspended: false });
 
-    expect(setCalls[0]).toEqual([{ status: 'active', suspendedReason: null, suspendedAt: null }]);
+    expect(setCalls[0]).toEqual([{ suspended: false, suspendedReason: null, suspendedAt: null }]);
     expect(result).toEqual({
       id: 'u1',
       name: '김수아',

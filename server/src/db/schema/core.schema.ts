@@ -31,7 +31,6 @@ export const users = pgTable('users', {
     .$type<Record<string, boolean>>()
     .notNull()
     .default({}),
-  status: varchar('status', { length: 20 }).notNull().default('active'),
   suspended: boolean('suspended').notNull().default(false),
   suspendedReason: text('suspended_reason'),
   suspendedAt: timestamp('suspended_at'),

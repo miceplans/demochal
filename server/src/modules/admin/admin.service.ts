@@ -463,7 +463,7 @@ export class AdminService {
   async listUsers(q?: string, status?: string) {
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)));
-    if (status) conditions.push(eq(users.status, status));
+    if (status) conditions.push(eq(users.suspended, status === 'suspended'));
     const rows = await this.db
       .select()
       .from(users)
@@ -488,7 +488,7 @@ export class AdminService {
       email: maskEmail(row.email),
       position: row.position ?? '',
       reports: countByUser.get(row.id) ?? 0,
-      status: row.status,
+      status: row.suspended ? ('suspended' as const) : ('active' as const),
     }));
   }
 
@@ -497,8 +497,8 @@ export class AdminService {
       .update(users)
       .set(
         dto.suspended
-          ? { status: 'suspended', suspendedReason: dto.reason ?? null, suspendedAt: new Date() }
-          : { status: 'active', suspendedReason: null, suspendedAt: null },
+          ? { suspended: true, suspendedReason: dto.reason ?? null, suspendedAt: new Date() }
+          : { suspended: false, suspendedReason: null, suspendedAt: null },
       )
       .where(eq(users.id, id));
 
@@ -515,7 +515,7 @@ export class AdminService {
       email: maskEmail(user.email),
       position: user.position ?? '',
       reports: filedCount?.count ?? 0,
-      status: user.status,
+      status: user.suspended ? ('suspended' as const) : ('active' as const),
     };
   }
 
