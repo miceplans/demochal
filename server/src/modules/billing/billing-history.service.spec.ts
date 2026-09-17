@@ -48,7 +48,7 @@ const ROWS = [
   { id: 'pay-3', name: '개발자 챌린지', amount: 30_000, status: 'expired', approvedAt: null },
   { id: 'pay-4', name: '갤러리 광고', amount: 20_000, status: 'ready', approvedAt: null },
   // Legacy DB vocabulary from older writers — the item-status mapping contract
-  // still serves these, so they stay covered here.
+  // still serves these, and 'done' remains a charged balance movement.
   {
     id: 'pay-5',
     name: '지난 챌린지',
@@ -107,8 +107,9 @@ describe('BillingHistoryService', () => {
         status: 'refunded',
       },
     ]);
-    // Only 'paid' moves the balance: canceled/expired/ready/legacy rows contribute 0.
-    expect(total).toBe(-100_000);
+    // Charged rows move the balance: 'paid' and legacy 'done' count, while
+    // canceled/refunded, expired, and ready rows contribute 0.
+    expect(total).toBe(-110_000);
   });
 
   it('scopes rows to the business via ads or applications→challenges', async () => {
