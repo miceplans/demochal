@@ -46,4 +46,24 @@ export class OrdersService {
       return order;
     });
   }
+
+  async markCancelled(id: string) {
+    return this.db.transaction(async (tx) => {
+      const [existing] = await tx.select().from(orders).where(eq(orders.id, id)).for('update');
+      if (!existing) throw new NotFoundException('Order not found');
+      if (existing.status === 'canceled') return existing;
+      if (existing.status !== 'pending' && existing.status !== 'paid') {
+        throw new ConflictException('취소할 수 없는 주문입니다.');
+      }
+      // TODO: a canceled/refunded order whose ad was already activated by markPaid
+      // still leaves ads.status = 'active' — reverting the ad isn't implemented yet.
+      const [order] = await tx
+        .update(orders)
+        .set({ status: 'canceled' })
+        .where(eq(orders.id, id))
+        .returning();
+
+      return order;
+    });
+  }
 }
