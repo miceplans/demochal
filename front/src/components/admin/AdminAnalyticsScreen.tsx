@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { adReports, analyticsStats } from '@/data/admin-design';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
@@ -23,8 +23,13 @@ const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap
 
 function AdReportSection() {
   const searchParams = useSearchParams();
-  const adNumber = Number(searchParams.get('ad'));
-  const report = adReports.find((item) => item.adNumber === adNumber);
+  const adParam = searchParams.get('ad');
+  const adNumber = adParam ? Number(adParam) : undefined;
+  const reportQuery = generated.useGetAdminAnalytics(
+    { ad: adNumber },
+    { query: { enabled: adNumber !== undefined && Number.isFinite(adNumber) } },
+  );
+  const report = reportQuery.data?.data.adReport;
   if (!report) return null;
   return (
     <AdReportBlock aria-label={`빅배너 ${report.adNumber}번 리포트`}>
@@ -35,16 +40,31 @@ function AdReportSection() {
         </span>
       </SectionHeader>
       <StatRow>
-        {report.stats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(report.stats ?? []).map((stat) => (
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
-      <AdReportChart daily={report.daily} />
+      <AdReportChart
+        daily={(report.daily ?? []).map((day) => ({
+          date: day.date ?? '',
+          impressions: day.impressions ?? 0,
+          clicks: day.clicks ?? 0,
+        }))}
+      />
     </AdReportBlock>
   );
 }
 
 export function AdminAnalyticsScreen() {
+  const analyticsQuery = generated.useGetAdminAnalytics({});
+  const analytics = analyticsQuery.data?.data;
+
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -55,11 +75,22 @@ export function AdminAnalyticsScreen() {
         <AdReportSection />
       </Suspense>
       <StatRow>
-        {analyticsStats.map((stat) => (
-          <StatCard key={stat.label} {...stat} />
+        {(analytics?.stats ?? []).map((stat) => (
+          <StatCard
+            key={stat.label}
+            label={stat.label ?? ''}
+            value={stat.value ?? ''}
+            meta={stat.meta ?? ''}
+            dot={stat.dot ?? undefined}
+          />
         ))}
       </StatRow>
-      <ActivityChart />
+      <ActivityChart
+        months={analytics?.activity?.months}
+        general={analytics?.activity?.general}
+        corp={analytics?.activity?.corp}
+        yMax={analytics?.activity?.yMax}
+      />
     </>
   );
 }

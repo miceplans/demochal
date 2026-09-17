@@ -388,189 +388,10 @@ export const certificateRows: CertificateRow[] = [
 
 export const certificateTabs = ['미인증', '인증', '거부'] as const;
 
-export type AdminTeamCard = {
-  id: string;
-  name: string;
-  challenge: string;
-  members: string;
-  roles: string[];
-  otherRoles: string[];
-  unread: boolean;
-};
-
-export const adminTeams: AdminTeamCard[] = [
-  {
-    id: 't-1',
-    name: '프로젝트팀 A',
-    challenge: 'OO챌린지',
-    members: '2/4명 참여중',
-    roles: ['기획', '프론트엔드'],
-    otherRoles: ['백엔드', '디자이너'],
-    unread: true,
-  },
-  {
-    id: 't-2',
-    name: '프로젝트팀 B',
-    challenge: 'AI 해커톤',
-    members: '3/5명 참여중',
-    roles: ['기획', '프론트엔드'],
-    otherRoles: ['백엔드', '디자이너'],
-    unread: true,
-  },
-  {
-    id: 't-3',
-    name: '프로젝트팀 C',
-    challenge: '공공데이터 챌린지',
-    members: '1/4명 참여중',
-    roles: ['기획', '디자인'],
-    otherRoles: ['백엔드', '프론트엔드'],
-    unread: true,
-  },
-  {
-    id: 't-4',
-    name: '프로젝트팀 D',
-    challenge: '청년 창업 챌린지',
-    members: '2/5명 참여중',
-    roles: ['기획', '백엔드'],
-    otherRoles: ['프론트엔드', '디자이너'],
-    unread: false,
-  },
-  {
-    id: 't-5',
-    name: '빌스택스',
-    challenge: '숏폼 영상 챌린지',
-    members: '3/4명 참여중',
-    roles: ['기획', '디자인'],
-    otherRoles: ['백엔드'],
-    unread: false,
-  },
-];
-
-export type AdminContestCard = {
-  id: string;
-  title: string;
-  category: string;
-  dday: string;
-  teams: string;
-  unread: boolean;
-};
-
-export const adminContests: AdminContestCard[] = [
-  {
-    id: 'cc-1',
-    title: '2025 공공데이터 활용 대회',
-    category: 'IT/SW',
-    dday: 'D-7',
-    teams: '팀 모집 3건',
-    unread: true,
-  },
-  {
-    id: 'cc-2',
-    title: 'AI 이미지 인식 해커톤',
-    category: 'IT/SW',
-    dday: 'D-9',
-    teams: '팀 모집 4건',
-    unread: true,
-  },
-  {
-    id: 'cc-3',
-    title: '빅데이터 분석 경진대회',
-    category: 'IT/SW',
-    dday: 'D-7',
-    teams: '팀 모집 3건',
-    unread: false,
-  },
-  {
-    id: 'cc-4',
-    title: '글로벌 스타트업 챌린지',
-    category: '창업',
-    dday: 'D-20',
-    teams: '팀 모집 2건',
-    unread: false,
-  },
-  {
-    id: 'cc-5',
-    title: '디자인 씽킹 해커톤',
-    category: '디자인',
-    dday: 'D-3',
-    teams: '팀 모집 1건',
-    unread: false,
-  },
-];
-
-export const analyticsStats = [
-  { label: '신규 가입자', value: '12,842', meta: '월간', dot: '#0877FF' },
-  { label: '신규 챌린지', value: '328', meta: '월간', dot: '#0877FF' },
-  { label: '플랫폼 수익', value: '₩42.8M', meta: '월간', dot: '#0877FF' },
-];
-
 // --- 광고 리포트 목업 (광고비 관리 > 리포트 보기) ---
-
+// AdReportChart의 daily prop 타입 — 실 데이터는 generated.useGetAdminAnalytics({ ad })의
+// adReport.daily에서 온다 (AdminAnalyticsScreen).
 export type AdDailyStat = { date: string; impressions: number; clicks: number };
-
-export type AdReportData = {
-  adNumber: number;
-  organization: string;
-  period: string;
-  stats: { label: string; value: string; meta: string; dot: string }[];
-  daily: AdDailyStat[];
-};
-
-const adReportOrganizations = [
-  '부산광역시',
-  '한국데이터산업진흥원',
-  '경기도사회적경제원',
-  '광주디자인진흥원',
-  'PIZZ FLEX',
-];
-
-const adDailyBase: AdDailyStat[] = Array.from({ length: 14 }, (_, i) => ({
-  date: `8/${24 + i}`,
-  impressions: 6200 + ((i * 7919) % 3200),
-  clicks: 240 + ((i * 541) % 130),
-}));
-
-export const adReports: AdReportData[] = Array.from({ length: 5 }, (_, i) => {
-  const scale = 1 + i * 0.18;
-  const impressions = adDailyBase.reduce((sum, day) => sum + day.impressions, 0) * scale;
-  const clicks = adDailyBase.reduce((sum, day) => sum + day.clicks, 0) * scale;
-  return {
-    adNumber: i + 1,
-    organization: adReportOrganizations[i],
-    period: '8/24~9/24',
-    stats: [
-      {
-        label: '노출수',
-        value: Math.round(impressions).toLocaleString(),
-        meta: '최근 14일',
-        dot: '#0877FF',
-      },
-      {
-        label: '클릭수',
-        value: Math.round(clicks).toLocaleString(),
-        meta: '최근 14일',
-        dot: '#22C55E',
-      },
-      {
-        label: 'CTR',
-        value: `${((clicks / impressions) * 100).toFixed(1)}%`,
-        meta: '클릭률',
-        dot: '#F59E0B',
-      },
-      {
-        label: '집행 광고비',
-        value: `${(100 + i * 20).toLocaleString()}만원`,
-        meta: '8/24~9/24',
-        dot: '#FF4D00',
-      },
-    ],
-    daily: adDailyBase.map((day) => ({
-      date: day.date,
-      impressions: Math.round(day.impressions * scale),
-      clicks: Math.round(day.clicks * scale),
-    })),
-  };
-});
 
 // --- 대시보드 차트 ---
 
@@ -603,6 +424,8 @@ export const trafficData: Record<
   },
 };
 
+// ActivityChart 컴포넌트의 controlled-prop 로딩 폴백 (generated.useGetAdminAnalytics의
+// activity가 아직 없을 때 화면에 표시). 실 데이터가 오면 이 값은 쓰이지 않는다.
 export const activityChart = {
   months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'],
   general: [3.2, 4.1, 3.8, 5.2, 6.4, 7.8],
@@ -610,41 +433,4 @@ export const activityChart = {
   yMax: 10,
   tooltipIndex: 3,
   tooltipValue: '1000',
-};
-
-// --- 관리자 설정 ---
-
-export const adminSettingsProfile = [
-  ['이름', '김관리자'],
-  ['역할', 'Super Admin'],
-  ['이메일', 'admin@semochal.com'],
-  ['2단계 인증', '사용중'],
-] as const;
-
-export const adminSettingsGroups = [
-  {
-    title: '서비스 설정',
-    rows: [
-      ['bizAutoApprove', '기관 가입 자동 승인', 'NTS 인증 성공 시에도 심사 없이 자동 승인합니다'],
-      ['contestAutoPublish', '공고 자동 게시', '검수 대기 없이 등록 즉시 공개합니다'],
-      ['maintenanceMode', '점검 모드', '서비스 점검 중 일반 사용자의 접속을 제한합니다'],
-    ],
-  },
-  {
-    title: '알림 설정',
-    rows: [
-      ['reportAlert', '신고 접수 알림', '새 신고가 접수되면 즉시 알려드려요'],
-      ['bizAlert', '기관 심사 요청 알림', '새 기관 심사 신청이 들어오면 알려드려요'],
-      ['certificateAlert', '상장 인증 요청 알림', '새 상장 인증 요청이 들어오면 알려드려요'],
-    ],
-  },
-] as const;
-
-export const adminSettingsDefaults: Record<string, boolean> = {
-  bizAutoApprove: false,
-  contestAutoPublish: true,
-  maintenanceMode: false,
-  reportAlert: true,
-  bizAlert: true,
-  certificateAlert: false,
 };

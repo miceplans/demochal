@@ -1,9 +1,10 @@
 'use client';
 
+import { useMemo } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adminContests, adminTeams } from '@/data/admin-design';
 import {
   AdminPageTitle,
   AdminSectionTitle,
@@ -138,7 +139,55 @@ function ScrapGlyph() {
   );
 }
 
+type TeamCardRow = {
+  id: string;
+  name: string;
+  challenge: string;
+  members: string;
+  roles: string[];
+  otherRoles: string[];
+  unread: boolean;
+};
+
+type ContestCardRow = {
+  id: string;
+  title: string;
+  category: string;
+  dday: string;
+  teams: string;
+  unread: boolean;
+};
+
 export function AdminContentsScreen() {
+  const contentsQuery = generated.useListAdminContents();
+
+  const adminTeams = useMemo<TeamCardRow[]>(
+    () =>
+      (contentsQuery.data?.data.teams ?? []).map((team, index) => ({
+        id: team.id ?? String(index),
+        name: team.name ?? '',
+        challenge: team.challenge ?? '',
+        members: team.members ?? '',
+        roles: team.roles ?? [],
+        otherRoles: team.otherRoles ?? [],
+        unread: team.unread ?? false,
+      })),
+    [contentsQuery.data],
+  );
+
+  const adminContests = useMemo<ContestCardRow[]>(
+    () =>
+      (contentsQuery.data?.data.contests ?? []).map((contest, index) => ({
+        id: contest.id ?? String(index),
+        title: contest.title ?? '',
+        category: contest.category ?? '',
+        dday: contest.dday ?? '',
+        teams: contest.teams ?? '',
+        unread: contest.unread ?? false,
+      })),
+    [contentsQuery.data],
+  );
+
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
@@ -149,6 +198,9 @@ export function AdminContentsScreen() {
           <MoreLink>더보기 →</MoreLink>
         </SectionHeader>
         <CardGrid>
+          {contentsQuery.isPending ? (
+            <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
+          ) : null}
           {adminTeams.map((team) => (
             <TeamCard key={team.id}>
               {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
@@ -181,6 +233,9 @@ export function AdminContentsScreen() {
           <MoreLink>더보기 →</MoreLink>
         </SectionHeader>
         <CardGrid>
+          {contentsQuery.isPending ? (
+            <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
+          ) : null}
           {adminContests.map((contest) => (
             <ContestCard key={contest.id}>
               {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}

@@ -4,9 +4,9 @@ import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adHttp, adError, type AdPricing } from '@/lib/ad-api';
 import { desktopContests, teams } from '@/data/user-design';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
@@ -335,25 +335,29 @@ export function AdminAdPricingScreen() {
   const [view, setView] = useState<PreviewView>('pc');
   const [detailAd, setDetailAd] = useState<number | null>(null);
   const [editing, setEditing] = useState(false);
-  const [dailyPrice, setDailyPrice] = useState(0);
-  const [pricing, setPricing] = useState<AdPricing | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [loadError, setLoadError] = useState('');
   const [draft, setDraft] = useState('');
   const toast = useToast();
   const titleId = useId();
   const inputId = useId();
-  useEffect(() => {
-    adHttp
-      .get<AdPricing[]>('/admin/ad-pricing')
-      .then((items) => {
-        const hero = items.find((item) => item.slot === 'hero');
-        if (!hero) throw new Error('상품 없음');
-        setPricing(hero);
-        setDailyPrice(hero.dailyPrice);
-      })
-      .catch((error) => setLoadError(adError(error)));
-  }, []);
+
+  const pricingQuery = generated.useGetAdPricing();
+  const hero = pricingQuery.data?.data.find((item) => item.slot === 'hero');
+  const dailyPrice = hero?.dailyPrice ?? 0;
+
+  const updatePricingMutation = generated.useUpdateAdPricing({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        const nextPrice = variables.data[0]?.dailyPrice ?? 0;
+        pricingQuery.refetch();
+        setDetailAd(null);
+        toast.success(
+          '광고비가 수정되었습니다',
+          `빅배너 하루 광고비 ${nextPrice.toLocaleString()}원`,
+        );
+      },
+      onError: () => toast.error('광고비 수정 실패', '잠시 후 다시 시도해주세요'),
+    },
+  });
 
   const dialogOpen = detailAd !== null;
   useEffect(() => {
@@ -376,32 +380,14 @@ export function AdminAdPricingScreen() {
     setDraft(String(dailyPrice));
     setEditing(true);
   };
-  const savePrice = async () => {
-    if (saving || !pricing) return;
+  const savePrice = () => {
+    if (updatePricingMutation.isPending) return;
     const nextPrice = Number(digitsOnly(draft));
     if (!Number.isFinite(nextPrice) || nextPrice <= 0) {
       toast.error('광고비를 확인해주세요', '0원보다 큰 금액을 입력해 주세요');
       return;
     }
-    setSaving(true);
-    try {
-      const items = await adHttp.put<AdPricing[]>('/admin/ad-pricing', [
-        { slot: 'hero', dailyPrice: nextPrice },
-      ]);
-      const hero = items.find((item) => item.slot === 'hero');
-      if (!hero) throw new Error('상품 없음');
-      setPricing(hero);
-      setDailyPrice(hero.dailyPrice);
-      setDetailAd(null);
-      toast.success(
-        '광고비가 수정되었습니다',
-        `빅배너 하루 광고비 ${nextPrice.toLocaleString()}원`,
-      );
-    } catch (error) {
-      toast.error('광고비 수정 실패', adError(error));
-    } finally {
-      setSaving(false);
-    }
+    updatePricingMutation.mutate({ data: [{ slot: 'hero', dailyPrice: nextPrice }] });
   };
 
   const renderDots = (activeIndex: number, label: string, goTo: (index: number) => void) => (
@@ -428,7 +414,7 @@ export function AdminAdPricingScreen() {
     >
       <HeroLabel compact={compact}>하루 광고비</HeroLabel>
       <HeroPrice compact={compact}>
-        {pricing ? `${dailyPrice.toLocaleString()}원` : '단가 확인 중'}
+        {hero ? `${dailyPrice.toLocaleString()}원` : '단가 확인 중'}
       </HeroPrice>
     </HeroCard>
   );
@@ -440,7 +426,6 @@ export function AdminAdPricingScreen() {
 
   return (
     <Screen>
-      {loadError && <p role="alert">{loadError}</p>}
       <p>
         기존 광고 계약의 금액과 기간은 유지됩니다. 단가 변경 시 기존 계약자에게 안내하며, 변경된
         금액은 새 계약부터 적용됩니다.
@@ -734,10 +719,10 @@ export function AdminAdPricingScreen() {
                     <DialogButton
                       type="button"
                       primary
-                      disabled={saving || !pricing}
+                      disabled={updatePricingMutation.isPending || !hero}
                       onClick={savePrice}
                     >
-                      {saving ? '저장 중…' : '저장'}
+                      {updatePricingMutation.isPending ? '저장 중…' : '저장'}
                     </DialogButton>
                   </DialogActions>
                 </DialogBody>
@@ -750,11 +735,11 @@ export function AdminAdPricingScreen() {
                       <InfoList>
                         <InfoItem>
                           <InfoLabel>현재 광고사</InfoLabel>
-                          <InfoValue>{pricing?.organization ?? '현재 광고 없음'}</InfoValue>
+                          <InfoValue>{hero?.organization ?? '현재 광고 없음'}</InfoValue>
                         </InfoItem>
                         <InfoItem>
                           <InfoLabel>광고 기간</InfoLabel>
-                          <InfoValue>{pricing?.period ?? '-'}</InfoValue>
+                          <InfoValue>{hero?.period ?? '-'}</InfoValue>
                         </InfoItem>
                       </InfoList>
                       <ReportLink href={`/admin/analytics?ad=${detailAd}`}>리포트 보기</ReportLink>

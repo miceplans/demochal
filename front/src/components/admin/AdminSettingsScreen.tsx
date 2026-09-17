@@ -2,52 +2,83 @@
 
 import { useState } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  adminSettingsDefaults,
-  adminSettingsGroups,
-  adminSettingsProfile,
-} from '@/data/admin-design';
 import { AdminPageTitle, ApproveButton } from './parts';
 import { Toggle } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
 
 export function AdminSettingsScreen() {
-  const [values, setValues] = useState(adminSettingsDefaults);
+  // 서버 값 위에 아직 저장하지 않은 로컬 토글 변경분만 덮어쓴다 (서버 데이터를 state로 복제하지 않음).
+  const [pendingChanges, setPendingChanges] = useState<Record<string, boolean>>({});
   const toast = useToast();
+
+  const settingsQuery = generated.useGetAdminSettings();
+  const settings = settingsQuery.data?.data;
+  const values = { ...(settings?.values ?? {}), ...pendingChanges };
+
+  const updateSettingsMutation = generated.useUpdateAdminSettings({
+    mutation: {
+      onSuccess: () => {
+        toast.success('설정을 저장했어요');
+        setPendingChanges({});
+        settingsQuery.refetch();
+      },
+      onError: () => toast.error('설정 저장에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
+  });
+
+  const profile = settings?.profile;
+  const profileRows: [string, string][] = [
+    ['이름', profile?.name ?? ''],
+    ['역할', profile?.role ?? ''],
+    ['이메일', profile?.email ?? ''],
+    ['2단계 인증', profile?.twoFactorEnabled ? '사용중' : '미사용'],
+  ];
+
   return (
     <>
       <AdminPageTitle>설정</AdminPageTitle>
       <Card aria-label="관리자 계정 정보">
         <CardTitle>계정 정보</CardTitle>
-        {adminSettingsProfile.map(([label, value]) => (
+        {profileRows.map(([label, value]) => (
           <ProfileRow key={label}>
             <ProfileLabel>{label}</ProfileLabel>
             <strong>{value}</strong>
           </ProfileRow>
         ))}
       </Card>
-      {adminSettingsGroups.map((group) => (
+      {(settings?.groups ?? []).map((group) => (
         <Card key={group.title} aria-label={group.title}>
           <CardTitle>{group.title}</CardTitle>
-          {group.rows.map(([key, label, desc]) => (
-            <SettingRow key={key}>
-              <SettingText>
-                <SettingLabel>{label}</SettingLabel>
-                <SettingDesc>{desc}</SettingDesc>
-              </SettingText>
-              <Toggle
-                label={label}
-                checked={values[key]}
-                onChange={() => setValues((v) => ({ ...v, [key]: !v[key] }))}
-              />
-            </SettingRow>
-          ))}
+          {(group.rows ?? []).map((row) => {
+            const rowKey = row.key ?? '';
+            return (
+              <SettingRow key={rowKey}>
+                <SettingText>
+                  <SettingLabel>{row.label}</SettingLabel>
+                  <SettingDesc>{row.description}</SettingDesc>
+                </SettingText>
+                <Toggle
+                  label={row.label ?? ''}
+                  checked={values[rowKey] ?? false}
+                  onChange={() =>
+                    setPendingChanges((v) => ({ ...v, [rowKey]: !(values[rowKey] ?? false) }))
+                  }
+                />
+              </SettingRow>
+            );
+          })}
         </Card>
       ))}
       <div>
-        <ApproveButton onClick={() => toast.success('설정을 저장했어요')}>저장하기</ApproveButton>
+        <ApproveButton
+          disabled={updateSettingsMutation.isPending}
+          onClick={() => updateSettingsMutation.mutate({ data: values })}
+        >
+          {updateSettingsMutation.isPending ? '저장 중…' : '저장하기'}
+        </ApproveButton>
       </div>
     </>
   );

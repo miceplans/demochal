@@ -395,12 +395,22 @@ export function TrafficChart({
 
 /* ---------- Area chart: 리포트 활동 ---------- */
 
-const months = activityChart.months;
-const generalSeries = activityChart.general;
-const corpSeries = activityChart.corp;
-const yLabels = Array.from({ length: activityChart.yMax / 2 + 1 }, (_, i) => i * 2);
-
-export function ActivityChart() {
+export function ActivityChart({
+  months: controlledMonths,
+  general: controlledGeneral,
+  corp: controlledCorp,
+  yMax: controlledYMax,
+}: {
+  months?: string[];
+  general?: number[];
+  corp?: number[];
+  yMax?: number;
+} = {}) {
+  const months = controlledMonths?.length ? controlledMonths : activityChart.months;
+  const generalSeries = controlledGeneral?.length ? controlledGeneral : activityChart.general;
+  const corpSeries = controlledCorp?.length ? controlledCorp : activityChart.corp;
+  const yMax = controlledYMax ?? activityChart.yMax;
+  const yLabels = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
   const data = months.map((month, i) => ({
     month,
     general: generalSeries[i],
@@ -454,7 +464,7 @@ export function ActivityChart() {
               tickMargin={12}
             />
             <YAxis
-              domain={[0, activityChart.yMax]}
+              domain={[0, yMax]}
               ticks={yLabels}
               tickLine={false}
               axisLine={false}
