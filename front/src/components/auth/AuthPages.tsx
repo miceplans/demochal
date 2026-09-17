@@ -117,10 +117,11 @@ const Next = styled.div({
   },
 });
 const steps = ['activity', 'interests', 'purpose', 'challenge'];
+const EMPTY_SURVEY_SELECTION: readonly string[] = [];
 export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
   const index = steps.indexOf(step);
-  const selected = useUserStore((s) => s.survey[step] ?? []);
+  const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
