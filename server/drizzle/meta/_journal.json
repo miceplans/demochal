@@ -55,6 +55,12 @@
       "tag": "0007_jsonb_column_defaults",
       "when": 1789610440000,
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "tag": "0008_drop_users_status",
+      "when": 1789605268515,
+      "breakpoints": true
     }
   ]
 }

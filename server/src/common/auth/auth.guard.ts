@@ -53,14 +53,14 @@ export class AuthGuard implements CanActivate {
         email: users.email,
         name: users.name,
         role: users.role,
-        status: users.status,
+        suspended: users.suspended,
         suspendedReason: users.suspendedReason,
       })
       .from(users)
       .where(eq(users.id, payload.sub))
       .limit(1);
     if (!user) throw new UnauthorizedException('Account no longer exists');
-    if (user.status === 'suspended') {
+    if (user.suspended) {
       throw new ForbiddenException(user.suspendedReason ?? 'Account is suspended');
     }
 
