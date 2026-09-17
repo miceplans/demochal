@@ -5,7 +5,6 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { BizContent, PrimaryButton, OutlineButton, useBizHref } from '@/components/biz/BizShell';
-import { orgProfile } from '@/data/biz-design';
 
 const ICON = '/assets/icons';
 
@@ -20,10 +19,10 @@ const toolbarItems = [
 export function BizProfileEditPage() {
   const router = useRouter();
   const hrefOf = useBizHref();
-  const [name, setName] = useState(orgProfile.name);
-  const [address, setAddress] = useState(orgProfile.address);
-  const [phone, setPhone] = useState(orgProfile.phone);
-  const [email, setEmail] = useState(orgProfile.email);
+  const [name, setName] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [bannerPreview, setBannerPreview] = useState<string | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
