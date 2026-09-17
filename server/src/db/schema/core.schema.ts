@@ -6,6 +6,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -179,17 +180,24 @@ export const orders = pgTable('orders', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const payments = pgTable('payments', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orderId: uuid('order_id')
-    .notNull()
-    .references(() => orders.id),
-  provider: varchar('provider', { length: 20 }).notNull().default('toss'),
-  providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
-  amount: integer('amount').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('ready'),
-  approvedAt: timestamp('approved_at'),
-});
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id),
+    provider: varchar('provider', { length: 20 }).notNull().default('toss'),
+    providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
+    amount: integer('amount').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('ready'),
+    approvedAt: timestamp('approved_at'),
+  },
+  // One payment row per order: webhook handlers upsert on order_id so that
+  // concurrent Toss deliveries for the same order conflict instead of
+  // duplicating rows.
+  (table) => [uniqueIndex('payments_order_id_unique').on(table.orderId)],
+);
 export const files = pgTable('files', {
   id: uuid('id').defaultRandom().primaryKey(),
   bucket: varchar('bucket', { length: 20 }).notNull(),

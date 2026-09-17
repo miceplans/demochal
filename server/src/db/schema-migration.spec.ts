@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(9);
+    expect(journal.entries).toHaveLength(10);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -240,6 +240,19 @@ describe('0008_drop_users_status migration', () => {
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('DROP COLUMN IF EXISTS "status"');
     expect(sql).not.toMatch(/DROP TABLE/);
+  });
+});
+
+describe('0009_payments_order_id_unique migration', () => {
+  it('enforces one payment row per order without touching other tables', () => {
+    const tag = journal.entries[9]?.tag;
+    expect(tag).toBe('0009_payments_order_id_unique');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "payments_order_id_unique" ON "payments"',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 

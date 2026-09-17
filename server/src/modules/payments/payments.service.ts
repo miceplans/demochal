@@ -5,10 +5,10 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, ne } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 
@@ -82,21 +82,14 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    const [existingPayment] = await this.db
-      .select({ id: payments.id })
-      .from(payments)
-      .where(eq(payments.orderId, order.id))
-      .limit(1);
-    if (!existingPayment) {
-      await this.db.insert(payments).values({
-        orderId: order.id,
-        provider: 'toss',
-        providerPaymentKey: tossPayment.paymentKey,
-        amount: tossPayment.totalAmount,
-        status: 'paid',
-        approvedAt: new Date(),
-      });
-    }
+    await this.persistPayment(this.db, {
+      orderId: order.id,
+      provider: 'toss',
+      providerPaymentKey: tossPayment.paymentKey,
+      amount: tossPayment.totalAmount,
+      status: 'paid',
+      approvedAt: new Date(),
+    });
 
     await this.ordersService.markPaid(order.id);
   }
@@ -116,26 +109,13 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    const [existingPayment] = await this.db
-      .select({ id: payments.id, status: payments.status })
-      .from(payments)
-      .where(eq(payments.orderId, order.id))
-      .limit(1);
-
-    if (!existingPayment) {
-      await this.db.insert(payments).values({
-        orderId: order.id,
-        provider: 'toss',
-        providerPaymentKey: tossPayment.paymentKey,
-        amount: tossPayment.totalAmount,
-        status: 'canceled',
-      });
-    } else if (existingPayment.status !== 'canceled') {
-      await this.db
-        .update(payments)
-        .set({ status: 'canceled' })
-        .where(eq(payments.orderId, order.id));
-    }
+    await this.persistPayment(this.db, {
+      orderId: order.id,
+      provider: 'toss',
+      providerPaymentKey: tossPayment.paymentKey,
+      amount: tossPayment.totalAmount,
+      status: 'canceled',
+    });
 
     await this.ordersService.markCancelled(order.id);
   }
@@ -159,28 +139,44 @@ export class PaymentsService {
     // out-of-order) EXPIRED notification arrived — never cancel a paid order.
     if (order.status !== 'pending') return;
 
-    const [existingPayment] = await this.db
-      .select({ id: payments.id, status: payments.status })
-      .from(payments)
-      .where(eq(payments.orderId, order.id))
-      .limit(1);
-
-    if (!existingPayment) {
-      await this.db.insert(payments).values({
+    // The payment write and the order transition must commit or roll back
+    // together — an expired payment whose order stays pending is unrecoverable.
+    await this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
         orderId: order.id,
         provider: 'toss',
         providerPaymentKey: tossPayment.paymentKey,
         amount: tossPayment.totalAmount,
         status: 'expired',
       });
-    } else if (existingPayment.status !== 'expired' && existingPayment.status !== 'canceled') {
-      await this.db
-        .update(payments)
-        .set({ status: 'expired' })
-        .where(eq(payments.orderId, order.id));
-    }
+      await this.ordersService.cancelOrder(tx, order.id, ['pending']);
+    });
+  }
 
-    await this.ordersService.markCancelled(order.id);
+  private persistPayment(
+    tx: Database | DbTx,
+    values: {
+      orderId: string;
+      provider: string;
+      providerPaymentKey: string;
+      amount: number;
+      status: string;
+      approvedAt?: Date;
+    },
+  ) {
+    const insert = tx.insert(payments).values(values);
+    if (values.status === 'paid') {
+      // DONE never overwrites an existing payment row.
+      return insert.onConflictDoNothing({ target: payments.orderId });
+    }
+    return insert.onConflictDoUpdate({
+      target: payments.orderId,
+      set: { status: values.status },
+      setWhere:
+        values.status === 'expired'
+          ? and(ne(payments.status, 'expired'), ne(payments.status, 'canceled'))
+          : ne(payments.status, 'canceled'),
+    });
   }
 
   private async getTossPayment(paymentKey: string): Promise<TossPayment> {

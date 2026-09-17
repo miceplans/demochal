@@ -35,47 +35,80 @@ const ROWS = [
     id: 'pay-1',
     name: '홈 히어로 배너 광고',
     amount: 100_000,
-    status: 'done',
+    status: 'paid',
     approvedAt: new Date('2026-09-10T09:00:00Z'),
   },
   {
     id: 'pay-2',
     name: null,
     amount: 50_000,
-    status: 'cancelled',
+    status: 'canceled',
     approvedAt: new Date('2026-09-05T09:00:00Z'),
   },
-  { id: 'pay-3', name: '개발자 챌린지', amount: 30_000, status: 'failed', approvedAt: null },
+  { id: 'pay-3', name: '개발자 챌린지', amount: 30_000, status: 'expired', approvedAt: null },
   { id: 'pay-4', name: '갤러리 광고', amount: 20_000, status: 'ready', approvedAt: null },
+  // Legacy DB vocabulary from older writers — the item-status mapping contract
+  // still serves these, so they stay covered here.
+  {
+    id: 'pay-5',
+    name: '지난 챌린지',
+    amount: 10_000,
+    status: 'done',
+    approvedAt: new Date('2026-09-01T09:00:00Z'),
+  },
+  {
+    id: 'pay-6',
+    name: '지난 광고',
+    amount: 5_000,
+    status: 'cancelled',
+    approvedAt: new Date('2026-08-30T09:00:00Z'),
+  },
 ];
 
 describe('BillingHistoryService', () => {
-  it('maps names, negative amounts, and payment statuses, summing the total', async () => {
+  it('counts only charged payments in the total; expired rows stay in items as failed', async () => {
     const { db } = createDbStub(ROWS);
     const service = new BillingHistoryService(db);
 
     const { items, total } = await service.forBusiness('biz-1', {});
 
+    // Item-status mapping vocabulary is unchanged (known legacy 'done'/'cancelled'
+    // mapping inconsistency with the 'paid'|'canceled'|'expired' writer — out of scope).
     expect(items).toEqual([
       {
         id: 'pay-1',
         name: '홈 히어로 배너 광고',
         amount: -100_000,
         paidAt: '2026-09-10T09:00:00.000Z',
-        status: 'paid',
+        status: 'failed',
       },
       {
         id: 'pay-2',
         name: '주문',
         amount: -50_000,
         paidAt: '2026-09-05T09:00:00.000Z',
-        status: 'refunded',
+        status: 'failed',
       },
       { id: 'pay-3', name: '개발자 챌린지', amount: -30_000, paidAt: null, status: 'failed' },
       // 'ready' (unpaid) rows surface as 'failed' per the status mapping contract.
       { id: 'pay-4', name: '갤러리 광고', amount: -20_000, paidAt: null, status: 'failed' },
+      {
+        id: 'pay-5',
+        name: '지난 챌린지',
+        amount: -10_000,
+        paidAt: '2026-09-01T09:00:00.000Z',
+        status: 'paid',
+      },
+      {
+        id: 'pay-6',
+        name: '지난 광고',
+        amount: -5_000,
+        paidAt: '2026-08-30T09:00:00.000Z',
+        status: 'refunded',
+      },
     ]);
-    expect(total).toBe(-200_000);
+    // Only 'paid' moves the balance: canceled/expired/ready/legacy rows contribute 0.
+    expect(total).toBe(-100_000);
   });
 
   it('scopes rows to the business via ads or applications→challenges', async () => {

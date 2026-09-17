@@ -4,6 +4,7 @@ import { env } from '../config/env.js';
 import * as schema from './schema.js';
 
 export type Database = NodePgDatabase<typeof schema>;
+export type DbTx = Parameters<Parameters<Database['transaction']>[0]>[0];
 
 export const DRIZZLE = Symbol('DRIZZLE');
 

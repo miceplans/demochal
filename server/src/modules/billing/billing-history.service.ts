@@ -54,7 +54,11 @@ export class BillingHistoryService {
       paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
       status: row.status === 'done' ? 'paid' : row.status === 'cancelled' ? 'refunded' : 'failed',
     }));
-    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    // Only 'paid' rows represent an actual balance movement: a 'canceled' payment
+    // was refunded (net 0) and 'expired'/'ready' rows were never charged. The
+    // legacy 'done'/'cancelled' item-status mapping above is a known mismatch
+    // with the 'paid' | 'canceled' | 'expired' writer vocabulary — out of scope.
+    const total = rows.reduce((sum, row) => (row.status === 'paid' ? sum - row.amount : sum), 0);
     return { items, total };
   }
 }
