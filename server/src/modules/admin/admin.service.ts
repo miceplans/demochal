@@ -17,7 +17,7 @@ import {
   adminSettings,
   type reports as reportsTable,
 } from '../../db/schema.js';
-import type { AuthUser } from '../../common/auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
@@ -731,7 +731,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------ settings
 
-  async getSettings(user: AuthUser) {
+  async getSettings(user: AuthenticatedUser) {
     const [row] = await this.db
       .select()
       .from(adminSettings)
@@ -749,7 +749,7 @@ export class AdminService {
     };
   }
 
-  async updateSettings(values: Record<string, boolean>, user: AuthUser) {
+  async updateSettings(values: Record<string, boolean>, user: AuthenticatedUser) {
     // The body is a free-form key→boolean map; drop anything that isn't a boolean.
     const clean = Object.fromEntries(
       Object.entries(values ?? {}).filter(([, value]) => typeof value === 'boolean'),
@@ -773,7 +773,7 @@ export class AdminService {
 
   // -------------------------------------------------------- user-facing writes
 
-  async createCertificate(dto: CreateCertificateDto, user: AuthUser) {
+  async createCertificate(dto: CreateCertificateDto, user: AuthenticatedUser) {
     const [row] = await this.db
       .insert(certificates)
       .values({
@@ -787,7 +787,7 @@ export class AdminService {
     return row;
   }
 
-  async createReport(dto: CreateReportDto, user: AuthUser) {
+  async createReport(dto: CreateReportDto, user: AuthenticatedUser) {
     const [row] = await this.db
       .insert(reports)
       .values({

@@ -19,6 +19,7 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
+import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { TeamsModule } from './modules/teams/teams.module.js';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module.js';
@@ -52,6 +53,9 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     InterestsModule,
     OperationsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: MaintenanceGuard }],
+  providers: [
+    { provide: APP_GUARD, useExisting: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
+  ],
 })
 export class AppModule {}

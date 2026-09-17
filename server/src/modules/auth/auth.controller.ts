@@ -23,6 +23,7 @@ import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
+import { Public } from './public.decorator.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
 const GOOGLE_STATE_COOKIE_OPTIONS = {
@@ -36,6 +37,7 @@ const GOOGLE_AUTHORIZATION_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 
+@Public()
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}

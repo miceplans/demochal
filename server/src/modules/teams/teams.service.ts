@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
-import type { AuthUser } from '../../common/auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { challenges, teamMembers, teams, users } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
@@ -129,7 +129,12 @@ export class TeamsService {
     return member;
   }
 
-  async updateMember(teamId: string, memberId: string, dto: UpdateTeamMemberDto, user: AuthUser) {
+  async updateMember(
+    teamId: string,
+    memberId: string,
+    dto: UpdateTeamMemberDto,
+    user: AuthenticatedUser,
+  ) {
     const [team] = await this.db.select().from(teams).where(eq(teams.id, teamId)).limit(1);
     if (!team) throw new NotFoundException('Team not found');
     const [member] = await this.db

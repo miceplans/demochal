@@ -1,5 +1,6 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { CurrentUser, type AuthUser } from '../../common/auth/current-user.decorator.js';
+import { CurrentUser } from '../auth/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
 import { CreateReportDto } from './dto/create-report.dto.js';
 
@@ -9,7 +10,7 @@ export class ReportsController {
   constructor(private readonly adminService: AdminService) {}
 
   @Post()
-  create(@Body() dto: CreateReportDto, @CurrentUser() user: AuthUser) {
+  create(@Body() dto: CreateReportDto, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.createReport(dto, user);
   }
 }
