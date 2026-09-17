@@ -24,6 +24,8 @@ function createDbStub(selectResult: unknown) {
 
 function httpContext(request: Record<string, unknown>): ExecutionContext {
   return {
+    getHandler: () => undefined,
+    getClass: () => class TestController {},
     switchToHttp: () => ({ getRequest: () => request }),
   } as unknown as ExecutionContext;
 }
@@ -33,13 +35,16 @@ function cookieHeader(token: string) {
 }
 
 function createGuard(db: unknown, verifyAsync = vi.fn()) {
-  return { guard: new JwtAuthGuard({ verifyAsync } as never, db as never), verifyAsync };
+  const reflector = { getAllAndOverride: vi.fn().mockReturnValue(false) } as never;
+  return { guard: new JwtAuthGuard({ verifyAsync } as never, reflector, db as never), verifyAsync };
 }
 
 describe('AdminController guard wiring', () => {
-  it('runs JwtAuthGuard before AdminRoleGuard on the whole controller', () => {
+  it('applies AdminRoleGuard on top of the global JwtAuthGuard', () => {
+    // JwtAuthGuard is registered as the global APP_GUARD (app.module.ts) since
+    // it must run before every route; only the admin-only check is per-controller.
     const guards = Reflect.getMetadata('__guards__', AdminController);
-    expect(guards).toEqual([JwtAuthGuard, AdminRoleGuard]);
+    expect(guards).toEqual([AdminRoleGuard]);
   });
 });
 
