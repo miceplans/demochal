@@ -38,15 +38,27 @@ export class PaymentsService {
   ) {}
 
   async handleTossWebhook(payload: TossWebhookPayload): Promise<void> {
-    // TODO: only DONE is handled. CANCELED / PARTIAL_CANCELED / EXPIRED / WAITING_FOR_DEPOSIT
-    // and other non-DONE statuses (https://docs.tosspayments.com/reference#status) are silently
-    // ignored here — cancellation/refund reconciliation against `orders`/`payments` isn't
-    // implemented yet.
-    if (payload.data.status !== 'DONE' || !payload.data.paymentKey || !payload.data.orderId) return;
+    const { status, paymentKey, orderId } = payload.data;
+    if (!paymentKey || !orderId) return;
 
+    if (status === 'DONE') {
+      await this.handleDone(orderId, paymentKey);
+      return;
+    }
+    if (status === 'CANCELED') {
+      await this.handleCanceled(orderId, paymentKey);
+      return;
+    }
+
+    // TODO: PARTIAL_CANCELED / EXPIRED / WAITING_FOR_DEPOSIT and other non-DONE/CANCELED
+    // Toss statuses (https://docs.tosspayments.com/reference#status) are still silently
+    // ignored — partial refunds and payment-window expiry aren't reconciled yet.
+  }
+
+  private async handleDone(orderId: string, paymentKey: string): Promise<void> {
     const [order, tossPayment] = await Promise.all([
-      this.ordersService.findByIdInternal(payload.data.orderId),
-      this.getTossPayment(payload.data.paymentKey),
+      this.ordersService.findByIdInternal(orderId),
+      this.getTossPayment(paymentKey),
     ]);
 
     if (
@@ -54,7 +66,7 @@ export class PaymentsService {
       tossPayment.orderId !== order.id ||
       tossPayment.totalAmount !== order.amount
     ) {
-      this.logger.warn(`Rejected unverified Toss webhook for order ${payload.data.orderId}`);
+      this.logger.warn(`Rejected unverified Toss webhook for order ${orderId}`);
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
@@ -75,6 +87,45 @@ export class PaymentsService {
     }
 
     await this.ordersService.markPaid(order.id);
+  }
+
+  private async handleCanceled(orderId: string, paymentKey: string): Promise<void> {
+    const [order, tossPayment] = await Promise.all([
+      this.ordersService.findByIdInternal(orderId),
+      this.getTossPayment(paymentKey),
+    ]);
+
+    if (
+      tossPayment.status !== 'CANCELED' ||
+      tossPayment.orderId !== order.id ||
+      tossPayment.totalAmount !== order.amount
+    ) {
+      this.logger.warn(`Rejected unverified Toss cancellation for order ${orderId}`);
+      throw new UnauthorizedException('Toss payment did not match the order');
+    }
+
+    const [existingPayment] = await this.db
+      .select({ id: payments.id, status: payments.status })
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .limit(1);
+
+    if (!existingPayment) {
+      await this.db.insert(payments).values({
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'canceled',
+      });
+    } else if (existingPayment.status !== 'canceled') {
+      await this.db
+        .update(payments)
+        .set({ status: 'canceled' })
+        .where(eq(payments.orderId, order.id));
+    }
+
+    await this.ordersService.markCancelled(order.id);
   }
 
   private async getTossPayment(paymentKey: string): Promise<TossPayment> {

@@ -5,7 +5,7 @@ const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
 
 /** Chainable drizzle stub: select().from().where().limit() / insert().values() */
-function createDbStub(existingPayment?: { id: string }) {
+function createDbStub(existingPayment?: { id: string; status?: string }) {
   const insertValues = vi.fn().mockResolvedValue(undefined);
   const limit = vi.fn().mockResolvedValue(existingPayment ? [existingPayment] : []);
   const selectStub: any = {
@@ -105,5 +105,79 @@ describe('PaymentsService', () => {
 
     expect(insertValues).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('marks the order cancelled and persists a canceled payment for CANCELED', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('CANCELED'));
+
+    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
+    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'order-1',
+        providerPaymentKey: 'pay-key-1',
+        amount: 50000,
+        status: 'canceled',
+      }),
+    );
+  });
+
+  it('updates an existing paid payment row to canceled for CANCELED (refund)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub({ id: 'payment-1', status: 'paid' });
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    db.update = vi.fn().mockReturnValue({ set });
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('CANCELED'));
+
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(set).toHaveBeenCalledWith({ status: 'canceled' });
+    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
+  });
+
+  it('does not re-update an already-canceled payment row', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub({ id: 'payment-1', status: 'canceled' });
+    db.update = vi.fn();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('CANCELED'));
+
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
   });
 });
