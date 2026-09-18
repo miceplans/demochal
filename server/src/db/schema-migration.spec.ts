@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(9);
+    expect(journal.entries).toHaveLength(12);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -169,6 +169,7 @@ describe('migration chain coverage', () => {
       'certificates',
       'reports',
       'admin_settings',
+      'outbox_events',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
@@ -240,6 +241,46 @@ describe('0008_drop_users_status migration', () => {
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('DROP COLUMN IF EXISTS "status"');
     expect(sql).not.toMatch(/DROP TABLE/);
+  });
+});
+
+describe('0009_payments_order_id_unique migration', () => {
+  it('enforces one payment row per order without touching other tables', () => {
+    const tag = journal.entries[9]?.tag;
+    expect(tag).toBe('0009_payments_order_id_unique');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "payments_order_id_unique" ON "payments"',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0010_payments_refunded_amount migration', () => {
+  it('adds the cumulative refund tracking column without destructive DDL', () => {
+    const tag = journal.entries[10]?.tag;
+    expect(tag).toBe('0010_payments_refunded_amount');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "refunded_amount" integer DEFAULT 0 NOT NULL',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0011_add_outbox_events migration', () => {
+  it('creates the outbox_events table for the outbox pattern', () => {
+    const tag = journal.entries[11]?.tag;
+    expect(tag).toBe('0011_add_outbox_events');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "outbox_events"');
+    expect(sql).toContain('"event_type" varchar(50) NOT NULL');
+    expect(sql).toContain('"payload" jsonb NOT NULL');
+    expect(sql).toContain('"status" varchar(20) DEFAULT \'pending\' NOT NULL');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 

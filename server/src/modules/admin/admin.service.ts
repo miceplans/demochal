@@ -18,6 +18,7 @@ import {
   type reports as reportsTable,
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
@@ -638,10 +639,15 @@ export class AdminService {
   async getAnalytics(ad?: string) {
     const [userRow] = await this.db.select({ count: countRows }).from(users);
     const [challengeRow] = await this.db.select({ count: countRows }).from(challenges);
+    // 'paid' 행만 대상으로 하고(취소/만료/미결제 제외), 부분환불(Toss PARTIAL_CANCELED)이
+    // 반영된 refundedAmount를 뺀 순수익을 합산한다 — refundedAmount는
+    // PaymentsService의 PARTIAL_CANCELED 재조회로 채워진다(payments.service.ts).
     const [revenueRow] = await this.db
-      .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+      })
       .from(payments)
-      .where(eq(payments.status, 'done'));
+      .where(eq(payments.status, 'paid'));
 
     const now = new Date();
     const months = Array.from({ length: 6 }, (_, i) => {
@@ -744,7 +750,7 @@ export class AdminService {
     const [row] = await this.db
       .select()
       .from(adminSettings)
-      .where(eq(adminSettings.id, 'default'))
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
       .limit(1);
     return {
       profile: {
@@ -754,7 +760,7 @@ export class AdminService {
         twoFactorEnabled: false,
       },
       groups: SETTINGS_GROUPS,
-      values: row?.values ?? {},
+      values: { ...DEFAULT_VALUES, ...(row?.values ?? {}) },
     };
   }
 
@@ -767,15 +773,15 @@ export class AdminService {
     const [existing] = await this.db
       .select()
       .from(adminSettings)
-      .where(eq(adminSettings.id, 'default'))
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
       .limit(1);
     if (existing) {
       await this.db
         .update(adminSettings)
         .set({ values: { ...existing.values, ...clean }, updatedAt: new Date() })
-        .where(eq(adminSettings.id, 'default'));
+        .where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
     } else {
-      await this.db.insert(adminSettings).values({ id: 'default', values: clean });
+      await this.db.insert(adminSettings).values({ id: ADMIN_SETTINGS_ID, values: clean });
     }
     return this.getSettings(user);
   }

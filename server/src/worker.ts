@@ -3,8 +3,12 @@ import { NestFactory } from '@nestjs/core';
 import { WorkerModule } from './worker.module.js';
 import { env } from './config/env.js';
 import { SqsService } from './queue/sqs.service.js';
+import { OutboxRelayService } from './outbox/outbox-relay.service.js';
 import { VerificationsProcessorService } from './modules/verifications/verifications.processor.js';
-import type { VerificationJobMessage } from './modules/verifications/verifications.service.js';
+import {
+  VERIFICATION_SUBMITTED_EVENT,
+  type VerificationJobMessage,
+} from './modules/verifications/verifications.service.js';
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
 async function bootstrap() {
@@ -12,6 +16,7 @@ async function bootstrap() {
   const app = await NestFactory.createApplicationContext(WorkerModule);
 
   const sqsService = app.get(SqsService);
+  const outboxRelayService = app.get(OutboxRelayService);
   const verificationsProcessor = app.get(VerificationsProcessorService);
 
   let shuttingDown = false;
@@ -25,6 +30,12 @@ async function bootstrap() {
       logger.warn('SQS_VERIFICATIONS_QUEUE_URL is not configured, idling');
       await new Promise((resolve) => setTimeout(resolve, 5000));
       continue;
+    }
+
+    try {
+      await outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, env.sqsVerificationsQueueUrl);
+    } catch (error) {
+      logger.error('Outbox relay pass failed', error);
     }
 
     const messages = await sqsService.receiveMessages(env.sqsVerificationsQueueUrl);

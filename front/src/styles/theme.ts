@@ -21,6 +21,7 @@ declare module '@emotion/react' {
       };
       background: string;
       foreground: string;
+      overlayWhite: string;
     };
     typography: {
       fontFamily: string;
@@ -28,6 +29,7 @@ declare module '@emotion/react' {
     shadow: {
       toast: string;
       focus: string;
+      carouselNav: string;
     };
   }
 }
@@ -52,6 +54,7 @@ export const theme = {
     },
     background: '#ffffff',
     foreground: '#101010',
+    overlayWhite: 'rgb(255 255 255 / 85%)',
   },
   typography: {
     fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -59,5 +62,6 @@ export const theme = {
   shadow: {
     toast: '4px 4px 10px 0 rgb(0 0 0 / 20%)',
     focus: '2px 2px 20px 0 rgb(154 198 255 / 45%)',
+    carouselNav: '0 4px 12px rgb(27 33 44 / 16%)',
   },
 } as const;

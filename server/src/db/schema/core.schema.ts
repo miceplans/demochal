@@ -6,6 +6,7 @@ import {
   serial,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
   varchar,
 } from 'drizzle-orm/pg-core';
@@ -179,17 +180,31 @@ export const orders = pgTable('orders', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const payments = pgTable('payments', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  orderId: uuid('order_id')
-    .notNull()
-    .references(() => orders.id),
-  provider: varchar('provider', { length: 20 }).notNull().default('toss'),
-  providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
-  amount: integer('amount').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('ready'),
-  approvedAt: timestamp('approved_at'),
-});
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id),
+    provider: varchar('provider', { length: 20 }).notNull().default('toss'),
+    providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
+    amount: integer('amount').notNull(),
+    // Valid values: ready | paid | canceled | expired. Legacy rows can contain
+    // done | cancelled and are handled when reading billing history.
+    status: varchar('status', { length: 20 }).notNull().default('ready'),
+    // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set
+    // from Toss's balanceAmount each time (never incremented) so a redelivered
+    // webhook is idempotent. 0 for untouched/fully-paid rows; irrelevant once
+    // status is 'canceled' (the full amount is already excluded from revenue).
+    refundedAmount: integer('refunded_amount').notNull().default(0),
+    approvedAt: timestamp('approved_at'),
+  },
+  // One payment row per order: webhook handlers upsert on order_id so that
+  // concurrent Toss deliveries for the same order conflict instead of
+  // duplicating rows.
+  (table) => [uniqueIndex('payments_order_id_unique').on(table.orderId)],
+);
 export const files = pgTable('files', {
   id: uuid('id').defaultRandom().primaryKey(),
   bucket: varchar('bucket', { length: 20 }).notNull(),
@@ -199,6 +214,20 @@ export const files = pgTable('files', {
   uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
   uploaderUserId: uuid('uploader_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+// Outbox pattern: a DB transaction inserts its business row and an outbox row
+// together, so an external side effect (SQS, webhook relay, ...) is never
+// lost to a crash between the DB commit and the send. A poller (currently
+// OutboxRelayService, driven from worker.ts) sends pending rows and marks
+// them sent; status values: pending | sent | failed.
+export const outboxEvents = pgTable('outbox_events', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  eventType: varchar('event_type', { length: 50 }).notNull(),
+  payload: jsonb('payload').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('pending'),
+  attempts: integer('attempts').notNull().default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  sentAt: timestamp('sent_at'),
 });
 export const paymentCards = pgTable('payment_cards', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -16,6 +16,8 @@
   --color-gray-300: #c9ccd2;
   --shadow-toast: 4px 4px 10px 0 rgb(0 0 0 / 20%);
   --shadow-focus: 2px 2px 20px 0 rgb(154 198 255 / 45%);
+  --color-overlay-white: rgb(255 255 255 / 85%);
+  --shadow-carousel-nav: 0 4px 12px rgb(27 33 44 / 16%);
 }
 
 .type-display {
