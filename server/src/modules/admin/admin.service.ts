@@ -639,10 +639,15 @@ export class AdminService {
   async getAnalytics(ad?: string) {
     const [userRow] = await this.db.select({ count: countRows }).from(users);
     const [challengeRow] = await this.db.select({ count: countRows }).from(challenges);
+    // 'paid' 행만 대상으로 하고(취소/만료/미결제 제외), 부분환불(Toss PARTIAL_CANCELED)이
+    // 반영된 refundedAmount를 뺀 순수익을 합산한다 — refundedAmount는
+    // PaymentsService의 PARTIAL_CANCELED 재조회로 채워진다(payments.service.ts).
     const [revenueRow] = await this.db
-      .select({ total: sql<number>`coalesce(sum(${payments.amount}), 0)::int` })
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+      })
       .from(payments)
-      .where(eq(payments.status, 'done'));
+      .where(eq(payments.status, 'paid'));
 
     const now = new Date();
     const months = Array.from({ length: 6 }, (_, i) => {

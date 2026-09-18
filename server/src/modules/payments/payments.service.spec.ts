@@ -63,18 +63,115 @@ describe('PaymentsService', () => {
     expect(onConflictDoUpdate).not.toHaveBeenCalled();
   });
 
-  it('ignores non-DONE webhook events', async () => {
+  it('ignores other non-actionable webhook events (e.g. ABORTED)', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ status: 'PARTIAL_CANCELED', amount: 50000 }),
+      json: async () => ({ status: 'ABORTED', amount: 50000 }),
     });
     const { db, insertValues } = createDbStub();
     const orders = createOrdersStub();
     const service = new PaymentsService(db, orders as any);
 
-    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+    await service.handleTossWebhook(webhook('ABORTED'));
 
     expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it('reconciles PARTIAL_CANCELED by persisting the Toss-reported refunded amount', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'PARTIAL_CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+        balanceAmount: 30000,
+      }),
+    });
+    const { db, insertValues, onConflictDoUpdate } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderId: 'order-1',
+        providerPaymentKey: 'pay-key-1',
+        amount: 50000,
+        status: 'paid',
+        refundedAmount: 20000,
+      }),
+    );
+    expect(onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ set: { refundedAmount: 20000 } }),
+    );
+    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(orders.markPaid).not.toHaveBeenCalled();
+  });
+
+  it('is idempotent across redelivered PARTIAL_CANCELED webhooks (sets, never increments)', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'PARTIAL_CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+        balanceAmount: 30000,
+      }),
+    });
+    const { db, onConflictDoUpdate } = createDbStub();
+    const service = new PaymentsService(db, createOrdersStub() as any);
+
+    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(2);
+    for (const [arg] of onConflictDoUpdate.mock.calls as any[]) {
+      expect(arg).toEqual(expect.objectContaining({ set: { refundedAmount: 20000 } }));
+    }
+  });
+
+  it('rejects a PARTIAL_CANCELED webhook whose Toss amount mismatches the order', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'PARTIAL_CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 99999,
+        balanceAmount: 30000,
+      }),
+    });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('PARTIAL_CANCELED'))).rejects.toThrow(
+      'did not match the order',
+    );
+    expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  it('rejects a PARTIAL_CANCELED response missing balanceAmount instead of guessing', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'PARTIAL_CANCELED',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 50000,
+      }),
+    });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('PARTIAL_CANCELED'))).rejects.toThrow(
+      'balanceAmount',
+    );
     expect(insertValues).not.toHaveBeenCalled();
   });
 

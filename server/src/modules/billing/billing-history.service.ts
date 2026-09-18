@@ -47,18 +47,26 @@ export class BillingHistoryService {
       .where(and(...conditions))
       .orderBy(desc(sql`coalesce(${payments.approvedAt}, timestamp '1970-01-01 00:00:00')`));
 
-    const items: PaymentHistoryItem[] = rows.map((row) => ({
-      id: row.id,
-      name: row.name ?? '주문',
-      amount: -row.amount,
-      paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
-      status:
+    const items: PaymentHistoryItem[] = rows.map((row) => {
+      const status: PaymentHistoryItem['status'] =
         row.status === 'paid' || row.status === 'done'
           ? 'paid'
           : row.status === 'canceled' || row.status === 'cancelled'
             ? 'refunded'
-            : 'failed',
-    }));
+            : 'failed';
+      // payments.service.ts(writer)는 취소되어도 원 결제 금액의 부호를 뒤집지 않고 그대로
+      // 보관한다. refunded 행을 -row.amount로 내보내면 PaymentHistoryItem 계약(환불은 양수)을
+      // 어기고, total에서 환불이 또 한번 잔액을 깎는 것처럼 보이게 된다 — 매핑된 status 기준으로
+      // 부호를 정한다. paid 행은 기존 음수(차감) 표시 규약을 유지한다.
+      const amount = status === 'refunded' ? row.amount : -row.amount;
+      return {
+        id: row.id,
+        name: row.name ?? '주문',
+        amount,
+        paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
+        status,
+      };
+    });
     // Only charged rows represent an actual balance movement: 'canceled'/'cancelled'
     // payments were refunded (net 0) and 'expired'/'ready' rows were never charged.
     // 'done' is the legacy writer vocabulary for a charged payment, so it counts

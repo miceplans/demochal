@@ -83,7 +83,9 @@ describe('BillingHistoryService', () => {
       {
         id: 'pay-2',
         name: '주문',
-        amount: -50_000,
+        // Refunded rows display as positive amounts (PaymentHistoryItem contract),
+        // even though the writer keeps the original charge's sign in the DB.
+        amount: 50_000,
         paidAt: '2026-09-05T09:00:00.000Z',
         status: 'refunded',
       },
@@ -100,13 +102,15 @@ describe('BillingHistoryService', () => {
       {
         id: 'pay-6',
         name: '지난 광고',
-        amount: -5_000,
+        amount: 5_000,
         paidAt: '2026-08-30T09:00:00.000Z',
         status: 'refunded',
       },
     ]);
     // Charged rows move the balance: 'paid' and legacy 'done' count, while
-    // canceled/refunded, expired, and ready rows contribute 0.
+    // canceled/refunded, expired, and ready rows contribute 0. Positive refund
+    // display amounts (pay-2, pay-6) are not part of this reduce — they don't
+    // get subtracted a second time.
     expect(total).toBe(-110_000);
   });
 

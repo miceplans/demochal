@@ -1,5 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { payments } from '../../db/schema.js';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
 import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
@@ -32,8 +33,13 @@ function createDbStub(
   const insertQueue = [...(options.insert ?? [])];
   const setCalls: unknown[][] = [];
   const valuesCalls: unknown[][] = [];
+  const selectWhereCalls: unknown[][] = [];
   const db: any = {
-    select: vi.fn(() => chainable(selectQueue.length ? selectQueue.shift() : [])),
+    select: vi.fn(() =>
+      chainable(selectQueue.length ? selectQueue.shift() : [], {
+        where: (args) => selectWhereCalls.push(args),
+      }),
+    ),
     update: vi.fn(() =>
       chainable(updateQueue.length ? updateQueue.shift() : [], {
         set: (args) => setCalls.push(args),
@@ -45,11 +51,41 @@ function createDbStub(
       }),
     ),
   };
-  return { db, setCalls, valuesCalls };
+  return { db, setCalls, valuesCalls, selectWhereCalls };
+}
+
+/** drizzle SQL 트리에서 문자열 값(Param 포함)을 모은다. */
+function collectStrings(node: any, acc: string[] = []): string[] {
+  if (typeof node === 'string') {
+    acc.push(node);
+    return acc;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((c) => collectStrings(c, acc));
+    return acc;
+  }
+  if (node?.constructor?.name === 'Param' && typeof node.value === 'string') {
+    acc.push(node.value);
+    return acc;
+  }
+  if (Array.isArray(node?.queryChunks)) {
+    node.queryChunks.forEach((c: any) => collectStrings(c, acc));
+  }
+  return acc;
 }
 
 function createNotificationsStub() {
   return { create: vi.fn().mockResolvedValue({}) };
+}
+
+/** Does a drizzle SQL tree reference this exact column object (by identity)? */
+function referencesColumn(node: any, target: unknown, seen = new Set<unknown>()): boolean {
+  if (node === target) return true;
+  if (!node || typeof node !== 'object' || seen.has(node)) return false;
+  seen.add(node);
+  if (Array.isArray(node)) return node.some((c) => referencesColumn(c, target, seen));
+  if (Array.isArray(node.queryChunks)) return referencesColumn(node.queryChunks, target, seen);
+  return false;
 }
 
 function createService(db: any, notifications = createNotificationsStub()) {
@@ -440,7 +476,7 @@ describe('AdminService — analytics', () => {
       },
       organization: '부산광역시',
     });
-    const { db } = createDbStub({
+    const { db, selectWhereCalls } = createDbStub({
       select: [
         [{ count: 7 }],
         [{ count: 4 }],
@@ -453,6 +489,10 @@ describe('AdminService — analytics', () => {
 
     const result = await service.getAnalytics('2');
 
+    // 플랫폼 수익 집계는 payments.status = 'paid'만 대상으로 한다
+    // (레거시 'done' 어휘를 쓰면 실제 저장 값과 안 맞아 수익이 항상 0이 됨).
+    const whereStrings = selectWhereCalls.flatMap((call) => collectStrings(call));
+    expect(whereStrings.filter((s) => s === 'paid')).toHaveLength(1);
     expect(result.stats.map((card) => card.value)).toEqual(['7', '4', '300']);
     expect(result.activity.yMax).toBe(10);
     expect(result.activity.general).toEqual([0, 0, 0, 0, 0, 0]);
@@ -463,6 +503,26 @@ describe('AdminService — analytics', () => {
       daily: [],
     });
     expect(result.adReport?.stats.map((card) => card.value)).toEqual(['0', '0', '0%', '250']);
+  });
+
+  it('nets platform revenue against refundedAmount so partial refunds reduce it and full cancels stay 0', async () => {
+    const { db } = createDbStub({
+      select: [[{ count: 0 }], [{ count: 0 }], [{ total: 30_000 }]],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getAnalytics();
+
+    // The revenue query's `total` expression must subtract refundedAmount from
+    // amount, not just sum amount — otherwise a PARTIAL_CANCELED refund never
+    // reduces reported revenue. (Fully 'canceled' payments already contribute 0
+    // via the row.status = 'paid' filter asserted in the test above.)
+    const revenueSelectArg = db.select.mock.calls[2]![0];
+    expect(referencesColumn(revenueSelectArg.total, payments.amount)).toBe(true);
+    expect(referencesColumn(revenueSelectArg.total, payments.refundedAmount)).toBe(true);
+    // The DB does the sum/subtraction; this just confirms the aggregate result
+    // flows straight through to the stat card unmodified.
+    expect(result.stats.map((card) => card.value)).toEqual(['0', '0', '30000']);
   });
 });
 
