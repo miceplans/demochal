@@ -88,16 +88,33 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    await this.persistPayment(this.db, {
-      orderId: order.id,
-      provider: 'toss',
-      providerPaymentKey: tossPayment.paymentKey,
-      amount: tossPayment.totalAmount,
-      status: 'paid',
-      approvedAt: new Date(),
-    });
+    // Idempotency: Toss redelivers DONE, and it can also arrive after an
+    // earlier terminal webhook (EXPIRED/CANCELED) already settled the order.
+    // Acknowledge instead of throwing — a 4xx here makes Toss retry a
+    // permanently settled state forever.
+    if (order.status === 'paid') return;
+    if (order.status !== 'pending') {
+      this.logger.warn(
+        `Ignoring DONE for order ${orderId} already in terminal status ${order.status}`,
+      );
+      return;
+    }
 
-    await this.ordersService.markPaid(order.id);
+    // The payment write and the order transition must commit or roll back
+    // together — a paid order without its payment row (or vice versa) is
+    // unrecoverable.
+    await this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'paid',
+        approvedAt: new Date(),
+      });
+
+      await this.ordersService.settleOrderPaid(tx, order.id);
+    });
   }
 
   private async handleCanceled(orderId: string, paymentKey: string): Promise<void> {
@@ -115,15 +132,19 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    await this.persistPayment(this.db, {
-      orderId: order.id,
-      provider: 'toss',
-      providerPaymentKey: tossPayment.paymentKey,
-      amount: tossPayment.totalAmount,
-      status: 'canceled',
-    });
+    // The payment write and the order transition must commit or roll back
+    // together (same contract as handleExpired).
+    await this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'canceled',
+      });
 
-    await this.ordersService.markCancelled(order.id);
+      await this.ordersService.cancelOrder(tx, order.id);
+    });
   }
 
   private async handleExpired(orderId: string, paymentKey: string): Promise<void> {
