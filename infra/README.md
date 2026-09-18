@@ -1,6 +1,6 @@
 # infra/
 
-AWS 배포/IaC 관련 파일을 위한 디렉토리. 현재는 비어 있음.
+AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성은 `ap-northeast-2`의 비용 우선 Single-AZ 스테이징 전용입니다. ALB와 RDS subnet group의 AWS 제약 때문에 두 AZ에 subnet은 만들지만, ECS API/worker와 RDS primary는 첫 번째 AZ에만 둡니다.
 
 ## 예정 구성
 
@@ -9,7 +9,30 @@ AWS 배포/IaC 관련 파일을 위한 디렉토리. 현재는 비어 있음.
 - NAT Gateway, RDS Multi-AZ는 초기 단계에서 제외 (필요해지면 도입)
 - SQS (verifications 큐) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
 
-구성은 추후 Terraform 또는 콘솔로 예정.
+## 적용 전 준비
+
+Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등록을 자동 수행하지 않습니다. 실제 적용은 승인된 운영자가 별도 세션에서 수행합니다.
+
+1. 암호화된 S3 state bucket과 DynamoDB lock table(`semochal-staging-tfstate`, `semochal-staging-tfstate-lock`)을 별도 bootstrap하고, 해당 backend에 접근할 IAM 권한을 부여합니다. 일반 apply는 `backend.tf`를 사용하며 local state로 진행하지 않습니다.
+2. `staging.tfvars.example`을 복사해 실제 도메인과 hosted zone ID를 넣습니다. 이 파일에는 secret 값을 넣지 않습니다.
+3. 첫 apply는 `enable_runtime=false`로 VPC/ECR/RDS/S3/SQS/IAM/ALB만 생성합니다. `api_image`/`worker_image`는 비워도 됩니다.
+4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. 두 repository 모두 `IMMUTABLE` tag이며 ECR lifecycle policy가 태그 prefix로 보존 기간을 나눕니다 — 실제 배포용 이미지는 `deploy-`로 시작하는 태그(예: `deploy-2024-06-01-abcd123`)로 push해 최근 10개까지 보존하고, 일회성 테스트 이미지만 `test-`로 시작하는 태그를 써서 2개 초과분이 즉시 정리되도록 합니다. 두 prefix 어디에도 속하지 않는 태그는 lifecycle policy가 건드리지 않습니다(무기한 보존). `api_image`/`worker_image`에는 push 후 resolve한 `@sha256:...` digest를 넣습니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `TOSS_SECRET_KEY`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
+5. RDS는 private subnet에만 있어 로컬에서 직접 접근할 수 없고 `/health`는 단순 `select 1`이라 스키마가 없어도 통과합니다. `enable_runtime=true`로 API/worker를 띄우기 전에 반드시 아래 one-off ECS task로 Drizzle 마이그레이션을 적용합니다(`server/src/migrate.ts` → `dist/migrate.js`, `pnpm --filter @semochal/server db:generate`로 생성된 `server/drizzle/*.sql`을 그대로 적용 — drizzle-kit CLI가 아니라 `drizzle-orm`의 programmatic migrator를 쓰므로 devDependency 없이 API 이미지 그대로 재사용합니다):
+
+   ```sh
+   aws ecs run-task \
+     --cluster "$(terraform output -raw ecs_cluster_name)" \
+     --task-definition "$(terraform output -raw migrate_task_definition_arn)" \
+     --launch-type FARGATE \
+     --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw migrate_task_subnet_id)],securityGroups=[$(terraform output -raw migrate_task_security_group_id)],assignPublicIp=ENABLED}"
+   ```
+
+   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 스키마 변경마다(즉 새 `server/drizzle/*.sql`이 추가된 `api_image`를 배포할 때마다) 재실행해야 합니다.
+
+6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
+7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
+
+ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker와 migrate task에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task(API/worker/migrate) security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, CloudWatch 7일 보존입니다. ECR은 `test-` 태그 이미지 2개, `deploy-` 태그 이미지 10개를 보존합니다(4단계 참고).
 
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 
@@ -20,4 +43,5 @@ AWS 배포/IaC 관련 파일을 위한 디렉토리. 현재는 비어 있음.
 - private 버킷은 S3 Block Public Access를 켜고, API/워커 IAM 역할만 읽기·쓰기 권한을 갖게 한다.
 - public 버킷에는 검증 완료된 JPEG, PNG, WebP만 API가 복사할 수 있게 하고, 클라이언트의 직접 쓰기 권한은 부여하지 않는다.
 - public 콘텐츠는 CloudFront를 통해 제공하고 `X-Content-Type-Options: nosniff` 응답 헤더를 추가한다.
+- CloudFront 도메인은 `PUBLIC_ASSETS_BASE_URL` 환경변수로 API/worker에 전달되어, ready 상태 public 파일/광고 이미지 응답의 `url`/`imageUrl` 필드를 완전한 URL로 채운다(`files.service.ts`/`ads.service.ts`). private 파일은 이 필드가 항상 null이며 presigned GET로만 접근한다.
 - 기존 public 객체는 `legacy_unverified` DB 상태와 대조해 즉시 검토·격리한다.

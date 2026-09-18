@@ -24,4 +24,9 @@ export interface FileMeta {
   key?: string;
   contentType?: string;
   createdAt?: string;
+  /**
+   * CloudFront public URL; set only once a public file has finished upload verification (uploadStatus ready). Null for private files and pending/rejected uploads.
+   * @nullable
+   */
+  url?: string | null;
 }
