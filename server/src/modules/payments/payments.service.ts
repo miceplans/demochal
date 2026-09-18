@@ -9,7 +9,7 @@ import { and, eq, ne } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { payments } from '../../db/schema.js';
+import { orders, payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 
 export interface TossWebhookPayload {
@@ -88,16 +88,34 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    await this.persistPayment(this.db, {
-      orderId: order.id,
-      provider: 'toss',
-      providerPaymentKey: tossPayment.paymentKey,
-      amount: tossPayment.totalAmount,
-      status: 'paid',
-      approvedAt: new Date(),
-    });
+    // The payment write and the order transition must commit or roll back
+    // together — a DONE payment recorded with the order left pending is
+    // unrecoverable (never reflected as paid).
+    await this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'paid',
+        approvedAt: new Date(),
+      });
 
-    await this.ordersService.markPaid(order.id);
+      // A same-order repayment can arrive as DONE after an earlier payment
+      // attempt's (possibly out-of-order/delayed) EXPIRED already canceled
+      // this order — a terminal state that payOrder() won't reopen. Treat it
+      // as an idempotent no-op (keep the payment row for audit) instead of
+      // throwing, which would make Toss retry this webhook forever.
+      const [current] = await tx.select().from(orders).where(eq(orders.id, order.id)).for('update');
+      if (current?.status === 'canceled') {
+        this.logger.warn(
+          `DONE payment ${paymentKey} recorded but order ${orderId} is already canceled — not reopening it`,
+        );
+        return;
+      }
+
+      await this.ordersService.payOrder(tx, order.id);
+    });
   }
 
   private async handleCanceled(orderId: string, paymentKey: string): Promise<void> {
@@ -115,15 +133,18 @@ export class PaymentsService {
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
-    await this.persistPayment(this.db, {
-      orderId: order.id,
-      provider: 'toss',
-      providerPaymentKey: tossPayment.paymentKey,
-      amount: tossPayment.totalAmount,
-      status: 'canceled',
+    // The payment write and the order transition must commit or roll back
+    // together, matching the DONE/EXPIRED handlers above.
+    await this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'canceled',
+      });
+      await this.ordersService.cancelOrder(tx, order.id);
     });
-
-    await this.ordersService.markCancelled(order.id);
   }
 
   private async handleExpired(orderId: string, paymentKey: string): Promise<void> {

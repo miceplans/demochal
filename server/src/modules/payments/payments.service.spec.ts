@@ -6,16 +6,23 @@ vi.stubGlobal('fetch', fetchMock);
 
 /**
  * Drizzle stub. insert().values() returns the conflict handlers the service
- * chains onto every payment write (unique on payments.orderId).
+ * chains onto every payment write (unique on payments.orderId). `select()` is
+ * the tx-scoped `SELECT ... FOR UPDATE` handleDone() runs to detect an order
+ * that a concurrent/out-of-order EXPIRED already moved to a terminal state;
+ * `currentOrderStatus` controls what that read returns.
  */
-function createDbStub() {
+function createDbStub(currentOrderStatus: string = 'pending') {
   const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
   const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
   const insertValues = vi.fn(() => ({ onConflictDoNothing, onConflictDoUpdate }));
   const insert = vi.fn(() => ({ values: insertValues }));
-  const transaction = vi.fn(async (fn: (tx: any) => Promise<void>) => fn({ insert }));
-  const db: any = { insert, transaction };
-  return { db, insertValues, onConflictDoNothing, onConflictDoUpdate, transaction };
+  const selectFor = vi.fn().mockResolvedValue([{ id: 'order-1', status: currentOrderStatus }]);
+  const selectWhere = vi.fn(() => ({ for: selectFor }));
+  const selectFrom = vi.fn(() => ({ where: selectWhere }));
+  const select = vi.fn(() => ({ from: selectFrom }));
+  const transaction = vi.fn(async (fn: (tx: any) => Promise<void>) => fn({ insert, select }));
+  const db: any = { insert, select, transaction };
+  return { db, insertValues, onConflictDoNothing, onConflictDoUpdate, transaction, select };
 }
 
 function createOrdersStub(orderStatus: string = 'pending') {
@@ -25,6 +32,7 @@ function createOrdersStub(orderStatus: string = 'pending') {
       .mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
     markPaid: vi.fn().mockResolvedValue({}),
     markCancelled: vi.fn().mockResolvedValue({}),
+    payOrder: vi.fn().mockResolvedValue({}),
     cancelOrder: vi.fn().mockResolvedValue({}),
   };
 }
@@ -48,8 +56,8 @@ describe('PaymentsService', () => {
 
     await service.handleTossWebhook(webhook('DONE'));
 
-    expect(orders.markPaid).toHaveBeenCalledWith('order-1');
-    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(orders.payOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         orderId: 'order-1',
@@ -61,6 +69,38 @@ describe('PaymentsService', () => {
     // DONE never overwrites an existing payment row.
     expect(onConflictDoNothing).toHaveBeenCalledWith({ target: expect.anything() });
     expect(onConflictDoUpdate).not.toHaveBeenCalled();
+  });
+
+  it('runs the done payment upsert and order transition in ONE transaction', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('DONE'));
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(1);
+    expect(orders.payOrder).toHaveBeenCalledTimes(1);
+  });
+
+  it('records a DONE payment without reopening an order an earlier EXPIRED already canceled', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    // A repayment's DONE can arrive after a different payment attempt's
+    // (out-of-order/delayed) EXPIRED already canceled this order.
+    const { db, insertValues } = createDbStub('canceled');
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+    // The payment is still recorded for audit ...
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: 'order-1', status: 'paid' }),
+    );
+    // ... but the terminally canceled order is never reopened, and Toss gets
+    // a 200 instead of retrying this webhook forever.
+    expect(orders.payOrder).not.toHaveBeenCalled();
   });
 
   it('ignores other non-actionable webhook events (e.g. ABORTED)', async () => {
@@ -107,8 +147,8 @@ describe('PaymentsService', () => {
     expect(onConflictDoUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ set: { refundedAmount: 20000 } }),
     );
-    expect(orders.markCancelled).not.toHaveBeenCalled();
-    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
+    expect(orders.payOrder).not.toHaveBeenCalled();
   });
 
   it('is idempotent across redelivered PARTIAL_CANCELED webhooks (sets, never increments)', async () => {
@@ -183,8 +223,8 @@ describe('PaymentsService', () => {
 
     await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('verification failed');
 
-    expect(orders.markPaid).not.toHaveBeenCalled();
-    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(orders.payOrder).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
   });
 
@@ -207,8 +247,8 @@ describe('PaymentsService', () => {
 
     await service.handleTossWebhook(webhook('CANCELED'));
 
-    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
-    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    expect(orders.payOrder).not.toHaveBeenCalled();
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
     );
@@ -218,6 +258,19 @@ describe('PaymentsService', () => {
         setWhere: expect.anything(),
       }),
     );
+  });
+
+  it('runs the canceled payment upsert and order cancellation in ONE transaction', async () => {
+    fetchMock.mockResolvedValue(tossResponse('CANCELED'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('CANCELED'));
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(1);
+    expect(orders.cancelOrder).toHaveBeenCalledTimes(1);
   });
 
   it('upsert shape for CANCELED leaves already-canceled rows untouched', async () => {
@@ -243,8 +296,7 @@ describe('PaymentsService', () => {
     await service.handleTossWebhook(webhook('EXPIRED'));
 
     expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', ['pending']);
-    expect(orders.markCancelled).not.toHaveBeenCalled();
-    expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(orders.payOrder).not.toHaveBeenCalled();
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
         orderId: 'order-1',
@@ -314,8 +366,8 @@ describe('PaymentsService', () => {
     await service.handleTossWebhook(webhook('WAITING_FOR_DEPOSIT'));
 
     expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
-    expect(orders.markPaid).not.toHaveBeenCalled();
-    expect(orders.markCancelled).not.toHaveBeenCalled();
+    expect(orders.payOrder).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
   });
 });
