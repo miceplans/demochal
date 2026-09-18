@@ -174,7 +174,11 @@ export class PaymentsService {
       set: { status: values.status },
       setWhere:
         values.status === 'expired'
-          ? and(ne(payments.status, 'expired'), ne(payments.status, 'canceled'))
+          ? and(
+              ne(payments.status, 'paid'),
+              ne(payments.status, 'expired'),
+              ne(payments.status, 'canceled'),
+            )
           : ne(payments.status, 'canceled'),
     });
   }
