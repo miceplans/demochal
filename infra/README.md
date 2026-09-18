@@ -17,8 +17,9 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 2. `staging.tfvars.example`을 복사해 실제 도메인과 hosted zone ID를 넣습니다. 이 파일에는 secret 값을 넣지 않습니다.
 3. 첫 apply는 `enable_runtime=false`로 VPC/ECR/RDS/S3/SQS/IAM/ALB만 생성합니다. `api_image`/`worker_image`는 비워도 됩니다.
 4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `TOSS_SECRET_KEY`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
-5. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
-6. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
+5. RDS는 private subnet에만 있어 로컬에서 직접 접근할 수 없습니다. SSM Session Manager port forwarding(또는 동일 VPC의 임시 one-off ECS task)으로 RDS endpoint에 터널을 연 뒤, 위 `DATABASE_URL`을 가리키는 환경에서 `pnpm --filter @semochal/server db:migrate`를 실행해 스키마를 적용합니다. `enable_runtime=true`로 API/worker를 띄우기 전에 반드시 끝내야 합니다 — 마이그레이션 전에는 `/health`(단순 `select 1`)는 통과해도 실제 API/워커 쿼리는 테이블 부재로 실패합니다.
+6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
+7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
 
 ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, ECR image 2개 보존, CloudWatch 7일 보존입니다.
 

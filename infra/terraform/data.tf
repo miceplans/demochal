@@ -60,6 +60,19 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
   }
 }
 
+# requestUpload() returns a presigned PUT for this bucket that the browser calls
+# directly from frontend_origin; without CORS the preflight for that cross-origin
+# PUT has no Access-Control-Allow-Origin and the upload never happens.
+resource "aws_s3_bucket_cors_configuration" "private" {
+  bucket = aws_s3_bucket.private.id
+  cors_rule {
+    allowed_methods = ["PUT"]
+    allowed_origins = [var.frontend_origin]
+    allowed_headers = ["Content-Type", "Content-Length"]
+    max_age_seconds = 3000
+  }
+}
+
 resource "aws_s3_bucket" "public" {
   bucket_prefix = "${local.name_prefix}-public-"
 }

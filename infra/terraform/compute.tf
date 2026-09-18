@@ -101,6 +101,12 @@ data "aws_iam_policy_document" "worker_task" {
     actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.verifications.arn]
   }
+  statement {
+    # Presigns a short-lived GET for the submitted document so the OCR
+    # provider can fetch it; the signature only works if this role can read it.
+    actions   = ["s3:GetObject"]
+    resources = ["${aws_s3_bucket.private.arn}/*"]
+  }
 }
 
 resource "aws_iam_role_policy" "worker_task" {
