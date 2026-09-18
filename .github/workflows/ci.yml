@@ -51,6 +51,9 @@ jobs:
       - name: Run server unit tests
         run: pnpm --filter @semochal/server test
 
+      - name: Run api-client unit tests
+        run: pnpm --filter @semochal/api-client test
+
       - name: Build workspaces
         run: pnpm build
 

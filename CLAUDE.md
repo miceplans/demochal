@@ -38,6 +38,7 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 ## 테스트
 
 - server: Vitest — `pnpm --filter @semochal/server test`(spec은 `**/*.spec.ts`). 스키마 변경 시 `db/schema-migration.spec.ts` 반영 필수.
+- packages/api-client: Vitest — `pnpm --filter @semochal/api-client test`. CI(`ci.yml`)가 두 test 스텝을 모두 실행한다.
 - front 테스트는 없다 — 새 테스트 프레임워크를 임의로 추가하지 않는다.
 
 ## CI/CD
