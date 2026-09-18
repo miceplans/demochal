@@ -32,8 +32,13 @@ function createDbStub(
   const insertQueue = [...(options.insert ?? [])];
   const setCalls: unknown[][] = [];
   const valuesCalls: unknown[][] = [];
+  const selectWhereCalls: unknown[][] = [];
   const db: any = {
-    select: vi.fn(() => chainable(selectQueue.length ? selectQueue.shift() : [])),
+    select: vi.fn(() =>
+      chainable(selectQueue.length ? selectQueue.shift() : [], {
+        where: (args) => selectWhereCalls.push(args),
+      }),
+    ),
     update: vi.fn(() =>
       chainable(updateQueue.length ? updateQueue.shift() : [], {
         set: (args) => setCalls.push(args),
@@ -45,7 +50,27 @@ function createDbStub(
       }),
     ),
   };
-  return { db, setCalls, valuesCalls };
+  return { db, setCalls, valuesCalls, selectWhereCalls };
+}
+
+/** drizzle SQL 트리에서 문자열 값(Param 포함)을 모은다. */
+function collectStrings(node: any, acc: string[] = []): string[] {
+  if (typeof node === 'string') {
+    acc.push(node);
+    return acc;
+  }
+  if (Array.isArray(node)) {
+    node.forEach((c) => collectStrings(c, acc));
+    return acc;
+  }
+  if (node?.constructor?.name === 'Param' && typeof node.value === 'string') {
+    acc.push(node.value);
+    return acc;
+  }
+  if (Array.isArray(node?.queryChunks)) {
+    node.queryChunks.forEach((c: any) => collectStrings(c, acc));
+  }
+  return acc;
 }
 
 function createNotificationsStub() {
@@ -440,7 +465,7 @@ describe('AdminService — analytics', () => {
       },
       organization: '부산광역시',
     });
-    const { db } = createDbStub({
+    const { db, selectWhereCalls } = createDbStub({
       select: [
         [{ count: 7 }],
         [{ count: 4 }],
@@ -453,6 +478,10 @@ describe('AdminService — analytics', () => {
 
     const result = await service.getAnalytics('2');
 
+    // 플랫폼 수익 집계는 payments.status = 'paid'만 대상으로 한다
+    // (레거시 'done' 어휘를 쓰면 실제 저장 값과 안 맞아 수익이 항상 0이 됨).
+    const whereStrings = selectWhereCalls.flatMap((call) => collectStrings(call));
+    expect(whereStrings.filter((s) => s === 'paid')).toHaveLength(1);
     expect(result.stats.map((card) => card.value)).toEqual(['7', '4', '300']);
     expect(result.activity.yMax).toBe(10);
     expect(result.activity.general).toEqual([0, 0, 0, 0, 0, 0]);
