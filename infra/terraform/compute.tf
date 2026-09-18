@@ -6,7 +6,44 @@ resource "aws_ecr_repository" "api" {
 
 resource "aws_ecr_lifecycle_policy" "api" {
   repository = aws_ecr_repository.api.name
-  policy     = jsonencode({ rules = [{ rulePriority = 1, description = "Keep only two test images", selection = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 2 }, action = { type = "expire" } }] })
+  # A count-only "keep 2" rule over tagStatus=any can expire the immutable
+  # digest an active or rollback ECS task definition still references. Only
+  # disposable `test-`-tagged pushes get aggressively pruned; `deploy-`-tagged
+  # release images (see infra/README.md's push instructions) keep a bounded
+  # rollback set, and untagged manifests from failed pushes are swept
+  # separately. Anything tagged outside these two prefixes is left alone.
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire orphaned untagged images"
+        selection    = { tagStatus = "untagged", countType = "imageCountMoreThan", countNumber = 1 }
+        action       = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Expire disposable test- images beyond the 2 most recent"
+        selection = {
+          tagStatus     = "tagged",
+          tagPrefixList = ["test-"],
+          countType     = "imageCountMoreThan",
+          countNumber   = 2
+        }
+        action = { type = "expire" }
+      },
+      {
+        rulePriority = 3
+        description  = "Keep a bounded rollback set of deploy- release images"
+        selection = {
+          tagStatus     = "tagged",
+          tagPrefixList = ["deploy-"],
+          countType     = "imageCountMoreThan",
+          countNumber   = 10
+        }
+        action = { type = "expire" }
+      },
+    ]
+  })
 }
 
 resource "aws_ecr_repository" "worker" {
@@ -17,7 +54,40 @@ resource "aws_ecr_repository" "worker" {
 
 resource "aws_ecr_lifecycle_policy" "worker" {
   repository = aws_ecr_repository.worker.name
-  policy     = jsonencode({ rules = [{ rulePriority = 1, description = "Keep only two test images", selection = { tagStatus = "any", countType = "imageCountMoreThan", countNumber = 2 }, action = { type = "expire" } }] })
+  # See aws_ecr_lifecycle_policy.api above for why this is split by tag prefix
+  # instead of a single count-only rule.
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Expire orphaned untagged images"
+        selection    = { tagStatus = "untagged", countType = "imageCountMoreThan", countNumber = 1 }
+        action       = { type = "expire" }
+      },
+      {
+        rulePriority = 2
+        description  = "Expire disposable test- images beyond the 2 most recent"
+        selection = {
+          tagStatus     = "tagged",
+          tagPrefixList = ["test-"],
+          countType     = "imageCountMoreThan",
+          countNumber   = 2
+        }
+        action = { type = "expire" }
+      },
+      {
+        rulePriority = 3
+        description  = "Keep a bounded rollback set of deploy- release images"
+        selection = {
+          tagStatus     = "tagged",
+          tagPrefixList = ["deploy-"],
+          countType     = "imageCountMoreThan",
+          countNumber   = 10
+        }
+        action = { type = "expire" }
+      },
+    ]
+  })
 }
 
 resource "aws_ecs_cluster" "this" { name = local.name_prefix }
@@ -29,6 +99,11 @@ resource "aws_cloudwatch_log_group" "api" {
 
 resource "aws_cloudwatch_log_group" "worker" {
   name              = "/ecs/${local.name_prefix}/worker"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "migrate" {
+  name              = "/ecs/${local.name_prefix}/migrate"
   retention_in_days = 7
 }
 
@@ -115,6 +190,14 @@ resource "aws_iam_role_policy" "worker_task" {
   policy = data.aws_iam_policy_document.worker_task.json
 }
 
+# One-off migration task role: no AWS API calls happen inside the container
+# (Drizzle connects to Postgres over the network using DATABASE_URL), so this
+# role carries no inline policy beyond the assume-role trust relationship.
+resource "aws_iam_role" "migrate_task" {
+  name               = "${local.name_prefix}-migrate-task"
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+}
+
 resource "aws_lb" "api" {
   name               = "${local.name_prefix}-api"
   load_balancer_type = "application"
@@ -183,8 +266,12 @@ locals {
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
     { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
-    { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" }
+    { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
+    { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
+  # The migration task only needs DB credentials, not the full application
+  # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).
+  migrate_secrets = [for s in local.app_secrets : s if s.name == "DATABASE_URL"]
 }
 
 resource "aws_ecs_task_definition" "api" {
@@ -207,6 +294,38 @@ resource "aws_ecs_task_definition" "worker" {
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.worker_task.arn
   container_definitions    = jsonencode([{ name = "worker", image = var.worker_image != "" ? var.worker_image : "public.ecr.aws/docker/library/busybox:latest", essential = true, environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.worker.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "worker" } } }])
+}
+
+# One-off DB migration task. Reuses the API image (same server/ source,
+# server/src/migrate.ts is built into the same dist/) with the CMD overridden
+# to apply pending Drizzle migrations and exit. Never run as an
+# aws_ecs_service — operators launch it on demand with `aws ecs run-task`
+# after pushing api_image and before enable_runtime=true (infra/README.md
+# step 5) so the schema exists before API/worker queries hit it.
+resource "aws_ecs_task_definition" "migrate" {
+  family                   = "${local.name_prefix}-migrate"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.migrate_task.arn
+  container_definitions = jsonencode([{
+    name        = "migrate"
+    image       = var.api_image != "" ? var.api_image : "public.ecr.aws/docker/library/busybox:latest"
+    essential   = true
+    command     = ["node", "dist/migrate.js"]
+    environment = [{ name = "NODE_ENV", value = "production" }]
+    secrets     = local.migrate_secrets
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.migrate.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "migrate"
+      }
+    }
+  }])
 }
 
 resource "aws_ecs_service" "api" {

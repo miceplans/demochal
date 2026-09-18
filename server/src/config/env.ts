@@ -29,6 +29,10 @@ const envSchema = z
     JWT_SECRET: z.string().min(1).optional(),
     FRONTEND_ORIGIN: z.string().default('http://localhost:3000'),
     API_PUBLIC_URL: z.string().url().default('http://localhost:3001'),
+    // CloudFront domain fronting the public S3 bucket; used to build a
+    // fully-formed URL for ready public files/ads instead of returning a
+    // bare object key. Empty in local dev, where there is no CloudFront.
+    PUBLIC_ASSETS_BASE_URL: z.string().default(''),
 
     GOOGLE_CLIENT_ID: z.string().default(''),
     GOOGLE_CLIENT_SECRET: z.string().default(''),
@@ -76,6 +80,7 @@ export const env = {
     .map((origin) => origin.trim())
     .filter(Boolean),
   apiPublicUrl: raw.API_PUBLIC_URL,
+  publicAssetsBaseUrl: raw.PUBLIC_ASSETS_BASE_URL.replace(/\/+$/, ''),
 
   googleClientId: raw.GOOGLE_CLIENT_ID,
   googleClientSecret: raw.GOOGLE_CLIENT_SECRET,

@@ -32,7 +32,11 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy" {
 # Scoped to enable_runtime: with runtime disabled, zero healthy hosts is expected
 # and would otherwise breach permanently.
 resource "aws_cloudwatch_metric_alarm" "alb_no_healthy_hosts" {
-  count               = local.has_alarm_email && var.enable_runtime ? 1 : 0
+  # Only enable_runtime gates existence — matching alb_unhealthy above, the
+  # alarm itself should exist (and be visible in the console / to other
+  # tooling) whether or not an email subscriber is configured; has_alarm_email
+  # only controls whether it has an SNS action attached.
+  count               = var.enable_runtime ? 1 : 0
   alarm_name          = "${local.name_prefix}-alb-no-healthy-hosts"
   comparison_operator = "LessThanThreshold"
   evaluation_periods  = 2
@@ -43,7 +47,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_no_healthy_hosts" {
   threshold           = 1
   treat_missing_data  = "breaching"
   alarm_description   = "The staging API has zero healthy ALB targets registered."
-  alarm_actions       = [aws_sns_topic.alarms[0].arn]
+  alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
   dimensions = {
     LoadBalancer = aws_lb.api.arn_suffix
     TargetGroup  = aws_lb_target_group.api.arn_suffix

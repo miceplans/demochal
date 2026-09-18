@@ -25,6 +25,11 @@ export interface Ad {
   /** 광고명 (연결된 챌린지명) */
   title?: string;
   imageFileId?: string;
+  /**
+   * imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음)
+   * @nullable
+   */
+  imageUrl?: string | null;
   landingUrl?: string;
   startDate?: string;
   endDate?: string;

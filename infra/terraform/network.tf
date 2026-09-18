@@ -148,9 +148,51 @@ resource "aws_security_group" "worker_task" {
   }
 }
 
+resource "aws_security_group" "migrate_task" {
+  name        = "${local.name_prefix}-migrate-task"
+  description = "One-off DB migration task; no inbound traffic, DB + AWS API egress only"
+  vpc_id      = aws_vpc.this.id
+
+  # Fargate tasks resolve AWS and RDS hostnames through the VPC resolver.
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  # No NAT Gateway in this baseline, so the task needs a public IP + HTTPS
+  # egress to pull its image from ECR and read the app secret before it can
+  # reach the (in-VPC only) database.
+  egress {
+    description = "HTTPS for ECR, Secrets Manager and CloudWatch Logs"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description = "PostgreSQL in the VPC"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+}
+
 resource "aws_security_group" "database" {
   name        = "${local.name_prefix}-database"
-  description = "PostgreSQL only from the ECS API and worker tasks"
+  description = "PostgreSQL only from the ECS API, worker and migration tasks"
   vpc_id      = aws_vpc.this.id
 
   ingress {
@@ -167,5 +209,13 @@ resource "aws_security_group" "database" {
     to_port         = 5432
     protocol        = "tcp"
     security_groups = [aws_security_group.worker_task.id]
+  }
+
+  ingress {
+    description     = "Migration task"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.migrate_task.id]
   }
 }

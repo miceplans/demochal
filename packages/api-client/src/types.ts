@@ -198,6 +198,8 @@ export interface Ad {
   productId: string;
   title: string;
   imageFileId?: string | null;
+  /** imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음) */
+  imageUrl?: string | null;
   landingUrl?: string | null;
   startDate: string;
   endDate: string;
@@ -292,6 +294,8 @@ export interface FileObject {
   uploadStatus: 'pending' | 'ready' | 'rejected';
   uploaderUserId?: string;
   createdAt: string;
+  /** CloudFront public URL once a public file is ready; null for private files and pending/rejected uploads. */
+  url?: string | null;
 }
 
 export interface Notification {

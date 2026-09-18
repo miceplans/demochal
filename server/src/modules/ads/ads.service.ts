@@ -8,11 +8,12 @@ import {
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, gt, or } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { adProducts, ads, orders } from '../../db/schema.js';
+import { adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
+import { buildPublicFileUrl } from '../files/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import type { UpdateAdDto } from './dto/update-ad.dto.js';
@@ -81,17 +82,36 @@ export class AdsService implements OnModuleInit {
     if (!businessId) return [];
     const conditions = [eq(ads.businessId, businessId)];
     if (status) conditions.push(eq(ads.status, status));
-    return this.db
+    const rows = await this.db
       .select()
       .from(ads)
       .where(and(...conditions))
       .orderBy(desc(ads.createdAt));
+    return this.withImageUrls(rows);
+  }
+
+  // Promoted ad creatives live in the public bucket; resolve imageFileId to a
+  // ready CloudFront URL here instead of making every caller (frontend, admin)
+  // know the bucket/CDN layout. Batched to avoid one query per ad.
+  private async withImageUrls<T extends { imageFileId: string | null }>(
+    rows: T[],
+  ): Promise<(T & { imageUrl: string | null })[]> {
+    const fileIds = [
+      ...new Set(rows.map((row) => row.imageFileId).filter((id): id is string => !!id)),
+    ];
+    if (fileIds.length === 0) return rows.map((row) => ({ ...row, imageUrl: null }));
+    const imageFiles = await this.db.select().from(files).where(inArray(files.id, fileIds));
+    const urlById = new Map(imageFiles.map((file) => [file.id, buildPublicFileUrl(file)]));
+    return rows.map((row) => ({
+      ...row,
+      imageUrl: row.imageFileId ? (urlById.get(row.imageFileId) ?? null) : null,
+    }));
   }
 
   async create(dto: CreateAdDto, businessId: string, userId: string) {
     if (!businessId) throw new UnauthorizedException('Business authentication is required');
 
-    return this.db.transaction(async (tx) => {
+    const ad = await this.db.transaction(async (tx) => {
       // Lock the product row so a second concurrent create() for the same
       // placement waits here instead of racing this transaction's overlap
       // check.
@@ -150,8 +170,9 @@ export class AdsService implements OnModuleInit {
       // settles it (OrdersService.markPaid flips the ad to active).
       await tx.insert(orders).values({ adId: ad!.id, userId, amount: paidAmount });
 
-      return ad;
+      return ad!;
     });
+    return (await this.withImageUrls([ad]))[0]!;
   }
 
   async findById(id: string) {

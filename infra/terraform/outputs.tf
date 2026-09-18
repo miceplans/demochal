@@ -7,3 +7,7 @@ output "verifications_queue_url" { value = aws_sqs_queue.verifications.url }
 output "app_secret_arn" { value = aws_secretsmanager_secret.app.arn }
 output "api_ecr_repository_url" { value = aws_ecr_repository.api.repository_url }
 output "worker_ecr_repository_url" { value = aws_ecr_repository.worker.repository_url }
+output "ecs_cluster_name" { value = aws_ecs_cluster.this.name }
+output "migrate_task_definition_arn" { value = aws_ecs_task_definition.migrate.arn }
+output "migrate_task_subnet_id" { value = aws_subnet.public["0"].id }
+output "migrate_task_security_group_id" { value = aws_security_group.migrate_task.id }

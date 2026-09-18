@@ -17,6 +17,7 @@ import {
   type AllowedUploadContentType,
   type PresignedUploadRequest,
 } from './dto/presigned-upload-request.dto.js';
+import { buildPublicFileUrl } from './public-file-url.js';
 
 const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/jpeg': 'jpg',
@@ -86,9 +87,13 @@ export class FilesService {
     return { uploadUrl, fileId: file!.id, key };
   }
 
+  private withPublicUrl<T extends typeof files.$inferSelect>(file: T): T & { url: string | null } {
+    return { ...file, url: buildPublicFileUrl(file) };
+  }
+
   async finalizeUpload(id: string, userId: string) {
     const file = await this.findOwnedFile(id, userId);
-    if (file.uploadStatus === 'ready') return file;
+    if (file.uploadStatus === 'ready') return this.withPublicUrl(file);
 
     const head = await this.s3.send(
       new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
@@ -135,7 +140,7 @@ export class FilesService {
       .set({ bucket: file.requestedBucket, key: targetKey, uploadStatus: 'ready' })
       .where(eq(files.id, id))
       .returning();
-    return readyFile!;
+    return this.withPublicUrl(readyFile!);
   }
 
   private async rejectUpload(key: string, id: string) {
@@ -144,7 +149,7 @@ export class FilesService {
   }
 
   async findById(id: string, userId: string) {
-    return this.findOwnedFile(id, userId);
+    return this.withPublicUrl(await this.findOwnedFile(id, userId));
   }
 
   // Lets a trusted backend caller (e.g. the verifications worker) hand a

@@ -1820,6 +1820,12 @@ components:
         key: { type: string }
         contentType: { type: string }
         createdAt: { type: string, format: date-time }
+        url:
+          {
+            type: string,
+            nullable: true,
+            description: 'CloudFront public URL; set only once a public file has finished upload verification (uploadStatus ready). Null for private files and pending/rejected uploads.',
+          }
     PresignedUploadRequest:
       type: object
       required: [bucket, contentType, fileName]
@@ -1906,6 +1912,12 @@ components:
         productId: { type: string }
         title: { type: string, description: 광고명 (연결된 챌린지명) }
         imageFileId: { type: string, format: uuid }
+        imageUrl:
+          {
+            type: string,
+            nullable: true,
+            description: imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음),
+          }
         landingUrl: { type: string }
         startDate: { type: string, format: date }
         endDate: { type: string, format: date }
