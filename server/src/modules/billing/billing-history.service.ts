@@ -52,9 +52,22 @@ export class BillingHistoryService {
       name: row.name ?? '주문',
       amount: -row.amount,
       paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
-      status: row.status === 'done' ? 'paid' : row.status === 'cancelled' ? 'refunded' : 'failed',
+      status:
+        row.status === 'paid' || row.status === 'done'
+          ? 'paid'
+          : row.status === 'canceled' || row.status === 'cancelled'
+            ? 'refunded'
+            : 'failed',
     }));
-    const total = items.reduce((sum, item) => sum + item.amount, 0);
+    // Only charged rows represent an actual balance movement: 'canceled'/'cancelled'
+    // payments were refunded (net 0) and 'expired'/'ready' rows were never charged.
+    // 'done' is the legacy writer vocabulary for a charged payment, so it counts
+    // alongside 'paid'. The item mapping above preserves both current and legacy
+    // status vocabulary for API consumers.
+    const total = rows.reduce(
+      (sum, row) => (row.status === 'paid' || row.status === 'done' ? sum - row.amount : sum),
+      0,
+    );
     return { items, total };
   }
 }
