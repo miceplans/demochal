@@ -35,6 +35,29 @@ const MOBILE_GALLERY_CENTER = 358 / 2;
 
 const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 32, width: '100%' });
 
+const PricingErrorBanner = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+  padding: '14px 20px',
+  borderRadius: 10,
+  background: '#FEF2F2',
+  border: '1px solid #FCA5A5',
+  color: '#B91C1C',
+  ...textStyle.body,
+});
+const RetryButton = styled.button({
+  flexShrink: 0,
+  border: '1px solid #B91C1C',
+  borderRadius: 6,
+  padding: '6px 12px',
+  background: c.white,
+  color: '#B91C1C',
+  cursor: 'pointer',
+  ...textStyle.overline,
+});
+
 const ViewSwitch = styled.div({
   display: 'flex',
   justifyContent: 'flex-end',
@@ -414,7 +437,11 @@ export function AdminAdPricingScreen() {
     >
       <HeroLabel compact={compact}>하루 광고비</HeroLabel>
       <HeroPrice compact={compact}>
-        {hero ? `${dailyPrice.toLocaleString()}원` : '단가 확인 중'}
+        {hero
+          ? `${dailyPrice.toLocaleString()}원`
+          : pricingQuery.isError
+            ? '단가 불러오기 실패'
+            : '단가 확인 중'}
       </HeroPrice>
     </HeroCard>
   );
@@ -430,6 +457,14 @@ export function AdminAdPricingScreen() {
         기존 광고 계약의 금액과 기간은 유지됩니다. 단가 변경 시 기존 계약자에게 안내하며, 변경된
         금액은 새 계약부터 적용됩니다.
       </p>
+      {pricingQuery.isError ? (
+        <PricingErrorBanner role="alert">
+          <span>단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
+          <RetryButton type="button" onClick={() => pricingQuery.refetch()}>
+            다시 시도
+          </RetryButton>
+        </PricingErrorBanner>
+      ) : null}
       <ViewSwitch>
         <ViewSwitchGroup role="tablist" aria-label="미리보기 화면 전환">
           <ViewButton
