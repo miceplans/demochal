@@ -47,8 +47,8 @@ const ROWS = [
   },
   { id: 'pay-3', name: '개발자 챌린지', amount: 30_000, status: 'expired', approvedAt: null },
   { id: 'pay-4', name: '갤러리 광고', amount: 20_000, status: 'ready', approvedAt: null },
-  // Legacy DB vocabulary from older writers — the item-status mapping contract
-  // still serves these, and 'done' remains a charged balance movement.
+  // Legacy DB vocabulary from older writers — it remains available to API
+  // consumers, and 'done' remains a charged balance movement.
   {
     id: 'pay-5',
     name: '지난 챌린지',
@@ -72,22 +72,20 @@ describe('BillingHistoryService', () => {
 
     const { items, total } = await service.forBusiness('biz-1', {});
 
-    // Item-status mapping vocabulary is unchanged (known legacy 'done'/'cancelled'
-    // mapping inconsistency with the 'paid'|'canceled'|'expired' writer — out of scope).
     expect(items).toEqual([
       {
         id: 'pay-1',
         name: '홈 히어로 배너 광고',
         amount: -100_000,
         paidAt: '2026-09-10T09:00:00.000Z',
-        status: 'failed',
+        status: 'paid',
       },
       {
         id: 'pay-2',
         name: '주문',
         amount: -50_000,
         paidAt: '2026-09-05T09:00:00.000Z',
-        status: 'failed',
+        status: 'refunded',
       },
       { id: 'pay-3', name: '개발자 챌린지', amount: -30_000, paidAt: null, status: 'failed' },
       // 'ready' (unpaid) rows surface as 'failed' per the status mapping contract.

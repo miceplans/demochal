@@ -190,6 +190,8 @@ export const payments = pgTable(
     provider: varchar('provider', { length: 20 }).notNull().default('toss'),
     providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
     amount: integer('amount').notNull(),
+    // Valid values: ready | paid | canceled | expired. Legacy rows can contain
+    // done | cancelled and are handled when reading billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     approvedAt: timestamp('approved_at'),
   },

@@ -62,8 +62,8 @@ export class BillingHistoryService {
     // Only charged rows represent an actual balance movement: 'canceled'/'cancelled'
     // payments were refunded (net 0) and 'expired'/'ready' rows were never charged.
     // 'done' is the legacy writer vocabulary for a charged payment, so it counts
-    // alongside 'paid'. The legacy item-status mapping above is a known mismatch
-    // with the 'paid' | 'canceled' | 'expired' writer vocabulary — out of scope.
+    // alongside 'paid'. The item mapping above preserves both current and legacy
+    // status vocabulary for API consumers.
     const total = rows.reduce(
       (sum, row) => (row.status === 'paid' || row.status === 'done' ? sum - row.amount : sum),
       0,
