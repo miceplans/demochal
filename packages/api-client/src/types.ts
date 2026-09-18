@@ -282,7 +282,7 @@ export interface Payment {
   provider: 'toss';
   providerPaymentKey: string;
   amount: number;
-  status: 'ready' | 'done' | 'cancelled' | 'failed';
+  status: 'paid' | 'canceled' | 'expired';
   approvedAt?: string;
 }
 
