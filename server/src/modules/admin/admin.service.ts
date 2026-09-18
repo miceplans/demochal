@@ -688,22 +688,14 @@ export class AdminService {
 
   private async buildAdReport(adParam: string): Promise<AdminAdReport> {
     let adNumber: number | null = null;
-    let row: { ad: typeof ads.$inferSelect; organization: string | null } | undefined = (
-      await this.db
-        .select({ ad: ads, organization: businesses.name })
-        .from(ads)
-        .innerJoin(businesses, eq(ads.businessId, businesses.id))
-        .where(eq(ads.id, adParam))
-        .limit(1)
-    )[0];
+    let row: { ad: typeof ads.$inferSelect; organization: string | null } | undefined;
 
-    if (row) {
-      // Resolved by uuid: the "banner number" is its 1-based createdAt rank.
-      const allAds = await this.db.select({ id: ads.id }).from(ads).orderBy(asc(ads.createdAt));
-      const index = allAds.findIndex((candidate) => candidate.id === row!.ad.id);
-      if (index < 0) throw new NotFoundException('Ad not found');
-      adNumber = index + 1;
-    } else if (/^\d+$/.test(adParam)) {
+    if (/^\d+$/.test(adParam)) {
+      // Numeric params are a 1-based ordinal ("banner number"), not a uuid.
+      // Resolve via ordinal position BEFORE ever comparing against the
+      // uuid-typed ads.id column — Postgres rejects a non-uuid string in a
+      // `uuid = $1` comparison, so a numeric adParam must never reach that
+      // query.
       adNumber = Number.parseInt(adParam, 10);
       const allAds = await this.db
         .select({ ad: ads, organization: businesses.name })
@@ -711,6 +703,23 @@ export class AdminService {
         .innerJoin(businesses, eq(ads.businessId, businesses.id))
         .orderBy(asc(ads.createdAt));
       row = allAds[adNumber - 1];
+    } else {
+      row = (
+        await this.db
+          .select({ ad: ads, organization: businesses.name })
+          .from(ads)
+          .innerJoin(businesses, eq(ads.businessId, businesses.id))
+          .where(eq(ads.id, adParam))
+          .limit(1)
+      )[0];
+
+      if (row) {
+        // Resolved by uuid: the "banner number" is its 1-based createdAt rank.
+        const allAds = await this.db.select({ id: ads.id }).from(ads).orderBy(asc(ads.createdAt));
+        const index = allAds.findIndex((candidate) => candidate.id === row!.ad.id);
+        if (index < 0) throw new NotFoundException('Ad not found');
+        adNumber = index + 1;
+      }
     }
 
     if (!row || adNumber === null) throw new NotFoundException('Ad not found');

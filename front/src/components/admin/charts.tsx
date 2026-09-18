@@ -395,12 +395,41 @@ export function TrafficChart({
 
 /* ---------- Area chart: 리포트 활동 ---------- */
 
-const months = activityChart.months;
-const generalSeries = activityChart.general;
-const corpSeries = activityChart.corp;
-const yLabels = Array.from({ length: activityChart.yMax / 2 + 1 }, (_, i) => i * 2);
+export type ActivityChartStatus = 'pending' | 'error' | 'success';
 
-export function ActivityChart() {
+export function ActivityChart({
+  months: controlledMonths,
+  general: controlledGeneral,
+  corp: controlledCorp,
+  yMax: controlledYMax,
+  status = 'pending',
+}: {
+  months?: string[];
+  general?: number[];
+  corp?: number[];
+  yMax?: number;
+  // 'pending'일 때만(최초 로딩) 목업 시리즈로 대체한다. 'error'일 때는 목업을 그대로
+  // 보여주면 실패한 요청이 정상 데이터처럼 보이므로 별도 에러 상태를 렌더링한다.
+  status?: ActivityChartStatus;
+} = {}) {
+  const useMockFallback = status === 'pending';
+  const months = controlledMonths?.length
+    ? controlledMonths
+    : useMockFallback
+      ? activityChart.months
+      : [];
+  const generalSeries = controlledGeneral?.length
+    ? controlledGeneral
+    : useMockFallback
+      ? activityChart.general
+      : [];
+  const corpSeries = controlledCorp?.length
+    ? controlledCorp
+    : useMockFallback
+      ? activityChart.corp
+      : [];
+  const yMax = controlledYMax ?? (useMockFallback ? activityChart.yMax : 10);
+  const yLabels = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
   const data = months.map((month, i) => ({
     month,
     general: generalSeries[i],
@@ -432,63 +461,83 @@ export function ActivityChart() {
           </Legend>
         </span>
       </div>
-      <div style={{ width: '100%', height: 360 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
-            <defs>
-              <linearGradient id="activity-general" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={c.primary} stopOpacity="0.25" />
-                <stop offset="1" stopColor={c.primary} stopOpacity="0.02" />
-              </linearGradient>
-              <linearGradient id="activity-corp" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor={c.lightBlue} stopOpacity="0.6" />
-                <stop offset="1" stopColor={c.lightBlue} stopOpacity="0.05" />
-              </linearGradient>
-            </defs>
-            <CartesianGrid vertical={false} stroke="#E5E7EB" />
-            <XAxis
-              dataKey="month"
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 12, fill: c.gray900 }}
-              tickMargin={12}
-            />
-            <YAxis
-              domain={[0, activityChart.yMax]}
-              ticks={yLabels}
-              tickLine={false}
-              axisLine={false}
-              tick={{ fontSize: 12, fill: c.gray500 }}
-            />
-            <Tooltip
-              content={<ChartTooltip />}
-              cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="corp"
-              name="기업"
-              stroke={c.lightBlue}
-              strokeWidth={3}
-              strokeLinecap="round"
-              fill="url(#activity-corp)"
-              dot={false}
-              activeDot={{ r: 5, fill: c.white, stroke: c.lightBlue, strokeWidth: 3 }}
-            />
-            <Area
-              type="monotone"
-              dataKey="general"
-              name="일반"
-              stroke={c.primary}
-              strokeWidth={3}
-              strokeLinecap="round"
-              fill="url(#activity-general)"
-              dot={false}
-              activeDot={{ r: 5, fill: c.white, stroke: c.primary, strokeWidth: 3 }}
-            />
-          </ComposedChart>
-        </ResponsiveContainer>
-      </div>
+      {status === 'error' ? (
+        <div
+          role="alert"
+          style={{
+            width: '100%',
+            height: 360,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 4,
+            color: c.gray500,
+            ...textStyle.body,
+          }}
+        >
+          <span>활동 데이터를 불러올 수 없어요</span>
+          <span style={{ ...textStyle.metaText }}>잠시 후 다시 시도해주세요</span>
+        </div>
+      ) : (
+        <div style={{ width: '100%', height: 360 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+              <defs>
+                <linearGradient id="activity-general" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={c.primary} stopOpacity="0.25" />
+                  <stop offset="1" stopColor={c.primary} stopOpacity="0.02" />
+                </linearGradient>
+                <linearGradient id="activity-corp" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor={c.lightBlue} stopOpacity="0.6" />
+                  <stop offset="1" stopColor={c.lightBlue} stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="#E5E7EB" />
+              <XAxis
+                dataKey="month"
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 12, fill: c.gray900 }}
+                tickMargin={12}
+              />
+              <YAxis
+                domain={[0, yMax]}
+                ticks={yLabels}
+                tickLine={false}
+                axisLine={false}
+                tick={{ fontSize: 12, fill: c.gray500 }}
+              />
+              <Tooltip
+                content={<ChartTooltip />}
+                cursor={{ stroke: c.gray300, strokeDasharray: '5 5', strokeWidth: 1.5 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="corp"
+                name="기업"
+                stroke={c.lightBlue}
+                strokeWidth={3}
+                strokeLinecap="round"
+                fill="url(#activity-corp)"
+                dot={false}
+                activeDot={{ r: 5, fill: c.white, stroke: c.lightBlue, strokeWidth: 3 }}
+              />
+              <Area
+                type="monotone"
+                dataKey="general"
+                name="일반"
+                stroke={c.primary}
+                strokeWidth={3}
+                strokeLinecap="round"
+                fill="url(#activity-general)"
+                dot={false}
+                activeDot={{ r: 5, fill: c.white, stroke: c.primary, strokeWidth: 3 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </div>
   );
 }
