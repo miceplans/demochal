@@ -73,7 +73,11 @@ resource "aws_iam_role" "api_task" {
 data "aws_iam_policy_document" "api_task" {
   statement {
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = ["${aws_s3_bucket.private.arn}/*", "${aws_s3_bucket.public.arn}/*"]
+    resources = ["${aws_s3_bucket.private.arn}/*"]
+  }
+  statement {
+    actions   = ["s3:PutObject"]
+    resources = ["${aws_s3_bucket.public.arn}/*"]
   }
   statement {
     actions   = ["sqs:SendMessage"]
@@ -96,10 +100,6 @@ data "aws_iam_policy_document" "worker_task" {
   statement {
     actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.verifications.arn]
-  }
-  statement {
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
-    resources = ["${aws_s3_bucket.private.arn}/*"]
   }
 }
 
@@ -220,6 +220,12 @@ resource "aws_ecs_service" "api" {
     container_port   = 3001
   }
   depends_on = [aws_lb_listener.https]
+  lifecycle {
+    precondition {
+      condition     = !var.enable_runtime || var.api_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.api_image))
+      error_message = "When the API runtime is enabled, api_image must be an immutable ECR digest."
+    }
+  }
 }
 
 resource "aws_ecs_service" "worker" {
@@ -232,5 +238,11 @@ resource "aws_ecs_service" "worker" {
     subnets          = [aws_subnet.public["0"].id]
     security_groups  = [aws_security_group.worker_task.id]
     assign_public_ip = true
+  }
+  lifecycle {
+    precondition {
+      condition     = !var.enable_runtime || var.worker_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.worker_image))
+      error_message = "When the worker runtime is enabled, worker_image must be an immutable ECR digest."
+    }
   }
 }
