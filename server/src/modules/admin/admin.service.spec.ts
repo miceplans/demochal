@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
+import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
 /**
  * Auto-chaining thenable stand-in for a drizzle query builder: every method
@@ -462,5 +463,66 @@ describe('AdminService — analytics', () => {
       daily: [],
     });
     expect(result.adReport?.stats.map((card) => card.value)).toEqual(['0', '0', '0%', '250']);
+  });
+});
+
+describe('AdminService — settings', () => {
+  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
+
+  it('row가 없어도 getSettings는 DEFAULT_VALUES 기본값을 반환한다', async () => {
+    const { db } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    const result = await service.getSettings(user);
+
+    expect(result.values).toEqual(DEFAULT_VALUES);
+  });
+
+  it('getSettings는 저장 값을 DEFAULT_VALUES 위에 병합한다', async () => {
+    const { db } = createDbStub({
+      select: [[{ id: 'default', values: { maintenanceMode: true } }]],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getSettings(user);
+
+    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+  });
+
+  it('updateSettings는 공유 id 아래 저장하고 병합된 값을 반환한다', async () => {
+    const { db, setCalls, valuesCalls } = createDbStub({
+      select: [
+        [{ id: 'default', values: { reportAlert: true } }],
+        [{ id: 'default', values: { reportAlert: true, maintenanceMode: true } }],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.updateSettings({ maintenanceMode: true }, user);
+
+    expect(setCalls[0]?.[0]).toMatchObject({
+      values: { reportAlert: true, maintenanceMode: true },
+    });
+    expect(valuesCalls).toHaveLength(0); // 기존 row가 있으므로 insert 경로가 아니다
+    expect(result.values).toEqual({ ...DEFAULT_VALUES, reportAlert: true, maintenanceMode: true });
+  });
+});
+
+describe('AdminService — settings insert 경로', () => {
+  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
+
+  it('row가 없으면 insert 경로로 공유 id 아래 저장한다', async () => {
+    const { db, valuesCalls } = createDbStub({
+      select: [[], [{ id: ADMIN_SETTINGS_ID, values: { maintenanceMode: true } }]],
+    });
+    const { service } = createService(db);
+
+    const result = await service.updateSettings({ maintenanceMode: true }, user);
+
+    expect(valuesCalls[0]?.[0]).toMatchObject({
+      id: ADMIN_SETTINGS_ID,
+      values: { maintenanceMode: true },
+    });
+    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
   });
 });
