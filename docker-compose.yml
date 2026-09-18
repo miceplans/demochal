@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: semochal
+      POSTGRES_PASSWORD: semochal
+      POSTGRES_DB: semochal
+    ports:
+      - '5432:5432'
+    volumes:
+      - semochal-db-data:/var/lib/postgresql/data
+      # Applies server/drizzle/*.sql (journal order) on first volume init only.
+      - ./server/drizzle:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U semochal -d semochal']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.api
+    environment:
+      NODE_ENV: development
+      PORT: '3001'
+      DATABASE_URL: postgres://semochal:semochal@db:5432/semochal
+    ports:
+      - '3001:3001'
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3001/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  semochal-db-data:

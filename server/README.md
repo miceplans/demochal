@@ -31,6 +31,20 @@
 $ pnpm install
 ```
 
+## Run with Docker (local)
+
+저장소 루트에서 API와 로컬 PostgreSQL을 한 번에 기동합니다.
+
+```bash
+$ docker compose up -d --build
+$ curl http://localhost:3001/health # {"status":"ok",...}
+```
+
+- `db`(postgres:16)가 healthy해진 뒤 `api`가 기동하고, `api` 컨테이너는 `/health` 기반 healthcheck를 가집니다.
+- `db`는 볼륨 최초 생성 시 `server/drizzle`의 migration SQL을 파일명 순으로 적용해 스키마를 만듭니다. 이미 볼륨이 있다면 `docker compose down -v`로 초기화한 뒤 기동하세요.
+- 로컬 compose 실행은 `NODE_ENV=development`로 오버라이드하므로 secret 주입 없이 기동할 수 있습니다.
+- 종료: `docker compose down`(DB 데이터 유지) / `docker compose down -v`(DB 데이터 삭제)
+
 ## Compile and run the project
 
 ```bash
