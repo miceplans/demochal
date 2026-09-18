@@ -14,11 +14,10 @@ import {
   teams,
   users,
   verifications,
-  adminSettings,
   type reports as reportsTable,
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
+import { AdminSettingsService, GROUPS as SETTINGS_GROUPS } from './admin-settings.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
@@ -76,51 +75,12 @@ const formatMonthDay = (date: Date) =>
 
 const formatMonthDayShort = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
 
-// Settings metadata is static copy (Korean labels/descriptions from the
-// design spec); only the boolean values are persisted.
-const SETTINGS_GROUPS = [
-  {
-    title: '서비스 설정',
-    rows: [
-      {
-        key: 'bizAutoApprove',
-        label: '기관 가입 자동 승인',
-        description: '제출 서류 심사 없이 기관 가입 신청을 즉시 승인합니다.',
-      },
-      {
-        key: 'contestAutoPublish',
-        label: '공고 자동 게시',
-        description: '기관이 등록한 공고를 검수 없이 바로 게시합니다.',
-      },
-      {
-        key: 'maintenanceMode',
-        label: '점검 모드',
-        description: '접속자에게 점검 안내를 표시하고 서비스를 일시 중단합니다.',
-      },
-    ],
-  },
-  {
-    title: '알림 설정',
-    rows: [
-      {
-        key: 'reportAlert',
-        label: '신고 접수 알림',
-        description: '신고가 접수되면 관리자에게 즉시 알림을 볩니다.',
-      },
-      {
-        key: 'newBusinessAlert',
-        label: '신규 기관 가입 알림',
-        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 볩니다.',
-      },
-    ],
-  },
-];
-
 @Injectable()
 export class AdminService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly notificationsService: NotificationsService,
+    private readonly adminSettingsService: AdminSettingsService,
   ) {}
 
   // ---------------------------------------------------------------- dashboard
@@ -733,11 +693,7 @@ export class AdminService {
   // ------------------------------------------------------------------ settings
 
   async getSettings(user: AuthenticatedUser) {
-    const [row] = await this.db
-      .select()
-      .from(adminSettings)
-      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
-      .limit(1);
+    const values = await this.adminSettingsService.getValues();
     return {
       profile: {
         name: user.name,
@@ -746,7 +702,7 @@ export class AdminService {
         twoFactorEnabled: false,
       },
       groups: SETTINGS_GROUPS,
-      values: { ...DEFAULT_VALUES, ...(row?.values ?? {}) },
+      values,
     };
   }
 
@@ -756,19 +712,13 @@ export class AdminService {
       Object.entries(values ?? {}).filter(([, value]) => typeof value === 'boolean'),
     ) as Record<string, boolean>;
 
-    const [existing] = await this.db
-      .select()
-      .from(adminSettings)
-      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
-      .limit(1);
-    if (existing) {
-      await this.db
-        .update(adminSettings)
-        .set({ values: { ...existing.values, ...clean }, updatedAt: new Date() })
-        .where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
-    } else {
-      await this.db.insert(adminSettings).values({ id: ADMIN_SETTINGS_ID, values: clean });
-    }
+    // Delegate the actual write to AdminSettingsService.update(), which performs an
+    // atomic upsert (insert ... onConflictDoUpdate) under the shared ADMIN_SETTINGS_ID
+    // row. Doing a select-then-insert/update here was not atomic: two concurrent
+    // PUT /admin/settings calls could both see "no row" and both take the insert
+    // path, with the second hitting a PK conflict and 500ing; a write landing
+    // between the select and the write here could also be silently lost.
+    await this.adminSettingsService.update(clean);
     return this.getSettings(user);
   }
 

@@ -3,6 +3,7 @@ import {
   ADMIN_SETTINGS_ID,
   AdminSettingsService,
   DEFAULT_VALUES,
+  GROUPS,
 } from './admin-settings.service.js';
 
 /** 인메모리 settings row를 돌리는 drizzle 스텁. */
@@ -61,5 +62,25 @@ describe('AdminSettingsService', () => {
 
     expect(await service.isEnabled('contestAutoPublish')).toBe(true);
     expect(await service.isEnabled('maintenanceMode')).toBe(false);
+  });
+
+  it('일부 키만 저장된 row가 있어도 getValues는 나머지를 DEFAULT_VALUES로 병합한다', async () => {
+    // 회귀 테스트: row를 그대로 반환하면(병합하지 않으면) 저장되지 않은 reportAlert가
+    // 선언된 기본값 true 대신 undefined(=== true 검사에서 false)로 조용히 뒤집힌다.
+    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { maintenanceMode: true } });
+    const service = new AdminSettingsService(db);
+
+    expect(await service.isEnabled('maintenanceMode')).toBe(true);
+    expect(await service.isEnabled('reportAlert')).toBe(true);
+    expect(await service.isEnabled('newBusinessAlert')).toBe(true);
+    expect(await service.isEnabled('bizAutoApprove')).toBe(false);
+  });
+
+  it('GROUPS에 노출된 모든 토글 키는 DEFAULT_VALUES에 boolean 기본값을 갖는다', () => {
+    // 메타데이터(GROUPS)와 기본값(DEFAULT_VALUES)이 서로 다른 곳에서 관리되다 어긋나는
+    // 것(예: newBusinessAlert가 메타데이터에는 있지만 기본값이 없던 버그)을 막는다.
+    for (const row of GROUPS.flatMap((group) => group.rows)) {
+      expect(typeof DEFAULT_VALUES[row.key]).toBe('boolean');
+    }
   });
 });

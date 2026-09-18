@@ -1,7 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
-import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
+import {
+  AdminSettingsService,
+  DEFAULT_VALUES,
+  ADMIN_SETTINGS_ID,
+  GROUPS,
+} from './admin-settings.service.js';
 
 /**
  * Auto-chaining thenable stand-in for a drizzle query builder: every method
@@ -52,8 +57,15 @@ function createNotificationsStub() {
   return { create: vi.fn().mockResolvedValue({}) };
 }
 
-function createService(db: any, notifications = createNotificationsStub()) {
-  return { service: new AdminService(db, notifications as any), notifications };
+function createService(
+  db: any,
+  notifications = createNotificationsStub(),
+  adminSettingsService: any = new AdminSettingsService(db),
+) {
+  return {
+    service: new AdminService(db, notifications as any, adminSettingsService),
+    notifications,
+  };
 }
 
 const verificationRow = { id: 'v1', businessId: 'b1', status: 'pending' };
@@ -468,6 +480,7 @@ describe('AdminService — analytics', () => {
 
 describe('AdminService — settings', () => {
   const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
+  const settingKeys = GROUPS.flatMap((group) => group.rows.map((row) => row.key));
 
   it('row가 없어도 getSettings는 DEFAULT_VALUES 기본값을 반환한다', async () => {
     const { db } = createDbStub({ select: [[]] });
@@ -476,9 +489,12 @@ describe('AdminService — settings', () => {
     const result = await service.getSettings(user);
 
     expect(result.values).toEqual(DEFAULT_VALUES);
+    for (const key of settingKeys) {
+      expect(typeof result.values[key]).toBe('boolean');
+    }
   });
 
-  it('getSettings는 저장 값을 DEFAULT_VALUES 위에 병합한다', async () => {
+  it('getSettings는 부분 저장된 row를 DEFAULT_VALUES 위에 병합한다 (저장 안 된 토글도 기본값 유지)', async () => {
     const { db } = createDbStub({
       select: [[{ id: 'default', values: { maintenanceMode: true } }]],
     });
@@ -487,38 +503,45 @@ describe('AdminService — settings', () => {
     const result = await service.getSettings(user);
 
     expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+    expect(result.values.reportAlert).toBe(true);
+    expect(result.values.newBusinessAlert).toBe(true);
+    for (const key of settingKeys) {
+      expect(typeof result.values[key]).toBe('boolean');
+    }
   });
 
-  it('updateSettings는 공유 id 아래 저장하고 병합된 값을 반환한다', async () => {
-    const { db, setCalls, valuesCalls } = createDbStub({
+  it('updateSettings는 AdminSettingsService.update()의 원자적 upsert에 위임한다 (경쟁 조건 없음)', async () => {
+    const { db, valuesCalls } = createDbStub({
       select: [
-        [{ id: 'default', values: { reportAlert: true } }],
-        [{ id: 'default', values: { reportAlert: true, maintenanceMode: true } }],
+        [{ id: ADMIN_SETTINGS_ID, values: { reportAlert: true } }],
+        [{ id: ADMIN_SETTINGS_ID, values: { reportAlert: true, maintenanceMode: true } }],
       ],
+      insert: [[]],
     });
     const { service } = createService(db);
 
     const result = await service.updateSettings({ maintenanceMode: true }, user);
 
-    expect(setCalls[0]?.[0]).toMatchObject({
+    // select-then-update/insert 분기가 사라지고 insert(...).onConflictDoUpdate(...) 하나만
+    // 쓰인다 — db.update()는 전혀 호출되지 않는다.
+    expect(db.update).not.toHaveBeenCalled();
+    expect(valuesCalls[0]?.[0]).toMatchObject({
+      id: ADMIN_SETTINGS_ID,
       values: { reportAlert: true, maintenanceMode: true },
     });
-    expect(valuesCalls).toHaveLength(0); // 기존 row가 있으므로 insert 경로가 아니다
     expect(result.values).toEqual({ ...DEFAULT_VALUES, reportAlert: true, maintenanceMode: true });
   });
-});
 
-describe('AdminService — settings insert 경로', () => {
-  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
-
-  it('row가 없으면 insert 경로로 공유 id 아래 저장한다', async () => {
+  it('row가 없어도(최초 저장) 같은 upsert 경로로 저장한다', async () => {
     const { db, valuesCalls } = createDbStub({
       select: [[], [{ id: ADMIN_SETTINGS_ID, values: { maintenanceMode: true } }]],
+      insert: [[]],
     });
     const { service } = createService(db);
 
     const result = await service.updateSettings({ maintenanceMode: true }, user);
 
+    expect(db.update).not.toHaveBeenCalled();
     expect(valuesCalls[0]?.[0]).toMatchObject({
       id: ADMIN_SETTINGS_ID,
       values: { maintenanceMode: true },
