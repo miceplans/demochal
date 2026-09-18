@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, files, verifications } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { FilesService } from '../files/files.service.js';
 import { ClovaOcrClient } from './clients/clova-ocr.client.js';
 import { NtsClient } from './clients/nts.client.js';
 import type { VerificationJobMessage } from './verifications.service.js';
@@ -19,6 +20,7 @@ export class VerificationsProcessorService {
     private readonly ntsClient: NtsClient,
     private readonly notificationsService: NotificationsService,
     private readonly adminSettingsService: AdminSettingsService,
+    private readonly filesService: FilesService,
   ) {}
 
   async process(message: VerificationJobMessage): Promise<void> {
@@ -59,7 +61,9 @@ export class VerificationsProcessorService {
       // legitimate verification outright.
       const ocrResult =
         document && this.ocrClient.isConfigured()
-          ? await this.ocrClient.recognizeBusinessLicense(document.key)
+          ? await this.ocrClient.recognizeBusinessLicense(
+              await this.filesService.getPrivateReadUrl(document.key),
+            )
           : { raw: {} };
       const ntsResult = await this.ntsClient.verifyBusinessRegistration(
         ocrResult.registrationNumber ?? business?.registrationNumber ?? '',
@@ -75,15 +79,16 @@ export class VerificationsProcessorService {
         ntsResult.valid ? null : (ntsResult.message ?? 'NTS verification failed'),
       );
     } catch (error) {
-      this.logger.error(`Verification ${verification.id} processing failed`, error);
-      await this.db
-        .update(verifications)
-        .set({
-          status: 'rejected',
-          rejectionReason: error instanceof Error ? error.message : 'Unknown error',
-          updatedAt: new Date(),
-        })
-        .where(eq(verifications.id, verification.id));
+      // OCR/NTS providers throw only for infra-level failures (network, bad
+      // config, non-OK responses) — actual "not a valid business" outcomes come
+      // back as ntsResult.valid = false above, not an exception. Rethrowing
+      // here leaves the SQS message unacknowledged so worker.ts's poll loop
+      // retries it up to the queue's maxReceiveCount before it reaches the DLQ,
+      // instead of a transient failure being recorded as a permanent rejection.
+      this.logger.error(`Verification ${verification.id} processing failed, will retry`, error);
+      // TODO: verification stays 'processing' if every retry fails and the
+      // message lands in the DLQ; add alerting/manual recovery for that case.
+      throw error;
     }
   }
 

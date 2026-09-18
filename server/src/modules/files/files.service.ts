@@ -147,6 +147,14 @@ export class FilesService {
     return this.findOwnedFile(id, userId);
   }
 
+  // Lets a trusted backend caller (e.g. the verifications worker) hand a
+  // private object to a third-party provider without making the bucket public.
+  async getPrivateReadUrl(key: string): Promise<string> {
+    return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: env.s3PrivateBucket, Key: key }), {
+      expiresIn: 60 * 5,
+    });
+  }
+
   async assertOwnedReadyPrivate(id: string, userId: string) {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus !== 'ready' || file.bucket !== 'private') {
