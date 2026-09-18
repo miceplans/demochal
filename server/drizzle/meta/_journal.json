@@ -73,6 +73,12 @@
       "tag": "0010_payments_refunded_amount",
       "when": 1789700000000,
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "tag": "0011_add_outbox_events",
+      "when": 1789700000000,
+      "breakpoints": true
     }
   ]
 }
