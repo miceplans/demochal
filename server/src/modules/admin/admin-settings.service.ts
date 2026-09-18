@@ -3,7 +3,8 @@ import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adminSettings, users } from '../../db/schema.js';
 
-const SINGLETON_ID = 'singleton';
+/** Admin API(AdminService)와 설정 소비자(isEnabled)가 반드시 같은 row를 보게 하는 키. */
+export const ADMIN_SETTINGS_ID = 'default';
 
 const GROUPS = [
   {
@@ -38,7 +39,7 @@ const GROUPS = [
   },
 ];
 
-const DEFAULT_VALUES: Record<string, boolean> = {
+export const DEFAULT_VALUES: Record<string, boolean> = {
   bizAutoApprove: false,
   contestAutoPublish: false,
   maintenanceMode: false,
@@ -59,7 +60,7 @@ export class AdminSettingsService {
     const values = { ...(await this.getValues()), ...partial };
     await this.db
       .insert(adminSettings)
-      .values({ id: SINGLETON_ID, values })
+      .values({ id: ADMIN_SETTINGS_ID, values })
       .onConflictDoUpdate({ target: adminSettings.id, set: { values } });
     return values;
   }
@@ -72,7 +73,7 @@ export class AdminSettingsService {
     const [row] = await this.db
       .select()
       .from(adminSettings)
-      .where(eq(adminSettings.id, SINGLETON_ID))
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
       .limit(1);
     return (row?.values as Record<string, boolean>) ?? DEFAULT_VALUES;
   }

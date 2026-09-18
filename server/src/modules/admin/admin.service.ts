@@ -18,6 +18,7 @@ import {
   type reports as reportsTable,
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
@@ -735,7 +736,7 @@ export class AdminService {
     const [row] = await this.db
       .select()
       .from(adminSettings)
-      .where(eq(adminSettings.id, 'default'))
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
       .limit(1);
     return {
       profile: {
@@ -745,7 +746,7 @@ export class AdminService {
         twoFactorEnabled: false,
       },
       groups: SETTINGS_GROUPS,
-      values: row?.values ?? {},
+      values: { ...DEFAULT_VALUES, ...(row?.values ?? {}) },
     };
   }
 
@@ -758,15 +759,15 @@ export class AdminService {
     const [existing] = await this.db
       .select()
       .from(adminSettings)
-      .where(eq(adminSettings.id, 'default'))
+      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
       .limit(1);
     if (existing) {
       await this.db
         .update(adminSettings)
         .set({ values: { ...existing.values, ...clean }, updatedAt: new Date() })
-        .where(eq(adminSettings.id, 'default'));
+        .where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
     } else {
-      await this.db.insert(adminSettings).values({ id: 'default', values: clean });
+      await this.db.insert(adminSettings).values({ id: ADMIN_SETTINGS_ID, values: clean });
     }
     return this.getSettings(user);
   }
