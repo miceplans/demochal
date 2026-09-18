@@ -3,7 +3,7 @@
 import { useEffect, useState, type TransitionEvent } from 'react';
 import Image from 'next/image';
 import styled from '@emotion/styled';
-import { colors as c, mobile } from '@/styles/design';
+import { colors as c, mobile, shadows } from '@/styles/design';
 
 export type AdCarouselItem = {
   alt: string;
@@ -131,8 +131,8 @@ const NavButton = styled.button<{
   padding: 0,
   border: 0,
   borderRadius: '50%',
-  background: 'rgba(255, 255, 255, 0.85)',
-  boxShadow: '0 4px 12px rgba(27, 33, 44, 0.16)',
+  background: c.overlayWhite,
+  boxShadow: shadows.carouselNav,
   cursor: 'pointer',
   transform: 'translateY(-50%)',
   [direction === 'prev' ? 'left' : 'right']: navOffset[variant],
@@ -143,7 +143,10 @@ const NavButton = styled.button<{
     [mobile]: {
       width: '32px',
       height: '32px',
-      ...(direction === 'prev' ? { left: '0px' } : { right: '0px' }),
+      // GalleryViewport는 overflow: hidden이라 클리핑 경계가 뷰포트의 바깥 테두리와 일치합니다.
+      // focus-visible 아웃라인(3px) + outline-offset(3px)만큼 안쪽으로 떨어뜨려야
+      // 키보드 포커스 링과 그림자가 잘리지 않습니다.
+      ...(direction === 'prev' ? { left: '6px' } : { right: '6px' }),
     },
   }),
 }));
@@ -178,7 +181,10 @@ export function AdCarousel({
   useEffect(() => {
     if (isPaused || itemCount < 2) return;
     const timer = window.setInterval(() => {
-      setRailIndex((index) => index + 1);
+      // transitionend가 발생하지 않는 상황(모바일 hero 숨김, 비활성 탭 등)에서도
+      // railIndex가 복제 슬라이드 경계(itemCount + 1)를 넘어 무한정 드리프트하지 않도록
+      // 수동 내비게이션과 동일한 상한을 적용합니다.
+      setRailIndex((index) => Math.min(index + 1, itemCount + 1));
     }, interval);
     return () => window.clearInterval(timer);
   }, [interval, isPaused, itemCount]);

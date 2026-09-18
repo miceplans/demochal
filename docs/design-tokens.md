@@ -104,3 +104,12 @@ CSS의 `type-*` 클래스로 사용한다. 모든 자간은 0이다.
 - SEMO-Gradient: 방사형. 원본의 gradientStops와 gradientTransform을 원본 JSON에 보존했다.
 - Gradient: 선형. 원본의 gradientStops와 gradientTransform을 원본 JSON에 보존했다.
 - 그라디언트는 대상 프레임의 비율에 따라 변환이 달라지므로 임의의 CSS 각도로 치환하지 않았다.
+
+## 컴포넌트 추가 토큰
+
+Figma 추출 이후 컴포넌트 구현 과정에서 필요해진 값으로, 위 표의 원본 추출 토큰과 달리 `design-tokens.json`(Figma 소스)에는 없다. 하드코딩 대신 `tokens.css`/`theme.ts`에 등록해 재사용한다.
+
+| 용도                                  | CSS 변수                | `theme.ts` 경로             | 값                               |
+| ------------------------------------- | ----------------------- | --------------------------- | -------------------------------- |
+| 반투명 흰색 표면(캐러셀 내비 버튼 등) | `--color-overlay-white` | `theme.colors.overlayWhite` | `rgb(255 255 255 / 85%)`         |
+| 캐러셀 내비 버튼 그림자               | `--shadow-carousel-nav` | `theme.shadow.carouselNav`  | `0 4px 12px rgb(27 33 44 / 16%)` |
