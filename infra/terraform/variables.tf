@@ -39,11 +39,13 @@ variable "db_username" {
 variable "api_image" {
   description = "Immutable API image URI pushed to the ECR repository before apply."
   type        = string
+  default     = ""
 }
 
 variable "worker_image" {
   description = "Immutable worker image URI pushed to the ECR repository before apply."
   type        = string
+  default     = ""
 }
 
 variable "frontend_origin" {
@@ -74,5 +76,20 @@ variable "worker_desired_count" {
   validation {
     condition     = var.worker_desired_count >= 0 && var.worker_desired_count <= 1
     error_message = "Test staging supports only zero or one worker task."
+  }
+}
+
+variable "enable_runtime" {
+  description = "Enable ECS services only after images and the app secret JSON have been provisioned."
+  type        = bool
+  default     = false
+}
+
+variable "api_desired_count" {
+  type    = number
+  default = 1
+  validation {
+    condition     = var.api_desired_count >= 0 && var.api_desired_count <= 1
+    error_message = "Test staging supports zero or one API task."
   }
 }

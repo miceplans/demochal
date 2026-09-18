@@ -65,26 +65,48 @@ resource "aws_iam_role_policy" "execution_secrets" {
   policy = data.aws_iam_policy_document.execution_secrets.json
 }
 
-resource "aws_iam_role" "task" {
-  name               = "${local.name_prefix}-ecs-task"
+resource "aws_iam_role" "api_task" {
+  name               = "${local.name_prefix}-api-task"
   assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
 }
 
-data "aws_iam_policy_document" "task" {
-  statement {
-    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
-    resources = [aws_sqs_queue.verifications.arn]
-  }
+data "aws_iam_policy_document" "api_task" {
   statement {
     actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.private.arn}/*", "${aws_s3_bucket.public.arn}/*"]
   }
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.verifications.arn]
+  }
 }
 
-resource "aws_iam_role_policy" "task" {
-  name   = "application-s3-sqs"
-  role   = aws_iam_role.task.id
-  policy = data.aws_iam_policy_document.task.json
+resource "aws_iam_role_policy" "api_task" {
+  name   = "api-s3-send-verifications"
+  role   = aws_iam_role.api_task.id
+  policy = data.aws_iam_policy_document.api_task.json
+}
+
+resource "aws_iam_role" "worker_task" {
+  name               = "${local.name_prefix}-worker-task"
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+}
+
+data "aws_iam_policy_document" "worker_task" {
+  statement {
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    resources = [aws_sqs_queue.verifications.arn]
+  }
+  statement {
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    resources = ["${aws_s3_bucket.private.arn}/*"]
+  }
+}
+
+resource "aws_iam_role_policy" "worker_task" {
+  name   = "worker-sqs-private-files"
+  role   = aws_iam_role.worker_task.id
+  policy = data.aws_iam_policy_document.worker_task.json
 }
 
 resource "aws_lb" "api" {
@@ -121,6 +143,17 @@ resource "aws_route53_record" "certificate" {
   ttl      = 60
 }
 
+resource "aws_route53_record" "api" {
+  zone_id = var.hosted_zone_id
+  name    = var.api_domain_name
+  type    = "A"
+  alias {
+    name                   = aws_lb.api.dns_name
+    zone_id                = aws_lb.api.zone_id
+    evaluate_target_health = true
+  }
+}
+
 resource "aws_acm_certificate_validation" "api" {
   certificate_arn         = aws_acm_certificate.api.arn
   validation_record_fqdns = values(aws_route53_record.certificate)[*].fqdn
@@ -155,8 +188,8 @@ resource "aws_ecs_task_definition" "api" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task.arn
-  container_definitions    = jsonencode([{ name = "api", image = var.api_image, essential = true, portMappings = [{ containerPort = 3001 }], environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.api.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "api" } } }])
+  task_role_arn            = aws_iam_role.api_task.arn
+  container_definitions    = jsonencode([{ name = "api", image = var.api_image != "" ? var.api_image : "public.ecr.aws/docker/library/busybox:latest", essential = true, portMappings = [{ containerPort = 3001 }], environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.api.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "api" } } }])
 }
 
 resource "aws_ecs_task_definition" "worker" {
@@ -166,15 +199,15 @@ resource "aws_ecs_task_definition" "worker" {
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.task.arn
-  container_definitions    = jsonencode([{ name = "worker", image = var.worker_image, essential = true, environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.worker.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "worker" } } }])
+  task_role_arn            = aws_iam_role.worker_task.arn
+  container_definitions    = jsonencode([{ name = "worker", image = var.worker_image != "" ? var.worker_image : "public.ecr.aws/docker/library/busybox:latest", essential = true, environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.worker.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "worker" } } }])
 }
 
 resource "aws_ecs_service" "api" {
   name            = "api"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = 1
+  desired_count   = var.enable_runtime ? var.api_desired_count : 0
   launch_type     = "FARGATE"
   network_configuration {
     subnets          = [aws_subnet.public["0"].id]
@@ -193,7 +226,7 @@ resource "aws_ecs_service" "worker" {
   name            = "worker"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.worker.arn
-  desired_count   = var.worker_desired_count
+  desired_count   = var.enable_runtime ? var.worker_desired_count : 0
   launch_type     = "FARGATE"
   network_configuration {
     subnets          = [aws_subnet.public["0"].id]
