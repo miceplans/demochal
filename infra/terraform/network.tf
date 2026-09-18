@@ -76,6 +76,23 @@ resource "aws_security_group" "api_task" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  # Fargate tasks resolve AWS, RDS, and third-party hostnames through the VPC resolver.
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
   egress {
     description = "HTTPS for OAuth, payments, OCR, AWS APIs and package telemetry"
     from_port   = 443
@@ -97,6 +114,22 @@ resource "aws_security_group" "worker_task" {
   name        = "${local.name_prefix}-worker-task"
   description = "Worker has no inbound traffic"
   vpc_id      = aws_vpc.this.id
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
 
   egress {
     description = "HTTPS for SQS, S3 and verification providers"
