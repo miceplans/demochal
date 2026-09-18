@@ -429,23 +429,25 @@ describe('AdminService — user-facing masking', () => {
 });
 
 describe('AdminService — analytics', () => {
-  it('resolves ?ad=N to the Nth ad ordered by createdAt', async () => {
-    const adRow = (id: string, paidAmount: number) => ({
-      ad: {
-        id,
-        startDate: new Date('2026-08-24T00:00:00Z'),
-        endDate: new Date('2026-09-24T00:00:00Z'),
-        paidAmount,
-      },
-      organization: '부산광역시',
-    });
+  const adRow = (id: string, paidAmount: number) => ({
+    ad: {
+      id,
+      startDate: new Date('2026-08-24T00:00:00Z'),
+      endDate: new Date('2026-09-24T00:00:00Z'),
+      paidAmount,
+    },
+    organization: '부산광역시',
+  });
+
+  it('resolves ?ad=N (numeric ordinal) without ever querying the uuid-typed ads.id column', async () => {
     const { db } = createDbStub({
       select: [
         [{ count: 7 }],
         [{ count: 4 }],
         [{ total: 300 }],
-        [], // uuid lookup misses
-        [adRow('ad-1', 100), adRow('ad-2', 250)], // integer path: all ads
+        // Numeric path must go straight to the ordinal lookup — no prior
+        // `eq(ads.id, '2')` select against the uuid column.
+        [adRow('ad-1', 100), adRow('ad-2', 250)],
       ],
     });
     const { service } = createService(db);
@@ -462,5 +464,34 @@ describe('AdminService — analytics', () => {
       daily: [],
     });
     expect(result.adReport?.stats.map((card) => card.value)).toEqual(['0', '0', '0%', '250']);
+    // Exactly 4 selects were consumed: users, challenges, payments, ordinal ads lookup.
+    expect(db.select).toHaveBeenCalledTimes(4);
+  });
+
+  it('throws NotFoundException for an out-of-range numeric ?ad=', async () => {
+    const { db } = createDbStub({
+      select: [[{ count: 7 }], [{ count: 4 }], [{ total: 300 }], [adRow('ad-1', 100)]],
+    });
+    const { service } = createService(db);
+
+    await expect(service.getAnalytics('99')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('resolves a uuid-shaped ?ad= via the ads.id lookup', async () => {
+    const uuid = '11111111-1111-1111-1111-111111111111';
+    const { db } = createDbStub({
+      select: [
+        [{ count: 7 }],
+        [{ count: 4 }],
+        [{ total: 300 }],
+        [adRow(uuid, 250)], // uuid lookup hit
+        [{ id: 'ad-0' }, { id: uuid }], // rank lookup for banner number
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getAnalytics(uuid);
+
+    expect(result.adReport).toMatchObject({ adNumber: 2, organization: '부산광역시' });
   });
 });
