@@ -52,7 +52,12 @@ export class BillingHistoryService {
       name: row.name ?? '주문',
       amount: -row.amount,
       paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
-      status: row.status === 'done' ? 'paid' : row.status === 'cancelled' ? 'refunded' : 'failed',
+      status:
+        row.status === 'paid' || row.status === 'done'
+          ? 'paid'
+          : row.status === 'canceled' || row.status === 'cancelled'
+            ? 'refunded'
+            : 'failed',
     }));
     // Only charged rows represent an actual balance movement: 'canceled'/'cancelled'
     // payments were refunded (net 0) and 'expired'/'ready' rows were never charged.
