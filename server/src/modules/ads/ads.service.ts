@@ -173,6 +173,22 @@ export class AdsService implements OnModuleInit {
         'Unpaid ads cannot be activated directly; complete payment first',
       );
     }
+    if (dto.status === 'active') {
+      return this.db.transaction(async (tx) => {
+        // markCancelled locks this same order row. This makes cancellation and
+        // reactivation serialize, so a refunded order cannot resume serving.
+        const [order] = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
+        if (!order || order.status !== 'paid') {
+          throw new BadRequestException('Only ads with a paid order can be activated');
+        }
+        const [updated] = await tx
+          .update(ads)
+          .set({ status: dto.status })
+          .where(eq(ads.id, id))
+          .returning();
+        return updated;
+      });
+    }
     const [updated] = await this.db
       .update(ads)
       .set({ status: dto.status })

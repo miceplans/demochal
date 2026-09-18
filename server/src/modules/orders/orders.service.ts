@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { ads, orders } from '../../db/schema.js';
 import { adToday } from '../ads/ad-period.js';
@@ -55,13 +55,22 @@ export class OrdersService {
       if (existing.status !== 'pending' && existing.status !== 'paid') {
         throw new ConflictException('취소할 수 없는 주문입니다.');
       }
-      // TODO: a canceled/refunded order whose ad was already activated by markPaid
-      // still leaves ads.status = 'active' — reverting the ad isn't implemented yet.
+      const wasPaid = existing.status === 'paid';
+
       const [order] = await tx
         .update(orders)
         .set({ status: 'canceled' })
         .where(eq(orders.id, id))
         .returning();
+
+      // Revert an ad this order had activated. Guarded on status = 'active' so
+      // this never clobbers an ad the owner already paused/ended themselves.
+      if (wasPaid && existing.adId) {
+        await tx
+          .update(ads)
+          .set({ status: 'ended' })
+          .where(and(eq(ads.id, existing.adId), eq(ads.status, 'active')));
+      }
 
       return order;
     });

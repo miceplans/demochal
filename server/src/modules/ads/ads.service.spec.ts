@@ -1,22 +1,32 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdsService } from './ads.service.js';
 
-function createDbStub(existingAd?: Record<string, unknown>) {
+function createDbStub(
+  existingAd?: Record<string, unknown>,
+  activationOrder?: Record<string, unknown>,
+) {
   const limit = vi.fn().mockResolvedValue(existingAd ? [existingAd] : []);
+  const forUpdate = vi.fn().mockResolvedValue(activationOrder ? [activationOrder] : []);
   const set = vi.fn();
   const returning = vi.fn();
   const db: any = {
-    select: vi.fn(() => ({
-      from: vi.fn(() => ({ where: vi.fn(() => ({ limit })) })),
-    })),
+    select: vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => ({ limit })) })),
+      }))
+      .mockImplementation(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => ({ for: forUpdate })) })),
+      })),
     update: vi.fn(() => ({
       set: vi.fn((value: unknown) => {
         set(value);
         return { where: vi.fn(() => ({ returning })) };
       }),
     })),
+    transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(db)),
   };
-  return { db, limit, set, returning };
+  return { db, limit, forUpdate, set, returning };
 }
 
 function createBusinessesStub(business?: { id: string }) {
@@ -61,6 +71,37 @@ describe('AdsService.updateStatus', () => {
     );
 
     expect(set).not.toHaveBeenCalled();
+  });
+
+  it('rejects reactivating an ad whose order was canceled', async () => {
+    const { db, forUpdate, set } = createDbStub(
+      { ...AD, status: 'ended' },
+      { id: 'order-1', adId: 'ad-1', status: 'canceled' },
+    );
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
+      'Only ads with a paid order can be activated',
+    );
+
+    expect(forUpdate).toHaveBeenCalledWith('update');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('reactivates an ad only while its order remains paid', async () => {
+    const { db, forUpdate, returning } = createDbStub(
+      { ...AD, status: 'paused' },
+      { id: 'order-1', adId: 'ad-1', status: 'paid' },
+    );
+    returning.mockResolvedValue([{ ...AD, status: 'active' }]);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).resolves.toEqual({
+      ...AD,
+      status: 'active',
+    });
+
+    expect(forUpdate).toHaveBeenCalledWith('update');
   });
 
   it('lets the owning business pause an active ad', async () => {
