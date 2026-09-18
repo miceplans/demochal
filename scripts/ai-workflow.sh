@@ -183,7 +183,10 @@ cmd_quality_gate_result() {
   [[ -f "$report" ]] || die "quality gate report file not found: $report"
   case "$result" in
     PASS)
-      has_label "$issue" ai-working || die "Issue #$issue must be ai-working before quality gate PASS"
+      # FAIL(ai-needs-fix) 후 worker가 수정하고 Gate를 다시 통과한 경우도 허용한다
+      # (docs/ai-development-workflow.md의 FAIL → 재작업 → Gate 재실행 → PASS 흐름).
+      has_label "$issue" ai-working || has_label "$issue" ai-needs-fix \
+        || die "Issue #$issue must be ai-working or ai-needs-fix before quality gate PASS"
       set_status "$issue" ai-review
       ;;
     FAIL)
@@ -235,7 +238,7 @@ cmd_pr() {
   ! has_label "$issue" needs-human || die "Issue #$issue requires human input"
   git diff --quiet && git diff --cached --quiet || die "commit changes before creating a PR"
   branch="$(git branch --show-current)"
-  [[ "$branch" =~ ^(feat|fix|refactor|test|chore|security)/#${issue}- ]] || die "current branch is not an Issue #$issue branch"
+  [[ "$branch" =~ ^(feat|fix|refactor|test|chore|security)/#${issue}$ ]] || die "current branch is not an Issue #$issue branch"
   git diff --quiet "origin/main...HEAD" && die "no committed changes relative to origin/main"
   gh pr create --base main --head "$branch" --title "$title" --body-file "$body"
 }
