@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(10);
+    expect(journal.entries).toHaveLength(11);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -251,6 +251,19 @@ describe('0009_payments_order_id_unique migration', () => {
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain(
       'CREATE UNIQUE INDEX IF NOT EXISTS "payments_order_id_unique" ON "payments"',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0010_payments_refunded_amount migration', () => {
+  it('adds the cumulative refund tracking column without destructive DDL', () => {
+    const tag = journal.entries[10]?.tag;
+    expect(tag).toBe('0010_payments_refunded_amount');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "refunded_amount" integer DEFAULT 0 NOT NULL',
     );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });

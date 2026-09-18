@@ -5,7 +5,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, ne } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
@@ -26,6 +26,9 @@ interface TossPayment {
   orderId: string;
   status: string;
   totalAmount: number;
+  // Present on DONE/CANCELED/PARTIAL_CANCELED responses: the amount still not
+  // canceled. https://docs.tosspayments.com/reference#payment-객체
+  balanceAmount?: number;
 }
 
 @Injectable()
@@ -60,11 +63,14 @@ export class PaymentsService {
       this.logger.debug(`Toss payment ${paymentKey} awaiting deposit for order ${orderId}`);
       return;
     }
+    if (status === 'PARTIAL_CANCELED') {
+      await this.handlePartialCanceled(orderId, paymentKey);
+      return;
+    }
 
-    // TODO: PARTIAL_CANCELED (https://docs.tosspayments.com/reference#status) is
-    // still silently ignored — reconciling a partial refund needs the payments
-    // table to track a refunded amount separate from the original charge, which
-    // doesn't exist yet.
+    // TODO: other non-terminal/rare Toss statuses (ABORTED, IN_PROGRESS —
+    // https://docs.tosspayments.com/reference#status) are still silently
+    // ignored; none of them require a balance reconciliation today.
   }
 
   private async handleDone(orderId: string, paymentKey: string): Promise<void> {
@@ -151,6 +157,51 @@ export class PaymentsService {
       });
       await this.ordersService.cancelOrder(tx, order.id, ['pending']);
     });
+  }
+
+  private async handlePartialCanceled(orderId: string, paymentKey: string): Promise<void> {
+    const [order, tossPayment] = await Promise.all([
+      this.ordersService.findByIdInternal(orderId),
+      this.getTossPayment(paymentKey),
+    ]);
+
+    if (
+      tossPayment.status !== 'PARTIAL_CANCELED' ||
+      tossPayment.orderId !== order.id ||
+      tossPayment.totalAmount !== order.amount
+    ) {
+      this.logger.warn(`Rejected unverified Toss partial cancellation for order ${orderId}`);
+      throw new UnauthorizedException('Toss payment did not match the order');
+    }
+    if (typeof tossPayment.balanceAmount !== 'number') {
+      throw new BadGatewayException('Toss partial cancellation response missing balanceAmount');
+    }
+
+    // Toss reports the running balance, not a per-webhook delta: always SET
+    // refundedAmount from it (never increment) so an out-of-order or
+    // redelivered webhook converges to the same value instead of
+    // double-counting a refund.
+    const refundedAmount = Math.max(0, tossPayment.totalAmount - tossPayment.balanceAmount);
+
+    await this.db
+      .insert(payments)
+      .values({
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'paid',
+        refundedAmount,
+        approvedAt: new Date(),
+      })
+      .onConflictDoUpdate({
+        target: payments.orderId,
+        set: { refundedAmount },
+        // A partial refund only adjusts a payment that is still in force as
+        // 'paid' — it never resurrects a row already settled as fully
+        // canceled or expired.
+        setWhere: eq(payments.status, 'paid'),
+      });
   }
 
   private persistPayment(

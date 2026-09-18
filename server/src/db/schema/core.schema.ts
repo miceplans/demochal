@@ -193,6 +193,11 @@ export const payments = pgTable(
     // Valid values: ready | paid | canceled | expired. Legacy rows can contain
     // done | cancelled and are handled when reading billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
+    // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set
+    // from Toss's balanceAmount each time (never incremented) so a redelivered
+    // webhook is idempotent. 0 for untouched/fully-paid rows; irrelevant once
+    // status is 'canceled' (the full amount is already excluded from revenue).
+    refundedAmount: integer('refunded_amount').notNull().default(0),
     approvedAt: timestamp('approved_at'),
   },
   // One payment row per order: webhook handlers upsert on order_id so that
