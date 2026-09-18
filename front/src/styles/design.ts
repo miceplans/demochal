@@ -14,9 +14,11 @@ export const colors = {
   gray500: theme.colors.gray[500],
   gray700: theme.colors.gray[700],
   gray900: theme.colors.gray[900],
+  overlayWhite: theme.colors.overlayWhite,
 };
 export const shadows = {
   toast: theme.shadow.toast,
   focus: theme.shadow.focus,
+  carouselNav: theme.shadow.carouselNav,
 };
 export const mobile = '@media (max-width: 480px)';
