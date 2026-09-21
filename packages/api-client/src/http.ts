@@ -45,8 +45,8 @@ export class HttpClient {
     return data;
   }
 
-  get<T>(path: string) {
-    return this.request<T>(path, { method: 'GET' });
+  get<T>(path: string, init: RequestInit = {}) {
+    return this.request<T>(path, { method: 'GET', ...init });
   }
 
   post<T>(path: string, body?: unknown) {

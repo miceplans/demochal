@@ -157,8 +157,13 @@ export function ApplicationPage() {
     save({ role, members });
     const challengeId = new URLSearchParams(window.location.search).get('challenge');
     if (!challengeId) {
-      toast.success('지원서를 저장했어요');
-      router.push('/my/applications');
+      // 목업 카탈로그 화면에서는 진입 링크에 챌린지 UUID가 없다 — 이 경우 저장만 하고
+      // 실제 신청·결제 흐름은 챌린지 신청 링크(/applications/new?challenge=<uuid>) 경로로만
+      // 진행된다는 것을 명시한다(신청 완료처럼 보이면 안 된다).
+      toast.error(
+        '이 화면에서는 임시저장만 돼요',
+        '실제 신청은 챌린지의 참가 신청하기를 이용해주세요',
+      );
       return;
     }
     setSubmitting(true);
