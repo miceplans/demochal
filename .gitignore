@@ -16,3 +16,4 @@ coverage/
 .aider*
 .vercel
 .env*
+*.tfvars

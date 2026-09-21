@@ -69,21 +69,21 @@ variable "alarm_email" {
   default     = ""
 }
 
-variable "grafana_external_id" {
+variable "external_id" {
   description = "Grafana Cloud-provided external ID used to secure its cross-account CloudWatch integration."
   type        = string
   sensitive   = true
 
   validation {
-    condition     = length(trimspace(var.grafana_external_id)) > 0
+    condition     = length(trimspace(var.external_id)) > 0
     error_message = "Grafana external ID is required."
   }
 }
 
-variable "grafana_iam_role_name" {
+variable "iam_role_name" {
   description = "Name of the IAM role Grafana Cloud assumes for the CloudWatch integration."
   type        = string
-  default     = "GrafanaLabsCloudWatchIntegration"
+  default     = "GrafanaCloudWatchIntegration"
 }
 
 variable "worker_desired_count" {

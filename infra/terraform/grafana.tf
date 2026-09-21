@@ -16,13 +16,13 @@ data "aws_iam_policy_document" "trust_grafana" {
     condition {
       test     = "StringEquals"
       variable = "sts:ExternalId"
-      values   = [var.grafana_external_id]
+      values   = [var.external_id]
     }
   }
 }
 
 resource "aws_iam_role" "grafana_cloudwatch_integration" {
-  name               = var.grafana_iam_role_name
+  name               = var.iam_role_name
   description        = "Role used by Grafana CloudWatch integration."
   assume_role_policy = data.aws_iam_policy_document.trust_grafana.json
 }
