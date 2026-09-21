@@ -108,7 +108,9 @@ export function BizBillingPage() {
                   </span>
                 </Col>
                 <Col w={180}>
-                  <span style={{ fontSize: 13, color: c.gray500 }}>{formatPaidAt(p.paidAt)}</span>
+                  <span style={{ fontSize: 13, color: c.gray500 }}>
+                    {p.paidAt ? formatPaidAt(p.paidAt) : '—'}
+                  </span>
                 </Col>
                 <Col w={120}>
                   <strong style={{ color: p.amount > 0 ? c.green : c.gray900 }}>

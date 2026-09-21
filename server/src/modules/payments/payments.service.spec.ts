@@ -67,19 +67,21 @@ describe('PaymentsService', () => {
     expect(onConflictDoUpdate).not.toHaveBeenCalled();
   });
 
-  it('ignores other non-actionable webhook events (e.g. ABORTED)', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ status: 'ABORTED', amount: 50000 }),
-    });
-    const { db, insertValues } = createDbStub();
-    const orders = createOrdersStub();
+  it('cancels a pending order and upserts an expired payment for ABORTED', async () => {
+    fetchMock.mockResolvedValue(tossResponse('ABORTED'));
+    const { db, insertValues, onConflictDoUpdate } = createDbStub();
+    const orders = createOrdersStub('pending');
     const service = new PaymentsService(db, orders as any);
 
     await service.handleTossWebhook(webhook('ABORTED'));
 
-    expect(orders.markCancelled).not.toHaveBeenCalled();
-    expect(insertValues).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', ['pending']);
+    expect(insertValues).toHaveBeenCalledWith(
+      expect.objectContaining({ orderId: 'order-1', status: 'expired' }),
+    );
+    expect(onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ set: { status: 'expired' } }),
+    );
   });
 
   it('reconciles PARTIAL_CANCELED by persisting the Toss-reported refunded amount', async () => {
@@ -422,5 +424,91 @@ describe('PaymentsService', () => {
     expect(orders.markPaid).not.toHaveBeenCalled();
     expect(orders.markCancelled).not.toHaveBeenCalled();
     expect(insertValues).not.toHaveBeenCalled();
+  });
+
+  describe('confirmPayment', () => {
+    const confirmDto = { orderId: 'order-1', paymentKey: 'pay-key-1', amount: 50000 };
+
+    it('confirms with Toss and settles the order in ONE transaction', async () => {
+      fetchMock.mockResolvedValue(tossResponse('DONE'));
+      const { db, tx, transaction, insertValues } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmPayment('user-1', confirmDto);
+
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(orders.settleOrderPaid).toHaveBeenCalledWith(tx, 'order-1');
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: 'order-1',
+          providerPaymentKey: 'pay-key-1',
+          amount: 50000,
+          status: 'paid',
+          approvedAt: expect.any(Date),
+        }),
+      );
+    });
+
+    it('rejects a confirm whose amount does not match the order before calling Toss', async () => {
+      const { db, insertValues } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+      const fetchCallsBefore = fetchMock.mock.calls.length;
+
+      await expect(
+        service.confirmPayment('user-1', { ...confirmDto, amount: 99999 }),
+      ).rejects.toThrow('does not match the order');
+
+      expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent for an order already settled as paid (no Toss re-call)', async () => {
+      const { db, transaction, insertValues } = createDbStub();
+      const orders = {
+        ...createOrdersStub('paid'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'paid', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+      const fetchCallsBefore = fetchMock.mock.calls.length;
+
+      await expect(service.confirmPayment('user-1', confirmDto)).resolves.toEqual(
+        expect.objectContaining({ id: 'order-1', status: 'paid' }),
+      );
+
+      expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
+      expect(transaction).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('rejects when Toss does not confirm the payment', async () => {
+      fetchMock.mockResolvedValue({ ok: false, status: 400 });
+      const { db, insertValues } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(service.confirmPayment('user-1', confirmDto)).rejects.toThrow(
+        'confirmation failed',
+      );
+      expect(insertValues).not.toHaveBeenCalled();
+    });
   });
 });

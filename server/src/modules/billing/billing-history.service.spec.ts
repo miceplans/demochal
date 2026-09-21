@@ -26,7 +26,13 @@ function collectValues(node: any, acc: unknown[] = []): unknown[] {
     acc.push(node.value);
     return acc;
   }
+  // inArray() binds its value list either as Param entries or as a raw array chunk.
+  if (Array.isArray(node?.value)) {
+    acc.push(...node.value);
+    return acc;
+  }
   if (Array.isArray(node?.queryChunks)) node.queryChunks.forEach((c: any) => collectValues(c, acc));
+  if (Array.isArray(node)) node.forEach((c: any) => collectValues(c, acc));
   return acc;
 }
 
@@ -66,8 +72,11 @@ const ROWS = [
 ];
 
 describe('BillingHistoryService', () => {
-  it('counts only charged payments in the total; expired rows stay in items as failed', async () => {
-    const { db } = createDbStub(ROWS);
+  it('maps charged rows to items; never-charged rows never reach the mapping', async () => {
+    // The DB applies the charged-status filter (asserted in the test below), so
+    // only charged rows ever reach the mapping — simulate that filtered result.
+    const chargedRows = ROWS.filter((row) => row.status !== 'expired' && row.status !== 'ready');
+    const { db } = createDbStub(chargedRows);
     const service = new BillingHistoryService(db);
 
     const { items, total } = await service.forBusiness('biz-1', {});
@@ -89,9 +98,6 @@ describe('BillingHistoryService', () => {
         paidAt: '2026-09-05T09:00:00.000Z',
         status: 'refunded',
       },
-      { id: 'pay-3', name: '개발자 챌린지', amount: -30_000, paidAt: null, status: 'failed' },
-      // 'ready' (unpaid) rows surface as 'failed' per the status mapping contract.
-      { id: 'pay-4', name: '갤러리 광고', amount: -20_000, paidAt: null, status: 'failed' },
       {
         id: 'pay-5',
         name: '지난 챌린지',
@@ -112,6 +118,22 @@ describe('BillingHistoryService', () => {
     // display amounts (pay-2, pay-6) are not part of this reduce — they don't
     // get subtracted a second time.
     expect(total).toBe(-110_000);
+  });
+
+  it('filters never-charged payment attempts (expired/ready) out of the query', async () => {
+    const { db, where } = createDbStub(ROWS);
+    const service = new BillingHistoryService(db);
+
+    await service.forBusiness('biz-1', {});
+
+    // inArray(payments.status, ['paid', 'done', 'canceled', 'cancelled']) — a
+    // failed/expired attempt must not render as a negative charge or epoch date.
+    const values = collectValues(where.mock.calls[0]![0]);
+    for (const status of ['paid', 'done', 'canceled', 'cancelled']) {
+      expect(values).toContain(status);
+    }
+    expect(values).not.toContain('expired');
+    expect(values).not.toContain('ready');
   });
 
   it('scopes rows to the business via ads or applications→challenges', async () => {

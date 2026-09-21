@@ -79,6 +79,12 @@
       "tag": "0011_add_outbox_events",
       "when": 1789700000000,
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "tag": "0012_billing_auth_attempts",
+      "when": 1789969683229,
+      "breakpoints": true
     }
   ]
 }

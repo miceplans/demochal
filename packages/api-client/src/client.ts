@@ -165,6 +165,11 @@ export function createApiClient(options: HttpClientOptions) {
     orders: {
       get: (id: string, options?: { signal?: AbortSignal }) =>
         http.get<Order>(`/orders/${id}`, options),
+      cancel: (id: string) => http.post<Order>(`/orders/${id}/cancel`),
+    },
+    payments: {
+      confirm: (body: { orderId: string; paymentKey: string; amount: number }) =>
+        http.post<Order>('/payments/confirm', body),
     },
     files: {
       requestUpload: (body: PresignedUploadRequest) =>

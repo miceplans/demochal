@@ -80,4 +80,10 @@ export class OrdersService {
 
     return order;
   }
+
+  /** 신청자 본인의 미결제 pending 주문만 취소한다(토스 진입 실패·구매자 취소 정리). */
+  async cancelPendingByOwner(id: string, userId: string) {
+    const order = await this.findById(id, userId);
+    return this.db.transaction((tx) => this.cancelOrder(tx, order.id, ['pending']));
+  }
 }

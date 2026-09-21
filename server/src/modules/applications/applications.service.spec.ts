@@ -20,9 +20,7 @@ function createDbStub(options: {
         return { limit };
       }
       if (table === applications) {
-        limit.mockResolvedValue(
-          options.existingApplication ? [options.existingApplication] : [],
-        );
+        limit.mockResolvedValue(options.existingApplication ? [options.existingApplication] : []);
         return { limit };
       }
       // orders (latest lookup in orderForApplication)

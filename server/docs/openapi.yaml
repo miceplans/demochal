@@ -890,6 +890,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Order' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: 주문 취소(신청자 본인, 미결제만)
+      operationId: cancelOrder
+      x-impl-status: implemented
+      description: |
+        신청자 본인의 `pending` 주문만 `canceled`로 전환한다. 토스 결제창 진입 실패·구매자 취소 후
+        남는 미결제 주문을 정리하는 용도이며, `paid` 등 다른 상태의 주문은 409로 거절된다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 취소된 주문
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 취소할 수 없는 주문 상태(paid 등) }
+  /payments/confirm:
+    post:
+      tags: [Payments]
+      summary: 토스 결제 승인(신청자 본인)
+      operationId: confirmPayment
+      x-impl-status: implemented
+      description: |
+        토스 successUrl 리다이렉트 이후 클라이언트가 호출하는 승인 엔드포인트. `paymentKey`·`orderId`·
+        `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
+        하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
+        재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmPaymentRequest' }
+      responses:
+        '200':
+          description: 확정된 주문
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 결제할 수 없는 주문 상태(paid/canceled 등) }
+        '502': { description: 토스 승인 API 호출 실패 }
   /payments/webhook/toss:
     post:
       tags: [Payments]
@@ -1900,6 +1948,13 @@ components:
         amount: { type: integer, description: 결제 금액 (원) }
         status: { type: string, enum: [pending, paid, canceled] }
         createdAt: { type: string, format: date-time }
+    ConfirmPaymentRequest:
+      type: object
+      required: [orderId, paymentKey, amount]
+      properties:
+        orderId: { type: string, format: uuid }
+        paymentKey: { type: string, description: 토스 결제 키(successUrl 쿼리) }
+        amount: { type: integer, description: 주문 금액과 반드시 일치(위변조 방어) }
     TossWebhookPayload:
       type: object
       required: [eventType, data]
@@ -1911,7 +1966,11 @@ components:
           properties:
             paymentKey: { type: string }
             orderId: { type: string }
-            status: { type: string, description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED' }
+            status:
+              {
+                type: string,
+                description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT',
+              }
     PaymentCard:
       type: object
       required: [id, maskedNumber]
