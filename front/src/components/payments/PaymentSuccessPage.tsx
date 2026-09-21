@@ -62,13 +62,26 @@ export function PaymentSuccessPage() {
     if (!valid || !orderId) return;
 
     let cancelled = false;
+    const controller = new AbortController();
     const startedAt = Date.now();
+    let finished = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = (next: PaymentState, nextMessage?: string) => {
-      if (cancelled) return;
-      clearInterval(timer);
+      // 터미널 상태는 한 번만 적용한다 — 늦게 도착하는 진행 중 응답이
+      // 타임아웃/다른 터미널 상태를 덮어쓰지 않게.
+      if (cancelled || finished) return;
+      finished = true;
+      if (timer) clearTimeout(timer);
       setState(next);
       if (nextMessage) setMessage(nextMessage);
+    };
+
+    const schedule = (delay: number) => {
+      if (cancelled || finished) return;
+      timer = setTimeout(() => {
+        void poll();
+      }, delay);
     };
 
     const poll = async () => {
@@ -77,26 +90,28 @@ export function PaymentSuccessPage() {
         return;
       }
       try {
-        const order = await adApi.orders.get(orderId);
+        // 한 번에 하나의 조회만 진행되도록 await 뒤에 다음 틱을 예약한다.
+        const order = await adApi.orders.get(orderId, { signal: controller.signal });
         if (order.status === 'paid') {
           finish('paid');
         } else if (order.status === 'canceled') {
           finish('failed', '결제가 완료되지 않았어요. 다시 시도해주세요.');
+        } else {
+          // pending이면 다음 폴리 틱까지 계속 대기한다.
+          schedule(POLL_INTERVAL_MS);
         }
-        // pending이면 다음 폴리 틱까지 계속 대기한다.
       } catch {
-        // 개별 조회 실패(일시 네트워크 오류 등)는 타임아웃까지 계속 재시도한다.
+        // 조회 취소(언마운트/타임아웃) 외의 개별 실패(일시 네트워크 오류 등)는 타임아웃까지 재시도한다.
+        if (!controller.signal.aborted) schedule(POLL_INTERVAL_MS);
       }
     };
 
-    const timer = setInterval(() => {
-      void poll();
-    }, POLL_INTERVAL_MS);
     void poll();
 
     return () => {
       cancelled = true;
-      clearInterval(timer);
+      controller.abort();
+      if (timer) clearTimeout(timer);
     };
   }, [valid, orderId]);
 
