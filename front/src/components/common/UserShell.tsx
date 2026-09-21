@@ -298,7 +298,7 @@ export function UserShell({
                 ) : (
                   <>
                     <HeaderActionLink href="/biz">챌린지 만들기</HeaderActionLink>
-                    <HeaderActionLink href="/biz">문의하기</HeaderActionLink>
+                    <HeaderActionLink href="/biz">챌린지 대행 문의</HeaderActionLink>
                   </>
                 )}
               </Row>
