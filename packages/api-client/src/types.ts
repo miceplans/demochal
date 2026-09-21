@@ -282,7 +282,9 @@ export interface Payment {
   provider: 'toss';
   providerPaymentKey: string;
   amount: number;
-  status: 'paid' | 'canceled' | 'expired';
+  // 'ready'는 아직 유효한 저장 값이다(DB 기본값 — 입금 대기 등 충전 전 상태).
+  // billing-history 같은 읽기 경로가 ready 행을 매핑하므로 어휘에서 빼면 안 된다.
+  status: 'ready' | 'paid' | 'canceled' | 'expired';
   approvedAt?: string;
 }
 
