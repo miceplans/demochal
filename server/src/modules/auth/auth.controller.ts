@@ -37,6 +37,18 @@ const GOOGLE_AUTHORIZATION_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const GOOGLE_USERINFO_URL = 'https://openidconnect.googleapis.com/v1/userinfo';
 
+const NAVER_STATE_COOKIE_NAME = 'semochal_naver_oauth_state';
+const NAVER_STATE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  maxAge: 10 * 60 * 1000,
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: env.nodeEnv === 'production',
+};
+const NAVER_AUTHORIZATION_URL = 'https://nid.naver.com/oauth2.0/authorize';
+const NAVER_TOKEN_URL = 'https://nid.naver.com/oauth2.0/token';
+const NAVER_USERINFO_URL = 'https://openapi.naver.com/v1/nid/me';
+
 @Public()
 @Controller('auth')
 export class AuthController {
@@ -147,6 +159,78 @@ export class AuthController {
     }
   }
 
+  @Get('social/naver')
+  naverLogin(@Res() response: Response) {
+    this.assertNaverConfigured();
+    const nonce = randomBytes(32).toString('base64url');
+    const state = `${nonce}.${this.signNaverState(nonce)}`;
+    response.cookie(NAVER_STATE_COOKIE_NAME, nonce, NAVER_STATE_COOKIE_OPTIONS);
+
+    const authorizationUrl = new URL(NAVER_AUTHORIZATION_URL);
+    authorizationUrl.search = new URLSearchParams({
+      response_type: 'code',
+      client_id: env.naverClientId,
+      redirect_uri: env.naverRedirectUri,
+      state,
+    }).toString();
+    response.redirect(authorizationUrl.toString());
+  }
+
+  @Get('social/naver/callback')
+  async naverCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Req() request: Request,
+    @Res() response: Response,
+  ) {
+    response.clearCookie(NAVER_STATE_COOKIE_NAME, { path: '/' });
+    try {
+      this.assertNaverConfigured();
+      if (error || !code || !state || !this.isValidNaverState(state, request)) {
+        throw new UnauthorizedException('Naver login was cancelled or could not be verified');
+      }
+
+      const tokenUrl = new URL(NAVER_TOKEN_URL);
+      tokenUrl.search = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: env.naverClientId,
+        client_secret: env.naverClientSecret,
+        code,
+        state,
+      }).toString();
+      const tokenResponse = await fetchJson(tokenUrl.toString());
+      const token = (await tokenResponse.json()) as { access_token?: string };
+      if (!tokenResponse.ok || !token.access_token)
+        throw new UnauthorizedException('Naver token exchange failed');
+
+      const userInfoResponse = await fetchJson(NAVER_USERINFO_URL, {
+        headers: { authorization: `Bearer ${token.access_token}` },
+      });
+      const userInfo = (await userInfoResponse.json()) as {
+        resultcode?: string;
+        response?: { id?: string; email?: string; name?: string };
+      };
+      const profile = userInfo.response;
+      if (!userInfoResponse.ok || userInfo.resultcode !== '00' || !profile?.id || !profile.email) {
+        throw new UnauthorizedException('Naver did not return a verified email address');
+      }
+
+      const { accessToken, user } = await this.authService.loginWithNaver({
+        subject: profile.id,
+        email: profile.email.toLowerCase(),
+        name: profile.name ?? '',
+      });
+      response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
+      response.redirect(
+        user.onboardingSurvey ? this.frontendUrl('/') : this.frontendUrl('/onboarding/activity'),
+      );
+    } catch (err) {
+      console.error('[auth] naver_login_failed:', err);
+      response.redirect(this.frontendUrl('/login?error=naver_login_failed'));
+    }
+  }
+
   @Post('logout')
   @HttpCode(204)
   logout(@Res({ passthrough: true }) response: Response) {
@@ -173,6 +257,32 @@ export class AuthController {
     const [nonce, signature] = state.split('.');
     if (!nonce || !signature || nonce !== cookie) return false;
     const expected = this.signGoogleState(nonce);
+    return (
+      signature.length === expected.length &&
+      timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    );
+  }
+
+  private assertNaverConfigured() {
+    if (!env.naverClientId || !env.naverClientSecret) {
+      throw new ServiceUnavailableException('Naver login is not configured');
+    }
+  }
+
+  private signNaverState(nonce: string) {
+    return createHmac('sha256', env.jwtSecret).update(nonce).digest('base64url');
+  }
+
+  private isValidNaverState(state: string | undefined, request: Request) {
+    const cookie = request.headers.cookie
+      ?.split(';')
+      .map((value) => value.trim())
+      .find((value) => value.startsWith(`${NAVER_STATE_COOKIE_NAME}=`))
+      ?.slice(NAVER_STATE_COOKIE_NAME.length + 1);
+    if (!state || !cookie) return false;
+    const [nonce, signature] = state.split('.');
+    if (!nonce || !signature || nonce !== cookie) return false;
+    const expected = this.signNaverState(nonce);
     return (
       signature.length === expected.length &&
       timingSafeEqual(Buffer.from(signature), Buffer.from(expected))

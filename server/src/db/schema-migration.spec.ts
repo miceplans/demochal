@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(12);
+    expect(journal.entries).toHaveLength(13);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -280,6 +280,20 @@ describe('0011_add_outbox_events migration', () => {
     expect(sql).toContain('"event_type" varchar(50) NOT NULL');
     expect(sql).toContain('"payload" jsonb NOT NULL');
     expect(sql).toContain('"status" varchar(20) DEFAULT \'pending\' NOT NULL');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0012_add_naver_auth migration', () => {
+  it('adds the Naver OAuth identity column without destructive DDL', () => {
+    const tag = journal.entries[12]?.tag;
+    expect(tag).toBe('0012_add_naver_auth');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "naver_subject"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "users_naver_subject_unique" ON "users" ("naver_subject")',
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

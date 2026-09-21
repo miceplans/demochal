@@ -79,6 +79,12 @@
       "tag": "0011_add_outbox_events",
       "when": 1789700000000,
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "tag": "0012_add_naver_auth",
+      "when": 1789720000000,
+      "breakpoints": true
     }
   ]
 }

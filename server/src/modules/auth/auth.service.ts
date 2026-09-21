@@ -109,6 +109,54 @@ export class AuthService {
     return { accessToken, user: publicUser };
   }
 
+  /** Finds or creates the local account for a verified Naver identity. */
+  async loginWithNaver(profile: { subject: string; email: string; name: string }) {
+    const [byNaverSubject] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.naverSubject, profile.subject))
+      .limit(1);
+
+    let user = byNaverSubject;
+    if (!user) {
+      const [byEmail] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.email, profile.email))
+        .limit(1);
+      if (byEmail) {
+        // A verified Naver email may be safely associated with the same local account.
+        [user] = await this.db
+          .update(users)
+          .set({ naverSubject: profile.subject })
+          .where(eq(users.id, byEmail.id))
+          .returning();
+      } else {
+        const passwordHash = await hash(
+          randomBytes(32).toString('base64url'),
+          PASSWORD_HASH_ROUNDS,
+        );
+        [user] = await this.db
+          .insert(users)
+          .values({
+            email: profile.email,
+            name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Naver 사용자',
+            passwordHash,
+            naverSubject: profile.subject,
+          })
+          .returning();
+      }
+    }
+    if (!user) throw new Error('Failed to create or link Naver user');
+    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+
+    const [accessToken, publicUser] = await Promise.all([
+      this.issueToken(user),
+      this.usersService.findById(user.id),
+    ]);
+    return { accessToken, user: publicUser };
+  }
+
   async me(token: string) {
     if (!token) throw new UnauthorizedException('Missing authentication cookie');
 
