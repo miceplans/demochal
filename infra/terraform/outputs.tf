@@ -11,3 +11,9 @@ output "ecs_cluster_name" { value = aws_ecs_cluster.this.name }
 output "migrate_task_definition_arn" { value = aws_ecs_task_definition.migrate.arn }
 output "migrate_task_subnet_id" { value = aws_subnet.public["0"].id }
 output "migrate_task_security_group_id" { value = aws_security_group.migrate_task.id }
+
+output "grafana_cloudwatch_role_arn" {
+  description = "IAM role ARN to register with the Grafana Cloud CloudWatch integration."
+  value       = aws_iam_role.grafana_cloudwatch_integration.arn
+  depends_on  = [time_sleep.wait_for_grafana_iam]
+}
