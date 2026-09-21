@@ -178,12 +178,15 @@ export function AdCarousel({
   const setDistance = itemCount * (width + gap);
   const mobileSetDistance = itemCount * (mobileGallerySlide.width + mobileGallerySlide.gap);
   // isPaused는 일시정지 버튼의 사용자 선택을 유지하고, isHoverPaused는
-  // 마우스/키보드가 머무는 동안만 잠시 멈춥니다.
+  // 마우스/키보드가 머무는 동안만 잠시 멈춥니다. resumeOverride는 재개를 눌렀을 때
+  // 남은 hover/focus 일시정지를 무시해 흐름이 실제로 다시 시작되게 합니다.
   const [isPaused, setIsPaused] = useState(false);
   const [isHoverPaused, setIsHoverPaused] = useState(false);
+  const [resumeOverride, setResumeOverride] = useState(false);
   // 서버 렌더와 첫 클라이언트 렌더를 일치시키기 위해 고정 폭을 기본값으로 쓰고,
   // 마운트 뒤 실제 뷰포트 폭에 맞춰 복제 세트 수를 늘립니다.
   const [viewportWidth, setViewportWidth] = useState(1440);
+  const [reducedMotion, setReducedMotion] = useState(false);
   const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -196,25 +199,55 @@ export function AdCarousel({
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncPreference = () => setReducedMotion(query.matches);
+    syncPreference();
+    query.addEventListener('change', syncPreference);
+    return () => query.removeEventListener('change', syncPreference);
+  }, []);
+
   if (itemCount === 0) return null;
 
   // 한 세트가 화면을 채우고, 끝까지 이동한 뒤에도 다음 세트가 보일 만큼 남도록
   // 뷰포트 폭에 필요한 최소 복제 횟수를 계산합니다(최소 2세트).
   // 레일 끝의 gap 하나가 빠지므로 뷰포트 폭에 gap을 보정해 더합니다.
-  const copies = Math.max(2, Math.floor((viewportWidth + gap) / setDistance) + 2);
+  // 갤러리는 모바일에서 더 작은 세트 폭으로 움직이므로 양쪽 요구 중 큰 값을 씁니다.
+  const desktopCopies = Math.max(2, Math.floor((viewportWidth + gap) / setDistance) + 2);
+  const mobileCopies = Math.max(
+    2,
+    Math.floor((viewportWidth + mobileGallerySlide.gap) / mobileSetDistance) + 2,
+  );
+  const copies = variant === 'gallery' ? Math.max(desktopCopies, mobileCopies) : desktopCopies;
   // interval은 광고 한 장당 머무는 시간이라 두고 전체 한 바퀴 시간으로 환산합니다.
   const duration = interval * itemCount;
   const Viewport = variant === 'hero' ? HeroViewport : GalleryViewport;
+  const effectivePaused = isPaused || (isHoverPaused && !resumeOverride);
+  const togglePause = () => {
+    if (effectivePaused) {
+      setIsPaused(false);
+      setResumeOverride(true);
+    } else {
+      setIsPaused(true);
+      setResumeOverride(false);
+    }
+  };
 
   return (
     <section
       aria-label={ariaLabel}
       style={priceOverlay ? { pointerEvents: 'auto' } : undefined}
       onMouseEnter={() => setIsHoverPaused(true)}
-      onMouseLeave={() => setIsHoverPaused(false)}
+      onMouseLeave={() => {
+        setIsHoverPaused(false);
+        setResumeOverride(false);
+      }}
       onFocusCapture={() => setIsHoverPaused(true)}
       onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsHoverPaused(false);
+        if (!event.currentTarget.contains(event.relatedTarget)) {
+          setIsHoverPaused(false);
+          setResumeOverride(false);
+        }
       }}
     >
       <Viewport ref={viewportRef}>
@@ -223,7 +256,7 @@ export function AdCarousel({
           distance={setDistance}
           mobileDistance={mobileSetDistance}
           duration={duration}
-          paused={isPaused || isHoverPaused}
+          paused={effectivePaused}
         >
           {Array.from({ length: copies }, (_, copy) =>
             items.map((item, index) => (
@@ -239,14 +272,16 @@ export function AdCarousel({
             )),
           )}
         </Rail>
-        <PauseButton
-          type="button"
-          aria-pressed={isPaused}
-          aria-label={isPaused ? '광고 흐름 재개' : '광고 흐름 일시정지'}
-          onClick={() => setIsPaused((paused) => !paused)}
-        >
-          {isPaused ? <PlayIcon /> : <PauseIcon />}
-        </PauseButton>
+        {reducedMotion ? null : (
+          <PauseButton
+            type="button"
+            aria-pressed={effectivePaused}
+            aria-label={effectivePaused ? '광고 흐름 재개' : '광고 흐름 일시정지'}
+            onClick={togglePause}
+          >
+            {effectivePaused ? <PlayIcon /> : <PauseIcon />}
+          </PauseButton>
+        )}
         {variant === 'hero' && priceOverlay ? (
           <PriceOverlay>
             <PriceOverlayLabel>{priceOverlay.label}</PriceOverlayLabel>
