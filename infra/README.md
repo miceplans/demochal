@@ -36,7 +36,7 @@ ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP
 
 ## RDS TLS 서버 인증서 검증
 
-API, worker, 그리고 one-off migrate 태스크는 이미지 안의 AWS RDS commercial-region
+ECS의 API, worker, 그리고 one-off migrate 태스크는 이미지 안의 AWS RDS commercial-region
 CA bundle(`/app/certs/global-bundle.pem`)을 `pg`의 `ssl.ca`로 사용하고
 `rejectUnauthorized: true`로 서버 인증서 체인과 RDS endpoint hostname을 검증합니다.
 TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습니다.

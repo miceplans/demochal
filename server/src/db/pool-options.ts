@@ -29,11 +29,11 @@ export function createPoolOptions(
   databaseSslCaPath: string | undefined,
   readCaFile: ReadCaFile = (path) => readFileSync(path, 'utf8'),
 ): PoolConfig {
-  assertNoSslUrlParameters(databaseUrl);
-
   if (!databaseSslCaPath) {
     return { connectionString: databaseUrl };
   }
+
+  assertNoSslUrlParameters(databaseUrl);
 
   return {
     connectionString: databaseUrl,

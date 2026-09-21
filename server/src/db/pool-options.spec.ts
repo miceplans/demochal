@@ -26,11 +26,18 @@ describe('createPoolOptions', () => {
   it.each(['sslmode=require', 'sslrootcert=/tmp/other-ca.pem', 'SSLMODE=require'])(
     'rejects SSL connection-string option %s so it cannot override code policy',
     (sslParameter) => {
-      expect(() => createPoolOptions(`${databaseUrl}?${sslParameter}`, undefined)).toThrow(
-        'DATABASE_URL must not include SSL query parameters',
-      );
+      expect(() =>
+        createPoolOptions(`${databaseUrl}?${sslParameter}`, '/app/certs/global-bundle.pem'),
+      ).toThrow('DATABASE_URL must not include SSL query parameters');
     },
   );
+
+  it('preserves the documented Supabase SSL URL when no AWS CA policy is configured', () => {
+    const supabaseUrl =
+      'postgres://postgres.example@aws-0-example.pooler.supabase.com:6543/postgres?sslmode=require';
+
+    expect(createPoolOptions(supabaseUrl, undefined)).toEqual({ connectionString: supabaseUrl });
+  });
 
   it('fails closed when the configured CA bundle cannot be read', () => {
     const readCaFile = vi.fn(() => {

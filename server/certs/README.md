@@ -10,4 +10,6 @@ the same review. The bundle committed for this change has SHA-256:
 `e5bb2084ccf45087bda1c9bffdea0eb15ee67f0b91646106e466714f9de3c7e3`
 
 The API and worker Docker runtime images copy this bundle to
-`/app/certs/global-bundle.pem` and set `DATABASE_SSL_CA_PATH` to that path.
+`/app/certs/global-bundle.pem`. ECS API, worker, and migrate task definitions
+set `DATABASE_SSL_CA_PATH` to that path; the image itself intentionally does
+not, so local Docker Compose keeps using its plaintext PostgreSQL service.
