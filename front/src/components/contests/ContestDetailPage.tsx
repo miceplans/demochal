@@ -34,25 +34,25 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
       toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
     }
   };
-  const summary = (
-    <>
-      <Link href="/teams/new">
-        <Button as="span" tone="outline" fullWidth>
-          이 챌린지 팀 구하기
-        </Button>
-      </Link>
-      <Summary>
-        <b>대회 요약</b>
-        <dl>
-          <dt>마감일</dt>
-          <dd>{contestDetail.deadline}</dd>
-          <dt>총 상금</dt>
-          <dd>{contestDetail.prizeTotal}</dd>
-          <dt>팀 구성</dt>
-          <dd>{contestDetail.teamSize}</dd>
-        </dl>
-      </Summary>
-    </>
+  const teamCta = (
+    <Link href="/teams/new">
+      <Button as="span" tone="outline" fullWidth>
+        이 챌린지 팀 구하기
+      </Button>
+    </Link>
+  );
+  const summaryBox = (
+    <Summary>
+      <b>대회 요약</b>
+      <dl>
+        <dt>마감일</dt>
+        <dd>{contestDetail.deadline}</dd>
+        <dt>총 상금</dt>
+        <dd>{contestDetail.prizeTotal}</dd>
+        <dt>팀 구성</dt>
+        <dd>{contestDetail.teamSize}</dd>
+      </dl>
+    </Summary>
   );
   return (
     <UserShell title="챌린지 상세" back="/explore">
@@ -113,22 +113,26 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
                     style={{ width: '100%', height: 'auto' }}
                   />
                 </DesktopOnly>
+                <MobileOnly>{summaryBox}</MobileOnly>
                 {contestDetail.sections.map(({ title, body }) => (
                   <section key={title}>
                     <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
                     <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
                   </section>
                 ))}
-                <MobileOnly>{summary}</MobileOnly>
                 <Link href="/applications/new">
                   <Button as="span" fullWidth>
                     참가 신청하기
                   </Button>
                 </Link>
+                <MobileOnly>{teamCta}</MobileOnly>
               </Stack>
             )}
           </div>
-          <DesktopOnly>{summary}</DesktopOnly>
+          <DesktopOnly>
+            {teamCta}
+            {summaryBox}
+          </DesktopOnly>
         </Columns>
         <section style={{ marginTop: 60 }}>
           <SectionHeader
