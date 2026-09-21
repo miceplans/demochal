@@ -5,7 +5,45 @@ on:
     types: [opened, synchronize, ready_for_review, reopened]
 
 jobs:
+  # Z.AI 계정 잔액이 없으면 review job을 실행하지 않고 CI에서 Skipped로 표시한다.
+  # probe는 glm-4.5-air로 1토큰 요청을 본 뒤 잔액 부족 응답인지만 확인한다.
+  check-quota:
+    name: Check GLM balance
+    runs-on: ubuntu-latest
+    environment: ZAI_API_KEY
+    outputs:
+      skip_review: ${{ steps.probe.outputs.skip_review }}
+    steps:
+      - name: Probe Z.AI balance
+        id: probe
+        env:
+          ZAI_API_KEY: ${{ secrets.ZAI_API_KEY }}
+        run: |
+          response=$(curl -sS -o /tmp/zai-probe.json -w '%{http_code}' \
+            -X POST 'https://api.z.ai/api/anthropic/v1/messages' \
+            -H "x-api-key: $ZAI_API_KEY" \
+            -H 'anthropic-version: 2023-06-01' \
+            -H 'content-type: application/json' \
+            --max-time 60 \
+            -d '{"model":"glm-4.5-air","max_tokens":1,"messages":[{"role":"user","content":"ping"}]}' \
+            || echo '000')
+          echo "probe HTTP status: $response"
+          if [ "$response" = '200' ]; then
+            echo 'skip_review=false' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          body=$(head -c 2000 /tmp/zai-probe.json 2>/dev/null || true)
+          echo "$body"
+          if [ "$response" = '402' ] || echo "$body" | grep -qiE 'insufficient[ _-]?balance|insufficient_quota|balance[ _-]?(exhausted|depleted)|payment_required|잔액[^0-9a-z]*부족|余额不足'; then
+            echo 'Z.AI 잔액 부족 — review job을 실행하지 않습니다.'
+            echo 'skip_review=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'skip_review=false' >> "$GITHUB_OUTPUT"
+          fi
+
   review:
+    needs: check-quota
+    if: needs.check-quota.outputs.skip_review != 'true'
     runs-on: ubuntu-latest
     environment: ZAI_API_KEY
     permissions:
