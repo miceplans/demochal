@@ -76,6 +76,11 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
+              <Link href="/reports/new?type=challenge">
+                <Button as="span" small tone="plain">
+                  신고
+                </Button>
+              </Link>
             </Row>
           </div>
         </Intro>

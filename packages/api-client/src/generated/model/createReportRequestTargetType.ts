@@ -18,11 +18,12 @@
  */
 
 /**
- * 챌린지/팀 모집/수상작/사용자 프로필
+ * 신고 대상 종류 — 공모전/팀 모집글/수상작/사용자 프로필
  */
-export type ReportTargetType = (typeof ReportTargetType)[keyof typeof ReportTargetType];
+export type CreateReportRequestTargetType =
+  (typeof CreateReportRequestTargetType)[keyof typeof CreateReportRequestTargetType];
 
-export const ReportTargetType = {
+export const CreateReportRequestTargetType = {
   challenge: 'challenge',
   team: 'team',
   award: 'award',
