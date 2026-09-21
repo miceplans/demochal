@@ -163,7 +163,8 @@ export function createApiClient(options: HttpClientOptions) {
       getBizDashboard: () => http.get<BizDashboard>('/biz/dashboard'),
     },
     orders: {
-      get: (id: string) => http.get<Order>(`/orders/${id}`),
+      get: (id: string, options?: { signal?: AbortSignal }) =>
+        http.get<Order>(`/orders/${id}`, options),
     },
     files: {
       requestUpload: (body: PresignedUploadRequest) =>
