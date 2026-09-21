@@ -171,7 +171,7 @@ describe('BillingService', () => {
     // The idempotency record is linked to the stored card.
     expect(db.update).toHaveBeenCalled();
     const [url, init] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toContain('/v1/billing/authorizations/issue');
+    expect(String(url)).toBe(ISSUE_URL);
     expect(init).toEqual(expect.objectContaining({ method: 'POST' }));
     expect(JSON.parse(String((init as { body: string }).body))).toEqual({
       authKey: 'auth-key-1',
