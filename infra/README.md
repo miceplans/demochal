@@ -34,6 +34,32 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 
 ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker와 migrate task에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task(API/worker/migrate) security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, CloudWatch 7일 보존입니다. ECR은 `test-` 태그 이미지 2개, `deploy-` 태그 이미지 10개를 보존합니다(4단계 참고).
 
+## RDS TLS 서버 인증서 검증
+
+ECS의 API, worker, 그리고 one-off migrate 태스크는 이미지 안의 AWS RDS commercial-region
+CA bundle(`/app/certs/global-bundle.pem`)을 `pg`의 `ssl.ca`로 사용하고
+`rejectUnauthorized: true`로 서버 인증서 체인과 RDS endpoint hostname을 검증합니다.
+TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습니다.
+
+새 이미지를 배포할 때 승인된 운영자는 다음 순서로 진행합니다. credential이나
+`DATABASE_URL`의 실제 값은 로그, Issue, PR, Terraform 변수에 기록하지 않습니다.
+
+1. monorepo root에서 API와 worker 이미지를 새 immutable `deploy-` 태그로 build/push하고,
+   ECR digest를 확인합니다.
+2. application secret의 `DATABASE_URL`에서 `sslmode`, `sslrootcert` 등 `ssl`로 시작하는
+   query parameter를 제거합니다. endpoint hostname, port, database name과 인증 정보는
+   그대로 유지합니다.
+3. API, worker, migrate task definition이 새 digest를 사용하도록 승인된 배포 절차로
+   갱신합니다. bundle은 image runtime에 포함되므로 별도 CA secret이나
+   `NODE_TLS_REJECT_UNAUTHORIZED` 설정은 사용하지 않습니다.
+4. API service와 필요 시 worker를 배포하고, API `/health`와 CloudWatch 로그를 확인합니다.
+   마이그레이션이 필요한 release라면 새 이미지의 migrate task를 먼저 실행해 exit code 0을
+   확인합니다.
+
+인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
+확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
+`NODE_TLS_REJECT_UNAUTHORIZED=0`으로 우회하지 않습니다.
+
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 
 - `lambda/verification-cleanup/` — 사업자등록증 만료 삭제 배치 (EventBridge 트리거, Lambda)

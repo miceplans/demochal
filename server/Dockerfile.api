@@ -19,6 +19,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /repo/server/dist ./dist
 COPY --from=build /repo/server/drizzle ./drizzle
+COPY --from=build /repo/server/certs ./certs
 COPY --from=build /prod ./
 
 EXPOSE 3001

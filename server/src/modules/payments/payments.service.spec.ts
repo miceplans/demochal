@@ -13,9 +13,10 @@ function createDbStub() {
   const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
   const insertValues = vi.fn(() => ({ onConflictDoNothing, onConflictDoUpdate }));
   const insert = vi.fn(() => ({ values: insertValues }));
-  const transaction = vi.fn(async (fn: (tx: any) => Promise<void>) => fn({ insert }));
+  const tx = { insert };
+  const transaction = vi.fn(async (fn: (txArg: unknown) => Promise<void>) => fn(tx));
   const db: any = { insert, transaction };
-  return { db, insertValues, onConflictDoNothing, onConflictDoUpdate, transaction };
+  return { db, tx, insertValues, onConflictDoNothing, onConflictDoUpdate, transaction };
 }
 
 function createOrdersStub(orderStatus: string = 'pending') {
@@ -24,6 +25,7 @@ function createOrdersStub(orderStatus: string = 'pending') {
       .fn()
       .mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
     markPaid: vi.fn().mockResolvedValue({}),
+    settleOrderPaid: vi.fn().mockResolvedValue({}),
     markCancelled: vi.fn().mockResolvedValue({}),
     cancelOrder: vi.fn().mockResolvedValue({}),
   };
@@ -42,13 +44,15 @@ const tossResponse = (status: string) => ({
 describe('PaymentsService', () => {
   it('marks the order paid and persists a done payment for DONE', async () => {
     fetchMock.mockResolvedValue(tossResponse('DONE'));
-    const { db, insertValues, onConflictDoNothing, onConflictDoUpdate } = createDbStub();
+    const { db, tx, insertValues, onConflictDoNothing, onConflictDoUpdate } = createDbStub();
     const orders = createOrdersStub();
     const service = new PaymentsService(db, orders as any);
 
     await service.handleTossWebhook(webhook('DONE'));
 
-    expect(orders.markPaid).toHaveBeenCalledWith('order-1');
+    // The order settlement must run inside the SAME transaction as the payment write.
+    expect(orders.settleOrderPaid).toHaveBeenCalledWith(tx, 'order-1');
+    expect(orders.markPaid).not.toHaveBeenCalled();
     expect(orders.markCancelled).not.toHaveBeenCalled();
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -188,6 +192,92 @@ describe('PaymentsService', () => {
     expect(insertValues).not.toHaveBeenCalled();
   });
 
+  it('runs the done payment insert and order settlement in ONE transaction', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('DONE'));
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(1);
+    expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+  });
+
+  it('acknowledges a redelivered DONE for an order already settled as paid', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('paid');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+    expect(transaction).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges DONE arriving after EXPIRED settled the order instead of retry-looping Toss', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('canceled');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+    expect(transaction).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+  });
+
+  it('propagates a settlement failure so DONE rolls back instead of half-committing', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.settleOrderPaid.mockRejectedValue(new Error('expired ad contract'));
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('expired ad contract');
+    expect(transaction).toHaveBeenCalledTimes(1);
+    // The payment write was attempted inside the same (rolled-back) transaction.
+    expect(insertValues).toHaveBeenCalledTimes(1);
+  });
+
+  it('propagates a cancellation failure so CANCELED rolls back instead of half-committing', async () => {
+    fetchMock.mockResolvedValue(tossResponse('CANCELED'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.cancelOrder.mockRejectedValue(new Error('uncancelable order'));
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('CANCELED'))).rejects.toThrow(
+      'uncancelable order',
+    );
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(1);
+  });
+
+  it('still rejects an unverified DONE even when the order is already settled', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        status: 'DONE',
+        orderId: 'order-1',
+        paymentKey: 'pay-key-1',
+        totalAmount: 99999, // mismatches the order amount
+      }),
+    });
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('paid');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+  });
+
   it('conflict-proofs DONE re-delivery instead of select-then-insert', async () => {
     fetchMock.mockResolvedValue(tossResponse('DONE'));
     const { db, insertValues, onConflictDoUpdate } = createDbStub();
@@ -207,8 +297,10 @@ describe('PaymentsService', () => {
 
     await service.handleTossWebhook(webhook('CANCELED'));
 
-    expect(orders.markCancelled).toHaveBeenCalledWith('order-1');
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    expect(orders.markCancelled).not.toHaveBeenCalled();
     expect(orders.markPaid).not.toHaveBeenCalled();
+    expect(orders.settleOrderPaid).not.toHaveBeenCalled();
     expect(insertValues).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
     );
@@ -218,6 +310,19 @@ describe('PaymentsService', () => {
         setWhere: expect.anything(),
       }),
     );
+  });
+
+  it('runs the canceled payment upsert and order cancellation in ONE transaction', async () => {
+    fetchMock.mockResolvedValue(tossResponse('CANCELED'));
+    const { db, transaction, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('CANCELED'));
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+    expect(insertValues).toHaveBeenCalledTimes(1);
+    expect(orders.cancelOrder).toHaveBeenCalledTimes(1);
   });
 
   it('upsert shape for CANCELED leaves already-canceled rows untouched', async () => {

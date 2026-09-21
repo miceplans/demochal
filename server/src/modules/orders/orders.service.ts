@@ -22,29 +22,32 @@ export class OrdersService {
   }
 
   async markPaid(id: string) {
-    return this.db.transaction(async (tx) => {
-      const [existing] = await tx.select().from(orders).where(eq(orders.id, id)).for('update');
-      if (!existing) throw new NotFoundException('Order not found');
-      if (existing.status === 'paid') return existing;
-      if (existing.status !== 'pending') throw new ConflictException('결제할 수 없는 주문입니다.');
-      if (existing.adId) {
-        const [ad] = await tx.select().from(ads).where(eq(ads.id, existing.adId)).for('update');
-        if (!ad || ad.status !== 'preparing' || ad.endDate < adToday()) {
-          throw new ConflictException('종료되거나 취소된 광고 계약입니다.');
-        }
-      }
-      const [order] = await tx
-        .update(orders)
-        .set({ status: 'paid' })
-        .where(eq(orders.id, id))
-        .returning();
+    return this.db.transaction((tx) => this.settleOrderPaid(tx, id));
+  }
 
-      if (order?.adId) {
-        await tx.update(ads).set({ status: 'active' }).where(eq(ads.id, order.adId));
+  /** Caller-supplied transaction so the payment write can commit atomically with the order transition. */
+  async settleOrderPaid(tx: DbTx, id: string) {
+    const [existing] = await tx.select().from(orders).where(eq(orders.id, id)).for('update');
+    if (!existing) throw new NotFoundException('Order not found');
+    if (existing.status === 'paid') return existing;
+    if (existing.status !== 'pending') throw new ConflictException('결제할 수 없는 주문입니다.');
+    if (existing.adId) {
+      const [ad] = await tx.select().from(ads).where(eq(ads.id, existing.adId)).for('update');
+      if (!ad || ad.status !== 'preparing' || ad.endDate < adToday()) {
+        throw new ConflictException('종료되거나 취소된 광고 계약입니다.');
       }
+    }
+    const [order] = await tx
+      .update(orders)
+      .set({ status: 'paid' })
+      .where(eq(orders.id, id))
+      .returning();
 
-      return order;
-    });
+    if (order?.adId) {
+      await tx.update(ads).set({ status: 'active' }).where(eq(ads.id, order.adId));
+    }
+
+    return order;
   }
 
   async markCancelled(id: string) {
