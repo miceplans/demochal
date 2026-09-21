@@ -140,6 +140,7 @@ const PauseButton = styled.button({
   background: 'transparent',
   color: c.gray300,
   cursor: 'pointer',
+  '& svg': { filter: 'drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45))' },
   '&:hover': { color: '#fff' },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
   [mobile]: { width: '44px', height: '44px' },
