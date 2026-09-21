@@ -6,16 +6,26 @@ services:
       POSTGRES_PASSWORD: semochal
       POSTGRES_DB: semochal
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - semochal-db-data:/var/lib/postgresql/data
-      # Applies server/drizzle/*.sql (journal order) on first volume init only.
-      - ./server/drizzle:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U semochal -d semochal']
       interval: 5s
       timeout: 3s
       retries: 10
+
+  migrate:
+    build:
+      context: .
+      dockerfile: server/Dockerfile.api
+    command: ['node', 'dist/migrate.js']
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgres://semochal:semochal@db:5432/semochal
+    depends_on:
+      db:
+        condition: service_healthy
 
   api:
     build:
@@ -30,6 +40,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     healthcheck:
       test:
         [

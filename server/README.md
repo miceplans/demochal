@@ -40,8 +40,9 @@ $ docker compose up -d --build
 $ curl http://localhost:3001/health # {"status":"ok",...}
 ```
 
-- `db`(postgres:16)가 healthy해진 뒤 `api`가 기동하고, `api` 컨테이너는 `/health` 기반 healthcheck를 가집니다.
-- `db`는 볼륨 최초 생성 시 `server/drizzle`의 migration SQL을 파일명 순으로 적용해 스키마를 만듭니다. 이미 볼륨이 있다면 `docker compose down -v`로 초기화한 뒤 기동하세요.
+- `db`(postgres:16)가 healthy해진 뒤 `migrate`가 `node dist/migrate.js`로 대기 중인 마이그레이션을 Drizzle의 마이그레이션 저널에 기록하며 적용하고, 성공적으로 끝나면 `api`가 기동합니다. `api` 컨테이너는 `/health` 기반 healthcheck를 가집니다.
+- `migrate`는 기존 ECS 마이그레이션 태스크와 동일한 진입점을 재사용하므로, 볼륨을 유지한 채로 새 마이그레이션을 추가해도(`server/drizzle`에 파일 추가 후 `docker compose up`) 정상적으로 증분 적용됩니다 — `down -v`로 데이터를 지울 필요가 없습니다.
+- `db`는 `127.0.0.1`에만 포트를 게시하므로 같은 네트워크의 다른 호스트에서는 접근할 수 없습니다.
 - 로컬 compose 실행은 `NODE_ENV=development`로 오버라이드하므로 secret 주입 없이 기동할 수 있습니다.
 - 종료: `docker compose down`(DB 데이터 유지) / `docker compose down -v`(DB 데이터 삭제)
 
