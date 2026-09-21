@@ -12,6 +12,7 @@ import {
   Title,
   Tag,
   Icon,
+  IconButton,
   SectionHeader,
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
@@ -68,19 +69,20 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
             </div>
             <Row>
               <Tag tone="blue">{contestDetail.dday}</Tag>
-              <Button small tone="plain" aria-pressed={saved} onClick={() => toggle('contest-1')}>
-                <Icon src="/assets/icons/scrap.png" size={14} alt="북마크" />
-                북마크
-              </Button>
+              <IconButton
+                aria-label="북마크"
+                aria-pressed={saved}
+                onClick={() => toggle('contest-1')}
+              >
+                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+              </IconButton>
               <Button small tone="plain" onClick={share}>
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
-              <Link href="/reports/new?type=challenge">
-                <Button as="span" small tone="plain">
-                  신고
-                </Button>
-              </Link>
+              <IconLink href="/reports/new?type=challenge" aria-label="신고">
+                <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
+              </IconLink>
             </Row>
           </div>
         </Intro>
@@ -201,6 +203,17 @@ const Summary = styled.div({
   '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
   '& dt': { color: c.gray500 },
   '& dd': { textAlign: 'right', fontWeight: 600 },
+});
+const IconLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 4,
+  borderRadius: 6,
+  color: c.gray700,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { transform: 'scale(0.85)' },
 });
 const Related = styled.div({
   display: 'grid',
