@@ -1,5 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { BadGatewayException } from '@nestjs/common';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { BillingService } from './billing.service.js';
+
+const fetchMock = vi.fn();
+vi.stubGlobal('fetch', fetchMock);
+
+beforeEach(() => {
+  fetchMock.mockReset();
+});
 
 /** select().from().where().orderBy() chain. */
 function createSelectStub(rows: unknown[]) {
@@ -80,5 +88,81 @@ describe('BillingService', () => {
     );
     expect(card).toEqual({ id: 'card-2', cardName: null, maskedNumber: '****-****-****-5678' });
     expect(card).not.toHaveProperty('billingKey');
+  });
+
+  it('derives the billing customerKey from the business', () => {
+    const service = new BillingService({} as never);
+    expect(service.getCustomerKey('biz-1')).toBe('semochal-biz-biz-1');
+  });
+
+  it('exchanges the authKey for a billingKey and stores the card without returning it', async () => {
+    const { db, values } = createInsertStub({
+      id: 'card-3',
+      cardName: null,
+      maskedNumber: '****-****-****-9012',
+    });
+    const service = new BillingService(db);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ billingKey: 'bk-new', card: { number: '****-****-****-9012' } }),
+    });
+
+    const card = await service.issueCard('biz-1', 'auth-key-1');
+
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        businessId: 'biz-1',
+        billingKey: 'bk-new',
+        maskedNumber: '****-****-****-9012',
+      }),
+    );
+    expect(card).toEqual({ id: 'card-3', cardName: null, maskedNumber: '****-****-****-9012' });
+    expect(card).not.toHaveProperty('billingKey');
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toContain('/v1/billing/authorizations/issue');
+    expect(init).toEqual(expect.objectContaining({ method: 'POST' }));
+    expect(JSON.parse(String((init as { body: string }).body))).toEqual({
+      authKey: 'auth-key-1',
+      customerKey: 'semochal-biz-biz-1',
+    });
+  });
+
+  it('rejects when Toss billing authorization fails', async () => {
+    const { db } = createInsertStub(undefined);
+    const service = new BillingService(db);
+    fetchMock.mockResolvedValue({ ok: false, status: 400, json: async () => ({}) });
+
+    await expect(service.issueCard('biz-1', 'bad-auth')).rejects.toThrow(BadGatewayException);
+  });
+
+  it('rejects when the Toss billing request itself throws', async () => {
+    const { db } = createInsertStub(undefined);
+    const service = new BillingService(db);
+    fetchMock.mockRejectedValue(new Error('network down'));
+
+    await expect(service.issueCard('biz-1', 'auth')).rejects.toThrow(BadGatewayException);
+  });
+
+  it('rejects an incomplete Toss billing response', async () => {
+    const { db } = createInsertStub(undefined);
+    const service = new BillingService(db);
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ billingKey: 'bk-x' }) });
+
+    await expect(service.issueCard('biz-1', 'auth')).rejects.toThrow(
+      'Toss billing authorization response incomplete',
+    );
+  });
+
+  it('fails when the card insert returns no row', async () => {
+    const { db } = createInsertStub(undefined);
+    const service = new BillingService(db);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ billingKey: 'bk-new', card: { number: '****-****-****-9012' } }),
+    });
+
+    await expect(service.issueCard('biz-1', 'auth-key-1')).rejects.toThrow(
+      'Failed to register card',
+    );
   });
 });

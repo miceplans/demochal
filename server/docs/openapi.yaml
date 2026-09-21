@@ -1002,11 +1002,57 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items, total]
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/PaymentHistoryItem' } }
                   total:
                     type: integer
                     description: 잔액 합계 (amount 누적, 원)
+
+  /billing/authorizations/customer-key:
+    get:
+      tags: [Billing]
+      summary: 빌링 인증용 customerKey 조회
+      operationId: getBillingCustomerKey
+      x-impl-status: implemented
+      description: |
+        토스 빌링 인증(requestBillingAuth)에 필요한 customerKey를 사전에 제공한다.
+        customerKey는 서버가 businessId에서 유도(`semochal-biz-<id>`)하며, 인증 성공 리다이렉트와
+        빌링키 발급(POST /billing/authorizations/issue)에서 동일 값이 사용된다.
+      responses:
+        '200':
+          description: 빌링 인증용 customerKey
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customerKey: { type: string }
+                required: [customerKey]
+  /billing/authorizations/issue:
+    post:
+      tags: [Billing]
+      summary: 빌링 인증 authKey로 카드 등록
+      operationId: issueBillingAuthorization
+      x-impl-status: implemented
+      description: |
+        빌링 인증 성공 리다이렉트의 authKey를 받아 토스 빌링키 발급 API(서버 시크릿 키 사용)로
+        billingKey를 발급·저장한다. billingKey는 절대 응답에 포함하지 않는다(PCI 경계 유지).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authKey: { type: string }
+              required: [authKey]
+      responses:
+        '201':
+          description: 등록된 결제수단(billingKey 미포함)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentCard' }
 
   # ---------------------------------------------------------------- Ads
   /ads/products:
@@ -1868,12 +1914,14 @@ components:
             status: { type: string, description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED' }
     PaymentCard:
       type: object
+      required: [id, maskedNumber]
       properties:
         id: { type: string, format: uuid }
         cardName: { type: string }
         maskedNumber: { type: string, example: '****-****-****-1234' }
     PaymentHistoryItem:
       type: object
+      required: [id, name, amount, paidAt, status]
       properties:
         id: { type: string, format: uuid }
         name:

@@ -19,6 +19,7 @@ import {
   activeAds,
   chartBars,
   chartMonths,
+  paymentCard,
   payments,
   paymentTotal,
   postingStats,
@@ -155,7 +156,13 @@ export function BizDashboardPage() {
         <BillingGrid>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
             <SectionTitle>나의 결제수단</SectionTitle>
-            <BizPaymentCard label="총액" amount={`${paymentTotal.toLocaleString()} ₩`} />
+            <BizPaymentCard
+              label="총액"
+              amount={`${paymentTotal.toLocaleString()} ₩`}
+              maskedNumber={paymentCard.number}
+              holder={paymentCard.holder}
+              expiry={paymentCard.expiry}
+            />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 32, flex: 1, minWidth: 0 }}>
             <SectionHeader>
