@@ -141,6 +141,19 @@ export interface ApplyChallengeRequest {
   formAnswers?: Record<string, unknown>[];
 }
 
+/** Pending order for a paid challenge, returned by POST /applications — feeds the Toss payment request. */
+export interface ApplyOrderInfo {
+  id: string;
+  amount: number;
+  /** Challenge title, shown as the Toss orderName. */
+  name: string;
+}
+
+export interface ApplyChallengeResponse extends Application {
+  /** Paid challenges (price > 0) return the pending order to settle via Toss; free challenges return null. */
+  order: ApplyOrderInfo | null;
+}
+
 export interface UpdateApplicationRequest {
   status?: 'submitted' | 'reviewing' | 'needs_revision' | 'accepted' | 'rejected';
   evaluation?: 'undecided' | 'pass' | 'fail';
@@ -178,7 +191,7 @@ export interface Order {
   adId?: string | null;
   userId: string;
   amount: number;
-  status: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  status: 'pending' | 'paid' | 'canceled';
   createdAt: string;
 }
 

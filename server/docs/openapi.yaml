@@ -482,7 +482,19 @@ paths:
           description: 생성된 신청 (status=pending)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Application' }
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Application'
+                  - type: object
+                    properties:
+                      order:
+                        type: object
+                        nullable: true
+                        description: 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+                        properties:
+                          id: { type: string, format: uuid }
+                          amount: { type: integer }
+                          name: { type: string, description: 챌린지 제목 (토스 orderName) }
   /applications/me:
     get:
       tags: [Applications]

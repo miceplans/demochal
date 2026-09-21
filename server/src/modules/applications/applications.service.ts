@@ -12,7 +12,7 @@ export class ApplicationsService {
   async apply(dto: ApplyChallengeDto, userId: string) {
     return this.db.transaction(async (tx) => {
       const [challenge] = await tx
-        .select({ price: challenges.price })
+        .select({ price: challenges.price, title: challenges.title })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
@@ -33,15 +33,27 @@ export class ApplicationsService {
       // Free challenges (price 0) have nothing to bill — see AdsService.create for
       // the paid-order counterpart of this same pending -> Toss webhook -> paid flow.
       if (challenge.price > 0) {
-        await tx.insert(orders).values({
-          applicationId: application.id,
-          userId,
-          amount: challenge.price,
-          status: 'pending',
-        });
+        const [order] = await tx
+          .insert(orders)
+          .values({
+            applicationId: application.id,
+            userId,
+            amount: challenge.price,
+            status: 'pending',
+          })
+          .returning();
+        if (!order) throw new Error('Failed to create order');
+
+        // The client settles this pending order via Toss and watches it through
+        // GET /orders/{id} — orderId/amount feed the payment request, name the
+        // Toss orderName display.
+        return {
+          ...application,
+          order: { id: order.id, amount: order.amount, name: challenge.title },
+        };
       }
 
-      return application;
+      return { ...application, order: null };
     });
   }
 
