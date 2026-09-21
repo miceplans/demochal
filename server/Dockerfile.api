@@ -17,8 +17,10 @@ RUN pnpm --filter @semochal/server deploy --prod /prod
 FROM node:20-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
+ENV DATABASE_SSL_CA_PATH=/app/certs/global-bundle.pem
 COPY --from=build /repo/server/dist ./dist
 COPY --from=build /repo/server/drizzle ./drizzle
+COPY --from=build /repo/server/certs ./certs
 COPY --from=build /prod ./
 
 EXPOSE 3001

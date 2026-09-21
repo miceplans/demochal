@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
 import { env } from './config/env.js';
+import { createPoolOptions } from './db/pool-options.js';
 
 // One-off migration entry point — `node dist/migrate.js`. Run manually via
 // `aws ecs run-task` against the "migrate" task definition (see
@@ -19,7 +20,7 @@ import { env } from './config/env.js';
 async function run() {
   const logger = new Logger('Migrate');
   const migrationsFolder = fileURLToPath(new URL('../drizzle', import.meta.url));
-  const pool = new Pool({ connectionString: env.databaseUrl });
+  const pool = new Pool(createPoolOptions(env.databaseUrl, env.databaseSslCaPath));
   try {
     const db = drizzle(pool);
     logger.log(`Applying pending migrations from ${migrationsFolder}...`);

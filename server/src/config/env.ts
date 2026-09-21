@@ -11,6 +11,7 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3001),
 
     DATABASE_URL: z.string().default('postgres://localhost:5432/semochal'),
+    DATABASE_SSL_CA_PATH: z.string().min(1).optional(),
 
     AWS_REGION: z.string().default('ap-northeast-2'),
 
@@ -60,6 +61,7 @@ export const env = {
   port: raw.PORT,
 
   databaseUrl: raw.DATABASE_URL,
+  databaseSslCaPath: raw.DATABASE_SSL_CA_PATH,
 
   awsRegion: raw.AWS_REGION,
 
