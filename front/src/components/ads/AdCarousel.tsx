@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
-import { colors as c, mobile, shadows } from '@/styles/design';
+import { colors as c, mobile } from '@/styles/design';
 
 export type AdCarouselItem = {
   alt: string;
@@ -132,32 +132,38 @@ const PauseButton = styled.button({
   zIndex: 1,
   display: 'grid',
   placeItems: 'center',
-  width: '44px',
-  height: '44px',
+  width: '56px',
+  height: '56px',
   padding: 0,
   border: 0,
   borderRadius: '50%',
-  background: c.overlayWhite,
-  boxShadow: shadows.carouselNav,
+  background: 'transparent',
+  color: c.gray300,
   cursor: 'pointer',
+  '&:hover': { color: '#fff' },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
-  [mobile]: { width: '36px', height: '36px' },
+  [mobile]: { width: '44px', height: '44px' },
 });
 
 function PauseIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path d="M5.5 3.5v9M10.5 3.5v9" stroke={c.gray700} strokeWidth="1.8" strokeLinecap="round" />
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path
+        d="M5.5 3.5v9M10.5 3.5v9"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
 function PlayIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <svg width="20" height="20" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path
         d="M5.5 3.5v9l7-4.5-7-4.5Z"
-        stroke={c.gray700}
+        stroke="currentColor"
         strokeWidth="1.8"
         strokeLinejoin="round"
       />
