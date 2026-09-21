@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell, Content } from '@/components/common/UserShell';
@@ -26,6 +27,16 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
   const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
   const toggle = useUserStore((s) => s.toggleBookmark);
   const toast = useToast();
+  const applyRef = useRef<HTMLAnchorElement>(null);
+  const [applyVisible, setApplyVisible] = useState(true);
+  useEffect(() => {
+    if (teamTab) return;
+    const el = applyRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setApplyVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [teamTab]);
   const share = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -120,7 +131,7 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
                     <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
                   </section>
                 ))}
-                <Link href="/applications/new">
+                <Link href="/applications/new" ref={applyRef}>
                   <Button as="span" fullWidth>
                     참가 신청하기
                   </Button>
@@ -129,10 +140,17 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
               </Stack>
             )}
           </div>
-          <DesktopOnly>
+          <Sidebar>
+            {!teamTab && !applyVisible && (
+              <Link href="/applications/new">
+                <Button as="span" fullWidth>
+                  참가 신청하기
+                </Button>
+              </Link>
+            )}
             {teamCta}
             {summaryBox}
-          </DesktopOnly>
+          </Sidebar>
         </Columns>
         <section style={{ marginTop: 60 }}>
           <SectionHeader
@@ -187,8 +205,16 @@ const Intro = styled.div({
 const Columns = styled.div({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
+  alignItems: 'start',
   gap: 24,
   [mobile]: { display: 'flex', flexDirection: 'column' },
+});
+const Sidebar = styled(DesktopOnly)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  position: 'sticky',
+  top: 24,
 });
 const Tabs = styled.nav({
   display: 'flex',
@@ -202,7 +228,6 @@ const Summary = styled.div({
   background: c.gray50,
   borderRadius: 12,
   padding: 16,
-  marginTop: 16,
   ...textStyle.caption,
   '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
   '& dt': { color: c.gray500 },
