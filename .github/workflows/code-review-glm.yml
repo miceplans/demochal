@@ -34,7 +34,7 @@ jobs:
           fi
           body=$(head -c 2000 /tmp/zai-probe.json 2>/dev/null || true)
           echo "$body"
-          if [ "$response" = '402' ] || echo "$body" | grep -qiE 'insufficient[ _-]?balance|insufficient_quota|balance[ _-]?(exhausted|depleted)|payment_required|잔액[^0-9a-z]*부족|余额不足'; then
+          if [ "$response" = '402' ] || echo "$body" | grep -qiE 'insufficient[ _-]?balance|insufficient_quota|balance[ _-]?(exhausted|depleted)|limit exhausted|weekly/monthly limit|"code": ?"1310"|payment_required|잔액[^0-9a-z]*부족|余额不足'; then
             echo 'Z.AI 잔액 부족 — review job을 실행하지 않습니다.'
             echo 'skip_review=true' >> "$GITHUB_OUTPUT"
           else
