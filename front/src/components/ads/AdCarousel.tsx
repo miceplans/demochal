@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, type TransitionEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import styled from '@emotion/styled';
+import { keyframes } from '@emotion/react';
 import { colors as c, mobile, shadows } from '@/styles/design';
 
 export type AdCarouselItem = {
@@ -17,6 +18,23 @@ type AdCarouselProps = {
   interval?: number;
   priceOverlay?: { label: string; value: string };
 };
+
+// 무한 흐름에서 한 세트(전체 광고 목록 1바퀴)가 차지하는 폭입니다.
+// gap이 슬라이드 뒤에도 균일하게 적용되므로 세트 경계마다 간격이 이어집니다.
+const slideSize = {
+  hero: { width: 1059, height: 252, gap: 60 },
+  gallery: { width: 315, height: 190, gap: 32 },
+} as const;
+const mobileGallerySlide = { width: 122, height: 74, gap: 12 } as const;
+
+const marquee = keyframes`
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--marquee-distance));
+  }
+`;
 
 const HeroViewport = styled.div({
   position: 'relative',
@@ -63,7 +81,6 @@ const GalleryViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
   margin: '60px 0',
-  padding: '0 calc((100% - 315px) / 2)',
   '& img': {
     width: '315px',
     height: '190px',
@@ -73,56 +90,45 @@ const GalleryViewport = styled.div({
   },
   [mobile]: {
     margin: '32px 0',
-    padding: '0 16px',
     '& img': { width: '122px', height: '74px', borderRadius: '3px' },
   },
 });
 
-const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant'] }>(
-  ({ activeIndex, variant }) => {
-    const gap = variant === 'hero' ? 60 : 32;
-    const width = variant === 'hero' ? 1059 : 315;
+const Rail = styled.div<{
+  distance: number;
+  mobileDistance: number;
+  duration: number;
+  paused: boolean;
+  variant: AdCarouselProps['variant'];
+}>(({ distance, mobileDistance, duration, paused, variant }) => ({
+  display: 'flex',
+  gap: `${slideSize[variant].gap}px`,
+  width: 'max-content',
+  animation: `${marquee} ${duration}ms linear infinite`,
+  animationPlayState: paused ? 'paused' : 'running',
+  '--marquee-distance': `-${distance}px`,
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+  [mobile]:
+    variant === 'gallery'
+      ? {
+          gap: `${mobileGallerySlide.gap}px`,
+          '--marquee-distance': `-${mobileDistance}px`,
+        }
+      : undefined,
+}));
 
-    return {
-      display: 'flex',
-      gap: `${gap}px`,
-      transform:
-        variant === 'hero'
-          ? `translateX(calc(50vw - ${width / 2}px - ${activeIndex * (width + gap)}px))`
-          : `translateX(${-activeIndex * (width + gap)}px)`,
-      transition: 'transform 0.5s ease-in-out',
-      [mobile]:
-        variant === 'gallery'
-          ? { gap: '12px', transform: `translateX(${-activeIndex * 134}px)` }
-          : undefined,
-    };
-  },
-);
-
-const SlideButton = styled.button({
+const Slide = styled.div({
   display: 'block',
   flex: '0 0 auto',
   padding: 0,
-  border: 0,
   borderRadius: 'inherit',
   background: 'transparent',
-  cursor: 'pointer',
-  '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
 });
 
-// hero는 화면 중앙(50vw)에 놓인 1059px 슬라이드의 가장자리에서 20px 안쪽,
-// gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
-const navOffset = {
-  hero: 'calc(50vw - 509.5px)',
-  gallery: 'calc(50% - 213.5px)',
-} as const;
-
-const NavButton = styled.button<{
-  direction: 'prev' | 'next';
-  variant: AdCarouselProps['variant'];
-}>(({ direction, variant }) => ({
+const PauseButton = styled.button({
   position: 'absolute',
-  top: '50%',
+  top: '12px',
+  right: '12px',
   zIndex: 1,
   display: 'grid',
   placeItems: 'center',
@@ -134,38 +140,32 @@ const NavButton = styled.button<{
   background: c.overlayWhite,
   boxShadow: shadows.carouselNav,
   cursor: 'pointer',
-  transform: 'translateY(-50%)',
-  [direction === 'prev' ? 'left' : 'right']: navOffset[variant],
-  '& svg': { transition: 'transform 0.15s ease' },
-  '&:hover svg': { transform: 'scale(1.15)' },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
-  ...(variant === 'gallery' && {
-    [mobile]: {
-      width: '32px',
-      height: '32px',
-      // GalleryViewport는 overflow: hidden이라 클리핑 경계가 뷰포트의 바깥 테두리와 일치합니다.
-      // focus-visible 아웃라인(3px) + outline-offset(3px)만큼 안쪽으로 떨어뜨려야
-      // 키보드 포커스 링과 그림자가 잘리지 않습니다.
-      ...(direction === 'prev' ? { left: '6px' } : { right: '6px' }),
-    },
-  }),
-}));
+  [mobile]: { width: '36px', height: '36px' },
+});
 
-function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
+function PauseIcon() {
   return (
-    <svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <path d="M5.5 3.5v9M10.5 3.5v9" stroke={c.gray700} strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PlayIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path
-        d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
+        d="M5.5 3.5v9l7-4.5-7-4.5Z"
         stroke={c.gray700}
-        strokeWidth="1.4"
-        strokeLinecap="round"
+        strokeWidth="1.8"
         strokeLinejoin="round"
       />
     </svg>
   );
 }
 
-/** 홈의 상단·중간 광고에 공통으로 쓰는 자동 순환 광고 캐러셀입니다. */
+/** 홈의 상단·중간 광고에 공통으로 쓰는 무한 흐름 광고 리스트입니다. */
 export function AdCarousel({
   ariaLabel,
   items,
@@ -173,108 +173,80 @@ export function AdCarousel({
   interval = 5000,
   priceOverlay,
 }: AdCarouselProps) {
-  const [railIndex, setRailIndex] = useState(1);
-  const [shouldAnimate, setShouldAnimate] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
   const itemCount = items.length;
+  const { width, gap } = slideSize[variant];
+  const setDistance = itemCount * (width + gap);
+  const mobileSetDistance = itemCount * (mobileGallerySlide.width + mobileGallerySlide.gap);
+  // isPaused는 일시정지 버튼의 사용자 선택을 유지하고, isHoverPaused는
+  // 마우스/키보드가 머무는 동안만 잠시 멈춥니다.
+  const [isPaused, setIsPaused] = useState(false);
+  const [isHoverPaused, setIsHoverPaused] = useState(false);
+  // 서버 렌더와 첫 클라이언트 렌더를 일치시키기 위해 고정 폭을 기본값으로 쓰고,
+  // 마운트 뒤 실제 뷰포트 폭에 맞춰 복제 세트 수를 늘립니다.
+  const [viewportWidth, setViewportWidth] = useState(1440);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isPaused || itemCount < 2) return;
-    const timer = window.setInterval(() => {
-      // transitionend가 발생하지 않는 상황(모바일 hero 숨김, 비활성 탭 등)에서도
-      // railIndex가 복제 슬라이드 경계(itemCount + 1)를 넘어 무한정 드리프트하지 않도록
-      // 수동 내비게이션과 동일한 상한을 적용합니다.
-      setRailIndex((index) => Math.min(index + 1, itemCount + 1));
-    }, interval);
-    return () => window.clearInterval(timer);
-  }, [interval, isPaused, itemCount]);
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const syncWidth = () => setViewportWidth(viewport.clientWidth || window.innerWidth);
+    syncWidth();
+    const observer = new ResizeObserver(syncWidth);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
 
   if (itemCount === 0) return null;
 
-  const slides = [items[itemCount - 1], ...items, items[0]];
+  // 한 세트가 화면을 채우고, 끝까지 이동한 뒤에도 다음 세트가 보일 만큼 남도록
+  // 뷰포트 폭에 필요한 최소 복제 횟수를 계산합니다(최소 2세트).
+  // 레일 끝의 gap 하나가 빠지므로 뷰포트 폭에 gap을 보정해 더합니다.
+  const copies = Math.max(2, Math.floor((viewportWidth + gap) / setDistance) + 2);
+  // interval은 광고 한 장당 머무는 시간이라 두고 전체 한 바퀴 시간으로 환산합니다.
+  const duration = interval * itemCount;
   const Viewport = variant === 'hero' ? HeroViewport : GalleryViewport;
-  const goTo = (index: number) => {
-    setShouldAnimate(true);
-    setRailIndex(index + 1);
-  };
-  // 전환이 끝나기 전 연속 클릭으로 복제 슬라이드 범위(0 ~ itemCount + 1)를 벗어나 그릴
-  // 슬라이드가 없어지지 않도록 이동 가능한 rail 위치를 경계로 가둡니다.
-  const goToRail = (rail: number) => {
-    if (rail < 0 || rail > itemCount + 1) return;
-    setShouldAnimate(true);
-    setRailIndex(rail);
-  };
-  const goToPrev = () => goToRail(railIndex - 1);
-  const goToNext = () => goToRail(railIndex + 1);
-
-  const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
-    // 내부 요소(버튼 등)의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
-    if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
-    if (railIndex !== 0 && railIndex !== itemCount + 1) return;
-    setShouldAnimate(false);
-    setRailIndex(railIndex === 0 ? itemCount : 1);
-    // 복제한 광고로 이동한 뒤, 애니메이션 없이 실제 광고로 되돌립니다.
-    // 두 프레임을 분리해야 브라우저가 되돌아가는 위치를 화면에 그리지 않습니다.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setShouldAnimate(true));
-    });
-  };
 
   return (
     <section
       aria-label={ariaLabel}
       style={priceOverlay ? { pointerEvents: 'auto' } : undefined}
-      onMouseEnter={() => setIsPaused(true)}
-      onMouseLeave={() => setIsPaused(false)}
-      onFocusCapture={() => setIsPaused(true)}
+      onMouseEnter={() => setIsHoverPaused(true)}
+      onMouseLeave={() => setIsHoverPaused(false)}
+      onFocusCapture={() => setIsHoverPaused(true)}
       onBlurCapture={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
+        if (!event.currentTarget.contains(event.relatedTarget)) setIsHoverPaused(false);
       }}
     >
-      <Viewport>
+      <Viewport ref={viewportRef}>
         <Rail
-          activeIndex={railIndex}
           variant={variant}
-          style={{ transition: shouldAnimate ? undefined : 'none' }}
-          onTransitionEnd={handleTransitionEnd}
+          distance={setDistance}
+          mobileDistance={mobileSetDistance}
+          duration={duration}
+          paused={isPaused || isHoverPaused}
         >
-          {slides.map((item, index) => (
-            <SlideButton
-              key={`${item.src}-${index}`}
-              type="button"
-              onClick={() => goTo((index - 1 + itemCount) % itemCount)}
-            >
-              <Image
-                src={item.src}
-                alt={index === railIndex ? item.alt : ''}
-                width={variant === 'hero' ? 1059 : 315}
-                height={variant === 'hero' ? 252 : 190}
-              />
-            </SlideButton>
-          ))}
+          {Array.from({ length: copies }, (_, copy) =>
+            items.map((item, index) => (
+              // 첫 세트만 보조기기에 노출하고, 흐름을 채우는 복제 세트는 숨깁니다.
+              <Slide key={`${item.src}-${copy}-${index}`} aria-hidden={copy > 0 || undefined}>
+                <Image
+                  src={item.src}
+                  alt={copy === 0 ? item.alt : ''}
+                  width={variant === 'hero' ? 1059 : 315}
+                  height={variant === 'hero' ? 252 : 190}
+                />
+              </Slide>
+            )),
+          )}
         </Rail>
-        {itemCount > 1 ? (
-          <>
-            <NavButton
-              type="button"
-              variant={variant}
-              direction="prev"
-              onClick={goToPrev}
-              aria-label="이전 광고"
-            >
-              <ArrowIcon direction="prev" />
-            </NavButton>
-            <NavButton
-              type="button"
-              variant={variant}
-              direction="next"
-              onClick={goToNext}
-              aria-label="다음 광고"
-            >
-              <ArrowIcon direction="next" />
-            </NavButton>
-          </>
-        ) : null}
+        <PauseButton
+          type="button"
+          aria-pressed={isPaused}
+          aria-label={isPaused ? '광고 흐름 재개' : '광고 흐름 일시정지'}
+          onClick={() => setIsPaused((paused) => !paused)}
+        >
+          {isPaused ? <PlayIcon /> : <PauseIcon />}
+        </PauseButton>
         {variant === 'hero' && priceOverlay ? (
           <PriceOverlay>
             <PriceOverlayLabel>{priceOverlay.label}</PriceOverlayLabel>
