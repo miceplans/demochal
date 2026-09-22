@@ -19,6 +19,8 @@
 
 export * from './activityChart';
 export * from './ad';
+export * from './adminAdEntry';
+export * from './adminAdEntryStatus';
 export * from './adminAdReport';
 export * from './adminContestCard';
 export * from './adminDashboard';

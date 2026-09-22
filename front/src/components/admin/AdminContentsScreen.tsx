@@ -6,6 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
+  AdminInlineNotice,
   AdminPageTitle,
   AdminSectionTitle,
   FilterBar,
@@ -230,9 +231,7 @@ export function AdminContentsScreen() {
           <MoreLink>더보기 →</MoreLink>
         </SectionHeader>
         <CardGrid>
-          {contentsQuery.isPending ? (
-            <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
-          ) : null}
+          {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminTeams.map((team) => (
             <TeamCard key={team.id}>
               {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
@@ -265,9 +264,7 @@ export function AdminContentsScreen() {
           <MoreLink>더보기 →</MoreLink>
         </SectionHeader>
         <CardGrid>
-          {contentsQuery.isPending ? (
-            <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
-          ) : null}
+          {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminContests.map((contest) => (
             <ContestCard key={contest.id}>
               {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}

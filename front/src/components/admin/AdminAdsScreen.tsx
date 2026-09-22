@@ -8,6 +8,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { useToast } from '@/components/common/Toast';
 import {
+  AdminInlineNotice,
   AdminPageTitle,
   AdminTable,
   Badge,
@@ -109,27 +110,18 @@ export function AdminAdsScreen() {
     q: query || undefined,
     status: statusOptionToParam[statusLabel],
   });
-  const productsQuery = generated.useListAdProducts();
-
-  const productNameOf = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const product of productsQuery.data?.data ?? []) {
-      if (product.id) map.set(product.id, product.name ?? product.id);
-    }
-    return map;
-  }, [productsQuery.data]);
 
   const rows = useMemo<AdRow[]>(
     () =>
       (adsQuery.data?.data ?? []).map((ad) => ({
         id: ad.id ?? '',
-        location: (ad.productId && productNameOf.get(ad.productId)) || ad.productId || '',
+        location: ad.productName || ad.productId || '',
         title: ad.title ?? '',
         price: formatPrice(ad.paidAmount ?? 0),
         status: statusLabelOf[ad.status ?? ''] ?? ad.status ?? '',
         rawStatus: ad.status ?? '',
       })),
-    [adsQuery.data, productNameOf],
+    [adsQuery.data],
   );
   const selected = rows.find((row) => row.id === selectedId) ?? null;
 
@@ -197,9 +189,9 @@ export function AdminAdsScreen() {
         </ErrorBanner>
       ) : null}
       {adsQuery.isPending ? (
-        <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
+        <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
       ) : adsQuery.isError ? null : rows.length === 0 ? (
-        <div style={{ padding: '24px 0', color: c.gray500 }}>조건에 맞는 광고가 없어요.</div>
+        <AdminInlineNotice>조건에 맞는 광고가 없어요.</AdminInlineNotice>
       ) : (
         <AdminTable
           columns={columns}

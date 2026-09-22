@@ -41,6 +41,7 @@ import type {
   AdProduct,
   AdReport,
   AdSlotPricing,
+  AdminAdEntry,
   AdminDashboard,
   AdminSettings,
   AdminUserEntry,
@@ -7441,7 +7442,7 @@ export const useVerifyCertificate = <TError = unknown, TContext = unknown>(
 };
 
 export type listAdminAdsResponse200 = {
-  data: Ad[];
+  data: AdminAdEntry[];
   status: 200;
 };
 

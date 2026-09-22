@@ -346,13 +346,15 @@ describe('AdminService — ad pricing', () => {
 describe('AdminService — ads list', () => {
   const adRow = { id: 'ad-1', title: '2026 AI 챌린지 광고', status: 'active', paidAmount: 300000 };
 
-  it('joins the organization name onto each ad row', async () => {
-    const { db } = createDbStub({ select: [[{ ad: adRow, organization: '부산광역시' }]] });
+  it('joins the organization name and product name onto each ad row', async () => {
+    const { db } = createDbStub({
+      select: [[{ ad: adRow, organization: '부산광역시', productName: '홈 배너' }]],
+    });
     const { service } = createService(db);
 
     const result = await service.listAds();
 
-    expect(result).toEqual([{ ...adRow, organization: '부산광역시' }]);
+    expect(result).toEqual([{ ...adRow, organization: '부산광역시', productName: '홈 배너' }]);
   });
 
   it('matches q against both the ad title and the business name', async () => {

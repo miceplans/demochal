@@ -296,6 +296,11 @@ export const Badge = styled.span<{ tone: BadgeTone }>(({ tone }) => ({
     tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
 }));
 
+export const AdminInlineNotice = styled.div({
+  padding: '24px 0',
+  color: c.gray500,
+});
+
 export const ApproveButton = styled.button({
   border: 0,
   borderRadius: 6,
