@@ -301,7 +301,11 @@ export function AdCarousel({
           {slides.map((item, index) => {
             const itemIndex = (((index - pad) % itemCount) + itemCount) % itemCount;
             return (
-              <SlideButton key={`${item.src}-${index}`} type="button" onClick={() => goTo(itemIndex)}>
+              <SlideButton
+                key={`${item.src}-${index}`}
+                type="button"
+                onClick={() => goTo(itemIndex)}
+              >
                 <Image
                   src={item.src}
                   alt={index === railIndex ? item.alt : ''}
