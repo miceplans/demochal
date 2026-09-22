@@ -136,13 +136,16 @@ const NavButton = styled.button<{
   padding: 0,
   border: 0,
   borderRadius: '50%',
-  background: c.overlayWhite,
-  boxShadow: shadows.carouselNav,
+  background: 'transparent',
   cursor: 'pointer',
   transform: 'translateY(-50%)',
   [direction === 'prev' ? 'left' : 'right']: navOffset[variant],
-  '& svg': { transition: 'transform 0.15s ease' },
-  '&:hover svg': { transform: 'scale(1.15)' },
+  '& svg': {
+    opacity: 0.7,
+    filter: `drop-shadow(${shadows.carouselNav})`,
+    transition: 'transform 0.15s ease, opacity 0.15s ease',
+  },
+  '&:hover svg': { transform: 'scale(1.15)', opacity: 1 },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
   ...(variant === 'gallery' && {
     [mobile]: {
@@ -161,7 +164,7 @@ function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
     <svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path
         d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
-        stroke={c.gray700}
+        stroke={c.white}
         strokeWidth="1.4"
         strokeLinecap="round"
         strokeLinejoin="round"
