@@ -19,7 +19,7 @@
 import type { PaymentHistoryItem } from './paymentHistoryItem';
 
 export type ListPaymentHistory200 = {
-  items?: PaymentHistoryItem[];
+  items: PaymentHistoryItem[];
   /** 잔액 합계 (amount 누적, 원) */
-  total?: number;
+  total: number;
 };

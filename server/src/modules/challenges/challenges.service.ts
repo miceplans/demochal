@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, lt, ne } from 'drizzle-orm';
+import { and, count, desc, eq, gte, lt, ne, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -7,6 +7,7 @@ import {
   businesses,
   challengeViews,
   challenges,
+  orders,
 } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
@@ -191,7 +192,16 @@ export class ChallengesService {
     const rows = await this.db
       .select({ role: applications.role, total: count() })
       .from(applications)
-      .where(eq(applications.challengeId, challengeId))
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .leftJoin(orders, eq(orders.applicationId, applications.id))
+      .where(
+        and(
+          eq(applications.challengeId, challengeId),
+          // 유료 챌린지의 미결제 신청 시도(pending 주문만 있는 행)는 아직 실제
+          // 신청이 아니므로 지원자 통계에서 제외한다 — 주문이 paid에 도달한 것만 집계.
+          or(eq(challenges.price, 0), eq(orders.status, 'paid')),
+        ),
+      )
       .groupBy(applications.role);
 
     const total = rows.reduce((sum, row) => sum + Number(row.total), 0);

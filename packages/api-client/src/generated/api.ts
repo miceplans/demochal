@@ -54,6 +54,7 @@ import type {
   ChallengeStats,
   CheckHealth200,
   CheckHealth503,
+  ConfirmPaymentRequest,
   CreateAdBody,
   CreateChallengeRequest,
   CreateReportRequest,
@@ -63,7 +64,9 @@ import type {
   GetAdminAnalytics200,
   GetAdminAnalyticsParams,
   GetAdminDashboardParams,
+  GetBillingCustomerKey200,
   HandleTossWebhook200,
+  IssueBillingAuthorizationBody,
   ListAdminAdsParams,
   ListAdminBusinesses200,
   ListAdminBusinessesParams,
@@ -4721,6 +4724,265 @@ export function useGetOrder<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type cancelOrderResponse200 = {
+  data: Order;
+  status: 200;
+};
+
+export type cancelOrderResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type cancelOrderResponse409 = {
+  data: void;
+  status: 409;
+};
+
+export type cancelOrderResponseSuccess = cancelOrderResponse200 & {
+  headers: Headers;
+};
+export type cancelOrderResponseError = (cancelOrderResponse404 | cancelOrderResponse409) & {
+  headers: Headers;
+};
+
+export type cancelOrderResponse = cancelOrderResponseSuccess | cancelOrderResponseError;
+
+export const getCancelOrderUrl = (id: string) => {
+  return `/orders/${id}/cancel`;
+};
+
+/**
+ * 신청자 본인의 `pending` 주문만 `canceled`로 전환한다. 토스 결제창 진입 실패·구매자 취소 후
+ * 남는 미결제 주문을 정리하는 용도이며, `paid` 등 다른 상태의 주문은 409로 거절된다.
+ * @summary 주문 취소(신청자 본인, 미결제만)
+ */
+export const cancelOrder = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<cancelOrderResponse> => {
+  return apiFetch<cancelOrderResponse>(getCancelOrderUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getCancelOrderMutationKey = () => ['cancelOrder'] as const;
+
+export const getCancelOrderMutationOptions = <
+  TError = NotFoundResponse | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof cancelOrder>>,
+    TError,
+    CancelOrderMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof cancelOrder>>,
+  TError,
+  CancelOrderMutationVariables,
+  TContext
+> => {
+  const mutationKey = getCancelOrderMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof cancelOrder>>,
+    CancelOrderMutationVariables
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return cancelOrder(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CancelOrderMutationResult = NonNullable<Awaited<ReturnType<typeof cancelOrder>>>;
+
+export type CancelOrderMutationError = NotFoundResponse | void;
+export type CancelOrderMutationVariables = { id: string };
+
+/**
+ * @summary 주문 취소(신청자 본인, 미결제만)
+ */
+export const useCancelOrder = <TError = NotFoundResponse | void, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof cancelOrder>>,
+      TError,
+      CancelOrderMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof cancelOrder>>,
+  TError,
+  CancelOrderMutationVariables,
+  TContext
+> => {
+  return useMutation(getCancelOrderMutationOptions(options), queryClient);
+};
+
+export type confirmPaymentResponse200 = {
+  data: Order;
+  status: 200;
+};
+
+export type confirmPaymentResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type confirmPaymentResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type confirmPaymentResponse409 = {
+  data: void;
+  status: 409;
+};
+
+export type confirmPaymentResponse502 = {
+  data: void;
+  status: 502;
+};
+
+export type confirmPaymentResponseSuccess = confirmPaymentResponse200 & {
+  headers: Headers;
+};
+export type confirmPaymentResponseError = (
+  | confirmPaymentResponse401
+  | confirmPaymentResponse404
+  | confirmPaymentResponse409
+  | confirmPaymentResponse502
+) & {
+  headers: Headers;
+};
+
+export type confirmPaymentResponse = confirmPaymentResponseSuccess | confirmPaymentResponseError;
+
+export const getConfirmPaymentUrl = () => {
+  return `/payments/confirm`;
+};
+
+/**
+ * 토스 successUrl 리다이렉트 이후 클라이언트가 호출하는 승인 엔드포인트. `paymentKey`·`orderId`·
+ * `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
+ * 하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
+ * 재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+ * @summary 토스 결제 승인(신청자 본인)
+ */
+export const confirmPayment = async (
+  confirmPaymentRequest: ConfirmPaymentRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<confirmPaymentResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<confirmPaymentResponse>(getConfirmPaymentUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmPaymentRequest),
+  });
+};
+
+export const getConfirmPaymentMutationKey = () => ['confirmPayment'] as const;
+
+export const getConfirmPaymentMutationOptions = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmPayment>>,
+    TError,
+    ConfirmPaymentMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmPayment>>,
+  TError,
+  ConfirmPaymentMutationVariables,
+  TContext
+> => {
+  const mutationKey = getConfirmPaymentMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmPayment>>,
+    ConfirmPaymentMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return confirmPayment(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof confirmPayment>>>;
+export type ConfirmPaymentMutationBody = ConfirmPaymentRequest;
+export type ConfirmPaymentMutationError = UnauthorizedResponse | NotFoundResponse | void;
+export type ConfirmPaymentMutationVariables = { data: ConfirmPaymentRequest };
+
+/**
+ * @summary 토스 결제 승인(신청자 본인)
+ */
+export const useConfirmPayment = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof confirmPayment>>,
+      TError,
+      ConfirmPaymentMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof confirmPayment>>,
+  TError,
+  ConfirmPaymentMutationVariables,
+  TContext
+> => {
+  return useMutation(getConfirmPaymentMutationOptions(options), queryClient);
+};
+
 export type handleTossWebhookResponse200 = {
   data: HandleTossWebhook200;
   status: 200;
@@ -5361,6 +5623,262 @@ export function useListPaymentHistory<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type getBillingCustomerKeyResponse200 = {
+  data: GetBillingCustomerKey200;
+  status: 200;
+};
+
+export type getBillingCustomerKeyResponseSuccess = getBillingCustomerKeyResponse200 & {
+  headers: Headers;
+};
+export type getBillingCustomerKeyResponse = getBillingCustomerKeyResponseSuccess;
+
+export const getGetBillingCustomerKeyUrl = () => {
+  return `/billing/authorizations/customer-key`;
+};
+
+/**
+ * 토스 빌링 인증(requestBillingAuth)에 필요한 customerKey를 사전에 제공한다.
+ * customerKey는 서버가 businessId에서 유도(`semochal-biz-<id>`)하며, 인증 성공 리다이렉트와
+ * 빌링키 발급(POST /billing/authorizations/issue)에서 동일 값이 사용된다.
+ * @summary 빌링 인증용 customerKey 조회
+ */
+export const getBillingCustomerKey = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getBillingCustomerKeyResponse> => {
+  return apiFetch<getBillingCustomerKeyResponse>(getGetBillingCustomerKeyUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetBillingCustomerKeyQueryKey = () => {
+  return [`/billing/authorizations/customer-key`] as const;
+};
+
+export const getGetBillingCustomerKeyQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBillingCustomerKey>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof getBillingCustomerKey>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBillingCustomerKeyQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBillingCustomerKey>>> = ({ signal }) =>
+    getBillingCustomerKey({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBillingCustomerKey>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetBillingCustomerKeyQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBillingCustomerKey>>
+>;
+export type GetBillingCustomerKeyQueryError = unknown;
+
+export function useGetBillingCustomerKey<
+  TData = Awaited<ReturnType<typeof getBillingCustomerKey>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getBillingCustomerKey>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBillingCustomerKey>>,
+          TError,
+          Awaited<ReturnType<typeof getBillingCustomerKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetBillingCustomerKey<
+  TData = Awaited<ReturnType<typeof getBillingCustomerKey>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getBillingCustomerKey>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getBillingCustomerKey>>,
+          TError,
+          Awaited<ReturnType<typeof getBillingCustomerKey>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetBillingCustomerKey<
+  TData = Awaited<ReturnType<typeof getBillingCustomerKey>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getBillingCustomerKey>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 빌링 인증용 customerKey 조회
+ */
+
+export function useGetBillingCustomerKey<
+  TData = Awaited<ReturnType<typeof getBillingCustomerKey>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getBillingCustomerKey>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetBillingCustomerKeyQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type issueBillingAuthorizationResponse201 = {
+  data: PaymentCard;
+  status: 201;
+};
+
+export type issueBillingAuthorizationResponseSuccess = issueBillingAuthorizationResponse201 & {
+  headers: Headers;
+};
+export type issueBillingAuthorizationResponse = issueBillingAuthorizationResponseSuccess;
+
+export const getIssueBillingAuthorizationUrl = () => {
+  return `/billing/authorizations/issue`;
+};
+
+/**
+ * 빌링 인증 성공 리다이렉트의 authKey를 받아 토스 빌링키 발급 API(서버 시크릿 키 사용)로
+ * billingKey를 발급·저장한다. billingKey는 절대 응답에 포함하지 않는다(PCI 경계 유지).
+ * @summary 빌링 인증 authKey로 카드 등록
+ */
+export const issueBillingAuthorization = async (
+  issueBillingAuthorizationBody: IssueBillingAuthorizationBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<issueBillingAuthorizationResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<issueBillingAuthorizationResponse>(getIssueBillingAuthorizationUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(issueBillingAuthorizationBody),
+  });
+};
+
+export const getIssueBillingAuthorizationMutationKey = () => ['issueBillingAuthorization'] as const;
+
+export const getIssueBillingAuthorizationMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof issueBillingAuthorization>>,
+    TError,
+    IssueBillingAuthorizationMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof issueBillingAuthorization>>,
+  TError,
+  IssueBillingAuthorizationMutationVariables,
+  TContext
+> => {
+  const mutationKey = getIssueBillingAuthorizationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof issueBillingAuthorization>>,
+    IssueBillingAuthorizationMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return issueBillingAuthorization(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type IssueBillingAuthorizationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof issueBillingAuthorization>>
+>;
+export type IssueBillingAuthorizationMutationBody = IssueBillingAuthorizationBody;
+export type IssueBillingAuthorizationMutationError = unknown;
+export type IssueBillingAuthorizationMutationVariables = { data: IssueBillingAuthorizationBody };
+
+/**
+ * @summary 빌링 인증 authKey로 카드 등록
+ */
+export const useIssueBillingAuthorization = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof issueBillingAuthorization>>,
+      TError,
+      IssueBillingAuthorizationMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof issueBillingAuthorization>>,
+  TError,
+  IssueBillingAuthorizationMutationVariables,
+  TContext
+> => {
+  return useMutation(getIssueBillingAuthorizationMutationOptions(options), queryClient);
+};
 
 export type listAdProductsResponse200 = {
   data: AdProduct[];

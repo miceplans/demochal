@@ -13,6 +13,7 @@ import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { MovingAds } from '@/components/ads/MovingAds';
 import { useToast } from '@/components/common/Toast';
+import { useAdminHref } from './AdminShell';
 
 type PreviewView = 'mobile' | 'pc';
 
@@ -362,6 +363,7 @@ export function AdminAdPricingScreen() {
   const toast = useToast();
   const titleId = useId();
   const inputId = useId();
+  const hrefOf = useAdminHref();
 
   const pricingQuery = generated.useGetAdPricing();
   const hero = pricingQuery.data?.data.find((item) => item.slot === 'hero');
@@ -777,7 +779,9 @@ export function AdminAdPricingScreen() {
                           <InfoValue>{hero?.period ?? '-'}</InfoValue>
                         </InfoItem>
                       </InfoList>
-                      <ReportLink href={`/admin/analytics?ad=${detailAd}`}>리포트 보기</ReportLink>
+                      <ReportLink href={hrefOf(`/analytics?ad=${detailAd}`)}>
+                        리포트 보기
+                      </ReportLink>
                     </InfoRow>
                     <DialogActions>
                       <DialogButton type="button" onClick={() => setDetailAd(null)}>

@@ -917,6 +917,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Order' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: 주문 취소(신청자 본인, 미결제만)
+      operationId: cancelOrder
+      x-impl-status: implemented
+      description: |
+        신청자 본인의 `pending` 주문만 `canceled`로 전환한다. 토스 결제창 진입 실패·구매자 취소 후
+        남는 미결제 주문을 정리하는 용도이며, `paid` 등 다른 상태의 주문은 409로 거절된다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 취소된 주문
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 취소할 수 없는 주문 상태(paid 등) }
+  /payments/confirm:
+    post:
+      tags: [Payments]
+      summary: 토스 결제 승인(신청자 본인)
+      operationId: confirmPayment
+      x-impl-status: implemented
+      description: |
+        토스 successUrl 리다이렉트 이후 클라이언트가 호출하는 승인 엔드포인트. `paymentKey`·`orderId`·
+        `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
+        하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
+        재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmPaymentRequest' }
+      responses:
+        '200':
+          description: 확정된 주문
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 결제할 수 없는 주문 상태(paid/canceled 등) }
+        '502': { description: 토스 승인 API 호출 실패 }
   /payments/webhook/toss:
     post:
       tags: [Payments]
@@ -1029,11 +1077,57 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [items, total]
                 properties:
                   items: { type: array, items: { $ref: '#/components/schemas/PaymentHistoryItem' } }
                   total:
                     type: integer
                     description: 잔액 합계 (amount 누적, 원)
+
+  /billing/authorizations/customer-key:
+    get:
+      tags: [Billing]
+      summary: 빌링 인증용 customerKey 조회
+      operationId: getBillingCustomerKey
+      x-impl-status: implemented
+      description: |
+        토스 빌링 인증(requestBillingAuth)에 필요한 customerKey를 사전에 제공한다.
+        customerKey는 서버가 businessId에서 유도(`semochal-biz-<id>`)하며, 인증 성공 리다이렉트와
+        빌링키 발급(POST /billing/authorizations/issue)에서 동일 값이 사용된다.
+      responses:
+        '200':
+          description: 빌링 인증용 customerKey
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customerKey: { type: string }
+                required: [customerKey]
+  /billing/authorizations/issue:
+    post:
+      tags: [Billing]
+      summary: 빌링 인증 authKey로 카드 등록
+      operationId: issueBillingAuthorization
+      x-impl-status: implemented
+      description: |
+        빌링 인증 성공 리다이렉트의 authKey를 받아 토스 빌링키 발급 API(서버 시크릿 키 사용)로
+        billingKey를 발급·저장한다. billingKey는 절대 응답에 포함하지 않는다(PCI 경계 유지).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authKey: { type: string }
+              required: [authKey]
+      responses:
+        '201':
+          description: 등록된 결제수단(billingKey 미포함)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentCard' }
 
   # ---------------------------------------------------------------- Ads
   /ads/products:
@@ -1883,6 +1977,13 @@ components:
         amount: { type: integer, description: 결제 금액 (원) }
         status: { type: string, enum: [pending, paid, canceled] }
         createdAt: { type: string, format: date-time }
+    ConfirmPaymentRequest:
+      type: object
+      required: [orderId, paymentKey, amount]
+      properties:
+        orderId: { type: string, format: uuid }
+        paymentKey: { type: string, description: 토스 결제 키(successUrl 쿼리) }
+        amount: { type: integer, description: 주문 금액과 반드시 일치(위변조 방어) }
     TossWebhookPayload:
       type: object
       required: [eventType, data]
@@ -1894,15 +1995,21 @@ components:
           properties:
             paymentKey: { type: string }
             orderId: { type: string }
-            status: { type: string, description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED' }
+            status:
+              {
+                type: string,
+                description: 'DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT',
+              }
     PaymentCard:
       type: object
+      required: [id, maskedNumber]
       properties:
         id: { type: string, format: uuid }
         cardName: { type: string }
         maskedNumber: { type: string, example: '****-****-****-1234' }
     PaymentHistoryItem:
       type: object
+      required: [id, name, amount, paidAt, status]
       properties:
         id: { type: string, format: uuid }
         name:

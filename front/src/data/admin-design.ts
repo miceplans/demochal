@@ -3,15 +3,15 @@
 export const adminUser = { name: '김관리자', role: 'Super Admin' };
 
 export const adminMenu: [string, string][] = [
-  ['/admin', '대시보드'],
-  ['/admin/biz-review', '기관 심사'],
-  ['/admin/certificates', '상장 인증'],
-  ['/admin/ad-pricing', '광고 관리'],
-  ['/admin/users', '사용자 관리'],
-  ['/admin/contents', '콘텐츠 모니터링'],
-  ['/admin/reports', '신고 처리'],
-  ['/admin/analytics', '리포트'],
-  ['/admin/settings', '설정'],
+  ['/', '대시보드'],
+  ['/biz-review', '기관 심사'],
+  ['/certificates', '상장 인증'],
+  ['/ad-pricing', '광고 관리'],
+  ['/users', '사용자 관리'],
+  ['/contents', '콘텐츠 모니터링'],
+  ['/reports', '신고 처리'],
+  ['/analytics', '리포트'],
+  ['/settings', '설정'],
 ];
 
 export const dashboardStats = [

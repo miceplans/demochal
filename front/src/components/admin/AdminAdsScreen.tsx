@@ -16,6 +16,7 @@ import {
   SelectFilter,
   type AdminColumn,
 } from './parts';
+import { useAdminHref } from './AdminShell';
 
 const Page = styled.div({
   display: 'flex',
@@ -214,7 +215,7 @@ export function AdminAdsScreen() {
           sizes="1220px"
           style={{ objectFit: 'cover' }}
         />
-        <PricingLink href="/admin/ad-pricing/pricing">광고비 관리</PricingLink>
+        <PricingLink href={hrefOf('/ad-pricing/pricing')}>광고비 관리</PricingLink>
       </Preview>
     </Page>
   );

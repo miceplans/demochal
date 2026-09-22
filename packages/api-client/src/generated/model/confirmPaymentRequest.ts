@@ -17,9 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type TossWebhookPayloadData = {
-  paymentKey: string;
+export interface ConfirmPaymentRequest {
   orderId: string;
-  /** DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT */
-  status: string;
-};
+  /** 토스 결제 키(successUrl 쿼리) */
+  paymentKey: string;
+  /** 주문 금액과 반드시 일치(위변조 방어) */
+  amount: number;
+}
