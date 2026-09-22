@@ -1285,9 +1285,10 @@ paths:
               type: object
               required: [name, contact, content]
               properties:
-                name: { type: string }
-                contact: { type: string, description: 전화번호 또는 이메일 }
-                content: { type: string }
+                name: { type: string, minLength: 1, maxLength: 100 }
+                contact:
+                  { type: string, minLength: 1, maxLength: 200, description: 전화번호 또는 이메일 }
+                content: { type: string, minLength: 1, maxLength: 4000 }
       responses:
         '201':
           description: 접수 완료

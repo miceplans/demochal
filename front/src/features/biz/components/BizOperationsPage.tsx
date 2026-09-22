@@ -33,15 +33,27 @@ export function BizOperationsPage() {
       content: content.trim(),
     };
     const errors: Partial<Record<InquiryField, string>> = {
-      ...(values.name ? {} : { name: '성함을 입력해주세요.' }),
-      ...(values.contact ? {} : { contact: '연락처를 입력해주세요.' }),
-      ...(values.content ? {} : { content: '문의 내용을 입력해주세요.' }),
+      ...(!values.name
+        ? { name: '성함을 입력해주세요.' }
+        : values.name.length > 100
+          ? { name: '성함은 100자 이내로 입력해주세요.' }
+          : {}),
+      ...(!values.contact
+        ? { contact: '연락처를 입력해주세요.' }
+        : values.contact.length > 200
+          ? { contact: '연락처는 200자 이내로 입력해주세요.' }
+          : {}),
+      ...(!values.content
+        ? { content: '문의 내용을 입력해주세요.' }
+        : values.content.length > 4000
+          ? { content: '문의 내용은 4,000자 이내로 입력해주세요.' }
+          : {}),
     };
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      const message = `입력이 필요한 항목: ${Object.values(errors)
-        .map((error) => error?.replace('을 입력해주세요.', '').replace('를 입력해주세요.', ''))
-        .join(', ')}`;
+      const message = Object.values(errors)
+        .filter((error): error is string => Boolean(error))
+        .join(' ');
       setStatus(message);
       toast.error('입력 내용을 확인해주세요', message);
       return;
@@ -90,6 +102,8 @@ export function BizOperationsPage() {
               }}
               autoComplete="name"
               aria-invalid={Boolean(fieldErrors.name)}
+              disabled={submitting}
+              maxLength={100}
               required
             />
           </FieldGroup>
@@ -105,6 +119,8 @@ export function BizOperationsPage() {
               }}
               autoComplete="tel"
               aria-invalid={Boolean(fieldErrors.contact)}
+              disabled={submitting}
+              maxLength={200}
               required
             />
           </FieldGroup>
@@ -119,6 +135,8 @@ export function BizOperationsPage() {
                 clearFieldError('content');
               }}
               aria-invalid={Boolean(fieldErrors.content)}
+              disabled={submitting}
+              maxLength={4000}
               required
             />
           </FieldGroup>
