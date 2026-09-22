@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
@@ -9,6 +9,8 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { roles } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
+import { adApi } from '@/lib/ad-api';
+import { requestTossPayment } from '@/lib/payments';
 import { colors as c, mobile } from '@/styles/design';
 
 const Form = styled.form({
@@ -141,22 +143,60 @@ export function ApplicationPage() {
   const router = useRouter();
   const [role, setRole] = useState(draft?.role ?? '백엔드');
   const [members, setMembers] = useState(draft?.members ?? [{ name: '', role: '백엔드' }]);
+  const [submitting, setSubmitting] = useState(false);
   const membersComplete = members.length > 0 && members.every((member) => member.name.trim());
   const saveDraft = () => {
     save({ role, members });
     toast.success('임시저장했어요');
   };
 
+  // /applications/new?challenge=<uuid> 진입 시에만 실제 신청·결제 흐름으로 동작한다(챌린지 상세 등에서 링크).
+  // 제출 핸들러(사용자 이벤트)에서 직접 읽어 hydration 경계 없이 사용한다.
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    save({ role, members });
+    const challengeId = new URLSearchParams(window.location.search).get('challenge');
+    if (!challengeId) {
+      // 목업 카탈로그 화면에서는 진입 링크에 챌린지 UUID가 없다 — 이 경우 저장만 하고
+      // 실제 신청·결제 흐름은 챌린지 신청 링크(/applications/new?challenge=<uuid>) 경로로만
+      // 진행된다는 것을 명시한다(신청 완료처럼 보이면 안 된다).
+      toast.error(
+        '이 화면에서는 임시저장만 돼요',
+        '실제 신청은 챌린지의 참가 신청하기를 이용해주세요',
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const result = await adApi.applications.apply({
+        challengeId,
+        role,
+        teammates: members.map((member) => member.name),
+      });
+      // 무료 챌린지(price 0)는 결제 없이 완료. 유료는 서버가 만든 pending 주문으로 토스 결제창을 연다.
+      if (!result.order) {
+        toast.success('신청이 완료됐어요');
+        router.push('/my/applications');
+        return;
+      }
+      const started = await requestTossPayment({
+        orderId: result.order.id,
+        amount: result.order.amount,
+        orderName: result.order.name,
+      });
+      if (!started) {
+        toast.error('결제를 시작할 수 없어요', 'NEXT_PUBLIC_TOSS_CLIENT_KEY가 설정되지 않았어요');
+      }
+    } catch {
+      toast.error('신청에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <UserShell title="지원서 작성" back="/contests/public-data" footer={false}>
-      <Form
-        onSubmit={(event) => {
-          event.preventDefault();
-          save({ role, members });
-          toast.success('지원서를 저장했어요');
-          router.push('/my/applications');
-        }}
-      >
+      <Form onSubmit={handleSubmit}>
         <Content>
           <FormTitle>2025 지역문제 해결 해커톤 신청서</FormTitle>
           <Step>
@@ -234,7 +274,9 @@ export function ApplicationPage() {
           <ActionButton type="button" tone="plain" onClick={saveDraft}>
             임시저장
           </ActionButton>
-          <ActionButton type="submit">제출</ActionButton>
+          <ActionButton type="submit" disabled={submitting}>
+            {submitting ? '처리 중…' : '제출'}
+          </ActionButton>
         </Actions>
       </Form>
     </UserShell>
