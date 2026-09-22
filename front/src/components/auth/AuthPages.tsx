@@ -54,6 +54,10 @@ export function LoginPage() {
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
     window.location.assign(`${apiOrigin.replace(/\/$/, '')}/auth/google`);
   };
+  const startNaverLogin = () => {
+    const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
+    window.location.assign(`${apiOrigin.replace(/\/$/, '')}/auth/social/naver`);
+  };
 
   return (
     <UserShell compact navigation={false} footer={false}>
@@ -72,6 +76,10 @@ export function LoginPage() {
                 event.preventDefault();
                 if (provider === 'Google') {
                   startGoogleLogin();
+                  return;
+                }
+                if (provider === 'Naver') {
+                  startNaverLogin();
                   return;
                 }
                 void continueAfterLogin();
