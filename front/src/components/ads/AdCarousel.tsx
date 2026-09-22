@@ -131,8 +131,8 @@ const NavButton = styled.button<{
   zIndex: 1,
   display: 'grid',
   placeItems: 'center',
-  width: '44px',
-  height: '44px',
+  width: '56px',
+  height: '56px',
   padding: 0,
   border: 0,
   borderRadius: '50%',
@@ -149,8 +149,8 @@ const NavButton = styled.button<{
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
   ...(variant === 'gallery' && {
     [mobile]: {
-      width: '32px',
-      height: '32px',
+      width: '40px',
+      height: '40px',
       // GalleryViewport는 overflow: hidden이라 클리핑 경계가 뷰포트의 바깥 테두리와 일치합니다.
       // focus-visible 아웃라인(3px) + outline-offset(3px)만큼 안쪽으로 떨어뜨려야
       // 키보드 포커스 링과 그림자가 잘리지 않습니다.
@@ -161,7 +161,7 @@ const NavButton = styled.button<{
 
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
   return (
-    <svg width="26" height="26" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <svg width="34" height="34" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path
         d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
         stroke={c.white}
