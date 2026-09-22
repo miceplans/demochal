@@ -43,6 +43,8 @@ export * from './adStatus';
 export * from './application';
 export * from './applicationEvaluation';
 export * from './applicationStatus';
+export * from './applyChallenge201';
+export * from './applyChallenge201Order';
 export * from './applyChallengeRequest';
 export * from './applyChallengeRequestFormAnswersItem';
 export * from './awardRecord';

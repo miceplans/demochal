@@ -45,6 +45,7 @@ import type {
   AdminSettings,
   AdminUserEntry,
   Application,
+  ApplyChallenge201,
   ApplyChallengeRequest,
   BizDashboard,
   Business,
@@ -2421,7 +2422,7 @@ export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError =
 }
 
 export type applyChallengeResponse201 = {
-  data: Application;
+  data: ApplyChallenge201;
   status: 201;
 };
 
@@ -6946,7 +6947,7 @@ export const getListAdminAdsUrl = (params?: ListAdminAdsParams) => {
 };
 
 /**
- * 광고 관리(`/admin/ad-pricing`): 검색/상태/활동 필터, 광고 수정·납볍·중단.
+ * 광고 관리(`/admin/ad-pricing`): 검색/상태 필터, 행 선택 후 광고 중단.
  * @summary 전체 광고 목록 조회
  */
 export const listAdminAds = async (

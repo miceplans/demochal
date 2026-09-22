@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { payments } from '../../db/schema.js';
+import { ads, businesses, payments } from '../../db/schema.js';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
 import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
@@ -340,6 +340,68 @@ describe('AdminService — ad pricing', () => {
       service.updateAdPricing([{ slot: 'moon' as never, dailyPrice: 1 }]),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(setCalls).toHaveLength(0);
+  });
+});
+
+describe('AdminService — ads list', () => {
+  const adRow = { id: 'ad-1', title: '2026 AI 챌린지 광고', status: 'active', paidAmount: 300000 };
+
+  it('joins the organization name onto each ad row', async () => {
+    const { db } = createDbStub({ select: [[{ ad: adRow, organization: '부산광역시' }]] });
+    const { service } = createService(db);
+
+    const result = await service.listAds();
+
+    expect(result).toEqual([{ ...adRow, organization: '부산광역시' }]);
+  });
+
+  it('matches q against both the ad title and the business name', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listAds('부산');
+
+    const where = selectWhereCalls[0];
+    expect(collectStrings(where)).toContain('%부산%');
+    expect(referencesColumn(where, ads.title)).toBe(true);
+    expect(referencesColumn(where, businesses.name)).toBe(true);
+  });
+
+  it('filters by the exact status value', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listAds(undefined, 'paused');
+
+    const where = selectWhereCalls[0];
+    expect(collectStrings(where)).toContain('paused');
+    expect(referencesColumn(where, ads.status)).toBe(true);
+    expect(referencesColumn(where, ads.title)).toBe(false);
+  });
+
+  it('combines q and status into a single where clause', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listAds('부산', 'active');
+
+    const where = selectWhereCalls[0];
+    const strings = collectStrings(where);
+    expect(strings).toContain('%부산%');
+    expect(strings).toContain('active');
+    expect(referencesColumn(where, ads.title)).toBe(true);
+    expect(referencesColumn(where, businesses.name)).toBe(true);
+    expect(referencesColumn(where, ads.status)).toBe(true);
+  });
+
+  it('skips the where clause entirely when no filter is given', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listAds();
+
+    expect(selectWhereCalls).toHaveLength(1);
+    expect(selectWhereCalls[0]?.[0]).toBeUndefined();
   });
 });
 

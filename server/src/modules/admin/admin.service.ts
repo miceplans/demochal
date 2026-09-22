@@ -406,7 +406,7 @@ export class AdminService {
 
   async listAds(q?: string, status?: string) {
     const conditions = [];
-    if (q) conditions.push(ilike(ads.title, `%${q}%`));
+    if (q) conditions.push(or(ilike(ads.title, `%${q}%`), ilike(businesses.name, `%${q}%`)));
     if (status) conditions.push(eq(ads.status, status));
     const rows = await this.db
       .select({ ad: ads, organization: businesses.name })

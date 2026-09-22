@@ -16,14 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { Application } from './application';
+import type { ApplyChallenge201Order } from './applyChallenge201Order';
 
-export type ListAdminAdsParams = {
+export type ApplyChallenge201 = Application & {
   /**
-   * 광고명/기관명 부분 일치 검색
+   * 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+   * @nullable
    */
-  q?: string;
-  /**
-   * 광고 상태 필터 (active/preparing/paused/ended)
-   */
-  status?: string;
+  order?: ApplyChallenge201Order;
 };
