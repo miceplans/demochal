@@ -55,6 +55,7 @@ import type {
   CheckHealth503,
   CreateAdBody,
   CreateChallengeRequest,
+  CreateReportRequest,
   CreateTeamRequest,
   FileMeta,
   GetAdReportParams,
@@ -3563,6 +3564,132 @@ export function useListMyNotifications<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type createReportResponse201 = {
+  data: Report;
+  status: 201;
+};
+
+export type createReportResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type createReportResponseSuccess = createReportResponse201 & {
+  headers: Headers;
+};
+export type createReportResponseError = createReportResponse401 & {
+  headers: Headers;
+};
+
+export type createReportResponse = createReportResponseSuccess | createReportResponseError;
+
+export const getCreateReportUrl = () => {
+  return `/reports`;
+};
+
+/**
+ * 신고하기 화면(`/reports/new`)의 제출. 공모전 상세, 팀 모집글, 다른 사용자 프로필에서
+ * 신고 버튼으로 진입하며 대상 미리보기가 폼 상단에 표시된다.
+ * 인증: 전역 `JwtAuthGuard`(HttpOnly 쿠키) — 로그인 사용자만 접수 가능, reporter는 세션에서 식별.
+ * @summary 신고 접수
+ */
+export const createReport = async (
+  createReportRequest: CreateReportRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<createReportResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<createReportResponse>(getCreateReportUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createReportRequest),
+  });
+};
+
+export const getCreateReportMutationKey = () => ['createReport'] as const;
+
+export const getCreateReportMutationOptions = <
+  TError = UnauthorizedResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReport>>,
+    TError,
+    CreateReportMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReport>>,
+  TError,
+  CreateReportMutationVariables,
+  TContext
+> => {
+  const mutationKey = getCreateReportMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReport>>,
+    CreateReportMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createReport(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReportMutationResult = NonNullable<Awaited<ReturnType<typeof createReport>>>;
+export type CreateReportMutationBody = CreateReportRequest;
+export type CreateReportMutationError = UnauthorizedResponse;
+export type CreateReportMutationVariables = { data: CreateReportRequest };
+
+/**
+ * @summary 신고 접수
+ */
+export const useCreateReport = <TError = UnauthorizedResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createReport>>,
+      TError,
+      CreateReportMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createReport>>,
+  TError,
+  CreateReportMutationVariables,
+  TContext
+> => {
+  return useMutation(getCreateReportMutationOptions(options), queryClient);
+};
 
 export type registerBusinessResponse201 = {
   data: Business;

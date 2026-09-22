@@ -32,7 +32,7 @@ export const certificates = pgTable('certificates', {
 export const reports = pgTable('reports', {
   id: uuid('id').defaultRandom().primaryKey(),
   content: varchar('content', { length: 300 }).notNull(),
-  targetType: varchar('target_type', { length: 20 }).notNull(),
+  targetType: varchar('target_type', { length: 20 }).notNull(), // challenge | team | award | user
   targetId: uuid('target_id'),
   org: varchar('org', { length: 200 }),
   summary: varchar('summary', { length: 300 }).notNull(),

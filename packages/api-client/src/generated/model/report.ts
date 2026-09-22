@@ -26,7 +26,7 @@ export interface Report {
   id?: string;
   /** 신고 대상 콘텐츠명 (예: 2025 AI챌린지) */
   content?: string;
-  /** 챌린지/팀 모집/수상작 */
+  /** 챌린지/팀 모집/수상작/사용자 프로필 */
   targetType?: ReportTargetType;
   /** 소속 (기관명 또는 개인) */
   org?: string;
