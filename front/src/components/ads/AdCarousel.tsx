@@ -21,10 +21,10 @@ type AdCarouselProps = {
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
-  height: '252px',
+  height: '250px',
   '& img': {
-    width: '1059px',
-    height: '252px',
+    width: '1060px',
+    height: '250px',
     borderRadius: '12px',
     objectFit: 'cover',
     flexShrink: 0,
@@ -78,7 +78,7 @@ const GalleryViewport = styled.div({
   },
 });
 
-const SLIDE_WIDTH = { hero: 1059, gallery: 315 } as const;
+const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
 const MOBILE_GALLERY_STEP = 122 + 12;
 const mobileLayoutQuery = '(max-width: 480px)';
@@ -115,10 +115,10 @@ const SlideButton = styled.button({
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
 });
 
-// hero는 화면 중앙(50vw)에 놓인 1059px 슬라이드의 가장자리에서 20px 안쪽,
+// hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
 const navOffset = {
-  hero: 'calc(50vw - 509.5px)',
+  hero: 'calc(50vw - 510px)',
   gallery: 'calc(50% - 213.5px)',
 } as const;
 
@@ -131,8 +131,8 @@ const NavButton = styled.button<{
   zIndex: 1,
   display: 'grid',
   placeItems: 'center',
-  width: '56px',
-  height: '56px',
+  width: '64px',
+  height: '64px',
   padding: 0,
   border: 0,
   borderRadius: '50%',
@@ -149,8 +149,8 @@ const NavButton = styled.button<{
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
   ...(variant === 'gallery' && {
     [mobile]: {
-      width: '40px',
-      height: '40px',
+      width: '46px',
+      height: '46px',
       // GalleryViewport는 overflow: hidden이라 클리핑 경계가 뷰포트의 바깥 테두리와 일치합니다.
       // focus-visible 아웃라인(3px) + outline-offset(3px)만큼 안쪽으로 떨어뜨려야
       // 키보드 포커스 링과 그림자가 잘리지 않습니다.
@@ -161,7 +161,7 @@ const NavButton = styled.button<{
 
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
   return (
-    <svg width="34" height="34" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <svg width="46" height="46" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path
         d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
         stroke={c.white}
@@ -301,12 +301,16 @@ export function AdCarousel({
           {slides.map((item, index) => {
             const itemIndex = (((index - pad) % itemCount) + itemCount) % itemCount;
             return (
-              <SlideButton key={`${item.src}-${index}`} type="button" onClick={() => goTo(itemIndex)}>
+              <SlideButton
+                key={`${item.src}-${index}`}
+                type="button"
+                onClick={() => goTo(itemIndex)}
+              >
                 <Image
                   src={item.src}
                   alt={index === railIndex ? item.alt : ''}
                   width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 252 : 190}
+                  height={variant === 'hero' ? 250 : 190}
                 />
               </SlideButton>
             );
