@@ -118,7 +118,7 @@ Quality Gate PASS만 `ai-review` 상태로 전환한다. FAIL은 `MAX_QUALITY_GA
 
 ## Quality Gate와 independent review의 분리
 
-Quality Gate는 AI 판단을 하지 않는 객관적 검사다. lint, 변경 파일 formatting, typecheck, server coverage test, build, 추가된 줄의 credential pattern, production dependency의 high/critical vulnerability만 판정한다. formatting은 기존 전체 baseline을 일괄 수정하거나 기존 부채 때문에 모든 PR을 막지 않도록 PR/worker 변경 파일에만 적용한다. coverage는 이미 존재하던 `test:cov` 명령을 사용하지만, 현재 baseline/threshold가 없으므로 새 전역 threshold는 강제하지 않는다. e2e config는 존재하나 실행에 필요한 환경과 테스트가 정립되지 않았고, OpenAPI YAML과 Drizzle migration은 검증 전용 명령/격리 DB가 없으므로 이번 Gate에서는 `PARTIAL`로 두고 자동 실행하지 않는다.
+Quality Gate는 AI 판단을 하지 않는 객관적 검사다. lint, 변경 파일 formatting, typecheck, server coverage test, api-client 회귀 test(`pnpm --filter @semochal/api-client test`), build, 추가된 줄의 credential pattern, production dependency의 high/critical vulnerability만 판정한다. formatting은 기존 전체 baseline을 일괄 수정하거나 기존 부채 때문에 모든 PR을 막지 않도록 PR/worker 변경 파일에만 적용한다. coverage는 이미 존재하던 `test:cov` 명령을 사용하지만, 현재 baseline/threshold가 없으므로 새 전역 threshold는 강제하지 않는다. e2e config는 존재하나 실행에 필요한 환경과 테스트가 정립되지 않았고, OpenAPI YAML과 Drizzle migration은 검증 전용 명령/격리 DB가 없으므로 이번 Gate에서는 `PARTIAL`로 두고 자동 실행하지 않는다.
 
 Issue/PR risk도 Gate 실행 범위를 결정한다. `low`는 기본 Gate, `medium`은 test agent가 변경 API/validation의 관련 regression test를 추가 확인, `high`는 관련 test 범위와 security 결과를 반드시 확인하고 human reviewer focus를 PR에 기록한다. `critical`은 Gate가 통과해도 `needs-human`으로 넘겨 human security/data review 없이는 진행하지 않는다. Gate 자체의 기준은 risk에 따라 낮아지지 않는다.
 

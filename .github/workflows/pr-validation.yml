@@ -75,6 +75,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Existing server coverage tooling is used without imposing a new global threshold.
       - run: pnpm --filter @semochal/server test:cov
+      # api-client regression tests (orval envelope contract) — added in #91.
       - run: pnpm --filter @semochal/api-client test
 
   build:
