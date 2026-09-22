@@ -161,7 +161,7 @@ const NavButton = styled.button<{
 
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
   return (
-    <svg width="16" height="16" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+    <svg width="26" height="26" viewBox="0 0 14 14" fill="none" aria-hidden="true">
       <path
         d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
         stroke={c.white}
