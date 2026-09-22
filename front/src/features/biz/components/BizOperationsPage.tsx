@@ -9,6 +9,7 @@ import { useToast } from '@/components/common/Toast';
 import { orgProfile } from '@/data/biz-design';
 
 const ICON = '/assets/icons';
+type InquiryField = 'name' | 'contact' | 'content';
 
 export function BizOperationsPage() {
   const toast = useToast();
@@ -17,22 +18,37 @@ export function BizOperationsPage() {
   const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Partial<Record<InquiryField, string>>>({});
+
+  const clearFieldError = (field: InquiryField) => {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+  };
 
   const submitInquiry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submitting) return;
     const values = {
       name: name.trim(),
       contact: contact.trim(),
       content: content.trim(),
     };
-    if (!values.name || !values.contact || !values.content) {
-      const message = '성함, 연락처, 문의 내용을 모두 입력해주세요.';
+    const errors: Partial<Record<InquiryField, string>> = {
+      ...(values.name ? {} : { name: '성함을 입력해주세요.' }),
+      ...(values.contact ? {} : { contact: '연락처를 입력해주세요.' }),
+      ...(values.content ? {} : { content: '문의 내용을 입력해주세요.' }),
+    };
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      const message = `입력이 필요한 항목: ${Object.values(errors)
+        .map((error) => error?.replace('을 입력해주세요.', '').replace('를 입력해주세요.', ''))
+        .join(', ')}`;
       setStatus(message);
       toast.error('입력 내용을 확인해주세요', message);
       return;
     }
 
     setSubmitting(true);
+    setFieldErrors({});
     setStatus('문의 내용을 전송하고 있습니다.');
     try {
       await generated.submitOperationsInquiry(values);
@@ -68,8 +84,12 @@ export function BizOperationsPage() {
               id="op-name"
               name="name"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                clearFieldError('name');
+              }}
               autoComplete="name"
+              aria-invalid={Boolean(fieldErrors.name)}
               required
             />
           </FieldGroup>
@@ -79,8 +99,12 @@ export function BizOperationsPage() {
               id="op-contact"
               name="contact"
               value={contact}
-              onChange={(event) => setContact(event.target.value)}
+              onChange={(event) => {
+                setContact(event.target.value);
+                clearFieldError('contact');
+              }}
               autoComplete="tel"
+              aria-invalid={Boolean(fieldErrors.contact)}
               required
             />
           </FieldGroup>
@@ -90,7 +114,11 @@ export function BizOperationsPage() {
               id="op-message"
               name="content"
               value={content}
-              onChange={(event) => setContent(event.target.value)}
+              onChange={(event) => {
+                setContent(event.target.value);
+                clearFieldError('content');
+              }}
+              aria-invalid={Boolean(fieldErrors.content)}
               required
             />
           </FieldGroup>
