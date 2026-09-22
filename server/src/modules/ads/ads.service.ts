@@ -194,6 +194,9 @@ export class AdsService implements OnModuleInit {
         'Unpaid ads cannot be activated directly; complete payment first',
       );
     }
+    if (dto.status === 'paused' && ad.status !== 'active') {
+      throw new BadRequestException('Only active ads can be paused');
+    }
     if (dto.status === 'active') {
       return this.db.transaction(async (tx) => {
         // markCancelled locks this same order row. This makes cancellation and

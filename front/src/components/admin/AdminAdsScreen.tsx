@@ -54,10 +54,10 @@ const ErrorBanner = styled.div({
   justifyContent: 'space-between',
   gap: 12,
   padding: '12px 16px',
-  border: `1px solid ${c.gray200}`,
+  border: `1px solid ${c.red}`,
   borderRadius: 8,
-  background: c.white,
-  color: c.gray900,
+  background: c.lightRed,
+  color: c.red,
 });
 const RetryButton = styled.button({
   border: 0,
@@ -89,20 +89,21 @@ const statusLabelOf: Record<string, string> = {
   paused: '중단',
   ended: '종료',
 };
-const statusToneOf: Record<string, 'blue' | 'gray' | 'red'> = {
+const statusToneOf: Record<string, 'blue' | 'green' | 'gray' | 'red'> = {
   active: 'blue',
   preparing: 'gray',
   paused: 'red',
-  ended: 'gray',
+  ended: 'green',
 };
 
-const formatPrice = (amount: number) => (amount > 0 ? `${amount.toLocaleString('ko-KR')}원` : '—');
+const formatPrice = (amount: number) => `${amount.toLocaleString('ko-KR')}원`;
 
 export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
   const [statusLabel, setStatusLabel] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const toast = useToast();
+  const hrefOf = useAdminHref();
 
   const adsQuery = generated.useListAdminAds({
     q: query || undefined,
@@ -145,6 +146,7 @@ export function AdminAdsScreen() {
 
   const handleActivity = (value: string) => {
     if (value !== '광고 중단하기') return;
+    if (pauseMutation.isPending) return;
     if (!selected) {
       toast.error('광고를 먼저 선택해주세요', '목록에서 중단할 광고 행을 클릭해주세요');
       return;
@@ -196,7 +198,7 @@ export function AdminAdsScreen() {
       ) : null}
       {adsQuery.isPending ? (
         <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
-      ) : rows.length === 0 ? (
+      ) : adsQuery.isError ? null : rows.length === 0 ? (
         <div style={{ padding: '24px 0', color: c.gray500 }}>조건에 맞는 광고가 없어요.</div>
       ) : (
         <AdminTable
