@@ -1,15 +1,55 @@
 'use client';
+import { useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Logo, PrimaryButton } from '@/components/biz/BizShell';
+import { useToast } from '@/components/common/Toast';
 import { orgProfile } from '@/data/biz-design';
-import { maskEmail, maskPhone } from '@/lib/mask';
-import { MaskedText } from '@/components/ui/MaskedText';
 
 const ICON = '/assets/icons';
 
 export function BizOperationsPage() {
+  const toast = useToast();
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [status, setStatus] = useState('');
+
+  const submitInquiry = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = {
+      name: name.trim(),
+      contact: contact.trim(),
+      content: content.trim(),
+    };
+    if (!values.name || !values.contact || !values.content) {
+      const message = '성함, 연락처, 문의 내용을 모두 입력해주세요.';
+      setStatus(message);
+      toast.error('입력 내용을 확인해주세요', message);
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus('문의 내용을 전송하고 있습니다.');
+    try {
+      await generated.submitOperationsInquiry(values);
+      setName('');
+      setContact('');
+      setContent('');
+      setStatus('문의가 접수되었습니다. 담당자가 확인 후 연락드리겠습니다.');
+      toast.success('문의가 접수되었습니다', '담당자가 확인 후 연락드리겠습니다.');
+    } catch {
+      const message = '문의 접수에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      setStatus(message);
+      toast.error('문의 접수 실패', message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <Wrap>
       <TopBlock>
@@ -21,23 +61,46 @@ export function BizOperationsPage() {
           </Brand>
           <Title>온라인 상담 및 견적 문의</Title>
         </Header>
-        <Form id="operations-inquiry" onSubmit={(e) => e.preventDefault()}>
+        <Form id="operations-inquiry" onSubmit={submitInquiry} noValidate>
           <FieldGroup>
             <FieldLabel htmlFor="op-name">성함</FieldLabel>
-            <TextInput id="op-name" name="name" />
+            <TextInput
+              id="op-name"
+              name="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              autoComplete="name"
+              required
+            />
           </FieldGroup>
           <FieldGroup>
-            <FieldLabel htmlFor="op-phone">연락처</FieldLabel>
-            <TextInput id="op-phone" name="phone" />
+            <FieldLabel htmlFor="op-contact">연락처</FieldLabel>
+            <TextInput
+              id="op-contact"
+              name="contact"
+              value={contact}
+              onChange={(event) => setContact(event.target.value)}
+              autoComplete="tel"
+              required
+            />
           </FieldGroup>
           <FieldGroup>
             <FieldLabel htmlFor="op-message">문의내용</FieldLabel>
-            <TextArea id="op-message" name="message" />
+            <TextArea
+              id="op-message"
+              name="content"
+              value={content}
+              onChange={(event) => setContent(event.target.value)}
+              required
+            />
           </FieldGroup>
         </Form>
-        <SubmitButton type="submit" form="operations-inquiry">
-          문의하기
+        <SubmitButton type="submit" form="operations-inquiry" disabled={submitting}>
+          {submitting ? '문의 접수 중...' : '문의하기'}
         </SubmitButton>
+        <Status role="status" aria-live="polite">
+          {status}
+        </Status>
       </TopBlock>
       <InfoRow>
         <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
@@ -115,6 +178,7 @@ const TextArea = styled.textarea({
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const SubmitButton = styled(PrimaryButton)({ width: 183, height: 37 });
+const Status = styled.p({ minHeight: 20, margin: 0, color: c.gray700, ...textStyle.metaText });
 
 const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center' });
 const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover' });
