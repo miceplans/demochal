@@ -27,7 +27,10 @@ export function TeamCard({ team = teams[0] }: { team?: Team }) {
         </Row>
         <Row style={{ justifyContent: 'space-between' }}>
           <Members>{team.members}</Members>
-          <Apply href="/applications/new">지원하기</Apply>
+          <Row gap={6} style={{ flexShrink: 0 }}>
+            <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
+            <Apply href="/applications/new">지원하기</Apply>
+          </Row>
         </Row>
       </div>
     </Card>
@@ -62,15 +65,29 @@ const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
 
 const Challenge = styled(Muted)({ color: c.gray700, [mobile]: textStyle.mSubText });
 
-const Members = styled(Muted)({ [mobile]: textStyle.mSubText });
+const Members = styled(Muted)({
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  minWidth: 0,
+  [mobile]: textStyle.mSubText,
+});
 
 const Apply = styled(Link)({
   color: c.primary,
   ...textStyle.overline,
+  whiteSpace: 'nowrap',
   border: `1px solid ${c.primary}`,
   borderRadius: 8,
   padding: '6px 12px',
   [mobile]: { padding: '6px 14px', fontWeight: 700 },
+});
+
+const Report = styled(Link)({
+  color: c.gray500,
+  ...textStyle.overline,
+  whiteSpace: 'nowrap',
+  padding: '6px 4px',
 });
 
 export const TeamGrid = styled.div({

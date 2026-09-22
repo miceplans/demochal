@@ -260,10 +260,11 @@ resource "aws_lb_listener" "https" {
 }
 
 locals {
-  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "TOSS_SECRET_KEY", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
+  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "TOSS_SECRET_KEY", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
   app_secrets = [for key in local.secret_keys : { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }]
   common_environment = [
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
+    { name = "DATABASE_SSL_CA_PATH", value = "/app/certs/global-bundle.pem" },
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
     { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
@@ -315,7 +316,7 @@ resource "aws_ecs_task_definition" "migrate" {
     image       = var.api_image != "" ? var.api_image : "public.ecr.aws/docker/library/busybox:latest"
     essential   = true
     command     = ["node", "dist/migrate.js"]
-    environment = [{ name = "NODE_ENV", value = "production" }]
+    environment = [{ name = "NODE_ENV", value = "production" }, { name = "DATABASE_SSL_CA_PATH", value = "/app/certs/global-bundle.pem" }]
     secrets     = local.migrate_secrets
     logConfiguration = {
       logDriver = "awslogs"

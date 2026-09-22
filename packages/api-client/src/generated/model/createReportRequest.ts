@@ -16,15 +16,28 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { CreateReportRequestTargetType } from './createReportRequestTargetType';
 
 /**
- * 챌린지/팀 모집/수상작/사용자 프로필
+ * 신고하기 폼(`/reports/new`) 제출 바디
  */
-export type ReportTargetType = (typeof ReportTargetType)[keyof typeof ReportTargetType];
-
-export const ReportTargetType = {
-  challenge: 'challenge',
-  team: 'team',
-  award: 'award',
-  user: 'user',
-} as const;
+export interface CreateReportRequest {
+  /** 신고 대상 종류 — 공모전/팀 모집글/수상작/사용자 프로필 */
+  targetType: CreateReportRequestTargetType;
+  /** 신고 대상 id (없으면 미상 대상) */
+  targetId?: string;
+  /**
+   * 신고 사유 (예: 비방)
+   * @maxLength 200
+   */
+  summary: string;
+  /** 자세한 신고 내용 */
+  detail?: string;
+  /** 피신고자 id (targetType=user일 때 사용) */
+  reportedUserId?: string;
+  /**
+   * 신고 대상의 소속(기관명 등)
+   * @maxLength 200
+   */
+  org?: string;
+}

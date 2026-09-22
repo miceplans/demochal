@@ -69,6 +69,8 @@ export * from './contentBlockContent';
 export * from './contentBlockType';
 export * from './createAdBody';
 export * from './createChallengeRequest';
+export * from './createReportRequest';
+export * from './createReportRequestTargetType';
 export * from './createTeamRequest';
 export * from './dailyMetric';
 export * from './externalLink';
