@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(13);
+    expect(journal.entries).toHaveLength(14);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -170,6 +170,7 @@ describe('migration chain coverage', () => {
       'reports',
       'admin_settings',
       'outbox_events',
+      'billing_auth_attempts',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
@@ -284,10 +285,24 @@ describe('0011_add_outbox_events migration', () => {
   });
 });
 
-describe('0012_billing_auth_attempts migration', () => {
-  it('creates the billing authorization attempt ledger without destructive DDL', () => {
+describe('0012_add_naver_auth migration', () => {
+  it('adds the Naver OAuth identity column without destructive DDL', () => {
     const tag = journal.entries[12]?.tag;
-    expect(tag).toBe('0012_billing_auth_attempts');
+    expect(tag).toBe('0012_add_naver_auth');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "naver_subject"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "users_naver_subject_unique" ON "users" ("naver_subject")',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0013_billing_auth_attempts migration', () => {
+  it('creates the billing authorization attempt ledger without destructive DDL', () => {
+    const tag = journal.entries[13]?.tag;
+    expect(tag).toBe('0013_billing_auth_attempts');
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS "billing_auth_attempts"');
