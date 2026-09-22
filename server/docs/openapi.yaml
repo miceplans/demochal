@@ -326,6 +326,29 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Challenge' }
+  /challenges/recommended:
+    get:
+      tags: [Challenges]
+      summary: 관심사 기반 추천 챌린지 조회
+      operationId: listRecommendedChallenges
+      x-impl-status: implemented
+      description: |
+        로그인 사용자의 저장 관심사와 온보딩 설문 관심사를 병합해 published·미종료 챌린지를
+        결정론적으로 정렬한다. 관심사가 없으면 인기와 최신순으로 fallback한다.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 6, minimum: 1, maximum: 20 }
+      responses:
+        '200':
+          description: 추천 챌린지 목록
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
   /challenges/{id}:
     get:
       tags: [Challenges]

@@ -109,6 +109,8 @@ export * from './listMyBookmarksSort';
 export * from './listMyNotificationsParams';
 export * from './listPaymentHistory200';
 export * from './listPaymentHistoryParams';
+export * from './listRecommendedChallenges200';
+export * from './listRecommendedChallengesParams';
 export * from './listTeamsParams';
 export * from './login200';
 export * from './loginBody';

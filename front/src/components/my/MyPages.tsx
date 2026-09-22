@@ -48,6 +48,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { generated } from '@semochal/api-client';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -422,6 +423,16 @@ export function BookmarksPage() {
 export function InterestsPage() {
   const state = useUserStore();
   const toast = useToast();
+  const saveInterests = generated.useSaveInterests();
+  const save = () => {
+    saveInterests.mutate(
+      { data: { categories: state.interests } },
+      {
+        onSuccess: () => toast.success('관심분야를 저장했어요'),
+        onError: () => toast.error('관심분야를 저장하지 못했어요. 다시 시도해주세요.'),
+      },
+    );
+  };
   return (
     <MyShell title="관심분야 설정">
       <Stack gap={24}>
@@ -448,7 +459,7 @@ export function InterestsPage() {
             </Wrap>
           </Stack>
         ))}
-        <Button style={{ width: 160 }} onClick={() => toast.success('관심분야를 저장했어요')}>
+        <Button style={{ width: 160 }} onClick={save} disabled={saveInterests.isPending}>
           저장하기
         </Button>
       </Stack>

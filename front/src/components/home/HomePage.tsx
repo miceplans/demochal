@@ -8,9 +8,10 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
-import { desktopContests, teams } from '@/data/user-design';
+import { desktopContests, teams, type Contest } from '@/data/user-design';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { generated } from '@semochal/api-client';
 
 const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
@@ -49,6 +50,15 @@ export function HomePage() {
     getAdPreviewPriceServerSnapshot,
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: recommended } = generated.useListRecommendedChallenges(
+    { limit: 6 },
+    { query: { enabled: auth?.status === 200 } },
+  );
+  const recommendationContests =
+    auth?.status === 200
+      ? (recommended?.data.items ?? []).map(challengeToContest)
+      : desktopContests;
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -113,15 +123,24 @@ export function HomePage() {
               <div style={{ height: 16 }} />
               <DesktopOnly>
                 <Rail>
-                  {desktopContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} />
+                  {recommendationContests.slice(0, 4).map((contest) => (
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={`/contests/${contest.id}`}
+                    />
                   ))}
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
                 <Rail>
-                  {desktopContests.slice(0, 2).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} simple />
+                  {recommendationContests.slice(0, 2).map((contest) => (
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={`/contests/${contest.id}`}
+                      simple
+                    />
                   ))}
                 </Rail>
               </MobileOnly>
@@ -191,6 +210,22 @@ export function HomePage() {
       </UserShell>
     </PreviewLock>
   );
+}
+
+function challengeToContest(challenge: {
+  id?: string;
+  title?: string;
+  category?: string;
+  endDate?: string;
+}): Contest {
+  const endDate = challenge.endDate ? new Date(challenge.endDate).getTime() : Date.now();
+  return {
+    id: challenge.id ?? '',
+    title: challenge.title ?? '챌린지',
+    category: challenge.category ?? '기타',
+    days: Math.max(0, Math.ceil((endDate - Date.now()) / (24 * 60 * 60 * 1000))),
+    teams: 0,
+  };
 }
 
 const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });

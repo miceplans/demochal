@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, lt, ne, or } from 'drizzle-orm';
+import { and, count, desc, eq, gte, gt, inArray, isNull, lt, ne, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -8,6 +8,7 @@ import {
   challengeViews,
   challenges,
   orders,
+  users,
 } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
@@ -165,6 +166,100 @@ export class ChallengesService {
 
     const backfill = fallback.filter((c) => !excludeIds.has(c.id)).slice(0, 3 - byCategory.length);
     return [...byCategory, ...backfill];
+  }
+
+  async listRecommended(userId: string, requestedLimit?: number) {
+    const limit = Math.max(1, Math.min(20, Number.isFinite(requestedLimit) ? requestedLimit! : 6));
+    const [user] = await this.db
+      .select({ interests: users.interests, onboardingSurvey: users.onboardingSurvey })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const surveyInterests = this.surveyInterests(user?.onboardingSurvey);
+    const interests = [...new Set([...(user?.interests ?? []), ...surveyInterests])];
+    const now = new Date();
+    // Low-volume assumption: score only the 200 newest eligible candidates. Revisit with SQL scoring
+    // and an index when the published catalogue grows beyond this bounded window.
+    const candidates = await this.db
+      .select()
+      .from(challenges)
+      .where(
+        and(
+          eq(challenges.status, 'published'),
+          or(isNull(challenges.endDate), gt(challenges.endDate, now)),
+        ),
+      )
+      .orderBy(desc(challenges.createdAt))
+      .limit(200);
+
+    if (candidates.length === 0) return { items: [] };
+
+    const candidateIds = candidates.map((challenge) => challenge.id);
+    const [viewRows, bookmarkRows] = await Promise.all([
+      this.db
+        .select({ challengeId: challengeViews.challengeId, total: count() })
+        .from(challengeViews)
+        .where(inArray(challengeViews.challengeId, candidateIds))
+        .groupBy(challengeViews.challengeId),
+      this.db
+        .select({ challengeId: bookmarks.challengeId, total: count() })
+        .from(bookmarks)
+        .where(inArray(bookmarks.challengeId, candidateIds))
+        .groupBy(bookmarks.challengeId),
+    ]);
+    const views = new Map(viewRows.map((row) => [row.challengeId, Number(row.total)]));
+    const bookmarkCounts = new Map(bookmarkRows.map((row) => [row.challengeId, Number(row.total)]));
+
+    return {
+      items: candidates
+        .map((challenge) => {
+          const interestScore =
+            interests.filter((interest) => this.interestsMatch(interest, challenge.category))
+              .length * 100;
+          const popularityScore =
+            Math.min(views.get(challenge.id) ?? 0, 50) +
+            3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
+          return { challenge, score: interestScore + popularityScore };
+        })
+        .sort(
+          (left, right) =>
+            right.score - left.score ||
+            right.challenge.createdAt.getTime() - left.challenge.createdAt.getTime() ||
+            left.challenge.id.localeCompare(right.challenge.id),
+        )
+        .slice(0, limit)
+        .map(({ challenge }) => challenge),
+    };
+  }
+
+  private surveyInterests(survey: unknown): string[] {
+    if (!survey || typeof survey !== 'object') return [];
+    const interests = (survey as { interests?: unknown }).interests;
+    return Array.isArray(interests)
+      ? interests.filter((interest): interest is string => typeof interest === 'string')
+      : [];
+  }
+
+  private interestsMatch(interest: string, category: string | null): boolean {
+    if (!category) return false;
+    const interestTokens = this.normalizeInterestTokens(interest);
+    const categoryTokens = this.normalizeInterestTokens(category);
+    return interestTokens.some((interestToken) =>
+      categoryTokens.some(
+        (categoryToken) =>
+          interestToken.includes(categoryToken) || categoryToken.includes(interestToken),
+      ),
+    );
+  }
+
+  private normalizeInterestTokens(value: string): string[] {
+    return value
+      .toLowerCase()
+      .replace(/[·/\-_\s()]/g, ' ')
+      .split(' ')
+      .map((token) => token.replace(/[·/\-_\s()]/g, ''))
+      .filter(Boolean);
   }
 
   private async statWithDelta(
