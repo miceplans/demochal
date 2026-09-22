@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  ConflictException,
   Inject,
   Injectable,
   Logger,
@@ -11,6 +12,7 @@ import { env } from '../../config/env.js';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
+import type { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 
 export interface TossWebhookPayload {
   eventType: string;
@@ -63,14 +65,96 @@ export class PaymentsService {
       this.logger.debug(`Toss payment ${paymentKey} awaiting deposit for order ${orderId}`);
       return;
     }
+    if (status === 'ABORTED') {
+      await this.handleAborted(orderId, paymentKey);
+      return;
+    }
     if (status === 'PARTIAL_CANCELED') {
       await this.handlePartialCanceled(orderId, paymentKey);
       return;
     }
 
-    // TODO: other non-terminal/rare Toss statuses (ABORTED, IN_PROGRESS —
+    // TODO: other non-terminal/rare Toss statuses (IN_PROGRESS —
     // https://docs.tosspayments.com/reference#status) are still silently
     // ignored; none of them require a balance reconciliation today.
+  }
+
+  /**
+   * 토스 successUrl 리다이렉트에 대응하는 클라이언트 호출 승인 경로. 카드 결제는 토스가
+   * 웹훅 없이도 이 승인 호출을 요구하므로, 폴리만으로는 주문이 paid에 도달할 수 없다.
+   * 결제 저장과 주문 확정은 같은 트랜잭션에서 처리하고, 이미 확정된 주문의 재요청은
+   * 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등).
+   */
+  async confirmPayment(userId: string, dto: ConfirmPaymentDto) {
+    const order = await this.ordersService.findById(dto.orderId, userId);
+    if (order.status === 'paid') return order;
+    if (order.status !== 'pending') {
+      throw new ConflictException('결제할 수 없는 주문입니다.');
+    }
+    if (dto.amount !== order.amount) {
+      this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
+      throw new UnauthorizedException('Payment amount does not match the order');
+    }
+
+    const tossPayment = await this.confirmWithToss(dto);
+    if (
+      tossPayment.status !== 'DONE' ||
+      tossPayment.orderId !== order.id ||
+      tossPayment.totalAmount !== order.amount
+    ) {
+      this.logger.warn(`Rejected unverified Toss confirmation for order ${order.id}`);
+      throw new UnauthorizedException('Toss payment did not match the order');
+    }
+
+    // The payment write and the order transition must commit or roll back
+    // together — a paid order without its payment row (or vice versa) is
+    // unrecoverable.
+    return this.db.transaction(async (tx) => {
+      await this.persistPayment(tx, {
+        orderId: order.id,
+        provider: 'toss',
+        providerPaymentKey: tossPayment.paymentKey,
+        amount: tossPayment.totalAmount,
+        status: 'paid',
+        approvedAt: new Date(),
+      });
+
+      return this.ordersService.settleOrderPaid(tx, order.id);
+    });
+  }
+
+  private async confirmWithToss(dto: ConfirmPaymentDto): Promise<TossPayment> {
+    if (!env.tossSecretKey) {
+      throw new BadGatewayException('Toss payment confirmation is not configured');
+    }
+
+    const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
+    let response;
+    try {
+      response = await fetchJson('https://api.tosspayments.com/v1/payments/confirm', {
+        method: 'POST',
+        headers: { Authorization: `Basic ${authorization}` },
+        body: JSON.stringify({
+          paymentKey: dto.paymentKey,
+          orderId: dto.orderId,
+          amount: dto.amount,
+        }),
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch (error) {
+      this.logger.error(
+        `Toss payment confirm transport failed for order ${dto.orderId}`,
+        (error as Error | undefined)?.stack,
+      );
+      throw new BadGatewayException('Toss payment confirmation failed');
+    }
+    if (!response.ok) {
+      this.logger.error(
+        `Toss payment confirm rejected for order ${dto.orderId}: HTTP ${response.status}`,
+      );
+      throw new BadGatewayException('Toss payment confirmation failed');
+    }
+    return (await response.json()) as TossPayment;
   }
 
   private async handleDone(orderId: string, paymentKey: string): Promise<void> {
@@ -148,26 +232,40 @@ export class PaymentsService {
   }
 
   private async handleExpired(orderId: string, paymentKey: string): Promise<void> {
+    await this.handleNeverCharged(orderId, paymentKey, 'EXPIRED');
+  }
+
+  // ABORTED: 인증은 끝났지만 승인까지 이어지지 않은 결제(사용자 중도 이탈 등).
+  // EXPIRED와 동일하게 '결제되지 않음'으로 정리해 pending 주문을 계속 남기지 않는다.
+  private async handleAborted(orderId: string, paymentKey: string): Promise<void> {
+    await this.handleNeverCharged(orderId, paymentKey, 'ABORTED');
+  }
+
+  private async handleNeverCharged(
+    orderId: string,
+    paymentKey: string,
+    tossStatus: 'EXPIRED' | 'ABORTED',
+  ): Promise<void> {
     const [order, tossPayment] = await Promise.all([
       this.ordersService.findByIdInternal(orderId),
       this.getTossPayment(paymentKey),
     ]);
 
     if (
-      tossPayment.status !== 'EXPIRED' ||
+      tossPayment.status !== tossStatus ||
       tossPayment.orderId !== order.id ||
       tossPayment.totalAmount !== order.amount
     ) {
-      this.logger.warn(`Rejected unverified Toss expiry for order ${orderId}`);
+      this.logger.warn(`Rejected unverified Toss ${tossStatus} for order ${orderId}`);
       throw new UnauthorizedException('Toss payment did not match the order');
     }
 
     // A DONE webhook may have already settled this order before this (possibly
-    // out-of-order) EXPIRED notification arrived — never cancel a paid order.
+    // out-of-order) terminal notification arrived — never cancel a paid order.
     if (order.status !== 'pending') return;
 
     // The payment write and the order transition must commit or roll back
-    // together — an expired payment whose order stays pending is unrecoverable.
+    // together — an unsettled payment whose order stays pending is unrecoverable.
     await this.db.transaction(async (tx) => {
       await this.persistPayment(tx, {
         orderId: order.id,

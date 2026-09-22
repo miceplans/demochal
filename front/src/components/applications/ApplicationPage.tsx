@@ -167,6 +167,14 @@ export function ApplicationPage() {
       return;
     }
     setSubmitting(true);
+    // 결제창 진입 실패·예외 시 서버에 만든 pending 주문을 정리해 미결제 주문이 남지 않게 한다.
+    let pendingOrderId: string | null = null;
+    const cancelPendingOrder = async () => {
+      if (!pendingOrderId) return;
+      const orderId = pendingOrderId;
+      pendingOrderId = null;
+      await adApi.orders.cancel(orderId).catch(() => {});
+    };
     try {
       const result = await adApi.applications.apply({
         challengeId,
@@ -179,15 +187,18 @@ export function ApplicationPage() {
         router.push('/my/applications');
         return;
       }
+      pendingOrderId = result.order.id;
       const started = await requestTossPayment({
         orderId: result.order.id,
         amount: result.order.amount,
         orderName: result.order.name,
       });
       if (!started) {
+        await cancelPendingOrder();
         toast.error('결제를 시작할 수 없어요', 'NEXT_PUBLIC_TOSS_CLIENT_KEY가 설정되지 않았어요');
       }
     } catch {
+      await cancelPendingOrder();
       toast.error('신청에 실패했어요', '잠시 후 다시 시도해주세요');
     } finally {
       setSubmitting(false);

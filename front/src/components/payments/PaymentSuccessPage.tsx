@@ -106,14 +106,28 @@ export function PaymentSuccessPage() {
       }
     };
 
-    void poll();
+    // 카드 인증 성공 후 서버 승인을 먼저 요청한다 — 토스 카드 결제는 이 승인 없이는
+    // 웹훅 없이 종료되지 않는다. 성공하면 결제 저장+주문 확정이 동기 처리되므로
+    // 이후 폴리는 확정 상태를 확인만 하고, 실패(네트워크/토스 거절)는 폴리로 평가한다.
+    void (async () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const amount = Number(params.get('amount'));
+        if (paymentKey && Number.isFinite(amount) && amount > 0) {
+          await adApi.payments.confirm({ orderId, paymentKey, amount });
+        }
+      } catch {
+        // 승인 호출 실패는 폴리(pending/canceled/timeout)로 평가한다.
+      }
+      poll();
+    })();
 
     return () => {
       cancelled = true;
       controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [valid, orderId]);
+  }, [valid, orderId, paymentKey]);
 
   if (!valid) {
     return (

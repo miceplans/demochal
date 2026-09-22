@@ -46,3 +46,22 @@ export async function requestTossPayment({
   });
   return true;
 }
+
+/**
+ * 토스 빌링(자동결제) 카드 등록창을 연다. 성공 시 successUrl로 authKey가 붙어 리다이렉트되고,
+ * 이후 POST /billing/authorizations/issue에서 서버가 billingKey로 교환·저장한다.
+ * customerKey는 비즈니스마다 달라 인스턴스 캐시 없이 매번 초기화한다.
+ * @returns 키 미설정으로 창을 열지 못한 경우 false
+ */
+export async function requestTossBillingAuth(customerKey: string): Promise<boolean> {
+  const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
+  if (!clientKey) return false;
+  const sdk = await loadTossPayments(clientKey);
+  const payment = sdk.payment({ customerKey });
+  await payment.requestBillingAuth({
+    method: 'CARD',
+    successUrl: `${window.location.origin}/biz/billing/auth/success`,
+    failUrl: `${window.location.origin}/biz/billing/auth/fail`,
+  });
+  return true;
+}

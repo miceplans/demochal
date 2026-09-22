@@ -16,10 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { Application } from './application';
+import type { ApplyChallenge201Order } from './applyChallenge201Order';
 
-export type TossWebhookPayloadData = {
-  paymentKey: string;
-  orderId: string;
-  /** DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT */
-  status: string;
+export type ApplyChallenge201 = Application & {
+  /**
+   * 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+   * @nullable
+   */
+  order?: ApplyChallenge201Order;
 };

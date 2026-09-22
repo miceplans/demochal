@@ -17,9 +17,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type TossWebhookPayloadData = {
-  paymentKey: string;
-  orderId: string;
-  /** DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT */
-  status: string;
+export type IssueBillingAuthorizationBody = {
+  authKey: string;
 };
