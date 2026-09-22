@@ -62,6 +62,6 @@ export const theme = {
   shadow: {
     toast: '4px 4px 10px 0 rgb(0 0 0 / 20%)',
     focus: '2px 2px 20px 0 rgb(154 198 255 / 45%)',
-    carouselNav: '0 4px 12px rgb(27 33 44 / 16%)',
+    carouselNav: '0 1px 3px rgb(0 0 0 / 70%)',
   },
 } as const;
