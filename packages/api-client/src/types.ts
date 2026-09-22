@@ -208,6 +208,15 @@ export interface Ad {
   createdAt: string;
 }
 
+/** Public, currently serving ad creative used by the user-facing home page. */
+export interface PublicAd {
+  id: string;
+  title: string;
+  imageUrl: string;
+  landingUrl?: string | null;
+  placement: 'hero' | 'gallery';
+}
+
 export interface CreateAdRequest {
   expectedDailyPrice?: number;
   productId: string;

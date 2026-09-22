@@ -1014,6 +1014,26 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AdProduct' } }
+  /ads/public:
+    get:
+      tags: [Ads]
+      summary: 홈 게재 중 광고 조회
+      operationId: listPublicAds
+      x-impl-status: implemented
+      description: 인증 없이 홈 캐러셀에 표시할 현재 게재 중인 광고 소재를 위치별로 반환한다. 내부 광고주·결제 정보와 이미지가 준비되지 않은 광고는 포함하지 않는다.
+      parameters:
+        - name: placement
+          in: query
+          required: true
+          schema: { type: string, enum: [hero, gallery] }
+      responses:
+        '200':
+          description: 현재 게재 중이며 이미지가 준비된 공개 광고 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PublicAd' } }
+        '400':
+          description: 지원하지 않는 광고 위치
   /ads:
     get:
       tags: [Ads]
@@ -1930,6 +1950,15 @@ components:
         impressions: { type: integer, nullable: true, description: 누적 노출수 (준비중이면 null) }
         bookmarks: { type: integer, nullable: true, description: 누적 북마크수 (준비중이면 null) }
         paidAmount: { type: integer, description: 결제 금액 (원) }
+    PublicAd:
+      type: object
+      required: [id, title, imageUrl, placement]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, description: 광고 대체 텍스트 }
+        imageUrl: { type: string, description: 공개 광고 소재 URL }
+        landingUrl: { type: string, nullable: true, description: 광고 클릭 시 이동할 URL }
+        placement: { type: string, enum: [hero, gallery] }
     AdReport:
       type: object
       properties:

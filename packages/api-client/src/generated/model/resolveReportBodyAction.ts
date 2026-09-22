@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ResolveReportBodyAction =
-  (typeof ResolveReportBodyAction)[keyof typeof ResolveReportBodyAction];
+export type ResolveReportBodyAction = typeof ResolveReportBodyAction[keyof typeof ResolveReportBodyAction];
+
 
 export const ResolveReportBodyAction = {
   resolve: 'resolve',

@@ -16,11 +16,8 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ListPublicAdsPlacement } from './listPublicAdsPlacement';
 
-export type FileMetaBucket = typeof FileMetaBucket[keyof typeof FileMetaBucket];
-
-
-export const FileMetaBucket = {
-  public: 'public',
-  private: 'private',
-} as const;
+export type ListPublicAdsParams = {
+placement: ListPublicAdsPlacement;
+};

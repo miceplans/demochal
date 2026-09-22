@@ -16,11 +16,18 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { PublicAdPlacement } from './publicAdPlacement';
 
-export type FileMetaBucket = typeof FileMetaBucket[keyof typeof FileMetaBucket];
-
-
-export const FileMetaBucket = {
-  public: 'public',
-  private: 'private',
-} as const;
+export interface PublicAd {
+  id: string;
+  /** 광고 대체 텍스트 */
+  title: string;
+  /** 공개 광고 소재 URL */
+  imageUrl: string;
+  /**
+     * 광고 클릭 시 이동할 URL
+     * @nullable
+     */
+  landingUrl?: string | null;
+  placement: PublicAdPlacement;
+}

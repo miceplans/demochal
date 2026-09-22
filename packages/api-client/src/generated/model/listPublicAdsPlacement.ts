@@ -17,10 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type FileMetaBucket = typeof FileMetaBucket[keyof typeof FileMetaBucket];
+export type ListPublicAdsPlacement = typeof ListPublicAdsPlacement[keyof typeof ListPublicAdsPlacement];
 
 
-export const FileMetaBucket = {
-  public: 'public',
-  private: 'private',
+export const ListPublicAdsPlacement = {
+  hero: 'hero',
+  gallery: 'gallery',
 } as const;

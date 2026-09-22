@@ -28,13 +28,13 @@ export interface AdSlotPricing {
   /** @nullable */
   currentAdId?: string | null;
   /**
-   * 현재 광고사 (예: 부산광역시)
-   * @nullable
-   */
+     * 현재 광고사 (예: 부산광역시)
+     * @nullable
+     */
   organization?: string | null;
   /**
-   * 노출 기간 (예: '8/24~9/24')
-   * @nullable
-   */
+     * 노출 기간 (예: '8/24~9/24')
+     * @nullable
+     */
   period?: string | null;
 }

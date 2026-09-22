@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListMyBookmarksSort = (typeof ListMyBookmarksSort)[keyof typeof ListMyBookmarksSort];
+export type ListMyBookmarksSort = typeof ListMyBookmarksSort[keyof typeof ListMyBookmarksSort];
+
 
 export const ListMyBookmarksSort = {
   deadline: 'deadline',

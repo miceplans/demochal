@@ -20,7 +20,8 @@
 /**
  * 챌린지/팀 모집/수상작
  */
-export type ReportTargetType = (typeof ReportTargetType)[keyof typeof ReportTargetType];
+export type ReportTargetType = typeof ReportTargetType[keyof typeof ReportTargetType];
+
 
 export const ReportTargetType = {
   challenge: 'challenge',

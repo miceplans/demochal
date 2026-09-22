@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type PresignedUploadRequestBucket =
-  (typeof PresignedUploadRequestBucket)[keyof typeof PresignedUploadRequestBucket];
+export type PresignedUploadRequestBucket = typeof PresignedUploadRequestBucket[keyof typeof PresignedUploadRequestBucket];
+
 
 export const PresignedUploadRequestBucket = {
   public: 'public',

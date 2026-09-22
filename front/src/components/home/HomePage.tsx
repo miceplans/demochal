@@ -1,5 +1,5 @@
 'use client';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
@@ -8,6 +8,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
+import { generated } from '@semochal/api-client';
 import { desktopContests, teams } from '@/data/user-design';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -16,15 +17,10 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-const heroAds = Array.from({ length: 3 }, () => ({
-  src: '/assets/figma-ads/home-hero.png',
-  alt: 'PIZZ FLEX 브랜드 광고',
-}));
-
-const galleryAds = Array.from({ length: 6 }, () => ({
-  src: '/assets/figma-ads/home-gallery.png',
-  alt: '경기도사회적경제원 행사 광고',
-}));
+const fallbackAds = {
+  hero: [{ src: '/assets/ads/hero-fallback.png', alt: '세모챌 광고' }],
+  gallery: [{ src: '/assets/ads/gallery-fallback.png', alt: '세모챌 광고' }],
+} as const;
 
 function MoreIcon() {
   return (
@@ -41,12 +37,47 @@ function MoreIcon() {
 }
 
 export function HomePage() {
+  const [heroAds, setHeroAds] = useState<Array<{ src: string; alt: string; href?: string }>>(
+    fallbackAds.hero,
+  );
+  const [galleryAds, setGalleryAds] = useState<
+    Array<{ src: string; alt: string; href?: string }>
+  >(fallbackAds.gallery);
   const adPriceParam = useSyncExternalStore(
     noopSubscribe,
     getAdPreviewPriceSnapshot,
     getAdPreviewPriceServerSnapshot,
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+
+  useEffect(() => {
+    let mounted = true;
+    const loadAds = async () => {
+      const [hero, gallery] = await Promise.allSettled([
+        generated.listPublicAds({ placement: 'hero' }),
+        generated.listPublicAds({ placement: 'gallery' }),
+      ]);
+      if (!mounted) return;
+      if (hero.status === 'fulfilled' && hero.value.status === 200 && hero.value.data.length > 0) {
+        setHeroAds(
+          hero.value.data.map((ad) => ({ src: ad.imageUrl, alt: ad.title, href: ad.landingUrl ?? undefined })),
+        );
+      }
+      if (gallery.status === 'fulfilled' && gallery.value.status === 200 && gallery.value.data.length > 0) {
+        setGalleryAds(
+          gallery.value.data.map((ad) => ({
+            src: ad.imageUrl,
+            alt: ad.title,
+            href: ad.landingUrl ?? undefined,
+          })),
+        );
+      }
+    };
+    void loadAds();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>

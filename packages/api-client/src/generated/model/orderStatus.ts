@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type OrderStatus = (typeof OrderStatus)[keyof typeof OrderStatus];
+export type OrderStatus = typeof OrderStatus[keyof typeof OrderStatus];
+
 
 export const OrderStatus = {
   pending: 'pending',

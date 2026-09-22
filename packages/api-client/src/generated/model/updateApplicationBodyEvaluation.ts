@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateApplicationBodyEvaluation =
-  (typeof UpdateApplicationBodyEvaluation)[keyof typeof UpdateApplicationBodyEvaluation];
+export type UpdateApplicationBodyEvaluation = typeof UpdateApplicationBodyEvaluation[keyof typeof UpdateApplicationBodyEvaluation];
+
 
 export const UpdateApplicationBodyEvaluation = {
   undecided: 'undecided',

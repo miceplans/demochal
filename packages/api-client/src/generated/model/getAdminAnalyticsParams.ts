@@ -18,10 +18,10 @@
  */
 
 export type GetAdminAnalyticsParams = {
-  /**
-   * 광고 번호 (특정 광고 리포트 시, ?ad=N)
-   */
-  ad?: number;
-  from?: string;
-  to?: string;
+/**
+ * 광고 번호 (특정 광고 리포트 시, ?ad=N)
+ */
+ad?: number;
+from?: string;
+to?: string;
 };

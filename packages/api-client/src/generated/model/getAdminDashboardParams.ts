@@ -19,8 +19,8 @@
 import type { GetAdminDashboardRange } from './getAdminDashboardRange';
 
 export type GetAdminDashboardParams = {
-  /**
-   * 트래픽 차트 기간 (탭: 7 days / 30 days / 1년)
-   */
-  range?: GetAdminDashboardRange;
+/**
+ * 트래픽 차트 기간 (탭: 7 days / 30 days / 1년)
+ */
+range?: GetAdminDashboardRange;
 };

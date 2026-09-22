@@ -20,7 +20,8 @@
 /**
  * 활성/정지 뱃지
  */
-export type AdminUserEntryStatus = (typeof AdminUserEntryStatus)[keyof typeof AdminUserEntryStatus];
+export type AdminUserEntryStatus = typeof AdminUserEntryStatus[keyof typeof AdminUserEntryStatus];
+
 
 export const AdminUserEntryStatus = {
   active: 'active',

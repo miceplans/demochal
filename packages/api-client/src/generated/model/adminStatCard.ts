@@ -29,8 +29,8 @@ export interface AdminStatCard {
   /** 보조 문구 (예: +12 이번 주 / 월간) */
   meta?: string;
   /**
-   * 도트 색상 (hex, 예: #0877FF)
-   * @nullable
-   */
+     * 도트 색상 (hex, 예: #0877FF)
+     * @nullable
+     */
   dot?: string | null;
 }

@@ -8,7 +8,7 @@ import {
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, gt, inArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lte, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
@@ -88,6 +88,45 @@ export class AdsService implements OnModuleInit {
       .where(and(...conditions))
       .orderBy(desc(ads.createdAt));
     return this.withImageUrls(rows);
+  }
+
+  async listPublic(placement: 'hero' | 'gallery') {
+    const now = new Date();
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const rows = await this.db
+      .select({
+        id: ads.id,
+        title: ads.title,
+        imageFileId: ads.imageFileId,
+        landingUrl: ads.landingUrl,
+        placement: adProducts.placement,
+        startDate: ads.startDate,
+        createdAt: ads.createdAt,
+      })
+      .from(ads)
+      .innerJoin(adProducts, eq(ads.productId, adProducts.id))
+      .where(
+        and(
+          eq(ads.status, 'active'),
+          eq(adProducts.placement, placement),
+          lte(ads.startDate, now),
+          // Ad dates are stored at midnight. Compare the end date with the
+          // start of today so a contract remains visible through its stated
+          // end date, not only until that day's first instant.
+          gte(ads.endDate, todayStart),
+        ),
+      )
+      .orderBy(asc(ads.startDate), asc(ads.createdAt));
+
+    return (await this.withImageUrls(rows))
+      .filter((ad): ad is typeof ad & { imageUrl: string } => ad.imageUrl !== null)
+      .map(({ id, title, imageUrl, landingUrl, placement: adPlacement }) => ({
+        id,
+        title,
+        imageUrl,
+        landingUrl,
+        placement: adPlacement as 'hero' | 'gallery',
+      }));
   }
 
   // Promoted ad creatives live in the public bucket; resolve imageFileId to a

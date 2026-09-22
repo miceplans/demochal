@@ -18,11 +18,11 @@
  */
 
 export type ListTeamsParams = {
-  challengeId?: string;
-  /**
-   * 필요 역할 (기획/디자인/개발 등)
-   */
-  role?: string;
-  region?: string;
-  q?: string;
+challengeId?: string;
+/**
+ * 필요 역할 (기획/디자인/개발 등)
+ */
+role?: string;
+region?: string;
+q?: string;
 };

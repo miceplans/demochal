@@ -17,8 +17,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type SaveNotificationSettingsBody = {
-  [key: string]: {
-    enabled?: boolean;
-  };
-};
+export type SaveNotificationSettingsBody = {[key: string]: {
+  enabled?: boolean;
+}};
