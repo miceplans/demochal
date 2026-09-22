@@ -213,6 +213,7 @@ const Sidebar = styled(DesktopOnly)({
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
+  minWidth: 0,
   position: 'sticky',
   top: 24,
 });
