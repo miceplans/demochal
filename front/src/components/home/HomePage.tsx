@@ -16,10 +16,11 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-const heroAds = Array.from({ length: 3 }, () => ({
-  src: '/assets/figma-ads/home-hero.png',
-  alt: 'PIZZ FLEX 브랜드 광고',
-}));
+const heroAds = [
+  { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
+  { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
+  { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
+];
 
 const galleryAds = Array.from({ length: 6 }, () => ({
   src: '/assets/figma-ads/home-gallery.png',
