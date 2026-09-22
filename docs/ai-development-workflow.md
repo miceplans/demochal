@@ -87,8 +87,8 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 3. 깨끗한 작업 트리 또는 별도 worktree에서 branch를 만든다. 사용자 변경이 있는 worktree는 사용하지 않는다.
 
 ```bash
-git worktree add ../demochal-issue-123 -b fix/#123 origin/main
-cd ../demochal-issue-123
+git worktree add ../semochall-issue-123 -b fix/#123 origin/main
+cd ../semochall-issue-123
 ./scripts/ai-workflow.sh start 123
 ```
 
