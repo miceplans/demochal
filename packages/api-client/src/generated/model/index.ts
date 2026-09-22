@@ -64,6 +64,7 @@ export * from './challengeStats';
 export * from './challengeStatus';
 export * from './checkHealth200';
 export * from './checkHealth503';
+export * from './confirmPaymentRequest';
 export * from './contentBlock';
 export * from './contentBlockContent';
 export * from './contentBlockType';
