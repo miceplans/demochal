@@ -142,7 +142,7 @@ const NavButton = styled.button<{
   [direction === 'prev' ? 'left' : 'right']: navOffset[variant],
   '& svg': {
     opacity: 0.7,
-    filter: `drop-shadow(${shadows.carouselNav})`,
+    filter: `drop-shadow(${shadows.carouselNav}) drop-shadow(0 3px 8px rgb(0 0 0 / 45%))`,
     transition: 'transform 0.15s ease, opacity 0.15s ease',
   },
   '&:hover svg': { transform: 'scale(1.15)', opacity: 1 },
@@ -165,7 +165,7 @@ function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
       <path
         d={direction === 'prev' ? 'M9 3.5 5.5 7 9 10.5' : 'M5 3.5 8.5 7 5 10.5'}
         stroke={c.white}
-        strokeWidth="1.4"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
