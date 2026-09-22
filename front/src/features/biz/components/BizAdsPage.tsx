@@ -15,7 +15,7 @@ import {
   type AdPlacement,
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
-import type { Ad, AdProduct, Notification } from '@semochal/api-client';
+import { ApiError, type Ad, type AdProduct, type Notification } from '@semochal/api-client';
 import { adApi, adError } from '@/lib/ad-api';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
@@ -46,7 +46,6 @@ function formatSlash(dateKey: string) {
 export function BizAdsPage() {
   const [contracts, setContracts] = useState<Ad[]>([]);
   const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
-  const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
@@ -68,20 +67,27 @@ export function BizAdsPage() {
     adApi.ads
       .listMine()
       .then(setContracts)
-      .catch((error) => setError(adError(error)));
-  }, []);
+      .catch((error) => {
+        // 401은 세션이 없거나 만료된 상태일 수 있으므로 배경 로딩에서는 토스트를 띄우지 않는다.
+        if (error instanceof ApiError && error.status === 401) return;
+        toast.error('광고 목록을 불러오지 못했습니다', adError(error));
+      });
+  }, [toast]);
   useEffect(() => {
     const refresh = () =>
       adApi.notifications
         .list()
         .then((items) => setPriceNotices(items.filter((item) => item.type === 'ad_price_changed')))
-        .catch((error) => setError(adError(error)));
+        .catch((error) => {
+          if (error instanceof ApiError && error.status === 401) return;
+          toast.error('알림을 불러오지 못했습니다', adError(error));
+        });
     void refresh();
     const timer = window.setInterval(() => {
       void refresh();
     }, 30_000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [toast]);
   const [view, setView] = useState<AdPreviewView>('pc');
   const [screen, setScreen] = useState<AdsScreen>('manage');
   const [selectedAd, setSelectedAd] = useState<SelectedAd | null>(null);
@@ -94,7 +100,6 @@ export function BizAdsPage() {
   const datePickerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const openPayment = async (placement: AdPlacement) => {
-    setError('');
     try {
       const products = await adApi.ads.listProducts();
       const product = products.find((item) => item.placement === placement);
@@ -122,7 +127,7 @@ export function BizAdsPage() {
       setDatePickerOpen(false);
       setPaymentOpen(true);
     } catch (error) {
-      setError(adError(error));
+      toast.error('광고 상품 정보를 불러오지 못했습니다', adError(error));
     }
   };
   const paymentDays = Math.max(
@@ -189,7 +194,6 @@ export function BizAdsPage() {
   const submitReservation = async () => {
     if (!selectedAd || submitting || overlaps) return;
     setSubmitting(true);
-    setError('');
     try {
       const ad = await adApi.ads.create({
         productId: selectedAd.product.id,
@@ -208,13 +212,13 @@ export function BizAdsPage() {
       setPaymentOpen(false);
       setScreen('complete');
     } catch (error) {
-      setError(adError(error));
+      toast.error('광고 계약 신청에 실패했습니다', adError(error));
       try {
         const products = await adApi.ads.listProducts();
         const product = products.find((item) => item.id === selectedAd.product.id);
         if (product) setSelectedAd({ ...selectedAd, product });
       } catch {
-        /* Keep the original actionable error. */
+        /* Refreshing product info is best-effort; the toast above already reported the failure. */
       }
     } finally {
       setSubmitting(false);
@@ -257,7 +261,6 @@ export function BizAdsPage() {
   if (screen === 'manage')
     return (
       <ManageBody>
-        {error && <p role="alert">{error}</p>}
         {priceNotices.map((notice) => (
           <p role="status" key={notice.id}>
             {String(
@@ -351,7 +354,6 @@ export function BizAdsPage() {
 
   return (
     <BizContent style={{ maxWidth: 1220, gap: 32, alignItems: 'center' }}>
-      {error && <p role="alert">{error}</p>}
       <HeaderRow style={{ width: '100%' }}>
         <OutlineButton type="button" onClick={() => setScreen('manage')}>
           광고 관리로 돌아가기
@@ -414,7 +416,6 @@ export function BizAdsPage() {
                       예약 불가: {period.startDate.slice(0, 10)} ~ {period.endDate.slice(0, 10)}
                     </small>
                   ))}
-                  {error && <p role="alert">{error}</p>}
                   {overlaps && <p role="alert">이미 계약된 기간이 포함되어 있습니다.</p>}
                   <div style={{ position: 'relative' }} ref={datePickerRef}>
                     <PaymentDate>

@@ -16,7 +16,7 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 1. 암호화된 S3 state bucket과 DynamoDB lock table(`semochal-staging-tfstate`, `semochal-staging-tfstate-lock`)을 별도 bootstrap하고, 해당 backend에 접근할 IAM 권한을 부여합니다. 일반 apply는 `backend.tf`를 사용하며 local state로 진행하지 않습니다.
 2. `staging.tfvars.example`을 복사해 실제 도메인과 hosted zone ID를 넣습니다. 이 파일에는 secret 값을 넣지 않습니다.
 3. 첫 apply는 `enable_runtime=false`로 VPC/ECR/RDS/S3/SQS/IAM/ALB만 생성합니다. `api_image`/`worker_image`는 비워도 됩니다.
-4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. 두 repository 모두 `IMMUTABLE` tag이며 ECR lifecycle policy가 태그 prefix로 보존 기간을 나눕니다 — 실제 배포용 이미지는 `deploy-`로 시작하는 태그(예: `deploy-2024-06-01-abcd123`)로 push해 최근 10개까지 보존하고, 일회성 테스트 이미지만 `test-`로 시작하는 태그를 써서 2개 초과분이 즉시 정리되도록 합니다. 두 prefix 어디에도 속하지 않는 태그는 lifecycle policy가 건드리지 않습니다(무기한 보존). `api_image`/`worker_image`에는 push 후 resolve한 `@sha256:...` digest를 넣습니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `TOSS_SECRET_KEY`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
+4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. 두 repository 모두 `IMMUTABLE` tag이며 ECR lifecycle policy가 태그 prefix로 보존 기간을 나눕니다 — 실제 배포용 이미지는 `deploy-`로 시작하는 태그(예: `deploy-2024-06-01-abcd123`)로 push해 최근 10개까지 보존하고, 일회성 테스트 이미지만 `test-`로 시작하는 태그를 써서 2개 초과분이 즉시 정리되도록 합니다. 두 prefix 어디에도 속하지 않는 태그는 lifecycle policy가 건드리지 않습니다(무기한 보존). `api_image`/`worker_image`에는 push 후 resolve한 `@sha256:...` digest를 넣습니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NAVER_REDIRECT_URI`, `TOSS_SECRET_KEY`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
 5. RDS는 private subnet에만 있어 로컬에서 직접 접근할 수 없고 `/health`는 단순 `select 1`이라 스키마가 없어도 통과합니다. `enable_runtime=true`로 API/worker를 띄우기 전에 반드시 아래 one-off ECS task로 Drizzle 마이그레이션을 적용합니다(`server/src/migrate.ts` → `dist/migrate.js`, `pnpm --filter @semochal/server db:generate`로 생성된 `server/drizzle/*.sql`을 그대로 적용 — drizzle-kit CLI가 아니라 `drizzle-orm`의 programmatic migrator를 쓰므로 devDependency 없이 API 이미지 그대로 재사용합니다):
 
    ```sh
@@ -32,7 +32,37 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
 7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
 
+### Grafana CloudWatch integration
+
+Grafana Cloud에서 발급한 external ID는 저장소나 `tfvars`에 기록하지 않습니다. apply를 실행하는 승인된 운영자 세션에서 `TF_VAR_grafana_external_id` 환경변수로만 제공하고, apply 후 `terraform output -raw grafana_cloudwatch_role_arn`의 ARN을 Grafana Cloud CloudWatch integration에 등록합니다. external ID는 IAM trust policy의 일부이므로 Terraform state에는 포함될 수 있습니다. state backend와 state를 읽을 수 있는 IAM principal은 승인된 운영자로 제한합니다. Terraform은 Grafana Labs AWS account에만 이 역할을 assume하도록 제한하며, trust policy의 external ID 조건도 함께 검증합니다.
+
 ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker와 migrate task에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task(API/worker/migrate) security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, CloudWatch 7일 보존입니다. ECR은 `test-` 태그 이미지 2개, `deploy-` 태그 이미지 10개를 보존합니다(4단계 참고).
+
+## RDS TLS 서버 인증서 검증
+
+ECS의 API, worker, 그리고 one-off migrate 태스크는 이미지 안의 AWS RDS commercial-region
+CA bundle(`/app/certs/global-bundle.pem`)을 `pg`의 `ssl.ca`로 사용하고
+`rejectUnauthorized: true`로 서버 인증서 체인과 RDS endpoint hostname을 검증합니다.
+TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습니다.
+
+새 이미지를 배포할 때 승인된 운영자는 다음 순서로 진행합니다. credential이나
+`DATABASE_URL`의 실제 값은 로그, Issue, PR, Terraform 변수에 기록하지 않습니다.
+
+1. monorepo root에서 API와 worker 이미지를 새 immutable `deploy-` 태그로 build/push하고,
+   ECR digest를 확인합니다.
+2. application secret의 `DATABASE_URL`에서 `sslmode`, `sslrootcert` 등 `ssl`로 시작하는
+   query parameter를 제거합니다. endpoint hostname, port, database name과 인증 정보는
+   그대로 유지합니다.
+3. API, worker, migrate task definition이 새 digest를 사용하도록 승인된 배포 절차로
+   갱신합니다. bundle은 image runtime에 포함되므로 별도 CA secret이나
+   `NODE_TLS_REJECT_UNAUTHORIZED` 설정은 사용하지 않습니다.
+4. API service와 필요 시 worker를 배포하고, API `/health`와 CloudWatch 로그를 확인합니다.
+   마이그레이션이 필요한 release라면 새 이미지의 migrate task를 먼저 실행해 exit code 0을
+   확인합니다.
+
+인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
+확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
+`NODE_TLS_REJECT_UNAUTHORIZED=0`으로 우회하지 않습니다.
 
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 

@@ -11,6 +11,7 @@ const envSchema = z
     PORT: z.coerce.number().int().positive().default(3001),
 
     DATABASE_URL: z.string().default('postgres://localhost:5432/semochal'),
+    DATABASE_SSL_CA_PATH: z.string().min(1).optional(),
 
     AWS_REGION: z.string().default('ap-northeast-2'),
 
@@ -37,6 +38,13 @@ const envSchema = z
     GOOGLE_CLIENT_ID: z.string().default(''),
     GOOGLE_CLIENT_SECRET: z.string().default(''),
     GOOGLE_REDIRECT_URI: z.string().url().default('http://localhost:3001/auth/google/callback'),
+
+    NAVER_CLIENT_ID: z.string().default(''),
+    NAVER_CLIENT_SECRET: z.string().default(''),
+    NAVER_REDIRECT_URI: z
+      .string()
+      .url()
+      .default('http://localhost:3001/auth/social/naver/callback'),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === 'production' && !value.JWT_SECRET) {
@@ -60,6 +68,7 @@ export const env = {
   port: raw.PORT,
 
   databaseUrl: raw.DATABASE_URL,
+  databaseSslCaPath: raw.DATABASE_SSL_CA_PATH,
 
   awsRegion: raw.AWS_REGION,
 
@@ -85,4 +94,8 @@ export const env = {
   googleClientId: raw.GOOGLE_CLIENT_ID,
   googleClientSecret: raw.GOOGLE_CLIENT_SECRET,
   googleRedirectUri: raw.GOOGLE_REDIRECT_URI,
+
+  naverClientId: raw.NAVER_CLIENT_ID,
+  naverClientSecret: raw.NAVER_CLIENT_SECRET,
+  naverRedirectUri: raw.NAVER_REDIRECT_URI,
 };

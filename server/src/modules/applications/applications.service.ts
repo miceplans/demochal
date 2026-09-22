@@ -1,9 +1,16 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { and, desc, eq } from 'drizzle-orm';
+import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, orders } from '../../db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
+
+// Toss orderName 상한은 100자 — 그 이상의 챌린지 제목이 checkout 오픈을 막지 않게 잘라낸다.
+function tossOrderName(title: string) {
+  const trimmed = title.trim();
+  if (!trimmed) return '챌린지 참가 신청';
+  return trimmed.length > 100 ? `${trimmed.slice(0, 99)}…` : trimmed;
+}
 
 @Injectable()
 export class ApplicationsService {
@@ -12,11 +19,26 @@ export class ApplicationsService {
   async apply(dto: ApplyChallengeDto, userId: string) {
     return this.db.transaction(async (tx) => {
       const [challenge] = await tx
-        .select({ price: challenges.price })
+        .select({ id: challenges.id, price: challenges.price, title: challenges.title })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
       if (!challenge) throw new NotFoundException('Challenge not found');
+
+      // Idempotent for (userId, challengeId): a retry after a lost response,
+      // SDK rejection, or resubmission reuses the existing application and its
+      // payable pending order instead of duplicating rows.
+      const [existing] = await tx
+        .select()
+        .from(applications)
+        .where(and(eq(applications.challengeId, challenge.id), eq(applications.userId, userId)))
+        .limit(1);
+      if (existing) {
+        return {
+          ...existing,
+          order: await this.orderForApplication(tx, existing.id, userId, challenge),
+        };
+      }
 
       const [application] = await tx
         .insert(applications)
@@ -33,16 +55,62 @@ export class ApplicationsService {
       // Free challenges (price 0) have nothing to bill — see AdsService.create for
       // the paid-order counterpart of this same pending -> Toss webhook -> paid flow.
       if (challenge.price > 0) {
-        await tx.insert(orders).values({
-          applicationId: application.id,
-          userId,
-          amount: challenge.price,
-          status: 'pending',
-        });
+        return {
+          ...application,
+          order: await this.createPendingOrder(tx, application.id, userId, challenge),
+        };
       }
 
-      return application;
+      return { ...application, order: null };
     });
+  }
+
+  /**
+   * 유료 신청의 결제 가능한 주문을 돌려준다. 아직 pending인 주문은 재사용하고,
+   * 취소/만료 등 미결제 터미널 상태에 도달한 주문이면 재결제용 pending 주문을 새로 만든다.
+   * 이미 paid면 null(결제할 것이 없음)이다.
+   */
+  private async orderForApplication(
+    tx: DbTx,
+    applicationId: string,
+    userId: string,
+    challenge: { id: string; price: number; title: string },
+  ) {
+    if (challenge.price <= 0) return null;
+    const [latest] = await tx
+      .select()
+      .from(orders)
+      .where(eq(orders.applicationId, applicationId))
+      .orderBy(desc(orders.createdAt))
+      .limit(1);
+    if (latest?.status === 'paid') return null;
+    if (latest?.status === 'pending') {
+      return { id: latest.id, amount: latest.amount, name: tossOrderName(challenge.title) };
+    }
+    return this.createPendingOrder(tx, applicationId, userId, challenge);
+  }
+
+  private async createPendingOrder(
+    tx: DbTx,
+    applicationId: string,
+    userId: string,
+    challenge: { id: string; price: number; title: string },
+  ) {
+    const [order] = await tx
+      .insert(orders)
+      .values({
+        applicationId,
+        userId,
+        amount: challenge.price,
+        status: 'pending',
+      })
+      .returning();
+    if (!order) throw new Error('Failed to create order');
+
+    // The client settles this pending order via Toss and watches it through
+    // GET /orders/{id} — orderId/amount feed the payment request, name the
+    // Toss orderName display.
+    return { id: order.id, amount: order.amount, name: tossOrderName(challenge.title) };
   }
 
   async listForUser(userId: string) {

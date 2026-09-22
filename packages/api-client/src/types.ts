@@ -141,6 +141,19 @@ export interface ApplyChallengeRequest {
   formAnswers?: Record<string, unknown>[];
 }
 
+/** Pending order for a paid challenge, returned by POST /applications — feeds the Toss payment request. */
+export interface ApplyOrderInfo {
+  id: string;
+  amount: number;
+  /** Challenge title, shown as the Toss orderName. */
+  name: string;
+}
+
+export interface ApplyChallengeResponse extends Application {
+  /** Paid challenges (price > 0) return the pending order to settle via Toss; free challenges return null. */
+  order: ApplyOrderInfo | null;
+}
+
 export interface UpdateApplicationRequest {
   status?: 'submitted' | 'reviewing' | 'needs_revision' | 'accepted' | 'rejected';
   evaluation?: 'undecided' | 'pass' | 'fail';
@@ -178,7 +191,7 @@ export interface Order {
   adId?: string | null;
   userId: string;
   amount: number;
-  status: 'pending' | 'paid' | 'cancelled' | 'refunded';
+  status: 'pending' | 'paid' | 'canceled';
   createdAt: string;
 }
 
@@ -282,7 +295,9 @@ export interface Payment {
   provider: 'toss';
   providerPaymentKey: string;
   amount: number;
-  status: 'ready' | 'done' | 'cancelled' | 'failed';
+  // 'ready'는 아직 유효한 저장 값이다(DB 기본값 — 입금 대기 등 충전 전 상태).
+  // billing-history 같은 읽기 경로가 ready 행을 매핑하므로 어휘에서 빼면 안 된다.
+  status: 'ready' | 'paid' | 'canceled' | 'expired';
   approvedAt?: string;
 }
 

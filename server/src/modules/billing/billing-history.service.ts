@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { ads, applications, challenges, orders, payments } from '../../db/schema.js';
 
@@ -28,6 +28,9 @@ export class BillingHistoryService {
    */
   async forBusiness(businessId: string, range: PaymentHistoryRange) {
     const conditions = [or(eq(ads.businessId, businessId), eq(challenges.businessId, businessId))];
+    // 결제되지 않은 시도(expired/ready)는 잔액 변동이 없으므로 내역에서 제외한다 —
+    // 실패한 시도가 음수 과금 항목·1970년대 일시로 표시되는 것을 방지(총액에서도 이미 제외).
+    conditions.push(inArray(payments.status, ['paid', 'done', 'canceled', 'cancelled']));
     if (range.from) conditions.push(gte(payments.approvedAt, new Date(range.from)));
     if (range.to) conditions.push(lte(payments.approvedAt, new Date(`${range.to}T23:59:59.999Z`)));
 

@@ -1,19 +1,31 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import { ads } from '../../db/schema.js';
 import { OrdersService } from './orders.service.js';
 
 /** Chainable drizzle stub for the select().from().where().for('update') / update().set().where().returning() shapes. */
-function createDbStub(existingOrder?: { id: string; status: string; adId?: string }) {
+function createDbStub(
+  existingOrder?: { id: string; status: string; adId?: string },
+  updatedOrder?: { id: string; status: string; adId?: string },
+) {
   const forUpdate = vi.fn().mockResolvedValue(existingOrder ? [existingOrder] : []);
-  const selectFrom = vi
+  const adForUpdate = vi
     .fn()
-    .mockReturnValue({ where: vi.fn().mockReturnValue({ for: forUpdate }) });
+    .mockResolvedValue([{ id: 'ad-1', status: 'preparing', endDate: '2099-01-01' }]);
+  const selectFrom = vi.fn((table: unknown) => ({
+    where: vi.fn().mockReturnValue({ for: table === ads ? adForUpdate : forUpdate }),
+  }));
 
   const ordersReturning = vi
     .fn()
-    .mockResolvedValue(existingOrder ? [{ ...existingOrder, status: 'canceled' }] : [undefined]);
+    .mockResolvedValue(
+      updatedOrder
+        ? [updatedOrder]
+        : existingOrder
+          ? [{ ...existingOrder, status: 'canceled' }]
+          : [undefined],
+    );
   const ordersUpdateSet = vi
     .fn()
     .mockReturnValue({ where: vi.fn().mockReturnValue({ returning: ordersReturning }) });
@@ -101,5 +113,46 @@ describe('OrdersService.markCancelled', () => {
     const service = new OrdersService(db);
 
     await expect(service.markCancelled('missing')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('OrdersService.markPaid', () => {
+  it('settles a pending order and activates its ad', async () => {
+    const existing = { id: 'order-1', status: 'pending', adId: 'ad-1' };
+    const { db, ordersUpdateSet, adsUpdateSet } = createDbStub(existing, {
+      ...existing,
+      status: 'paid',
+    });
+    const service = new OrdersService(db);
+
+    const result = await service.markPaid('order-1');
+
+    expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'paid' });
+    expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'active' });
+    expect(result).toEqual({ id: 'order-1', status: 'paid', adId: 'ad-1' });
+  });
+
+  it('is idempotent when the order is already paid', async () => {
+    const existing = { id: 'order-1', status: 'paid', adId: 'ad-1' };
+    const { db, ordersUpdateSet, adsUpdateSet } = createDbStub(existing);
+    const service = new OrdersService(db);
+
+    const result = await service.markPaid('order-1');
+
+    expect(result).toEqual(existing);
+    expect(ordersUpdateSet).not.toHaveBeenCalled();
+    expect(adsUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects settling a canceled order', async () => {
+    const { db, ordersUpdateSet, adsUpdateSet } = createDbStub({
+      id: 'order-1',
+      status: 'canceled',
+    });
+    const service = new OrdersService(db);
+
+    await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
+    expect(ordersUpdateSet).not.toHaveBeenCalled();
+    expect(adsUpdateSet).not.toHaveBeenCalled();
   });
 });

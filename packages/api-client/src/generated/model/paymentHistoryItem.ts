@@ -19,11 +19,11 @@
 import type { PaymentHistoryItemStatus } from './paymentHistoryItemStatus';
 
 export interface PaymentHistoryItem {
-  id?: string;
+  id: string;
   /** 결제 항목 (예: 2025 스타트업 해커톤 - 메인 배너 (대), 충전 - 신용카드) */
-  name?: string;
+  name: string;
   /** 부호 있는 금액 (원) — 결제는 음수, 충전·환불은 양수 */
-  amount?: number;
-  paidAt?: string;
-  status?: PaymentHistoryItemStatus;
+  amount: number;
+  paidAt: string;
+  status: PaymentHistoryItemStatus;
 }

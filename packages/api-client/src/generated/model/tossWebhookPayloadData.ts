@@ -20,6 +20,6 @@
 export type TossWebhookPayloadData = {
   paymentKey: string;
   orderId: string;
-  /** DONE | CANCELED | PARTIAL_CANCELED | EXPIRED */
+  /** DONE | CANCELED | PARTIAL_CANCELED | EXPIRED | ABORTED | WAITING_FOR_DEPOSIT */
   status: string;
 };

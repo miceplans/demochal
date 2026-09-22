@@ -5,6 +5,7 @@ import type {
   AdReport,
   Application,
   ApplyChallengeRequest,
+  ApplyChallengeResponse,
   BizDashboard,
   Business,
   Challenge,
@@ -86,7 +87,8 @@ export function createApiClient(options: HttpClientOptions) {
         http.patch<Challenge>(`/challenges/${id}/status`, { status }),
     },
     applications: {
-      apply: (body: ApplyChallengeRequest) => http.post<Application>('/applications', body),
+      apply: (body: ApplyChallengeRequest) =>
+        http.post<ApplyChallengeResponse>('/applications', body),
       listMine: () => http.get<Application[]>('/applications/me'),
       get: (id: string) => http.get<Application>(`/applications/${id}`),
       update: (id: string, body: UpdateApplicationRequest) =>
@@ -161,7 +163,13 @@ export function createApiClient(options: HttpClientOptions) {
       getBizDashboard: () => http.get<BizDashboard>('/biz/dashboard'),
     },
     orders: {
-      get: (id: string) => http.get<Order>(`/orders/${id}`),
+      get: (id: string, options?: { signal?: AbortSignal }) =>
+        http.get<Order>(`/orders/${id}`, options),
+      cancel: (id: string) => http.post<Order>(`/orders/${id}/cancel`),
+    },
+    payments: {
+      confirm: (body: { orderId: string; paymentKey: string; amount: number }) =>
+        http.post<Order>('/payments/confirm', body),
     },
     files: {
       requestUpload: (body: PresignedUploadRequest) =>

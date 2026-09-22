@@ -87,13 +87,13 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 3. 깨끗한 작업 트리 또는 별도 worktree에서 branch를 만든다. 사용자 변경이 있는 worktree는 사용하지 않는다.
 
 ```bash
-git worktree add ../demochal-issue-123 -b fix/#123 origin/main
-cd ../demochal-issue-123
+git worktree add ../semochall-issue-123 -b fix/#123 origin/main
+cd ../semochall-issue-123
 ./scripts/ai-workflow.sh start 123
 ```
 
 4. `ai-working`으로 전환하고 Issue의 scope와 acceptance criteria만 구현한다.
-5. 먼저 테스트와 Quality Gate를 실행한다. 이 monorepo의 기본 검증은 lint, formatting, typecheck, server unit/coverage test, api-client 회귀 test, 실제 build 대상(`api-client`, `front`, `server`)의 build, changed-line secret scan, production dependency audit이다. 현재 root `pnpm build`는 build script가 없는 `packages/config`까지 선택하므로 이 워크플로에서는 사용하지 않는다.
+5. 먼저 테스트와 Quality Gate를 실행한다. 이 monorepo의 기본 검증은 lint, formatting, typecheck, server unit/coverage test, api-client unit test, 실제 build 대상(`api-client`, `front`, `server`)의 build, changed-line secret scan, production dependency audit이다. 현재 root `pnpm build`는 build script가 없는 `packages/config`까지 선택하므로 이 워크플로에서는 사용하지 않는다.
 
 ```bash
 ./scripts/ai-workflow.sh validate
@@ -172,6 +172,7 @@ Closes #123
 - `pnpm lint` — pass
 - `pnpm typecheck` — pass
 - `pnpm --filter @semochal/server test` — pass
+- `pnpm --filter @semochal/api-client test` — pass
 - `pnpm --filter @semochal/api-client build && pnpm --filter @semochal/front build && pnpm --filter @semochal/server build` — pass
 
 ## Acceptance Criteria

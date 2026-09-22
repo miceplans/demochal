@@ -1,4 +1,4 @@
-# 세모챌 (demochal) 프로젝트 규칙
+# 세모챌 (semochall) 프로젝트 규칙
 
 pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App Router + React 19), `server`(NestJS + Drizzle + SQS 워커), `packages/api-client`(orval 생성 클라이언트), `packages/config`(공유 tsconfig). 브랜치 `main` 기준, PR 단위 작업.
 

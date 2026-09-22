@@ -8,12 +8,23 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { eq } from 'drizzle-orm';
+import { eq, ilike } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
+// pg unique_violation (see https://www.postgresql.org/docs/current/errcodes-appendix.html).
+const POSTGRES_UNIQUE_VIOLATION = '23505';
+
+function isUniqueViolation(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'code' in err &&
+    (err as { code?: unknown }).code === POSTGRES_UNIQUE_VIOLATION
+  );
+}
 
 interface JwtPayload {
   sub: string;
@@ -100,6 +111,68 @@ export class AuthService {
       }
     }
     if (!user) throw new Error('Failed to create or link Google user');
+    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+
+    const [accessToken, publicUser] = await Promise.all([
+      this.issueToken(user),
+      this.usersService.findById(user.id),
+    ]);
+    return { accessToken, user: publicUser };
+  }
+
+  /** Finds or creates the local account for a verified Naver identity. */
+  async loginWithNaver(profile: { subject: string; email: string; name: string }) {
+    const [byNaverSubject] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.naverSubject, profile.subject))
+      .limit(1);
+
+    let user = byNaverSubject;
+    if (!user) {
+      // Case-insensitive: registration/login don't normalize stored email casing,
+      // so an exact match here would miss an existing mixed-case account and
+      // create a duplicate instead of linking the identity to it.
+      const [byEmail] = await this.db
+        .select()
+        .from(users)
+        .where(ilike(users.email, profile.email))
+        .limit(1);
+      if (byEmail) {
+        // A verified Naver email may be safely associated with the same local account.
+        [user] = await this.db
+          .update(users)
+          .set({ naverSubject: profile.subject })
+          .where(eq(users.id, byEmail.id))
+          .returning();
+      } else {
+        const passwordHash = await hash(
+          randomBytes(32).toString('base64url'),
+          PASSWORD_HASH_ROUNDS,
+        );
+        try {
+          [user] = await this.db
+            .insert(users)
+            .values({
+              email: profile.email,
+              name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Naver 사용자',
+              passwordHash,
+              naverSubject: profile.subject,
+            })
+            .returning();
+        } catch (err) {
+          // A concurrent callback for the same identity may have inserted first;
+          // recover that row instead of failing this otherwise-valid login.
+          if (!isUniqueViolation(err)) throw err;
+          [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.naverSubject, profile.subject))
+            .limit(1);
+        }
+      }
+    }
+    if (!user) throw new Error('Failed to create or link Naver user');
     if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
     const [accessToken, publicUser] = await Promise.all([

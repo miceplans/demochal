@@ -7,6 +7,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
+import { useAdminHref } from './AdminShell';
 import { SearchFilter, SelectFilter } from './parts';
 
 const Page = styled.div({
@@ -113,6 +114,7 @@ export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const toast = useToast();
+  const hrefOf = useAdminHref();
   const rows = useMemo(
     () =>
       ads.filter(
@@ -177,7 +179,7 @@ export function AdminAdsScreen() {
           sizes="1220px"
           style={{ objectFit: 'cover' }}
         />
-        <PricingLink href="/admin/ad-pricing/pricing">광고비 관리</PricingLink>
+        <PricingLink href={hrefOf('/ad-pricing/pricing')}>광고비 관리</PricingLink>
       </Preview>
     </Page>
   );
