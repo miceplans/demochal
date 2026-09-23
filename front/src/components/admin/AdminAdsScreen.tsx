@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -49,25 +49,6 @@ const PricingLink = styled(Link)({
   color: c.white,
   textDecoration: 'none',
 });
-const ErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  padding: '12px 16px',
-  border: `1px solid ${c.red}`,
-  borderRadius: 8,
-  background: c.lightRed,
-  color: c.red,
-});
-const RetryButton = styled.button({
-  border: 0,
-  borderRadius: 6,
-  background: c.primary,
-  color: c.white,
-  padding: '6px 12px',
-  cursor: 'pointer',
-});
 
 type AdRow = {
   id: string;
@@ -110,6 +91,14 @@ export function AdminAdsScreen() {
     q: query || undefined,
     status: statusOptionToParam[statusLabel],
   });
+  const refetchAds = adsQuery.refetch;
+
+  useEffect(() => {
+    if (!adsQuery.isError) return;
+    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchAds() },
+    });
+  }, [adsQuery.isError, refetchAds, toast]);
 
   const rows = useMemo<AdRow[]>(
     () =>
@@ -180,14 +169,6 @@ export function AdminAdsScreen() {
         />
         <SelectFilter label="활동" options={['광고 중단하기']} onChange={handleActivity} />
       </FilterBar>
-      {adsQuery.isError ? (
-        <ErrorBanner role="alert">
-          <span>광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => adsQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </ErrorBanner>
-      ) : null}
       {adsQuery.isPending ? (
         <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
       ) : adsQuery.isError ? null : rows.length === 0 ? (

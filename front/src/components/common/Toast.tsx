@@ -14,8 +14,19 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 export type ToastVariant = 'success' | 'error' | 'info';
-type ToastItem = { id: number; variant: ToastVariant; message: string; description?: string };
-export type ToastApi = Record<ToastVariant, (message: string, description?: string) => void>;
+export type ToastAction = { label: string; onClick: () => void };
+type ToastOptions = { action?: ToastAction };
+type ToastItem = {
+  id: number;
+  variant: ToastVariant;
+  message: string;
+  description?: string;
+  action?: ToastAction;
+};
+export type ToastApi = Record<
+  ToastVariant,
+  (message: string, description?: string, options?: ToastOptions) => void
+>;
 
 const ToastContext = createContext<ToastApi | null>(null);
 
@@ -75,24 +86,39 @@ const TextBox = styled.div({
 });
 const Message = styled.p({ ...textStyle.subtitle, color: c.gray900 });
 const Description = styled.p({ fontSize: 8, lineHeight: 1.4, color: c.gray900 });
+const ActionButton = styled.button({
+  alignSelf: 'flex-start',
+  marginTop: 2,
+  border: 0,
+  borderRadius: 6,
+  padding: '4px 10px',
+  background: c.primary,
+  color: c.white,
+  cursor: 'pointer',
+  ...textStyle.label,
+});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
   const dismiss = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const show = useCallback(
-    (variant: ToastVariant, message: string, description?: string) => {
+    (variant: ToastVariant, message: string, description?: string, options?: ToastOptions) => {
       const id = ++idRef.current;
-      setToasts((ts) => [...ts.slice(-2), { id, variant, message, description }]);
-      setTimeout(() => dismiss(id), 3000);
+      setToasts((ts) => [
+        ...ts.slice(-2),
+        { id, variant, message, description, action: options?.action },
+      ]);
+      // 액션이 있는 토스트는 자동으로 사라지지 않고 사용자가 액션을 실행하거나 직접 닫을 때까지 유지된다.
+      if (!options?.action) setTimeout(() => dismiss(id), 3000);
     },
     [dismiss],
   );
   const toast = useMemo<ToastApi>(
     () => ({
-      success: (message, description) => show('success', message, description),
-      error: (message, description) => show('error', message, description),
-      info: (message, description) => show('info', message, description),
+      success: (message, description, options) => show('success', message, description, options),
+      error: (message, description, options) => show('error', message, description, options),
+      info: (message, description, options) => show('info', message, description, options),
     }),
     [show],
   );
@@ -111,6 +137,18 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             <TextBox>
               <Message>{t.message}</Message>
               {t.description ? <Description>{t.description}</Description> : null}
+              {t.action ? (
+                <ActionButton
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    t.action?.onClick();
+                    dismiss(t.id);
+                  }}
+                >
+                  {t.action.label}
+                </ActionButton>
+              ) : null}
             </TextBox>
           </Card>
         ))}
