@@ -16,26 +16,17 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AwardRecord } from './awardRecord';
-import type { ExternalLink } from './externalLink';
-import type { UserNotificationSettings } from './userNotificationSettings';
-import type { UserRole } from './userRole';
+import type { CertificateCategory } from './certificateCategory';
+import type { CertificateStatus } from './certificateStatus';
 
-export interface User {
+export interface Certificate {
   id?: string;
-  email?: string;
-  name?: string;
-  /** 사용자 | 기업 | 관리자 */
-  role?: UserRole;
+  userId?: string;
+  title?: string;
+  category?: CertificateCategory;
+  fileId?: string;
+  status?: CertificateStatus;
+  /** @nullable */
+  rejectionReason?: string | null;
   createdAt?: string;
-  /** 포지션 */
-  position?: string;
-  region?: string;
-  stacks?: string[];
-  /** 깃허브 인증/포트폴리오/출품이력/자격 인증 뱃지 */
-  badges?: string[];
-  externalLinks?: ExternalLink[];
-  awardHistory?: AwardRecord[];
-  /** 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다. */
-  notificationSettings?: UserNotificationSettings;
 }

@@ -867,6 +867,72 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Notification' } }
+  /notifications/read-all:
+    patch:
+      tags: [Notifications]
+      summary: 내 알림 전체 읽음 처리
+      operationId: markAllNotificationsRead
+      x-impl-status: implemented
+      responses:
+        '200':
+          description: 처리 결과
+          content:
+            application/json:
+              schema: { type: object, properties: { read: { type: boolean } } }
+  /notifications/{id}/read:
+    patch:
+      tags: [Notifications]
+      summary: 알림 읽음 처리
+      operationId: markNotificationRead
+      x-impl-status: implemented
+      description: 본인 알림만 처리할 수 있다(타인 알림 id는 404).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 읽음 처리된 알림
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------- Certificates
+  /certificates:
+    post:
+      tags: [Users]
+      summary: 자격증 인증 요청
+      operationId: createCertificate
+      x-impl-status: implemented
+      description: |
+        마이페이지 자격증 인증 모달. 증명 파일은 private 버킷에 presigned PUT으로 올리고
+        `POST /files/{id}/finalize`로 검증을 끝낸 파일(fileId)만 받는다. 관리자 검토 전까지 pending.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCertificateRequest' }
+      responses:
+        '201':
+          description: 생성된 인증 요청
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Certificate' }
+        '400': { description: 검증 완료된 본인 소유 private 파일이 아님 }
+  /certificates/me:
+    get:
+      tags: [Users]
+      summary: 내 자격증 인증 요청 목록
+      operationId: listMyCertificates
+      x-impl-status: implemented
+      responses:
+        '200':
+          description: 최신순 인증 요청 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Certificate' } }
 
   # ---------------------------------------------------------------- Reports
   /reports:
@@ -1054,6 +1120,25 @@ paths:
       responses:
         '200':
           description: 파일 메타 (private 버킷의 실제 다운로드는 별도 presigned GET 필요)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileMeta' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /files/{id}/finalize:
+    post:
+      tags: [Files]
+      summary: 업로드 완료 검증
+      operationId: finalizeUpload
+      x-impl-status: implemented
+      description: presigned PUT 업로드 후 호출. 실제 크기·Content-Type·매직 바이트를 확인해 ready로 전환한다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: 검증된 파일 메타
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FileMeta' }
@@ -1972,6 +2057,10 @@ components:
           }
         externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
         awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
+        notificationSettings:
+          type: object
+          additionalProperties: { type: boolean }
+          description: 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다.
     ExternalLink:
       type: object
       properties:
@@ -2166,6 +2255,24 @@ components:
         payload: { type: object, additionalProperties: true }
         readAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
+    Certificate:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        title: { type: string }
+        category: { type: string, enum: [award, participation] }
+        fileId: { type: string, format: uuid }
+        status: { type: string, enum: [pending, verified, rejected] }
+        rejectionReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+    CreateCertificateRequest:
+      type: object
+      required: [award, category, fileId]
+      properties:
+        award: { type: string, maxLength: 200, description: 인증 제목(뱃지 이름) }
+        category: { type: string, enum: [award, participation] }
+        fileId: { type: string, format: uuid, description: finalize까지 끝난 private 파일 }
     Business:
       type: object
       properties:
@@ -2236,11 +2343,12 @@ components:
           }
     PresignedUploadRequest:
       type: object
-      required: [bucket, contentType, fileName]
+      required: [bucket, contentType, fileName, sizeBytes]
       properties:
         bucket: { type: string, enum: [public, private] }
-        contentType: { type: string }
-        fileName: { type: string }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, application/pdf] }
+        fileName: { type: string, maxLength: 255, description: '경로 구분자(슬래시·역슬래시) 불가' }
+        sizeBytes: { type: integer, minimum: 1, maximum: 10485760, description: 최대 10MB }
     Order:
       type: object
       properties:
