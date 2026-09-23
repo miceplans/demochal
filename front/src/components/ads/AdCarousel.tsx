@@ -8,6 +8,7 @@ import { colors as c, mobile, shadows } from '@/styles/design';
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  type?: 'image' | 'video';
 };
 
 type AdCarouselProps = {
@@ -28,6 +29,14 @@ const HeroViewport = styled.div({
     borderRadius: '12px',
     objectFit: 'cover',
     flexShrink: 0,
+  },
+  '& video': {
+    width: '1060px',
+    height: '250px',
+    borderRadius: '12px',
+    objectFit: 'cover',
+    flexShrink: 0,
+    display: 'block',
   },
   [mobile]: { display: 'none' },
 });
@@ -306,12 +315,24 @@ export function AdCarousel({
                 type="button"
                 onClick={() => goTo(itemIndex)}
               >
-                <Image
-                  src={item.src}
-                  alt={index === railIndex ? item.alt : ''}
-                  width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
-                />
+                {item.type === 'video' ? (
+                  <video
+                    src={item.src}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-label={index === railIndex ? item.alt : undefined}
+                    aria-hidden={index === railIndex ? undefined : true}
+                  />
+                ) : (
+                  <Image
+                    src={item.src}
+                    alt={index === railIndex ? item.alt : ''}
+                    width={SLIDE_WIDTH[variant]}
+                    height={variant === 'hero' ? 250 : 190}
+                  />
+                )}
               </SlideButton>
             );
           })}

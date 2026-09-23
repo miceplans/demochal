@@ -18,7 +18,11 @@ const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.sear
 const getAdPreviewPriceServerSnapshot = () => null;
 
 const heroAds = [
-  { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
+  {
+    src: '/assets/Hero-animation.webm',
+    alt: 'SEMO 브랜드 로고 애니메이션 광고',
+    type: 'video' as const,
+  },
   { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
   { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
 ];
