@@ -6,3 +6,7 @@ api_domain_name = "api-staging.example.com"
 hosted_zone_id  = "ZREPLACE"
 alarm_email     = "ops@example.com"
 worker_desired_count = 0
+
+# Verified SES sender for service emails. Leave empty until the domain identity
+# is verified in SES: https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html
+ses_from_email = ""

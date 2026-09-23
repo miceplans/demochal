@@ -31,6 +31,22 @@ describe('OutboxRelayService.relay', () => {
     expect(set).toHaveBeenCalledWith({ status: 'sent', sentAt: expect.any(Date) });
   });
 
+  it('wraps the payload with the outbox event id when includeEventId is set', async () => {
+    const rows = [{ id: 'row-9', payload: { notificationId: 'n-1' }, attempts: 0 }];
+    const { db } = createDbStub(rows);
+    const sqsService = { sendMessage: vi.fn().mockResolvedValue(undefined) };
+    const service = new OutboxRelayService(db, sqsService as any);
+
+    await service.relay('notification.email', 'https://sqs.example/emails', 10, {
+      includeEventId: true,
+    });
+
+    expect(sqsService.sendMessage).toHaveBeenCalledWith('https://sqs.example/emails', {
+      eventId: 'row-9',
+      payload: { notificationId: 'n-1' },
+    });
+  });
+
   it('does nothing when there are no pending rows', async () => {
     const { db } = createDbStub([]);
     const sqsService = { sendMessage: vi.fn() };

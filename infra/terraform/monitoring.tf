@@ -53,3 +53,22 @@ resource "aws_cloudwatch_metric_alarm" "alb_no_healthy_hosts" {
     TargetGroup  = aws_lb_target_group.api.arn_suffix
   }
 }
+
+# Email jobs that exhausted their retries (SES rejection, missing identity,
+# processing bugs) land in the DLQ; alert instead of letting them sit unseen.
+resource "aws_cloudwatch_metric_alarm" "emails_dlq_not_empty" {
+  alarm_name          = "${local.name_prefix}-emails-dlq-not-empty"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 300
+  statistic           = "Maximum"
+  threshold           = 0
+  treat_missing_data  = "notBreaching"
+  alarm_description   = "Service email jobs were dead-lettered after exhausting SQS retries."
+  alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
+  dimensions = {
+    QueueName = aws_sqs_queue.emails_dlq.name
+  }
+}

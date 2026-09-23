@@ -4,6 +4,7 @@ output "cloudfront_public_content_domain" { value = aws_cloudfront_distribution.
 output "private_bucket_name" { value = aws_s3_bucket.private.id }
 output "public_bucket_name" { value = aws_s3_bucket.public.id }
 output "verifications_queue_url" { value = aws_sqs_queue.verifications.url }
+output "emails_queue_url" { value = aws_sqs_queue.emails.url }
 output "app_secret_arn" { value = aws_secretsmanager_secret.app.arn }
 output "api_ecr_repository_url" { value = aws_ecr_repository.api.repository_url }
 output "api_ecr_repository_arn" { value = aws_ecr_repository.api.arn }
