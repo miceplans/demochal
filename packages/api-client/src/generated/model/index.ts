@@ -107,6 +107,7 @@ export * from './listAdminCertificatesStatus';
 export * from './listAdminContents200';
 export * from './listAdminReportsParams';
 export * from './listAdminReportsStatus';
+export * from './listAdminUsersJoinedWithin';
 export * from './listAdminUsersParams';
 export * from './listAdminUsersStatus';
 export * from './listChallenges200';

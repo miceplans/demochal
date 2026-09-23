@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { ads, businesses, payments } from '../../db/schema.js';
+import { ads, businesses, payments, reports, users } from '../../db/schema.js';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
 import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
@@ -253,10 +253,11 @@ describe('AdminService — users', () => {
       email: 'kim.dev@gmail.com',
       position: null,
       suspended: true,
+      suspendedReason: 'spam',
     };
     const { db, setCalls } = createDbStub({
-      select: [[userRow], [{ count: 3 }]],
-      update: [[]],
+      select: [[{ reportedUserId: 'u1', count: 3 }]],
+      update: [[userRow]],
     });
     const { service } = createService(db);
 
@@ -276,6 +277,7 @@ describe('AdminService — users', () => {
       position: '',
       reports: 3,
       status: 'suspended',
+      suspendedReason: 'spam',
     });
   });
 
@@ -286,10 +288,11 @@ describe('AdminService — users', () => {
       email: 'kim.dev@gmail.com',
       position: '프론트엔드',
       suspended: false,
+      suspendedReason: null,
     };
     const { db, setCalls } = createDbStub({
-      select: [[userRow], [{ count: 0 }]],
-      update: [[]],
+      select: [[]],
+      update: [[userRow]],
     });
     const { service } = createService(db);
 
@@ -303,7 +306,98 @@ describe('AdminService — users', () => {
       position: '프론트엔드',
       reports: 0,
       status: 'active',
+      suspendedReason: null,
     });
+  });
+
+  it('suspend throws NotFound when no user row was updated', async () => {
+    const { db } = createDbStub({ update: [[]] });
+    const { service } = createService(db);
+
+    await expect(service.suspendUser('missing', { suspended: true })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('list counts reports filed against each user (reportedUserId), not by them', async () => {
+    const rows = [
+      { id: 'u1', name: '김수아', email: 'kim@a.com', position: '백엔드', suspended: false },
+      { id: 'u2', name: '이도윤', email: 'lee@a.com', position: null, suspended: true },
+    ];
+    const { db, selectWhereCalls } = createDbStub({
+      select: [rows, [{ reportedUserId: 'u2', count: 4 }]],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listUsers();
+
+    expect(result.map((row) => [row.id, row.reports, row.status])).toEqual([
+      ['u1', 0, 'active'],
+      ['u2', 4, 'suspended'],
+    ]);
+    const countWhere = selectWhereCalls[1]?.[0];
+    expect(referencesColumn(countWhere, reports.reportedUserId)).toBe(true);
+    expect(referencesColumn(countWhere, reports.reporterUserId)).toBe(false);
+  });
+
+  it('list applies joinedWithin and position filters', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listUsers(undefined, undefined, '30d', '프론트엔드');
+
+    const where = selectWhereCalls[0]?.[0];
+    expect(referencesColumn(where, users.createdAt)).toBe(true);
+    expect(referencesColumn(where, users.position)).toBe(true);
+    expect(collectStrings(where)).toContain('%프론트엔드%');
+    // No users → the report-count query is skipped entirely.
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it('list ignores an unknown joinedWithin value', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listUsers(undefined, undefined, 'forever');
+
+    expect(selectWhereCalls[0]?.[0]).toBeUndefined();
+  });
+});
+
+describe('AdminService — businesses', () => {
+  const businessRow = {
+    id: 'b1',
+    name: '세모재단',
+    type: '비영리' as string | null,
+    registrationNumber: '123-45-67890',
+    verificationStatus: 'pending',
+    createdAt: new Date('2026-09-01T00:00:00Z'),
+  };
+  const statCounts = [[{ count: 1 }], [{ count: 0 }], [{ count: 0 }], [{ count: 1 }]];
+
+  it('filters by businesses.type and returns the stored type', async () => {
+    const { db, selectWhereCalls } = createDbStub({
+      select: [...statCounts, [businessRow], []],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses(undefined, '비영리');
+
+    const listWhere = selectWhereCalls[3]?.[0];
+    expect(referencesColumn(listWhere, businesses.type)).toBe(true);
+    expect(collectStrings(listWhere)).toContain('비영리');
+    expect(result.items[0]?.type).toBe('비영리');
+  });
+
+  it("falls back to '미지정' when a business has no type", async () => {
+    const { db } = createDbStub({
+      select: [...statCounts, [{ ...businessRow, type: null }], []],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items[0]?.type).toBe('미지정');
   });
 });
 
@@ -632,7 +726,21 @@ describe('AdminService — analytics', () => {
 });
 
 describe('AdminService — settings', () => {
-  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
+  const user = {
+    id: 'admin-1',
+    name: '관리자',
+    email: 'admin@example.com',
+    role: 'admin',
+  } as never;
+
+  it('getSettings는 프로필 역할을 로그인 사용자의 role에서 가져온다', async () => {
+    const { db } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    const result = await service.getSettings(user);
+
+    expect(result.profile).toMatchObject({ name: '관리자', role: '관리자' });
+  });
 
   it('row가 없어도 getSettings는 DEFAULT_VALUES 기본값을 반환한다', async () => {
     const { db } = createDbStub({ select: [[]] });

@@ -176,10 +176,12 @@ export function AdminBizReviewScreen() {
   const [selected, setSelected] = useState<BizRow | null>(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
+  const [bizType, setBizType] = useState('');
   const toast = useToast();
 
   const businessesQuery = generated.useListAdminBusinesses({
     q: query || undefined,
+    type: bizType && bizType !== '전체' ? bizType : undefined,
     status: statusParam[status],
   });
 
@@ -245,7 +247,12 @@ export function AdminBizReviewScreen() {
           value={query}
           onChange={setQuery}
         />
-        <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
+        <SelectFilter
+          label="기관유형"
+          options={['전체', '비영리', '학교', '협회', '기업']}
+          value={bizType}
+          onChange={setBizType}
+        />
         <SelectFilter
           label="상태"
           options={['대기', '승인', '거부']}

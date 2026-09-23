@@ -9610,7 +9610,7 @@ export const getListAdminUsersUrl = (params?: ListAdminUsersParams) => {
 
 /**
  * 사용자 관리(`/admin/users`): 이름/이메일(마스킹)/포지션/신고 누적/상태(활성·정지) 테이블,
- * 가입일/뱃지/활동상태 필터.
+ * 가입일/뱃지/활동상태 필터. 신고 누적은 해당 사용자를 대상으로 한 신고(`reportedUserId`) 수.
  * @summary 사용자 목록 조회
  */
 export const listAdminUsers = async (
