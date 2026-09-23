@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { DayPicker, type DateRange } from 'react-day-picker';
@@ -43,10 +44,23 @@ function formatSlash(dateKey: string) {
   return `${Number(month)}/${Number(day)}`;
 }
 
+const MY_ADS_QUERY_KEY = ['biz', 'ads', 'mine'] as const;
+
 export function BizAdsPage() {
-  const [contracts, setContracts] = useState<Ad[]>([]);
-  const [contractsLoading, setContractsLoading] = useState(true);
-  const [contractsError, setContractsError] = useState(false);
+  // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.
+  // 오류 토스트는 전역 QueryCache onError가 담당한다(401은 제외).
+  const queryClient = useQueryClient();
+  // TODO: openapi의 Ad 스키마 required 필드를 정리한 뒤 generated.useListMyAds로 전환한다.
+  // https://orval.dev/reference/configuration/output
+  const contractsQuery = useQuery({
+    queryKey: MY_ADS_QUERY_KEY,
+    queryFn: () => adApi.ads.listMine(),
+  });
+  const contracts = contractsQuery.data ?? [];
+  const contractsLoading = contractsQuery.isPending;
+  const contractsError = contractsQuery.isError;
+  const setContracts = (update: (items: Ad[]) => Ad[]) =>
+    queryClient.setQueryData<Ad[]>(MY_ADS_QUERY_KEY, (current) => current && update(current));
   const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
   const [pausingId, setPausingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -67,41 +81,6 @@ export function BizAdsPage() {
     },
     [],
   );
-  const loadContracts = useCallback(async () => {
-    setContractsLoading(true);
-    setContractsError(false);
-    try {
-      setContracts(await adApi.ads.listMine());
-    } catch (error) {
-      setContractsError(true);
-      // 401은 세션이 없거나 만료된 상태일 수 있으므로 배경 로딩에서는 토스트를 띄우지 않는다.
-      if (!(error instanceof ApiError && error.status === 401)) {
-        toast.error('광고 목록을 불러오지 못했습니다', adError(error));
-      }
-    } finally {
-      setContractsLoading(false);
-    }
-  }, [toast]);
-  useEffect(() => {
-    let active = true;
-    void adApi.ads
-      .listMine()
-      .then((items) => {
-        if (active) setContracts(items);
-      })
-      .catch((error) => {
-        if (!active) return;
-        setContractsError(true);
-        if (!(error instanceof ApiError && error.status === 401))
-          toast.error('광고 목록을 불러오지 못했습니다', adError(error));
-      })
-      .finally(() => {
-        if (active) setContractsLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [toast]);
   const pauseAd = async (ad: Ad) => {
     if (ad.status !== 'active' || pausingId) return;
     setPausingId(ad.id);
@@ -362,7 +341,7 @@ export function BizAdsPage() {
               <TableRow role="row">
                 <span>
                   광고 목록을 불러오지 못했어요.{' '}
-                  <button type="button" onClick={() => void loadContracts()}>
+                  <button type="button" onClick={() => void contractsQuery.refetch()}>
                     다시 시도
                   </button>
                 </span>
