@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from './businesses.service.js';
@@ -8,6 +8,16 @@ import { UpdateBusinessDto } from './dto/update-business.dto.js';
 @Controller('businesses')
 export class BusinessesController {
   constructor(private readonly businessesService: BusinessesService) {}
+
+  @Get('me/challenges')
+  @UseGuards(JwtAuthGuard)
+  listMyChallenges(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit = '20',
+  ) {
+    return this.businessesService.listMyChallenges(user.id, cursor, Number(limit));
+  }
 
   @Post()
   @UseGuards(JwtAuthGuard)

@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses } from '../../db/schema.js';
+import { businesses, challenges } from '../../db/schema.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
@@ -42,6 +42,20 @@ export class BusinessesService {
     return business
       ? { ...business, ...verificationStatusPresentation(business.verificationStatus) }
       : null;
+  }
+
+  async listMyChallenges(ownerUserId: string, cursor?: string, limit = 20) {
+    const where = cursor ? lt(challenges.createdAt, new Date(cursor)) : undefined;
+    const rows = await this.db
+      .select({ challenge: challenges })
+      .from(challenges)
+      .innerJoin(businesses, eq(businesses.id, challenges.businessId))
+      .where(and(eq(businesses.ownerUserId, ownerUserId), where))
+      .orderBy(desc(challenges.createdAt))
+      .limit(Math.min(Math.max(limit, 1), 100) + 1);
+    const hasMore = rows.length > limit;
+    const items = rows.slice(0, limit).map(({ challenge }) => challenge);
+    return { items, nextCursor: hasMore ? items.at(-1)?.createdAt.toISOString() ?? null : null };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
