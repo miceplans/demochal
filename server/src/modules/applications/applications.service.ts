@@ -117,7 +117,10 @@ export class ApplicationsService {
     return this.db.select().from(applications).where(eq(applications.userId, userId));
   }
 
-  async listForBusinessOwner(ownerUserId: string, filters: { challengeId?: string; status?: string }) {
+  async listForBusinessOwner(
+    ownerUserId: string,
+    filters: { challengeId?: string; status?: string },
+  ) {
     const conditions = [eq(businesses.ownerUserId, ownerUserId)];
     if (filters.challengeId) conditions.push(eq(applications.challengeId, filters.challengeId));
     if (filters.status) conditions.push(eq(applications.status, filters.status));

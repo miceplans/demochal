@@ -55,7 +55,7 @@ export class BusinessesService {
       .limit(Math.min(Math.max(limit, 1), 100) + 1);
     const hasMore = rows.length > limit;
     const items = rows.slice(0, limit).map(({ challenge }) => challenge);
-    return { items, nextCursor: hasMore ? items.at(-1)?.createdAt.toISOString() ?? null : null };
+    return { items, nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
