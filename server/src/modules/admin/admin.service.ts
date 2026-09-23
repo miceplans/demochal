@@ -525,7 +525,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------- reports
 
-  async listReports(q?: string, status?: string) {
+  async listReports(q?: string, status?: string, targetType?: string) {
     const conditions = [];
     if (q) {
       conditions.push(
@@ -537,6 +537,7 @@ export class AdminService {
       );
     }
     if (status) conditions.push(eq(reports.status, status));
+    if (targetType) conditions.push(eq(reports.targetType, targetType));
     const rows = await this.db
       .select()
       .from(reports)
