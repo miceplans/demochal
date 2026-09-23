@@ -18,7 +18,7 @@ type Particle = {
 };
 
 const DURATION_MS = 15 * 10;
-const COLORS = [colors.primary, colors.white];
+const COLORS = ['#006FFF', '#ffffff'];
 
 function addParticles(
   particles: Particle[],
