@@ -11,7 +11,13 @@ type UserState = {
   query: string;
   survey: Record<string, string[]>;
   hasCompletedOnboarding: boolean;
-  recruitment: { challenge: string; introduction: string; role: string };
+  recruitment: {
+    challenge: string;
+    introduction: string;
+    role: string;
+    preferred?: string;
+    etc?: string;
+  };
   applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
   login: () => void;
   logout: () => void;
@@ -43,7 +49,7 @@ export const useUserStore = create<UserState>()(
       query: '',
       survey: {},
       hasCompletedOnboarding: false,
-      recruitment: { challenge: '', introduction: '', role: '프론트엔드' },
+      recruitment: { challenge: '', introduction: '', role: '프론트엔드', preferred: '', etc: '' },
       applicationDraft: null,
       login: () => set({ isLoggedIn: true }),
       logout: () => set({ isLoggedIn: false }),
