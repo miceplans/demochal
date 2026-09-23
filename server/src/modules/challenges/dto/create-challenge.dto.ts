@@ -3,6 +3,7 @@ import {
   IsInt,
   IsOptional,
   IsPositive,
+  Min,
   IsString,
   IsUUID,
   MaxLength,
@@ -21,7 +22,7 @@ export class CreateChallengeDto {
   description!: string;
 
   @IsInt()
-  @IsPositive()
+  @Min(0)
   price!: number;
 
   @IsInt()

@@ -19,6 +19,12 @@ export class BusinessesController {
     return this.businessesService.listMyChallenges(user.id, cursor, Number(limit));
   }
 
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  findMine(@CurrentUser() user: AuthenticatedUser) {
+    return this.businessesService.findByOwnerOrThrow(user.id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   register(@Body() dto: RegisterBusinessDto, @CurrentUser() user: AuthenticatedUser) {
