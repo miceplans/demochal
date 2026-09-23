@@ -49,6 +49,16 @@ export function createApiClient(options: HttpClientOptions) {
     },
     businesses: {
       get: (id: string) => http.get<Business>(`/businesses/${id}`),
+      me: () => http.get<Business>('/businesses/me'),
+      listMyChallenges: (params?: { cursor?: string; limit?: number }) => {
+        const q = new URLSearchParams();
+        if (params?.cursor) q.set('cursor', params.cursor);
+        if (params?.limit) q.set('limit', String(params.limit));
+        const qs = q.toString();
+        return http.get<{ items: Challenge[]; nextCursor: string | null }>(
+          `/businesses/me/challenges${qs ? `?${qs}` : ''}`,
+        );
+      },
       register: (body: Pick<Business, 'name' | 'registrationNumber'>) =>
         http.post<Business>('/businesses', body),
       update: (id: string, body: UpdateBusinessRequest) =>

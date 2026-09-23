@@ -4,7 +4,6 @@ import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js'
 import { ApplicationsService } from './applications.service.js';
 import { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
-import { ListManagedApplicationsDto } from './dto/list-managed-applications.dto.js';
 
 @Controller('applications')
 @UseGuards(JwtAuthGuard)
@@ -24,9 +23,10 @@ export class ApplicationsController {
   @Get('managed')
   listManaged(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() filters: ListManagedApplicationsDto,
+    @Query('challengeId') challengeId?: string,
+    @Query('status') status?: string,
   ) {
-    return this.applicationsService.listForBusinessOwner(user.id, filters);
+    return this.applicationsService.listForBusinessOwner(user.id, { challengeId, status });
   }
 
   @Get(':id')
