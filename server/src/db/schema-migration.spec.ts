@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(14);
+    expect(journal.entries).toHaveLength(15);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -309,6 +309,19 @@ describe('0013_billing_auth_attempts migration', () => {
     expect(sql).toContain('"auth_key_hash" varchar(64) NOT NULL');
     expect(sql).toContain('"card_id" uuid');
     expect(sql).toContain('billing_auth_attempts_auth_key_hash_unique');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0014_add_challenges_recruit_method migration', () => {
+  it('adds the exposure-boost column idempotently with an external backfill default', () => {
+    const tag = journal.entries[14]?.tag;
+    expect(tag).toBe('0014_add_challenges_recruit_method');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      `ADD COLUMN IF NOT EXISTS "recruit_method" varchar(20) DEFAULT 'external' NOT NULL`,
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

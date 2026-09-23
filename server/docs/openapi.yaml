@@ -1842,13 +1842,17 @@ components:
         createdAt: { type: string, format: date-time }
         category:
           { type: string, description: 'implemented — 생성 시 저장, 유사 챌린지 추천에 사용' }
-        # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
+        recruitMethod:
+          {
+            type: string,
+            enum: [seMOchall, external],
+            description: 'implemented — 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상',
+          }
+        # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category·recruitMethod 제외)
         posterFileId: { type: string, format: uuid }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
-        recruitMethod:
-          { type: string, enum: [seMOchall, external], description: 세모챌 내 신청폼 | 외부 링크 }
         recruitUrl: { type: string }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
@@ -1869,6 +1873,13 @@ components:
           {
             type: string,
             description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
+          }
+        recruitMethod:
+          {
+            type: string,
+            enum: [seMOchall, external],
+            default: external,
+            description: '모집방법. seMOchall(세모챌 신청폼)은 추천 노출 순위 부스트 대상',
           }
     Team:
       type: object
