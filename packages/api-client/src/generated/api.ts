@@ -81,6 +81,7 @@ import type {
   ListAdminBusinessesParams,
   ListAdminCertificatesParams,
   ListAdminContents200,
+  ListAdminContentsParams,
   ListAdminReportsParams,
   ListAdminUsersParams,
   ListChallenges200,
@@ -10382,43 +10383,59 @@ export type listAdminContentsResponseSuccess = listAdminContentsResponse200 & {
 };
 export type listAdminContentsResponse = listAdminContentsResponseSuccess;
 
-export const getListAdminContentsUrl = () => {
-  return `/admin/contents`;
+export const getListAdminContentsUrl = (params?: ListAdminContentsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/contents?${stringifiedParams}` : `/admin/contents`;
 };
 
 /**
  * 콘텐츠 모니터링(`/admin/contents`).
- * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트)
- * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트)
+ * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
+ * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
+ * - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
  * - `reports`: 신고 로그 테이블
+ * - 미확인 도트(`unread`) = 처리되지 않은(open) 신고가 걸린 팀/챌린지
  * @summary 콘텐츠 모니터링 조회
  */
 export const listAdminContents = async (
+  params?: ListAdminContentsParams,
   options?: Parameters<typeof apiFetch>[1],
 ): Promise<listAdminContentsResponse> => {
-  return apiFetch<listAdminContentsResponse>(getListAdminContentsUrl(), {
+  return apiFetch<listAdminContentsResponse>(getListAdminContentsUrl(params), {
     ...options,
     method: 'GET',
   });
 };
 
-export const getListAdminContentsQueryKey = () => {
-  return [`/admin/contents`] as const;
+export const getListAdminContentsQueryKey = (params?: ListAdminContentsParams) => {
+  return [`/admin/contents`, ...(params ? [params] : [])] as const;
 };
 
 export const getListAdminContentsQueryOptions = <
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
-  request?: SecondParameter<typeof apiFetch>;
-}) => {
+>(
+  params?: ListAdminContentsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListAdminContentsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListAdminContentsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContents>>> = ({ signal }) =>
-    listAdminContents({ signal, ...requestOptions });
+    listAdminContents(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listAdminContents>>,
@@ -10436,6 +10453,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params: undefined | ListAdminContentsParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>> &
       Pick<
@@ -10454,6 +10472,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>> &
       Pick<
@@ -10472,6 +10491,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
     request?: SecondParameter<typeof apiFetch>;
@@ -10486,13 +10506,14 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
     request?: SecondParameter<typeof apiFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListAdminContentsQueryOptions(options);
+  const queryOptions = getListAdminContentsQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
