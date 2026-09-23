@@ -5,6 +5,7 @@ import type { Request, Response } from 'express';
 import { AuthController } from './auth.controller.js';
 import { AUTH_COOKIE_NAME, authCookieOptions } from './auth.cookie.js';
 import type { AuthService } from './auth.service.js';
+import type { ContactVerificationsService } from './contact-verifications.service.js';
 import { SKIP_INPUT_SECURITY_KEY } from '../../common/security/skip-input-security.decorator.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 
@@ -23,7 +24,13 @@ function createController() {
     register: vi.fn().mockResolvedValue({ accessToken: 'signed.jwt', user }),
     me: vi.fn().mockResolvedValue(user),
   };
-  return { controller: new AuthController(service as unknown as AuthService), service };
+  return {
+    controller: new AuthController(
+      service as unknown as AuthService,
+      {} as unknown as ContactVerificationsService,
+    ),
+    service,
+  };
 }
 
 describe('AuthController cookie session flow', () => {
@@ -96,7 +103,10 @@ describe('AuthController Google callback input-security opt-out', () => {
     const mockedFetchJson = vi.mocked(fetchJsonMock);
 
     const service = { loginWithGoogle: vi.fn() };
-    const controller = new FreshController(service as unknown as AuthService);
+    const controller = new FreshController(
+      service as unknown as AuthService,
+      {} as unknown as ContactVerificationsService,
+    );
     const res = response();
     const request = { headers: { cookie: 'semochal_google_oauth_state=nonce-value' } } as Request;
 
@@ -133,7 +143,10 @@ describe('AuthController Google callback input-security opt-out', () => {
         user: { ...user, onboardingSurvey: true },
       }),
     };
-    const controller = new FreshController(service as unknown as AuthService);
+    const controller = new FreshController(
+      service as unknown as AuthService,
+      {} as unknown as ContactVerificationsService,
+    );
     const res = response();
     const request = { headers: { cookie: `semochal_google_oauth_state=${nonce}` } } as Request;
 

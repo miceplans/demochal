@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(17);
+    expect(journal.entries).toHaveLength(18);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -344,6 +344,22 @@ describe('0016_team_member_chat_link migration', () => {
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "chat_link" varchar(500)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0017_biz_signup_contract migration', () => {
+  it('adds the biz signup columns and contact verification table without destructive DDL', () => {
+    const tag = journal.entries[17]?.tag;
+    expect(tag).toBe('0017_biz_signup_contract');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "username" varchar(50)');
+    expect(sql).toContain('"users_username_unique" UNIQUE("username")');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "phone_verified_at" timestamp');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "terms_agreements" jsonb');
+    expect(sql).toContain('ALTER COLUMN "registration_number" DROP NOT NULL');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "contact_verifications"');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

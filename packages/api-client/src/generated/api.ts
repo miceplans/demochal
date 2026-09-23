@@ -58,6 +58,8 @@ import type {
   ChallengeStats,
   CheckHealth200,
   CheckHealth503,
+  ConfirmContactVerification200,
+  ConfirmContactVerificationBody,
   ConfirmPaymentRequest,
   CreateAdBody,
   CreateCertificateRequest,
@@ -106,6 +108,8 @@ import type {
   RegisterPaymentCardBody,
   RejectVerificationBody,
   Report,
+  RequestContactVerification201,
+  RequestContactVerificationBody,
   RequestPresignedUpload201,
   ResolveReportBody,
   SaveInterests200,
@@ -293,6 +297,11 @@ export type registerResponse201 = {
   status: 201;
 };
 
+export type registerResponse400 = {
+  data: void;
+  status: 400;
+};
+
 export type registerResponse409 = {
   data: void;
   status: 409;
@@ -301,7 +310,7 @@ export type registerResponse409 = {
 export type registerResponseSuccess = registerResponse201 & {
   headers: Headers;
 };
-export type registerResponseError = registerResponse409 & {
+export type registerResponseError = (registerResponse400 | registerResponse409) & {
   headers: Headers;
 };
 
@@ -412,6 +421,274 @@ export const useRegister = <TError = void, TContext = unknown>(
   return useMutation(getRegisterMutationOptions(options), queryClient);
 };
 
+export type requestContactVerificationResponse201 = {
+  data: RequestContactVerification201;
+  status: 201;
+};
+
+export type requestContactVerificationResponse429 = {
+  data: void;
+  status: 429;
+};
+
+export type requestContactVerificationResponse503 = {
+  data: void;
+  status: 503;
+};
+
+export type requestContactVerificationResponseSuccess = requestContactVerificationResponse201 & {
+  headers: Headers;
+};
+export type requestContactVerificationResponseError = (
+  requestContactVerificationResponse429 | requestContactVerificationResponse503
+) & {
+  headers: Headers;
+};
+
+export type requestContactVerificationResponse =
+  requestContactVerificationResponseSuccess | requestContactVerificationResponseError;
+
+export const getRequestContactVerificationUrl = () => {
+  return `/auth/contact-verifications`;
+};
+
+/**
+ * 6자리 인증번호(5분 유효)를 만들고 발송 이벤트를 outbox에 적재한다. 같은 대상은 60초에 1회.
+ * 발송 relay(SES/SMS)는 아직 없어 production에서는 503을 반환하고, 그 외 환경에서는
+ * 테스트용으로 `devCode`를 함께 돌려준다.
+ * @summary 이메일/휴대폰 인증번호 요청
+ */
+export const requestContactVerification = async (
+  requestContactVerificationBody: RequestContactVerificationBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<requestContactVerificationResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<requestContactVerificationResponse>(getRequestContactVerificationUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(requestContactVerificationBody),
+  });
+};
+
+export const getRequestContactVerificationMutationKey = () =>
+  ['requestContactVerification'] as const;
+
+export const getRequestContactVerificationMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestContactVerification>>,
+    TError,
+    RequestContactVerificationMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestContactVerification>>,
+  TError,
+  RequestContactVerificationMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRequestContactVerificationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestContactVerification>>,
+    RequestContactVerificationMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestContactVerification(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestContactVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestContactVerification>>
+>;
+export type RequestContactVerificationMutationBody = RequestContactVerificationBody;
+export type RequestContactVerificationMutationError = void;
+export type RequestContactVerificationMutationVariables = { data: RequestContactVerificationBody };
+
+/**
+ * @summary 이메일/휴대폰 인증번호 요청
+ */
+export const useRequestContactVerification = <TError = void, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof requestContactVerification>>,
+      TError,
+      RequestContactVerificationMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof requestContactVerification>>,
+  TError,
+  RequestContactVerificationMutationVariables,
+  TContext
+> => {
+  return useMutation(getRequestContactVerificationMutationOptions(options), queryClient);
+};
+
+export type confirmContactVerificationResponse200 = {
+  data: ConfirmContactVerification200;
+  status: 200;
+};
+
+export type confirmContactVerificationResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type confirmContactVerificationResponseSuccess = confirmContactVerificationResponse200 & {
+  headers: Headers;
+};
+export type confirmContactVerificationResponseError = confirmContactVerificationResponse400 & {
+  headers: Headers;
+};
+
+export type confirmContactVerificationResponse =
+  confirmContactVerificationResponseSuccess | confirmContactVerificationResponseError;
+
+export const getConfirmContactVerificationUrl = (id: string) => {
+  return `/auth/contact-verifications/${id}/confirm`;
+};
+
+/**
+ * @summary 이메일/휴대폰 인증번호 확인
+ */
+export const confirmContactVerification = async (
+  id: string,
+  confirmContactVerificationBody: ConfirmContactVerificationBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<confirmContactVerificationResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<confirmContactVerificationResponse>(getConfirmContactVerificationUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmContactVerificationBody),
+  });
+};
+
+export const getConfirmContactVerificationMutationKey = () =>
+  ['confirmContactVerification'] as const;
+
+export const getConfirmContactVerificationMutationOptions = <
+  TError = void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof confirmContactVerification>>,
+    TError,
+    ConfirmContactVerificationMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof confirmContactVerification>>,
+  TError,
+  ConfirmContactVerificationMutationVariables,
+  TContext
+> => {
+  const mutationKey = getConfirmContactVerificationMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof confirmContactVerification>>,
+    ConfirmContactVerificationMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return confirmContactVerification(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConfirmContactVerificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof confirmContactVerification>>
+>;
+export type ConfirmContactVerificationMutationBody = ConfirmContactVerificationBody;
+export type ConfirmContactVerificationMutationError = void;
+export type ConfirmContactVerificationMutationVariables = {
+  id: string;
+  data: ConfirmContactVerificationBody;
+};
+
+/**
+ * @summary 이메일/휴대폰 인증번호 확인
+ */
+export const useConfirmContactVerification = <TError = void, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof confirmContactVerification>>,
+      TError,
+      ConfirmContactVerificationMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof confirmContactVerification>>,
+  TError,
+  ConfirmContactVerificationMutationVariables,
+  TContext
+> => {
+  return useMutation(getConfirmContactVerificationMutationOptions(options), queryClient);
+};
+
 export type loginResponse200 = {
   data: Login200;
   status: 200;
@@ -436,7 +713,7 @@ export const getLoginUrl = () => {
 };
 
 /**
- * 이메일/비밀번호로 로그인하여 HttpOnly 세션 쿠키(JWT, 7일 유효)를 설정한다.
+ * 이메일(또는 기업 계정의 아이디)/비밀번호로 로그인하여 HttpOnly 세션 쿠키(JWT, 7일 유효)를 설정한다.
  * bcrypt로 저장된 해시와 비교하며, 일치하지 않으면 401을 반환한다.
  * 실제 운영 화면은 소셜 로그인(카카오/구글/네이버)이 기본이며, `/onboarding/*` 4단계 설문 후 가입 완료.
  * @summary 이메일 로그인

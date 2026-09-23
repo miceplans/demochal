@@ -27,6 +27,17 @@ export interface User {
   name?: string;
   /** 사용자 | 기업 | 관리자 */
   role?: UserRole;
+  /**
+   * 기업 계정 로그인 아이디
+   * @nullable
+   */
+  username?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  emailVerifiedAt?: string | null;
+  /** @nullable */
+  phoneVerifiedAt?: string | null;
   createdAt?: string;
   /** 포지션 */
   position?: string;

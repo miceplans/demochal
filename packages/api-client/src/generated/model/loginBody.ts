@@ -17,8 +17,13 @@
  * OpenAPI spec version: 0.0.1
  */
 
+/**
+ * email 또는 username 중 하나는 필수
+ */
 export type LoginBody = {
-  email: string;
+  email?: string;
+  /** @maxLength 50 */
+  username?: string;
   /** @minLength 8 */
   password: string;
 };
