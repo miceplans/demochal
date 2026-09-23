@@ -29,6 +29,7 @@ import {
 } from './dto/contact-verification.dto.js';
 import { ContactVerificationsService } from './contact-verifications.service.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
+import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
 import { Public } from './public.decorator.js';
 
@@ -123,6 +124,12 @@ export class AuthController {
     response.redirect(authorizationUrl.toString());
   }
 
+  // The callback's `code`, `state`, and `error` query values are opaque,
+  // Google-issued tokens whose URL-safe alphabet can contain deny-list
+  // sequences such as `--`. They are never used in SQL directly; security is
+  // enforced below via the signed state/cookie comparison and the HTTPS token
+  // exchange, so the generic input-security deny-list is opted out here.
+  @SkipInputSecurity()
   @Get('google/callback')
   async googleCallback(
     @Query('code') code: string | undefined,

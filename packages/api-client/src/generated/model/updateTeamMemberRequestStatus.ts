@@ -16,25 +16,11 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { TeamMemberStatus } from './teamMemberStatus';
 
-export interface TeamMember {
-  id?: string;
-  teamId?: string;
-  userId?: string;
-  /** 상세·관리 응답에 포함 */
-  name?: string;
-  /** @nullable */
-  role?: string | null;
-  status?: TeamMemberStatus;
-  /**
-   * 합격 시 저장된 채팅방 링크 (미정/불합격은 null)
-   * @nullable
-   */
-  chatLink?: string | null;
-  createdAt?: string;
-  /** listMyTeamApplications 응답 전용 */
-  teamTitle?: string;
-  /** listMyTeamApplications 응답 전용 */
-  challengeTitle?: string;
-}
+export type UpdateTeamMemberRequestStatus =
+  (typeof UpdateTeamMemberRequestStatus)[keyof typeof UpdateTeamMemberRequestStatus];
+
+export const UpdateTeamMemberRequestStatus = {
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;

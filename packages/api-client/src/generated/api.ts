@@ -132,6 +132,7 @@ import type {
   UpdateBusinessBody,
   UpdateChallengeRequest,
   UpdateMyProfileBody,
+  UpdateTeamMemberRequest,
   User,
   Verification,
   VerifyCertificateBody,
@@ -2876,6 +2877,288 @@ export const useCreateTeam = <TError = unknown, TContext = unknown>(
   return useMutation(getCreateTeamMutationOptions(options), queryClient);
 };
 
+export type listMyTeamApplicationsResponse200 = {
+  data: TeamMember[];
+  status: 200;
+};
+
+export type listMyTeamApplicationsResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type listMyTeamApplicationsResponseSuccess = listMyTeamApplicationsResponse200 & {
+  headers: Headers;
+};
+export type listMyTeamApplicationsResponseError = listMyTeamApplicationsResponse401 & {
+  headers: Headers;
+};
+
+export type listMyTeamApplicationsResponse =
+  listMyTeamApplicationsResponseSuccess | listMyTeamApplicationsResponseError;
+
+export const getListMyTeamApplicationsUrl = () => {
+  return `/teams/applications/me`;
+};
+
+/**
+ * 마이페이지 지원현황(`/my/applications`)의 "팀 지원현황" 테이블. 내가 지원한 팀(내가 리더인 팀은 제외)과
+ * 합류 신청 상태(pending/accepted/rejected → 화면의 검토중/확정/불합격).
+ * @summary 내 팀 지원 현황 조회
+ */
+export const listMyTeamApplications = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listMyTeamApplicationsResponse> => {
+  return apiFetch<listMyTeamApplicationsResponse>(getListMyTeamApplicationsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListMyTeamApplicationsQueryKey = () => {
+  return [`/teams/applications/me`] as const;
+};
+
+export const getListMyTeamApplicationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyTeamApplications>>,
+  TError = UnauthorizedResponse,
+>(options?: {
+  query?: Partial<
+    UseQueryOptions<Awaited<ReturnType<typeof listMyTeamApplications>>, TError, TData>
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyTeamApplicationsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyTeamApplications>>> = ({ signal }) =>
+    listMyTeamApplications({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyTeamApplications>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListMyTeamApplicationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyTeamApplications>>
+>;
+export type ListMyTeamApplicationsQueryError = UnauthorizedResponse;
+
+export function useListMyTeamApplications<
+  TData = Awaited<ReturnType<typeof listMyTeamApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listMyTeamApplications>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyTeamApplications>>,
+          TError,
+          Awaited<ReturnType<typeof listMyTeamApplications>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyTeamApplications<
+  TData = Awaited<ReturnType<typeof listMyTeamApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listMyTeamApplications>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyTeamApplications>>,
+          TError,
+          Awaited<ReturnType<typeof listMyTeamApplications>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyTeamApplications<
+  TData = Awaited<ReturnType<typeof listMyTeamApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listMyTeamApplications>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 팀 지원 현황 조회
+ */
+
+export function useListMyTeamApplications<
+  TData = Awaited<ReturnType<typeof listMyTeamApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listMyTeamApplications>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListMyTeamApplicationsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type listManagedTeamsResponse200 = {
+  data: Team[];
+  status: 200;
+};
+
+export type listManagedTeamsResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type listManagedTeamsResponseSuccess = listManagedTeamsResponse200 & {
+  headers: Headers;
+};
+export type listManagedTeamsResponseError = listManagedTeamsResponse401 & {
+  headers: Headers;
+};
+
+export type listManagedTeamsResponse =
+  listManagedTeamsResponseSuccess | listManagedTeamsResponseError;
+
+export const getListManagedTeamsUrl = () => {
+  return `/teams/managed`;
+};
+
+/**
+ * 팀 지원자 관리 화면(`/my/teams/public-data`). 내가 리더인 팀과 그 지원자 목록(팀장 본인 행 제외).
+ * 지원자별 합격/불합격 결정은 `PATCH /teams/{id}/members/{memberId}`로 저장한다.
+ * @summary 내가 리더인 팀과 지원자 목록 조회
+ */
+export const listManagedTeams = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listManagedTeamsResponse> => {
+  return apiFetch<listManagedTeamsResponse>(getListManagedTeamsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListManagedTeamsQueryKey = () => {
+  return [`/teams/managed`] as const;
+};
+
+export const getListManagedTeamsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listManagedTeams>>,
+  TError = UnauthorizedResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedTeams>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListManagedTeamsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listManagedTeams>>> = ({ signal }) =>
+    listManagedTeams({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listManagedTeams>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListManagedTeamsQueryResult = NonNullable<Awaited<ReturnType<typeof listManagedTeams>>>;
+export type ListManagedTeamsQueryError = UnauthorizedResponse;
+
+export function useListManagedTeams<
+  TData = Awaited<ReturnType<typeof listManagedTeams>>,
+  TError = UnauthorizedResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedTeams>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedTeams>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListManagedTeams<
+  TData = Awaited<ReturnType<typeof listManagedTeams>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedTeams>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedTeams>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListManagedTeams<
+  TData = Awaited<ReturnType<typeof listManagedTeams>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedTeams>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내가 리더인 팀과 지원자 목록 조회
+ */
+
+export function useListManagedTeams<
+  TData = Awaited<ReturnType<typeof listManagedTeams>>,
+  TError = UnauthorizedResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listManagedTeams>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListManagedTeamsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getTeamResponse200 = {
   data: Team;
   status: 200;
@@ -3148,6 +3431,164 @@ export const useJoinTeam = <
   return useMutation(getJoinTeamMutationOptions(options), queryClient);
 };
 
+export type updateTeamMemberResponse200 = {
+  data: TeamMember;
+  status: 200;
+};
+
+export type updateTeamMemberResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type updateTeamMemberResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateTeamMemberResponse403 = {
+  data: void;
+  status: 403;
+};
+
+export type updateTeamMemberResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type updateTeamMemberResponseSuccess = updateTeamMemberResponse200 & {
+  headers: Headers;
+};
+export type updateTeamMemberResponseError = (
+  | updateTeamMemberResponse400
+  | updateTeamMemberResponse401
+  | updateTeamMemberResponse403
+  | updateTeamMemberResponse404
+) & {
+  headers: Headers;
+};
+
+export type updateTeamMemberResponse =
+  updateTeamMemberResponseSuccess | updateTeamMemberResponseError;
+
+export const getUpdateTeamMemberUrl = (id: string, memberId: string) => {
+  return `/teams/${id}/members/${memberId}`;
+};
+
+/**
+ * 팀 지원자 관리 화면의 "결과 전송하기". 팀장(또는 관리자)만 결정할 수 있고, 다른 사용자는 403으로 거부된다.
+ * accepted이면 채팅방 링크를 함께 저장해 지원자에게 `team_matching` 알림으로 전달하고,
+ * rejected이면 저장된 링크를 지운다. 팀장이 자기 자신의 행을 결정하면 400.
+ * @summary 팀 지원자 합격/불합격 결정 (+ 채팅방 링크 저장)
+ */
+export const updateTeamMember = async (
+  id: string,
+  memberId: string,
+  updateTeamMemberRequest: UpdateTeamMemberRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<updateTeamMemberResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<updateTeamMemberResponse>(getUpdateTeamMemberUrl(id, memberId), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateTeamMemberRequest),
+  });
+};
+
+export const getUpdateTeamMemberMutationKey = () => ['updateTeamMember'] as const;
+
+export const getUpdateTeamMemberMutationOptions = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateTeamMember>>,
+    TError,
+    UpdateTeamMemberMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateTeamMember>>,
+  TError,
+  UpdateTeamMemberMutationVariables,
+  TContext
+> => {
+  const mutationKey = getUpdateTeamMemberMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateTeamMember>>,
+    UpdateTeamMemberMutationVariables
+  > = (props) => {
+    const { id, memberId, data } = props ?? {};
+
+    return updateTeamMember(id, memberId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateTeamMemberMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateTeamMember>>
+>;
+export type UpdateTeamMemberMutationBody = UpdateTeamMemberRequest;
+export type UpdateTeamMemberMutationError = void | UnauthorizedResponse | NotFoundResponse;
+export type UpdateTeamMemberMutationVariables = {
+  id: string;
+  memberId: string;
+  data: UpdateTeamMemberRequest;
+};
+
+/**
+ * @summary 팀 지원자 합격/불합격 결정 (+ 채팅방 링크 저장)
+ */
+export const useUpdateTeamMember = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateTeamMember>>,
+      TError,
+      UpdateTeamMemberMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateTeamMember>>,
+  TError,
+  UpdateTeamMemberMutationVariables,
+  TContext
+> => {
+  return useMutation(getUpdateTeamMemberMutationOptions(options), queryClient);
+};
+
 export type applyChallengeResponse201 = {
   data: ApplyChallenge201;
   status: 201;
@@ -3276,8 +3717,9 @@ export const getListMyApplicationsUrl = () => {
 };
 
 /**
- * 마이페이지 지원현황(`/my/applications`): 챌린지 지원(결과 태그: 예선통과/심사중/탈락)과
- * 팀 지원현황(확정/검토중/거절) 두 테이블. 팀 지원은 향후 별도 확장.
+ * 마이페이지 지원현황(`/my/applications`)의 "챌린지 지원 현황" 테이블.
+ * 결과 태그 매핑: accepted→예선 통과, rejected→불합격, 그 외(pending 등)→심사중.
+ * 팀 지원현황은 `GET /teams/applications/me`를 사용한다.
  * @summary 내 지원 현황 조회
  */
 export const listMyApplications = async (

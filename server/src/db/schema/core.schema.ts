@@ -130,6 +130,8 @@ export const teamMembers = pgTable('team_members', {
     .references(() => users.id),
   role: varchar('role', { length: 100 }),
   status: varchar('status', { length: 20 }).notNull().default('pending'),
+  // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
+  chatLink: varchar('chat_link', { length: 500 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const applications = pgTable('applications', {

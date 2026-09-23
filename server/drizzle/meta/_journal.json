@@ -109,8 +109,15 @@
     {
       "idx": 16,
       "version": "7",
-      "when": 1790160000000,
-      "tag": "0016_biz_signup_contract",
+      "when": 1790152251341,
+      "tag": "0016_team_member_chat_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790170000000,
+      "tag": "0017_biz_signup_contract",
       "breakpoints": true
     }
   ]
