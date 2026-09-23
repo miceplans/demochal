@@ -8,6 +8,7 @@ import { colors as c, mobile, shadows } from '@/styles/design';
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  href?: string;
 };
 
 type AdCarouselProps = {
@@ -114,6 +115,8 @@ const SlideButton = styled.button({
   cursor: 'pointer',
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
 });
+
+const SlideLink = SlideButton.withComponent('a');
 
 // hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
@@ -300,18 +303,26 @@ export function AdCarousel({
         >
           {slides.map((item, index) => {
             const itemIndex = (((index - pad) % itemCount) + itemCount) % itemCount;
-            return (
+            const image = (
+              <Image
+                src={item.src}
+                alt={index === railIndex ? item.alt : ''}
+                width={SLIDE_WIDTH[variant]}
+                height={variant === 'hero' ? 250 : 190}
+                unoptimized={item.src.startsWith('http')}
+              />
+            );
+            return item.href ? (
+              <SlideLink key={`${item.src}-${index}`} href={item.href}>
+                {image}
+              </SlideLink>
+            ) : (
               <SlideButton
                 key={`${item.src}-${index}`}
                 type="button"
                 onClick={() => goTo(itemIndex)}
               >
-                <Image
-                  src={item.src}
-                  alt={index === railIndex ? item.alt : ''}
-                  width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
-                />
+                {image}
               </SlideButton>
             );
           })}

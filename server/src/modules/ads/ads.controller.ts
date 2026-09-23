@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -28,6 +29,15 @@ export class AdsController {
   @Get('products')
   listProducts() {
     return this.adsService.listProducts();
+  }
+
+  @Public()
+  @Get('public')
+  listPublic(@Query('placement') placement: 'hero' | 'gallery') {
+    if (placement !== 'hero' && placement !== 'gallery') {
+      throw new BadRequestException('placement must be hero or gallery');
+    }
+    return this.adsService.listPublic(placement);
   }
 
   @Get()

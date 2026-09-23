@@ -19,6 +19,7 @@ import type {
   PaginatedResult,
   PaymentCard,
   PaymentHistoryItem,
+  PublicAd,
   PresignedUploadRequest,
   PresignedUploadResponse,
   RegisterPaymentCardRequest,
@@ -151,6 +152,8 @@ export function createApiClient(options: HttpClientOptions) {
     },
     ads: {
       listProducts: () => http.get<AdProduct[]>('/ads/products'),
+      listPublic: (placement: PublicAd['placement']) =>
+        http.get<PublicAd[]>(`/ads/public?placement=${placement}`),
       listMine: (status?: 'active' | 'paused' | 'ended') =>
         http.get<Ad[]>(`/ads${status ? `?status=${status}` : ''}`),
       create: (body: CreateAdRequest) => http.post<Ad>('/ads', body),
