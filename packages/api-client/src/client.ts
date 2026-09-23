@@ -49,6 +49,7 @@ export function createApiClient(options: HttpClientOptions) {
     },
     businesses: {
       get: (id: string) => http.get<Business>(`/businesses/${id}`),
+      me: () => http.get<Business>('/businesses/me'),
       listMyChallenges: (params?: { cursor?: string; limit?: number }) => {
         const q = new URLSearchParams();
         if (params?.cursor) q.set('cursor', params.cursor);

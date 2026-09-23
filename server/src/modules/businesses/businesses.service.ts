@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges } from '../../db/schema.js';
@@ -42,6 +42,12 @@ export class BusinessesService {
     return business
       ? { ...business, ...verificationStatusPresentation(business.verificationStatus) }
       : null;
+  }
+
+  async findByOwnerOrThrow(ownerUserId: string) {
+    const business = await this.findByOwner(ownerUserId);
+    if (!business) throw new ForbiddenException('Business registration is required');
+    return business;
   }
 
   async listMyChallenges(ownerUserId: string, cursor?: string, limit = 20) {

@@ -1,551 +1,189 @@
 'use client';
-import { useState, type ChangeEvent } from 'react';
+
+import { FormEvent, useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { adApi, adError } from '@/lib/ad-api';
+import {
+  BizContent,
+  Field,
+  FieldInput,
+  FieldSelect,
+  PrimaryButton,
+  OutlineButton,
+  useBizHref,
+} from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
-import { textStyle } from '@/styles/typography';
 
-const ICON = '/assets/icons';
-
-const chipRows: string[][] = [
-  ['# 비즈니스/스타트업', '# 경제/금융/투자', '# 과학/IT/AI', '# 마케팅/PR'],
-  [
-    '# 사회/역사',
-    '# 인문/심리',
-    '# 문화/예술/디자인',
-    '# 게임',
-    '# 여행/레저',
-    '# 세미나',
-    '# 인턴십',
-  ],
-  ['# 운동/건강/웰빙', '# 자연/환경', '# 가족/육아', '#동식물/반려동물', '#음식/음료'],
-  ['#영화/드라마/미디어', '#패션/뷰티', '# 자기계발/학습/독서', '# DIY/공예', '# 종교', '# 기타'],
-];
 const categories = ['IT/SW', '디자인', '창업/취업', '기획', '광고/마케팅', '대회', '해외'];
-const categoryOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 
 export function BizPostingFormPage() {
-  const [roles, setRoles] = useState<string[]>(['', '']);
-  const [topics, setTopics] = useState<string[]>(['# 비즈니스/스타트업', '# 가족/육아']);
+  const router = useRouter();
+  const hrefOf = useBizHref();
+  const [businessId, setBusinessId] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('0');
+  const [capacity, setCapacity] = useState('1');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [category, setCategory] = useState('');
-  const [recruit, setRecruit] = useState<'semo' | 'external'>('semo');
-  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const toggleTopic = (topic: string) =>
-    setTopics((s) => (s.includes(topic) ? s.filter((x) => x !== topic) : [...s, topic]));
-  const changeRole = (index: number) => (e: ChangeEvent<HTMLInputElement>) =>
-    setRoles((s) => s.map((v, i) => (i === index ? e.target.value : v)));
+  useEffect(() => {
+    let active = true;
+    adApi.businesses
+      .me()
+      .then((business) => active && setBusinessId(business.id))
+      .catch((cause) => active && setError(adError(cause)))
+      .finally(() => active && setLoading(false));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError('');
+    const parsedPrice = Number(price);
+    const parsedCapacity = Number(capacity);
+    if (!title.trim() || !description.trim() || !startDate || !endDate)
+      return setError('제목, 설명, 모집 기간을 입력해 주세요.');
+    if (!Number.isInteger(parsedPrice) || parsedPrice < 0)
+      return setError('참가비는 0 이상의 정수로 입력해 주세요.');
+    if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
+      return setError('모집 인원은 1명 이상으로 입력해 주세요.');
+    if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
+    setSubmitting(true);
+    try {
+      const challenge = await adApi.challenges.create({
+        businessId,
+        title: title.trim(),
+        description: description.trim(),
+        price: parsedPrice,
+        capacity: parsedCapacity,
+        startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
+        endDate: new Date(`${endDate}T23:59:59.000Z`).toISOString(),
+        category: category || null,
+      });
+      router.push(hrefOf(`/postings/${challenge.id}`));
+    } catch (cause) {
+      setError(adError(cause));
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   return (
-    <FormWrap>
-      <Uploader>
-        <input type="file" accept="image/*" style={{ display: 'none' }} />
-        <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
-        <UploadText>파일 찾기</UploadText>
-      </Uploader>
-
-      <Body>
-        <TitleSection>
-          <TitleInput placeholder="제목을 입력해주세요" aria-label="공고 제목" />
-          <Roles aria-label="모집 역할">
-            <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
-              <RoleInput value={roles[0]} onChange={changeRole(0)} aria-label="모집 역할 1" />
-            </RoleRow>
-            <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-people.svg`} alt="" />
-              <RoleInput value={roles[1]} onChange={changeRole(1)} aria-label="모집 역할 2" />
-            </RoleRow>
-            <AddRoleButton
-              type="button"
-              onClick={() => setRoles((s) => [...s, ''])}
-              aria-label="역할 추가"
-            >
-              <RoleIcon src={`${ICON}/figma-role-add.svg`} alt="" />
-            </AddRoleButton>
-          </Roles>
-        </TitleSection>
-
-        <Fields>
-          <FieldBlock>
-            <FieldLabel>설명문구를 적어주세요.</FieldLabel>
-            <LineInput aria-label="설명문구" />
-          </FieldBlock>
-          <FieldBlock>
-            <FieldLabel>해시태그를 적어주세요.</FieldLabel>
-            <LineInput aria-label="해시태그" />
-          </FieldBlock>
-          <FieldBlock>
-            <FieldLabel>상세정보를 적어주세요.</FieldLabel>
-            <EditorBox>
-              <MenuBar role="toolbar" aria-label="텍스트 에디터">
-                <ToolGroup>
-                  <ToolButton type="button" aria-label="되돌리기">
-                    <ToolIcon src={`${ICON}/figma-undo.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="다시 실행">
-                    <ToolIcon src={`${ICON}/figma-redo.svg`} alt="" />
-                  </ToolButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <DropdownTextButton type="button">
-                    Normal text
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownTextButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <DropdownIconButton type="button" aria-label="텍스트 정렬">
-                    <ToolIcon src={`${ICON}/figma-align-left.svg`} alt="" />
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownIconButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <DropdownIconButton type="button" aria-label="색상">
-                    <ToolIcon src={`${ICON}/figma-color-picker.svg`} alt="" />
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownIconButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <ToolButton type="button" aria-label="굵게">
-                    <ToolIcon src={`${ICON}/figma-bold.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="기울임">
-                    <ToolIcon src={`${ICON}/figma-italic.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="밑줄">
-                    <ToolIcon src={`${ICON}/figma-underline.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="취소선">
-                    <ToolIcon src={`${ICON}/figma-strike.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="인라인 코드">
-                    <ToolIcon src={`${ICON}/figma-code.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="서식 지우기">
-                    <ToolIcon src={`${ICON}/figma-clear-format.svg`} alt="" />
-                  </ToolButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <ToolButton type="button" aria-label="글머리 기호 목록">
-                    <ToolIcon src={`${ICON}/figma-bullet-list.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="번호 매기기 목록">
-                    <ToolIcon src={`${ICON}/figma-number-list.svg`} alt="" />
-                  </ToolButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <ToolButton type="button" aria-label="링크">
-                    <ToolIcon src={`${ICON}/figma-link.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="이미지">
-                    <ToolIcon src={`${ICON}/figma-image.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="인용">
-                    <ToolIcon src={`${ICON}/figma-quote.svg`} alt="" />
-                  </ToolButton>
-                  <ToolButton type="button" aria-label="구분선">
-                    <ToolIcon src={`${ICON}/figma-rule.svg`} alt="" />
-                  </ToolButton>
-                </ToolGroup>
-              </MenuBar>
-              <ContentsArea
-                contentEditable
-                suppressContentEditableWarning
-                role="textbox"
-                aria-multiline="true"
-                aria-label="상세정보 본문"
-                data-placeholder="내용을 입력해주세요"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    '<h1>Heading1</h1><h2>Heading2</h2><h3>Heading3</h3><img src="/mock/figma-posting-poster.png" alt="" />',
-                }}
-              />
-            </EditorBox>
-          </FieldBlock>
-
-          <TwoCol>
-            <CategoryBlock>
-              <FieldLabel>카테고리</FieldLabel>
-              <Dropdown
-                options={categoryOptions}
-                value={category || undefined}
-                placeholder="종류를 선택하세요"
-                size="L"
-                aria-label="카테고리"
-                onChange={setCategory}
-              />
-            </CategoryBlock>
-            <TopicBlock>
-              <FieldLabel>주제</FieldLabel>
-              <Chips role="group" aria-label="주제">
-                {chipRows.map((row, i) => (
-                  <ChipRow key={i}>
-                    {row.map((topic) => (
-                      <Chip
-                        key={topic}
-                        type="button"
-                        selected={topics.includes(topic)}
-                        aria-pressed={topics.includes(topic)}
-                        onClick={() => toggleTopic(topic)}
-                      >
-                        {topic}
-                      </Chip>
-                    ))}
-                  </ChipRow>
-                ))}
-              </Chips>
-            </TopicBlock>
-          </TwoCol>
-
-          <FieldBlock wide>
-            <FieldLabel>모집방법</FieldLabel>
-            <RadioColumn>
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="recruit"
-                  checked={recruit === 'semo'}
-                  onChange={() => setRecruit('semo')}
-                />
-                <RadioIcon
-                  src={
-                    recruit === 'semo'
-                      ? `${ICON}/figma-radio-on.svg`
-                      : `${ICON}/figma-radio-off.svg`
-                  }
-                  alt=""
-                />
-                세모챌에서 만들기
-              </RadioOption>
-              <RoleRow>
-                <RadioOption>
-                  <RadioInput
-                    type="radio"
-                    name="recruit"
-                    checked={recruit === 'external'}
-                    onChange={() => setRecruit('external')}
-                  />
-                  <RadioIcon
-                    src={
-                      recruit === 'external'
-                        ? `${ICON}/figma-radio-on.svg`
-                        : `${ICON}/figma-radio-off.svg`
-                    }
-                    alt=""
-                  />
-                  외부 링크 추가
-                </RadioOption>
-                <LinkInput aria-label="외부 링크" />
-              </RoleRow>
-            </RadioColumn>
-          </FieldBlock>
-
-          <FieldBlock>
-            <FieldLabel>문의연락처</FieldLabel>
-            <ContactInput aria-label="문의연락처" />
-          </FieldBlock>
-
-          <FieldBlock wide>
-            <FieldLabel>공개</FieldLabel>
-            <RadioColumn>
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="visibility"
-                  checked={visibility === 'public'}
-                  onChange={() => setVisibility('public')}
-                />
-                <RadioIcon
-                  src={
-                    visibility === 'public'
-                      ? `${ICON}/figma-radio-on.svg`
-                      : `${ICON}/figma-radio-off.svg`
-                  }
-                  alt=""
-                />
-                공개
-              </RadioOption>
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="visibility"
-                  checked={visibility === 'private'}
-                  onChange={() => setVisibility('private')}
-                />
-                <RadioIcon
-                  src={
-                    visibility === 'private'
-                      ? `${ICON}/figma-radio-on.svg`
-                      : `${ICON}/figma-radio-off.svg`
-                  }
-                  alt=""
-                />
-                비공개
-              </RadioOption>
-            </RadioColumn>
-          </FieldBlock>
-        </Fields>
-      </Body>
-
-      <Actions>
-        <CancelButton type="button">취소하기</CancelButton>
-        <PublishButton type="button">게시하기</PublishButton>
-      </Actions>
-    </FormWrap>
+    <BizContent>
+      <Header>
+        <h1>공고 만들기</h1>
+        <p>공고 정보를 입력하면 비즈니스 계정으로 등록됩니다.</p>
+      </Header>
+      <Form onSubmit={submit}>
+        <Field>
+          제목
+          <FieldInput
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            required
+          />
+        </Field>
+        <Field>
+          상세 설명
+          <Description
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            maxLength={20000}
+            required
+          />
+        </Field>
+        <Grid>
+          <Field>
+            참가비(원)
+            <FieldInput
+              type="number"
+              min={0}
+              step={1}
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+            />
+          </Field>
+          <Field>
+            모집 인원
+            <FieldInput
+              type="number"
+              min={1}
+              step={1}
+              value={capacity}
+              onChange={(e) => setCapacity(e.target.value)}
+            />
+          </Field>
+          <Field>
+            시작일
+            <FieldInput
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              required
+            />
+          </Field>
+          <Field>
+            종료일
+            <FieldInput
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              required
+            />
+          </Field>
+        </Grid>
+        <Field>
+          카테고리
+          <FieldSelect value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">선택 안 함</option>
+            {categories.map((item) => (
+              <option key={item} value={item}>
+                {item}
+              </option>
+            ))}
+          </FieldSelect>
+        </Field>
+        {error && <Error role="alert">{error}</Error>}
+        <Actions>
+          <OutlineButton type="button" onClick={() => router.back()}>
+            취소
+          </OutlineButton>
+          <PrimaryButton type="submit" disabled={loading || submitting || !businessId}>
+            {loading ? '계정 확인 중…' : submitting ? '등록 중…' : '공고 등록'}
+          </PrimaryButton>
+        </Actions>
+      </Form>
+    </BizContent>
   );
 }
 
-const FormWrap = styled.div({
-  width: '100%',
-  maxWidth: 1100,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
+const Header = styled.div({
+  marginBottom: 28,
+  '& h1': { margin: 0, fontSize: 28 },
+  '& p': { color: c.gray700, margin: '8px 0 0' },
 });
-
-const Body = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 60,
-});
-
-/* ---------- 파일 업로더 ---------- */
-const Uploader = styled.label({
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  alignItems: 'center',
-  gap: 4,
-  height: 282,
-  padding: 8,
-  background: '#f8f8f8',
-  border: `2px dashed ${c.lightBlue}`,
-  borderRadius: 20,
-  cursor: 'pointer',
-});
-const UploadMark = styled.img({ width: 58, height: 36, objectFit: 'contain' });
-const UploadText = styled.span({ ...textStyle.mInfoText, color: c.gray500 });
-
-/* ---------- 제목 + 모집 역할 ---------- */
-const TitleSection = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const TitleInput = styled.input({
-  border: 0,
-  outline: 'none',
-  width: '100%',
-  fontSize: 40,
-  fontWeight: 600,
-  '::placeholder': { color: c.gray500 },
-});
-const Roles = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  width: 592,
-  maxWidth: '100%',
-});
-const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
-const RoleInput = styled.input({
-  flex: 1,
-  minWidth: 0,
-  height: 32,
+const Form = styled.form({ maxWidth: 760, display: 'flex', flexDirection: 'column', gap: 22 });
+const Description = styled.textarea({
+  minHeight: 180,
   border: `1px solid ${c.gray300}`,
   borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
+  padding: 14,
+  resize: 'vertical',
+  '&:focus': { outline: 'none' },
 });
-const AddRoleButton = styled.button({
-  width: 24,
-  height: 24,
-  padding: 0,
-  border: 0,
-  background: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
+const Grid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 18,
 });
-
-/* ---------- 입력 필드 ---------- */
-const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
-const FieldBlock = styled.div<{ wide?: boolean }>(({ wide }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: wide ? 10 : 8,
-}));
-const FieldLabel = styled.span({
-  fontSize: 18,
-  fontWeight: 400,
-  letterSpacing: '-0.01em',
-  color: c.gray900,
-});
-const LineInput = styled.input({
-  width: '100%',
-  height: 40,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 텍스트 에디터 ---------- */
-const EditorBox = styled.div({
-  border: '1px solid #e9ecef',
-  borderRadius: 8,
-  background: c.white,
-  overflow: 'hidden',
-});
-const MenuBar = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 8,
-  padding: 8,
-  flexWrap: 'wrap',
-});
-const ToolGroup = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 2,
-  padding: 2,
-  border: '1px solid #e9ecef',
-  borderRadius: 4,
-});
-const ToolButton = styled.button({
-  width: 28,
-  height: 28,
-  border: 0,
-  borderRadius: 4,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  '&:hover': { background: c.gray100 },
-});
-const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
-const DropdownButton = styled.button({
-  height: 28,
-  border: 0,
-  borderRadius: 4,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 2,
-  ...textStyle.bodySmall,
-  color: c.gray900,
-  '&:hover': { background: c.gray100 },
-});
-const DropdownTextButton = styled(DropdownButton)({ padding: '0 4px 0 8px' });
-const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
-const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
-const ContentsArea = styled.div({
-  padding: '12px 16px 16px',
-  outline: 'none',
-  minHeight: 320,
-  cursor: 'text',
-  '& h1': { fontSize: 24, fontWeight: 700, lineHeight: 1.25 },
-  '& h2': { fontSize: 18, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
-  '& h3': { fontSize: 16, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
-  '& p': { fontSize: 15, lineHeight: 1.6, marginTop: 10 },
-  '& img': { width: '100%', height: 507, objectFit: 'contain', marginTop: 12 },
-  '&:empty::before': { content: 'attr(data-placeholder)', color: c.gray300 },
-});
-
-/* ---------- 카테고리 / 주제 ---------- */
-const TwoCol = styled.div({
-  display: 'flex',
-  gap: 20,
-  alignItems: 'flex-start',
-});
-const CategoryBlock = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-  flex: '1 1 280px',
-});
-const TopicBlock = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  flex: '2 1 0',
-  minWidth: 0,
-});
-const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
-const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
-const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
-  padding: '8px 10px',
-  borderRadius: 20,
-  border: selected ? '1px solid transparent' : `1px solid ${c.gray300}`,
-  background: selected ? c.primary : c.white,
-  color: selected ? c.white : c.gray700,
-  fontSize: 12,
-  fontWeight: selected ? 600 : 400,
-  '&:hover': { borderColor: selected ? 'transparent' : c.primary },
-}));
-
-/* ---------- 라디오 ---------- */
-const RadioColumn = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
-const RadioOption = styled.label({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  cursor: 'pointer',
-  ...textStyle.bodySmall,
-  color: c.gray900,
-});
-const RadioInput = styled.input({
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-});
-const RadioIcon = styled.img({ width: 16, height: 16, objectFit: 'contain', flexShrink: 0 });
-const LinkInput = styled.input({
-  width: 470,
-  maxWidth: '100%',
-  height: 36,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 문의연락처 ---------- */
-const ContactInput = styled.input({
-  width: '100%',
-  height: 40,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-
-/* ---------- 하단 버튼 ---------- */
-const Actions = styled.div({
-  display: 'flex',
-  justifyContent: 'center',
-  alignItems: 'center',
-  gap: 8,
-});
-const CancelButton = styled.button({
-  width: 183,
-  height: 37,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
-  background: c.white,
-  color: c.gray900,
-  ...textStyle.overline,
-  '&:hover': { background: c.gray50 },
-});
-const PublishButton = styled.button({
-  width: 183,
-  height: 37,
-  border: 0,
-  borderRadius: 6,
-  background: c.primary,
-  color: c.white,
-  ...textStyle.subtitle,
-  '&:hover': { background: '#005ee0' },
-});
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 });
+const Error = styled.p({ color: c.red, margin: 0 });
