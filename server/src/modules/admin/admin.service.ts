@@ -53,6 +53,15 @@ export interface AdminAnalytics {
 
 const countRows = sql<number>`count(*)::int`;
 
+/** `GET /admin/users?joinedWithin=` → lookback window in days. */
+const JOINED_WITHIN_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '1y': 365 };
+
+const ADMIN_ROLE_LABELS: Record<string, string> = {
+  admin: '관리자',
+  business: '기업',
+  user: '일반 사용자',
+};
+
 /** 'kim.dev@gmail.com' → 'k***@gmail.com' (local part first char + '***'). */
 export function maskEmail(email: string): string {
   const at = email.indexOf('@');
@@ -200,8 +209,6 @@ export class AdminService {
   // --------------------------------------------------------------- businesses
 
   async listBusinesses(q?: string, type?: string, status?: string) {
-    void type; // BizReviewEntry.type is a hardcoded '기업' — no column to filter on.
-
     const [totalRow] = await this.db.select({ count: countRows }).from(businesses);
     const [approvedRow] = await this.db
       .select({ count: countRows })
@@ -219,6 +226,7 @@ export class AdminService {
     const conditions = [];
     if (q) conditions.push(ilike(businesses.name, `%${q}%`));
     if (status) conditions.push(eq(businesses.verificationStatus, status));
+    if (type) conditions.push(eq(businesses.type, type));
     const rows = await this.db
       .select()
       .from(businesses)
@@ -273,7 +281,8 @@ export class AdminService {
       return {
         id: business.id,
         org: business.name,
-        type: '기업',
+        // Businesses registered before the type column existed have no value.
+        type: business.type ?? '미지정',
         bizNumber: maskBizNumber(business.registrationNumber),
         appliedAt: formatMonthDay(appliedAt),
         nts,
@@ -464,62 +473,66 @@ export class AdminService {
 
   // --------------------------------------------------------------------- users
 
-  async listUsers(q?: string, status?: string) {
+  async listUsers(q?: string, status?: string, joinedWithin?: string, position?: string) {
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)));
     if (status) conditions.push(eq(users.suspended, status === 'suspended'));
+    const joinedWithinDays = joinedWithin ? JOINED_WITHIN_DAYS[joinedWithin] : undefined;
+    if (joinedWithinDays !== undefined) {
+      conditions.push(gte(users.createdAt, new Date(Date.now() - joinedWithinDays * 86_400_000)));
+    }
+    // users.position is free text ("프론트엔드 개발자" etc.), so match the badge as a substring.
+    if (position) conditions.push(ilike(users.position, `%${position}%`));
     const rows = await this.db
       .select()
       .from(users)
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(users.createdAt));
 
-    // reports has no per-target-user link, so "신고 누적" counts the reports
-    // the user filed (reporterUserId), not reports filed against them.
-    const filedCounts = await this.db
-      .select({ reporterUserId: reports.reporterUserId, count: countRows })
-      .from(reports)
-      .groupBy(reports.reporterUserId);
-    const countByUser = new Map(
-      filedCounts
-        .filter((row) => row.reporterUserId !== null)
-        .map((row) => [row.reporterUserId as string, row.count]),
-    );
-
-    return rows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      email: maskEmail(row.email),
-      position: row.position ?? '',
-      reports: countByUser.get(row.id) ?? 0,
-      status: row.suspended ? ('suspended' as const) : ('active' as const),
-    }));
+    const countByUser = await this.countReportsAgainst(rows.map((row) => row.id));
+    return rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0));
   }
 
   async suspendUser(id: string, dto: SuspendUserDto) {
-    await this.db
+    const [user] = await this.db
       .update(users)
       .set(
         dto.suspended
           ? { suspended: true, suspendedReason: dto.reason ?? null, suspendedAt: new Date() }
           : { suspended: false, suspendedReason: null, suspendedAt: null },
       )
-      .where(eq(users.id, id));
-
-    const [user] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+      .where(eq(users.id, id))
+      .returning();
     if (!user) throw new NotFoundException('User not found');
-    const [filedCount] = await this.db
-      .select({ count: countRows })
-      .from(reports)
-      .where(eq(reports.reporterUserId, id));
 
+    const countByUser = await this.countReportsAgainst([user.id]);
+    return this.toAdminUser(user, countByUser.get(user.id) ?? 0);
+  }
+
+  /** "신고 누적" = reports filed against the user (reportedUserId), not by them. */
+  private async countReportsAgainst(userIds: string[]) {
+    if (!userIds.length) return new Map<string, number>();
+    const rows = await this.db
+      .select({ reportedUserId: reports.reportedUserId, count: countRows })
+      .from(reports)
+      .where(inArray(reports.reportedUserId, userIds))
+      .groupBy(reports.reportedUserId);
+    return new Map(
+      rows
+        .filter((row) => row.reportedUserId !== null)
+        .map((row) => [row.reportedUserId as string, row.count]),
+    );
+  }
+
+  private toAdminUser(row: typeof users.$inferSelect, reportCount: number) {
     return {
-      id: user.id,
-      name: user.name,
-      email: maskEmail(user.email),
-      position: user.position ?? '',
-      reports: filedCount?.count ?? 0,
-      status: user.suspended ? ('suspended' as const) : ('active' as const),
+      id: row.id,
+      name: row.name,
+      email: maskEmail(row.email),
+      position: row.position ?? '',
+      reports: reportCount,
+      status: row.suspended ? ('suspended' as const) : ('active' as const),
+      suspendedReason: row.suspendedReason ?? null,
     };
   }
 
@@ -768,8 +781,10 @@ export class AdminService {
     return {
       profile: {
         name: user.name,
-        role: 'Super Admin',
+        role: ADMIN_ROLE_LABELS[user.role] ?? user.role,
         email: user.email,
+        // TODO: 관리자 2단계 인증은 미구현 — 도입 시 users에 TOTP 시크릿/활성 플래그를 추가한다.
+        // https://datatracker.ietf.org/doc/html/rfc6238
         twoFactorEnabled: false,
       },
       groups: SETTINGS_GROUPS,
