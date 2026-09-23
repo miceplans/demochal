@@ -89,13 +89,13 @@ export function RecruitmentPage() {
         </Stack>
         <Stack gap={10}>
           <StepLabel number={2} completed={!!draft.introduction}>
-            팀 소개 한줄
+            팀 소개
           </StepLabel>
           <Input
-            aria-label="팀 소개 한줄"
-            placeholder="팀을 한 줄로 소개해주세요"
+            aria-label="팀 소개"
+            placeholder="팀을 소개해주세요"
             required
-            maxLength={100}
+            maxLength={300}
             value={draft.introduction}
             onChange={(e) => setDraft({ ...draft, introduction: e.target.value })}
             style={{ color: draft.introduction ? c.gray900 : c.gray500 }}
@@ -123,7 +123,7 @@ export function RecruitmentPage() {
                 min={1}
                 max={10}
                 value={slot.count}
-                style={{ width: 80 }}
+                style={{ width: 100, textAlign: 'center' }}
                 onChange={(e) =>
                   setSlots(
                     slots.map((s) =>
@@ -159,6 +159,30 @@ export function RecruitmentPage() {
             value={draft.role}
             onChange={(x) => setDraft({ ...draft, role: x })}
             options={roles.map((x) => ({ value: x, label: x }))}
+          />
+        </Stack>
+        <Stack gap={10}>
+          <StepLabel number={5} completed={!!draft.preferred}>
+            우대사항
+          </StepLabel>
+          <Input
+            aria-label="우대사항"
+            placeholder="우대하는 경험이나 성향을 적어주세요"
+            maxLength={200}
+            value={draft.preferred ?? ''}
+            onChange={(e) => setDraft({ ...draft, preferred: e.target.value })}
+          />
+        </Stack>
+        <Stack gap={10}>
+          <StepLabel number={6} completed={!!draft.etc}>
+            기타
+          </StepLabel>
+          <Input
+            aria-label="기타"
+            placeholder="팀원에게 전할 내용이 있다면 적어주세요"
+            maxLength={200}
+            value={draft.etc ?? ''}
+            onChange={(e) => setDraft({ ...draft, etc: e.target.value })}
           />
         </Stack>
         <Button type="submit" fullWidth disabled={!slots.length}>

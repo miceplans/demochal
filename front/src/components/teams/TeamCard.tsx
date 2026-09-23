@@ -9,10 +9,12 @@ import { Tag, Row, Muted } from '@/components/common/Primitives';
 export function TeamCard({ team = teams[0] }: { team?: Team }) {
   return (
     <Card data-component="team-card">
-      <div className="team-artwork" />
+      <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
       <div className="body">
         <Row style={{ justifyContent: 'space-between' }}>
-          <h3>{team.name}</h3>
+          <h3>
+            <Link href={`/teams/${team.id}`}>{team.name}</Link>
+          </h3>
           <Challenge>{team.challenge}</Challenge>
         </Row>
         <Row gap={6}>
@@ -29,7 +31,7 @@ export function TeamCard({ team = teams[0] }: { team?: Team }) {
           <Members>{team.members}</Members>
           <Row gap={6} style={{ flexShrink: 0 }}>
             <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
-            <Apply href="/applications/new">지원하기</Apply>
+            <Apply href={`/teams/${team.id}`}>지원하기</Apply>
           </Row>
         </Row>
       </div>
@@ -43,7 +45,13 @@ const Card = styled.article({
   borderRadius: 12,
   overflow: 'hidden',
   minWidth: 0,
-  '.team-artwork': { height: 135, background: c.gray100 },
+  '.team-artwork': {
+    width: '100%',
+    height: 135,
+    objectFit: 'cover',
+    objectPosition: 'center top',
+    background: c.gray100,
+  },
   '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
   h3: textStyle.h2,
   [mobile]: {

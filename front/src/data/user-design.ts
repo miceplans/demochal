@@ -22,10 +22,13 @@ export const desktopContests = Array.from({ length: 8 }, (_, i) => ({
   ...contests[0],
   id: `contest-${i + 1}`,
 }));
+// 팀 모집글 커버는 해당 챌린지 포스터를 쓴다(챌린지 상세 contestDetail.poster와 동일 목 이미지).
+const mockChallengePoster = '/mock/mock-poster.png';
 export type Team = {
   id: string;
   name: string;
   challenge: string;
+  poster: string;
   members: string;
   filledRoles: string[];
   recruitingRoles: string[];
@@ -34,6 +37,7 @@ export const teams: Team[] = [
   {
     id: 'team-1',
     name: '프로젝트팀 A',
+    poster: mockChallengePoster,
     challenge: 'OO챌린지',
     members: '2/4명 참여중',
     filledRoles: ['기획', '프론트엔드'],
@@ -42,6 +46,7 @@ export const teams: Team[] = [
   {
     id: 'team-2',
     name: '프로젝트팀 B',
+    poster: mockChallengePoster,
     challenge: 'AI 해커톤',
     members: '3/5명 참여중',
     filledRoles: ['기획', '프론트엔드'],
@@ -50,6 +55,7 @@ export const teams: Team[] = [
   {
     id: 'team-3',
     name: '프로젝트팀 C',
+    poster: mockChallengePoster,
     challenge: '공공데이터 챌린지',
     members: '1/4명 참여중',
     filledRoles: ['기획', '디자이너'],
@@ -58,6 +64,7 @@ export const teams: Team[] = [
   {
     id: 'team-4',
     name: '프로젝트팀 D',
+    poster: mockChallengePoster,
     challenge: '청년 창업 챌린지',
     members: '2/5명 참여중',
     filledRoles: ['기획', '백엔드'],
@@ -85,6 +92,35 @@ export const categories = [
   '해외',
 ];
 export const roles = ['프론트엔드', '백엔드', '디자이너', '기획자', '풀스택'];
+
+// --- 팀 모집글 상세 ---
+
+export type TeamDetail = {
+  title: string;
+  challenge: string;
+  poster: string;
+  recruitingRoles: string[];
+  preferred: string;
+  etc: string;
+  introduction: string;
+  roster: { name: string; role: string; position: '팀장' | '팀원' }[];
+  summary: { deadline: string; prizeTotal: string; teamSize: string };
+};
+export const teamDetail: TeamDetail = {
+  title: '김창윤의 팀 (3/4)',
+  challenge: '2025 공공데이터 활용 창업 대회',
+  poster: mockChallengePoster,
+  recruitingRoles: ['백엔드', '디자이너'],
+  preferred: '없음',
+  etc: '없음',
+  introduction:
+    '다정한 팀입니다. 어떤 분이 오시든 대화를 통해서 서로를 알아갈 자신이 있습니다.\n저희는 AI 학습쪽으로 아이디어를 생각하고 있습니다.\n원하는 것이 무엇이든 조율해가면서 할 자신이 있습니다.',
+  roster: [
+    { name: '김창윤', role: '프론트엔드', position: '팀장' },
+    { name: '조은비', role: '백엔드', position: '팀원' },
+  ],
+  summary: { deadline: '2025.07.15', prizeTotal: '3,600만원', teamSize: '2~5인' },
+};
 export const stacks = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Figma', 'Python'];
 export const skillCatalog = [
   'React',

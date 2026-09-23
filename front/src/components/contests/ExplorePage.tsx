@@ -228,7 +228,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               <DesktopOnly>
                 <TeamGrid>
                   {Array.from({ length: 9 }, (_, i) => (
-                    <TeamCard key={i} />
+                    <TeamCard key={i} team={teams[i % teams.length]} />
                   ))}
                 </TeamGrid>
               </DesktopOnly>
