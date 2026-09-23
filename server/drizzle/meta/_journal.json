@@ -105,6 +105,13 @@
       "when": 1790151251341,
       "tag": "0015_add_ad_event_counters",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790152251341,
+      "tag": "0016_team_member_chat_link",
+      "breakpoints": true
     }
   ]
 }

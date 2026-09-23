@@ -22,6 +22,16 @@ export class TeamsController {
     return this.teamsService.list({ challengeId, role, region, q });
   }
 
+  @Get('applications/me')
+  listMyApplications(@CurrentUser() user: AuthenticatedUser) {
+    return this.teamsService.listMyApplications(user.id);
+  }
+
+  @Get('managed')
+  listManaged(@CurrentUser() user: AuthenticatedUser) {
+    return this.teamsService.listManaged(user.id);
+  }
+
   @Post()
   create(@Body() dto: CreateTeamDto, @CurrentUser() user: AuthenticatedUser) {
     return this.teamsService.create(dto, user);

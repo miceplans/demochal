@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(16);
+    expect(journal.entries).toHaveLength(17);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -333,6 +333,17 @@ describe('0014_team_recruitment_details migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "introduction" text');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "preferred" varchar(200)');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "etc" varchar(200)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0016_team_member_chat_link migration', () => {
+  it('adds the applicant chat link column without destructive DDL', () => {
+    const tag = journal.entries[16]?.tag;
+    expect(tag).toBe('0016_team_member_chat_link');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "chat_link" varchar(500)');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

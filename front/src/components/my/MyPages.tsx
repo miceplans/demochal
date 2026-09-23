@@ -35,12 +35,8 @@ import {
   preferenceGroups,
   notificationSettings,
   participatingTeams,
-  contestApplications,
-  teamApplications,
-  teamApplicants,
   notificationItems,
   notificationTabs,
-  contestDetail,
   stacks,
   skillCatalog,
 } from '@/data/user-design';
@@ -566,73 +562,96 @@ const Table = styled.table({
   '& tbody tr:hover': { background: c.gray50 },
   [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
+// 지원현황 결과 태그 매핑 — 서버 status 값을 화면 라벨/색상으로 바꾼다.
+// 챌린지 지원: accepted→예선 통과, rejected→불합격, 그 외(pending 등)→심사중.
+function challengeResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
+  if (status === 'accepted') return { label: '예선 통과', tone: 'green' };
+  if (status === 'rejected') return { label: '불합격', tone: 'red' };
+  return { label: '심사중', tone: 'blue' };
+}
+// 팀 지원: accepted→확정, rejected→불합격, pending→검토중.
+function teamResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
+  if (status === 'accepted') return { label: '확정', tone: 'blue' };
+  if (status === 'rejected') return { label: '불합격', tone: 'red' };
+  return { label: '검토중', tone: 'green' };
+}
 export function ApplicationsPage() {
+  const challengeQuery = generated.useListMyApplications();
+  const teamQuery = generated.useListMyTeamApplications();
+  const challengeApps = challengeQuery.data?.status === 200 ? challengeQuery.data.data : [];
+  const teamApps = teamQuery.data?.status === 200 ? teamQuery.data.data : [];
   return (
     <MyShell title="지원현황">
       <Stack gap={40}>
         <section>
           <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
-          <Table>
-            <thead>
-              <tr>
-                <th>챌린지</th>
-                <th>협회</th>
-                <th>결과</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contestApplications.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <Link href={row.href}>{row.contest}</Link>
-                  </td>
-                  <td>{row.org}</td>
-                  <td>
-                    <Tag
-                      tone={
-                        row.result === '예선 통과'
-                          ? 'green'
-                          : row.result === '심사중'
-                            ? 'blue'
-                            : 'red'
-                      }
-                    >
-                      {row.result}
-                    </Tag>
-                  </td>
+          {challengeQuery.isPending ? (
+            <Muted>불러오는 중이에요.</Muted>
+          ) : challengeQuery.isError ? (
+            <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
+          ) : challengeApps.length === 0 ? (
+            <Muted>아직 지원한 챌린지가 없어요.</Muted>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <th>챌린지</th>
+                  <th>협회</th>
+                  <th>결과</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {challengeApps.map((row) => {
+                  const result = challengeResultTag(row.status);
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <Link href="/contests/public-data">{row.challengeTitle ?? '챌린지'}</Link>
+                      </td>
+                      <td>{row.businessName ?? '-'}</td>
+                      <td>
+                        <Tag tone={result.tone}>{result.label}</Tag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </section>
         <section>
           <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
-          <Table>
-            <thead>
-              <tr>
-                <th>챌린지</th>
-                <th>팀</th>
-                <th>결과</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamApplications.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.contest}</td>
-                  <td>{row.team}</td>
-                  <td>
-                    <Tag
-                      tone={
-                        row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'
-                      }
-                    >
-                      {row.result}
-                    </Tag>
-                  </td>
+          {teamQuery.isPending ? (
+            <Muted>불러오는 중이에요.</Muted>
+          ) : teamQuery.isError ? (
+            <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
+          ) : teamApps.length === 0 ? (
+            <Muted>아직 지원한 팀이 없어요.</Muted>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <th>챌린지</th>
+                  <th>팀</th>
+                  <th>결과</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {teamApps.map((row) => {
+                  const result = teamResultTag(row.status);
+                  return (
+                    <tr key={row.id}>
+                      <td>{row.challengeTitle ?? '챌린지'}</td>
+                      <td>{row.teamTitle ?? '팀'}</td>
+                      <td>
+                        <Tag tone={result.tone}>{result.label}</Tag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </section>
       </Stack>
     </MyShell>
@@ -642,85 +661,180 @@ const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
   value: x,
   label: x,
 }));
+type ApplicantResult = '미정' | '합격' | '불합격';
+const resultFromStatus = (status?: string): ApplicantResult =>
+  status === 'accepted' ? '합격' : status === 'rejected' ? '불합격' : '미정';
 export function TeamApplicantsPage() {
-  const [results, setResults] = useState<string[]>(teamApplicants.map(() => '미정'));
-  const [open, setOpen] = useState(false);
-  const [link, setLink] = useState('');
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const managedQuery = generated.useListManagedTeams();
+  const teams = managedQuery.data?.status === 200 ? managedQuery.data.data : [];
+  // 서버에서 받은 status를 기본값으로 하되, 드롭다운에서 바꾼 선택은 로컬에서 덮어쓴다.
+  const [overrides, setOverrides] = useState<Record<string, ApplicantResult>>({});
+  const [sendTargetId, setSendTargetId] = useState<string | null>(null);
+  const [link, setLink] = useState('');
+  const updateMember = generated.useUpdateTeamMember();
+  const sendTarget = teams.find((team) => team.id === sendTargetId);
+
+  const resultOf = (memberId: string | undefined, status?: string): ApplicantResult =>
+    (memberId ? overrides[memberId] : undefined) ?? resultFromStatus(status);
+
+  // 이번에 드롭다운으로 바꾼 지원자만 전송한다(이미 결정된 지원자에게 알림을 다시 보내지 않는다).
+  const changedMembers = (team: (typeof teams)[number]) =>
+    (team.members ?? []).filter((member) => {
+      const override = member.id ? overrides[member.id] : undefined;
+      return (
+        override !== undefined &&
+        override !== '미정' &&
+        override !== resultFromStatus(member.status)
+      );
+    });
+  const closeSendModal = () => {
+    // 다른 팀 모달로 링크가 넘어가지 않게 닫을 때마다 초기화한다.
+    setSendTargetId(null);
+    setLink('');
+  };
+  const refreshTeams = () => {
+    void queryClient.invalidateQueries({ queryKey: generated.getListManagedTeamsQueryKey() });
+    void queryClient.invalidateQueries({
+      queryKey: generated.getListMyTeamApplicationsQueryKey(),
+    });
+  };
+
+  const send = async (team: (typeof teams)[number]) => {
+    const decided = changedMembers(team);
+    if (decided.length === 0) {
+      toast.error('전송할 결과가 없어요', '지원자의 결과를 먼저 선택해주세요');
+      return;
+    }
+    // TODO: 여러 지원자 결과를 한 트랜잭션으로 저장하는 일괄 API가 없어 지원자별로 보낸다.
+    // 부분 실패 시 성공한 건은 반영된 상태로 두고 실패한 지원자만 다시 보낼 수 있게 한다.
+    // https://orm.drizzle.team/docs/transactions
+    const results = await Promise.allSettled(
+      decided.map((member) => {
+        const result = resultOf(member.id, member.status);
+        return updateMember.mutateAsync({
+          id: team.id ?? '',
+          memberId: member.id ?? '',
+          data: {
+            status: result === '합격' ? 'accepted' : 'rejected',
+            // 합격자에게만 채팅방 링크를 저장해 알림으로 함께 본다.
+            ...(result === '합격' && link.trim() ? { chatLink: link.trim() } : {}),
+          },
+        });
+      }),
+    );
+    const succeededIds = decided
+      .filter((_, i) => results[i]?.status === 'fulfilled')
+      .map((member) => member.id);
+    setOverrides((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.includes(id))),
+    );
+    refreshTeams();
+    const failed = results.length - succeededIds.length;
+    if (failed > 0) {
+      toast.error(
+        `${failed}명에게 결과를 전송하지 못했어요`,
+        succeededIds.length > 0
+          ? `${succeededIds.length}명은 전송됐어요. 실패한 지원자만 다시 시도해주세요`
+          : '다시 시도해주세요',
+      );
+      return;
+    }
+    closeSendModal();
+    toast.success('결과를 전송했어요', '지원자에게 알림으로 알려드릴게요');
+  };
+  const sendNeedsLink =
+    sendTarget !== undefined &&
+    changedMembers(sendTarget).some((member) => resultOf(member.id, member.status) === '합격');
   return (
     <MyShell title="팀 지원현황">
-      <Stack gap={28}>
-        <div style={{ height: 220, borderRadius: 20, background: c.gray100 }} />
-        <div>
-          <Title>{contestDetail.title}</Title>
-          <Muted style={{ marginTop: 8 }}>{contestDetail.org}</Muted>
-        </div>
-        <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
-          <Heading>팀 지원현황</Heading>
-          <Button small onClick={() => setOpen(true)}>
-            결과 전송하기
-          </Button>
-        </Row>
-        <Table>
-          <thead>
-            <tr>
-              <th>이름</th>
-              <th>뱃지</th>
-              <th>결과</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teamApplicants.map((applicant, i) => (
-              <tr key={applicant.id}>
-                <td>
-                  <Link href={applicant.href}>{applicant.name}</Link>
-                </td>
-                <td>
-                  <Wrap style={{ gap: 6 }}>
-                    {applicant.badges.map((badge) => (
-                      <Tag key={badge} tone="blue">
-                        {badge}
-                      </Tag>
+      <Stack gap={40}>
+        {managedQuery.isPending ? (
+          <Muted>불러오는 중이에요.</Muted>
+        ) : managedQuery.isError ? (
+          <Muted>팀 지원 현황을 불러오지 못했어요. 새로고침해주세요.</Muted>
+        ) : teams.length === 0 ? (
+          <Muted>아직 리더로 있는 팀이 없어요.</Muted>
+        ) : (
+          teams.map((team) => (
+            <section key={team.id}>
+              <div>
+                <Title>{team.title}</Title>
+                <Muted style={{ marginTop: 8 }}>
+                  {team.challengeTitle ?? '챌린지'} · {team.businessName ?? '-'}
+                </Muted>
+              </div>
+              <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
+                <Heading>팀 지원현황</Heading>
+                <Button small onClick={() => setSendTargetId(team.id ?? null)}>
+                  결과 전송하기
+                </Button>
+              </Row>
+              {(team.members ?? []).length === 0 ? (
+                <Muted style={{ marginTop: 16 }}>아직 지원자가 없어요.</Muted>
+              ) : (
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>이름</th>
+                      <th>지원 역할</th>
+                      <th>결과</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(team.members ?? []).map((member) => (
+                      <tr key={member.id}>
+                        <td>{member.name ?? '지원자'}</td>
+                        <td>
+                          {member.role ? <Tag tone="blue">{member.role}</Tag> : <Muted>-</Muted>}
+                        </td>
+                        <td style={{ width: 130 }}>
+                          <Dropdown
+                            aria-label={`${member.name ?? '지원자'} 결과`}
+                            size="S"
+                            value={resultOf(member.id, member.status)}
+                            onChange={(x) =>
+                              member.id &&
+                              setOverrides((prev) => ({
+                                ...prev,
+                                [member.id as string]: x as ApplicantResult,
+                              }))
+                            }
+                            options={applicantResultOptions}
+                          />
+                        </td>
+                      </tr>
                     ))}
-                  </Wrap>
-                </td>
-                <td style={{ width: 130 }}>
-                  <Dropdown
-                    aria-label={`${applicant.name} 결과`}
-                    size="S"
-                    value={results[i]}
-                    onChange={(x) => setResults(results.map((y, j) => (j === i ? x : y)))}
-                    options={applicantResultOptions}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+                  </tbody>
+                </Table>
+              )}
+            </section>
+          ))
+        )}
       </Stack>
-      <Modal open={open} onClose={() => setOpen(false)} title="결과 전송하기">
+      <Modal open={sendTarget !== undefined} onClose={closeSendModal} title="결과 전송하기">
         <Muted style={{ color: c.red }}>*이 활동은 되돌릴 수 없어요</Muted>
         <p style={{ fontSize: 13 }}>합격자들에게 전송할 채팅방 링크를 첨부해주세요.</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setOpen(false);
-            toast.info('결과 전송 화면을 확인했어요', '실제 전송은 연결 후 사용할 수 있어요');
+            if (sendTarget) void send(sendTarget);
           }}
         >
           <Input
             aria-label="채팅방 링크"
             placeholder="링크"
             type="url"
-            required
+            required={sendNeedsLink}
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
           <Row style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-            <Button type="button" small tone="plain" onClick={() => setOpen(false)}>
+            <Button type="button" small tone="plain" onClick={closeSendModal}>
               취소
             </Button>
-            <Button type="submit" small>
+            <Button type="submit" small disabled={updateMember.isPending}>
               확인
             </Button>
           </Row>

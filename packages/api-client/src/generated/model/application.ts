@@ -32,4 +32,8 @@ export interface Application {
   teammates?: string[];
   evaluation?: ApplicationEvaluation;
   managerMemo?: string;
+  /** listMyApplications 응답 전용 — 챌린지 제목 */
+  challengeTitle?: string;
+  /** listMyApplications 응답 전용 — 주최 기업(협회)명 */
+  businessName?: string;
 }

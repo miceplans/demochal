@@ -335,4 +335,158 @@ describe('TeamsService', () => {
       service.updateMember('team-1', 'member-x', { status: 'accepted' }, leader),
     ).rejects.toThrow(NotFoundException);
   });
+
+  it('updateMember throws 400 when the leader decides their own membership', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-1', userId: leader.id, status: 'accepted' }]),
+      );
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(
+      service.updateMember('team-1', 'member-1', { status: 'rejected' }, leader),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('updateMember stores the chat link for accepted members and includes it in the notification', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-1', userId: applicant.id, status: 'pending', chatLink: null }]),
+      );
+    const set = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'member-1', status: 'accepted' }]),
+      }),
+    });
+    db.update = vi.fn().mockReturnValue({ set });
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any);
+
+    await service.updateMember(
+      'team-1',
+      'member-1',
+      { status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+      leader,
+    );
+
+    expect(set).toHaveBeenCalledWith({
+      status: 'accepted',
+      chatLink: 'https://open.kakao.com/o/abc',
+    });
+    expect(notifications.create).toHaveBeenCalledWith(applicant.id, 'team_matching', {
+      teamId: 'team-1',
+      status: 'accepted',
+      chatLink: 'https://open.kakao.com/o/abc',
+    });
+  });
+
+  it('updateMember clears the chat link when a member is rejected', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            id: 'member-1',
+            userId: applicant.id,
+            status: 'accepted',
+            chatLink: 'https://open.kakao.com/o/abc',
+          },
+        ]),
+      );
+    const set = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'member-1', status: 'rejected' }]),
+      }),
+    });
+    db.update = vi.fn().mockReturnValue({ set });
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await service.updateMember('team-1', 'member-1', { status: 'rejected' }, leader);
+
+    expect(set).toHaveBeenCalledWith({ status: 'rejected', chatLink: null });
+  });
+
+  it('listMyApplications returns applied teams with titles, excluding teams I lead', async () => {
+    const rows = [
+      {
+        member: { id: 'member-1', teamId: 'team-1', userId: applicant.id, status: 'pending' },
+        teamTitle: 'AI 해커톤 팀',
+        challengeTitle: '2026 AI 챌린지',
+      },
+      {
+        member: { id: 'member-2', teamId: 'team-2', userId: applicant.id, status: 'accepted' },
+        teamTitle: 'Leader의 팀',
+        challengeTitle: '공공데이터 챌린지',
+      },
+    ];
+    const db = createDbStub();
+    db.select.mockReturnValueOnce(selectChain(rows));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    const result = await service.listMyApplications(applicant.id);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({
+      id: 'member-1',
+      status: 'pending',
+      teamTitle: 'AI 해커톤 팀',
+      challengeTitle: '2026 AI 챌린지',
+    });
+  });
+
+  it('listManaged returns my teams with applicants, excluding my own member row', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(
+        selectChain([
+          {
+            team: { id: 'team-1', title: 'AI 해커톤 팀', leaderUserId: leader.id },
+            challengeTitle: '2026 AI 챌린지',
+            businessName: '한국데이터산업진흥원',
+          },
+        ]),
+      )
+      .mockReturnValueOnce(
+        // SQL(ne) already drops the leader's own row before rows reach the service.
+        selectChain([
+          {
+            id: 'member-1',
+            teamId: 'team-1',
+            userId: applicant.id,
+            name: 'Applicant',
+            role: '개발',
+            status: 'pending',
+            chatLink: null,
+            createdAt: '2026-09-01T00:00:00.000Z',
+          },
+        ]),
+      );
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    const result = await service.listManaged(leader.id);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'team-1',
+      challengeTitle: '2026 AI 챌린지',
+      businessName: '한국데이터산업진흥원',
+    });
+    expect(result[0]?.members).toHaveLength(1);
+    expect(result[0]?.members[0]).toMatchObject({ id: 'member-1', name: 'Applicant' });
+  });
+
+  it('listManaged skips the member query when I lead no teams', async () => {
+    const db = createDbStub();
+    db.select.mockReturnValueOnce(selectChain([]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(service.listManaged(leader.id)).resolves.toEqual([]);
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
 });
