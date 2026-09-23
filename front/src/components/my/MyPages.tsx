@@ -133,9 +133,15 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const createCertificate = generated.useCreateCertificate();
   const pickFile = (e: ChangeEvent<HTMLInputElement>) => {
     const picked = e.target.files?.[0];
+    // 잘못된 파일을 다시 고르면 이전 파일로 제출되지 않게 먼저 비운다.
+    setFile(null);
     if (!picked) return;
     if (!CERTIFICATE_CONTENT_TYPES.includes(picked.type)) {
       toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP, PDF만 올릴 수 있어요');
+      return;
+    }
+    if (picked.size === 0) {
+      toast.error('빈 파일은 올릴 수 없어요', '내용이 있는 파일을 선택해주세요');
       return;
     }
     if (picked.size > CERTIFICATE_MAX_BYTES) {
@@ -147,6 +153,12 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const reset = () => {
     setBadge(null);
     setFile(null);
+  };
+  // 업로드 중에는 닫지 않는다(닫힌 뒤 요청이 끝나 새로 연 폼을 닫아버리는 것을 막는다).
+  const close = () => {
+    if (submitting) return;
+    reset();
+    onClose();
   };
   // 증명 문서는 개인정보라 private 버킷에만 올린다(presigned PUT 5분 → finalize 검증 → 인증 요청).
   const submit = async (e: FormEvent) => {
@@ -191,14 +203,7 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
     }
   };
   return (
-    <Modal
-      open={open}
-      onClose={() => {
-        reset();
-        onClose();
-      }}
-      title="자격증 인증"
-    >
+    <Modal open={open} onClose={close} title="자격증 인증">
       <form onSubmit={submit}>
         <Stack gap={12}>
           <Wrap>
@@ -225,7 +230,7 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
             />
           </UploadBox>
           <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
-            <Button type="button" small tone="plain" onClick={onClose}>
+            <Button type="button" small tone="plain" onClick={close} disabled={submitting}>
               취소
             </Button>
             <Button type="submit" small disabled={!badge || !file || submitting}>
