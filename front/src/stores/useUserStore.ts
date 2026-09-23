@@ -6,7 +6,6 @@ type UserState = {
   interests: string[];
   roles: string[];
   audience: string[];
-  notifications: Record<string, boolean>;
   query: string;
   survey: Record<string, string[]>;
   hasCompletedOnboarding: boolean;
@@ -23,7 +22,6 @@ type UserState = {
   login: () => void;
   logout: () => void;
   togglePreference: (key: 'interests' | 'roles' | 'audience', value: string) => void;
-  toggleNotification: (key: string) => void;
   setQuery: (value: string) => void;
   setSurvey: (step: string, values: string[]) => void;
   completeOnboarding: () => void;
@@ -37,14 +35,6 @@ export const useUserStore = create<UserState>()(
       interests: ['IT · 소프트웨어', '데이터 · AI'],
       roles: ['프론트엔드', '백엔드'],
       audience: ['대학생'],
-      notifications: {
-        applicant: true,
-        result: true,
-        invite: true,
-        deadline: true,
-        challenge: true,
-        award: true,
-      },
       query: '',
       survey: {},
       hasCompletedOnboarding: false,
@@ -56,8 +46,6 @@ export const useUserStore = create<UserState>()(
         set((s) => ({
           [key]: s[key].includes(value) ? s[key].filter((v) => v !== value) : [...s[key], value],
         })),
-      toggleNotification: (key) =>
-        set((s) => ({ notifications: { ...s.notifications, [key]: !s.notifications[key] } })),
       setQuery: (query) => set({ query }),
       setSurvey: (step, values) => set((s) => ({ survey: { ...s.survey, [step]: values } })),
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
@@ -78,7 +66,6 @@ export const useUserStore = create<UserState>()(
         interests,
         roles,
         audience,
-        notifications,
         survey,
         hasCompletedOnboarding,
         recruitment,
@@ -88,7 +75,6 @@ export const useUserStore = create<UserState>()(
         interests,
         roles,
         audience,
-        notifications,
         survey,
         hasCompletedOnboarding,
         recruitment,
