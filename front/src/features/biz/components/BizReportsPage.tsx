@@ -1,21 +1,31 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { AdReport } from '@semochal/api-client';
+import type { Ad, AdReport } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
 import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/biz/BizShell';
 
 export function BizReportsPage() {
   const [report, setReport] = useState<AdReport | null>(null);
+  const [ads, setAds] = useState<Ad[]>([]);
+  const [selectedAdId, setSelectedAdId] = useState('');
   const [error, setError] = useState(false);
   useEffect(() => {
     void adApi.ads
       .listMine('active')
-      .then(async (ads) => {
-        if (ads[0]) setReport(await adApi.ads.getReport(ads[0].id));
+      .then((nextAds) => {
+        setAds(nextAds);
+        setSelectedAdId(nextAds[0]?.id ?? '');
       })
       .catch(() => setError(true));
   }, []);
+  useEffect(() => {
+    if (selectedAdId)
+      void adApi.ads
+        .getReport(selectedAdId)
+        .then(setReport)
+        .catch(() => setError(true));
+  }, [selectedAdId]);
   if (error)
     return (
       <BizContent>
@@ -32,6 +42,19 @@ export function BizReportsPage() {
   return (
     <BizContent>
       <SectionTitle>성과 리포트</SectionTitle>
+      {ads.length > 0 && (
+        <select
+          value={selectedAdId}
+          onChange={(event) => setSelectedAdId(event.target.value)}
+          aria-label="광고 선택"
+        >
+          {ads.map((ad) => (
+            <option key={ad.id} value={ad.id}>
+              {ad.title}
+            </option>
+          ))}
+        </select>
+      )}
       <TableBox>
         <THead>
           <span>날짜</span>

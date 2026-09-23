@@ -48,7 +48,14 @@ export function BizDashboardPage() {
         </TRow>
         <TRow>
           <span>진행중 광고</span>
-          <strong>{data.activeAds.length}건</strong>
+          <strong>
+            {
+              data.activeAds.filter(
+                (ad) => new Date(ad.startDate) <= new Date() && new Date(ad.endDate) >= new Date(),
+              ).length
+            }
+            건
+          </strong>
         </TRow>
       </TableBox>
     </BizContent>

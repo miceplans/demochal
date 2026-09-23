@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, exists, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, orders } from '../../db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
@@ -129,8 +129,22 @@ export class ApplicationsService {
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
       .innerJoin(businesses, eq(challenges.businessId, businesses.id))
-      .where(and(...conditions))
-      .orderBy(desc(applications.createdAt));
+      .where(
+        and(
+          ...conditions,
+          or(
+            eq(challenges.price, 0),
+            exists(
+              this.db
+                .select({ id: orders.id })
+                .from(orders)
+                .where(and(eq(orders.applicationId, applications.id), eq(orders.status, 'paid'))),
+            ),
+          ),
+        ),
+      )
+      .orderBy(desc(applications.createdAt))
+      .limit(100);
     return rows.map(({ application }) => application);
   }
 
