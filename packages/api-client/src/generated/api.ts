@@ -52,6 +52,7 @@ import type {
   ApplyChallengeRequest,
   BizDashboard,
   Business,
+  Certificate,
   CertificateEntry,
   Challenge,
   ChallengeStats,
@@ -61,6 +62,7 @@ import type {
   ConfirmContactVerificationBody,
   ConfirmPaymentRequest,
   CreateAdBody,
+  CreateCertificateRequest,
   CreateChallengeRequest,
   CreateReportRequest,
   CreateTeamRequest,
@@ -93,6 +95,7 @@ import type {
   ListTeamsParams,
   Login200,
   LoginBody,
+  MarkAllNotificationsRead200,
   NotFoundResponse,
   Notification,
   OnboardingSurvey,
@@ -4848,6 +4851,455 @@ export function useListMyNotifications<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type markAllNotificationsReadResponse200 = {
+  data: MarkAllNotificationsRead200;
+  status: 200;
+};
+
+export type markAllNotificationsReadResponseSuccess = markAllNotificationsReadResponse200 & {
+  headers: Headers;
+};
+export type markAllNotificationsReadResponse = markAllNotificationsReadResponseSuccess;
+
+export const getMarkAllNotificationsReadUrl = () => {
+  return `/notifications/read-all`;
+};
+
+/**
+ * @summary 내 알림 전체 읽음 처리
+ */
+export const markAllNotificationsRead = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<markAllNotificationsReadResponse> => {
+  return apiFetch<markAllNotificationsReadResponse>(getMarkAllNotificationsReadUrl(), {
+    ...options,
+    method: 'PATCH',
+  });
+};
+
+export const getMarkAllNotificationsReadMutationKey = () => ['markAllNotificationsRead'] as const;
+
+export const getMarkAllNotificationsReadMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = getMarkAllNotificationsReadMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAllNotificationsRead>>,
+    void
+  > = () => {
+    return markAllNotificationsRead(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAllNotificationsReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>
+>;
+
+export type MarkAllNotificationsReadMutationError = unknown;
+
+/**
+ * @summary 내 알림 전체 읽음 처리
+ */
+export const useMarkAllNotificationsRead = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof markAllNotificationsRead>>,
+      TError,
+      void,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof markAllNotificationsRead>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getMarkAllNotificationsReadMutationOptions(options), queryClient);
+};
+
+export type markNotificationReadResponse200 = {
+  data: Notification;
+  status: 200;
+};
+
+export type markNotificationReadResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type markNotificationReadResponseSuccess = markNotificationReadResponse200 & {
+  headers: Headers;
+};
+export type markNotificationReadResponseError = markNotificationReadResponse404 & {
+  headers: Headers;
+};
+
+export type markNotificationReadResponse =
+  markNotificationReadResponseSuccess | markNotificationReadResponseError;
+
+export const getMarkNotificationReadUrl = (id: string) => {
+  return `/notifications/${id}/read`;
+};
+
+/**
+ * 본인 알림만 처리할 수 있다(타인 알림 id는 404).
+ * @summary 알림 읽음 처리
+ */
+export const markNotificationRead = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<markNotificationReadResponse> => {
+  return apiFetch<markNotificationReadResponse>(getMarkNotificationReadUrl(id), {
+    ...options,
+    method: 'PATCH',
+  });
+};
+
+export const getMarkNotificationReadMutationKey = () => ['markNotificationRead'] as const;
+
+export const getMarkNotificationReadMutationOptions = <
+  TError = NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    TError,
+    MarkNotificationReadMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  MarkNotificationReadMutationVariables,
+  TContext
+> => {
+  const mutationKey = getMarkNotificationReadMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markNotificationRead>>,
+    MarkNotificationReadMutationVariables
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markNotificationRead(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkNotificationReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markNotificationRead>>
+>;
+
+export type MarkNotificationReadMutationError = NotFoundResponse;
+export type MarkNotificationReadMutationVariables = { id: string };
+
+/**
+ * @summary 알림 읽음 처리
+ */
+export const useMarkNotificationRead = <TError = NotFoundResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof markNotificationRead>>,
+      TError,
+      MarkNotificationReadMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof markNotificationRead>>,
+  TError,
+  MarkNotificationReadMutationVariables,
+  TContext
+> => {
+  return useMutation(getMarkNotificationReadMutationOptions(options), queryClient);
+};
+
+export type createCertificateResponse201 = {
+  data: Certificate;
+  status: 201;
+};
+
+export type createCertificateResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type createCertificateResponseSuccess = createCertificateResponse201 & {
+  headers: Headers;
+};
+export type createCertificateResponseError = createCertificateResponse400 & {
+  headers: Headers;
+};
+
+export type createCertificateResponse =
+  createCertificateResponseSuccess | createCertificateResponseError;
+
+export const getCreateCertificateUrl = () => {
+  return `/certificates`;
+};
+
+/**
+ * 마이페이지 자격증 인증 모달. 증명 파일은 private 버킷에 presigned PUT으로 올리고
+ * `POST /files/{id}/finalize`로 검증을 끝낸 파일(fileId)만 받는다. 관리자 검토 전까지 pending.
+ * @summary 자격증 인증 요청
+ */
+export const createCertificate = async (
+  createCertificateRequest: CreateCertificateRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<createCertificateResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<createCertificateResponse>(getCreateCertificateUrl(), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createCertificateRequest),
+  });
+};
+
+export const getCreateCertificateMutationKey = () => ['createCertificate'] as const;
+
+export const getCreateCertificateMutationOptions = <TError = void, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCertificate>>,
+    TError,
+    CreateCertificateMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCertificate>>,
+  TError,
+  CreateCertificateMutationVariables,
+  TContext
+> => {
+  const mutationKey = getCreateCertificateMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCertificate>>,
+    CreateCertificateMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createCertificate(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCertificateMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCertificate>>
+>;
+export type CreateCertificateMutationBody = CreateCertificateRequest;
+export type CreateCertificateMutationError = void;
+export type CreateCertificateMutationVariables = { data: CreateCertificateRequest };
+
+/**
+ * @summary 자격증 인증 요청
+ */
+export const useCreateCertificate = <TError = void, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof createCertificate>>,
+      TError,
+      CreateCertificateMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof createCertificate>>,
+  TError,
+  CreateCertificateMutationVariables,
+  TContext
+> => {
+  return useMutation(getCreateCertificateMutationOptions(options), queryClient);
+};
+
+export type listMyCertificatesResponse200 = {
+  data: Certificate[];
+  status: 200;
+};
+
+export type listMyCertificatesResponseSuccess = listMyCertificatesResponse200 & {
+  headers: Headers;
+};
+export type listMyCertificatesResponse = listMyCertificatesResponseSuccess;
+
+export const getListMyCertificatesUrl = () => {
+  return `/certificates/me`;
+};
+
+/**
+ * @summary 내 자격증 인증 요청 목록
+ */
+export const listMyCertificates = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listMyCertificatesResponse> => {
+  return apiFetch<listMyCertificatesResponse>(getListMyCertificatesUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListMyCertificatesQueryKey = () => {
+  return [`/certificates/me`] as const;
+};
+
+export const getListMyCertificatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyCertificates>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyCertificates>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyCertificatesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyCertificates>>> = ({ signal }) =>
+    listMyCertificates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyCertificates>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListMyCertificatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyCertificates>>
+>;
+export type ListMyCertificatesQueryError = unknown;
+
+export function useListMyCertificates<
+  TData = Awaited<ReturnType<typeof listMyCertificates>>,
+  TError = unknown,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyCertificates>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyCertificates>>,
+          TError,
+          Awaited<ReturnType<typeof listMyCertificates>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyCertificates<
+  TData = Awaited<ReturnType<typeof listMyCertificates>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listMyCertificates>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyCertificates>>,
+          TError,
+          Awaited<ReturnType<typeof listMyCertificates>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyCertificates<
+  TData = Awaited<ReturnType<typeof listMyCertificates>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyCertificates>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 자격증 인증 요청 목록
+ */
+
+export function useListMyCertificates<
+  TData = Awaited<ReturnType<typeof listMyCertificates>>,
+  TError = unknown,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyCertificates>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListMyCertificatesQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type createReportResponse201 = {
   data: Report;
   status: 201;
@@ -5728,110 +6180,6 @@ export const useRequestPresignedUpload = <TError = unknown, TContext = unknown>(
   return useMutation(getRequestPresignedUploadMutationOptions(options), queryClient);
 };
 
-export type finalizeUploadResponse201 = {
-  data: FileMeta;
-  status: 201;
-};
-
-export type finalizeUploadResponse404 = {
-  data: NotFoundResponse;
-  status: 404;
-};
-
-export type finalizeUploadResponseSuccess = finalizeUploadResponse201 & {
-  headers: Headers;
-};
-export type finalizeUploadResponseError = finalizeUploadResponse404 & {
-  headers: Headers;
-};
-
-export type finalizeUploadResponse = finalizeUploadResponseSuccess | finalizeUploadResponseError;
-
-export const getFinalizeUploadUrl = (id: string) => {
-  return `/files/${id}/finalize`;
-};
-
-/**
- * S3 PUT 이후 호출한다. 실제 바이트(Content-Type, 크기, 매직 바이트)를 검증해 `uploadStatus=ready`로
- * 확정하고, public 요청이면 public 버킷으로 승격한다. 검증 실패 시 객체를 삭제한다.
- * @summary 업로드 완료 확정
- */
-export const finalizeUpload = async (
-  id: string,
-  options?: Parameters<typeof apiFetch>[1],
-): Promise<finalizeUploadResponse> => {
-  return apiFetch<finalizeUploadResponse>(getFinalizeUploadUrl(id), {
-    ...options,
-    method: 'POST',
-  });
-};
-
-export const getFinalizeUploadMutationKey = () => ['finalizeUpload'] as const;
-
-export const getFinalizeUploadMutationOptions = <
-  TError = NotFoundResponse,
-  TContext = unknown,
->(options?: {
-  mutation?: UseMutationOptions<
-    Awaited<ReturnType<typeof finalizeUpload>>,
-    TError,
-    FinalizeUploadMutationVariables,
-    TContext
-  >;
-  request?: SecondParameter<typeof apiFetch>;
-}): UseMutationOptions<
-  Awaited<ReturnType<typeof finalizeUpload>>,
-  TError,
-  FinalizeUploadMutationVariables,
-  TContext
-> => {
-  const mutationKey = getFinalizeUploadMutationKey();
-  const { mutation: mutationOptions, request: requestOptions } = options
-    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
-      ? options
-      : { ...options, mutation: { ...options.mutation, mutationKey } }
-    : { mutation: { mutationKey }, request: undefined };
-
-  const mutationFn: MutationFunction<
-    Awaited<ReturnType<typeof finalizeUpload>>,
-    FinalizeUploadMutationVariables
-  > = (props) => {
-    const { id } = props ?? {};
-
-    return finalizeUpload(id, requestOptions);
-  };
-
-  return { mutationFn, ...mutationOptions };
-};
-
-export type FinalizeUploadMutationResult = NonNullable<Awaited<ReturnType<typeof finalizeUpload>>>;
-
-export type FinalizeUploadMutationError = NotFoundResponse;
-export type FinalizeUploadMutationVariables = { id: string };
-
-/**
- * @summary 업로드 완료 확정
- */
-export const useFinalizeUpload = <TError = NotFoundResponse, TContext = unknown>(
-  options?: {
-    mutation?: UseMutationOptions<
-      Awaited<ReturnType<typeof finalizeUpload>>,
-      TError,
-      FinalizeUploadMutationVariables,
-      TContext
-    >;
-    request?: SecondParameter<typeof apiFetch>;
-  },
-  queryClient?: QueryClient,
-): UseMutationResult<
-  Awaited<ReturnType<typeof finalizeUpload>>,
-  TError,
-  FinalizeUploadMutationVariables,
-  TContext
-> => {
-  return useMutation(getFinalizeUploadMutationOptions(options), queryClient);
-};
-
 export type getFileResponse200 = {
   data: FileMeta;
   status: 200;
@@ -5962,6 +6310,109 @@ export function useGetFile<TData = Awaited<ReturnType<typeof getFile>>, TError =
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type finalizeUploadResponse201 = {
+  data: FileMeta;
+  status: 201;
+};
+
+export type finalizeUploadResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type finalizeUploadResponseSuccess = finalizeUploadResponse201 & {
+  headers: Headers;
+};
+export type finalizeUploadResponseError = finalizeUploadResponse404 & {
+  headers: Headers;
+};
+
+export type finalizeUploadResponse = finalizeUploadResponseSuccess | finalizeUploadResponseError;
+
+export const getFinalizeUploadUrl = (id: string) => {
+  return `/files/${id}/finalize`;
+};
+
+/**
+ * presigned PUT 업로드 후 호출. 실제 크기·Content-Type·매직 바이트를 확인해 ready로 전환한다.
+ * @summary 업로드 완료 검증
+ */
+export const finalizeUpload = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<finalizeUploadResponse> => {
+  return apiFetch<finalizeUploadResponse>(getFinalizeUploadUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getFinalizeUploadMutationKey = () => ['finalizeUpload'] as const;
+
+export const getFinalizeUploadMutationOptions = <
+  TError = NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof finalizeUpload>>,
+    TError,
+    FinalizeUploadMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof finalizeUpload>>,
+  TError,
+  FinalizeUploadMutationVariables,
+  TContext
+> => {
+  const mutationKey = getFinalizeUploadMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof finalizeUpload>>,
+    FinalizeUploadMutationVariables
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return finalizeUpload(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FinalizeUploadMutationResult = NonNullable<Awaited<ReturnType<typeof finalizeUpload>>>;
+
+export type FinalizeUploadMutationError = NotFoundResponse;
+export type FinalizeUploadMutationVariables = { id: string };
+
+/**
+ * @summary 업로드 완료 검증
+ */
+export const useFinalizeUpload = <TError = NotFoundResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof finalizeUpload>>,
+      TError,
+      FinalizeUploadMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof finalizeUpload>>,
+  TError,
+  FinalizeUploadMutationVariables,
+  TContext
+> => {
+  return useMutation(getFinalizeUploadMutationOptions(options), queryClient);
+};
 
 export type getOrderResponse200 = {
   data: Order;

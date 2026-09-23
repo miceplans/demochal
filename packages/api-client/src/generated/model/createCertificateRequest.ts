@@ -16,21 +16,15 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { PresignedUploadRequestBucket } from './presignedUploadRequestBucket';
-import type { PresignedUploadRequestContentType } from './presignedUploadRequestContentType';
+import type { CreateCertificateRequestCategory } from './createCertificateRequestCategory';
 
-export interface PresignedUploadRequest {
-  bucket: PresignedUploadRequestBucket;
-  contentType: PresignedUploadRequestContentType;
+export interface CreateCertificateRequest {
   /**
-   * 경로 구분자(슬래시·역슬래시) 불가
-   * @maxLength 255
+   * 인증 제목(뱃지 이름)
+   * @maxLength 200
    */
-  fileName: string;
-  /**
-   * 최대 10MB
-   * @minimum 1
-   * @maximum 10485760
-   */
-  sizeBytes: number;
+  award: string;
+  category: CreateCertificateRequestCategory;
+  /** finalize까지 끝난 private 파일 */
+  fileId: string;
 }
