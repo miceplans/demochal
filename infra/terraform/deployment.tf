@@ -30,11 +30,12 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       values   = ["sts.amazonaws.com"]
     }
     # The production GitHub Environment must be restricted to main. Its
-    # standard OIDC subject is environment-scoped rather than ref-scoped.
+    # The existing GitHub Environment is named `Production`; the standard OIDC
+    # subject is environment-scoped rather than ref-scoped and is case-sensitive.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:miceplans/demochal:environment:production"]
+      values   = ["repo:miceplans/demochal:environment:Production"]
     }
   }
 }
