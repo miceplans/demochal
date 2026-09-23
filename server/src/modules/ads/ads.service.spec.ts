@@ -104,6 +104,19 @@ describe('AdsService.updateStatus', () => {
     expect(forUpdate).toHaveBeenCalledWith('update');
   });
 
+  it('rejects pausing an ad that is not active with 400', async () => {
+    const { db, set, returning } = createDbStub({ ...AD, status: 'ended' });
+    returning.mockResolvedValue([{ ...AD, status: 'paused' }]);
+    const businesses = createBusinessesStub({ id: 'biz-1' });
+    const service = new AdsService(db, businesses as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
+      'Only active ads can be paused',
+    );
+
+    expect(set).not.toHaveBeenCalled();
+  });
+
   it('lets the owning business pause an active ad', async () => {
     const { db, set, returning } = createDbStub(AD);
     returning.mockResolvedValue([{ ...AD, status: 'paused' }]);

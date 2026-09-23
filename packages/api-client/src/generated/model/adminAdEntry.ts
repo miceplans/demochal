@@ -16,14 +16,27 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { AdminAdEntryStatus } from './adminAdEntryStatus';
 
-export type ListAdminAdsParams = {
-  /**
-   * 광고명/기관명 부분 일치 검색
-   */
-  q?: string;
-  /**
-   * 광고 상태 필터 (active/preparing/paused/ended)
-   */
-  status?: string;
-};
+/**
+ * 광고 관리 테이블 행 (AdminAdsScreen) — 광고 상세 + 기관명 + 상품명
+ */
+export interface AdminAdEntry {
+  id?: string;
+  businessId?: string;
+  productId?: string;
+  /** 광고명 (연결된 챌린지명) */
+  title?: string;
+  imageFileId?: string;
+  landingUrl?: string;
+  startDate?: string;
+  endDate?: string;
+  /** 진행중/준비중/중단됨/만료 */
+  status?: AdminAdEntryStatus;
+  /** 결제 금액 (원) */
+  paidAmount?: number;
+  /** 광고를 등록한 기관명 */
+  organization?: string;
+  /** 광고 상품(슬롯)명 */
+  productName?: string;
+}

@@ -17,13 +17,14 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminAdsParams = {
-  /**
-   * 광고명/기관명 부분 일치 검색
-   */
-  q?: string;
-  /**
-   * 광고 상태 필터 (active/preparing/paused/ended)
-   */
-  status?: string;
-};
+/**
+ * 진행중/준비중/중단됨/만료
+ */
+export type AdminAdEntryStatus = (typeof AdminAdEntryStatus)[keyof typeof AdminAdEntryStatus];
+
+export const AdminAdEntryStatus = {
+  active: 'active',
+  preparing: 'preparing',
+  paused: 'paused',
+  ended: 'ended',
+} as const;

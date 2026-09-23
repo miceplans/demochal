@@ -406,16 +406,17 @@ export class AdminService {
 
   async listAds(q?: string, status?: string) {
     const conditions = [];
-    if (q) conditions.push(ilike(ads.title, `%${q}%`));
+    if (q) conditions.push(or(ilike(ads.title, `%${q}%`), ilike(businesses.name, `%${q}%`)));
     if (status) conditions.push(eq(ads.status, status));
     const rows = await this.db
-      .select({ ad: ads, organization: businesses.name })
+      .select({ ad: ads, organization: businesses.name, productName: adProducts.name })
       .from(ads)
       .innerJoin(businesses, eq(ads.businessId, businesses.id))
+      .innerJoin(adProducts, eq(ads.productId, adProducts.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(ads.createdAt));
 
-    return rows.map(({ ad, organization }) => ({ ...ad, organization }));
+    return rows.map(({ ad, organization, productName }) => ({ ...ad, organization, productName }));
   }
 
   async getAdPricing() {

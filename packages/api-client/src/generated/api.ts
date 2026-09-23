@@ -41,6 +41,7 @@ import type {
   AdProduct,
   AdReport,
   AdSlotPricing,
+  AdminAdEntry,
   AdminDashboard,
   AdminSettings,
   AdminUserEntry,
@@ -7441,7 +7442,7 @@ export const useVerifyCertificate = <TError = unknown, TContext = unknown>(
 };
 
 export type listAdminAdsResponse200 = {
-  data: Ad[];
+  data: AdminAdEntry[];
   status: 200;
 };
 
@@ -7465,7 +7466,7 @@ export const getListAdminAdsUrl = (params?: ListAdminAdsParams) => {
 };
 
 /**
- * 광고 관리(`/admin/ad-pricing`): 검색/상태/활동 필터, 광고 수정·납볍·중단.
+ * 광고 관리(`/admin/ad-pricing`): 검색/상태 필터, 행 선택 후 광고 중단.
  * @summary 전체 광고 목록 조회
  */
 export const listAdminAds = async (
