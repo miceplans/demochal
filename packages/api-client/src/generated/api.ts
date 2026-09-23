@@ -126,6 +126,7 @@ import type {
   UpdateAdminSettingsBody,
   UpdateApplicationBody,
   UpdateBusinessBody,
+  UpdateChallengeRequest,
   UpdateMyProfileBody,
   User,
   Verification,
@@ -1923,6 +1924,145 @@ export function useGetChallenge<
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type updateChallengeResponse200 = {
+  data: Challenge;
+  status: 200;
+};
+
+export type updateChallengeResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateChallengeResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type updateChallengeResponseSuccess = updateChallengeResponse200 & {
+  headers: Headers;
+};
+export type updateChallengeResponseError = (
+  updateChallengeResponse401 | updateChallengeResponse404
+) & {
+  headers: Headers;
+};
+
+export type updateChallengeResponse = updateChallengeResponseSuccess | updateChallengeResponseError;
+
+export const getUpdateChallengeUrl = (id: string) => {
+  return `/challenges/${id}`;
+};
+
+/**
+ * 공고 수정(`/biz/postings/{id}/edit`). 소유 비즈니스 또는 admin만 가능하며 권한이 없으면 404.
+ * 보낸 필드만 부분 수정하고, 상태 변경은 `PATCH /challenges/{id}/status`를 쓴다.
+ * 종료일이 시작일보다 빠르거나 수정할 필드가 없으면 400. 모집 중 공고의 수정 제한 정책은 미확정.
+ * @summary 챌린지(공고) 내용 수정 (기업)
+ */
+export const updateChallenge = async (
+  id: string,
+  updateChallengeRequest: UpdateChallengeRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<updateChallengeResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<updateChallengeResponse>(getUpdateChallengeUrl(id), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateChallengeRequest),
+  });
+};
+
+export const getUpdateChallengeMutationKey = () => ['updateChallenge'] as const;
+
+export const getUpdateChallengeMutationOptions = <
+  TError = UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChallenge>>,
+    TError,
+    UpdateChallengeMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChallenge>>,
+  TError,
+  UpdateChallengeMutationVariables,
+  TContext
+> => {
+  const mutationKey = getUpdateChallengeMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChallenge>>,
+    UpdateChallengeMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChallenge(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChallengeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChallenge>>
+>;
+export type UpdateChallengeMutationBody = UpdateChallengeRequest;
+export type UpdateChallengeMutationError = UnauthorizedResponse | NotFoundResponse;
+export type UpdateChallengeMutationVariables = { id: string; data: UpdateChallengeRequest };
+
+/**
+ * @summary 챌린지(공고) 내용 수정 (기업)
+ */
+export const useUpdateChallenge = <
+  TError = UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateChallenge>>,
+      TError,
+      UpdateChallengeMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateChallenge>>,
+  TError,
+  UpdateChallengeMutationVariables,
+  TContext
+> => {
+  return useMutation(getUpdateChallengeMutationOptions(options), queryClient);
+};
 
 export type getChallengeStatsResponse200 = {
   data: ChallengeStats;

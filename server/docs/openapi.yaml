@@ -370,6 +370,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Challenge' }
         '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [Challenges]
+      summary: 챌린지(공고) 내용 수정 (기업)
+      operationId: updateChallenge
+      x-impl-status: implemented
+      description: |
+        공고 수정(`/biz/postings/{id}/edit`). 소유 비즈니스 또는 admin만 가능하며 권한이 없으면 404.
+        보낸 필드만 부분 수정하고, 상태 변경은 `PATCH /challenges/{id}/status`를 쓴다.
+        종료일이 시작일보다 빠르거나 수정할 필드가 없으면 400. 모집 중 공고의 수정 제한 정책은 미확정.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateChallengeRequest' }
+      responses:
+        '200':
+          description: 수정된 챌린지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /challenges/{id}/stats:
     get:
       tags: [Challenges]
@@ -1941,6 +1968,18 @@ components:
             type: string,
             description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
           }
+    UpdateChallengeRequest:
+      type: object
+      description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
+      properties:
+        title: { type: string, maxLength: 200 }
+        description: { type: string, maxLength: 20000 }
+        price: { type: integer, minimum: 0 }
+        capacity: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        category:
+          { type: string, nullable: true, maxLength: 100, description: null이면 카테고리를 비운다 }
     Team:
       type: object
       properties:
