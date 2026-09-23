@@ -42,13 +42,16 @@ export function BizApplicationsPage() {
             <TRow key={row.id}>
               <span>{row.id}</span>
               <select
-                value={row.status === 'pending' ? 'submitted' : row.status}
+                value={row.status}
                 onChange={(event) =>
                   update(row.id, {
                     status: event.target.value as Exclude<Application['status'], 'pending'>,
                   })
                 }
               >
+                <option value="pending" disabled>
+                  대기
+                </option>
                 <option value="submitted">제출</option>
                 <option value="reviewing">검토중</option>
                 <option value="needs_revision">보완 요청</option>
