@@ -29,4 +29,6 @@ export interface AdminDashboard {
   adRatio?: AdRatioGauge;
   traffic?: TrafficSeries;
   reports?: Report[];
+  /** 집계 기준 시각 */
+  generatedAt?: string;
 }

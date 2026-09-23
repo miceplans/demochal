@@ -24,10 +24,10 @@
 export interface ActivityChart {
   /** 월 라벨 (예: 'JAN'~'JUN') */
   months?: string[];
-  /** 일반 사용자 활동 */
+  /** 일반 사용자 지원서 제출 수 */
   general?: number[];
-  /** 기업 사용자 활동 */
+  /** 기업 챌린지 등록 수 */
   corp?: number[];
-  /** Y축 상한 (ticks는 0~yMax까지 2 간격으로 생성)' */
+  /** Y축 상한 (1/2/5×10ⁿ, 최소 10 — 화면은 5등분 tick) */
   yMax?: number;
 }

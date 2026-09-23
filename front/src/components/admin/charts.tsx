@@ -17,13 +17,7 @@ import {
 } from 'recharts';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  activityChart,
-  adRatio,
-  trafficData,
-  type AdDailyStat,
-  type TrafficRange,
-} from '@/data/admin-design';
+import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
 
 /* ---------- shared tooltip ---------- */
 
@@ -146,13 +140,7 @@ function GaugeBar(props: {
   );
 }
 
-export function AdRatioChart({
-  value = adRatio.value,
-  ratio = adRatio.ratio,
-}: {
-  value?: string;
-  ratio?: number;
-}) {
+export function AdRatioChart({ value, ratio }: { value: string; ratio: number }) {
   const percent = Math.round(ratio * 100);
 
   return (
@@ -246,7 +234,16 @@ const Tab = styled.button<{ active?: boolean }>(({ active }) => ({
   ...textStyle.finePrint,
 }));
 
-const yAxisLabels = ['0', '50k', '100k', '500k', '1M', '5M'];
+const TRAFFIC_TICK_COUNT = 5;
+
+/** 시리즈 최댓값을 TRAFFIC_TICK_COUNT 등분했을 때 눈금이 정수로 떨어지는 상한. */
+function trafficTop(values: number[]) {
+  const max = Math.max(0, ...values);
+  const step = Math.max(1, Math.ceil(max / TRAFFIC_TICK_COUNT));
+  return step * TRAFFIC_TICK_COUNT;
+}
+
+const compactNumber = new Intl.NumberFormat('ko-KR', { notation: 'compact' });
 
 export function TrafficChart({
   range: controlledRange,
@@ -264,12 +261,14 @@ export function TrafficChart({
   const [localRange, setLocalRange] = useState<TrafficRange>('1year');
   const range = controlledRange ?? localRange;
   const setRange = onRangeChange ?? setLocalRange;
-  const fallback = trafficData[range];
-  const labels = controlledLabels?.length ? controlledLabels : fallback.labels;
-  const primary = controlledPrimary?.length ? controlledPrimary : fallback.primary;
-  const secondary = controlledSecondary?.length ? controlledSecondary : fallback.secondary;
+  const labels = controlledLabels ?? [];
+  const primary = controlledPrimary ?? [];
+  const secondary = controlledSecondary ?? [];
   const height = 160;
-  const maxY = Math.max(...primary) * 1.15;
+  const maxY = trafficTop([...primary, ...secondary]);
+  const yAxisLabels = Array.from({ length: TRAFFIC_TICK_COUNT + 1 }, (_, i) =>
+    compactNumber.format((maxY / TRAFFIC_TICK_COUNT) * i),
+  );
   const data = labels.map((label, i) => ({
     label,
     primary: primary[i],
@@ -298,11 +297,11 @@ export function TrafficChart({
           <span style={{ display: 'flex', gap: 10 }}>
             <Legend>
               <LegendDot color={c.primary} />
-              일반 유저 트래픽
+              일반 유저 가입
             </Legend>
             <Legend>
               <LegendDot color={c.lightBlue} />
-              비즈니스 트래픽
+              비즈니스 가입
             </Legend>
           </span>
         </div>
@@ -332,8 +331,8 @@ export function TrafficChart({
             textAlign: 'right',
           }}
         >
-          {yAxisLabels.map((label) => (
-            <span key={label}>{label}</span>
+          {yAxisLabels.map((label, index) => (
+            <span key={index}>{label}</span>
           ))}
         </div>
         <div
@@ -358,7 +357,10 @@ export function TrafficChart({
               <YAxis
                 domain={[0, maxY]}
                 hide
-                ticks={[maxY * 0.2, maxY * 0.4, maxY * 0.6, maxY * 0.8]}
+                ticks={Array.from(
+                  { length: TRAFFIC_TICK_COUNT - 1 },
+                  (_, i) => (maxY / TRAFFIC_TICK_COUNT) * (i + 1),
+                )}
               />
               <Tooltip
                 content={<ChartTooltip />}
@@ -367,7 +369,7 @@ export function TrafficChart({
               <Area
                 type="monotone"
                 dataKey="primary"
-                name="일반 유저 트래픽"
+                name="일반 유저 가입"
                 stroke={c.primary}
                 strokeWidth={2.5}
                 strokeLinecap="round"
@@ -378,7 +380,7 @@ export function TrafficChart({
               <Line
                 type="monotone"
                 dataKey="secondary"
-                name="비즈니스 트래픽"
+                name="비즈니스 가입"
                 stroke={c.lightBlue}
                 strokeWidth={2.5}
                 strokeLinecap="round"
@@ -408,28 +410,15 @@ export function ActivityChart({
   general?: number[];
   corp?: number[];
   yMax?: number;
-  // 'pending'일 때만(최초 로딩) 목업 시리즈로 대체한다. 'error'일 때는 목업을 그대로
-  // 보여주면 실패한 요청이 정상 데이터처럼 보이므로 별도 에러 상태를 렌더링한다.
+  // 'error'일 때는 빈 차트가 "활동 0"처럼 보이지 않도록 별도 에러 상태를 렌더링한다.
   status?: ActivityChartStatus;
 } = {}) {
-  const useMockFallback = status === 'pending';
-  const months = controlledMonths?.length
-    ? controlledMonths
-    : useMockFallback
-      ? activityChart.months
-      : [];
-  const generalSeries = controlledGeneral?.length
-    ? controlledGeneral
-    : useMockFallback
-      ? activityChart.general
-      : [];
-  const corpSeries = controlledCorp?.length
-    ? controlledCorp
-    : useMockFallback
-      ? activityChart.corp
-      : [];
-  const yMax = controlledYMax ?? (useMockFallback ? activityChart.yMax : 10);
-  const yLabels = Array.from({ length: yMax / 2 + 1 }, (_, i) => i * 2);
+  const months = controlledMonths ?? [];
+  const generalSeries = controlledGeneral ?? [];
+  const corpSeries = controlledCorp ?? [];
+  // 서버 yMax는 1/2/5×10ⁿ(최소 10)이라 5등분하면 눈금이 정수로 떨어진다.
+  const yMax = controlledYMax ?? 10;
+  const yLabels = Array.from({ length: 6 }, (_, i) => (yMax / 5) * i);
   const data = months.map((month, i) => ({
     month,
     general: generalSeries[i],
@@ -453,11 +442,11 @@ export function ActivityChart({
         <span style={{ display: 'flex', gap: 16 }}>
           <Legend>
             <LegendDot color={c.primary} />
-            일반
+            일반 (지원서 제출)
           </Legend>
           <Legend>
             <LegendDot color={c.lightBlue} />
-            기업
+            기업 (챌린지 등록)
           </Legend>
         </span>
       </div>

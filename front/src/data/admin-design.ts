@@ -388,49 +388,9 @@ export const certificateRows: CertificateRow[] = [
 
 export const certificateTabs = ['미인증', '인증', '거부'] as const;
 
-// --- 광고 리포트 목업 (광고비 관리 > 리포트 보기) ---
+// --- 광고 리포트 차트 타입 (광고비 관리 > 리포트 보기) ---
 // AdReportChart의 daily prop 타입 — 실 데이터는 generated.useGetAdminAnalytics({ ad })의
 // adReport.daily에서 온다 (AdminAnalyticsScreen).
 export type AdDailyStat = { date: string; impressions: number; clicks: number };
 
-// --- 대시보드 차트 ---
-
-export const adRatio = { value: '100,000 ₩', ratio: 0.72 };
-
-// --- 광고비 책정 ---
-
-export const adPricing = { dailyPrice: 10000 };
-
 export type TrafficRange = '7days' | '30days' | '1year';
-
-export const trafficData: Record<
-  TrafficRange,
-  { labels: string[]; primary: number[]; secondary: number[] }
-> = {
-  '7days': {
-    labels: ['1일', '2일', '3일', '4일', '5일', '6일', '7일'],
-    primary: [32, 45, 38, 60, 52, 75, 68],
-    secondary: [20, 28, 24, 35, 30, 42, 38],
-  },
-  '30days': {
-    labels: ['5일', '10일', '15일', '20일', '25일', '30일'],
-    primary: [120, 165, 148, 210, 188, 240],
-    secondary: [78, 102, 95, 132, 118, 150],
-  },
-  '1year': {
-    labels: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
-    primary: [210, 260, 230, 310, 290, 360, 330, 410, 380, 450, 470, 520],
-    secondary: [120, 150, 140, 190, 170, 220, 200, 260, 240, 300, 310, 350],
-  },
-};
-
-// ActivityChart 컴포넌트의 controlled-prop 로딩 폴백 (generated.useGetAdminAnalytics의
-// activity가 아직 없을 때 화면에 표시). 실 데이터가 오면 이 값은 쓰이지 않는다.
-export const activityChart = {
-  months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN'],
-  general: [3.2, 4.1, 3.8, 5.2, 6.4, 7.8],
-  corp: [1.8, 2.4, 2.2, 3.1, 3.6, 4.4],
-  yMax: 10,
-  tooltipIndex: 3,
-  tooltipValue: '1000',
-};

@@ -61,11 +61,10 @@ function AdReportSection({ report }: { report?: AdReport }) {
 // useSearchParams는 Suspense 경계가 필요해 이 컴포넌트를 별도로 분리했다.
 function AdminAnalyticsContent() {
   const searchParams = useSearchParams();
-  const adParam = searchParams.get('ad');
-  const adNumber = adParam ? Number(adParam) : undefined;
-  const adEnabled = adNumber !== undefined && Number.isFinite(adNumber);
+  // 광고 uuid 또는 고정 광고 번호(ads.ad_number) — 서버가 둘 다 해석한다.
+  const adParam = searchParams.get('ad') || undefined;
 
-  const analyticsQuery = generated.useGetAdminAnalytics({ ad: adEnabled ? adNumber : undefined });
+  const analyticsQuery = generated.useGetAdminAnalytics({ ad: adParam });
   const analytics = analyticsQuery.data?.data;
 
   return (
