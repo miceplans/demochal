@@ -8,7 +8,8 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
-import { desktopContests, teams, type Contest } from '@/data/user-design';
+import { desktopContests, type Contest } from '@/data/user-design';
+import { toTeamCard } from '@/components/teams/team-model';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
@@ -51,6 +52,8 @@ export function HomePage() {
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: teamList } = generated.useListTeams();
+  const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 6 },
     { query: { enabled: auth?.status === 200 } },

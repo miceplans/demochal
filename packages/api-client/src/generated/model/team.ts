@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { TeamMember } from './teamMember';
 import type { TeamRoleSlot } from './teamRoleSlot';
 import type { TeamStatus } from './teamStatus';
 
@@ -23,11 +24,39 @@ export interface Team {
   id?: string;
   challengeId?: string;
   leaderUserId?: string;
-  /** 팀 소개 한줄 */
+  /** 팀명 (미입력 시 "<팀장 이름>의 팀") */
   title?: string;
+  /**
+   * 팀장 역할
+   * @nullable
+   */
+  leaderRole?: string | null;
+  /**
+   * 팀 소개
+   * @nullable
+   */
+  introduction?: string | null;
+  /**
+   * 우대사항
+   * @nullable
+   */
+  preferred?: string | null;
+  /**
+   * 기타
+   * @nullable
+   */
+  etc?: string | null;
   region?: string;
   /** 필요 역할 슬롯 */
   openRoles?: TeamRoleSlot[];
   status?: TeamStatus;
   createdAt?: string;
+  /** 목록·상세 응답에 포함 */
+  challengeTitle?: string;
+  /** 목록·상세 응답에 포함 */
+  leaderName?: string;
+  /** 목록 응답 전용 — 승인(accepted)된 팀원 역할 */
+  filledRoles?: string[];
+  /** 상세 응답 전용 — 팀원(대기·승인·거절 포함) */
+  members?: TeamMember[];
 }
