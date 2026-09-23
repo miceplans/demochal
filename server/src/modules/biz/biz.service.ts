@@ -28,8 +28,8 @@ export class BizService {
       .orderBy(desc(challenges.createdAt))
       .limit(1);
 
-    // stats 소스는 GET /challenges/{id}/stats와 동일 (ChallengeStats 재사용).
-    const stats = recentPosting ? await this.challengesService.stats(recentPosting.id) : null;
+    // Use the same complete stats contract exposed by GET /challenges/{id}/stats.
+    const stats = recentPosting ? await this.challengesService.getStats(recentPosting.id) : null;
     const history = await this.billingHistoryService.forBusiness(business.id, {});
     // 노출 비콘이 없어 월별 광고 노출은 정직하게 0 구조만 반환 (리포트 주석 참고).
     return {

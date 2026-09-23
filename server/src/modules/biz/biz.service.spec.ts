@@ -22,7 +22,7 @@ function createDeps(overrides: {
 }) {
   return {
     businessesService: { findByOwner: vi.fn().mockResolvedValue(overrides.business) },
-    challengesService: { stats: vi.fn().mockResolvedValue(overrides.stats) },
+    challengesService: { getStats: vi.fn().mockResolvedValue(overrides.stats) },
     billingHistoryService: {
       forBusiness: vi.fn().mockResolvedValue(overrides.history ?? { items: [], total: 0 }),
     },
@@ -48,7 +48,7 @@ describe('BizService', () => {
 
     expect(dashboard.recentPosting).toBeNull();
     expect(dashboard.stats).toBeNull();
-    expect(deps.challengesService.stats).not.toHaveBeenCalled();
+    expect(deps.challengesService.getStats).not.toHaveBeenCalled();
     expect(dashboard.monthlyAdExposure).toEqual([]);
     expect(dashboard.payments).toEqual([]);
     expect(dashboard.paymentTotal).toBe(0);
@@ -83,7 +83,7 @@ describe('BizService', () => {
     const dashboard = await service.dashboard(OWNER.id);
 
     expect(dashboard.recentPosting).toEqual(recent);
-    expect(deps.challengesService.stats).toHaveBeenCalledWith('ch-1');
+    expect(deps.challengesService.getStats).toHaveBeenCalledWith('ch-1');
     expect(dashboard.stats).toEqual(stats);
     expect(deps.billingHistoryService.forBusiness).toHaveBeenCalledWith('biz-1', {});
     // Only the top 3 history items, but the total covers all of them.

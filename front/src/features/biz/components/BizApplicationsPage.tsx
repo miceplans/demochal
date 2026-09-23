@@ -42,7 +42,7 @@ export function BizApplicationsPage() {
             <TRow key={row.id}>
               <span>{row.id}</span>
               <select
-                value={row.status}
+                value={row.status === 'pending' ? 'submitted' : row.status}
                 onChange={(event) =>
                   update(row.id, {
                     status: event.target.value as Exclude<Application['status'], 'pending'>,
