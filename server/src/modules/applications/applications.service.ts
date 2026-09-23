@@ -117,6 +117,23 @@ export class ApplicationsService {
     return this.db.select().from(applications).where(eq(applications.userId, userId));
   }
 
+  async listForBusinessOwner(
+    ownerUserId: string,
+    filters: { challengeId?: string; status?: string },
+  ) {
+    const conditions = [eq(businesses.ownerUserId, ownerUserId)];
+    if (filters.challengeId) conditions.push(eq(applications.challengeId, filters.challengeId));
+    if (filters.status) conditions.push(eq(applications.status, filters.status));
+    const rows = await this.db
+      .select({ application: applications })
+      .from(applications)
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(and(...conditions))
+      .orderBy(desc(applications.createdAt));
+    return rows.map(({ application }) => application);
+  }
+
   // Visible to the applicant themselves, or to the business that owns the challenge.
   async findById(id: string, userId: string) {
     const row = await this.findWithBusinessOwner(id);
