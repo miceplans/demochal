@@ -679,37 +679,74 @@ export function TeamApplicantsPage() {
   const resultOf = (memberId: string | undefined, status?: string): ApplicantResult =>
     (memberId ? overrides[memberId] : undefined) ?? resultFromStatus(status);
 
-  const send = async (team: (typeof teams)[number]) => {
-    const decided = (team.members ?? []).filter(
-      (member) => resultOf(member.id, member.status) !== '미정',
-    );
-    try {
-      await Promise.all(
-        decided.map((member) => {
-          const result = resultOf(member.id, member.status);
-          return updateMember.mutateAsync({
-            id: team.id ?? '',
-            memberId: member.id ?? '',
-            data: {
-              status: result === '합격' ? 'accepted' : 'rejected',
-              // 합격자에게만 채팅방 링크를 저장해 알림으로 함께 본다.
-              ...(result === '합격' && link.trim() ? { chatLink: link.trim() } : {}),
-            },
-          });
-        }),
+  // 이번에 드롭다운으로 바꾼 지원자만 전송한다(이미 결정된 지원자에게 알림을 다시 보내지 않는다).
+  const changedMembers = (team: (typeof teams)[number]) =>
+    (team.members ?? []).filter((member) => {
+      const override = member.id ? overrides[member.id] : undefined;
+      return (
+        override !== undefined &&
+        override !== '미정' &&
+        override !== resultFromStatus(member.status)
       );
-      setSendTargetId(null);
-      setLink('');
-      setOverrides({});
-      toast.success('결과를 전송했어요', '지원자에게 알림으로 알려드릴게요');
-      void queryClient.invalidateQueries({ queryKey: generated.getListManagedTeamsQueryKey() });
-      void queryClient.invalidateQueries({
-        queryKey: generated.getListMyTeamApplicationsQueryKey(),
-      });
-    } catch {
-      toast.error('결과를 전송하지 못했어요', '다시 시도해주세요');
-    }
+    });
+  const closeSendModal = () => {
+    // 다른 팀 모달로 링크가 넘어가지 않게 닫을 때마다 초기화한다.
+    setSendTargetId(null);
+    setLink('');
   };
+  const refreshTeams = () => {
+    void queryClient.invalidateQueries({ queryKey: generated.getListManagedTeamsQueryKey() });
+    void queryClient.invalidateQueries({
+      queryKey: generated.getListMyTeamApplicationsQueryKey(),
+    });
+  };
+
+  const send = async (team: (typeof teams)[number]) => {
+    const decided = changedMembers(team);
+    if (decided.length === 0) {
+      toast.error('전송할 결과가 없어요', '지원자의 결과를 먼저 선택해주세요');
+      return;
+    }
+    // TODO: 여러 지원자 결과를 한 트랜잭션으로 저장하는 일괄 API가 없어 지원자별로 보낸다.
+    // 부분 실패 시 성공한 건은 반영된 상태로 두고 실패한 지원자만 다시 보낼 수 있게 한다.
+    // https://orm.drizzle.team/docs/transactions
+    const results = await Promise.allSettled(
+      decided.map((member) => {
+        const result = resultOf(member.id, member.status);
+        return updateMember.mutateAsync({
+          id: team.id ?? '',
+          memberId: member.id ?? '',
+          data: {
+            status: result === '합격' ? 'accepted' : 'rejected',
+            // 합격자에게만 채팅방 링크를 저장해 알림으로 함께 본다.
+            ...(result === '합격' && link.trim() ? { chatLink: link.trim() } : {}),
+          },
+        });
+      }),
+    );
+    const succeededIds = decided
+      .filter((_, i) => results[i]?.status === 'fulfilled')
+      .map((member) => member.id);
+    setOverrides((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.includes(id))),
+    );
+    refreshTeams();
+    const failed = results.length - succeededIds.length;
+    if (failed > 0) {
+      toast.error(
+        `${failed}명에게 결과를 전송하지 못했어요`,
+        succeededIds.length > 0
+          ? `${succeededIds.length}명은 전송됐어요. 실패한 지원자만 다시 시도해주세요`
+          : '다시 시도해주세요',
+      );
+      return;
+    }
+    closeSendModal();
+    toast.success('결과를 전송했어요', '지원자에게 알림으로 알려드릴게요');
+  };
+  const sendNeedsLink =
+    sendTarget !== undefined &&
+    changedMembers(sendTarget).some((member) => resultOf(member.id, member.status) === '합격');
   return (
     <MyShell title="팀 지원현황">
       <Stack gap={40}>
@@ -776,11 +813,7 @@ export function TeamApplicantsPage() {
           ))
         )}
       </Stack>
-      <Modal
-        open={sendTarget !== undefined}
-        onClose={() => setSendTargetId(null)}
-        title="결과 전송하기"
-      >
+      <Modal open={sendTarget !== undefined} onClose={closeSendModal} title="결과 전송하기">
         <Muted style={{ color: c.red }}>*이 활동은 되돌릴 수 없어요</Muted>
         <p style={{ fontSize: 13 }}>합격자들에게 전송할 채팅방 링크를 첨부해주세요.</p>
         <form
@@ -793,12 +826,12 @@ export function TeamApplicantsPage() {
             aria-label="채팅방 링크"
             placeholder="링크"
             type="url"
-            required
+            required={sendNeedsLink}
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
           <Row style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-            <Button type="button" small tone="plain" onClick={() => setSendTargetId(null)}>
+            <Button type="button" small tone="plain" onClick={closeSendModal}>
               취소
             </Button>
             <Button type="submit" small disabled={updateMember.isPending}>
