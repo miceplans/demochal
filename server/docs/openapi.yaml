@@ -1621,6 +1621,9 @@ paths:
         - name: q
           in: query
           schema: { type: string }
+        - name: category
+          in: query
+          schema: { type: string, enum: [award, participation], description: 수상 실적 | 출품 이력 }
       responses:
         '200':
           description: 인증 요청 목록
@@ -1836,9 +1839,18 @@ paths:
       x-impl-status: implemented
       description: |
         콘텐츠 모니터링(`/admin/contents`).
-        - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트)
-        - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트)
+        - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
+        - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
+        - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
         - `reports`: 신고 로그 테이블
+        - 미확인 도트(`unread`) = 처리되지 않은(open) 신고가 걸린 팀/챌린지
+      parameters:
+        - name: teamsLimit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 8 }
+        - name: contestsLimit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 8 }
       responses:
         '200':
           description: 모니터링 대상 콘텐츠
@@ -1848,8 +1860,10 @@ paths:
                 type: object
                 properties:
                   teams: { type: array, items: { $ref: '#/components/schemas/AdminTeamCard' } }
+                  teamsTotal: { type: integer }
                   contests:
                     { type: array, items: { $ref: '#/components/schemas/AdminContestCard' } }
+                  contestsTotal: { type: integer }
                   reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
   /admin/analytics:
     get:
@@ -2528,6 +2542,14 @@ components:
         award: { type: string, description: '상장 제목 (예: 2025 공공데이터 활용 대회 대상)' }
         category: { type: string, enum: [award, participation], description: 수상 실적 | 출품 이력 }
         fileId: { type: string, format: uuid, description: 상장 이미지 (썸네일/원본 오버레이) }
+        fileUrl:
+          {
+            type: string,
+            nullable: true,
+            description: '원본 조회 URL — private 파일은 5분 presigned GET, 업로드 미완료면 null (목록 응답에만 포함)',
+          }
+        fileContentType:
+          { type: string, nullable: true, description: 'image/* 또는 application/pdf' }
         status: { type: string, enum: [pending, verified, rejected], description: 미인증/인증/거부 }
     AdminTeamCard:
       type: object
@@ -2537,9 +2559,14 @@ components:
         name: { type: string }
         challenge: { type: string, description: 소속 챌린지명 }
         members: { type: string, description: "'2/4명 참여중' 형태" }
-        roles: { type: array, items: { type: string }, description: 모집 완료된 역할 뱃지 }
+        roles:
+          {
+            type: array,
+            items: { type: string },
+            description: 모집 완료된 역할 뱃지 (accepted 멤버가 모집 인원을 채운 openRoles),
+          }
         otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
-        unread: { type: boolean, description: 미확인 도트 표시 여부 }
+        unread: { type: boolean, description: 처리되지 않은(open) 신고가 있으면 true }
     AdminContestCard:
       type: object
       description: 콘텐츠 모니터링 '확인해야하는 챌린지' 카드 (AdminContestCard)

@@ -17,20 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-/**
- * 콘텐츠 모니터링 '확인해야하는 팀' 카드 (AdminTeamCard)
- */
-export interface AdminTeamCard {
-  id?: string;
-  name?: string;
-  /** 소속 챌린지명 */
-  challenge?: string;
-  /** '2/4명 참여중' 형태 */
-  members?: string;
-  /** 모집 완료된 역할 뱃지 (accepted 멤버가 모집 인원을 채운 openRoles) */
-  roles?: string[];
-  /** 모집 중인 역할 뱃지 */
-  otherRoles?: string[];
-  /** 처리되지 않은(open) 신고가 있으면 true */
-  unread?: boolean;
-}
+export type ListAdminCertificatesCategory =
+  (typeof ListAdminCertificatesCategory)[keyof typeof ListAdminCertificatesCategory];
+
+export const ListAdminCertificatesCategory = {
+  award: 'award',
+  participation: 'participation',
+} as const;

@@ -49,8 +49,12 @@ export class AdminController {
   }
 
   @Get('certificates')
-  listCertificates(@Query('status') status?: string, @Query('q') q?: string) {
-    return this.adminService.listCertificates(status, q);
+  listCertificates(
+    @Query('status') status?: string,
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+  ) {
+    return this.adminService.listCertificates(status, q, category);
   }
 
   @Post('certificates/:id/verify')
@@ -100,8 +104,11 @@ export class AdminController {
   }
 
   @Get('contents')
-  getContents() {
-    return this.adminService.getContents();
+  getContents(
+    @Query('teamsLimit') teamsLimit?: string,
+    @Query('contestsLimit') contestsLimit?: string,
+  ) {
+    return this.adminService.getContents(teamsLimit, contestsLimit);
   }
 
   @Get('analytics')

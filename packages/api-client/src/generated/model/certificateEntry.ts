@@ -32,6 +32,16 @@ export interface CertificateEntry {
   category?: CertificateEntryCategory;
   /** 상장 이미지 (썸네일/원본 오버레이) */
   fileId?: string;
+  /**
+   * 원본 조회 URL — private 파일은 5분 presigned GET, 업로드 미완료면 null (목록 응답에만 포함)
+   * @nullable
+   */
+  fileUrl?: string | null;
+  /**
+   * image/* 또는 application/pdf
+   * @nullable
+   */
+  fileContentType?: string | null;
   /** 미인증/인증/거부 */
   status?: CertificateEntryStatus;
 }
