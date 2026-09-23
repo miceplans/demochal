@@ -270,9 +270,10 @@ locals {
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
-  # The migration task only needs DB credentials, not the full application
-  # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).
-  migrate_secrets = [for s in local.app_secrets : s if s.name == "DATABASE_URL"]
+  # The migration task needs DB credentials and JWT_SECRET because the shared
+  # production environment validator runs before `dist/migrate.js` starts.
+  # Toss/OCR/OAuth keys remain unnecessary for migrations.
+  migrate_secrets = [for s in local.app_secrets : s if contains(["DATABASE_URL", "JWT_SECRET"], s.name)]
 }
 
 resource "aws_ecs_task_definition" "api" {
@@ -346,7 +347,14 @@ resource "aws_ecs_service" "api" {
     container_port   = 3001
   }
   depends_on = [aws_lb_listener.https]
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   lifecycle {
+    # GitHub Actions owns the deployed revision and runtime scale after the
+    # existing staging service is promoted to the production workload.
+    ignore_changes = [task_definition, desired_count]
     precondition {
       condition     = !var.enable_runtime || var.api_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.api_image))
       error_message = "When the API runtime is enabled, api_image must be an immutable ECR digest."
@@ -360,12 +368,17 @@ resource "aws_ecs_service" "worker" {
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = var.enable_runtime ? var.worker_desired_count : 0
   launch_type     = "FARGATE"
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   network_configuration {
     subnets          = [aws_subnet.public["0"].id]
     security_groups  = [aws_security_group.worker_task.id]
     assign_public_ip = true
   }
   lifecycle {
+    ignore_changes = [task_definition, desired_count]
     precondition {
       condition     = !var.enable_runtime || var.worker_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.worker_image))
       error_message = "When the worker runtime is enabled, worker_image must be an immutable ECR digest."

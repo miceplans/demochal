@@ -69,6 +69,7 @@ import type {
   GetInterests200,
   HandleTossWebhook200,
   IssueBillingAuthorizationBody,
+  JoinTeamRequest,
   ListAdminAdsParams,
   ListAdminBusinesses200,
   ListAdminBusinessesParams,
@@ -113,6 +114,7 @@ import type {
   SubmitVerificationRequest,
   SuspendUserBody,
   Team,
+  TeamMember,
   ToggleBookmark200,
   ToggleBookmarkBody,
   TossWebhookPayload,
@@ -2357,8 +2359,8 @@ export const getCreateTeamUrl = () => {
 };
 
 /**
- * 모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 한줄 → 필요 역할 슬롯(추가/삭제) → 내 역할.
- * 프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + `/my/teams` 이동.
+ * 모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 → 필요 역할 슬롯(추가/삭제) → 내 역할 → 우대사항 → 기타.
+ * 프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + 작성된 모집글(`/teams/{id}`)로 이동.
  * @summary 팀 모집글 작성
  */
 export const createTeam = async (
@@ -2585,6 +2587,147 @@ export function useGetTeam<TData = Awaited<ReturnType<typeof getTeam>>, TError =
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type joinTeamResponse201 = {
+  data: TeamMember;
+  status: 201;
+};
+
+export type joinTeamResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type joinTeamResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type joinTeamResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type joinTeamResponseSuccess = joinTeamResponse201 & {
+  headers: Headers;
+};
+export type joinTeamResponseError = (
+  joinTeamResponse400 | joinTeamResponse401 | joinTeamResponse404
+) & {
+  headers: Headers;
+};
+
+export type joinTeamResponse = joinTeamResponseSuccess | joinTeamResponseError;
+
+export const getJoinTeamUrl = (id: string) => {
+  return `/teams/${id}/join`;
+};
+
+/**
+ * 팀 모집글 상세(`/teams/{id}`)의 "팀 신청하기". 로그인 필요 — 비로그인이면 프론트가 `/login?next=`로 보낸다.
+ * `pending` 팀원으로 등록되고 팀장에게 `team_matching` 알림이 간다. 팀장 본인/중복 신청은 400.
+ * @summary 팀 합류 신청
+ */
+export const joinTeam = async (
+  id: string,
+  joinTeamRequest?: JoinTeamRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<joinTeamResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<joinTeamResponse>(getJoinTeamUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(joinTeamRequest),
+  });
+};
+
+export const getJoinTeamMutationKey = () => ['joinTeam'] as const;
+
+export const getJoinTeamMutationOptions = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof joinTeam>>,
+    TError,
+    JoinTeamMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof joinTeam>>,
+  TError,
+  JoinTeamMutationVariables,
+  TContext
+> => {
+  const mutationKey = getJoinTeamMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof joinTeam>>,
+    JoinTeamMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return joinTeam(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type JoinTeamMutationResult = NonNullable<Awaited<ReturnType<typeof joinTeam>>>;
+export type JoinTeamMutationBody = JoinTeamRequest | undefined;
+export type JoinTeamMutationError = void | UnauthorizedResponse | NotFoundResponse;
+export type JoinTeamMutationVariables = { id: string; data?: JoinTeamRequest };
+
+/**
+ * @summary 팀 합류 신청
+ */
+export const useJoinTeam = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof joinTeam>>,
+      TError,
+      JoinTeamMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof joinTeam>>,
+  TError,
+  JoinTeamMutationVariables,
+  TContext
+> => {
+  return useMutation(getJoinTeamMutationOptions(options), queryClient);
+};
 
 export type applyChallengeResponse201 = {
   data: ApplyChallenge201;
