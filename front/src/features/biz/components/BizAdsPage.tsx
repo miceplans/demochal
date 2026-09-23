@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
@@ -9,7 +9,7 @@ import { ko } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { BizContent, OutlineButton, PrimaryButton } from '@/components/biz/BizShell';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import {
   AdPlacementPreview,
   type AdPlacement,
@@ -45,7 +45,10 @@ function formatSlash(dateKey: string) {
 
 export function BizAdsPage() {
   const [contracts, setContracts] = useState<Ad[]>([]);
+  const [contractsLoading, setContractsLoading] = useState(true);
+  const [contractsError, setContractsError] = useState(false);
   const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
+  const [pausingId, setPausingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
@@ -56,6 +59,7 @@ export function BizAdsPage() {
   const [adName, setAdName] = useState('');
   const previewUrls = useRef<Set<string>>(new Set());
   const toast = useToast();
+  const hrefOf = useBizHref();
 
   useEffect(
     () => () => {
@@ -63,16 +67,54 @@ export function BizAdsPage() {
     },
     [],
   );
-  useEffect(() => {
-    adApi.ads
-      .listMine()
-      .then(setContracts)
-      .catch((error) => {
-        // 401은 세션이 없거나 만료된 상태일 수 있으므로 배경 로딩에서는 토스트를 띄우지 않는다.
-        if (error instanceof ApiError && error.status === 401) return;
+  const loadContracts = useCallback(async () => {
+    setContractsLoading(true);
+    setContractsError(false);
+    try {
+      setContracts(await adApi.ads.listMine());
+    } catch (error) {
+      setContractsError(true);
+      // 401은 세션이 없거나 만료된 상태일 수 있으므로 배경 로딩에서는 토스트를 띄우지 않는다.
+      if (!(error instanceof ApiError && error.status === 401)) {
         toast.error('광고 목록을 불러오지 못했습니다', adError(error));
-      });
+      }
+    } finally {
+      setContractsLoading(false);
+    }
   }, [toast]);
+  useEffect(() => {
+    let active = true;
+    void adApi.ads
+      .listMine()
+      .then((items) => {
+        if (active) setContracts(items);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setContractsError(true);
+        if (!(error instanceof ApiError && error.status === 401))
+          toast.error('광고 목록을 불러오지 못했습니다', adError(error));
+      })
+      .finally(() => {
+        if (active) setContractsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [toast]);
+  const pauseAd = async (ad: Ad) => {
+    if (ad.status !== 'active' || pausingId) return;
+    setPausingId(ad.id);
+    try {
+      const updated = await adApi.ads.update(ad.id, 'paused');
+      setContracts((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      toast.success('광고를 중단했습니다.');
+    } catch (error) {
+      toast.error('광고를 중단하지 못했습니다.', adError(error));
+    } finally {
+      setPausingId(null);
+    }
+  };
   useEffect(() => {
     const refresh = () =>
       adApi.notifications
@@ -281,7 +323,7 @@ export function BizAdsPage() {
               <OutlineButton type="button" onClick={() => setScreen('products')}>
                 수정하기
               </OutlineButton>
-              <PrimaryButton type="button" onClick={() => router.push('/biz/reports')}>
+              <PrimaryButton type="button" onClick={() => router.push(hrefOf('/reports'))}>
                 리포트 보기
               </PrimaryButton>
             </span>
@@ -307,29 +349,71 @@ export function BizAdsPage() {
               <span role="columnheader" style={{ justifySelf: 'end', width: 80 }}>
                 상태
               </span>
+              <span role="columnheader" style={{ justifySelf: 'end' }}>
+                관리
+              </span>
             </TableHead>
-            {contracts.map((ad) => (
-              <TableRow key={ad.id} role="row">
-                <span role="cell">
-                  {ad.title}
-                  <small style={{ display: 'block' }}>
-                    {ad.startDate.slice(0, 10)} ~ {ad.endDate.slice(0, 10)}
-                  </small>
-                </span>
-                <span role="cell">{ad.paidAmount.toLocaleString()}원</span>
-                <span role="cell" style={{ justifySelf: 'end', width: 80 }}>
-                  {ad.status === 'preparing'
-                    ? '결제 대기'
-                    : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
-                      ? '종료'
-                      : ad.status === 'paused'
-                        ? '일시 정지'
-                        : ad.startDate.slice(0, 10) > toDateKey(new Date())
-                          ? '시작 대기'
-                          : '진행중'}
+            {contractsLoading && (
+              <TableRow role="row">
+                <span>광고 목록을 불러오는 중이에요.</span>
+              </TableRow>
+            )}
+            {!contractsLoading && contractsError && (
+              <TableRow role="row">
+                <span>
+                  광고 목록을 불러오지 못했어요.{' '}
+                  <button type="button" onClick={() => void loadContracts()}>
+                    다시 시도
+                  </button>
                 </span>
               </TableRow>
-            ))}
+            )}
+            {!contractsLoading && !contractsError && contracts.length === 0 && (
+              <TableRow role="row">
+                <span>등록된 광고가 없어요. 광고를 추가해보세요.</span>
+              </TableRow>
+            )}
+            {!contractsLoading &&
+              !contractsError &&
+              contracts.map((ad) => (
+                <TableRow key={ad.id} role="row">
+                  <span role="cell">
+                    {ad.title}
+                    <small style={{ display: 'block' }}>
+                      {ad.startDate.slice(0, 10)} ~ {ad.endDate.slice(0, 10)}
+                    </small>
+                  </span>
+                  <span role="cell">{ad.paidAmount.toLocaleString()}원</span>
+                  <span role="cell" style={{ justifySelf: 'end', width: 80 }}>
+                    {ad.status === 'preparing'
+                      ? '결제 대기'
+                      : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
+                        ? '종료'
+                        : ad.status === 'paused'
+                          ? '일시 정지'
+                          : ad.startDate.slice(0, 10) > toDateKey(new Date())
+                            ? '시작 대기'
+                            : '진행중'}
+                  </span>
+                  <span role="cell" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        router.push(hrefOf(`/reports?adId=${encodeURIComponent(ad.id)}`))
+                      }
+                    >
+                      리포트
+                    </button>
+                    <button
+                      type="button"
+                      disabled={ad.status !== 'active' || pausingId === ad.id}
+                      onClick={() => void pauseAd(ad)}
+                    >
+                      {pausingId === ad.id ? '처리 중…' : '중단'}
+                    </button>
+                  </span>
+                </TableRow>
+              ))}
           </AdsTable>
         </ManageSection>
       </ManageBody>
@@ -581,7 +665,7 @@ const AdsTable = styled.div({
 });
 const TableRow = styled.div({
   display: 'grid',
-  gridTemplateColumns: '180px 180px 1fr',
+  gridTemplateColumns: 'minmax(180px, 1fr) 180px 100px 140px',
   alignItems: 'center',
   minHeight: 56,
   padding: '0 16px',
