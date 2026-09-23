@@ -4234,6 +4234,11 @@ export type findMyBusinessResponse200 = {
   status: 200;
 };
 
+export type findMyBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
 export type findMyBusinessResponse403 = {
   data: ForbiddenResponse;
   status: 403;
@@ -4242,7 +4247,9 @@ export type findMyBusinessResponse403 = {
 export type findMyBusinessResponseSuccess = findMyBusinessResponse200 & {
   headers: Headers;
 };
-export type findMyBusinessResponseError = findMyBusinessResponse403 & {
+export type findMyBusinessResponseError = (
+  findMyBusinessResponse401 | findMyBusinessResponse403
+) & {
   headers: Headers;
 };
 
@@ -4253,9 +4260,10 @@ export const getFindMyBusinessUrl = () => {
 };
 
 /**
- * 로그인한 business 계정 소유자의 기업 정보를 반환한다(`ownerUserId` 기준).
- * Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 기업이 없으면 403.
- * 인증: JWT 쿠키(필수), business 역할.
+ * 로그인한 계정이 소유한 기업 정보를 반환한다(`ownerUserId` 기준).
+ * Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 소유한 기업이 없으면 403.
+ * 인증: JWT 쿠키(필수). 역할은 별도 검증하지 않고 소유 여부만 판단한다(기업 등록은
+ * 인증된 계정이면 가능하므로 business 역할 전용 엔드포인트가 아님).
  * @summary 내 기업 조회 (소유자)
  */
 export const findMyBusiness = async (
@@ -4273,7 +4281,7 @@ export const getFindMyBusinessQueryKey = () => {
 
 export const getFindMyBusinessQueryOptions = <
   TData = Awaited<ReturnType<typeof findMyBusiness>>,
-  TError = ForbiddenResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse,
 >(options?: {
   query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
   request?: SecondParameter<typeof apiFetch>;
@@ -4293,11 +4301,11 @@ export const getFindMyBusinessQueryOptions = <
 };
 
 export type FindMyBusinessQueryResult = NonNullable<Awaited<ReturnType<typeof findMyBusiness>>>;
-export type FindMyBusinessQueryError = ForbiddenResponse;
+export type FindMyBusinessQueryError = UnauthorizedResponse | ForbiddenResponse;
 
 export function useFindMyBusiness<
   TData = Awaited<ReturnType<typeof findMyBusiness>>,
-  TError = ForbiddenResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse,
 >(
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
@@ -4315,7 +4323,7 @@ export function useFindMyBusiness<
 ): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useFindMyBusiness<
   TData = Awaited<ReturnType<typeof findMyBusiness>>,
-  TError = ForbiddenResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
@@ -4333,7 +4341,7 @@ export function useFindMyBusiness<
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 export function useFindMyBusiness<
   TData = Awaited<ReturnType<typeof findMyBusiness>>,
-  TError = ForbiddenResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
@@ -4347,7 +4355,7 @@ export function useFindMyBusiness<
 
 export function useFindMyBusiness<
   TData = Awaited<ReturnType<typeof findMyBusiness>>,
-  TError = ForbiddenResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse,
 >(
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
@@ -4513,6 +4521,11 @@ export type updateBusinessResponse200 = {
   status: 200;
 };
 
+export type updateBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
 export type updateBusinessResponse403 = {
   data: ForbiddenResponse;
   status: 403;
@@ -4527,7 +4540,7 @@ export type updateBusinessResponseSuccess = updateBusinessResponse200 & {
   headers: Headers;
 };
 export type updateBusinessResponseError = (
-  updateBusinessResponse403 | updateBusinessResponse404
+  updateBusinessResponse401 | updateBusinessResponse403 | updateBusinessResponse404
 ) & {
   headers: Headers;
 };
@@ -4581,7 +4594,7 @@ export const updateBusiness = async (
 export const getUpdateBusinessMutationKey = () => ['updateBusiness'] as const;
 
 export const getUpdateBusinessMutationOptions = <
-  TError = ForbiddenResponse | NotFoundResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -4618,14 +4631,15 @@ export const getUpdateBusinessMutationOptions = <
 
 export type UpdateBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof updateBusiness>>>;
 export type UpdateBusinessMutationBody = UpdateBusinessBody;
-export type UpdateBusinessMutationError = ForbiddenResponse | NotFoundResponse;
+export type UpdateBusinessMutationError =
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse;
 export type UpdateBusinessMutationVariables = { id: string; data: UpdateBusinessBody };
 
 /**
  * @summary 기업 프로필 수정
  */
 export const useUpdateBusiness = <
-  TError = ForbiddenResponse | NotFoundResponse,
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
   TContext = unknown,
 >(
   options?: {

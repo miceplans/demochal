@@ -832,15 +832,17 @@ paths:
       operationId: findMyBusiness
       x-impl-status: implemented
       description: |
-        로그인한 business 계정 소유자의 기업 정보를 반환한다(`ownerUserId` 기준).
-        Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 기업이 없으면 403.
-        인증: JWT 쿠키(필수), business 역할.
+        로그인한 계정이 소유한 기업 정보를 반환한다(`ownerUserId` 기준).
+        Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 소유한 기업이 없으면 403.
+        인증: JWT 쿠키(필수). 역할은 별도 검증하지 않고 소유 여부만 판단한다(기업 등록은
+        인증된 계정이면 가능하므로 business 역할 전용 엔드포인트가 아님).
       responses:
         '200':
           description: 내 기업 정보
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Business' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
   /businesses/{id}:
     get:
@@ -897,6 +899,7 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Business' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
 
