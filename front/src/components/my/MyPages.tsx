@@ -31,7 +31,6 @@ import {
 } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import {
-  contests,
   desktopContests,
   preferenceGroups,
   notificationSettings,
@@ -50,6 +49,7 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
+import { useBookmarks } from '@/features/bookmarks/useBookmarks';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -372,18 +372,20 @@ const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
   [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
 }));
 export function BookmarksPage() {
-  const ids = useUserStore((s) => s.bookmarks);
   const [sort, setSort] = useState('마감임박');
   const [two, setTwo] = useState(false);
-  const data = contests
-    .filter((x) => ids.includes(x.id))
-    .sort((a, b) =>
-      sort === '인기'
-        ? (b.teams ?? 0) - (a.teams ?? 0)
-        : sort === '최신'
-          ? b.id.localeCompare(a.id)
-          : a.days - b.days,
-    );
+  const serverSort = sort === '인기' ? 'popular' : sort === '최신' ? 'latest' : 'deadline';
+  const { bookmarks, isPending, isError } = useBookmarks(serverSort);
+  // D-day 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
+  const data = bookmarks.map((challenge) => ({
+    id: challenge.id ?? '',
+    title: challenge.title ?? '제목 없음',
+    category: challenge.category ?? '기타',
+    days: challenge.endDate
+      ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))
+      : 0,
+  }));
   return (
     <MyShell title="북마크 챌린지">
       <Stack>
@@ -416,7 +418,9 @@ export function BookmarksPage() {
             <ContestCard key={x.id} contest={x} />
           ))}
         </BookmarkGrid>
-        {data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
+        {isPending && <Muted>북마크를 불러오는 중이에요.</Muted>}
+        {isError && <Muted>북마크를 불러오지 못했어요.</Muted>}
+        {!isPending && !isError && data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
       </Stack>
     </MyShell>
   );
