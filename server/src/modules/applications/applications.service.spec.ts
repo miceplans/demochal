@@ -155,3 +155,48 @@ describe('ApplicationsService.apply', () => {
     expect(result.order).toBeNull();
   });
 });
+
+describe('ApplicationsService.listForUser', () => {
+  it('joins the challenge title and business name onto each application', async () => {
+    const rows = [
+      {
+        application: {
+          id: 'app-1',
+          challengeId: 'challenge-1',
+          userId: 'user-1',
+          status: 'pending',
+        },
+        challengeTitle: '2026 AI 챌린지',
+        businessName: '한국데이터산업진흥원',
+      },
+    ];
+    const limit = vi.fn().mockResolvedValue(rows);
+    const orderBy = vi.fn().mockResolvedValue(rows);
+    const whereResult = Object.assign(Promise.resolve(rows), { limit, orderBy });
+    const joinTarget: { innerJoin: unknown; where: unknown } = {
+      innerJoin: undefined,
+      where: undefined,
+    };
+    joinTarget.innerJoin = vi.fn().mockReturnValue(joinTarget);
+    joinTarget.where = vi.fn().mockReturnValue(whereResult);
+    const db: any = {
+      select: vi.fn().mockReturnValue({
+        from: vi.fn().mockReturnValue({ innerJoin: joinTarget.innerJoin }),
+      }),
+    };
+    const service = new ApplicationsService(db);
+
+    const result = await service.listForUser('user-1');
+
+    expect(result).toEqual([
+      {
+        id: 'app-1',
+        challengeId: 'challenge-1',
+        userId: 'user-1',
+        status: 'pending',
+        challengeTitle: '2026 AI 챌린지',
+        businessName: '한국데이터산업진흥원',
+      },
+    ]);
+  });
+});

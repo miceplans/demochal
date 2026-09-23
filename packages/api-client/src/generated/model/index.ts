@@ -174,6 +174,8 @@ export * from './updateApplicationBodyEvaluation';
 export * from './updateApplicationBodyStatus';
 export * from './updateBusinessBody';
 export * from './updateMyProfileBody';
+export * from './updateTeamMemberRequest';
+export * from './updateTeamMemberRequestStatus';
 export * from './user';
 export * from './userRole';
 export * from './verification';

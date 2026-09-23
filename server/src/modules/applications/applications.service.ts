@@ -113,8 +113,25 @@ export class ApplicationsService {
     return { id: order.id, amount: order.amount, name: tossOrderName(challenge.title) };
   }
 
+  // 마이페이지 지원현황 테이블(챌린지/협회/결과)에 바로 그릴 수 있게
+  // 챌린지 제목과 주최 기업명을 함께 남긴다.
   async listForUser(userId: string) {
-    return this.db.select().from(applications).where(eq(applications.userId, userId));
+    const rows = await this.db
+      .select({
+        application: applications,
+        challengeTitle: challenges.title,
+        businessName: businesses.name,
+      })
+      .from(applications)
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(eq(applications.userId, userId))
+      .orderBy(desc(applications.createdAt));
+    return rows.map(({ application, challengeTitle, businessName }) => ({
+      ...application,
+      challengeTitle,
+      businessName,
+    }));
   }
 
   async listForBusinessOwner(
