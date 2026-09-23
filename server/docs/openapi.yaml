@@ -646,6 +646,24 @@ paths:
 
   # ---------------------------------------------------------------- Interests
   /interests:
+    get:
+      tags: [Interests]
+      summary: 관심분야 조회
+      operationId: getInterests
+      x-impl-status: implemented
+      description: |
+        로그인 사용자의 저장된 관심분야. 관심분야 화면(`/my/interests`)이 이 값으로 선택 상태를
+        초기화한 뒤에만 저장할 수 있다 — 브라우저에 남은 다른 계정/기본값으로 덮어쓰지 않기 위함.
+      responses:
+        '200':
+          description: 저장된 관심분야
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [categories]
+                properties:
+                  categories: { type: array, items: { type: string } }
     put:
       tags: [Interests]
       summary: 관심분야 저장

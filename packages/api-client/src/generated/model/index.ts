@@ -85,6 +85,7 @@ export * from './getAdminDashboardParams';
 export * from './getAdminDashboardRange';
 export * from './getAdReportParams';
 export * from './getBillingCustomerKey200';
+export * from './getInterests200';
 export * from './handleTossWebhook200';
 export * from './hourlyMetric';
 export * from './issueBillingAuthorizationBody';

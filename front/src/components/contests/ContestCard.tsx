@@ -97,11 +97,13 @@ export function ContestCard({
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
               {scrapButton}
-              <Link href="/contests/public-data/teams">
-                <TeamTag tone="blue">
-                  {horizontal || simple ? `팀 ${contest.teams}건` : `팀 모집 ${contest.teams}건`}
-                </TeamTag>
-              </Link>
+              {contest.teams !== undefined && (
+                <Link href="/contests/public-data/teams">
+                  <TeamTag tone="blue">
+                    {horizontal || simple ? `팀 ${contest.teams}건` : `팀 모집 ${contest.teams}건`}
+                  </TeamTag>
+                </Link>
+              )}
             </Row>
           </div>
         )}

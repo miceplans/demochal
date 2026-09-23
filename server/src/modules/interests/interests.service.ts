@@ -9,6 +9,15 @@ import type { SaveNotificationSettingsDto } from './dto/save-notification-settin
 export class InterestsService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
+  async getInterests(userId: string) {
+    const [user] = await this.db
+      .select({ interests: users.interests })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    return { categories: user?.interests ?? [] };
+  }
+
   async saveInterests(userId: string, dto: SaveInterestsDto) {
     await this.db.update(users).set({ interests: dto.categories }).where(eq(users.id, userId));
     return { categories: dto.categories };

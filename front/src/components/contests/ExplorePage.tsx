@@ -42,7 +42,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
       sort === '마감임박'
         ? a.days - b.days
         : sort === '인기'
-          ? b.teams - a.teams
+          ? (b.teams ?? 0) - (a.teams ?? 0)
           : b.id.localeCompare(a.id),
     );
   const mobileVisible = contests.filter(

@@ -16,7 +16,7 @@ export class ChallengesController {
 
   @Get('recommended')
   listRecommended(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
-    return this.challengesService.listRecommended(user.id, Number(limit));
+    return this.challengesService.listRecommended(user.id, limit ? Number(limit) : undefined);
   }
 
   @Get(':id')

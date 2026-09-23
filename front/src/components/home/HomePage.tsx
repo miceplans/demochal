@@ -55,10 +55,11 @@ export function HomePage() {
     { limit: 6 },
     { query: { enabled: auth?.status === 200 } },
   );
-  const recommendationContests =
-    auth?.status === 200
-      ? (recommended?.data.items ?? []).map(challengeToContest)
-      : desktopContests;
+  // 추천 결과가 로딩 중이거나 실패·비어 있으면 기본 목록을 유지해 레일이 비지 않게 한다.
+  const recommendedItems = auth?.status === 200 ? recommended?.data.items : undefined;
+  const recommendationContests = recommendedItems?.length
+    ? recommendedItems.map(challengeToContest)
+    : desktopContests;
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -124,23 +125,14 @@ export function HomePage() {
               <DesktopOnly>
                 <Rail>
                   {recommendationContests.slice(0, 4).map((contest) => (
-                    <ContestCard
-                      key={contest.id}
-                      contest={contest}
-                      href={`/contests/${contest.id}`}
-                    />
+                    <ContestCard key={contest.id} contest={contest} />
                   ))}
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
                 <Rail>
                   {recommendationContests.slice(0, 2).map((contest) => (
-                    <ContestCard
-                      key={contest.id}
-                      contest={contest}
-                      href={`/contests/${contest.id}`}
-                      simple
-                    />
+                    <ContestCard key={contest.id} contest={contest} simple />
                   ))}
                 </Rail>
               </MobileOnly>
@@ -224,7 +216,8 @@ function challengeToContest(challenge: {
     title: challenge.title ?? '챌린지',
     category: challenge.category ?? '기타',
     days: Math.max(0, Math.ceil((endDate - Date.now()) / (24 * 60 * 60 * 1000))),
-    teams: 0,
+    // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
+    teams: undefined,
   };
 }
 

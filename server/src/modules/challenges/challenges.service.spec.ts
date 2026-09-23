@@ -83,6 +83,21 @@ describe('ChallengesService.listRecommended', () => {
     expect(result.items.map((item) => item.id)).toEqual(['matching', 'popular']);
   });
 
+  it('does not match short ASCII interest tokens as substrings of unrelated categories', async () => {
+    const mail = challenge('mail', '메일/CRM 마케팅', '2029-02-01');
+    const digital = challenge('digital', 'Digital 아트', '2029-02-01');
+    const ai = challenge('ai', 'AI', '2029-01-01');
+    const { service } = createService({ interests: ['데이터 · AI', 'IT · 소프트웨어'] }, [
+      mail,
+      digital,
+      ai,
+    ]);
+
+    const result = await service.listRecommended('user-1');
+
+    expect(result.items.map((item) => item.id)).toEqual(['ai', 'digital', 'mail']);
+  });
+
   it('scores views and bookmarks independently, including their caps', async () => {
     const viewWinner = challenge('view-winner', '디자인', '2029-01-01');
     const almostViewWinner = challenge('almost-view-winner', '창업', '2029-01-01');
@@ -135,7 +150,6 @@ describe('ChallengesService.listRecommended', () => {
     expect(referencesColumn(condition, challenges.endDate)).toBe(true);
     expect(values).toContain('published');
     expect(values.some((value) => value instanceof Date)).toBe(true);
-    expect(values.filter((value) => typeof value === 'string').join('')).toContain('or');
   });
 
   it('defaults to six results and clamps the requested limit from one through twenty', async () => {

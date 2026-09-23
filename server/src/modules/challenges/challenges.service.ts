@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, gt, inArray, isNull, lt, ne, or } from 'drizzle-orm';
+import { and, count, desc, eq, gte, gt, inArray, lt, ne, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -184,12 +184,7 @@ export class ChallengesService {
     const candidates = await this.db
       .select()
       .from(challenges)
-      .where(
-        and(
-          eq(challenges.status, 'published'),
-          or(isNull(challenges.endDate), gt(challenges.endDate, now)),
-        ),
-      )
+      .where(and(eq(challenges.status, 'published'), gt(challenges.endDate, now)))
       .orderBy(desc(challenges.createdAt))
       .limit(200);
 
@@ -246,11 +241,17 @@ export class ChallengesService {
     const interestTokens = this.normalizeInterestTokens(interest);
     const categoryTokens = this.normalizeInterestTokens(category);
     return interestTokens.some((interestToken) =>
-      categoryTokens.some(
-        (categoryToken) =>
-          interestToken.includes(categoryToken) || categoryToken.includes(interestToken),
-      ),
+      categoryTokens.some((categoryToken) => this.tokensMatch(interestToken, categoryToken)),
     );
+  }
+
+  // 2자 이하 영문/숫자 토큰(ai, it 등)은 부분 일치 시 mail/digital 같은 무관한 단어에
+  // 걸리므로 정확히 같을 때만 매칭한다. 한글 토큰(영상, 창업 등)은 부분 일치를 유지한다.
+  private tokensMatch(left: string, right: string): boolean {
+    if (left === right) return true;
+    const isShortAscii = (token: string) => /^[a-z0-9]{1,2}$/.test(token);
+    if (isShortAscii(left) || isShortAscii(right)) return false;
+    return left.includes(right) || right.includes(left);
   }
 
   private normalizeInterestTokens(value: string): string[] {
@@ -258,7 +259,6 @@ export class ChallengesService {
       .toLowerCase()
       .replace(/[·/\-_\s()]/g, ' ')
       .split(' ')
-      .map((token) => token.replace(/[·/\-_\s()]/g, ''))
       .filter(Boolean);
   }
 
