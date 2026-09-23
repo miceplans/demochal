@@ -120,6 +120,17 @@ export function BizAdsPage() {
   const [calendarViewMonth, setCalendarViewMonth] = useState(() => new Date());
   const datePickerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  // 미리보기 툴팁 가격을 서버 상품 가격과 맞춘다. 실패 시 미리보기의 fallback 가격을 쓴다.
+  const productsQuery = useQuery({
+    queryKey: ['biz', 'ads', 'products'],
+    queryFn: () => adApi.ads.listProducts(),
+  });
+  const dailyPrices: Partial<Record<AdPlacement, number>> = {};
+  for (const product of productsQuery.data ?? []) {
+    if (product.placement === 'hero' || product.placement === 'gallery') {
+      dailyPrices[product.placement] = product.dailyPrice;
+    }
+  }
   const openPayment = async (placement: AdPlacement) => {
     try {
       const products = await adApi.ads.listProducts();
@@ -444,6 +455,7 @@ export function BizAdsPage() {
       </HeaderRow>
       <AdPlacementPreview
         view={view}
+        dailyPrices={dailyPrices}
         onSelect={handleSelectPlacement}
         uploadPlacement={uploadPlacement}
         uploadedImages={uploadedImages}
