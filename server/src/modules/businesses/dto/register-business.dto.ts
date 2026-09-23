@@ -1,19 +1,20 @@
-import { IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { IsIn, IsOptional, IsString, Matches, MaxLength } from 'class-validator';
 
-const TYPES = ['비영리', '학교', '협회', '기업'] as const;
+export const BUSINESS_TYPES = ['기업', '학교', '비영리', '협회'] as const;
+export type BusinessType = (typeof BUSINESS_TYPES)[number];
 
 export class RegisterBusinessDto {
+  // 기업 가입 폼(`/biz/login`)은 기관명·사업자번호를 받지 않는다 — 사업자등록증 OCR 결과나
+  // 기업 프로필 편집에서 채운다.
+  @IsOptional()
   @IsString()
   @MaxLength(200)
-  name!: string;
+  name?: string;
 
-  @IsString()
-  @Length(10, 10)
-  registrationNumber!: string;
-
-  // Not in the documented request schema — needed for the type filter/column on
-  // BizReviewEntry (`/admin/businesses`), which otherwise has no data source.
   @IsOptional()
-  @IsIn(TYPES)
-  type?: (typeof TYPES)[number];
+  @Matches(/^\d{10}$/)
+  registrationNumber?: string;
+
+  @IsIn(BUSINESS_TYPES)
+  type!: BusinessType;
 }

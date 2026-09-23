@@ -1,7 +1,8 @@
 'use client';
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ComponentProps, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
+import { ApiError, generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { StepProgressBar } from '@/components/ui/StepProgressBar';
@@ -19,41 +20,236 @@ const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 const agreements = [
   { value: 'privacy', label: '개인정보처리방침' },
   { value: 'business', label: '사업자 이용정보 동의' },
-];
+] as const;
+type AgreementKey = (typeof agreements)[number]['value'];
 
 const orgTypes = [
-  { value: 'company', label: '일반 기업', uploadLabel: '사업자 등록증을 업로드 해 주세요' },
-  { value: 'school', label: '학교', uploadLabel: '관련 서류를 업로드해주세요' },
+  { value: '기업', label: '일반 기업', uploadLabel: '사업자 등록증을 업로드 해 주세요' },
+  { value: '학교', label: '학교', uploadLabel: '관련 서류를 업로드해주세요' },
+  { value: '비영리', label: '비영리 단체', uploadLabel: '관련 서류를 업로드해주세요' },
+  { value: '협회', label: '협회', uploadLabel: '관련 서류를 업로드해주세요' },
 ] as const;
 type OrgType = (typeof orgTypes)[number]['value'];
+
+// server/src/modules/files/dto/request-upload.dto.ts와 동일한 제약
+const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
+type UploadType = (typeof UPLOAD_TYPES)[number];
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/;
+const PHONE_PATTERN = /^01\d{8,9}$/;
+
+type Channel = 'email' | 'phone';
+interface ContactVerification {
+  id: string | null;
+  code: string;
+  verified: boolean;
+  busy: boolean;
+}
+const emptyVerification: ContactVerification = { id: null, code: '', verified: false, busy: false };
+
+function apiErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof ApiError && error.body && typeof error.body === 'object') {
+    const message = (error.body as { message?: unknown }).message;
+    if (typeof message === 'string') return message;
+    if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
+  }
+  return fallback;
+}
 
 export function BizLoginFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
   const [step, setStep] = useState(0);
-  const [agreed, setAgreed] = useState<string[]>([]);
-  const [orgType, setOrgType] = useState<OrgType>('company');
-  const [docFileName, setDocFileName] = useState<string | null>(null);
-  const toggle = (v: string) =>
+  const [agreed, setAgreed] = useState<AgreementKey[]>([]);
+  const [account, setAccount] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    username: '',
+    password: '',
+    passwordConfirm: '',
+  });
+  const [verification, setVerification] = useState<Record<Channel, ContactVerification>>({
+    email: emptyVerification,
+    phone: emptyVerification,
+  });
+  const [orgType, setOrgType] = useState<OrgType>('기업');
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
+  const [registered, setRegistered] = useState(false);
+  const [businessId, setBusinessId] = useState<string | null>(null);
+
+  const toggle = (v: AgreementKey) =>
     setAgreed((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
+  const setField = (key: keyof typeof account) => (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAccount((prev) => ({ ...prev, [key]: value }));
+    // 인증한 뒤 값을 바꾸면 인증을 다시 받아야 한다.
+    if (key === 'email' || key === 'phone') {
+      setVerification((prev) => ({ ...prev, [key]: emptyVerification }));
+    }
+  };
+  const patchVerification = (channel: Channel, patch: Partial<ContactVerification>) =>
+    setVerification((prev) => ({ ...prev, [channel]: { ...prev[channel], ...patch } }));
+
+  const contactTarget = (channel: Channel) =>
+    channel === 'email' ? account.email.trim() : account.phone.replace(/\D/g, '');
+
+  const requestVerification = async (channel: Channel) => {
+    const target = contactTarget(channel);
+    if (channel === 'email' ? !EMAIL_PATTERN.test(target) : !PHONE_PATTERN.test(target)) {
+      toast.error(channel === 'email' ? '이메일을 확인해주세요.' : '휴대폰 번호를 확인해주세요.');
+      return;
+    }
+    patchVerification(channel, { busy: true });
+    try {
+      const res = await generated.requestContactVerification({ channel, target });
+      if (res.status !== 201) throw new Error('verification request failed');
+      const { data } = res;
+      patchVerification(channel, { id: data.id, code: '', verified: false });
+      toast.success(
+        '인증번호를 보냈어요.',
+        data.devCode ? `개발 환경 인증번호: ${data.devCode}` : '5분 안에 입력해주세요.',
+      );
+    } catch (error) {
+      toast.error(apiErrorMessage(error, '인증번호를 보내지 못했어요.'));
+    } finally {
+      patchVerification(channel, { busy: false });
+    }
+  };
+
+  const confirmVerification = async (channel: Channel) => {
+    const { id, code } = verification[channel];
+    if (!id || !/^\d{6}$/.test(code)) {
+      toast.error('인증번호 6자리를 입력해주세요.');
+      return;
+    }
+    patchVerification(channel, { busy: true });
+    try {
+      await generated.confirmContactVerification(id, { code });
+      patchVerification(channel, { verified: true });
+      toast.success(
+        channel === 'email' ? '이메일 인증이 완료됐어요.' : '휴대폰 인증이 완료됐어요.',
+      );
+    } catch (error) {
+      toast.error(apiErrorMessage(error, '인증에 실패했어요.'));
+    } finally {
+      patchVerification(channel, { busy: false });
+    }
+  };
+
+  const validateAccount = () => {
+    if (!account.name.trim()) return '성함을 입력해주세요.';
+    if (!EMAIL_PATTERN.test(account.email.trim())) return '이메일을 확인해주세요.';
+    if (!PHONE_PATTERN.test(account.phone.replace(/\D/g, ''))) return '휴대폰 번호를 확인해주세요.';
+    if (!USERNAME_PATTERN.test(account.username)) {
+      return '아이디는 영문 소문자·숫자·_ 4~20자로 입력해주세요.';
+    }
+    if (account.password.length < 8) return '비밀번호는 8자 이상 입력해주세요.';
+    if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
+    return null;
+  };
+  const goToVerificationStep = () => {
+    const error = validateAccount();
+    if (error) {
+      toast.error(error);
+      return;
+    }
+    setStep(2);
+  };
+
   const pickDoc = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
-    setDocFileName(file.name);
+    if (!UPLOAD_TYPES.includes(file.type as UploadType)) {
+      toast.error('JPG, PNG, WEBP, PDF 파일만 올릴 수 있어요.');
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      toast.error('10MB 이하 파일만 올릴 수 있어요.');
+      return;
+    }
+    setDocFile(file);
   };
-  // TODO: 이메일/휴대폰 인증 API 연동 — 인증 발송·확인 엔드포인트를 server/docs/openapi.yaml에 정의한 뒤
-  // @semochal/api-client로 호출한다. https://orval.dev/guides/react-query
-  const requestVerification = (target: string) => toast.info(`${target} 인증은 준비 중이에요.`);
-  // TODO: 회원가입(/auth/register) + 서류 업로드(/files/presign → private 버킷) + /verifications 연동.
-  const completeVerification = () => {
-    if (!docFileName) {
+
+  const uploadDocument = async (file: File) => {
+    const { data: presigned } = await generated.requestPresignedUpload({
+      bucket: 'private',
+      contentType: file.type as UploadType,
+      fileName: file.name,
+      sizeBytes: file.size,
+    });
+    if (!presigned.uploadUrl || !presigned.fileId) throw new Error('presign failed');
+    // S3 presigned URL로 직접 PUT — API 호출이 아니므로 api-client를 거치지 않는다.
+    const uploaded = await fetch(presigned.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': file.type },
+      body: file,
+    });
+    if (!uploaded.ok) throw new Error('upload failed');
+    await generated.finalizeUpload(presigned.fileId);
+    return presigned.fileId;
+  };
+
+  const submit = async () => {
+    if (!docFile) {
       toast.error('서류를 첨부해주세요.');
       return;
     }
-    toast.success('기관 인증 요청이 접수됐어요.');
-    router.push(hrefOf('/dashboard'));
+    setSubmitting(true);
+    try {
+      if (!registered) {
+        try {
+          await generated.register({
+            name: account.name.trim(),
+            email: account.email.trim(),
+            password: account.password,
+            username: account.username,
+            phone: account.phone.replace(/\D/g, ''),
+            agreements: agreed,
+            ...(verification.email.verified && verification.email.id
+              ? { emailVerificationId: verification.email.id }
+              : {}),
+            ...(verification.phone.verified && verification.phone.id
+              ? { phoneVerificationId: verification.phone.id }
+              : {}),
+          });
+        } catch (error) {
+          if (error instanceof ApiError && error.status === 409) {
+            toast.error('이미 가입된 이메일 또는 아이디예요.');
+            setStep(1);
+            return;
+          }
+          throw error;
+        }
+        setRegistered(true);
+      }
+      let ownedBusinessId = businessId;
+      if (!ownedBusinessId) {
+        const { data: business } = await generated.registerBusiness({ type: orgType });
+        if (!business.id) throw new Error('business registration failed');
+        ownedBusinessId = business.id;
+        setBusinessId(ownedBusinessId);
+      }
+      const documentFileId = await uploadDocument(docFile);
+      await generated.submitVerification({ businessId: ownedBusinessId, documentFileId });
+      toast.success('가입이 완료됐어요.', '기관 인증 결과는 알림으로 알려드릴게요.');
+      router.push(hrefOf('/dashboard'));
+    } catch (error) {
+      toast.error(
+        apiErrorMessage(error, '가입을 완료하지 못했어요.'),
+        '잠시 후 다시 시도해주세요.',
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
+
   const uploadLabel = orgTypes.find((o) => o.value === orgType)?.uploadLabel ?? '';
 
   return (
@@ -87,37 +283,50 @@ export function BizLoginFlow() {
           {step === 1 && (
             <Form aria-label="계정 정보">
               <FormField label="성함을 입력해주세요">
-                <TextInput name="name" autoComplete="name" />
+                <TextInput
+                  name="name"
+                  autoComplete="name"
+                  value={account.name}
+                  onChange={setField('name')}
+                />
               </FormField>
               <FormField label="이메일을 입력해주세요">
-                <InputRow>
-                  <TextInput
-                    type="email"
-                    name="email"
-                    autoComplete="email"
-                    placeholder="이메일을 입력해주세요"
-                  />
-                  <VerifyButton type="button" onClick={() => requestVerification('이메일')}>
-                    인증하기
-                  </VerifyButton>
-                </InputRow>
+                <ContactInput
+                  channel="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="이메일을 입력해주세요"
+                  value={account.email}
+                  onChange={setField('email')}
+                  state={verification.email}
+                  onRequest={() => void requestVerification('email')}
+                  onCodeChange={(code) => patchVerification('email', { code })}
+                  onConfirm={() => void confirmVerification('email')}
+                />
               </FormField>
               <FormField label="전화번호를 입력해주세요">
-                <InputRow>
-                  <TextInput
-                    type="tel"
-                    name="phone"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    placeholder="전화번호 인증하기"
-                  />
-                  <VerifyButton type="button" onClick={() => requestVerification('전화번호')}>
-                    인증하기
-                  </VerifyButton>
-                </InputRow>
+                <ContactInput
+                  channel="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  inputMode="tel"
+                  placeholder="전화번호 인증하기"
+                  value={account.phone}
+                  onChange={setField('phone')}
+                  state={verification.phone}
+                  onRequest={() => void requestVerification('phone')}
+                  onCodeChange={(code) => patchVerification('phone', { code })}
+                  onConfirm={() => void confirmVerification('phone')}
+                />
               </FormField>
               <FormField label="아이디를 입력해주세요">
-                <TextInput name="username" autoComplete="username" placeholder="아이디입력" />
+                <TextInput
+                  name="username"
+                  autoComplete="username"
+                  placeholder="아이디입력"
+                  value={account.username}
+                  onChange={setField('username')}
+                />
               </FormField>
               <FormField label="비밀번호를 입력해주세요">
                 <TextInput
@@ -125,6 +334,8 @@ export function BizLoginFlow() {
                   name="password"
                   autoComplete="new-password"
                   placeholder="비밀번호를 입력해주세요"
+                  value={account.password}
+                  onChange={setField('password')}
                 />
                 <TextInput
                   type="password"
@@ -132,6 +343,8 @@ export function BizLoginFlow() {
                   autoComplete="new-password"
                   placeholder="비밀번호를 입력해주세요"
                   aria-label="비밀번호 확인"
+                  value={account.passwordConfirm}
+                  onChange={setField('passwordConfirm')}
                 />
               </FormField>
             </Form>
@@ -142,6 +355,7 @@ export function BizLoginFlow() {
                 <Select
                   aria-label="기관 유형"
                   value={orgType}
+                  disabled={!!businessId}
                   onChange={(e) => setOrgType(e.target.value as OrgType)}
                 >
                   {orgTypes.map((o) => (
@@ -155,30 +369,36 @@ export function BizLoginFlow() {
               <FieldBox>
                 <FieldLabel>{uploadLabel}</FieldLabel>
                 <UploadBox>
-                  <HiddenInput type="file" accept="image/*,.pdf" onChange={pickDoc} />
+                  <HiddenInput type="file" accept={UPLOAD_TYPES.join(',')} onChange={pickDoc} />
                   <UploadIcon src="/assets/icons/biz-upload-cloud.svg" alt="" aria-hidden />
-                  <UploadText>{docFileName ?? '파일 찾기'}</UploadText>
+                  <UploadText>{docFile?.name ?? '파일 찾기'}</UploadText>
                 </UploadBox>
               </FieldBox>
             </Form>
           )}
         </Content>
-        <Actions single={step === 0}>
-          {step > 0 && (
+        <Actions single={step === 0 || (step === 2 && registered)}>
+          {step > 0 && !(step === 2 && registered) && (
             <ActionOutline type="button" onClick={() => setStep((v) => v - 1)}>
               이전
             </ActionOutline>
           )}
-          {step < 2 ? (
+          {step === 0 && (
             <ActionPrimary
               type="button"
-              disabled={step === 0 && agreed.length < agreements.length}
-              onClick={() => setStep((v) => v + 1)}
+              disabled={agreed.length < agreements.length}
+              onClick={() => setStep(1)}
             >
               다음
             </ActionPrimary>
-          ) : (
-            <ActionPrimary type="button" onClick={completeVerification}>
+          )}
+          {step === 1 && (
+            <ActionPrimary type="button" onClick={goToVerificationStep}>
+              다음
+            </ActionPrimary>
+          )}
+          {step === 2 && (
+            <ActionPrimary type="button" disabled={submitting} onClick={() => void submit()}>
               다음
             </ActionPrimary>
           )}
@@ -194,6 +414,48 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
       <FieldLabel>{label}</FieldLabel>
       {children}
     </FieldBox>
+  );
+}
+
+function ContactInput({
+  channel,
+  state,
+  onRequest,
+  onCodeChange,
+  onConfirm,
+  ...inputProps
+}: {
+  channel: Channel;
+  state: ContactVerification;
+  onRequest: () => void;
+  onCodeChange: (code: string) => void;
+  onConfirm: () => void;
+} & ComponentProps<typeof TextInput>) {
+  return (
+    <>
+      <InputRow>
+        <TextInput name={channel} {...inputProps} />
+        <VerifyButton type="button" disabled={state.busy || state.verified} onClick={onRequest}>
+          {state.verified ? '인증 완료' : state.id ? '재전송' : '인증하기'}
+        </VerifyButton>
+      </InputRow>
+      {state.id && !state.verified && (
+        <InputRow>
+          <TextInput
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            maxLength={6}
+            placeholder="인증번호 6자리"
+            aria-label={channel === 'email' ? '이메일 인증번호' : '휴대폰 인증번호'}
+            value={state.code}
+            onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, ''))}
+          />
+          <VerifyButton type="button" disabled={state.busy} onClick={onConfirm}>
+            확인
+          </VerifyButton>
+        </InputRow>
+      )}
+    </>
   );
 }
 

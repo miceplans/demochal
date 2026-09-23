@@ -3,6 +3,7 @@ import type { Request, Response } from 'express';
 import { AuthController } from './auth.controller.js';
 import { AUTH_COOKIE_NAME, authCookieOptions } from './auth.cookie.js';
 import type { AuthService } from './auth.service.js';
+import type { ContactVerificationsService } from './contact-verifications.service.js';
 
 const user = { id: 'user-1', email: 'member@semochal.kr', name: '회원' };
 const testPassword = ['test', 'password'].join('-');
@@ -17,7 +18,13 @@ function createController() {
     register: vi.fn().mockResolvedValue({ accessToken: 'signed.jwt', user }),
     me: vi.fn().mockResolvedValue(user),
   };
-  return { controller: new AuthController(service as unknown as AuthService), service };
+  return {
+    controller: new AuthController(
+      service as unknown as AuthService,
+      {} as unknown as ContactVerificationsService,
+    ),
+    service,
+  };
 }
 
 describe('AuthController cookie session flow', () => {

@@ -50,6 +50,13 @@ export class VerificationsProcessorService {
       return;
     }
 
+    // 학교/비영리/협회 등은 사업자번호가 없어 NTS로 자동 확인할 수 없다 — 관리자 수동 심사
+    // (`/admin/biz-review`)를 위해 pending으로 둔다.
+    if (business && business.type && business.type !== '기업') {
+      this.logger.log(`Verification ${verification.id} left for manual review`);
+      return;
+    }
+
     await this.db
       .update(verifications)
       .set({ status: 'processing', updatedAt: new Date() })
@@ -65,10 +72,36 @@ export class VerificationsProcessorService {
               await this.filesService.getPrivateReadUrl(document.key),
             )
           : { raw: {} };
+      const registrationNumber =
+        ocrResult.registrationNumber?.replace(/\D/g, '') || business?.registrationNumber;
+      const businessName = ocrResult.businessName ?? business?.name;
+      // 가입 폼은 사업자번호를 받지 않으므로 OCR이 없거나 번호를 못 읽으면 자동 거절하지 않고
+      // 관리자 수동 심사로 넘긴다.
+      if (!registrationNumber) {
+        await this.db
+          .update(verifications)
+          .set({ status: 'pending', updatedAt: new Date() })
+          .where(eq(verifications.id, verification.id));
+        this.logger.log(
+          `Verification ${verification.id} has no registration number, manual review`,
+        );
+        return;
+      }
       const ntsResult = await this.ntsClient.verifyBusinessRegistration(
-        ocrResult.registrationNumber ?? business?.registrationNumber ?? '',
-        ocrResult.businessName ?? business?.name ?? '',
+        registrationNumber,
+        businessName ?? '',
       );
+
+      // OCR로 읽은 기관명/사업자번호로 비어 있는 기업 정보를 채운다.
+      if (ntsResult.valid && business && (!business.name || !business.registrationNumber)) {
+        await this.db
+          .update(businesses)
+          .set({
+            name: business.name ?? businessName ?? null,
+            registrationNumber: business.registrationNumber ?? registrationNumber,
+          })
+          .where(eq(businesses.id, business.id));
+      }
 
       const status = ntsResult.valid ? 'verified' : 'rejected';
       await this.completeVerification(

@@ -31,6 +31,14 @@ export class VerificationsService {
   ) {}
 
   async submit(dto: SubmitVerificationDto, userId: string) {
+    const [business] = await this.db
+      .select({ ownerUserId: businesses.ownerUserId })
+      .from(businesses)
+      .where(eq(businesses.id, dto.businessId))
+      .limit(1);
+    if (!business || business.ownerUserId !== userId) {
+      throw new NotFoundException('Business not found');
+    }
     await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
 
     const verification = await this.db.transaction(async (tx) => {

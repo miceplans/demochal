@@ -17,9 +17,17 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { PresignedUploadRequestBucket } from './presignedUploadRequestBucket';
+import type { PresignedUploadRequestContentType } from './presignedUploadRequestContentType';
 
 export interface PresignedUploadRequest {
   bucket: PresignedUploadRequestBucket;
-  contentType: string;
+  contentType: PresignedUploadRequestContentType;
+  /** @maxLength 255 */
   fileName: string;
+  /**
+   * 파일 크기 (최대 10MB)
+   * @minimum 1
+   * @maximum 10485760
+   */
+  sizeBytes: number;
 }

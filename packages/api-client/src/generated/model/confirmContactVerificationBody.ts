@@ -16,27 +16,8 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { RegisterBodyAgreementsItem } from './registerBodyAgreementsItem';
 
-export type RegisterBody = {
-  email: string;
-  /** @minLength 8 */
-  password: string;
-  name: string;
-  /**
-   * 로그인 아이디 (이메일 대신 로그인 가능)
-   * @pattern ^[a-z0-9_]{4,20}$
-   */
-  username?: string;
-  /**
-   * 휴대폰 번호
-   * @maxLength 30
-   */
-  phone?: string;
-  /** 확인 완료된 이메일 인증 ID (`/auth/contact-verifications`) */
-  emailVerificationId?: string;
-  /** 확인 완료된 휴대폰 인증 ID */
-  phoneVerificationId?: string;
-  /** 동의한 약관 키 (동의 시각과 함께 저장) */
-  agreements?: RegisterBodyAgreementsItem[];
+export type ConfirmContactVerificationBody = {
+  /** @pattern ^\d{6}$ */
+  code: string;
 };

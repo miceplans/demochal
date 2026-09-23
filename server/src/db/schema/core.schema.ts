@@ -1,5 +1,6 @@
 import {
   boolean,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -36,16 +37,27 @@ export const users = pgTable('users', {
   suspended: boolean('suspended').notNull().default(false),
   suspendedReason: text('suspended_reason'),
   suspendedAt: timestamp('suspended_at'),
+  // 기업 회원가입(`/biz/login`)에서 받는 로그인 아이디 — 이메일 대신 로그인할 수 있다.
+  username: varchar('username', { length: 50 }).unique(),
+  phone: varchar('phone', { length: 30 }),
+  // contact_verifications 인증 완료 시각 (null이면 미인증)
+  emailVerifiedAt: timestamp('email_verified_at'),
+  phoneVerifiedAt: timestamp('phone_verified_at'),
+  // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
+  termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
   ownerUserId: uuid('owner_user_id')
     .notNull()
     .references(() => users.id),
-  name: varchar('name', { length: 200 }).notNull(),
-  registrationNumber: varchar('registration_number', { length: 20 }).notNull(),
+  // 가입 폼에서는 받지 않는다 — 사업자등록증 OCR 결과 또는 기업 프로필 편집으로 채운다.
+  name: varchar('name', { length: 200 }),
+  // 학교/비영리 등 사업자번호가 없는 기관은 null.
+  registrationNumber: varchar('registration_number', { length: 20 }),
   verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  // 기관 유형: 기업 | 학교 | 비영리 | 협회
   type: varchar('type', { length: 50 }),
   bannerImageFileId: uuid('banner_image_file_id'),
   logoImageFileId: uuid('logo_image_file_id'),
@@ -225,6 +237,26 @@ export const files = pgTable('files', {
 // lost to a crash between the DB commit and the send. A poller (currently
 // OutboxRelayService, driven from worker.ts) sends pending rows and marks
 // them sent; status values: pending | sent | failed.
+// 이메일/휴대폰 인증번호. 코드는 SHA-256 해시로만 저장한다.
+export const contactVerifications = pgTable(
+  'contact_verifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // email | phone
+    channel: varchar('channel', { length: 10 }).notNull(),
+    target: varchar('target', { length: 255 }).notNull(),
+    codeHash: varchar('code_hash', { length: 64 }).notNull(),
+    attempts: integer('attempts').notNull().default(0),
+    expiresAt: timestamp('expires_at').notNull(),
+    verifiedAt: timestamp('verified_at'),
+    // register에서 소비되면 기록 — 같은 인증을 두 계정에 재사용하지 못하게 한다.
+    consumedAt: timestamp('consumed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('contact_verifications_target_idx').on(table.channel, table.target, table.createdAt),
+  ],
+);
 export const outboxEvents = pgTable('outbox_events', {
   id: uuid('id').defaultRandom().primaryKey(),
   eventType: varchar('event_type', { length: 50 }).notNull(),
