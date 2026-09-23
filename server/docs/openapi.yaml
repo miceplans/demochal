@@ -450,8 +450,8 @@ paths:
       operationId: createTeam
       x-impl-status: implemented
       description: |
-        모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 한줄 → 필요 역할 슬롯(추가/삭제) → 내 역할.
-        프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + `/my/teams` 이동.
+        모집글 작성(`/teams/new`): 챌린지 선택 → 팀 소개 → 필요 역할 슬롯(추가/삭제) → 내 역할 → 우대사항 → 기타.
+        프론트는 `useUserStore.recruitment`에 초안 저장 후 게시 시 토스트 + 작성된 모집글(`/teams/{id}`)로 이동.
       requestBody:
         required: true
         content:
@@ -480,6 +480,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Team' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /teams/{id}/join:
+    post:
+      tags: [Teams]
+      summary: 팀 합류 신청
+      operationId: joinTeam
+      x-impl-status: implemented
+      description: |
+        팀 모집글 상세(`/teams/{id}`)의 "팀 신청하기". 로그인 필요 — 비로그인이면 프론트가 `/login?next=`로 보낸다.
+        `pending` 팀원으로 등록되고 팀장에게 `team_matching` 알림이 간다. 팀장 본인/중복 신청은 400.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/JoinTeamRequest' }
+      responses:
+        '201':
+          description: 등록된 합류 신청
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamMember' }
+        '400': { description: 팀장 본인 또는 중복 신청 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ---------------------------------------------------------------- Applications
@@ -1876,7 +1903,11 @@ components:
         id: { type: string, format: uuid }
         challengeId: { type: string, format: uuid }
         leaderUserId: { type: string, format: uuid }
-        title: { type: string, description: 팀 소개 한줄 }
+        title: { type: string, description: '팀명 (미입력 시 "<팀장 이름>의 팀")' }
+        leaderRole: { type: string, nullable: true, description: 팀장 역할 }
+        introduction: { type: string, nullable: true, description: 팀 소개 }
+        preferred: { type: string, nullable: true, description: 우대사항 }
+        etc: { type: string, nullable: true, description: 기타 }
         region: { type: string }
         openRoles:
           {
@@ -1886,6 +1917,34 @@ components:
           }
         status: { type: string, enum: [recruiting, closed] }
         createdAt: { type: string, format: date-time }
+        challengeTitle: { type: string, description: 목록·상세 응답에 포함 }
+        leaderName: { type: string, description: 목록·상세 응답에 포함 }
+        filledRoles:
+          {
+            type: array,
+            items: { type: string },
+            description: '목록 응답 전용 — 승인(accepted)된 팀원 역할',
+          }
+        members:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/TeamMember' },
+            description: 상세 응답 전용 — 팀원(대기·승인·거절 포함),
+          }
+    TeamMember:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        teamId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        name: { type: string, description: 상세 응답에 포함 }
+        role: { type: string, nullable: true }
+        status: { type: string, enum: [pending, accepted, rejected] }
+        createdAt: { type: string, format: date-time }
+    JoinTeamRequest:
+      type: object
+      properties:
+        role: { type: string, description: 지원 역할 }
     TeamRoleSlot:
       type: object
       properties:
@@ -1893,10 +1952,13 @@ components:
         count: { type: integer }
     CreateTeamRequest:
       type: object
-      required: [challengeId, title, myRole]
+      required: [challengeId, myRole]
       properties:
         challengeId: { type: string, format: uuid }
-        title: { type: string }
+        title: { type: string, maxLength: 200, description: '생략 시 "<팀장 이름>의 팀"' }
+        introduction: { type: string, maxLength: 1000, description: 팀 소개 }
+        preferred: { type: string, maxLength: 200, description: 우대사항 }
+        etc: { type: string, maxLength: 200, description: 기타 }
         openRoles: { type: array, items: { $ref: '#/components/schemas/TeamRoleSlot' } }
         myRole: { type: string, description: 내 역할 }
         region: { type: string }

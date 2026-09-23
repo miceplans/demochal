@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { Public } from '../auth/public.decorator.js';
@@ -24,24 +24,28 @@ export class TeamsController {
 
   @Post()
   create(@Body() dto: CreateTeamDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.teamsService.create(dto, user.id);
+    return this.teamsService.create(dto, user);
   }
 
   @Public()
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.teamsService.findById(id);
   }
 
   @Post(':id/join')
-  join(@Param('id') id: string, @Body() dto: JoinTeamDto, @CurrentUser() user: AuthenticatedUser) {
+  join(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: JoinTeamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     return this.teamsService.join(id, dto.role, user.id);
   }
 
   @Patch(':id/members/:memberId')
   updateMember(
-    @Param('id') id: string,
-    @Param('memberId') memberId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('memberId', ParseUUIDPipe) memberId: string,
     @Body() dto: UpdateTeamMemberDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
