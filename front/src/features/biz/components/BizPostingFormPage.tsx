@@ -200,23 +200,28 @@ export function BizPostingFormPage() {
           <FieldBlock wide>
             <FieldLabel>모집방법</FieldLabel>
             <RadioColumn>
-              <RadioOption>
-                <RadioInput
-                  type="radio"
-                  name="recruit"
-                  checked={recruit === 'semo'}
-                  onChange={() => setRecruit('semo')}
-                />
-                <RadioIcon
-                  src={
-                    recruit === 'semo'
-                      ? `${ICON}/figma-radio-on.svg`
-                      : `${ICON}/figma-radio-off.svg`
-                  }
-                  alt=""
-                />
-                세모챌에서 만들기
-              </RadioOption>
+              <SemoRecruitOption>
+                <RadioOption>
+                  <RadioInput
+                    type="radio"
+                    name="recruit"
+                    checked={recruit === 'semo'}
+                    onChange={() => setRecruit('semo')}
+                  />
+                  <RadioIcon
+                    src={
+                      recruit === 'semo'
+                        ? `${ICON}/figma-radio-on.svg`
+                        : `${ICON}/figma-radio-off.svg`
+                    }
+                    alt=""
+                  />
+                  세모챌에서 만들기
+                </RadioOption>
+                <RecruitBoostHint>
+                  신청폼을 세모챌에서 만들면 노출 순위가 올라갑니다
+                </RecruitBoostHint>
+              </SemoRecruitOption>
               <RoleRow>
                 <RadioOption>
                   <RadioInput
@@ -485,6 +490,12 @@ const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
 
 /* ---------- 라디오 ---------- */
 const RadioColumn = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
+const SemoRecruitOption = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 });
+const RecruitBoostHint = styled.span({
+  marginLeft: 24,
+  ...textStyle.mInfoText,
+  color: c.primary,
+});
 const RadioOption = styled.label({
   display: 'flex',
   alignItems: 'center',

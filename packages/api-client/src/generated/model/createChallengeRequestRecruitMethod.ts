@@ -17,21 +17,13 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type SubmitOperationsInquiryBody = {
-  /**
-   * @minLength 1
-   * @maxLength 100
-   */
-  name: string;
-  /**
-   * 전화번호 또는 이메일
-   * @minLength 1
-   * @maxLength 200
-   */
-  contact: string;
-  /**
-   * @minLength 1
-   * @maxLength 4000
-   */
-  content: string;
-};
+/**
+ * 모집방법. seMOchall(세모챌 신청폼)은 추천 노출 순위 부스트 대상
+ */
+export type CreateChallengeRequestRecruitMethod =
+  (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
+
+export const CreateChallengeRequestRecruitMethod = {
+  seMOchall: 'seMOchall',
+  external: 'external',
+} as const;

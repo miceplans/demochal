@@ -35,13 +35,13 @@ export interface Challenge {
   createdAt?: string;
   /** implemented — 생성 시 저장, 유사 챌린지 추천에 사용 */
   category?: string;
+  /** implemented — 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
+  recruitMethod?: ChallengeRecruitMethod;
   posterFileId?: string;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;
   hashtags?: string[];
-  /** 세모챌 내 신청폼 | 외부 링크 */
-  recruitMethod?: ChallengeRecruitMethod;
   recruitUrl?: string;
   /** 문의 연락처 */
   contact?: string;

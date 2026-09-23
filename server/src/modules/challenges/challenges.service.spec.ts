@@ -8,6 +8,7 @@ type ChallengeRow = {
   createdAt: Date;
   status: string;
   endDate: Date | null;
+  recruitMethod?: string;
 };
 
 function queryChain(rows: unknown[]) {
@@ -169,5 +170,86 @@ describe('ChallengesService.listRecommended', () => {
     expect(lowResult.items).toHaveLength(1);
     expect(highResult.items).toHaveLength(20);
     expect(defaultResult.items).toHaveLength(6);
+  });
+
+  it('boosts seMOchall application-form challenges above equally scored external ones', async () => {
+    const semo = { ...challenge('semo', '디자인', '2029-01-01'), recruitMethod: 'seMOchall' };
+    const external = {
+      ...challenge('external', '디자인', '2029-02-01'),
+      recruitMethod: 'external',
+    };
+    const { service } = createService({ interests: [] }, [semo, external]);
+
+    const result = await service.listRecommended('user-1');
+
+    expect(result.items.map((item) => item.id)).toEqual(['semo', 'external']);
+  });
+
+  it('keeps a double interest match above the boost but not the popularity cap', async () => {
+    const semoPlain = {
+      ...challenge('semo-plain', '기타', '2029-01-01'),
+      recruitMethod: 'seMOchall',
+    };
+    const popularExternal = {
+      ...challenge('popular-external', '기타', '2029-02-01'),
+      recruitMethod: 'external',
+    };
+    const doubleInterestExternal = {
+      ...challenge('double-interest-external', '디자인/영상', '2029-03-01'),
+      recruitMethod: 'external',
+    };
+    const { service } = createService(
+      { interests: ['디자인', '영상'] },
+      [semoPlain, popularExternal, doubleInterestExternal],
+      [{ challengeId: 'popular-external', total: 999 }],
+      [{ challengeId: 'popular-external', total: 999 }],
+    );
+
+    const result = await service.listRecommended('user-1');
+
+    // double-interest (200) > boost (150) > popularity cap (110) — the un-boosted
+    // candidates carry no popularity signal so the ordering isolates the boost
+    // value against both bounds.
+    expect(result.items.map((item) => item.id)).toEqual([
+      'double-interest-external',
+      'semo-plain',
+      'popular-external',
+    ]);
+  });
+});
+
+describe('ChallengesService.create', () => {
+  function createCapturingService(valuesCalls: Record<string, unknown>[]) {
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select.mockImplementation(() => queryChain([{ id: 'biz-1' }]));
+    db.insert.mockImplementation(() => ({
+      values: vi.fn().mockImplementation((captured) => {
+        valuesCalls.push(captured);
+        return { returning: vi.fn().mockResolvedValue([{ id: 'challenge-1' }]) };
+      }),
+    }));
+    const adminSettings = { isEnabled: vi.fn().mockResolvedValue(false) };
+    return new ChallengesService(db, adminSettings as any);
+  }
+
+  const baseDto = {
+    businessId: 'biz-1',
+    title: '타이틀',
+    description: '설명',
+    price: 1000,
+    capacity: 10,
+    startDate: '2029-01-01T00:00:00Z',
+    endDate: '2029-02-01T00:00:00Z',
+  };
+
+  it('persists recruitMethod when provided and defaults to external when omitted', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create({ ...baseDto, recruitMethod: 'seMOchall' } as any, 'user-1');
+    await service.create(baseDto as any, 'user-1');
+
+    expect(valuesCalls[0]).toMatchObject({ recruitMethod: 'seMOchall' });
+    expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
   });
 });

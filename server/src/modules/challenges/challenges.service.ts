@@ -22,6 +22,12 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+// Exposure boost for challenges recruiting through the in-service (seMOchall)
+// application form, as advertised on the biz posting form. Chosen so a boosted
+// challenge outranks the popularity cap (50 + 3*20 = 110) and a single interest
+// match (100), but not a double interest match (200).
+const SEMO_FORM_BOOST = 150;
+
 @Injectable()
 export class ChallengesService {
   constructor(
@@ -91,6 +97,7 @@ export class ChallengesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         category: dto.category,
+        recruitMethod: dto.recruitMethod ?? 'external',
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
           : 'draft',
@@ -215,7 +222,8 @@ export class ChallengesService {
           const popularityScore =
             Math.min(views.get(challenge.id) ?? 0, 50) +
             3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
-          return { challenge, score: interestScore + popularityScore };
+          const semoFormBoost = challenge.recruitMethod === 'seMOchall' ? SEMO_FORM_BOOST : 0;
+          return { challenge, score: interestScore + popularityScore + semoFormBoost };
         })
         .sort(
           (left, right) =>

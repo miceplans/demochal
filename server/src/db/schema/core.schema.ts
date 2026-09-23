@@ -81,6 +81,9 @@ export const challenges = pgTable('challenges', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   category: varchar('category', { length: 100 }),
   viewCount: integer('view_count').notNull().default(0),
+  // Valid values: seMOchall | external. Challenges recruiting through the
+  // in-service application form get an exposure boost in recommendations.
+  recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
