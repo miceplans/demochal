@@ -20,7 +20,26 @@ import type { TeamRoleSlot } from './teamRoleSlot';
 
 export interface CreateTeamRequest {
   challengeId: string;
-  title: string;
+  /**
+   * 생략 시 "<팀장 이름>의 팀"
+   * @maxLength 200
+   */
+  title?: string;
+  /**
+   * 팀 소개
+   * @maxLength 1000
+   */
+  introduction?: string;
+  /**
+   * 우대사항
+   * @maxLength 200
+   */
+  preferred?: string;
+  /**
+   * 기타
+   * @maxLength 200
+   */
+  etc?: string;
   openRoles?: TeamRoleSlot[];
   /** 내 역할 */
   myRole: string;

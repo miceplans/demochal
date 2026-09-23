@@ -101,6 +101,10 @@ export const teams = pgTable('teams', {
   leaderRole: varchar('leader_role', { length: 50 }),
   region: varchar('region', { length: 100 }),
   openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
+  // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
+  introduction: text('introduction'),
+  preferred: varchar('preferred', { length: 200 }),
+  etc: varchar('etc', { length: 200 }),
   status: varchar('status', { length: 20 }).notNull().default('recruiting'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

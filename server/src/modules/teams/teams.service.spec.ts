@@ -15,7 +15,11 @@ function selectChain(rows: unknown[]) {
   // props satisfies both shapes.
   const whereResult = Object.assign(Promise.resolve(rows), { limit, orderBy });
   const where = vi.fn().mockReturnValue(whereResult);
-  const joinTarget: { where: unknown; innerJoin: unknown } = { where, innerJoin: undefined };
+  const joinTarget: { where: unknown; innerJoin: unknown; orderBy: unknown } = {
+    where,
+    innerJoin: undefined,
+    orderBy,
+  };
   joinTarget.innerJoin = vi.fn().mockReturnValue(joinTarget);
   const from = vi.fn().mockReturnValue({ where, orderBy, innerJoin: joinTarget.innerJoin });
   return { from };
@@ -51,12 +55,13 @@ const createDto = {
 };
 
 describe('TeamsService', () => {
-  it('list filters by challenge, region, title substring, and open role slot', async () => {
+  it('list filters by challenge, region, title/introduction substring, and open role slot', async () => {
     const rows = [
       {
         id: 'team-1',
         challengeId: 'challenge-1',
         title: 'AI 해커톤 팀',
+        introduction: null,
         region: '서울',
         openRoles: [{ role: '개발', count: 2 }],
       },
@@ -64,6 +69,7 @@ describe('TeamsService', () => {
         id: 'team-2',
         challengeId: 'challenge-1',
         title: 'Design Sprint',
+        introduction: null,
         region: '부산',
         openRoles: [{ role: '디자인', count: 1 }],
       },
@@ -71,12 +77,26 @@ describe('TeamsService', () => {
         id: 'team-3',
         challengeId: 'challenge-2',
         title: 'ai 스터디',
+        introduction: null,
         region: '서울',
         openRoles: null,
       },
-    ];
+      {
+        id: 'team-4',
+        challengeId: 'challenge-1',
+        title: 'Leader의 팀',
+        introduction: '공공데이터 해커톤 같이 나가요',
+        region: '서울',
+        openRoles: [{ role: '개발', count: 1 }],
+      },
+    ].map((team) => ({ team, challengeTitle: '2026 AI 챌린지', leaderName: 'Leader' }));
     const db = createDbStub();
-    db.select.mockReturnValue(selectChain(rows));
+    db.select.mockReturnValueOnce(selectChain(rows)).mockReturnValueOnce(
+      selectChain([
+        { teamId: 'team-1', role: '기획' },
+        { teamId: 'team-4', role: null },
+      ]),
+    );
     const service = new TeamsService(db, createNotificationsStub() as any);
 
     const result = await service.list({
@@ -86,7 +106,22 @@ describe('TeamsService', () => {
       role: '개발',
     });
 
-    expect(result.map((team) => team.id)).toEqual(['team-1']);
+    expect(result.map((team) => team.id)).toEqual(['team-1', 'team-4']);
+    expect(result[0]).toMatchObject({
+      challengeTitle: '2026 AI 챌린지',
+      leaderName: 'Leader',
+      filledRoles: ['기획'],
+    });
+    expect(result[1]?.filledRoles).toEqual([]);
+  });
+
+  it('list skips the member query when nothing matches', async () => {
+    const db = createDbStub();
+    db.select.mockReturnValueOnce(selectChain([]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(service.list({})).resolves.toEqual([]);
+    expect(db.select).toHaveBeenCalledTimes(1);
   });
 
   it('create throws 404 when the challenge does not exist', async () => {
@@ -94,7 +129,7 @@ describe('TeamsService', () => {
     db.select.mockReturnValue(selectChain([]));
     const service = new TeamsService(db, createNotificationsStub() as any);
 
-    await expect(service.create(createDto as any, leader.id)).rejects.toThrow(NotFoundException);
+    await expect(service.create(createDto as any, leader)).rejects.toThrow(NotFoundException);
   });
 
   it('create inserts the team and an accepted member row for the leader', async () => {
@@ -109,10 +144,16 @@ describe('TeamsService', () => {
       .mockReturnValueOnce({ values: memberValues });
     const service = new TeamsService(db, createNotificationsStub() as any);
 
-    const result = await service.create(createDto as any, leader.id);
+    const result = await service.create(createDto as any, leader);
 
     expect(teamValues).toHaveBeenCalledWith(
-      expect.objectContaining({ leaderUserId: leader.id, status: 'recruiting', openRoles: [] }),
+      expect.objectContaining({
+        leaderUserId: leader.id,
+        title: 'AI 해커톤 팀',
+        leaderRole: '기획',
+        status: 'recruiting',
+        openRoles: [],
+      }),
     );
     expect(memberValues).toHaveBeenCalledWith({
       teamId: 'team-1',
@@ -121,6 +162,40 @@ describe('TeamsService', () => {
       status: 'accepted',
     });
     expect(result).toEqual(teamRow);
+  });
+
+  it('create stores the survey fields and defaults the title to the leader name', async () => {
+    const db = createDbStub();
+    db.select.mockReturnValue(selectChain([{ id: 'challenge-1' }]));
+    const teamValues = vi
+      .fn()
+      .mockReturnValue({ returning: vi.fn().mockResolvedValue([{ id: 'team-1' }]) });
+    db.insert = vi
+      .fn()
+      .mockReturnValueOnce({ values: teamValues })
+      .mockReturnValueOnce({ values: vi.fn().mockResolvedValue(undefined) });
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await service.create(
+      {
+        challengeId: 'challenge-1',
+        title: '  ',
+        myRole: '프론트엔드',
+        introduction: '다정한 팀입니다',
+        preferred: '팔로워 성향',
+        etc: '없음',
+      } as any,
+      leader,
+    );
+
+    expect(teamValues).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Leader의 팀',
+        introduction: '다정한 팀입니다',
+        preferred: '팔로워 성향',
+        etc: '없음',
+      }),
+    );
   });
 
   it('findById joins challenge title, leader name, and members', async () => {

@@ -16,22 +16,16 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { TeamMemberStatus } from './teamMemberStatus';
 
-export type SubmitOperationsInquiryBody = {
-  /**
-   * @minLength 1
-   * @maxLength 100
-   */
-  name: string;
-  /**
-   * 전화번호 또는 이메일
-   * @minLength 1
-   * @maxLength 200
-   */
-  contact: string;
-  /**
-   * @minLength 1
-   * @maxLength 4000
-   */
-  content: string;
-};
+export interface TeamMember {
+  id?: string;
+  teamId?: string;
+  userId?: string;
+  /** 상세 응답에 포함 */
+  name?: string;
+  /** @nullable */
+  role?: string | null;
+  status?: TeamMemberStatus;
+  createdAt?: string;
+}
