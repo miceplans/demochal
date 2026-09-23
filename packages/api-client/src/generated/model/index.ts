@@ -173,6 +173,7 @@ export * from './updateApplicationBody';
 export * from './updateApplicationBodyEvaluation';
 export * from './updateApplicationBodyStatus';
 export * from './updateBusinessBody';
+export * from './updateChallengeRequest';
 export * from './updateMyProfileBody';
 export * from './user';
 export * from './userRole';

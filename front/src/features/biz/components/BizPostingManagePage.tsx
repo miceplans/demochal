@@ -107,8 +107,11 @@ export function BizPostingManagePage() {
           <PrimaryButton onClick={() => router.push(hrefOf(`/postings/${challenge.id}/form`))}>
             신청폼 만들기
           </PrimaryButton>
-          <OutlineButton type="button" disabled>
-            공고 수정은 준비 중
+          <OutlineButton
+            type="button"
+            onClick={() => router.push(hrefOf(`/postings/${challenge.id}/edit`))}
+          >
+            공고 수정
           </OutlineButton>
         </ActionStack>
       </TopRow>

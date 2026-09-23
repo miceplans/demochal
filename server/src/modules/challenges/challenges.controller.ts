@@ -1,8 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { ChallengesService } from './challenges.service.js';
 import { CreateChallengeDto } from './dto/create-challenge.dto.js';
+import { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 
 @Controller('challenges')
@@ -38,6 +49,16 @@ export class ChallengesController {
   @UseGuards(JwtAuthGuard)
   create(@Body() dto: CreateChallengeDto, @CurrentUser() user: AuthenticatedUser) {
     return this.challengesService.create(dto, user.id);
+  }
+
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateChallengeDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.challengesService.update(id, dto, user);
   }
 
   @Patch(':id/status')
