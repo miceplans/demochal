@@ -17,6 +17,8 @@ type UserState = {
     role: string;
     preferred?: string;
     etc?: string;
+    /** 필요 역할 슬롯. 이전 버전 저장값에는 없을 수 있어 선택 필드로 둔다. */
+    slots?: { id: number; role: string; count: number }[];
   };
   applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
   login: () => void;

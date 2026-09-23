@@ -10,6 +10,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
 const Login = styled.div({
@@ -167,6 +168,16 @@ export function OnboardingPage({ step }: { step: string }) {
   const setSurvey = useUserStore((s) => s.setSurvey);
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  // 실패하면 전역 MutationCache가 에러 토스트를 띄우고, 로컬 완료 처리하지 않아 다시 시도할 수 있다.
+  const saveSurvey = generated.useSaveOnboardingSurvey({
+    mutation: {
+      onSuccess: () => {
+        completeOnboarding();
+        celebrateBadgeAcquisition();
+        router.replace('/');
+      },
+    },
+  });
 
   useEffect(() => {
     if (hasCompletedOnboarding) router.replace('/');
@@ -258,22 +269,16 @@ export function OnboardingPage({ step }: { step: string }) {
         )}
         <Next>
           <Button
-            disabled={!selected.length}
-            onClick={async () => {
+            disabled={!selected.length || saveSurvey.isPending}
+            onClick={() => {
               if (index === 3) {
-                try {
-                  await adApi.users.saveSurvey({
+                saveSurvey.mutate({
+                  data: {
                     interests: survey.interests ?? [],
                     purposes: survey.purpose ?? [],
                     challengeTypes: survey.challenge ?? [],
-                  });
-                } catch {
-                  // The publishing prototype can be used without an API session;
-                  // local completion still prevents the survey from being shown again.
-                }
-                completeOnboarding();
-                celebrateBadgeAcquisition();
-                router.replace('/');
+                  },
+                });
                 return;
               }
               router.push(`/onboarding/${steps[index + 1]}`);
