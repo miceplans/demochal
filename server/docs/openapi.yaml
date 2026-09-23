@@ -825,6 +825,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Business' }
+  /businesses/me:
+    get:
+      tags: [Businesses]
+      summary: 내 기업 조회 (소유자)
+      operationId: findMyBusiness
+      x-impl-status: implemented
+      description: |
+        로그인한 business 계정 소유자의 기업 정보를 반환한다(`ownerUserId` 기준).
+        Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 기업이 없으면 403.
+        인증: JWT 쿠키(필수), business 역할.
+      responses:
+        '200':
+          description: 내 기업 정보
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Business' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /businesses/{id}:
     get:
       tags: [Businesses]
@@ -850,8 +867,11 @@ paths:
       operationId: updateBusiness
       x-impl-status: implemented
       description: |
-        기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign`),
+        기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign` →
+        S3 PUT → `POST /files/{id}/finalize`. 요청/응답에는 파일 id(`bannerImageFileId`/`logoImageFileId`)만
+        쓰고, 로컬 미리보기용 object URL을 파일 id처럼 본문에 넣지 않는다),
         기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
+        인증: JWT 쿠키(필수), 소유자 본인 기업만 수정 가능(다른 소유자의 기업은 404).
       parameters:
         - name: id
           in: path
@@ -877,6 +897,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Business' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   # ---------------------------------------------------------------- Verifications
   /verifications:
@@ -1345,6 +1367,10 @@ paths:
       description: |
         운영대행 페이지(`/biz/operations`, MICE PLANS X SEMO)의 온라인 상담/견적 문의 폼
         (성함/연락처/문의내용). 회사 위치 지도·주소·연락처는 정적 정보.
+        **인증 정책(현재 확정)**: 공개 문의 — 로그인하지 않은 방문자도 제출할 수 있다.
+        business 전용 접수가 아니며 제출에 인증 쿠키/JWT를 요구하지 않는다(`@Public`).
+        개인정보(성함/연락처)는 접수 저장(DB) 목적이며 서버 로그에 기록하지 않는다.
+        향후 business 전용 운영대행 견적/배정 기능은 별도 Issue로 확정한다(본 계약 변경 전까지 공개 유지).
       requestBody:
         required: true
         content:
@@ -1813,6 +1839,15 @@ components:
             properties:
               statusCode: { type: integer, example: 401 }
               message: { type: string, example: Unauthorized }
+    Forbidden:
+      description: 권한 없음 (인증은 되었으나 리소스 접근 권한 없음)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode: { type: integer, example: 403 }
+              message: { type: string, example: Forbidden }
   schemas:
     User:
       type: object
