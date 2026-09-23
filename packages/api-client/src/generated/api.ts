@@ -66,6 +66,7 @@ import type {
   GetAdminAnalyticsParams,
   GetAdminDashboardParams,
   GetBillingCustomerKey200,
+  GetInterests200,
   HandleTossWebhook200,
   IssueBillingAuthorizationBody,
   ListAdminAdsParams,
@@ -82,6 +83,8 @@ import type {
   ListMyNotificationsParams,
   ListPaymentHistory200,
   ListPaymentHistoryParams,
+  ListRecommendedChallenges200,
+  ListRecommendedChallengesParams,
   ListTeamsParams,
   Login200,
   LoginBody,
@@ -1613,6 +1616,164 @@ export const useCreateChallenge = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getCreateChallengeMutationOptions(options), queryClient);
 };
+
+export type listRecommendedChallengesResponse200 = {
+  data: ListRecommendedChallenges200;
+  status: 200;
+};
+
+export type listRecommendedChallengesResponseSuccess = listRecommendedChallengesResponse200 & {
+  headers: Headers;
+};
+export type listRecommendedChallengesResponse = listRecommendedChallengesResponseSuccess;
+
+export const getListRecommendedChallengesUrl = (params?: ListRecommendedChallengesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/challenges/recommended?${stringifiedParams}`
+    : `/challenges/recommended`;
+};
+
+/**
+ * 로그인 사용자의 저장 관심사와 온보딩 설문 관심사를 병합해 published·미종료 챌린지를
+ * 결정론적으로 정렬한다. 관심사가 없으면 인기와 최신순으로 fallback한다.
+ * @summary 관심사 기반 추천 챌린지 조회
+ */
+export const listRecommendedChallenges = async (
+  params?: ListRecommendedChallengesParams,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listRecommendedChallengesResponse> => {
+  return apiFetch<listRecommendedChallengesResponse>(getListRecommendedChallengesUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListRecommendedChallengesQueryKey = (params?: ListRecommendedChallengesParams) => {
+  return [`/challenges/recommended`, ...(params ? [params] : [])] as const;
+};
+
+export const getListRecommendedChallengesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRecommendedChallenges>>,
+  TError = unknown,
+>(
+  params?: ListRecommendedChallengesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listRecommendedChallenges>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRecommendedChallengesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecommendedChallenges>>> = ({
+    signal,
+  }) => listRecommendedChallenges(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRecommendedChallenges>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListRecommendedChallengesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRecommendedChallenges>>
+>;
+export type ListRecommendedChallengesQueryError = unknown;
+
+export function useListRecommendedChallenges<
+  TData = Awaited<ReturnType<typeof listRecommendedChallenges>>,
+  TError = unknown,
+>(
+  params: undefined | ListRecommendedChallengesParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listRecommendedChallenges>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedChallenges>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListRecommendedChallenges<
+  TData = Awaited<ReturnType<typeof listRecommendedChallenges>>,
+  TError = unknown,
+>(
+  params?: ListRecommendedChallengesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listRecommendedChallenges>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedChallenges>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListRecommendedChallenges<
+  TData = Awaited<ReturnType<typeof listRecommendedChallenges>>,
+  TError = unknown,
+>(
+  params?: ListRecommendedChallengesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listRecommendedChallenges>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 관심사 기반 추천 챌린지 조회
+ */
+
+export function useListRecommendedChallenges<
+  TData = Awaited<ReturnType<typeof listRecommendedChallenges>>,
+  TError = unknown,
+>(
+  params?: ListRecommendedChallengesParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listRecommendedChallenges>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListRecommendedChallengesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type getChallengeResponse200 = {
   data: Challenge;
@@ -3184,6 +3345,119 @@ export const useToggleBookmark = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getToggleBookmarkMutationOptions(options), queryClient);
 };
+
+export type getInterestsResponse200 = {
+  data: GetInterests200;
+  status: 200;
+};
+
+export type getInterestsResponseSuccess = getInterestsResponse200 & {
+  headers: Headers;
+};
+export type getInterestsResponse = getInterestsResponseSuccess;
+
+export const getGetInterestsUrl = () => {
+  return `/interests`;
+};
+
+/**
+ * 로그인 사용자의 저장된 관심분야. 관심분야 화면(`/my/interests`)이 이 값으로 선택 상태를
+ * 초기화한 뒤에만 저장할 수 있다 — 브라우저에 남은 다른 계정/기본값으로 덮어쓰지 않기 위함.
+ * @summary 관심분야 조회
+ */
+export const getInterests = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getInterestsResponse> => {
+  return apiFetch<getInterestsResponse>(getGetInterestsUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetInterestsQueryKey = () => {
+  return [`/interests`] as const;
+};
+
+export const getGetInterestsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getInterests>>,
+  TError = unknown,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getInterests>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetInterestsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getInterests>>> = ({ signal }) =>
+    getInterests({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getInterests>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type GetInterestsQueryResult = NonNullable<Awaited<ReturnType<typeof getInterests>>>;
+export type GetInterestsQueryError = unknown;
+
+export function useGetInterests<TData = Awaited<ReturnType<typeof getInterests>>, TError = unknown>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getInterests>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInterests>>,
+          TError,
+          Awaited<ReturnType<typeof getInterests>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetInterests<TData = Awaited<ReturnType<typeof getInterests>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getInterests>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getInterests>>,
+          TError,
+          Awaited<ReturnType<typeof getInterests>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetInterests<TData = Awaited<ReturnType<typeof getInterests>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getInterests>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 관심분야 조회
+ */
+
+export function useGetInterests<TData = Awaited<ReturnType<typeof getInterests>>, TError = unknown>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getInterests>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetInterestsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type saveInterestsResponse200 = {
   data: SaveInterests200;

@@ -1,6 +1,13 @@
 // 유저 페이지 목업 데이터 — Figma "세모챌" 디자인 기반. 실제 데이터는 유저 API 연동 시 교체 (TODO).
 
-export type Contest = { id: string; title: string; category: string; days: number; teams: number };
+export type Contest = {
+  id: string;
+  title: string;
+  category: string;
+  days: number;
+  /** 팀 모집 수. 알 수 없으면(API 추천 등) 생략하고 카드에서 배지를 숨긴다. */
+  teams?: number;
+};
 export const contests: Contest[] = [
   { id: 'contest-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', days: 7, teams: 3 },
   { id: 'contest-2', title: '청년 창업 아이디어 챌린지', category: '창업', days: 12, teams: 5 },

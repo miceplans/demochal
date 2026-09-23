@@ -2,6 +2,7 @@
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
 import { UserShell, Content, MyShell, myMenu } from '@/components/common/UserShell';
 import {
   Button,
@@ -48,6 +49,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { generated } from '@semochal/api-client';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -377,7 +379,7 @@ export function BookmarksPage() {
     .filter((x) => ids.includes(x.id))
     .sort((a, b) =>
       sort === '인기'
-        ? b.teams - a.teams
+        ? (b.teams ?? 0) - (a.teams ?? 0)
         : sort === '최신'
           ? b.id.localeCompare(a.id)
           : a.days - b.days,
@@ -422,6 +424,42 @@ export function BookmarksPage() {
 export function InterestsPage() {
   const state = useUserStore();
   const toast = useToast();
+  const queryClient = useQueryClient();
+  // 관심분야는 서버 값이 기준이다. 브라우저에 남은 기본값이나 다른 계정의 값으로 덮어쓰지
+  // 않도록, 서버 값을 받은 뒤에만 편집/저장할 수 있게 한다. 역할/대상은 기존대로 로컬 상태.
+  const interestsQuery = generated.useGetInterests();
+  const [editedInterests, setEditedInterests] = useState<string[] | null>(null);
+  const interests = editedInterests ?? interestsQuery.data?.data.categories ?? [];
+  const interestsReady = interestsQuery.isSuccess;
+  const saveInterests = generated.useSaveInterests();
+  const isSelected = (key: (typeof preferenceGroups)[number]['key'], value: string) =>
+    key === 'interests' ? interests.includes(value) : state[key].includes(value);
+  const toggle = (key: (typeof preferenceGroups)[number]['key'], value: string) => {
+    if (key !== 'interests') {
+      state.togglePreference(key, value);
+      return;
+    }
+    if (!interestsReady) return;
+    setEditedInterests(
+      interests.includes(value) ? interests.filter((x) => x !== value) : [...interests, value],
+    );
+  };
+  const save = () => {
+    if (!interestsReady) return;
+    saveInterests.mutate(
+      { data: { categories: interests } },
+      {
+        onSuccess: () => {
+          toast.success('관심분야를 저장했어요');
+          void queryClient.invalidateQueries({ queryKey: generated.getGetInterestsQueryKey() });
+          void queryClient.invalidateQueries({
+            queryKey: generated.getListRecommendedChallengesQueryKey(),
+          });
+        },
+        onError: () => toast.error('관심분야를 저장하지 못했어요. 다시 시도해주세요.'),
+      },
+    );
+  };
   return (
     <MyShell title="관심분야 설정">
       <Stack gap={24}>
@@ -438,9 +476,10 @@ export function InterestsPage() {
               {g.options.map((x) => (
                 <Chip
                   key={x}
-                  selected={state[g.key].includes(x)}
-                  aria-pressed={state[g.key].includes(x)}
-                  onClick={() => state.togglePreference(g.key, x)}
+                  selected={isSelected(g.key, x)}
+                  aria-pressed={isSelected(g.key, x)}
+                  disabled={g.key === 'interests' && !interestsReady}
+                  onClick={() => toggle(g.key, x)}
                 >
                   {x}
                 </Chip>
@@ -448,7 +487,12 @@ export function InterestsPage() {
             </Wrap>
           </Stack>
         ))}
-        <Button style={{ width: 160 }} onClick={() => toast.success('관심분야를 저장했어요')}>
+        {interestsQuery.isError && <Muted>관심분야를 불러오지 못했어요. 새로고침해주세요.</Muted>}
+        <Button
+          style={{ width: 160 }}
+          onClick={save}
+          disabled={!interestsReady || saveInterests.isPending}
+        >
           저장하기
         </Button>
       </Stack>
