@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useToast } from '@/components/common/Toast';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
 
@@ -67,6 +68,15 @@ function AdminAnalyticsContent() {
 
   const analyticsQuery = generated.useGetAdminAnalytics({ ad: adEnabled ? adNumber : undefined });
   const analytics = analyticsQuery.data?.data;
+  const refetchAnalytics = analyticsQuery.refetch;
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!analyticsQuery.isError) return;
+    toast.error('활동 데이터를 불러올 수 없어요', '잠시 후 다시 시도해주세요', {
+      action: { label: '다시 시도', onClick: () => void refetchAnalytics() },
+    });
+  }, [analyticsQuery.isError, refetchAnalytics, toast]);
 
   return (
     <>

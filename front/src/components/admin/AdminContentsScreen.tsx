@@ -1,10 +1,11 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -159,31 +160,17 @@ type ContestCardRow = {
   unread: boolean;
 };
 
-const ErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 16,
-  padding: '14px 20px',
-  borderRadius: 10,
-  background: '#FEF2F2',
-  border: '1px solid #FCA5A5',
-  color: '#B91C1C',
-  ...textStyle.body,
-});
-const RetryButton = styled.button({
-  flexShrink: 0,
-  border: '1px solid #B91C1C',
-  borderRadius: 6,
-  padding: '6px 12px',
-  background: c.white,
-  color: '#B91C1C',
-  cursor: 'pointer',
-  ...textStyle.overline,
-});
-
 export function AdminContentsScreen() {
   const contentsQuery = generated.useListAdminContents();
+  const refetchContents = contentsQuery.refetch;
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!contentsQuery.isError) return;
+    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchContents() },
+    });
+  }, [contentsQuery.isError, refetchContents, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>
@@ -215,15 +202,6 @@ export function AdminContentsScreen() {
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
-
-      {contentsQuery.isError ? (
-        <ErrorBanner role="alert">
-          <span>콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => contentsQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </ErrorBanner>
-      ) : null}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader>
