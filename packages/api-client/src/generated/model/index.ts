@@ -81,6 +81,7 @@ export * from './dailyMetric';
 export * from './externalLink';
 export * from './fileMeta';
 export * from './fileMetaBucket';
+export * from './forbiddenResponse';
 export * from './getAdminAnalytics200';
 export * from './getAdminAnalyticsParams';
 export * from './getAdminDashboardParams';

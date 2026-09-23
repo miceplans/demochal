@@ -63,6 +63,7 @@ import type {
   CreateReportRequest,
   CreateTeamRequest,
   FileMeta,
+  ForbiddenResponse,
   GetAdReportParams,
   GetAdminAnalytics200,
   GetAdminAnalyticsParams,
@@ -4812,6 +4813,149 @@ export const useRegisterBusiness = <TError = unknown, TContext = unknown>(
   return useMutation(getRegisterBusinessMutationOptions(options), queryClient);
 };
 
+export type findMyBusinessResponse200 = {
+  data: Business;
+  status: 200;
+};
+
+export type findMyBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type findMyBusinessResponse403 = {
+  data: ForbiddenResponse;
+  status: 403;
+};
+
+export type findMyBusinessResponseSuccess = findMyBusinessResponse200 & {
+  headers: Headers;
+};
+export type findMyBusinessResponseError = (
+  findMyBusinessResponse401 | findMyBusinessResponse403
+) & {
+  headers: Headers;
+};
+
+export type findMyBusinessResponse = findMyBusinessResponseSuccess | findMyBusinessResponseError;
+
+export const getFindMyBusinessUrl = () => {
+  return `/businesses/me`;
+};
+
+/**
+ * 로그인한 계정이 소유한 기업 정보를 반환한다(`ownerUserId` 기준).
+ * Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 소유한 기업이 없으면 403.
+ * 인증: JWT 쿠키(필수). 역할은 별도 검증하지 않고 소유 여부만 판단한다(기업 등록은
+ * 인증된 계정이면 가능하므로 business 역할 전용 엔드포인트가 아님).
+ * @summary 내 기업 조회 (소유자)
+ */
+export const findMyBusiness = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<findMyBusinessResponse> => {
+  return apiFetch<findMyBusinessResponse>(getFindMyBusinessUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getFindMyBusinessQueryKey = () => {
+  return [`/businesses/me`] as const;
+};
+
+export const getFindMyBusinessQueryOptions = <
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getFindMyBusinessQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof findMyBusiness>>> = ({ signal }) =>
+    findMyBusiness({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof findMyBusiness>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type FindMyBusinessQueryResult = NonNullable<Awaited<ReturnType<typeof findMyBusiness>>>;
+export type FindMyBusinessQueryError = UnauthorizedResponse | ForbiddenResponse;
+
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findMyBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof findMyBusiness>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findMyBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof findMyBusiness>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업 조회 (소유자)
+ */
+
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getFindMyBusinessQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getBusinessResponse200 = {
   data: Business;
   status: 200;
@@ -4961,18 +5105,42 @@ export type updateBusinessResponse200 = {
   status: 200;
 };
 
+export type updateBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateBusinessResponse403 = {
+  data: ForbiddenResponse;
+  status: 403;
+};
+
+export type updateBusinessResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
 export type updateBusinessResponseSuccess = updateBusinessResponse200 & {
   headers: Headers;
 };
-export type updateBusinessResponse = updateBusinessResponseSuccess;
+export type updateBusinessResponseError = (
+  updateBusinessResponse401 | updateBusinessResponse403 | updateBusinessResponse404
+) & {
+  headers: Headers;
+};
+
+export type updateBusinessResponse = updateBusinessResponseSuccess | updateBusinessResponseError;
 
 export const getUpdateBusinessUrl = (id: string) => {
   return `/businesses/${id}`;
 };
 
 /**
- * 기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign`),
+ * 기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign` →
+ * S3 PUT → `POST /files/{id}/finalize`. 요청/응답에는 파일 id(`bannerImageFileId`/`logoImageFileId`)만
+ * 쓰고, 로컬 미리보기용 object URL을 파일 id처럼 본문에 넣지 않는다),
  * 기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
+ * 인증: JWT 쿠키(필수), 소유자 본인 기업만 수정 가능(다른 소유자의 기업은 404).
  * @summary 기업 프로필 수정
  */
 export const updateBusiness = async (
@@ -5009,7 +5177,10 @@ export const updateBusiness = async (
 
 export const getUpdateBusinessMutationKey = () => ['updateBusiness'] as const;
 
-export const getUpdateBusinessMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+export const getUpdateBusinessMutationOptions = <
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBusiness>>,
     TError,
@@ -5044,13 +5215,17 @@ export const getUpdateBusinessMutationOptions = <TError = unknown, TContext = un
 
 export type UpdateBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof updateBusiness>>>;
 export type UpdateBusinessMutationBody = UpdateBusinessBody;
-export type UpdateBusinessMutationError = unknown;
+export type UpdateBusinessMutationError =
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse;
 export type UpdateBusinessMutationVariables = { id: string; data: UpdateBusinessBody };
 
 /**
  * @summary 기업 프로필 수정
  */
-export const useUpdateBusiness = <TError = unknown, TContext = unknown>(
+export const useUpdateBusiness = <
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateBusiness>>,
@@ -7771,6 +7946,10 @@ export const getSubmitOperationsInquiryUrl = () => {
 /**
  * 운영대행 페이지(`/biz/operations`, MICE PLANS X SEMO)의 온라인 상담/견적 문의 폼
  * (성함/연락처/문의내용). 회사 위치 지도·주소·연락처는 정적 정보.
+ * **인증 정책(현재 확정)**: 공개 문의 — 로그인하지 않은 방문자도 제출할 수 있다.
+ * business 전용 접수가 아니며 제출에 인증 쿠키/JWT를 요구하지 않는다(`@Public`).
+ * 개인정보(성함/연락처)는 접수 저장(DB) 목적이며 서버 로그에 기록하지 않는다.
+ * 향후 business 전용 운영대행 견적/배정 기능은 별도 Issue로 확정한다(본 계약 변경 전까지 공개 유지).
  * @summary 운영대행 문의 접수
  */
 export const submitOperationsInquiry = async (
