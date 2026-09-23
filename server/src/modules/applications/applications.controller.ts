@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { ApplicationsService } from './applications.service.js';
 import { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import { UpdateApplicationDto } from './dto/update-application.dto.js';
+import { ListManagedApplicationsDto } from './dto/list-managed-applications.dto.js';
 
 @Controller('applications')
 @UseGuards(JwtAuthGuard)
@@ -18,6 +19,14 @@ export class ApplicationsController {
   @Get('me')
   listMine(@CurrentUser() user: AuthenticatedUser) {
     return this.applicationsService.listForUser(user.id);
+  }
+
+  @Get('managed')
+  listManaged(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() filters: ListManagedApplicationsDto,
+  ) {
+    return this.applicationsService.listForBusinessOwner(user.id, filters);
   }
 
   @Get(':id')

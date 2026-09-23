@@ -90,6 +90,13 @@ export function createApiClient(options: HttpClientOptions) {
       apply: (body: ApplyChallengeRequest) =>
         http.post<ApplyChallengeResponse>('/applications', body),
       listMine: () => http.get<Application[]>('/applications/me'),
+      listManaged: (params?: { challengeId?: string; status?: string }) => {
+        const q = new URLSearchParams();
+        if (params?.challengeId) q.set('challengeId', params.challengeId);
+        if (params?.status) q.set('status', params.status);
+        const qs = q.toString();
+        return http.get<Application[]>(`/applications/managed${qs ? `?${qs}` : ''}`);
+      },
       get: (id: string) => http.get<Application>(`/applications/${id}`),
       update: (id: string, body: UpdateApplicationRequest) =>
         http.patch<Application>(`/applications/${id}`, body),
