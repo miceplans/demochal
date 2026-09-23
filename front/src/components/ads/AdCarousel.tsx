@@ -13,6 +13,15 @@ export type AdCarouselItem = {
   adId?: string;
 };
 
+// 계측 비콘은 useMutation을 쓰지 않는다. 실패가 전역 MutationCache 토스트로
+// 방문자에게 노출되면 안 되므로 조용히 버린다.
+function sendAdBeacon(
+  send: (id: string, event: { eventId: string }) => Promise<unknown>,
+  adId: string,
+) {
+  void send(adId, { eventId: crypto.randomUUID() }).catch(() => undefined);
+}
+
 type AdCarouselProps = {
   ariaLabel: string;
   items: AdCarouselItem[];
@@ -197,8 +206,6 @@ export function AdCarousel({
   const [isPaused, setIsPaused] = useState(false);
   const [isInViewport, setIsInViewport] = useState(false);
   const seenImpressions = useRef(new Set<string>());
-  const recordImpression = generated.useRecordAdImpression();
-  const recordClick = generated.useRecordAdClick();
   const itemCount = items.length;
 
   useEffect(() => {
@@ -218,8 +225,8 @@ export function AdCarousel({
     const adId = items[itemIndex]?.adId;
     if (!adId || seenImpressions.current.has(adId)) return;
     seenImpressions.current.add(adId);
-    recordImpression.mutate({ id: adId, data: { eventId: crypto.randomUUID() } });
-  }, [isInViewport, itemCount, items, pad, railIndex, recordImpression]);
+    sendAdBeacon(generated.recordAdImpression, adId);
+  }, [isInViewport, itemCount, items, pad, railIndex]);
 
   const getStep = useCallback(() => {
     if (variant === 'hero') return SLIDE_WIDTH.hero + SLIDE_GAP.hero;
@@ -332,9 +339,7 @@ export function AdCarousel({
                 key={`${item.src}-${index}`}
                 type="button"
                 onClick={() => {
-                  if (item.adId) {
-                    recordClick.mutate({ id: item.adId, data: { eventId: crypto.randomUUID() } });
-                  }
+                  if (item.adId) sendAdBeacon(generated.recordAdClick, item.adId);
                   goTo(itemIndex);
                 }}
               >

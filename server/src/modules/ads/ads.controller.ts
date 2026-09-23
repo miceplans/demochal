@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -67,13 +68,13 @@ export class AdsController {
 
   @Public()
   @Post(':id/impressions')
-  recordImpression(@Param('id') id: string, @Body() dto: RecordAdEventDto = {}) {
+  recordImpression(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RecordAdEventDto = {}) {
     return this.adsService.recordEvent(id, 'impressions', dto);
   }
 
   @Public()
   @Post(':id/clicks')
-  recordClick(@Param('id') id: string, @Body() dto: RecordAdEventDto = {}) {
+  recordClick(@Param('id', ParseUUIDPipe) id: string, @Body() dto: RecordAdEventDto = {}) {
     return this.adsService.recordEvent(id, 'clicks', dto);
   }
 }
