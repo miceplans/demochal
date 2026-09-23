@@ -20,8 +20,7 @@
 /**
  * 노출 위치 — hero: 홈 상단, gallery: 홈 중간 갤러리, team: 팀 탐색 페이지,
  */
-export type AdProductPlacement = typeof AdProductPlacement[keyof typeof AdProductPlacement];
-
+export type AdProductPlacement = (typeof AdProductPlacement)[keyof typeof AdProductPlacement];
 
 export const AdProductPlacement = {
   hero: 'hero',

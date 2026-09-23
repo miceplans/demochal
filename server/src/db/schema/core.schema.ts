@@ -101,6 +101,10 @@ export const teams = pgTable('teams', {
   leaderRole: varchar('leader_role', { length: 50 }),
   region: varchar('region', { length: 100 }),
   openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
+  // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
+  introduction: text('introduction'),
+  preferred: varchar('preferred', { length: 200 }),
+  etc: varchar('etc', { length: 200 }),
   status: varchar('status', { length: 20 }).notNull().default('recruiting'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -240,3 +244,20 @@ export const paymentCards = pgTable('payment_cards', {
   billingKey: text('billing_key').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+// 빌링 인증(authKey) 교환 시도 기록 — 토스가 카드를 저장했지만 HTTP 응답이
+// 사라진 경우에도 재시도가 중복 카드를 만들지 않고 저장된 카드를 돌려주기 위한
+// 멱등 레코드다. 원본 one-time authKey는 절대 저장하지 않고 sha256 해시만 기록한다.
+export const billingAuthAttempts = pgTable(
+  'billing_auth_attempts',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id),
+    authKeyHash: varchar('auth_key_hash', { length: 64 }).notNull(),
+    // 교환 성공 후 연결된 카드 — null이면 아직 교환 중이거나 실패한 시도다.
+    cardId: uuid('card_id').references(() => paymentCards.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('billing_auth_attempts_auth_key_hash_unique').on(table.authKeyHash)],
+);

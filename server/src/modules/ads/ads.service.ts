@@ -92,7 +92,9 @@ export class AdsService implements OnModuleInit {
 
   async listPublic(placement: 'hero' | 'gallery') {
     const now = new Date();
-    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
     const rows = await this.db
       .select({
         id: ads.id,
@@ -232,6 +234,9 @@ export class AdsService implements OnModuleInit {
       throw new BadRequestException(
         'Unpaid ads cannot be activated directly; complete payment first',
       );
+    }
+    if (dto.status === 'paused' && ad.status !== 'active') {
+      throw new BadRequestException('Only active ads can be paused');
     }
     if (dto.status === 'active') {
       return this.db.transaction(async (tx) => {

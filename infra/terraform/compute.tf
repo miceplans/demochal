@@ -346,7 +346,14 @@ resource "aws_ecs_service" "api" {
     container_port   = 3001
   }
   depends_on = [aws_lb_listener.https]
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   lifecycle {
+    # GitHub Actions owns the deployed revision and runtime scale after the
+    # existing staging service is promoted to the production workload.
+    ignore_changes = [task_definition, desired_count]
     precondition {
       condition     = !var.enable_runtime || var.api_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.api_image))
       error_message = "When the API runtime is enabled, api_image must be an immutable ECR digest."
@@ -360,12 +367,17 @@ resource "aws_ecs_service" "worker" {
   task_definition = aws_ecs_task_definition.worker.arn
   desired_count   = var.enable_runtime ? var.worker_desired_count : 0
   launch_type     = "FARGATE"
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
   network_configuration {
     subnets          = [aws_subnet.public["0"].id]
     security_groups  = [aws_security_group.worker_task.id]
     assign_public_ip = true
   }
   lifecycle {
+    ignore_changes = [task_definition, desired_count]
     precondition {
       condition     = !var.enable_runtime || var.worker_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.worker_image))
       error_message = "When the worker runtime is enabled, worker_image must be an immutable ECR digest."

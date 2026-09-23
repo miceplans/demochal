@@ -19,5 +19,5 @@
 import type { ListPublicAdsPlacement } from './listPublicAdsPlacement';
 
 export type ListPublicAdsParams = {
-placement: ListPublicAdsPlacement;
+  placement: ListPublicAdsPlacement;
 };

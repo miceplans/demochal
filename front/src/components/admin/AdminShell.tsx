@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { createContext, useContext, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -9,6 +9,19 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu, adminUser } from '@/data/admin-design';
+
+const AdminNavContext = createContext('');
+export function AdminNavProvider({ base, children }: { base: string; children: ReactNode }) {
+  return <AdminNavContext.Provider value={base}>{children}</AdminNavContext.Provider>;
+}
+export const useAdminBase = () => useContext(AdminNavContext);
+export function useAdminHref() {
+  const base = useAdminBase();
+  return (path: string) => `${base}${path === '/' ? '' : path}`;
+}
+export function routeOf(pathname: string) {
+  return pathname.startsWith('/admin') ? pathname.slice('/admin'.length) || '/' : pathname;
+}
 
 export const AdminGlobalStyles = (
   <Global
@@ -27,7 +40,8 @@ export const AdminGlobalStyles = (
 );
 
 function AdminSidebar() {
-  const pathname = usePathname() ?? '';
+  const route = routeOf(usePathname() ?? '');
+  const hrefOf = useAdminHref();
   return (
     <SidebarBox>
       <div>
@@ -37,13 +51,11 @@ function AdminSidebar() {
         <NavItems aria-label="관리자 메뉴">
           {adminMenu.map(([href, label]) => {
             const active =
-              href === '/admin'
-                ? pathname === '/admin' && label === '대시보드'
-                : pathname.startsWith(href);
+              href === '/' ? route === '/' : route === href || route.startsWith(`${href}/`);
             return (
               <NavItem
                 key={label}
-                href={href}
+                href={hrefOf(href)}
                 active={active || undefined}
                 aria-current={active ? 'page' : undefined}
               >

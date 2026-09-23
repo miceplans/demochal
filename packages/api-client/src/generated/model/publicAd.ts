@@ -25,9 +25,9 @@ export interface PublicAd {
   /** 공개 광고 소재 URL */
   imageUrl: string;
   /**
-     * 광고 클릭 시 이동할 URL
-     * @nullable
-     */
+   * 광고 클릭 시 이동할 URL
+   * @nullable
+   */
   landingUrl?: string | null;
   placement: PublicAdPlacement;
 }

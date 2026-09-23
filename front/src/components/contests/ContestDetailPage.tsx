@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell, Content } from '@/components/common/UserShell';
@@ -12,6 +13,7 @@ import {
   Title,
   Tag,
   Icon,
+  IconButton,
   SectionHeader,
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
@@ -20,11 +22,27 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
+import { toTeamCard } from '@/components/teams/team-model';
+import { generated } from '@semochal/api-client';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
   const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
+  // TODO: 챌린지 상세가 아직 목데이터(challengeId 없음)라 팀모집 탭은 전체 모집글을 보여준다.
+  // 상세를 GET /challenges/{id}로 연결하면 listTeams({ challengeId })로 좁힌다.
+  // https://tanstack.com/query/latest/docs/framework/react/guides/dependent-queries
+  const { data: teamList } = generated.useListTeams(undefined, { query: { enabled: teamTab } });
   const toggle = useUserStore((s) => s.toggleBookmark);
   const toast = useToast();
+  const applyRef = useRef<HTMLAnchorElement>(null);
+  const [applyVisible, setApplyVisible] = useState(true);
+  useEffect(() => {
+    if (teamTab) return;
+    const el = applyRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setApplyVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [teamTab]);
   const share = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -33,25 +51,25 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
       toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
     }
   };
-  const summary = (
-    <>
-      <Link href="/teams/new">
-        <Button as="span" tone="outline" fullWidth>
-          이 챌린지 팀 구하기
-        </Button>
-      </Link>
-      <Summary>
-        <b>대회 요약</b>
-        <dl>
-          <dt>마감일</dt>
-          <dd>{contestDetail.deadline}</dd>
-          <dt>총 상금</dt>
-          <dd>{contestDetail.prizeTotal}</dd>
-          <dt>팀 구성</dt>
-          <dd>{contestDetail.teamSize}</dd>
-        </dl>
-      </Summary>
-    </>
+  const teamCta = (
+    <Link href="/teams/new">
+      <Button as="span" tone="outline" fullWidth>
+        이 챌린지 팀 구하기
+      </Button>
+    </Link>
+  );
+  const summaryBox = (
+    <Summary>
+      <b>대회 요약</b>
+      <dl>
+        <dt>마감일</dt>
+        <dd>{contestDetail.deadline}</dd>
+        <dt>총 상금</dt>
+        <dd>{contestDetail.prizeTotal}</dd>
+        <dt>팀 구성</dt>
+        <dd>{contestDetail.teamSize}</dd>
+      </dl>
+    </Summary>
   );
   return (
     <UserShell title="챌린지 상세" back="/explore">
@@ -68,14 +86,20 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
             </div>
             <Row>
               <Tag tone="blue">{contestDetail.dday}</Tag>
-              <Button small tone="plain" aria-pressed={saved} onClick={() => toggle('contest-1')}>
-                <Icon src="/assets/icons/scrap.png" size={14} alt="북마크" />
-                북마크
-              </Button>
+              <IconButton
+                aria-label="북마크"
+                aria-pressed={saved}
+                onClick={() => toggle('contest-1')}
+              >
+                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+              </IconButton>
               <Button small tone="plain" onClick={share}>
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
+              <IconLink href="/reports/new?type=challenge" aria-label="신고">
+                <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
+              </IconLink>
             </Row>
           </div>
         </Intro>
@@ -91,8 +115,8 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
             </Tabs>
             {teamTab ? (
               <TeamGrid>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <TeamCard key={i} />
+                {(teamList?.data ?? []).slice(0, 6).map((team) => (
+                  <TeamCard key={team.id} team={toTeamCard(team)} />
                 ))}
               </TeamGrid>
             ) : (
@@ -106,22 +130,33 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
                     style={{ width: '100%', height: 'auto' }}
                   />
                 </DesktopOnly>
+                <MobileOnly>{summaryBox}</MobileOnly>
                 {contestDetail.sections.map(({ title, body }) => (
                   <section key={title}>
                     <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
                     <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
                   </section>
                 ))}
-                <MobileOnly>{summary}</MobileOnly>
-                <Link href="/applications/new">
+                <Link href="/applications/new" ref={applyRef}>
                   <Button as="span" fullWidth>
                     참가 신청하기
                   </Button>
                 </Link>
+                <MobileOnly>{teamCta}</MobileOnly>
               </Stack>
             )}
           </div>
-          <DesktopOnly>{summary}</DesktopOnly>
+          <Sidebar>
+            {!teamTab && !applyVisible && (
+              <Link href="/applications/new">
+                <Button as="span" fullWidth>
+                  참가 신청하기
+                </Button>
+              </Link>
+            )}
+            {teamCta}
+            {summaryBox}
+          </Sidebar>
         </Columns>
         <section style={{ marginTop: 60 }}>
           <SectionHeader
@@ -176,8 +211,17 @@ const Intro = styled.div({
 const Columns = styled.div({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
+  alignItems: 'start',
   gap: 24,
   [mobile]: { display: 'flex', flexDirection: 'column' },
+});
+const Sidebar = styled(DesktopOnly)({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  minWidth: 0,
+  position: 'sticky',
+  top: 24,
 });
 const Tabs = styled.nav({
   display: 'flex',
@@ -191,11 +235,21 @@ const Summary = styled.div({
   background: c.gray50,
   borderRadius: 12,
   padding: 16,
-  marginTop: 16,
   ...textStyle.caption,
   '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
   '& dt': { color: c.gray500 },
   '& dd': { textAlign: 'right', fontWeight: 600 },
+});
+const IconLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 4,
+  borderRadius: 6,
+  color: c.gray700,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { transform: 'scale(0.85)' },
 });
 const Related = styled.div({
   display: 'grid',

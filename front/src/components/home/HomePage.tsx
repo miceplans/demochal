@@ -8,10 +8,11 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
-import { generated } from '@semochal/api-client';
-import { desktopContests, teams } from '@/data/user-design';
+import { desktopContests, type Contest } from '@/data/user-design';
+import { toTeamCard } from '@/components/teams/team-model';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { generated } from '@semochal/api-client';
 
 const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
@@ -20,7 +21,7 @@ const getAdPreviewPriceServerSnapshot = () => null;
 const fallbackAds = {
   hero: [{ src: '/assets/ads/hero-fallback.png', alt: '세모챌 광고' }],
   gallery: [{ src: '/assets/ads/gallery-fallback.png', alt: '세모챌 광고' }],
-} as const;
+};
 
 function MoreIcon() {
   return (
@@ -40,15 +41,27 @@ export function HomePage() {
   const [heroAds, setHeroAds] = useState<Array<{ src: string; alt: string; href?: string }>>(
     fallbackAds.hero,
   );
-  const [galleryAds, setGalleryAds] = useState<
-    Array<{ src: string; alt: string; href?: string }>
-  >(fallbackAds.gallery);
+  const [galleryAds, setGalleryAds] = useState<Array<{ src: string; alt: string; href?: string }>>(
+    fallbackAds.gallery,
+  );
   const adPriceParam = useSyncExternalStore(
     noopSubscribe,
     getAdPreviewPriceSnapshot,
     getAdPreviewPriceServerSnapshot,
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: teamList } = generated.useListTeams();
+  const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
+  const { data: recommended } = generated.useListRecommendedChallenges(
+    { limit: 6 },
+    { query: { enabled: auth?.status === 200 } },
+  );
+  // 추천 결과가 로딩 중이거나 실패·비어 있으면 기본 목록을 유지해 레일이 비지 않게 한다.
+  const recommendedItems = auth?.status === 200 ? recommended?.data.items : undefined;
+  const recommendationContests = recommendedItems?.length
+    ? recommendedItems.map(challengeToContest)
+    : desktopContests;
 
   useEffect(() => {
     let mounted = true;
@@ -60,10 +73,18 @@ export function HomePage() {
       if (!mounted) return;
       if (hero.status === 'fulfilled' && hero.value.status === 200 && hero.value.data.length > 0) {
         setHeroAds(
-          hero.value.data.map((ad) => ({ src: ad.imageUrl, alt: ad.title, href: ad.landingUrl ?? undefined })),
+          hero.value.data.map((ad) => ({
+            src: ad.imageUrl,
+            alt: ad.title,
+            href: ad.landingUrl ?? undefined,
+          })),
         );
       }
-      if (gallery.status === 'fulfilled' && gallery.value.status === 200 && gallery.value.data.length > 0) {
+      if (
+        gallery.status === 'fulfilled' &&
+        gallery.value.status === 200 &&
+        gallery.value.data.length > 0
+      ) {
         setGalleryAds(
           gallery.value.data.map((ad) => ({
             src: ad.imageUrl,
@@ -142,14 +163,14 @@ export function HomePage() {
               <div style={{ height: 16 }} />
               <DesktopOnly>
                 <Rail>
-                  {desktopContests.slice(0, 4).map((contest) => (
+                  {recommendationContests.slice(0, 4).map((contest) => (
                     <ContestCard key={contest.id} contest={contest} />
                   ))}
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
                 <Rail>
-                  {desktopContests.slice(0, 2).map((contest) => (
+                  {recommendationContests.slice(0, 2).map((contest) => (
                     <ContestCard key={contest.id} contest={contest} simple />
                   ))}
                 </Rail>
@@ -220,6 +241,23 @@ export function HomePage() {
       </UserShell>
     </PreviewLock>
   );
+}
+
+function challengeToContest(challenge: {
+  id?: string;
+  title?: string;
+  category?: string;
+  endDate?: string;
+}): Contest {
+  const endDate = challenge.endDate ? new Date(challenge.endDate).getTime() : Date.now();
+  return {
+    id: challenge.id ?? '',
+    title: challenge.title ?? '챌린지',
+    category: challenge.category ?? '기타',
+    days: Math.max(0, Math.ceil((endDate - Date.now()) / (24 * 60 * 60 * 1000))),
+    // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
+    teams: undefined,
+  };
 }
 
 const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });

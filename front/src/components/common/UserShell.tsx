@@ -6,7 +6,7 @@ import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton } from './Primitives';
+import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
 import { generated } from '@semochal/api-client';
 
@@ -297,8 +297,13 @@ export function UserShell({
                   </>
                 ) : (
                   <>
-                    <HeaderActionLink href="/biz">챌린지 만들기</HeaderActionLink>
-                    <HeaderActionLink href="/biz">문의하기</HeaderActionLink>
+                    <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
+                    <HeaderActionLink href="/biz/operations">챌린지 대행 문의</HeaderActionLink>
+                    <Link href="/login">
+                      <Button as="span" small>
+                        로그인/회원가입
+                      </Button>
+                    </Link>
                   </>
                 )}
               </Row>

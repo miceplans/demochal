@@ -1,4 +1,4 @@
-import { Body, Controller, Put } from '@nestjs/common';
+import { Body, Controller, Get, Put } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { SaveInterestsDto } from './dto/save-interests.dto.js';
@@ -8,6 +8,11 @@ import { InterestsService } from './interests.service.js';
 @Controller()
 export class InterestsController {
   constructor(private readonly interestsService: InterestsService) {}
+
+  @Get('interests')
+  getInterests(@CurrentUser() user: AuthenticatedUser) {
+    return this.interestsService.getInterests(user.id);
+  }
 
   @Put('interests')
   saveInterests(@Body() dto: SaveInterestsDto, @CurrentUser() user: AuthenticatedUser) {

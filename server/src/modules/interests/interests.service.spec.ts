@@ -9,6 +9,21 @@ function updateSpy() {
 }
 
 describe('InterestsService', () => {
+  it('getInterests returns the stored categories, or an empty list for a missing user', async () => {
+    const limit = vi
+      .fn()
+      .mockResolvedValueOnce([{ interests: ['디자인'] }])
+      .mockResolvedValueOnce([]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const db: any = {
+      select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where }) }),
+    };
+    const service = new InterestsService(db);
+
+    await expect(service.getInterests('user-1')).resolves.toEqual({ categories: ['디자인'] });
+    await expect(service.getInterests('missing')).resolves.toEqual({ categories: [] });
+  });
+
   it('saveInterests stores categories and echoes them back', async () => {
     const { db, set } = updateSpy();
     const service = new InterestsService(db);

@@ -18,13 +18,13 @@
  */
 
 /**
- * 챌린지/팀 모집/수상작
+ * 챌린지/팀 모집/수상작/사용자 프로필
  */
-export type ReportTargetType = typeof ReportTargetType[keyof typeof ReportTargetType];
-
+export type ReportTargetType = (typeof ReportTargetType)[keyof typeof ReportTargetType];
 
 export const ReportTargetType = {
   challenge: 'challenge',
   team: 'team',
   award: 'award',
+  user: 'user',
 } as const;

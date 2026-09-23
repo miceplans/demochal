@@ -1,4 +1,6 @@
 // 기관(사업자) 콘솔 목업 데이터 — Figma "세모챌 BIZ" 디자인 기반. 실제 데이터는 기관 API 연동 시 교체 (TODO).
+// 결제수단/결제 내역(`/biz/billing`)은 #109에서 실 API로 전환되어 이 파일의 paymentHistory 목업은 제거됐다.
+// 대시보드 등 나머지 화면의 목업(paymentCard·payments·paymentTotal 등)은 해당 화면 연동 시 각각 교체한다.
 
 export const admin = {
   name: '황지영',
@@ -59,16 +61,9 @@ export const payments = [
   { name: '한국 IT 챌린지 - 배너 (소)', amount: -100000, date: '2026.08.28 10:05' },
   { name: '한국 IT 챌린지 - 배너 (소) 환불', amount: 100000, date: '2026.08.21 09:41' },
 ];
-export const paymentHistory = [
-  { name: '2025 스타트업 해커톤 - 메인 배너 (대)', amount: -100000, date: '2026.09.08 16:40' },
-  { name: '충전 - 신용카드', amount: 300000, date: '2026.09.05 11:12' },
-  { name: '한국 마라톤 챌린지 - 배너 (대)', amount: -100000, date: '2026.09.02 14:22' },
-  { name: '디자인 씽킹 해커톤 - 팀원모집중 배너', amount: -40000, date: '2026.08.30 09:30' },
-  { name: '한국 IT 챌린지 - 배너 (소)', amount: -60000, date: '2026.08.28 10:05' },
-  { name: '한국 IT 챌린지 - 배너 (소) 환불', amount: 60000, date: '2026.08.21 09:41' },
-  { name: '충전 - 신용카드', amount: 200000, date: '2026.08.15 15:03' },
-];
-export const paymentTotal = paymentHistory.reduce((sum, p) => sum + p.amount, 0);
+// 대시보드 목업용 잔액 합계(이전에는 paymentHistory에서 유도). #109에서 billing 화면이 실 API로 전환되며
+// paymentHistory 목업은 제거됐고, 대시보드 연동 전까지는 리터럴 목업 값을 유지한다.
+export const paymentTotal = 260000;
 export const activeAds = [
   { title: '2025 공공데이터 활용 챌린지', status: '진행중', exposure: '45,231', bookmarks: '892' },
   { title: '2025 스타트업 해커톤', status: '준비중', exposure: '—', bookmarks: '—' },

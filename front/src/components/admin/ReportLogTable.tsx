@@ -13,6 +13,7 @@ const targetTypeLabel: Record<string, string> = {
   challenge: '공모전',
   team: '팀 모집',
   award: '수상작',
+  user: '프로필',
 };
 
 const reportStatusLabel: Record<string, ReportRow['status']> = {

@@ -3,11 +3,27 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { paymentCard } from '@/data/biz-design';
-import { maskCardNumber } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
 
-export function BizPaymentCard({ label, amount }: { label: string; amount: string }) {
+interface BizPaymentCardProps {
+  label: string;
+  amount: string;
+  /** 이미 마스킹된 카드번호(토스 응답 그대로 — 원본 번호는 서버도 받지 않는다). */
+  maskedNumber: string;
+  cardName?: string | null;
+  /** 대시보드 목업 전용 표시 필드(실 API 미제공) — 없으면 해당 행을 숨긴다. */
+  holder?: string;
+  expiry?: string;
+}
+
+export function BizPaymentCard({
+  label,
+  amount,
+  maskedNumber,
+  cardName,
+  holder,
+  expiry,
+}: BizPaymentCardProps) {
   return (
     <CardVisual>
       <Balance>
@@ -15,20 +31,32 @@ export function BizPaymentCard({ label, amount }: { label: string; amount: strin
         <BalanceAmount>{amount}</BalanceAmount>
       </Balance>
       <Chip src="/assets/card-chip.png" alt="" />
-      <CardMeta>
-        <MetaItem>
-          <MetaLabel>카드 명의</MetaLabel>
-          <MetaValue>{paymentCard.holder}</MetaValue>
-        </MetaItem>
-        <MetaItem>
-          <MetaLabel>유효 기간</MetaLabel>
-          <MetaValue>{paymentCard.expiry}</MetaValue>
-        </MetaItem>
-      </CardMeta>
+      {cardName || holder || expiry ? (
+        <CardMeta>
+          {cardName ? (
+            <MetaItem>
+              <MetaLabel>카드</MetaLabel>
+              <MetaValue>{cardName}</MetaValue>
+            </MetaItem>
+          ) : null}
+          {holder ? (
+            <MetaItem>
+              <MetaLabel>카드 명의</MetaLabel>
+              <MetaValue>{holder}</MetaValue>
+            </MetaItem>
+          ) : null}
+          {expiry ? (
+            <MetaItem>
+              <MetaLabel>유효 기간</MetaLabel>
+              <MetaValue>{expiry}</MetaValue>
+            </MetaItem>
+          ) : null}
+        </CardMeta>
+      ) : null}
       <CardBottom>
         <CardBottomInner>
           <CardNo>
-            <MaskedText value={paymentCard.number} masked={maskCardNumber(paymentCard.number)} />
+            <MaskedText value={maskedNumber} masked={maskedNumber} />
           </CardNo>
           <CardBrand src="/assets/card-brand.svg" alt="" />
         </CardBottomInner>

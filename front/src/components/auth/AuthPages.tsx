@@ -10,6 +10,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { adApi } from '@/lib/ad-api';
+import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
 const Login = styled.div({
   minHeight: 610,
@@ -108,9 +109,41 @@ const Survey = styled.div({
 });
 const Choices = styled(Wrap)({
   gap: 8,
-  '& button': { borderRadius: 8, padding: '12px 20px' },
-  [mobile]: { '& button': { padding: '10px 14px' } },
+  '& button': { borderRadius: 999, padding: '8px 14px', fontSize: 12 },
+  '& button[aria-pressed="true"]': { fontWeight: 600 },
+  [mobile]: { '& button': { padding: '8px 14px' } },
 });
+const CheckGrid = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  columnGap: 30,
+  rowGap: 16,
+  width: '100%',
+  [mobile]: { gridTemplateColumns: '1fr', rowGap: 12 },
+});
+const CheckOption = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  border: 0,
+  background: 'transparent',
+  padding: 0,
+  cursor: 'pointer',
+  textAlign: 'left',
+  ...textStyle.mBodyDetail,
+  color: c.gray700,
+});
+const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 16,
+  height: 16,
+  flexShrink: 0,
+  borderRadius: 3,
+  border: selected ? 0 : `0.5px solid ${c.gray100}`,
+  background: selected ? c.primary : c.white,
+}));
 const Next = styled.div({
   marginTop: 40,
   display: 'flex',
@@ -174,7 +207,7 @@ export function OnboardingPage({ step }: { step: string }) {
             }}
           />
         </div>
-        <h1 style={{ ...textStyle.h1, marginBottom: 20 }}>{titles[index]}</h1>
+        <h1 style={{ ...textStyle.h2, marginBottom: 20 }}>{titles[index]}</h1>
         {index === 0 ? (
           <Dropdown
             aria-label="현재 활동"
@@ -191,6 +224,24 @@ export function OnboardingPage({ step }: { step: string }) {
               '청소년',
             ].map((x) => ({ value: x, label: x }))}
           />
+        ) : index === 2 ? (
+          <CheckGrid>
+            {options.map((x) => (
+              <CheckOption
+                key={x}
+                type="button"
+                aria-pressed={selected.includes(x)}
+                onClick={() => toggle(x)}
+              >
+                <CheckBox selected={selected.includes(x)}>
+                  {selected.includes(x) && (
+                    <Icon src="/assets/icons/check.svg" width={11} height={11} alt="" />
+                  )}
+                </CheckBox>
+                {x}
+              </CheckOption>
+            ))}
+          </CheckGrid>
         ) : (
           <Choices>
             {options.map((x) => (
@@ -221,6 +272,7 @@ export function OnboardingPage({ step }: { step: string }) {
                   // local completion still prevents the survey from being shown again.
                 }
                 completeOnboarding();
+                celebrateBadgeAcquisition();
                 router.replace('/');
                 return;
               }

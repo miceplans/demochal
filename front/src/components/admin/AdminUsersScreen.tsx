@@ -4,9 +4,9 @@ import { useMemo, useState } from 'react';
 import { generated } from '@semochal/api-client';
 import { maskEmail } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
-import { colors as c } from '@/styles/design';
 import type { UserRow } from '@/data/admin-design';
 import {
+  AdminInlineNotice,
   AdminPageTitle,
   AdminTable,
   Badge,
@@ -81,7 +81,7 @@ export function AdminUsersScreen() {
         />
       </FilterBar>
       {usersQuery.isPending ? (
-        <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>
+        <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
       ) : (
         <AdminTable columns={columns} rows={rows} />
       )}

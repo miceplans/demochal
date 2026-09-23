@@ -18,7 +18,7 @@
  */
 
 export interface PaymentCard {
-  id?: string;
+  id: string;
   cardName?: string;
-  maskedNumber?: string;
+  maskedNumber: string;
 }

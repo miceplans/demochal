@@ -2,6 +2,8 @@
 
 AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성은 `ap-northeast-2`의 비용 우선 Single-AZ 스테이징 전용입니다. ALB와 RDS subnet group의 AWS 제약 때문에 두 AZ에 subnet은 만들지만, ECS API/worker와 RDS primary는 첫 번째 AZ에만 둡니다.
 
+> 현재 `semochal-staging-*`는 기존 `server.semochall.com`이 사용하는 리소스이며, 이번 전환에서 실서비스로 승격됩니다. Secret 입력, 첫 배포, health check, migration, rollback 확인 전에는 기존 state나 AWS 리소스를 삭제·재생성하지 않습니다. 승격 후에는 이 리소스를 유일한 운영 환경으로 유지합니다.
+
 ## 예정 구성
 
 - ECS Fargate + ALB (API 서비스, 워커 서비스 — 같은 소스, 다른 CMD)
@@ -27,7 +29,7 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
      --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw migrate_task_subnet_id)],securityGroups=[$(terraform output -raw migrate_task_security_group_id)],assignPublicIp=ENABLED}"
    ```
 
-   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 스키마 변경마다(즉 새 `server/drizzle/*.sql`이 추가된 `api_image`를 배포할 때마다) 재실행해야 합니다.
+   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 이 수동 실행은 최초 bootstrap용입니다. 이후 스키마 변경(새 `server/drizzle/*.sql`)은 `main` 배포 시 CI가 `production` 승인 후 같은 migrate task를 서비스 갱신 전에 자동 실행합니다([Production ECS release automation](#production-ecs-release-automation)).
 
 6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
 7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
@@ -57,8 +59,8 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
    갱신합니다. bundle은 image runtime에 포함되므로 별도 CA secret이나
    `NODE_TLS_REJECT_UNAUTHORIZED` 설정은 사용하지 않습니다.
 4. API service와 필요 시 worker를 배포하고, API `/health`와 CloudWatch 로그를 확인합니다.
-   마이그레이션이 필요한 release라면 새 이미지의 migrate task를 먼저 실행해 exit code 0을
-   확인합니다.
+   마이그레이션은 CI 배포가 서비스 갱신 전에 migrate task로 적용하고 exit code 0을
+   확인합니다. CI를 거치지 않는 수동 배포라면 새 이미지의 migrate task를 먼저 실행합니다.
 
 인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
 확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
@@ -67,6 +69,65 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 
 - `lambda/verification-cleanup/` — 사업자등록증 만료 삭제 배치 (EventBridge 트리거, Lambda)
+
+## Production ECS release automation
+
+The existing [`terraform/`](terraform/) root and its current `semochal-staging-*` resources are promoted to serve the live workload. No second Production VPC/ECS/ECR/ALB stack is created. The existing staging backend/state remains the source of truth during this cutover; the AWS resource names remain unchanged.
+
+Do not delete or recreate the existing resources while `server.semochall.com` still points at them. Keep application secret values out of tfvars, GitHub variables, issues, and logs.
+
+```sh
+cd infra/terraform
+terraform init
+terraform plan -var-file=staging.tfvars
+# Approved operator only:
+terraform apply -var-file=staging.tfvars
+```
+
+The first approved deployment uses the existing API and worker services. Before it, an approved operator must populate the existing application Secret. The first approved GitHub deployment registers digest-pinned revisions, runs the migration task, and sets the desired counts configured in the GitHub Environment variables.
+
+### Terraform and CI ownership boundary
+
+Terraform owns VPC/ECS/ECR/IAM/ALB/Secrets Manager resources and the task-definition structure (normal `environment` entries and `secrets` mappings). The production ECS services intentionally ignore only `task_definition` and `desired_count`: GitHub Actions owns their release revision and running scale. Consequently, a later Terraform apply cannot roll an approved CI deployment back to an earlier revision. Adding a normal ENV, secret key mapping, port, role, networking, or other task-definition structural setting remains a Terraform change; changing a Secret Manager value alone needs no Terraform apply.
+
+Both production services enable the ECS deployment circuit breaker with rollback. If a newly registered revision cannot reach steady state, ECS rolls the service back to the last completed deployment.
+
+### GitHub Environment setup
+
+Create the GitHub Environment named `production` and require reviewers before deployment. Configure its deployment branch policy to allow **only `main`**. The IAM OIDC trust restricts the repository subject to `miceplans/demochal` and this Environment; GitHub's standard environment OIDC subject does not additionally carry the ref, so the Environment branch rule is the required `main` restriction.
+
+After the initial Terraform apply, set these **Environment variables** (not secrets) from the corresponding Terraform outputs. They contain identifiers, never application credentials:
+
+| GitHub Environment variable            | Terraform output                 |
+| -------------------------------------- | -------------------------------- |
+| `PRODUCTION_AWS_DEPLOY_ROLE_ARN`       | `github_actions_deploy_role_arn` |
+| `PRODUCTION_ECS_CLUSTER`               | `ecs_cluster_name`               |
+| `PRODUCTION_API_SERVICE`               | `api_service_name`               |
+| `PRODUCTION_WORKER_SERVICE`            | `worker_service_name`            |
+| `PRODUCTION_API_ECR_REPOSITORY`        | `api_ecr_repository_name`        |
+| `PRODUCTION_WORKER_ECR_REPOSITORY`     | `worker_ecr_repository_name`     |
+| `PRODUCTION_API_TASK_DEFINITION`       | `api_task_definition_family`     |
+| `PRODUCTION_WORKER_TASK_DEFINITION`    | `worker_task_definition_family`  |
+| `PRODUCTION_MIGRATE_TASK_DEFINITION`   | `migrate_task_definition_family` |
+| `PRODUCTION_MIGRATE_SUBNET_ID`         | `migrate_task_subnet_id`         |
+| `PRODUCTION_MIGRATE_SECURITY_GROUP_ID` | `migrate_task_security_group_id` |
+
+Also set `PRODUCTION_API_DESIRED_COUNT` and `PRODUCTION_WORKER_DESIRED_COUNT` to the approved production scale. A main push first completes the existing verify job, then pauses for `production` Environment approval. Once approved, it builds API and worker images, pushes immutable `deploy-<commit-sha>` tags, resolves ECR digests, registers API/worker/migrate revisions from the Terraform templates, runs the migration task, updates the two services, and waits for stability. Database migration runs only inside this approved deployment job.
+
+### Secret value refresh
+
+The existing Terraform root uses Secrets Manager's native EventBridge `Secret Label Updated` event rather than CloudTrail request fields. The rule is scoped to the existing application secret and `AWSCURRENT`. `PutSecretValue` and a value-bearing `UpdateSecret` both move `AWSCURRENT` to a new version, while metadata-only `UpdateSecret` calls do not. The Lambda has only `ecs:UpdateService` for the existing API and worker services and CloudWatch Logs write access. It has no Secrets Manager permission and neither reads nor logs secret values.
+
+After apply, test `PutSecretValue` and a value-bearing `UpdateSecret` with the approved production-secret rotation procedure and inspect the native EventBridge event shape without recording a value. Verify that exactly the production API and worker deployment IDs change, and that a metadata-only update does not restart either service. Also deploy an intentionally unhealthy disposable revision in the approved test window: ECS must roll back, and the workflow must fail because its requested revision is not primary. Do not include request payloads or secret values in tickets or logs.
+
+### One-time staging-to-production cutover
+
+Perform this sequence only after the Production first deployment is healthy:
+
+1. Populate the Production application Secret and run the first approved `main` deployment. Confirm migration exit code 0, API/worker service stability, ALB health, application health, and rollback behavior.
+2. Update the existing `server.semochall.com` DNS/route configuration to the Production ALB. Do not introduce or retain a `prod-server.semochall.com` endpoint; it is not part of the final architecture.
+3. Confirm the real hostname, OAuth callbacks, webhooks, application traffic, logs, and secret-refresh redeployment against Production. Keep staging intact during the observation window.
+4. After the cutover is accepted, keep these promoted resources as the single live environment. Do not run a staging destroy: these are the live Production resources despite their legacy `staging` names.
 
 ## 파일 업로드 보안 필수 설정
 

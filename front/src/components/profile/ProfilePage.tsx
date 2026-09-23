@@ -37,6 +37,11 @@ export function ProfilePage() {
                 팀에 초대
               </Button>
             </Link>
+            <Link href="/reports/new?type=user" style={{ alignSelf: 'center' }}>
+              <Button as="span" small tone="plain">
+                신고
+              </Button>
+            </Link>
           </Profile>
           <Stack>
             <Heading>기술 스택</Heading>

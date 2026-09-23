@@ -1,8 +1,8 @@
 import { IsIn, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class CreateReportDto {
-  @IsIn(['challenge', 'team', 'award'])
-  targetType!: 'challenge' | 'team' | 'award';
+  @IsIn(['challenge', 'team', 'award', 'user'])
+  targetType!: 'challenge' | 'team' | 'award' | 'user';
 
   @IsOptional()
   @IsUUID()

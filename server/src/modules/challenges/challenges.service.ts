@@ -1,5 +1,5 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, count, desc, eq, gte, lt, ne } from 'drizzle-orm';
+import { and, count, desc, eq, gte, gt, inArray, lt, ne, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -7,6 +7,8 @@ import {
   businesses,
   challengeViews,
   challenges,
+  orders,
+  users,
 } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
@@ -166,6 +168,100 @@ export class ChallengesService {
     return [...byCategory, ...backfill];
   }
 
+  async listRecommended(userId: string, requestedLimit?: number) {
+    const limit = Math.max(1, Math.min(20, Number.isFinite(requestedLimit) ? requestedLimit! : 6));
+    const [user] = await this.db
+      .select({ interests: users.interests, onboardingSurvey: users.onboardingSurvey })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    const surveyInterests = this.surveyInterests(user?.onboardingSurvey);
+    const interests = [...new Set([...(user?.interests ?? []), ...surveyInterests])];
+    const now = new Date();
+    // Low-volume assumption: score only the 200 newest eligible candidates. Revisit with SQL scoring
+    // and an index when the published catalogue grows beyond this bounded window.
+    const candidates = await this.db
+      .select()
+      .from(challenges)
+      .where(and(eq(challenges.status, 'published'), gt(challenges.endDate, now)))
+      .orderBy(desc(challenges.createdAt))
+      .limit(200);
+
+    if (candidates.length === 0) return { items: [] };
+
+    const candidateIds = candidates.map((challenge) => challenge.id);
+    const [viewRows, bookmarkRows] = await Promise.all([
+      this.db
+        .select({ challengeId: challengeViews.challengeId, total: count() })
+        .from(challengeViews)
+        .where(inArray(challengeViews.challengeId, candidateIds))
+        .groupBy(challengeViews.challengeId),
+      this.db
+        .select({ challengeId: bookmarks.challengeId, total: count() })
+        .from(bookmarks)
+        .where(inArray(bookmarks.challengeId, candidateIds))
+        .groupBy(bookmarks.challengeId),
+    ]);
+    const views = new Map(viewRows.map((row) => [row.challengeId, Number(row.total)]));
+    const bookmarkCounts = new Map(bookmarkRows.map((row) => [row.challengeId, Number(row.total)]));
+
+    return {
+      items: candidates
+        .map((challenge) => {
+          const interestScore =
+            interests.filter((interest) => this.interestsMatch(interest, challenge.category))
+              .length * 100;
+          const popularityScore =
+            Math.min(views.get(challenge.id) ?? 0, 50) +
+            3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
+          return { challenge, score: interestScore + popularityScore };
+        })
+        .sort(
+          (left, right) =>
+            right.score - left.score ||
+            right.challenge.createdAt.getTime() - left.challenge.createdAt.getTime() ||
+            left.challenge.id.localeCompare(right.challenge.id),
+        )
+        .slice(0, limit)
+        .map(({ challenge }) => challenge),
+    };
+  }
+
+  private surveyInterests(survey: unknown): string[] {
+    if (!survey || typeof survey !== 'object') return [];
+    const interests = (survey as { interests?: unknown }).interests;
+    return Array.isArray(interests)
+      ? interests.filter((interest): interest is string => typeof interest === 'string')
+      : [];
+  }
+
+  private interestsMatch(interest: string, category: string | null): boolean {
+    if (!category) return false;
+    const interestTokens = this.normalizeInterestTokens(interest);
+    const categoryTokens = this.normalizeInterestTokens(category);
+    return interestTokens.some((interestToken) =>
+      categoryTokens.some((categoryToken) => this.tokensMatch(interestToken, categoryToken)),
+    );
+  }
+
+  // 2자 이하 영문/숫자 토큰(ai, it 등)은 부분 일치 시 mail/digital 같은 무관한 단어에
+  // 걸리므로 정확히 같을 때만 매칭한다. 한글 토큰(영상, 창업 등)은 부분 일치를 유지한다.
+  private tokensMatch(left: string, right: string): boolean {
+    if (left === right) return true;
+    const isShortAscii = (token: string) => /^[a-z0-9]{1,2}$/.test(token);
+    if (isShortAscii(left) || isShortAscii(right)) return false;
+    return left.includes(right) || right.includes(left);
+  }
+
+  private normalizeInterestTokens(value: string): string[] {
+    return value
+      .toLowerCase()
+      .replace(/[·/\-_\s()]/g, ' ')
+      .split(' ')
+      .filter(Boolean);
+  }
+
   private async statWithDelta(
     table: typeof challengeViews | typeof bookmarks,
     whereEq: ReturnType<typeof eq>,
@@ -191,7 +287,16 @@ export class ChallengesService {
     const rows = await this.db
       .select({ role: applications.role, total: count() })
       .from(applications)
-      .where(eq(applications.challengeId, challengeId))
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .leftJoin(orders, eq(orders.applicationId, applications.id))
+      .where(
+        and(
+          eq(applications.challengeId, challengeId),
+          // 유료 챌린지의 미결제 신청 시도(pending 주문만 있는 행)는 아직 실제
+          // 신청이 아니므로 지원자 통계에서 제외한다 — 주문이 paid에 도달한 것만 집계.
+          or(eq(challenges.price, 0), eq(orders.status, 'paid')),
+        ),
+      )
       .groupBy(applications.role);
 
     const total = rows.reduce((sum, row) => sum + Number(row.total), 0);

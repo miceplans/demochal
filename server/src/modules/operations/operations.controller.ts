@@ -1,6 +1,6 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { Public } from '../auth/public.decorator.js';
-import { CreateInquiryDto } from './dto/create-inquiry.dto.js';
+import { SubmitOperationsInquiryDto } from './dto/submit-operations-inquiry.dto.js';
 import { OperationsService } from './operations.service.js';
 
 @Controller('operations')
@@ -11,7 +11,7 @@ export class OperationsController {
   @Public()
   @Post('inquiries')
   @HttpCode(201)
-  createInquiry(@Body() dto: CreateInquiryDto) {
+  createInquiry(@Body() dto: SubmitOperationsInquiryDto) {
     return this.operationsService.createInquiry(dto);
   }
 }
