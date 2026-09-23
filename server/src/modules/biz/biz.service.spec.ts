@@ -19,6 +19,7 @@ function createDeps(overrides: {
   stats?: unknown;
   history?: { items: unknown[]; total: number };
   activeAds?: unknown[];
+  monthlyAdExposure?: { label: string; value: number }[];
 }) {
   return {
     businessesService: { findByOwner: vi.fn().mockResolvedValue(overrides.business) },
@@ -26,7 +27,10 @@ function createDeps(overrides: {
     billingHistoryService: {
       forBusiness: vi.fn().mockResolvedValue(overrides.history ?? { items: [], total: 0 }),
     },
-    adsService: { listMine: vi.fn().mockResolvedValue(overrides.activeAds ?? []) },
+    adsService: {
+      listMine: vi.fn().mockResolvedValue(overrides.activeAds ?? []),
+      monthlyExposureForBusiness: vi.fn().mockResolvedValue(overrides.monthlyAdExposure ?? []),
+    },
   };
 }
 
@@ -71,6 +75,7 @@ describe('BizService', () => {
       stats,
       history: { items: historyItems, total: -100 },
       activeAds,
+      monthlyAdExposure: [{ label: '9월', value: 42 }],
     });
     const service = new BizService(
       db,
@@ -86,6 +91,8 @@ describe('BizService', () => {
     expect(deps.challengesService.getStats).toHaveBeenCalledWith('ch-1');
     expect(dashboard.stats).toEqual(stats);
     expect(deps.billingHistoryService.forBusiness).toHaveBeenCalledWith('biz-1', {});
+    expect(deps.adsService.monthlyExposureForBusiness).toHaveBeenCalledWith('biz-1');
+    expect(dashboard.monthlyAdExposure).toEqual([{ label: '9월', value: 42 }]);
     // Only the top 3 history items, but the total covers all of them.
     expect(dashboard.payments).toHaveLength(3);
     expect(dashboard.paymentTotal).toBe(-100);

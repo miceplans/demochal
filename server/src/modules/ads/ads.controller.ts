@@ -16,6 +16,7 @@ import { AdsService } from './ads.service.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import { CreateAdDto } from './dto/create-ad.dto.js';
 import { UpdateAdDto } from './dto/update-ad.dto.js';
+import { RecordAdEventDto } from './dto/record-ad-event.dto.js';
 
 @Controller('ads')
 export class AdsController {
@@ -62,5 +63,17 @@ export class AdsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.adsService.report(id, query, user);
+  }
+
+  @Public()
+  @Post(':id/impressions')
+  recordImpression(@Param('id') id: string, @Body() dto: RecordAdEventDto = {}) {
+    return this.adsService.recordEvent(id, 'impressions', dto);
+  }
+
+  @Public()
+  @Post(':id/clicks')
+  recordClick(@Param('id') id: string, @Body() dto: RecordAdEventDto = {}) {
+    return this.adsService.recordEvent(id, 'clicks', dto);
   }
 }

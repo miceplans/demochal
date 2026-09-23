@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState, type TransitionEvent } from '
 import Image from 'next/image';
 import styled from '@emotion/styled';
 import { colors as c, mobile, shadows } from '@/styles/design';
+import { generated } from '@semochal/api-client';
 
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  /** DB 광고에만 설정한다. 정적/미리보기 슬라이드는 계측하지 않는다. */
+  adId?: string;
 };
 
 type AdCarouselProps = {
@@ -192,7 +195,31 @@ export function AdCarousel({
   const [railIndex, setRailIndex] = useState(1);
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isInViewport, setIsInViewport] = useState(false);
+  const seenImpressions = useRef(new Set<string>());
+  const recordImpression = generated.useRecordAdImpression();
+  const recordClick = generated.useRecordAdClick();
   const itemCount = items.length;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInViewport(Boolean(entry?.isIntersecting)),
+      { threshold: 0.5 },
+    );
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isInViewport || itemCount === 0) return;
+    const itemIndex = (((railIndex - pad) % itemCount) + itemCount) % itemCount;
+    const adId = items[itemIndex]?.adId;
+    if (!adId || seenImpressions.current.has(adId)) return;
+    seenImpressions.current.add(adId);
+    recordImpression.mutate({ id: adId, data: { eventId: crypto.randomUUID() } });
+  }, [isInViewport, itemCount, items, pad, railIndex, recordImpression]);
 
   const getStep = useCallback(() => {
     if (variant === 'hero') return SLIDE_WIDTH.hero + SLIDE_GAP.hero;
@@ -304,7 +331,12 @@ export function AdCarousel({
               <SlideButton
                 key={`${item.src}-${index}`}
                 type="button"
-                onClick={() => goTo(itemIndex)}
+                onClick={() => {
+                  if (item.adId) {
+                    recordClick.mutate({ id: item.adId, data: { eventId: crypto.randomUUID() } });
+                  }
+                  goTo(itemIndex);
+                }}
               >
                 <Image
                   src={item.src}

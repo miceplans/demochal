@@ -33,6 +33,20 @@ function createBusinessesStub(business?: { id: string }) {
   return { findByOwner: vi.fn().mockResolvedValue(business) };
 }
 
+function createReportDbStub(rows: Record<string, unknown>[]) {
+  const db: any = {
+    select: vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([AD]) })) })),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => Promise.resolve(rows)) })),
+      })),
+  };
+  return db;
+}
+
 const OWNER = { id: 'user-1', email: 'biz@x.com', name: 'Biz', role: 'business' };
 const ADMIN = { id: 'admin-1', email: 'a@x.com', name: 'Admin', role: 'admin' };
 const AD = { id: 'ad-1', businessId: 'biz-1', status: 'active', title: '히어로 광고' };
@@ -212,5 +226,59 @@ describe('AdsService.report', () => {
     expect(report.daily).toHaveLength(31);
     expect(report.daily[0]!.date).toBe('2026-08-15');
     expect(report.daily[30]!.date).toBe('2026-09-14');
+  });
+
+  it('aggregates counters by Seoul day/hour and calculates CTR and monthly clicks', async () => {
+    const db = createReportDbStub([
+      { bucketStart: new Date('2026-09-01T00:00:00Z'), impressions: 3, clicks: 1 },
+      { bucketStart: new Date('2026-09-01T15:00:00Z'), impressions: 2, clicks: 2 },
+    ]);
+    const service = new AdsService(db, businesses() as any);
+
+    const report = await service.report('ad-1', { from: '2026-09-01', to: '2026-09-02' }, OWNER);
+
+    expect(report.totals).toEqual({ impressions: 5, clicks: 3, ctr: 60 });
+    expect(report.daily[0]).toEqual({ date: '2026-09-01', impressions: 3, clicks: 1, ctr: 33.33 });
+    expect(report.daily[1]).toEqual({ date: '2026-09-02', impressions: 2, clicks: 2, ctr: 100 });
+    expect(report.hourly[9]).toMatchObject({ impressions: 3, clicks: 1, ctr: 33.33 });
+    expect(report.hourly[0]).toMatchObject({ impressions: 2, clicks: 2, ctr: 100 });
+    expect(report.monthlyClicks).toEqual([{ label: '9월', value: 3 }]);
+  });
+});
+
+describe('AdsService.recordEvent', () => {
+  it('records active ads once per event id and ignores inactive ads', async () => {
+    const insert = vi.fn(() => ({
+      values: vi.fn(() => ({ onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) })),
+    }));
+    const select = vi.fn((..._args: unknown[]) => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([{ id: 'ad-1', status: 'active' }]),
+        })),
+      })),
+    }));
+    const db: any = { select, insert };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(
+      service.recordEvent('ad-1', 'impressions', { eventId: crypto.randomUUID() }),
+    ).resolves.toEqual({ recorded: true });
+    const eventId = crypto.randomUUID();
+    await service.recordEvent('ad-1', 'clicks', { eventId });
+    await service.recordEvent('ad-1', 'clicks', { eventId });
+    expect(insert).toHaveBeenCalledTimes(2);
+
+    select.mockImplementationOnce(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([{ id: 'ad-2', status: 'paused' }]),
+        })),
+      })),
+    }));
+    await expect(service.recordEvent('ad-2', 'impressions', {})).resolves.toEqual({
+      recorded: false,
+    });
+    expect(insert).toHaveBeenCalledTimes(2);
   });
 });
