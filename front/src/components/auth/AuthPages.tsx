@@ -10,6 +10,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { adApi } from '@/lib/ad-api';
+import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
 const Login = styled.div({
   minHeight: 610,
@@ -271,6 +272,7 @@ export function OnboardingPage({ step }: { step: string }) {
                   // local completion still prevents the survey from being shown again.
                 }
                 completeOnboarding();
+                celebrateBadgeAcquisition();
                 router.replace('/');
                 return;
               }
