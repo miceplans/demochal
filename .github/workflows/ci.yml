@@ -13,7 +13,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Never cancel an approved main deployment midway through migration or ECS
+  # rollout. PR verification may still be superseded by a newer PR commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -62,3 +64,155 @@ jobs:
 
       - name: Build worker image
         run: docker build --file server/Dockerfile.worker --tag semochal-worker:ci .
+
+      - name: Run production deployment Lambda unit tests
+        run: node --test infra/terraform/lambda/secret-redeploy.test.mjs
+
+  deploy-production:
+    name: Deploy production API and worker
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # GitHub Environment approval is the release gate. Its deployment branch
+    # policy must permit main only; the OIDC role trusts this environment.
+    # This must match the existing GitHub Environment name exactly; its OIDC
+    # subject is environment-scoped and case-sensitive.
+    environment: Production
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: production-ecs-deploy
+      cancel-in-progress: false
+    env:
+      AWS_REGION: ap-northeast-2
+      PRODUCTION_AWS_DEPLOY_ROLE_ARN: ${{ vars.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+      PRODUCTION_ECS_CLUSTER: ${{ vars.PRODUCTION_ECS_CLUSTER }}
+      PRODUCTION_API_SERVICE: ${{ vars.PRODUCTION_API_SERVICE }}
+      PRODUCTION_WORKER_SERVICE: ${{ vars.PRODUCTION_WORKER_SERVICE }}
+      PRODUCTION_API_ECR_REPOSITORY: ${{ vars.PRODUCTION_API_ECR_REPOSITORY }}
+      PRODUCTION_WORKER_ECR_REPOSITORY: ${{ vars.PRODUCTION_WORKER_ECR_REPOSITORY }}
+      PRODUCTION_API_TASK_DEFINITION: ${{ vars.PRODUCTION_API_TASK_DEFINITION }}
+      PRODUCTION_WORKER_TASK_DEFINITION: ${{ vars.PRODUCTION_WORKER_TASK_DEFINITION }}
+      PRODUCTION_MIGRATE_TASK_DEFINITION: ${{ vars.PRODUCTION_MIGRATE_TASK_DEFINITION }}
+      PRODUCTION_MIGRATE_SUBNET_ID: ${{ vars.PRODUCTION_MIGRATE_SUBNET_ID }}
+      PRODUCTION_MIGRATE_SECURITY_GROUP_ID: ${{ vars.PRODUCTION_MIGRATE_SECURITY_GROUP_ID }}
+      PRODUCTION_API_DESIRED_COUNT: ${{ vars.PRODUCTION_API_DESIRED_COUNT }}
+      PRODUCTION_WORKER_DESIRED_COUNT: ${{ vars.PRODUCTION_WORKER_DESIRED_COUNT }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Verify production deployment configuration
+        run: |
+          required=(
+            PRODUCTION_AWS_DEPLOY_ROLE_ARN PRODUCTION_ECS_CLUSTER
+            PRODUCTION_API_SERVICE PRODUCTION_WORKER_SERVICE
+            PRODUCTION_API_ECR_REPOSITORY PRODUCTION_WORKER_ECR_REPOSITORY
+            PRODUCTION_API_TASK_DEFINITION PRODUCTION_WORKER_TASK_DEFINITION
+            PRODUCTION_MIGRATE_TASK_DEFINITION PRODUCTION_MIGRATE_SUBNET_ID
+            PRODUCTION_MIGRATE_SECURITY_GROUP_ID PRODUCTION_API_DESIRED_COUNT
+            PRODUCTION_WORKER_DESIRED_COUNT
+          )
+          for name in "${required[@]}"; do
+            test -n "${!name}" || { echo "Missing production Environment variable: $name" >&2; exit 1; }
+          done
+
+      - name: Configure AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.PRODUCTION_AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push immutable release images
+        id: images
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          RELEASE_TAG: deploy-${{ github.sha }}
+        run: |
+          api_image="$REGISTRY/$PRODUCTION_API_ECR_REPOSITORY:$RELEASE_TAG"
+          worker_image="$REGISTRY/$PRODUCTION_WORKER_ECR_REPOSITORY:$RELEASE_TAG"
+          docker build --file server/Dockerfile.api --tag "$api_image" .
+          docker build --file server/Dockerfile.worker --tag "$worker_image" .
+          if ! aws ecr describe-images --repository-name "$PRODUCTION_API_ECR_REPOSITORY" --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
+            docker push "$api_image"
+          fi
+          if ! aws ecr describe-images --repository-name "$PRODUCTION_WORKER_ECR_REPOSITORY" --image-ids imageTag="$RELEASE_TAG" >/dev/null 2>&1; then
+            docker push "$worker_image"
+          fi
+
+          api_digest=$(aws ecr describe-images --repository-name "$PRODUCTION_API_ECR_REPOSITORY" --image-ids imageTag="$RELEASE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          worker_digest=$(aws ecr describe-images --repository-name "$PRODUCTION_WORKER_ECR_REPOSITORY" --image-ids imageTag="$RELEASE_TAG" --query 'imageDetails[0].imageDigest' --output text)
+          test "$api_digest" != None && test "$worker_digest" != None
+          echo "api_image=$REGISTRY/$PRODUCTION_API_ECR_REPOSITORY@$api_digest" >> "$GITHUB_OUTPUT"
+          echo "worker_image=$REGISTRY/$PRODUCTION_WORKER_ECR_REPOSITORY@$worker_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Register release task-definition revisions
+        id: task-definitions
+        env:
+          API_IMAGE: ${{ steps.images.outputs.api_image }}
+          WORKER_IMAGE: ${{ steps.images.outputs.worker_image }}
+        run: |
+          register_revision() {
+            local family="$1" container="$2" image="$3" output="$4"
+            aws ecs describe-task-definition --task-definition "$family" --query taskDefinition --output json \
+              | jq --arg container "$container" --arg image "$image" '
+                  {
+                    family, taskRoleArn, executionRoleArn, networkMode,
+                    containerDefinitions, volumes, placementConstraints,
+                    requiresCompatibilities, cpu, memory, pidMode, ipcMode,
+                    proxyConfiguration, inferenceAccelerators, ephemeralStorage,
+                    runtimePlatform
+                  }
+                  | with_entries(select(.value != null))
+                  | .containerDefinitions |= map(if .name == $container then .image = $image else . end)
+                ' > "/tmp/$output.json"
+            aws ecs register-task-definition --cli-input-json "file:///tmp/$output.json" --query 'taskDefinition.taskDefinitionArn' --output text
+          }
+
+          echo "api=$(register_revision "$PRODUCTION_API_TASK_DEFINITION" api "$API_IMAGE" api)" >> "$GITHUB_OUTPUT"
+          echo "worker=$(register_revision "$PRODUCTION_WORKER_TASK_DEFINITION" worker "$WORKER_IMAGE" worker)" >> "$GITHUB_OUTPUT"
+          echo "migrate=$(register_revision "$PRODUCTION_MIGRATE_TASK_DEFINITION" migrate "$API_IMAGE" migrate)" >> "$GITHUB_OUTPUT"
+
+      - name: Run the approved database migration task
+        env:
+          MIGRATE_TASK_DEFINITION: ${{ steps.task-definitions.outputs.migrate }}
+        run: |
+          task_arn=$(aws ecs run-task \
+            --cluster "$PRODUCTION_ECS_CLUSTER" \
+            --task-definition "$MIGRATE_TASK_DEFINITION" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$PRODUCTION_MIGRATE_SUBNET_ID],securityGroups=[$PRODUCTION_MIGRATE_SECURITY_GROUP_ID],assignPublicIp=ENABLED}" \
+            --count 1 --query 'tasks[0].taskArn' --output text)
+          test -n "$task_arn" && test "$task_arn" != None
+          aws ecs wait tasks-stopped --cluster "$PRODUCTION_ECS_CLUSTER" --tasks "$task_arn"
+          exit_code=$(aws ecs describe-tasks --cluster "$PRODUCTION_ECS_CLUSTER" --tasks "$task_arn" --query 'tasks[0].containers[?name==`migrate`].exitCode | [0]' --output text)
+          test "$exit_code" = 0
+
+      - name: Deploy API and worker revisions
+        env:
+          API_TASK_DEFINITION: ${{ steps.task-definitions.outputs.api }}
+          WORKER_TASK_DEFINITION: ${{ steps.task-definitions.outputs.worker }}
+        run: |
+          aws ecs update-service --cluster "$PRODUCTION_ECS_CLUSTER" --service "$PRODUCTION_API_SERVICE" --task-definition "$API_TASK_DEFINITION" --desired-count "$PRODUCTION_API_DESIRED_COUNT" --force-new-deployment >/dev/null
+          aws ecs update-service --cluster "$PRODUCTION_ECS_CLUSTER" --service "$PRODUCTION_WORKER_SERVICE" --task-definition "$WORKER_TASK_DEFINITION" --desired-count "$PRODUCTION_WORKER_DESIRED_COUNT" --force-new-deployment >/dev/null
+          aws ecs wait services-stable --cluster "$PRODUCTION_ECS_CLUSTER" --services "$PRODUCTION_API_SERVICE" "$PRODUCTION_WORKER_SERVICE"
+
+          verify_primary_revision() {
+            local service="$1" expected_task_definition="$2"
+            local primary_task_definition rollout_state
+            primary_task_definition=$(aws ecs describe-services --cluster "$PRODUCTION_ECS_CLUSTER" --services "$service" --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' --output text)
+            rollout_state=$(aws ecs describe-services --cluster "$PRODUCTION_ECS_CLUSTER" --services "$service" --query 'services[0].deployments[?status==`PRIMARY`].rolloutState | [0]' --output text)
+            test "$primary_task_definition" = "$expected_task_definition"
+            test "$rollout_state" = COMPLETED
+          }
+
+          # The ECS waiter becomes stable after a circuit-breaker rollback as
+          # well. Assert the primary revision to make that rollback fail CI.
+          verify_primary_revision "$PRODUCTION_API_SERVICE" "$API_TASK_DEFINITION"
+          verify_primary_revision "$PRODUCTION_WORKER_SERVICE" "$WORKER_TASK_DEFINITION"
