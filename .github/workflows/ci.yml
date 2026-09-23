@@ -76,7 +76,9 @@ jobs:
     timeout-minutes: 45
     # GitHub Environment approval is the release gate. Its deployment branch
     # policy must permit main only; the OIDC role trusts this environment.
-    environment: production
+    # This must match the existing GitHub Environment name exactly; its OIDC
+    # subject is environment-scoped and case-sensitive.
+    environment: Production
     permissions:
       contents: read
       id-token: write
