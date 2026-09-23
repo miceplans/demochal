@@ -1,12 +1,12 @@
 'use client';
 import Link from 'next/link';
 import styled from '@emotion/styled';
-import { type Team, teams } from '@/data/user-design';
+import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Tag, Row, Muted } from '@/components/common/Primitives';
 
-export function TeamCard({ team = teams[0] }: { team?: Team }) {
+export function TeamCard({ team }: { team: Team }) {
   return (
     <Card data-component="team-card">
       <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />

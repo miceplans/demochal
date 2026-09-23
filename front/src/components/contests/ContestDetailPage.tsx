@@ -22,9 +22,15 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
+import { toTeamCard } from '@/components/teams/team-model';
+import { generated } from '@semochal/api-client';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
   const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
+  // TODO: 챌린지 상세가 아직 목데이터(challengeId 없음)라 팀모집 탭은 전체 모집글을 보여준다.
+  // 상세를 GET /challenges/{id}로 연결하면 listTeams({ challengeId })로 좁힌다.
+  // https://tanstack.com/query/latest/docs/framework/react/guides/dependent-queries
+  const { data: teamList } = generated.useListTeams(undefined, { query: { enabled: teamTab } });
   const toggle = useUserStore((s) => s.toggleBookmark);
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
@@ -109,8 +115,8 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
             </Tabs>
             {teamTab ? (
               <TeamGrid>
-                {Array.from({ length: 6 }, (_, i) => (
-                  <TeamCard key={i} />
+                {(teamList?.data ?? []).slice(0, 6).map((team) => (
+                  <TeamCard key={team.id} team={toTeamCard(team)} />
                 ))}
               </TeamGrid>
             ) : (

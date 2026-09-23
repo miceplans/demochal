@@ -17,21 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type SubmitOperationsInquiryBody = {
-  /**
-   * @minLength 1
-   * @maxLength 100
-   */
-  name: string;
-  /**
-   * 전화번호 또는 이메일
-   * @minLength 1
-   * @maxLength 200
-   */
-  contact: string;
-  /**
-   * @minLength 1
-   * @maxLength 4000
-   */
-  content: string;
-};
+export type TeamMemberStatus = (typeof TeamMemberStatus)[keyof typeof TeamMemberStatus];
+
+export const TeamMemberStatus = {
+  pending: 'pending',
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;

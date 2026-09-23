@@ -1,48 +1,153 @@
 'use client';
-import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
-import { Button } from '@/components/common/Primitives';
+import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
-import { teamDetail } from '@/data/user-design';
+import { useUserStore } from '@/stores/useUserStore';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { TEAM_COVER_FALLBACK, teamCapacity } from './team-model';
+
+function formatDate(iso?: string) {
+  if (!iso) return '-';
+  const date = new Date(iso);
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 export function TeamDetailPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const pathname = usePathname();
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const bookmarkKey = `team:${id}`;
+  const saved = useUserStore((s) => s.bookmarks.includes(bookmarkKey));
+  const toggleBookmark = useUserStore((s) => s.toggleBookmark);
+
   // UserShell과 같은 쿼리 키라 캐시를 공유한다 — 페이지 진입만으로는 로그인을 요구하지 않는다.
-  const { data: auth, isPending } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: auth, isPending: authPending } = generated.useGetMyAuthInfo({
+    query: { retry: false },
+  });
+  const me = auth?.status === 200 ? auth.data : undefined;
+  const teamQuery = generated.useGetTeam(id, { query: { retry: false } });
+  const team = teamQuery.data?.status === 200 ? teamQuery.data.data : undefined;
+  const challengeQuery = generated.useGetChallenge(team?.challengeId ?? '', {
+    query: { enabled: !!team?.challengeId },
+  });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+
+  const goLogin = () => router.push(`/login?next=${encodeURIComponent(pathname)}`);
+  const join = generated.useJoinTeam({
+    mutation: {
+      onSuccess: () => {
+        toast.success('팀 신청을 보냈어요', '팀장이 확인하면 알림으로 알려드릴게요');
+        void queryClient.invalidateQueries({ queryKey: generated.getGetTeamQueryKey(id) });
+      },
+      onError: (error) => {
+        if (error instanceof ApiError && error.status === 401) goLogin();
+        else if (error instanceof ApiError && error.status === 400)
+          toast.error('신청할 수 없어요', '이미 신청했거나 내가 만든 팀이에요');
+      },
+    },
+  });
+
+  const share = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      toast.success('링크를 복사했어요');
+    } catch {
+      toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
+    }
+  };
+
+  if (teamQuery.isPending) {
+    return (
+      <UserShell title="팀 모집글" back="/teams">
+        <Content />
+      </UserShell>
+    );
+  }
+  if (!team) {
+    return (
+      <UserShell title="팀 모집글" back="/teams">
+        <Content>
+          <Muted>모집글을 찾을 수 없어요.</Muted>
+        </Content>
+      </UserShell>
+    );
+  }
+
+  const members = team.members ?? [];
+  const accepted = members.filter((member) => member.status === 'accepted');
+  const myMembership = me ? members.find((member) => member.userId === me.id) : undefined;
+  const isLeader = !!me && me.id === team.leaderUserId;
+  const capacity = teamCapacity(team);
+  const openRoles = (team.openRoles ?? []).map((slot) => slot.role).filter(Boolean);
+  const facts = [
+    ['필요역할', openRoles.length ? openRoles.join(', ') : '없음'],
+    ['우대사항', team.preferred || '없음'],
+    ['기타', team.etc || '없음'],
+  ];
+  const ctaLabel = isLeader
+    ? '내가 만든 모집글'
+    : myMembership?.status === 'pending'
+      ? '신청 완료 · 검토 중'
+      : myMembership?.status === 'accepted'
+        ? '참여 중인 팀'
+        : myMembership?.status === 'rejected'
+          ? '신청이 거절됐어요'
+          : '팀 신청하기';
   const apply = () => {
-    if (auth?.status !== 200) {
-      router.push(`/login?next=${encodeURIComponent(pathname)}`);
+    if (!me) {
+      goLogin();
       return;
     }
-    // TODO: 팀 합류 신청 API가 아직 없다(openapi.yaml /teams 에 신청 엔드포인트 미정의) — 추가 후 mutation으로 연결.
-    // https://tanstack.com/query/latest/docs/framework/react/guides/mutations
-    toast.success('팀 신청을 보냈어요', '팀장이 확인하면 알림으로 알려드릴게요');
+    join.mutate({ id, data: {} });
   };
-  const facts = [
-    ['필요역할', teamDetail.recruitingRoles.join(', ')],
-    ['우대사항', teamDetail.preferred],
-    ['기타', teamDetail.etc],
-  ];
+
   return (
     <UserShell title="팀 모집글" back="/teams">
       <Content>
         <Header>
           <Cover
-            src={teamDetail.poster}
-            alt={`${teamDetail.challenge} 포스터`}
+            src={TEAM_COVER_FALLBACK}
+            alt={`${team.challengeTitle ?? '챌린지'} 포스터`}
             width={1200}
             height={222}
           />
-          <div className="heading">
-            <h1>{teamDetail.title}</h1>
-            <p>{teamDetail.challenge}</p>
-          </div>
+          <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div className="heading">
+              <h1>
+                {team.title} ({accepted.length}/{capacity})
+              </h1>
+              <p>{team.challengeTitle}</p>
+            </div>
+            <Row gap={8}>
+              <BookmarkButton
+                aria-label="북마크"
+                aria-pressed={saved}
+                onClick={() => {
+                  toggleBookmark(bookmarkKey);
+                  toast.success(saved ? '북마크를 해제했어요' : '북마크에 저장했어요');
+                }}
+              >
+                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+              </BookmarkButton>
+              <Button small tone="plain" onClick={share}>
+                <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
+                공유
+              </Button>
+              <IconLink href={`/reports/new?type=team&id=${team.id}`} aria-label="신고">
+                <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
+              </IconLink>
+            </Row>
+          </Row>
           <Facts>
             {facts.map(([label, value]) => (
               <div key={label}>
@@ -56,7 +161,7 @@ export function TeamDetailPage() {
           <Main>
             <section>
               <h2>팀 소개</h2>
-              <p className="intro">{teamDetail.introduction}</p>
+              <p className="intro">{team.introduction || '아직 팀 소개가 없어요.'}</p>
             </section>
             <section>
               <h2>팀 현황</h2>
@@ -69,11 +174,11 @@ export function TeamDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {teamDetail.roster.map((member) => (
-                    <tr key={member.name}>
+                  {accepted.map((member) => (
+                    <tr key={member.id}>
                       <td>{member.name}</td>
-                      <td>{member.role}</td>
-                      <td>{member.position}</td>
+                      <td>{member.role ?? '-'}</td>
+                      <td>{member.userId === team.leaderUserId ? '팀장' : '팀원'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -81,18 +186,25 @@ export function TeamDetailPage() {
             </section>
           </Main>
           <Sidebar>
-            <Button type="button" fullWidth disabled={isPending} onClick={apply}>
-              팀 신청하기
+            <Button
+              type="button"
+              fullWidth
+              disabled={authPending || join.isPending || isLeader || !!myMembership}
+              onClick={apply}
+            >
+              {ctaLabel}
             </Button>
             <Summary>
               <b>대회 요약</b>
               <dl>
                 <dt>마감일</dt>
-                <dd>{teamDetail.summary.deadline}</dd>
-                <dt>총 상금</dt>
-                <dd>{teamDetail.summary.prizeTotal}</dd>
+                <dd>{formatDate(challenge?.endDate)}</dd>
                 <dt>팀 구성</dt>
-                <dd>{teamDetail.summary.teamSize}</dd>
+                <dd>
+                  {accepted.length}/{capacity}명
+                </dd>
+                <dt>지역</dt>
+                <dd>{team.region || '무관'}</dd>
               </dl>
             </Summary>
           </Sidebar>
@@ -107,7 +219,7 @@ const Header = styled.div({
   flexDirection: 'column',
   gap: 24,
   marginBottom: 32,
-  '.heading': { display: 'flex', flexDirection: 'column', gap: 8 },
+  '.heading': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   h1: { ...textStyle.display, fontSize: 22, fontWeight: 700 },
   '.heading p': { ...textStyle.caption, color: c.gray900 },
   [mobile]: { gap: 20, marginBottom: 24 },
@@ -120,6 +232,19 @@ const Cover = styled.img({
   borderRadius: 19,
   background: c.gray100,
   [mobile]: { height: 180, borderRadius: 12 },
+});
+const BookmarkButton = styled(IconButton)({
+  '&[aria-pressed="true"], &[aria-pressed="true"]:hover': { background: c.lightBlue },
+});
+const IconLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 4,
+  borderRadius: 6,
+  transition: 'background 0.15s ease, transform 0.1s ease',
+  '&:hover': { background: c.gray50 },
+  '&:active': { transform: 'scale(0.85)' },
 });
 const Facts = styled.dl({
   display: 'flex',

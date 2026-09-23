@@ -93,34 +93,6 @@ export const categories = [
 ];
 export const roles = ['프론트엔드', '백엔드', '디자이너', '기획자', '풀스택'];
 
-// --- 팀 모집글 상세 ---
-
-export type TeamDetail = {
-  title: string;
-  challenge: string;
-  poster: string;
-  recruitingRoles: string[];
-  preferred: string;
-  etc: string;
-  introduction: string;
-  roster: { name: string; role: string; position: '팀장' | '팀원' }[];
-  summary: { deadline: string; prizeTotal: string; teamSize: string };
-};
-export const teamDetail: TeamDetail = {
-  title: '김창윤의 팀 (3/4)',
-  challenge: '2025 공공데이터 활용 창업 대회',
-  poster: mockChallengePoster,
-  recruitingRoles: ['백엔드', '디자이너'],
-  preferred: '없음',
-  etc: '없음',
-  introduction:
-    '다정한 팀입니다. 어떤 분이 오시든 대화를 통해서 서로를 알아갈 자신이 있습니다.\n저희는 AI 학습쪽으로 아이디어를 생각하고 있습니다.\n원하는 것이 무엇이든 조율해가면서 할 자신이 있습니다.',
-  roster: [
-    { name: '김창윤', role: '프론트엔드', position: '팀장' },
-    { name: '조은비', role: '백엔드', position: '팀원' },
-  ],
-  summary: { deadline: '2025.07.15', prizeTotal: '3,600만원', teamSize: '2~5인' },
-};
 export const stacks = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Figma', 'Python'];
 export const skillCatalog = [
   'React',
