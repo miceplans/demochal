@@ -270,10 +270,9 @@ locals {
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
-  # The migration task needs DB credentials and JWT_SECRET because the shared
-  # production environment validator runs before `dist/migrate.js` starts.
-  # Toss/OCR/OAuth keys remain unnecessary for migrations.
-  migrate_secrets = [for s in local.app_secrets : s if contains(["DATABASE_URL", "JWT_SECRET"], s.name)]
+  # The migration task only needs DB credentials, not the full application
+  # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).
+  migrate_secrets = [for s in local.app_secrets : s if s.name == "DATABASE_URL"]
 }
 
 resource "aws_ecs_task_definition" "api" {
