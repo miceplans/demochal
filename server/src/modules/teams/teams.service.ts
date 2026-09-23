@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { challenges, teamMembers, teams, users } from '../../db/schema.js';
@@ -28,22 +28,57 @@ export class TeamsService {
   ) {}
 
   // openRoles is jsonb, so the role filter scans slots in JS after one cheap
-  // query; the table is small enough that this stays fast.
+  // query; the table is small enough that this stays fast. Accepted members are
+  // loaded in one extra query so list cards can show filled roles and headcount.
   async list(filters: TeamListFilters) {
-    const rows = await this.db.select().from(teams).orderBy(desc(teams.createdAt));
+    const rows = await this.db
+      .select({ team: teams, challengeTitle: challenges.title, leaderName: users.name })
+      .from(teams)
+      .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .orderBy(desc(teams.createdAt));
     const q = filters.q?.toLowerCase();
-    return rows.filter((team) => {
+    const matched = rows.filter(({ team }) => {
       if (filters.challengeId && team.challengeId !== filters.challengeId) return false;
       if (filters.region && team.region !== filters.region) return false;
-      if (q && !team.title.toLowerCase().includes(q)) return false;
+      if (
+        q &&
+        !team.title.toLowerCase().includes(q) &&
+        !(team.introduction ?? '').toLowerCase().includes(q)
+      ) {
+        return false;
+      }
       if (filters.role && !(team.openRoles ?? []).some((slot) => slot.role === filters.role)) {
         return false;
       }
       return true;
     });
+    if (matched.length === 0) return [];
+
+    const accepted = await this.db
+      .select({ teamId: teamMembers.teamId, role: teamMembers.role })
+      .from(teamMembers)
+      .where(
+        and(
+          inArray(
+            teamMembers.teamId,
+            matched.map(({ team }) => team.id),
+          ),
+          eq(teamMembers.status, 'accepted'),
+        ),
+      );
+    return matched.map(({ team, challengeTitle, leaderName }) => ({
+      ...team,
+      challengeTitle,
+      leaderName,
+      filledRoles: accepted
+        .filter((member) => member.teamId === team.id)
+        .map((member) => member.role)
+        .filter((role): role is string => !!role),
+    }));
   }
 
-  async create(dto: CreateTeamDto, userId: string) {
+  async create(dto: CreateTeamDto, user: AuthenticatedUser) {
     const [challenge] = await this.db
       .select({ id: challenges.id })
       .from(challenges)
@@ -55,8 +90,12 @@ export class TeamsService {
       .insert(teams)
       .values({
         challengeId: dto.challengeId,
-        leaderUserId: userId,
-        title: dto.title,
+        leaderUserId: user.id,
+        title: dto.title?.trim() || `${user.name}의 팀`,
+        leaderRole: dto.myRole,
+        introduction: dto.introduction,
+        preferred: dto.preferred,
+        etc: dto.etc,
         region: dto.region,
         openRoles: dto.openRoles ?? [],
         status: 'recruiting',
@@ -66,7 +105,7 @@ export class TeamsService {
     // The creator joins their own team immediately as an accepted member.
     await this.db.insert(teamMembers).values({
       teamId: team!.id,
-      userId,
+      userId: user.id,
       role: dto.myRole,
       status: 'accepted',
     });
