@@ -145,6 +145,9 @@ export function BizPostingManagePage() {
                   onChange={(e) => void updateApplication(application, 'status', e.target.value)}
                   aria-label="지원 상태"
                 >
+                  <option value="pending" disabled>
+                    pending
+                  </option>
                   {['submitted', 'reviewing', 'needs_revision', 'accepted', 'rejected'].map(
                     (value) => (
                       <option key={value} value={value}>

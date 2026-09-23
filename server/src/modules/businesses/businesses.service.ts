@@ -51,6 +51,7 @@ export class BusinessesService {
   }
 
   async listMyChallenges(ownerUserId: string, cursor?: string, limit = 20) {
+    const pageSize = Number.isFinite(limit) ? Math.min(Math.max(Math.trunc(limit), 1), 100) : 20;
     const where = cursor ? lt(challenges.createdAt, new Date(cursor)) : undefined;
     const rows = await this.db
       .select({ challenge: challenges })
@@ -58,9 +59,9 @@ export class BusinessesService {
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(and(eq(businesses.ownerUserId, ownerUserId), where))
       .orderBy(desc(challenges.createdAt))
-      .limit(Math.min(Math.max(limit, 1), 100) + 1);
-    const hasMore = rows.length > limit;
-    const items = rows.slice(0, limit).map(({ challenge }) => challenge);
+      .limit(pageSize + 1);
+    const hasMore = rows.length > pageSize;
+    const items = rows.slice(0, pageSize).map(({ challenge }) => challenge);
     return { items, nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null };
   }
 

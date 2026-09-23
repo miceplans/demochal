@@ -64,8 +64,8 @@ export function BizPostingFormPage() {
         description: description.trim(),
         price: parsedPrice,
         capacity: parsedCapacity,
-        startDate: new Date(`${startDate}T00:00:00.000Z`).toISOString(),
-        endDate: new Date(`${endDate}T23:59:59.000Z`).toISOString(),
+        startDate: toLocalBoundary(startDate, false),
+        endDate: toLocalBoundary(endDate, true),
         category: category || null,
       });
       router.push(hrefOf(`/postings/${challenge.id}`));
@@ -187,3 +187,16 @@ const Grid = styled.div({
 });
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 });
 const Error = styled.p({ color: c.red, margin: 0 });
+
+function toLocalBoundary(value: string, endOfDay: boolean) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(
+    year,
+    month - 1,
+    day,
+    endOfDay ? 23 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 59 : 0,
+    endOfDay ? 999 : 0,
+  ).toISOString();
+}
