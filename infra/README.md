@@ -29,7 +29,7 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
      --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw migrate_task_subnet_id)],securityGroups=[$(terraform output -raw migrate_task_security_group_id)],assignPublicIp=ENABLED}"
    ```
 
-   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 스키마 변경마다(즉 새 `server/drizzle/*.sql`이 추가된 `api_image`를 배포할 때마다) 재실행해야 합니다.
+   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 이 수동 실행은 최초 bootstrap용입니다. 이후 스키마 변경(새 `server/drizzle/*.sql`)은 `main` 배포 시 CI가 `production` 승인 후 같은 migrate task를 서비스 갱신 전에 자동 실행합니다([Production ECS release automation](#production-ecs-release-automation)).
 
 6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
 7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
@@ -59,8 +59,8 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
    갱신합니다. bundle은 image runtime에 포함되므로 별도 CA secret이나
    `NODE_TLS_REJECT_UNAUTHORIZED` 설정은 사용하지 않습니다.
 4. API service와 필요 시 worker를 배포하고, API `/health`와 CloudWatch 로그를 확인합니다.
-   마이그레이션이 필요한 release라면 새 이미지의 migrate task를 먼저 실행해 exit code 0을
-   확인합니다.
+   마이그레이션은 CI 배포가 서비스 갱신 전에 migrate task로 적용하고 exit code 0을
+   확인합니다. CI를 거치지 않는 수동 배포라면 새 이미지의 migrate task를 먼저 실행합니다.
 
 인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
 확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는

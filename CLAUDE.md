@@ -15,7 +15,7 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 ## Server 규칙 (`server/`)
 
 - **구조**: NestJS 모듈 — auth, users, businesses, verifications, challenges, applications, orders, payments, files, notifications, ads. `DbModule`/`QueueModule`은 `@Global`. 인증은 전역 `JwtAuthGuard`(HttpOnly 쿠키 JWT)이며 매 요청 DB에서 유저를 다시 로드해 권한 변경이 즉시 반영된다(`modules/auth/jwt-auth.guard.ts`) — 이 동작을 우회하는 캐싱을 추가하지 않는다. 공개 엔드포인트는 `modules/auth/public.decorator.ts`의 `@Public()`으로 명시하고, 관리자 권한은 `AdminRoleGuard`로 검사한다.
-- **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`)하고 **현재는 수동 실행** — 코드에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
+- **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`, `drizzle/meta/_journal.json`의 `when`은 이전 항목보다 커야 적용된다)하고, **적용은 CI 배포가 담당**한다 — `main` push → GitHub Environment `production` 승인 → migrate ECS 태스크(`dist/migrate.js`) 실행 → API/워커 갱신 순서(`ci.yml`). 따로 수동 실행하지 않으며, 앱 부팅(main.ts/worker.ts)에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
 - **워커**: `worker.ts`는 SQS(`SQS_VERIFICATIONS_QUEUE_URL`) 폧 루프만 돌리고 HTTP를 열지 않는다. 워커 전용 로직은 `worker.module.ts`에 등록된 모듈(현재 verifications, notifications)에만 둔다.
 - **설정**: `config/env.ts`는 zod 스키마로 `process.env`를 검증한다(production에서 `JWT_SECRET` 누락 시 실패). 신규 환경변수는 여기 + `server/.env.example`에 함께 추가.
 
@@ -43,6 +43,6 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 ## CI/CD
 
-- `ci.yml`: PR/push 시 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드. 배포 자격증명은 의도적으로 없음.
+- `ci.yml`: PR/push 시 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드. `main` push는 GitHub Environment `production` 승인 후 OIDC로 ECR push → 마이그레이션 태스크 → ECS API/워커 배포까지 진행한다(장기 AWS 자격증명은 저장하지 않는다).
 - `code-review-glm.yml`: PR 리뷰(claude-code-action → Z.AI GLM). 인라인 코멘트 작성에는 `pull-requests: write` 권한이 필요하다.
 - `qodo-merge.yml`: PR-Agent 자동 describe/review/improve.
