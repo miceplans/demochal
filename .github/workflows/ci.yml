@@ -98,6 +98,9 @@ jobs:
       PRODUCTION_MIGRATE_SECURITY_GROUP_ID: ${{ vars.PRODUCTION_MIGRATE_SECURITY_GROUP_ID }}
       PRODUCTION_API_DESIRED_COUNT: ${{ vars.PRODUCTION_API_DESIRED_COUNT }}
       PRODUCTION_WORKER_DESIRED_COUNT: ${{ vars.PRODUCTION_WORKER_DESIRED_COUNT }}
+
+
+
     steps:
       - name: Check out source
         uses: actions/checkout@v4
@@ -116,7 +119,21 @@ jobs:
           for name in "${required[@]}"; do
             test -n "${!name}" || { echo "Missing production Environment variable: $name" >&2; exit 1; }
           done
-
+      - name: Debug OIDC claims
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const token = await core.getIDToken('sts.amazonaws.com')
+            const payload = JSON.parse(
+              Buffer.from(token.split('.')[1], 'base64url').toString()
+            )
+            console.log({
+              sub: payload.sub,
+              aud: payload.aud,
+              repository: payload.repository,
+              environment: payload.environment,
+              ref: payload.ref
+            })
       - name: Configure AWS credentials through GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:

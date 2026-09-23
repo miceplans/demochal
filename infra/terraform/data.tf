@@ -67,7 +67,7 @@ resource "aws_s3_bucket_cors_configuration" "private" {
   bucket = aws_s3_bucket.private.id
   cors_rule {
     allowed_methods = ["PUT"]
-    allowed_origins = [var.frontend_origin]
+    allowed_origins = split(",", var.frontend_origin)
     allowed_headers = ["Content-Type", "Content-Length"]
     max_age_seconds = 3000
   }
