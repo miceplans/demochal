@@ -22,17 +22,12 @@ export function BizPostingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   useEffect(() => {
-    void (async () => {
-      const all: Challenge[] = [];
-      let cursor: string | undefined;
-      do {
-        const page = await adApi.businesses.listMyChallenges(cursor ? { cursor } : undefined);
-        all.push(...page.items);
-        cursor = page.nextCursor ?? undefined;
-      } while (cursor);
-      setItems(all);
-      if (all[0]) setStats(await adApi.challenges.getStats(all[0].id));
-    })()
+    void adApi.businesses
+      .listMyChallenges()
+      .then(async ({ items: challenges }) => {
+        setItems(challenges);
+        if (challenges[0]) setStats(await adApi.challenges.getStats(challenges[0].id));
+      })
       .catch(() => setError(true))
       .finally(() => setLoading(false));
   }, []);

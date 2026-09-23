@@ -72,9 +72,6 @@ export function BizApplicationsPage() {
                   })
                 }
               >
-                <option value="pending" disabled>
-                  대기
-                </option>
                 <option value="submitted">제출</option>
                 <option value="reviewing">검토중</option>
                 <option value="needs_revision">보완 요청</option>
