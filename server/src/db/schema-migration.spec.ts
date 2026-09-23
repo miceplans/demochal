@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(14);
+    expect(journal.entries).toHaveLength(15);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -171,6 +171,7 @@ describe('migration chain coverage', () => {
       'admin_settings',
       'outbox_events',
       'billing_auth_attempts',
+      'email_send_states',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
@@ -309,6 +310,20 @@ describe('0013_billing_auth_attempts migration', () => {
     expect(sql).toContain('"auth_key_hash" varchar(64) NOT NULL');
     expect(sql).toContain('"card_id" uuid');
     expect(sql).toContain('billing_auth_attempts_auth_key_hash_unique');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0014_email_send_states migration', () => {
+  it('creates the SES send-state idempotency table without destructive DDL', () => {
+    const tag = journal.entries[14]?.tag;
+    expect(tag).toBe('0014_email_send_states');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "email_send_states"');
+    expect(sql).toContain('"outbox_event_id" uuid NOT NULL');
+    expect(sql).toContain('email_send_states_outbox_event_id_unique');
+    expect(sql).toContain('email_send_states_outbox_event_id_outbox_events_id_fk');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

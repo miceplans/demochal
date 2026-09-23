@@ -110,3 +110,13 @@ variable "api_desired_count" {
     error_message = "Test staging supports zero or one API task."
   }
 }
+
+variable "ses_from_email" {
+  description = "Verified SES sender for service emails (e.g. no-reply@miceplans.com). Empty disables email delivery and grants no SES permission."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.ses_from_email == "" || can(regex("^[^@\\s]+@[^@\\s]+$", var.ses_from_email))
+    error_message = "ses_from_email must be empty or a single email address."
+  }
+}

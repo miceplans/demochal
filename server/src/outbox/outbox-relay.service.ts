@@ -24,8 +24,18 @@ export class OutboxRelayService {
    * Assumes a single relay caller at a time (worker.ts runs one poll loop);
    * running multiple worker replicas can double-send a row, which is safe
    * here since SQS delivery is already at-least-once.
+   *
+   * `includeEventId` wraps the row payload in an `{ eventId, payload }`
+   * envelope so the consumer can key idempotent side effects (e.g. SES
+   * sends) on the outbox event id; the default keeps the bare payload shape
+   * used by the verifications queue.
    */
-  async relay(eventType: string, queueUrl: string, batchSize = 10): Promise<void> {
+  async relay(
+    eventType: string,
+    queueUrl: string,
+    batchSize = 10,
+    options?: { includeEventId?: boolean },
+  ): Promise<void> {
     const rows = await this.db
       .select()
       .from(outboxEvents)
@@ -35,7 +45,10 @@ export class OutboxRelayService {
 
     for (const row of rows) {
       try {
-        await this.sqsService.sendMessage(queueUrl, row.payload);
+        const body = options?.includeEventId
+          ? { eventId: row.id, payload: row.payload }
+          : row.payload;
+        await this.sqsService.sendMessage(queueUrl, body);
         await this.db
           .update(outboxEvents)
           .set({ status: 'sent', sentAt: new Date() })
