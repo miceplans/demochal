@@ -46,7 +46,14 @@ const Viewport = styled.div({
   gap: 8,
   zIndex: 100,
   pointerEvents: 'none',
-  [mobile]: { display: 'none' },
+  [mobile]: {
+    top: 'auto',
+    right: 'auto',
+    bottom: 'calc(78px + env(safe-area-inset-bottom) + 16px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    alignItems: 'center',
+  },
 });
 const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
   display: 'flex',
@@ -65,6 +72,11 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
     from: { opacity: 0, transform: 'translateY(-8px)' },
     to: { opacity: 1, transform: 'none' },
   },
+  '@keyframes semo-toast-in-up': {
+    from: { opacity: 0, transform: 'translateY(8px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  [mobile]: { animationName: 'semo-toast-in-up' },
 }));
 const TextBox = styled.div({
   display: 'flex',
