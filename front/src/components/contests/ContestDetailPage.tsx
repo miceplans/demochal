@@ -18,8 +18,8 @@ import {
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
+import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -36,7 +36,10 @@ export function ContestDetailPage({
   teamTab?: boolean;
   challengeId?: string;
 }) {
-  const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
+  // 실제 챌린지 상세만 서버 북마크 대상이다. 데모 상세(/contests/public-data)는 UUID가 없어 비활성.
+  const bookmarkId = challengeId;
+  const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
+  const saved = bookmarks.some((item) => item.id === bookmarkId);
   const [applyVisible, setApplyVisible] = useState(true);
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
@@ -73,7 +76,6 @@ export function ContestDetailPage({
           : [],
       }
     : contestDetail;
-  const toggle = useUserStore((s) => s.toggleBookmark);
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
@@ -144,7 +146,9 @@ export function ContestDetailPage({
               <IconButton
                 aria-label="북마크"
                 aria-pressed={saved}
-                onClick={() => toggle('contest-1')}
+                disabled={!isBookmarkableId(bookmarkId) || isToggling}
+                title={bookmarkId ? undefined : '데모 챌린지는 북마크할 수 없어요'}
+                onClick={() => toggleBookmark(bookmarkId)}
               >
                 <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
               </IconButton>

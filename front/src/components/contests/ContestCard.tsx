@@ -4,8 +4,8 @@ import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { type Contest } from '@/data/user-design';
-import { useUserStore } from '@/stores/useUserStore';
 import { Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
+import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 
 const CategoryTag = styled(Tag)({
   [mobile]: { padding: '3px 6px', ...textStyle.mTagText, lineHeight: 'normal', color: c.gray700 },
@@ -64,13 +64,16 @@ export function ContestCard({
   simple?: boolean;
   href?: string;
 }) {
-  const saved = useUserStore((s) => s.bookmarks.includes(contest.id));
-  const toggle = useUserStore((s) => s.toggleBookmark);
+  const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
+  const bookmarkable = isBookmarkableId(contest.id);
+  const saved = bookmarks.some((challenge) => challenge.id === contest.id);
   const scrapButton = (
     <IconButton
       aria-label={`${contest.title} 북마크`}
       aria-pressed={saved}
-      onClick={() => toggle(contest.id)}
+      disabled={!bookmarkable || isToggling}
+      title={bookmarkable ? undefined : '서버 챌린지 ID가 없어 북마크할 수 없어요'}
+      onClick={() => toggleBookmark(contest.id)}
     >
       <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
     </IconButton>
