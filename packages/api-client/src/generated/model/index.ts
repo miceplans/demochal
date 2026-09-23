@@ -19,6 +19,8 @@
 
 export * from './activityChart';
 export * from './ad';
+export * from './adEvent';
+export * from './adEventResult';
 export * from './adminAdEntry';
 export * from './adminAdEntryStatus';
 export * from './adminAdReport';
@@ -180,6 +182,7 @@ export * from './updateApplicationBody';
 export * from './updateApplicationBodyEvaluation';
 export * from './updateApplicationBodyStatus';
 export * from './updateBusinessBody';
+export * from './updateChallengeRequest';
 export * from './updateMyProfileBody';
 export * from './user';
 export * from './userRole';

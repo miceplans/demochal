@@ -1,303 +1,85 @@
 'use client';
-import { useRouter } from 'next/navigation';
+
+import { useEffect, useState } from 'react';
+import type { Challenge, ChallengeStats } from '@semochal/api-client';
 import styled from '@emotion/styled';
+import { adApi } from '@/lib/ad-api';
 import { colors as c } from '@/styles/design';
-import { textStyle } from '@/styles/typography';
-import { siteHref } from '@/lib/biz';
 import {
   BizContent,
   SectionHeader,
   SectionTitle,
   PrimaryButton,
-  StatBox,
-  BizLink,
+  TableBox,
+  TRow,
   useBizHref,
 } from '@/components/biz/BizShell';
-import { Icon } from '@/components/common/Primitives';
-import {
-  applicantDistribution,
-  chartMonths,
-  myPostingCards,
-  postingStats,
-  recentPosting,
-} from '@/data/biz-design';
-
-function exposureAreaPath(width: number, height: number) {
-  const points = [0.55, 0.3, 0.5, 0.65, 0.35, 0.55, 0.2, 0.45, 0.7, 0.4].map((v, i, arr) => {
-    const x = (i / (arr.length - 1)) * width;
-    const y = height - v * height;
-    return [x, y] as const;
-  });
-  const line = points
-    .map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`)
-    .join(' ');
-  const area = `${line} L${width},${height} L0,${height} Z`;
-  return { line, area };
-}
 
 export function BizPostingsPage() {
-  const router = useRouter();
   const hrefOf = useBizHref();
-  const { line, area } = exposureAreaPath(280, 100);
-
+  const [items, setItems] = useState<Challenge[]>([]);
+  const [stats, setStats] = useState<ChallengeStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    void adApi.businesses
+      .listMyChallenges()
+      .then(async ({ items: challenges }) => {
+        setItems(challenges);
+        if (challenges[0]) setStats(await adApi.challenges.getStats(challenges[0].id));
+      })
+      .catch(() => setError(true))
+      .finally(() => setLoading(false));
+  }, []);
+  const latest = items[0];
   return (
     <BizContent>
-      <section aria-label="공고 성과 요약">
-        <HeaderRow>
-          <Thumb aria-hidden />
-          <HeaderInfo>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <strong style={{ fontSize: 22, color: c.gray900 }}>{recentPosting.title}</strong>
-                <span style={{ color: c.gray700, fontSize: 15 }}>{recentPosting.org}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <Badge>
-                  <BadgeLabel>자격 / 대상</BadgeLabel>
-                  <BadgeValue>{recentPosting.eligibility}</BadgeValue>
-                </Badge>
-                <Badge>
-                  <BadgeLabel>접수기간</BadgeLabel>
-                  <BadgeValue>{recentPosting.period}</BadgeValue>
-                </Badge>
-              </div>
-            </div>
-            <ActionRow>
-              <EditLink href={`/postings/${recentPosting.id}`}>공고 수정</EditLink>
-              <ViewLink href={siteHref('/contests/public-data')}>자세히 보기</ViewLink>
-            </ActionRow>
-          </HeaderInfo>
-        </HeaderRow>
-      </section>
-
-      <StatsRow>
-        <PieBox>
-          <span style={textStyle.h3_2}>지원자 분포</span>
-          <PieRow>
-            <PieCircle pct={applicantDistribution[0].value} aria-hidden />
-            <Legend>
-              {applicantDistribution.map((d, i) => (
-                <LegendRow key={d.label}>
-                  <Dot tone={i === 0 ? 'primary' : 'light'} aria-hidden />
-                  {d.label}
-                  <LegendValue>{d.value}%</LegendValue>
-                </LegendRow>
-              ))}
-            </Legend>
-          </PieRow>
-        </PieBox>
-        <ExposureBox>
-          <span style={{ fontSize: 13, color: c.gray700 }}>공고 노출수</span>
-          <strong style={{ fontSize: 22, color: c.gray900 }}>{postingStats.exposure.value}</strong>
-          <ExposureChart viewBox="0 0 280 100" preserveAspectRatio="none" aria-hidden>
-            <defs>
-              <linearGradient id="exposureFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={c.primary} stopOpacity={0.25} />
-                <stop offset="100%" stopColor={c.primary} stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <path d={area} fill="url(#exposureFill)" />
-            <path
-              d={line}
-              fill="none"
-              stroke={c.primary}
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </ExposureChart>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              ...textStyle.finePrint,
-              color: c.gray300,
-            }}
-          >
-            {chartMonths.map((m) => (
-              <span key={m}>{m}</span>
-            ))}
-          </div>
-          <span style={{ ...textStyle.finePrint, color: c.green }}>
-            {postingStats.exposure.delta}
+      <SectionHeader>
+        <SectionTitle>공고 관리</SectionTitle>
+        <PrimaryButton onClick={() => (window.location.href = hrefOf('/postings/new'))}>
+          챌린지 추가
+        </PrimaryButton>
+      </SectionHeader>
+      {loading && <Message>공고를 불러오는 중입니다.</Message>}
+      {error && <Message>공고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</Message>}
+      {!loading && !error && !latest && <Message>등록된 공고가 없습니다.</Message>}
+      {latest && (
+        <Summary>
+          <strong>{latest.title}</strong>
+          <span>
+            {new Date(latest.startDate).toLocaleDateString('ko-KR')} ~{' '}
+            {new Date(latest.endDate).toLocaleDateString('ko-KR')}
           </span>
-        </ExposureBox>
-      </StatsRow>
-
-      <section aria-label="내가 게시했던 공고">
-        <SectionHeader style={{ marginBottom: 28 }}>
-          <SectionTitle>내가 게시했던 공고</SectionTitle>
-          <PrimaryButton onClick={() => router.push(hrefOf('/postings/new'))}>
-            챌린지 추가
-          </PrimaryButton>
-        </SectionHeader>
-        <PostingsGrid>
-          {myPostingCards.map((card) => (
-            <CardBox key={card.id} href={`/postings/${card.id}`}>
-              <CardThumb closed={card.closed}>
-                {card.closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
-              </CardThumb>
-              <CardBody>
-                <CardTitle>{card.title}</CardTitle>
-                <CardMeta>
-                  <CategoryTag>{card.category}</CategoryTag>
-                  <Dday>{card.dday}</Dday>
-                </CardMeta>
-                <CardBottom>
-                  <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
-                  <TeamBadge>팀 모집 {card.teamCount}건</TeamBadge>
-                </CardBottom>
-              </CardBody>
-            </CardBox>
+          <span>조회 {stats?.clicks.value ?? 0}회</span>
+        </Summary>
+      )}
+      {!loading && items.length > 0 && (
+        <TableBox>
+          {items.map((item) => (
+            <TRow key={item.id}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <strong>{item.title}</strong>
+                <small>
+                  {item.category ?? '미분류'} · {item.status}
+                </small>
+              </div>
+              <a href={hrefOf(`/postings/${item.id}`)}>관리</a>
+            </TRow>
           ))}
-        </PostingsGrid>
-      </section>
+        </TableBox>
+      )}
     </BizContent>
   );
 }
 
-const HeaderRow = styled.div({
+const Summary = styled.div({
   display: 'flex',
   gap: 24,
-  alignItems: 'stretch',
-  width: '100%',
-});
-const Thumb = styled.div({
-  flex: '1 0 0',
-  minWidth: 0,
-  borderRadius: 18,
-  background: c.gray100,
-});
-const HeaderInfo = styled.div({
-  flex: '1 0 0',
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'space-between',
-  gap: 24,
-  padding: '20px 0',
-});
-const Badge = styled.div({ display: 'flex', gap: 9, ...textStyle.finePrint });
-const BadgeLabel = styled.strong({ flexShrink: 0, color: c.gray900 });
-const BadgeValue = styled.span({ color: c.gray700 });
-const ActionRow = styled.div({ display: 'flex', gap: 9, width: '100%' });
-const EditLink = styled(BizLink)({
-  flex: 1,
-  height: 37,
-  display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  border: `1px solid ${c.gray500}`,
-  borderRadius: 6,
-  background: c.white,
-  color: c.gray900,
-  ...textStyle.overline,
-});
-const ViewLink = styled.a({
-  flex: 1,
-  height: 37,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  border: 0,
-  borderRadius: 6,
-  background: c.primary,
-  color: c.white,
-  ...textStyle.subtitle,
-});
-
-const StatsRow = styled.div({ display: 'flex', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' });
-const PieBox = styled(StatBox)({ width: 340, flexShrink: 0, borderRadius: 20, gap: 20 });
-const PieRow = styled.div({ display: 'flex', alignItems: 'center', gap: 32 });
-const PieCircle = styled.div<{ pct: number }>(({ pct }) => ({
-  width: 130,
-  height: 130,
-  borderRadius: '50%',
-  flexShrink: 0,
-  background: `conic-gradient(${c.primary} 0% ${pct}%, ${c.lightBlue} ${pct}% 100%)`,
-}));
-const Legend = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
-const LegendRow = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  ...textStyle.bodySmall,
-});
-const Dot = styled.span<{ tone: 'primary' | 'light' }>(({ tone }) => ({
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  flexShrink: 0,
-  background: tone === 'primary' ? c.primary : c.lightBlue,
-}));
-const LegendValue = styled.strong({ marginLeft: 'auto', color: c.primary, ...textStyle.h3 });
-
-const ExposureBox = styled(StatBox)({ width: 300, flexShrink: 0, justifyContent: 'flex-start' });
-const ExposureChart = styled.svg({ width: '100%', height: 110, marginTop: 8 });
-
-const PostingsGrid = styled.div({ display: 'flex', gap: 16, flexWrap: 'wrap' });
-const CardBox = styled(BizLink)({
-  width: 340,
-  flexShrink: 0,
+  padding: 24,
+  border: `1px solid ${c.gray100}`,
   borderRadius: 12,
-  overflow: 'hidden',
-  background: c.gray100,
-  display: 'block',
-});
-const CardThumb = styled.div<{ closed?: boolean }>(({ closed }) => ({
-  position: 'relative',
-  height: 180,
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  ...(closed
-    ? {
-        '&::after': {
-          content: '""',
-          position: 'absolute',
-          inset: 0,
-          background: 'rgba(0,0,0,0.1)',
-        },
-      }
-    : {}),
-}));
-const CardClosedLabel = styled.span({
-  position: 'relative',
-  zIndex: 1,
-  ...textStyle.h3_2,
-  color: c.gray100,
-});
-const CardBody = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  padding: 14,
-  background: c.white,
-  borderRadius: '0 0 6px 6px',
-});
-const CardTitle = styled.p({ ...textStyle.h3_2, color: c.gray900 });
-const CardMeta = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-});
-const CategoryTag = styled.span({
-  background: c.gray100,
   color: c.gray700,
-  borderRadius: 4,
-  padding: '3px 8px',
-  ...textStyle.finePrint,
+  '& strong': { color: c.gray900, fontSize: 22 },
 });
-const Dday = styled.span({ color: c.primary, ...textStyle.overline });
-const CardBottom = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-});
-const TeamBadge = styled.span({
-  background: c.lightBlue,
-  color: c.primary,
-  borderRadius: 4,
-  padding: '4px 8px',
-  ...textStyle.finePrint,
-});
+const Message = styled.p({ color: c.gray500, padding: '48px 0', textAlign: 'center' });

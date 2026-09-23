@@ -4,11 +4,23 @@ import { useCallback, useEffect, useRef, useState, type TransitionEvent } from '
 import Image from 'next/image';
 import styled from '@emotion/styled';
 import { colors as c, mobile, shadows } from '@/styles/design';
+import { generated } from '@semochal/api-client';
 
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  /** DB 광고에만 설정한다. 정적/미리보기 슬라이드는 계측하지 않는다. */
+  adId?: string;
 };
+
+// 계측 비콘은 useMutation을 쓰지 않는다. 실패가 전역 MutationCache 토스트로
+// 방문자에게 노출되면 안 되므로 조용히 버린다.
+function sendAdBeacon(
+  send: (id: string, event: { eventId: string }) => Promise<unknown>,
+  adId: string,
+) {
+  void send(adId, { eventId: crypto.randomUUID() }).catch(() => undefined);
+}
 
 type AdCarouselProps = {
   ariaLabel: string;
@@ -192,7 +204,29 @@ export function AdCarousel({
   const [railIndex, setRailIndex] = useState(1);
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const [isInViewport, setIsInViewport] = useState(false);
+  const seenImpressions = useRef(new Set<string>());
   const itemCount = items.length;
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsInViewport(Boolean(entry?.isIntersecting)),
+      { threshold: 0.5 },
+    );
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!isInViewport || itemCount === 0) return;
+    const itemIndex = (((railIndex - pad) % itemCount) + itemCount) % itemCount;
+    const adId = items[itemIndex]?.adId;
+    if (!adId || seenImpressions.current.has(adId)) return;
+    seenImpressions.current.add(adId);
+    sendAdBeacon(generated.recordAdImpression, adId);
+  }, [isInViewport, itemCount, items, pad, railIndex]);
 
   const getStep = useCallback(() => {
     if (variant === 'hero') return SLIDE_WIDTH.hero + SLIDE_GAP.hero;
@@ -304,7 +338,10 @@ export function AdCarousel({
               <SlideButton
                 key={`${item.src}-${index}`}
                 type="button"
-                onClick={() => goTo(itemIndex)}
+                onClick={() => {
+                  if (item.adId) sendAdBeacon(generated.recordAdClick, item.adId);
+                  goTo(itemIndex);
+                }}
               >
                 <Image
                   src={item.src}

@@ -102,8 +102,15 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1790150000000,
-      "tag": "0015_biz_signup_contract",
+      "when": 1790151251341,
+      "tag": "0015_add_ad_event_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790160000000,
+      "tag": "0016_biz_signup_contract",
       "breakpoints": true
     }
   ]

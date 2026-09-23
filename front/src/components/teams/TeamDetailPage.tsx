@@ -7,7 +7,7 @@ import { ApiError, generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
 import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
-import { useUserStore } from '@/stores/useUserStore';
+import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { TEAM_COVER_FALLBACK, teamCapacity } from './team-model';
@@ -26,9 +26,7 @@ export function TeamDetailPage() {
   const pathname = usePathname();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const bookmarkKey = `team:${id}`;
-  const saved = useUserStore((s) => s.bookmarks.includes(bookmarkKey));
-  const toggleBookmark = useUserStore((s) => s.toggleBookmark);
+  const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
 
   // UserShell과 같은 쿼리 키라 캐시를 공유한다 — 페이지 진입만으로는 로그인을 요구하지 않는다.
   const { data: auth, isPending: authPending } = generated.useGetMyAuthInfo({
@@ -41,6 +39,8 @@ export function TeamDetailPage() {
     query: { enabled: !!team?.challengeId },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const bookmarkId = challenge?.id;
+  const saved = bookmarks.some((item) => item.id === bookmarkId);
 
   const goLogin = () => router.push(`/login?next=${encodeURIComponent(pathname)}`);
   const join = generated.useJoinTeam({
@@ -132,9 +132,10 @@ export function TeamDetailPage() {
               <BookmarkButton
                 aria-label="북마크"
                 aria-pressed={saved}
+                disabled={!isBookmarkableId(bookmarkId) || isToggling}
+                title={bookmarkId ? undefined : '챌린지 정보가 없어 북마크할 수 없어요'}
                 onClick={() => {
-                  toggleBookmark(bookmarkKey);
-                  toast.success(saved ? '북마크를 해제했어요' : '북마크에 저장했어요');
+                  toggleBookmark(bookmarkId);
                 }}
               >
                 <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />

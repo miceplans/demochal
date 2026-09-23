@@ -171,3 +171,62 @@ describe('ChallengesService.listRecommended', () => {
     expect(defaultResult.items).toHaveLength(6);
   });
 });
+
+describe('ChallengesService.update', () => {
+  const owner = { id: 'user-1', role: 'business' };
+  const current = {
+    startDate: new Date('2030-01-01T00:00:00Z'),
+    endDate: new Date('2030-01-31T00:00:00Z'),
+  };
+
+  function createUpdateService(rows: unknown[]) {
+    const limit = vi.fn().mockResolvedValue(rows);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const returning = vi.fn().mockResolvedValue([{ id: 'ch-1', title: 'new' }]);
+    const set = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) });
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+      update: vi.fn().mockReturnValue({ set }),
+    } as any;
+    return { service: new ChallengesService(db, {} as any), db, set, where };
+  }
+
+  it('updates only the provided fields for the owning business', async () => {
+    const { service, set } = createUpdateService([current]);
+    const result = await service.update('ch-1', { title: 'new', category: null }, owner);
+    expect(result).toEqual({ id: 'ch-1', title: 'new' });
+    expect(set).toHaveBeenCalledWith({ title: 'new', category: null });
+  });
+
+  it('returns 404 when the challenge is missing or owned by another business', async () => {
+    const { service, db } = createUpdateService([]);
+    await expect(service.update('ch-1', { title: 'x' }, owner)).rejects.toThrow(
+      'Challenge not found',
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('scopes the lookup to the owner unless the user is an admin', async () => {
+    const ownerCall = createUpdateService([current]);
+    await ownerCall.service.update('ch-1', { title: 'x' }, owner);
+    const adminCall = createUpdateService([current]);
+    await adminCall.service.update('ch-1', { title: 'x' }, { id: 'admin-1', role: 'admin' });
+    expect(collectSqlValues(ownerCall.where.mock.calls[0]?.[0])).toContain('user-1');
+    expect(collectSqlValues(adminCall.where.mock.calls[0]?.[0])).not.toContain('admin-1');
+  });
+
+  it('rejects an end date before the (existing) start date', async () => {
+    const { service, db } = createUpdateService([current]);
+    await expect(
+      service.update('ch-1', { endDate: '2029-12-31T00:00:00Z' }, owner),
+    ).rejects.toThrow('endDate must not be before startDate');
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects an empty patch', async () => {
+    const { service } = createUpdateService([current]);
+    await expect(service.update('ch-1', {}, owner)).rejects.toThrow('No fields to update');
+  });
+});

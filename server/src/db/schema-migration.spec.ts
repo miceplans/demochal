@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(16);
+    expect(journal.entries).toHaveLength(17);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -171,9 +171,20 @@ describe('migration chain coverage', () => {
       'admin_settings',
       'outbox_events',
       'billing_auth_attempts',
+      'ad_event_counters',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
+  });
+
+  it('0015_add_ad_event_counters stores privacy-safe hourly ad aggregates', () => {
+    const tag = journal.entries[15]?.tag;
+    expect(tag).toBe('0015_add_ad_event_counters');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "ad_event_counters"');
+    expect(sql).toContain('ad_event_counters_ad_bucket_unique');
+    expect(sql).toContain('ad_event_counters_ad_id_ads_id_fk');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 
   it('has no orphan migration files outside the journal chain', () => {
@@ -326,10 +337,10 @@ describe('0014_team_recruitment_details migration', () => {
   });
 });
 
-describe('0015_biz_signup_contract migration', () => {
+describe('0016_biz_signup_contract migration', () => {
   it('adds the biz signup columns and contact verification table without destructive DDL', () => {
-    const tag = journal.entries[15]?.tag;
-    expect(tag).toBe('0015_biz_signup_contract');
+    const tag = journal.entries[16]?.tag;
+    expect(tag).toBe('0016_biz_signup_contract');
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "username" varchar(50)');

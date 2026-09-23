@@ -5,8 +5,6 @@ import type { Application } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
 import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/biz/BizShell';
 
-type ReviewStatus = Exclude<Application['status'], 'pending'>;
-
 export function BizApplicationsPage() {
   const [rows, setRows] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +51,7 @@ export function BizApplicationsPage() {
         </select>
       </label>
       {loading && <p>지원서를 불러오는 중입니다.</p>}
-      {error && <p role="alert">지원서를 불러오거나 저장하지 못했습니다.</p>}
+      {error && <p>지원서를 불러오지 못했습니다.</p>}
       {!loading && !error && rows.length === 0 && <p>접수된 지원서가 없습니다.</p>}
       {rows.length > 0 && (
         <TableBox>
@@ -61,18 +59,19 @@ export function BizApplicationsPage() {
             <span>지원서</span>
             <span>상태</span>
             <span>평가</span>
-            <span>담당자 메모</span>
+            <span>메모</span>
           </THead>
           {rows.map((row) => (
             <TRow key={row.id}>
               <span>{row.id}</span>
               <select
                 value={row.status}
-                onChange={(event) => update(row.id, { status: event.target.value as ReviewStatus })}
+                onChange={(event) =>
+                  update(row.id, {
+                    status: event.target.value as Exclude<Application['status'], 'pending'>,
+                  })
+                }
               >
-                <option value="pending" disabled>
-                  대기
-                </option>
                 <option value="submitted">제출</option>
                 <option value="reviewing">검토중</option>
                 <option value="needs_revision">보완 요청</option>
