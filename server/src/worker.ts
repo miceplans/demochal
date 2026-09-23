@@ -51,6 +51,20 @@ async function bootstrap() {
     }
   }
 
+  // A transient SQS/network failure on one queue must not reject bootstrap()
+  // and kill the process (stopping every consumer); back off and let the
+  // loop try again.
+  async function receive(queueUrl: string, label: string) {
+    try {
+      return await sqsService.receiveMessages(queueUrl);
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      logger.error(`Receiving from the ${label} queue failed (${name}), backing off`);
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      return [];
+    }
+  }
+
   async function pollVerifications(queueUrl: string) {
     try {
       await outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, queueUrl);
@@ -58,7 +72,7 @@ async function bootstrap() {
       logger.error('Outbox relay pass failed', error);
     }
 
-    const messages = await sqsService.receiveMessages(queueUrl);
+    const messages = await receive(queueUrl, 'verifications');
     for (const message of messages) {
       try {
         const body = JSON.parse(message.Body ?? '{}') as VerificationJobMessage;
@@ -83,7 +97,7 @@ async function bootstrap() {
       logger.error('Email outbox relay pass failed', error);
     }
 
-    const messages = await sqsService.receiveMessages(queueUrl);
+    const messages = await receive(queueUrl, 'email');
     for (const message of messages) {
       try {
         const job = parseNotificationEmailJob(JSON.parse(message.Body ?? '{}'));

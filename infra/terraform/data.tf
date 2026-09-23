@@ -49,8 +49,11 @@ resource "aws_sqs_queue" "emails_dlq" {
 }
 
 resource "aws_sqs_queue" "emails" {
-  name                       = "${local.name_prefix}-emails"
-  visibility_timeout_seconds = 60
+  name = "${local.name_prefix}-emails"
+  # Covers a full serial batch of 10 SES sends; also shorter than the worker's
+  # 5-minute send-claim lease (EMAIL_SEND_LEASE_MS) so a redelivery during an
+  # in-flight send backs off rather than taking over the claim.
+  visibility_timeout_seconds = 120
   receive_wait_time_seconds  = 20
   redrive_policy = jsonencode({
     deadLetterTargetArn = aws_sqs_queue.emails_dlq.arn

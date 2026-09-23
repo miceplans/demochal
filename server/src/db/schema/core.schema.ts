@@ -230,11 +230,12 @@ export const outboxEvents = pgTable('outbox_events', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   sentAt: timestamp('sent_at'),
 });
-// Email send state for the outbox-driven SES worker. The outbox event id is
-// the idempotency key: SQS is at-least-once, so a redelivered email job checks
-// this table first and skips events that were already handed to SES. A row
-// exists only after a successful send — failures stay unrecorded so the queue
-// retry/DLQ policy can re-attempt them.
+// Email send state for the outbox-driven SES worker, keyed by the outbox event
+// id (the idempotency key). The worker claims a row as 'sending' *before*
+// calling SES, so concurrent/duplicate SQS deliveries of one event cannot both
+// send; the row flips to 'sent' after SES accepts. A failed send deletes its
+// claim, and a 'sending' claim older than the lease can be taken over after a
+// worker crash.
 export const emailSendStates = pgTable(
   'email_send_states',
   {
@@ -242,8 +243,10 @@ export const emailSendStates = pgTable(
     outboxEventId: uuid('outbox_event_id')
       .notNull()
       .references(() => outboxEvents.id),
+    status: varchar('status', { length: 20 }).notNull(), // sending | sent
+    claimedAt: timestamp('claimed_at').defaultNow().notNull(),
+    sentAt: timestamp('sent_at'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
-    sentAt: timestamp('sent_at').defaultNow().notNull(),
   },
   (table) => [uniqueIndex('email_send_states_outbox_event_id_unique').on(table.outboxEventId)],
 );
