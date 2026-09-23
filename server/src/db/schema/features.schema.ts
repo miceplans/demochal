@@ -1,5 +1,14 @@
-import { jsonb, pgTable, text, timestamp, uuid, varchar } from 'drizzle-orm/pg-core';
-import { users } from './core.schema.js';
+import {
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+  varchar,
+} from 'drizzle-orm/pg-core';
+import { ads, users } from './core.schema.js';
 export const notifications = pgTable('notifications', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -52,3 +61,20 @@ export const adminSettings = pgTable('admin_settings', {
   values: jsonb('values').$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// 광고 이벤트는 개인정보 없이 광고별 서울 시간 기준 시간 버킷 카운터로만 저장한다.
+// 동일 버킷의 노출/클릭을 한 행에 upsert해 원본 이벤트가 무한히 쌓이지 않도록 한다.
+export const adEventCounters = pgTable(
+  'ad_event_counters',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    adId: uuid('ad_id')
+      .notNull()
+      .references(() => ads.id),
+    bucketStart: timestamp('bucket_start').notNull(),
+    impressions: integer('impressions').notNull().default(0),
+    clicks: integer('clicks').notNull().default(0),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [uniqueIndex('ad_event_counters_ad_bucket_unique').on(table.adId, table.bucketStart)],
+);

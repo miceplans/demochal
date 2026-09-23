@@ -20,6 +20,7 @@ import {
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { AdsService } from '../ads/ads.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
 import type { CreateReportDto } from './dto/create-report.dto.js';
@@ -121,6 +122,7 @@ export class AdminService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly notificationsService: NotificationsService,
+    private readonly adsService: AdsService,
   ) {}
 
   // ---------------------------------------------------------------- dashboard
@@ -725,15 +727,25 @@ export class AdminService {
 
     if (!row || adNumber === null) throw new NotFoundException('Ad not found');
 
+    const report = await this.adsService.getReportForAdmin(row.ad.id);
     return {
       adNumber,
       organization: row.organization ?? '',
       period: `${formatMonthDayShort(row.ad.startDate)}~${formatMonthDayShort(row.ad.endDate)}`,
-      // Impression/click beacons do not exist yet — honest zeros.
       stats: [
-        { label: '노출수', value: '0', meta: '비콘 미구현', dot: '#0877FF' },
-        { label: '클릭수', value: '0', meta: '비콘 미구현', dot: '#22C55E' },
-        { label: 'CTR', value: '0%', meta: '비콘 미구현', dot: '#F59E0B' },
+        {
+          label: '노출수',
+          value: String(report.totals.impressions),
+          meta: '누적 계측값',
+          dot: '#0877FF',
+        },
+        {
+          label: '클릭수',
+          value: String(report.totals.clicks),
+          meta: '누적 계측값',
+          dot: '#22C55E',
+        },
+        { label: 'CTR', value: `${report.totals.ctr}%`, meta: '누적 계측값', dot: '#F59E0B' },
         {
           label: '집행 광고비',
           value: String(row.ad.paidAmount),
@@ -741,7 +753,7 @@ export class AdminService {
           dot: '#8B5CF6',
         },
       ] satisfies AdminStatCard[],
-      daily: [] as { date: string; impressions: number; clicks: number; ctr: number }[],
+      daily: report.daily,
     };
   }
 

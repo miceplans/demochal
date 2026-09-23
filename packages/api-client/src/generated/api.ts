@@ -38,6 +38,8 @@ import type {
 
 import type {
   Ad,
+  AdEvent,
+  AdEventResult,
   AdProduct,
   AdReport,
   AdSlotPricing,
@@ -6825,9 +6827,7 @@ export const getGetAdReportUrl = (id: string, params?: GetAdReportParams) => {
  * - `hourly`: 시간 리포트 테이블(시간대/노출/클릭/클릭률, 0시~24시 24개 슬롯)
  * - `monthlyClicks`: 상단 월별 클릭수 바차트(라벨 + 값)
  * 기간 선택 옵션(8/25~8/27, 8/25~8/31, 9/1~9/7 등)은 `from`/`to` 쿼리로 처리.
- * **주의**: 노출/클릭 계측 비콘이 아직 없음(광고는 `AdCarousel`/`MovingAds`에서 클라이언트 렌더링만
- * 되고 서버로 이벤트를 보내지 않음) — 응답 구조는 실제 스키마와 동일하되 모든 지표가 정직하게 0으로
- * 채워진다. 실측치가 필요하면 프론트에 임프레션/클릭 비콘 호출을 추가해야 한다.
+ * 노출/클릭은 광고별 서울 시간 기준 시간 버킷 카운터에서 집계한다.
  * @summary 광고 성과 리포트 (기간별)
  */
 export const getAdReport = async (
@@ -6940,6 +6940,237 @@ export function useGetAdReport<TData = Awaited<ReturnType<typeof getAdReport>>, 
 
   return withQueryKey(query, queryOptions.queryKey);
 }
+
+export type recordAdImpressionResponse201 = {
+  data: AdEventResult;
+  status: 201;
+};
+
+export type recordAdImpressionResponseSuccess = recordAdImpressionResponse201 & {
+  headers: Headers;
+};
+export type recordAdImpressionResponse = recordAdImpressionResponseSuccess;
+
+export const getRecordAdImpressionUrl = (id: string) => {
+  return `/ads/${id}/impressions`;
+};
+
+/**
+ * active 광고의 노출을 개인정보 없이 시간 버킷 카운터에 반영한다.
+ * @summary 광고 노출 계측
+ */
+export const recordAdImpression = async (
+  id: string,
+  adEvent?: AdEvent,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<recordAdImpressionResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<recordAdImpressionResponse>(getRecordAdImpressionUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adEvent),
+  });
+};
+
+export const getRecordAdImpressionMutationKey = () => ['recordAdImpression'] as const;
+
+export const getRecordAdImpressionMutationOptions = <
+  TError = unknown,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordAdImpression>>,
+    TError,
+    RecordAdImpressionMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordAdImpression>>,
+  TError,
+  RecordAdImpressionMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRecordAdImpressionMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordAdImpression>>,
+    RecordAdImpressionMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return recordAdImpression(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordAdImpressionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordAdImpression>>
+>;
+export type RecordAdImpressionMutationBody = AdEvent | undefined;
+export type RecordAdImpressionMutationError = unknown;
+export type RecordAdImpressionMutationVariables = { id: string; data?: AdEvent };
+
+/**
+ * @summary 광고 노출 계측
+ */
+export const useRecordAdImpression = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof recordAdImpression>>,
+      TError,
+      RecordAdImpressionMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof recordAdImpression>>,
+  TError,
+  RecordAdImpressionMutationVariables,
+  TContext
+> => {
+  return useMutation(getRecordAdImpressionMutationOptions(options), queryClient);
+};
+
+export type recordAdClickResponse201 = {
+  data: AdEventResult;
+  status: 201;
+};
+
+export type recordAdClickResponseSuccess = recordAdClickResponse201 & {
+  headers: Headers;
+};
+export type recordAdClickResponse = recordAdClickResponseSuccess;
+
+export const getRecordAdClickUrl = (id: string) => {
+  return `/ads/${id}/clicks`;
+};
+
+/**
+ * active 광고의 클릭을 개인정보 없이 시간 버킷 카운터에 반영한다.
+ * @summary 광고 클릭 계측
+ */
+export const recordAdClick = async (
+  id: string,
+  adEvent?: AdEvent,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<recordAdClickResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<recordAdClickResponse>(getRecordAdClickUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adEvent),
+  });
+};
+
+export const getRecordAdClickMutationKey = () => ['recordAdClick'] as const;
+
+export const getRecordAdClickMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordAdClick>>,
+    TError,
+    RecordAdClickMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordAdClick>>,
+  TError,
+  RecordAdClickMutationVariables,
+  TContext
+> => {
+  const mutationKey = getRecordAdClickMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordAdClick>>,
+    RecordAdClickMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return recordAdClick(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordAdClickMutationResult = NonNullable<Awaited<ReturnType<typeof recordAdClick>>>;
+export type RecordAdClickMutationBody = AdEvent | undefined;
+export type RecordAdClickMutationError = unknown;
+export type RecordAdClickMutationVariables = { id: string; data?: AdEvent };
+
+/**
+ * @summary 광고 클릭 계측
+ */
+export const useRecordAdClick = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof recordAdClick>>,
+      TError,
+      RecordAdClickMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof recordAdClick>>,
+  TError,
+  RecordAdClickMutationVariables,
+  TContext
+> => {
+  return useMutation(getRecordAdClickMutationOptions(options), queryClient);
+};
 
 export type submitOperationsInquiryResponse201 = {
   data: SubmitOperationsInquiry201;
