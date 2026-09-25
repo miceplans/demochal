@@ -779,9 +779,11 @@ export function AdminAdPricingScreen() {
                           <InfoValue>{hero?.period ?? '-'}</InfoValue>
                         </InfoItem>
                       </InfoList>
-                      <ReportLink href={hrefOf(`/analytics?ad=${detailAd}`)}>
-                        리포트 보기
-                      </ReportLink>
+                      {hero?.currentAdId && (
+                        <ReportLink href={hrefOf(`/analytics?ad=${hero.currentAdId}`)}>
+                          리포트 보기
+                        </ReportLink>
+                      )}
                     </InfoRow>
                     <DialogActions>
                       <DialogButton type="button" onClick={() => setDetailAd(null)}>

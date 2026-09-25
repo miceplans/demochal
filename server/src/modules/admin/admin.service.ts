@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, asc, desc, eq, gte, ilike, inArray, or, sql } from 'drizzle-orm';
+import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   adProducts,
@@ -7,6 +8,7 @@ import {
   applications,
   businesses,
   certificates,
+  orders,
   challenges,
   payments,
   reports,
@@ -19,8 +21,8 @@ import {
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import { AdsService } from '../ads/ads.service.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
 import type { CreateReportDto } from './dto/create-report.dto.js';
@@ -38,6 +40,7 @@ export interface AdminStatCard {
 }
 
 export interface AdminAdReport {
+  adId: string;
   adNumber: number;
   organization: string;
   period: string;
@@ -52,6 +55,61 @@ export interface AdminAnalytics {
 }
 
 const countRows = sql<number>`count(*)::int`;
+
+const DAY_MS = 86_400_000;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+type BucketUnit = 'day' | 'month';
+interface TimeBuckets {
+  unit: BucketUnit;
+  since: Date;
+  keys: string[];
+  labels: string[];
+}
+
+const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
+
+/**
+ * Consecutive UTC day/month buckets ending at `now` (inclusive). Keys match
+ * {@link bucketKey}'s `YYYY-MM-DD` output so SQL group-by rows can be joined back.
+ */
+export function timeBuckets(unit: BucketUnit, count: number, now = new Date()): TimeBuckets {
+  const starts = Array.from({ length: count }, (_, i) => {
+    const offset = count - 1 - i;
+    return unit === 'day'
+      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset))
+      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+  });
+  return {
+    unit,
+    since: starts[0]!,
+    keys: starts.map(toDateKey),
+    labels: starts.map((date) =>
+      unit === 'day'
+        ? `${date.getUTCMonth() + 1}/${date.getUTCDate()}`
+        : `${date.getUTCMonth() + 1}월`,
+    ),
+  };
+}
+
+const RANGE_BUCKETS: Record<string, [BucketUnit, number]> = {
+  '7days': ['day', 7],
+  '30days': ['day', 30],
+  '1year': ['month', 12],
+};
+
+/** `YYYY-MM-DD` of the day/month a timestamp falls in (timestamps are stored as UTC). */
+function bucketKey(unit: BucketUnit, column: PgColumn) {
+  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column}), 'YYYY-MM-DD')`;
+}
+
+/** Smallest 1/2/5×10ⁿ ≥ max (at least 10) so the chart's five even ticks stay round. */
+export function niceMax(max: number) {
+  if (max <= 10) return 10;
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  const step = [1, 2, 5, 10].find((factor) => factor * magnitude >= max) ?? 10;
+  return step * magnitude;
+}
 
 /** 'kim.dev@gmail.com' → 'k***@gmail.com' (local part first char + '***'). */
 export function maskEmail(email: string): string {
@@ -128,7 +186,8 @@ export class AdminService {
   // ---------------------------------------------------------------- dashboard
 
   async getDashboard(range?: string) {
-    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
 
     const [approvedBiz] = await this.db
       .select({ count: countRows })
@@ -149,14 +208,35 @@ export class AdminService {
       .orderBy(desc(reports.createdAt))
       .limit(5);
 
-    // Ad impressions/clicks and traffic have no collection beacons yet, so the
-    // gauge and both chart series stay honestly at zero with real label axes.
-    const labels =
-      range === '7days'
-        ? Array.from({ length: 7 }, (_, i) => `${i + 1}일`)
-        : range === '30days'
-          ? Array.from({ length: 30 }, (_, i) => `${i + 1}일`)
-          : Array.from({ length: 12 }, (_, i) => `${i + 1}월`);
+    const [unit, count] = RANGE_BUCKETS[range ?? ''] ?? RANGE_BUCKETS['1year']!;
+    const buckets = timeBuckets(unit, count, now);
+
+    // TODO: 페이지뷰 계측이 없어 '유저 트래픽'은 기간별 신규 가입(일반 user / 비즈니스
+    // business)으로 대신한다. 방문 계측을 도입하면 이 시리즈를 교체한다.
+    const userBucket = bucketKey(unit, users.createdAt);
+    const signupRows = await this.db
+      .select({ bucket: userBucket, role: users.role, count: countRows })
+      .from(users)
+      .where(and(gte(users.createdAt, buckets.since), inArray(users.role, ['user', 'business'])))
+      .groupBy(userBucket, users.role);
+    const signupsOf = (role: string) => {
+      const byBucket = new Map(
+        signupRows.filter((row) => row.role === role).map((row) => [row.bucket, row.count]),
+      );
+      return buckets.keys.map((key) => byBucket.get(key) ?? 0);
+    };
+
+    // 광고 비율: 같은 기간 결제 완료 매출 중 광고 주문(orders.adId)에서 나온 순매출 비중.
+    const [revenueRow] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+        ad: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}) filter (where ${orders.adId} is not null), 0)::int`,
+      })
+      .from(payments)
+      .innerJoin(orders, eq(payments.orderId, orders.id))
+      .where(and(eq(payments.status, 'paid'), gte(payments.approvedAt, buckets.since)));
+    const totalRevenue = revenueRow?.total ?? 0;
+    const adRevenue = revenueRow?.ad ?? 0;
 
     const stats: AdminStatCard[] = [
       {
@@ -187,13 +267,17 @@ export class AdminService {
 
     return {
       stats,
-      adRatio: { value: '0 ₩', ratio: 0 },
+      adRatio: {
+        value: `${adRevenue.toLocaleString('ko-KR')} ₩`,
+        ratio: totalRevenue > 0 ? adRevenue / totalRevenue : 0,
+      },
       traffic: {
-        labels,
-        primary: labels.map(() => 0),
-        secondary: labels.map(() => 0),
+        labels: buckets.labels,
+        primary: signupsOf('user'),
+        secondary: signupsOf('business'),
       },
       reports: recentReports.map((row) => this.toReport(row)),
+      generatedAt: now.toISOString(),
     };
   }
 
@@ -641,8 +725,15 @@ export class AdminService {
   // --------------------------------------------------------------- analytics
 
   async getAnalytics(ad?: string) {
-    const [userRow] = await this.db.select({ count: countRows }).from(users);
-    const [challengeRow] = await this.db.select({ count: countRows }).from(challenges);
+    const monthAgo = new Date(Date.now() - 30 * DAY_MS);
+    const [userRow] = await this.db
+      .select({ count: countRows })
+      .from(users)
+      .where(gte(users.createdAt, monthAgo));
+    const [challengeRow] = await this.db
+      .select({ count: countRows })
+      .from(challenges)
+      .where(gte(challenges.createdAt, monthAgo));
     // 'paid' 행만 대상으로 하고(취소/만료/미결제 제외), 부분환불(Toss PARTIAL_CANCELED)이
     // 반영된 refundedAmount를 뺀 순수익을 합산한다 — refundedAmount는
     // PaymentsService의 PARTIAL_CANCELED 재조회로 채워진다(payments.service.ts).
@@ -653,23 +744,22 @@ export class AdminService {
       .from(payments)
       .where(eq(payments.status, 'paid'));
 
-    const now = new Date();
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
-      return `${date.getMonth() + 1}월`;
-    });
+    // 활동: 최근 6개월 월별 일반 사용자 지원서 제출(applications) / 기업 챌린지 등록(challenges).
+    const buckets = timeBuckets('month', 6);
+    const general = await this.countByMonth(applications, applications.createdAt, buckets);
+    const corp = await this.countByMonth(challenges, challenges.createdAt, buckets);
 
     const stats: AdminStatCard[] = [
       {
         label: '신규 가입자',
         value: String(userRow?.count ?? 0),
-        meta: '전체 누적',
+        meta: '최근 30일',
         dot: '#0877FF',
       },
       {
         label: '신규 챌린지',
         value: String(challengeRow?.count ?? 0),
-        meta: '전체 누적',
+        meta: '최근 30일',
         dot: '#22C55E',
       },
       {
@@ -681,56 +771,59 @@ export class AdminService {
     ];
     const base: AdminAnalytics = {
       stats,
-      activity: { months, general: months.map(() => 0), corp: months.map(() => 0), yMax: 10 },
+      activity: {
+        months: buckets.labels,
+        general,
+        corp,
+        yMax: niceMax(Math.max(0, ...general, ...corp)),
+      },
     };
 
-    if (ad !== undefined) {
+    if (ad !== undefined && ad !== '') {
       base.adReport = await this.buildAdReport(ad);
     }
     return base;
   }
 
+  private async countByMonth(
+    table: typeof applications | typeof challenges,
+    column: PgColumn,
+    buckets: TimeBuckets,
+  ) {
+    const bucket = bucketKey('month', column);
+    const rows = await this.db
+      .select({ bucket, count: countRows })
+      .from(table)
+      .where(gte(column, buckets.since))
+      .groupBy(bucket);
+    const byBucket = new Map(rows.map((row) => [row.bucket, row.count]));
+    return buckets.keys.map((key) => byBucket.get(key) ?? 0);
+  }
+
+  /**
+   * `?ad=` accepts the ad's uuid or its stable `ads.ad_number` serial — never a
+   * list position, so reordering/deleting ads can't open another ad's report.
+   */
   private async buildAdReport(adParam: string): Promise<AdminAdReport> {
-    let adNumber: number | null = null;
-    let row: { ad: typeof ads.$inferSelect; organization: string | null } | undefined;
+    const condition = /^\d+$/.test(adParam)
+      ? eq(ads.adNumber, Number.parseInt(adParam, 10))
+      : UUID_PATTERN.test(adParam)
+        ? eq(ads.id, adParam)
+        : null;
+    if (!condition) throw new NotFoundException('Ad not found');
 
-    if (/^\d+$/.test(adParam)) {
-      // Numeric params are a 1-based ordinal ("banner number"), not a uuid.
-      // Resolve via ordinal position BEFORE ever comparing against the
-      // uuid-typed ads.id column — Postgres rejects a non-uuid string in a
-      // `uuid = $1` comparison, so a numeric adParam must never reach that
-      // query.
-      adNumber = Number.parseInt(adParam, 10);
-      const allAds = await this.db
-        .select({ ad: ads, organization: businesses.name })
-        .from(ads)
-        .innerJoin(businesses, eq(ads.businessId, businesses.id))
-        .orderBy(asc(ads.createdAt));
-      row = allAds[adNumber - 1];
-    } else {
-      row = (
-        await this.db
-          .select({ ad: ads, organization: businesses.name })
-          .from(ads)
-          .innerJoin(businesses, eq(ads.businessId, businesses.id))
-          .where(eq(ads.id, adParam))
-          .limit(1)
-      )[0];
-
-      if (row) {
-        // Resolved by uuid: the "banner number" is its 1-based createdAt rank.
-        const allAds = await this.db.select({ id: ads.id }).from(ads).orderBy(asc(ads.createdAt));
-        const index = allAds.findIndex((candidate) => candidate.id === row!.ad.id);
-        if (index < 0) throw new NotFoundException('Ad not found');
-        adNumber = index + 1;
-      }
-    }
-
-    if (!row || adNumber === null) throw new NotFoundException('Ad not found');
+    const [row] = await this.db
+      .select({ ad: ads, organization: businesses.name })
+      .from(ads)
+      .innerJoin(businesses, eq(ads.businessId, businesses.id))
+      .where(condition)
+      .limit(1);
+    if (!row) throw new NotFoundException('Ad not found');
 
     const report = await this.adsService.getReportForAdmin(row.ad.id);
     return {
-      adNumber,
+      adId: row.ad.id,
+      adNumber: row.ad.adNumber,
       organization: row.organization ?? '',
       period: `${formatMonthDayShort(row.ad.startDate)}~${formatMonthDayShort(row.ad.endDate)}`,
       stats: [
