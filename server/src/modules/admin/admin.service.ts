@@ -8,6 +8,7 @@ import {
   businesses,
   certificates,
   challenges,
+  files,
   payments,
   reports,
   teamMembers,
@@ -19,6 +20,8 @@ import {
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
+import { FilesService } from '../files/files.service.js';
+import { buildPublicFileUrl } from '../files/public-file-url.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { AdsService } from '../ads/ads.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
@@ -52,6 +55,15 @@ export interface AdminAnalytics {
 }
 
 const countRows = sql<number>`count(*)::int`;
+
+/** `GET /admin/contents` section page size: default 8 cards, "더보기" grows it, capped at 50. */
+const CONTENTS_PAGE_SIZE = 8;
+const CONTENTS_MAX_LIMIT = 50;
+function clampContentsLimit(value?: string) {
+  const parsed = Number.parseInt(value ?? '', 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return CONTENTS_PAGE_SIZE;
+  return Math.min(parsed, CONTENTS_MAX_LIMIT);
+}
 
 /** 'kim.dev@gmail.com' → 'k***@gmail.com' (local part first char + '***'). */
 export function maskEmail(email: string): string {
@@ -123,6 +135,7 @@ export class AdminService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly notificationsService: NotificationsService,
     private readonly adsService: AdsService,
+    private readonly filesService: FilesService,
   ) {}
 
   // ---------------------------------------------------------------- dashboard
@@ -338,30 +351,53 @@ export class AdminService {
 
   // ------------------------------------------------------------- certificates
 
-  async listCertificates(status?: string, q?: string) {
+  async listCertificates(status?: string, q?: string, category?: string) {
     const conditions = [];
     if (status) conditions.push(eq(certificates.status, status));
+    if (category) conditions.push(eq(certificates.category, category));
     if (q) {
       conditions.push(or(ilike(certificates.title, `%${q}%`), ilike(users.name, `%${q}%`)));
     }
     const rows = await this.db
-      .select({ certificate: certificates, userName: users.name })
+      .select({ certificate: certificates, userName: users.name, file: files })
       .from(certificates)
       .innerJoin(users, eq(certificates.userId, users.id))
+      .leftJoin(files, eq(certificates.fileId, files.id))
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(certificates.createdAt));
 
-    return rows.map(({ certificate, userName }) => ({
-      id: certificate.id,
-      user: userName,
-      award: certificate.title,
-      category: certificate.category,
-      fileId: certificate.fileId,
-      status: certificate.status,
-    }));
+    return Promise.all(
+      rows.map(async ({ certificate, userName, file }) => ({
+        id: certificate.id,
+        user: userName,
+        award: certificate.title,
+        category: certificate.category,
+        fileId: certificate.fileId,
+        ...(await this.certificateFile(file)),
+        status: certificate.status,
+      })),
+    );
+  }
+
+  /**
+   * Viewable URL for a certificate's original. Public files use the CDN URL;
+   * private ones get a 5-minute presigned GET (never a public link) per the
+   * private-bucket rule. Unfinished/rejected uploads have nothing to show.
+   */
+  private async certificateFile(file: typeof files.$inferSelect | null) {
+    if (!file || file.uploadStatus !== 'ready') return { fileUrl: null, fileContentType: null };
+    const fileUrl =
+      file.bucket === 'private'
+        ? await this.filesService.getPrivateReadUrl(file.key)
+        : buildPublicFileUrl(file);
+    return { fileUrl, fileContentType: file.contentType };
   }
 
   async verifyCertificate(id: string, dto: VerifyCertificateDto) {
+    const reason = dto.reason?.trim();
+    if (dto.action === 'reject' && !reason) {
+      throw new BadRequestException('A rejection reason is required');
+    }
     const [certificate] = await this.db
       .select()
       .from(certificates)
@@ -374,7 +410,7 @@ export class AdminService {
       .update(certificates)
       .set({
         status,
-        rejectionReason: dto.action === 'reject' ? (dto.reason ?? null) : null,
+        rejectionReason: dto.action === 'reject' ? (reason ?? null) : null,
       })
       .where(eq(certificates.id, id))
       .returning();
@@ -526,7 +562,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------- reports
 
-  async listReports(q?: string, status?: string) {
+  async listReports(q?: string, status?: string, targetType?: string) {
     const conditions = [];
     if (q) {
       conditions.push(
@@ -538,6 +574,7 @@ export class AdminService {
       );
     }
     if (status) conditions.push(eq(reports.status, status));
+    if (targetType) conditions.push(eq(reports.targetType, targetType));
     const rows = await this.db
       .select()
       .from(reports)
@@ -562,46 +599,39 @@ export class AdminService {
 
   // ------------------------------------------------------------------ contents
 
-  async getContents() {
+  async getContents(teamsLimitParam?: string, contestsLimitParam?: string) {
+    const teamsLimit = clampContentsLimit(teamsLimitParam);
+    const contestsLimit = clampContentsLimit(contestsLimitParam);
+
+    const [teamsTotal] = await this.db.select({ count: countRows }).from(teams);
     const teamRows = await this.db
       .select({ team: teams, challengeTitle: challenges.title })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
       .orderBy(desc(teams.createdAt))
-      .limit(5);
+      .limit(teamsLimit);
 
     const teamIds = teamRows.map((row) => row.team.id);
     const acceptedRows = teamIds.length
       ? await this.db
-          .select({ teamId: teamMembers.teamId, count: countRows })
+          .select({ teamId: teamMembers.teamId, role: teamMembers.role, count: countRows })
           .from(teamMembers)
           .where(and(inArray(teamMembers.teamId, teamIds), eq(teamMembers.status, 'accepted')))
-          .groupBy(teamMembers.teamId)
+          .groupBy(teamMembers.teamId, teamMembers.role)
       : [];
-    const acceptedByTeam = new Map(acceptedRows.map((row) => [row.teamId, row.count]));
+    const acceptedByTeam = new Map<string, Map<string, number>>();
+    for (const row of acceptedRows) {
+      const byRole = acceptedByTeam.get(row.teamId) ?? new Map<string, number>();
+      byRole.set(row.role ?? '', row.count);
+      acceptedByTeam.set(row.teamId, byRole);
+    }
 
-    const teamCards = teamRows.map(({ team, challengeTitle }) => {
-      const capacity = team.openRoles
-        ? team.openRoles.reduce((sum, slot) => sum + slot.count, 0) + 1
-        : '?';
-      const accepted = acceptedByTeam.get(team.id) ?? 0;
-      return {
-        id: team.id,
-        name: team.title,
-        challenge: challengeTitle,
-        // completed-role badges have no reliable signal yet — always empty.
-        roles: [] as string[],
-        otherRoles: team.openRoles?.map((slot) => slot.role) ?? [],
-        members: `${accepted}/${capacity}명 참여중`,
-        unread: false,
-      };
-    });
-
+    const [contestsTotal] = await this.db.select({ count: countRows }).from(challenges);
     const contestRows = await this.db
       .select()
       .from(challenges)
       .orderBy(desc(challenges.createdAt))
-      .limit(5);
+      .limit(contestsLimit);
     const challengeIds = contestRows.map((row) => row.id);
     const teamCountRows = challengeIds.length
       ? await this.db
@@ -612,6 +642,41 @@ export class AdminService {
       : [];
     const teamCountByChallenge = new Map(teamCountRows.map((row) => [row.challengeId, row.count]));
 
+    // "확인 필요" 도트 = 아직 처리되지 않은(open) 신고가 걸린 팀/챌린지.
+    const flaggedIds = [...teamIds, ...challengeIds];
+    const openReportRows = flaggedIds.length
+      ? await this.db
+          .select({ targetId: reports.targetId })
+          .from(reports)
+          .where(
+            and(
+              eq(reports.status, 'open'),
+              inArray(reports.targetType, ['team', 'challenge']),
+              inArray(reports.targetId, flaggedIds),
+            ),
+          )
+      : [];
+    const flagged = new Set(openReportRows.map((row) => row.targetId));
+
+    const teamCards = teamRows.map(({ team, challengeTitle }) => {
+      const acceptedByRole = acceptedByTeam.get(team.id) ?? new Map<string, number>();
+      const accepted = [...acceptedByRole.values()].reduce((sum, count) => sum + count, 0);
+      const openRoles = team.openRoles ?? [];
+      const capacity = openRoles.reduce((sum, slot) => sum + slot.count, 0) + 1;
+      // A role is complete once accepted members fill every slot opened for it.
+      const isFilled = (slot: { role: string; count: number }) =>
+        (acceptedByRole.get(slot.role) ?? 0) >= slot.count;
+      return {
+        id: team.id,
+        name: team.title,
+        challenge: challengeTitle,
+        roles: openRoles.filter(isFilled).map((slot) => slot.role),
+        otherRoles: openRoles.filter((slot) => !isFilled(slot)).map((slot) => slot.role),
+        members: `${accepted}/${capacity}명 참여중`,
+        unread: flagged.has(team.id),
+      };
+    });
+
     const now = Date.now();
     const contestCards = contestRows.map((challenge) => {
       const daysLeft = Math.max(0, Math.ceil((challenge.endDate.getTime() - now) / 86_400_000));
@@ -621,7 +686,7 @@ export class AdminService {
         category: challenge.category ?? '',
         dday: `D-${daysLeft}`,
         teams: `팀 모집 ${teamCountByChallenge.get(challenge.id) ?? 0}건`,
-        unread: false,
+        unread: flagged.has(challenge.id),
       };
     });
 
@@ -633,7 +698,9 @@ export class AdminService {
 
     return {
       teams: teamCards,
+      teamsTotal: teamsTotal?.count ?? 0,
       contests: contestCards,
+      contestsTotal: contestsTotal?.count ?? 0,
       reports: reportRows.map((row) => this.toReport(row)),
     };
   }

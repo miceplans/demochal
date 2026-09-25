@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { ads, businesses, payments } from '../../db/schema.js';
+import { ads, businesses, certificates, payments, reports } from '../../db/schema.js';
 import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
 import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
@@ -88,7 +88,17 @@ function referencesColumn(node: any, target: unknown, seen = new Set<unknown>())
   return false;
 }
 
-function createService(db: any, notifications = createNotificationsStub()) {
+function createFilesStub() {
+  return {
+    getPrivateReadUrl: vi.fn(async (key: string) => `https://signed.example/${key}`),
+  };
+}
+
+function createService(
+  db: any,
+  notifications = createNotificationsStub(),
+  files = createFilesStub(),
+) {
   const adsService = {
     getReportForAdmin: vi.fn().mockResolvedValue({
       totals: { impressions: 0, clicks: 0, ctr: 0 },
@@ -96,7 +106,7 @@ function createService(db: any, notifications = createNotificationsStub()) {
     }),
   };
   return {
-    service: new AdminService(db, notifications as any, adsService as any),
+    service: new AdminService(db, notifications as any, adsService as any, files as any),
     notifications,
     adsService,
   };
@@ -242,6 +252,163 @@ describe('AdminService — certificates', () => {
       expect.objectContaining({ status: 'rejected', rejectionReason: '이미지 훼손' }),
     ]);
     expect(db.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('reject without a reason is refused before touching the DB', async () => {
+    const { db } = createDbStub();
+    const { service } = createService(db);
+
+    await expect(
+      service.verifyCertificate('c1', { action: 'reject', reason: '  ' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  describe('list', () => {
+    const base = {
+      certificate: {
+        id: 'c1',
+        title: '대상',
+        category: 'award',
+        fileId: 'f1',
+        status: 'pending',
+      },
+      userName: '김수아',
+    };
+
+    it('filters by category', async () => {
+      const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+      const { service } = createService(db);
+
+      await service.listCertificates('pending', undefined, 'participation');
+
+      const where = selectWhereCalls[0]?.[0];
+      expect(referencesColumn(where, certificates.category)).toBe(true);
+      expect(collectStrings(where)).toContain('participation');
+    });
+
+    it('presigns private originals and never exposes a raw key', async () => {
+      const privateFile = {
+        id: 'f1',
+        bucket: 'private',
+        key: 'pending/f1.png',
+        uploadStatus: 'ready',
+        contentType: 'image/png',
+      };
+      const { db } = createDbStub({ select: [[{ ...base, file: privateFile }]] });
+      const files = createFilesStub();
+      const { service } = createService(db, createNotificationsStub(), files);
+
+      const [row] = await service.listCertificates();
+
+      expect(files.getPrivateReadUrl).toHaveBeenCalledWith('pending/f1.png');
+      expect(row).toMatchObject({
+        fileUrl: 'https://signed.example/pending/f1.png',
+        fileContentType: 'image/png',
+      });
+    });
+
+    it('returns no URL for a missing or unfinished upload', async () => {
+      const pendingFile = {
+        id: 'f1',
+        bucket: 'private',
+        key: 'pending/f1.png',
+        uploadStatus: 'pending',
+        contentType: 'image/png',
+      };
+      const { db } = createDbStub({
+        select: [
+          [
+            { ...base, file: pendingFile },
+            { ...base, file: null },
+          ],
+        ],
+      });
+      const files = createFilesStub();
+      const { service } = createService(db, createNotificationsStub(), files);
+
+      const rows = await service.listCertificates();
+
+      expect(rows.map((row) => row.fileUrl)).toEqual([null, null]);
+      expect(files.getPrivateReadUrl).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('AdminService — contents', () => {
+  const team = {
+    id: 't1',
+    title: '세모팀',
+    openRoles: [
+      { role: '프론트엔드', count: 1 },
+      { role: '백엔드', count: 2 },
+    ],
+  };
+  const challenge = {
+    id: 'ch1',
+    title: 'AI 챌린지',
+    category: 'IT',
+    endDate: new Date(Date.now() + 3 * 86_400_000),
+  };
+
+  it('splits filled vs open roles, flags open reports and returns section totals', async () => {
+    const { db } = createDbStub({
+      select: [
+        [{ count: 12 }], // teams total
+        [{ team, challengeTitle: 'AI 챌린지' }],
+        [
+          { teamId: 't1', role: '프론트엔드', count: 1 },
+          { teamId: 't1', role: '백엔드', count: 1 },
+        ],
+        [{ count: 30 }], // challenges total
+        [challenge],
+        [{ challengeId: 'ch1', count: 1 }],
+        [{ targetId: 'ch1' }], // open report on the challenge only
+        [],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getContents();
+
+    expect(result.teams).toEqual([
+      {
+        id: 't1',
+        name: '세모팀',
+        challenge: 'AI 챌린지',
+        roles: ['프론트엔드'],
+        otherRoles: ['백엔드'],
+        members: '2/4명 참여중',
+        unread: false,
+      },
+    ]);
+    expect(result.contests[0]).toMatchObject({ id: 'ch1', teams: '팀 모집 1건', unread: true });
+    expect(result.teamsTotal).toBe(12);
+    expect(result.contestsTotal).toBe(30);
+  });
+
+  it('clamps section limits to 1..50 with a default page of 8', async () => {
+    const limits: unknown[] = [];
+    const db: any = {
+      select: vi.fn(() => {
+        const proxy: any = new Proxy(function () {}, {
+          get(_target, prop) {
+            if (prop === 'then') return (resolve: (value: unknown) => unknown) => resolve([]);
+            return (...args: unknown[]) => {
+              if (prop === 'limit') limits.push(args[0]);
+              return proxy;
+            };
+          },
+        });
+        return proxy;
+      }),
+    };
+    const { service } = createService(db);
+
+    await service.getContents('500', 'abc');
+
+    // teams, challenges, then the fixed 5-row report log.
+    expect(limits).toEqual([50, 8, 5]);
   });
 });
 
@@ -449,6 +616,28 @@ describe('AdminService — dashboard', () => {
 });
 
 describe('AdminService — reports', () => {
+  it('applies status and target type filters when listing reports', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[reportRow]] });
+    const { service } = createService(db);
+
+    const result = await service.listReports('피싱', 'open', 'challenge');
+
+    expect(result).toHaveLength(1);
+    expect(selectWhereCalls).toHaveLength(1);
+    expect(referencesColumn(selectWhereCalls[0], reports.content)).toBe(true);
+    expect(referencesColumn(selectWhereCalls[0], reports.status)).toBe(true);
+    expect(referencesColumn(selectWhereCalls[0], reports.targetType)).toBe(true);
+  });
+
+  it('omits optional report filters when they are not provided', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[reportRow]] });
+    const { service } = createService(db);
+
+    await service.listReports();
+
+    expect(selectWhereCalls).toEqual([[undefined]]);
+  });
+
   it('resolve sets resolved + note + resolvedAt and maps the contract shape', async () => {
     const updated = { ...reportRow, status: 'resolved', note: '조치 완료' };
     const { db, setCalls } = createDbStub({ update: [[updated]] });

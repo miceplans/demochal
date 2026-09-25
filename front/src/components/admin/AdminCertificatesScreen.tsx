@@ -16,6 +16,20 @@ import {
   SelectFilter,
 } from './parts';
 
+type CertificateListRow = CertificateRow & {
+  fileUrl: string | null;
+  fileContentType: string | null;
+};
+
+const categoryOptionToParam: Record<string, 'award' | 'participation'> = {
+  '수상 실적': 'award',
+  '출품 이력': 'participation',
+};
+
+// 목록 응답의 private 원본 URL은 5분 presigned GET이다. 화면을 열어둔 동안 만료 전에
+// 목록을 다시 받아 미리보기에 만료된 링크가 쓰이지 않게 한다.
+const FILE_URL_REFRESH_MS = 4 * 60_000;
+
 const tabToStatus: Record<(typeof certificateTabs)[number], 'pending' | 'verified' | 'rejected'> = {
   미인증: 'pending',
   인증: 'verified',
@@ -47,16 +61,23 @@ function TrophyGlyph() {
 
 export function AdminCertificatesScreen() {
   const [tab, setTab] = useState<(typeof certificateTabs)[number]>('미인증');
-  const [preview, setPreview] = useState<CertificateRow | null>(null);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<CertificateListRow | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [query, setQuery] = useState('');
+  const [categoryLabel, setCategoryLabel] = useState('');
   const toast = useToast();
 
-  const certificatesQuery = generated.useListAdminCertificates({
-    status: tabToStatus[tab],
-    q: query || undefined,
-  });
+  const certificatesQuery = generated.useListAdminCertificates(
+    {
+      status: tabToStatus[tab],
+      q: query || undefined,
+      category: categoryOptionToParam[categoryLabel],
+    },
+    { query: { refetchInterval: FILE_URL_REFRESH_MS } },
+  );
 
-  const rows = useMemo<CertificateRow[]>(
+  const rows = useMemo<CertificateListRow[]>(
     () =>
       (certificatesQuery.data?.data ?? []).map((cert, index) => ({
         id: cert.id ?? String(index),
@@ -65,6 +86,8 @@ export function AdminCertificatesScreen() {
         category: cert.category === 'participation' ? '출품 이력' : '수상 실적',
         status:
           cert.status === 'verified' ? '인증' : cert.status === 'rejected' ? '거부' : '미인증',
+        fileUrl: cert.fileUrl ?? null,
+        fileContentType: cert.fileContentType ?? null,
       })),
     [certificatesQuery.data],
   );
@@ -76,14 +99,24 @@ export function AdminCertificatesScreen() {
           variables.data.action === 'approve' ? '인증을 승인했어요.' : '인증을 거부했어요.',
         );
         certificatesQuery.refetch();
-        setPreview(null);
+        setPreviewId(null);
+        closeReject();
       },
       onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
     },
   });
 
-  const verify = (id: string, action: 'approve' | 'reject') =>
-    verifyMutation.mutate({ id, data: { action } });
+  const preview = rows.find((row) => row.id === previewId) ?? null;
+  const approve = (id: string) => verifyMutation.mutate({ id, data: { action: 'approve' } });
+  const closeReject = () => {
+    setRejectTarget(null);
+    setRejectReason('');
+  };
+  const submitReject = () => {
+    const reason = rejectReason.trim();
+    if (!rejectTarget || !reason) return;
+    verifyMutation.mutate({ id: rejectTarget.id, data: { action: 'reject', reason } });
+  };
 
   return (
     <>
@@ -95,7 +128,12 @@ export function AdminCertificatesScreen() {
           value={query}
           onChange={setQuery}
         />
-        <SelectFilter label="상장 유형" options={['수상 실적', '출품 이력']} />
+        <SelectFilter
+          label="상장 유형"
+          options={['전체', '수상 실적', '출품 이력']}
+          value={categoryLabel}
+          onChange={setCategoryLabel}
+        />
       </FilterBar>
       <TabBar role="tablist" aria-label="상장 인증 상태">
         {certificateTabs.map((label) => (
@@ -115,10 +153,10 @@ export function AdminCertificatesScreen() {
           {rows.map((row) => (
             <Item key={row.id}>
               <ThumbButton
-                onClick={() => setPreview(row)}
+                onClick={() => setPreviewId(row.id)}
                 aria-label={`${row.user} 상장 원본 보기`}
               >
-                <Thumb src="/assets/certificate.png" alt={`${row.user} 상장`} />
+                <CertificateThumb row={row} />
               </ThumbButton>
               <MiniAvatar aria-hidden>{row.user[0]}</MiniAvatar>
               <UserInfo>
@@ -131,15 +169,12 @@ export function AdminCertificatesScreen() {
               </HistoryPill>
               <Actions>
                 <RejectButton
-                  onClick={() => verify(row.id, 'reject')}
+                  onClick={() => setRejectTarget(row)}
                   disabled={verifyMutation.isPending}
                 >
                   거부
                 </RejectButton>
-                <ApproveButton
-                  onClick={() => verify(row.id, 'approve')}
-                  disabled={verifyMutation.isPending}
-                >
+                <ApproveButton onClick={() => approve(row.id)} disabled={verifyMutation.isPending}>
                   승인
                 </ApproveButton>
               </Actions>
@@ -158,19 +193,22 @@ export function AdminCertificatesScreen() {
           role="dialog"
           aria-modal="true"
           aria-label={`${preview.user} 상장 미리보기`}
-          onClick={() => setPreview(null)}
+          onClick={() => setPreviewId(null)}
         >
           <Dialog onClick={(event) => event.stopPropagation()}>
-            <PreviewImage src="/assets/certificate.png" alt={`${preview.user} 상장 원본`} />
+            <CertificateOriginal row={preview} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <RejectButton
-                onClick={() => verify(preview.id, 'reject')}
+                onClick={() => {
+                  setPreviewId(null);
+                  setRejectTarget(preview);
+                }}
                 disabled={verifyMutation.isPending}
               >
                 거부
               </RejectButton>
               <ApproveButton
-                onClick={() => verify(preview.id, 'approve')}
+                onClick={() => approve(preview.id)}
                 disabled={verifyMutation.isPending}
               >
                 승인
@@ -179,8 +217,71 @@ export function AdminCertificatesScreen() {
           </Dialog>
         </Overlay>
       ) : null}
+
+      {rejectTarget ? (
+        <Overlay
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="certificate-reject-title"
+          onClick={closeReject}
+        >
+          <Dialog onClick={(event) => event.stopPropagation()} style={{ width: 360 }}>
+            <RejectTitle id="certificate-reject-title">인증을 거부할까요?</RejectTitle>
+            <RejectMeta>
+              {rejectTarget.user} · {rejectTarget.award}
+            </RejectMeta>
+            <RejectLabel htmlFor="certificate-reject-reason">거부 사유</RejectLabel>
+            <RejectTextarea
+              id="certificate-reject-reason"
+              value={rejectReason}
+              onChange={(event) => setRejectReason(event.target.value)}
+              placeholder="사용자에게 전달될 거부 사유를 입력해주세요"
+              rows={3}
+              autoFocus
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <ApproveButton
+                onClick={closeReject}
+                style={{ background: c.white, color: c.gray700, border: `1px solid ${c.gray300}` }}
+              >
+                취소
+              </ApproveButton>
+              <RejectButton
+                onClick={submitReject}
+                disabled={verifyMutation.isPending || !rejectReason.trim()}
+              >
+                {verifyMutation.isPending ? '처리 중…' : '거부'}
+              </RejectButton>
+            </div>
+          </Dialog>
+        </Overlay>
+      ) : null}
     </>
   );
+}
+
+const isPdf = (row: CertificateListRow) => row.fileContentType === 'application/pdf';
+
+function CertificateThumb({ row }: { row: CertificateListRow }) {
+  if (!row.fileUrl) return <ThumbPlaceholder>원본 없음</ThumbPlaceholder>;
+  if (isPdf(row)) return <ThumbPlaceholder>PDF</ThumbPlaceholder>;
+  return <Thumb src={row.fileUrl} alt={`${row.user} 상장`} />;
+}
+
+function CertificateOriginal({ row }: { row: CertificateListRow }) {
+  if (!row.fileUrl) {
+    return <PreviewPlaceholder>업로드가 완료되지 않아 원본을 볼 수 없어요.</PreviewPlaceholder>;
+  }
+  if (isPdf(row)) {
+    return (
+      <PreviewPlaceholder>
+        <a href={row.fileUrl} target="_blank" rel="noreferrer noopener">
+          PDF 원본 새 창에서 열기
+        </a>
+      </PreviewPlaceholder>
+    );
+  }
+  return <PreviewImage src={row.fileUrl} alt={`${row.user} 상장 원본`} />;
 }
 
 const TabBar = styled.div({ display: 'flex', gap: 8 });
@@ -280,6 +381,45 @@ const Dialog = styled.div({
 const PreviewImage = styled.img({
   width: 258,
   height: 366,
-  objectFit: 'cover',
+  objectFit: 'contain',
   borderRadius: 4,
+  background: c.gray100,
+});
+const ThumbPlaceholder = styled.span({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 56,
+  height: 79,
+  borderRadius: 8,
+  border: `1px solid ${c.gray200}`,
+  background: c.gray100,
+  color: c.gray500,
+  ...textStyle.finePrint,
+});
+const PreviewPlaceholder = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 258,
+  height: 366,
+  padding: 16,
+  borderRadius: 4,
+  background: c.gray100,
+  color: c.gray500,
+  textAlign: 'center',
+  ...textStyle.body,
+  '& a': { color: c.primary, textDecoration: 'underline' },
+});
+const RejectTitle = styled.h2({ margin: 0, ...textStyle.h3_2, color: c.gray900 });
+const RejectMeta = styled.span({ ...textStyle.metaText, color: c.gray500 });
+const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
+const RejectTextarea = styled.textarea({
+  resize: 'vertical',
+  padding: '10px 12px',
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  '&:focus': { outline: 'none', borderColor: c.primary },
 });

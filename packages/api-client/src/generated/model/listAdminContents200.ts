@@ -22,6 +22,8 @@ import type { Report } from './report';
 
 export type ListAdminContents200 = {
   teams?: AdminTeamCard[];
+  teamsTotal?: number;
   contests?: AdminContestCard[];
+  contestsTotal?: number;
   reports?: Report[];
 };

@@ -9,6 +9,8 @@ import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { AdminTable, Badge, type AdminColumn } from './parts';
 
+type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
+
 const targetTypeLabel: Record<string, string> = {
   challenge: '공모전',
   team: '팀 모집',
@@ -139,11 +141,11 @@ function ReportDetailPanel({
   );
 }
 
-export function ReportLogTable() {
+export function ReportLogTable({ params }: { params?: ReportFilters }) {
   const [selected, setSelected] = useState<ReportRow | null>(null);
   const toast = useToast();
 
-  const reportsQuery = generated.useListAdminReports();
+  const reportsQuery = generated.useListAdminReports(params);
 
   const rows = useMemo<ReportRow[]>(
     () =>
