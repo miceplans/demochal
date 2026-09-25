@@ -1,12 +1,24 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, FilterBar, SearchFilter, SelectFilter } from './parts';
 import { ReportLogTable } from './ReportLogTable';
+
+type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
+
+const targetTypeLabel: Record<string, string> = {
+  challenge: '공모전',
+  team: '팀 모집',
+  award: '수상작',
+  user: '프로필',
+};
+const statusLabel: Record<string, string> = { open: '대기', resolved: '승인', dismissed: '거부' };
 
 function DownloadGlyph() {
   return (
@@ -30,7 +42,33 @@ function DownloadGlyph() {
 
 export function AdminReportsScreen() {
   const [exportOpen, setExportOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [targetType, setTargetType] = useState('');
+  const [status, setStatus] = useState('');
+  const params = useMemo(
+    () => ({
+      q: query || undefined,
+      targetType: (targetType || undefined) as ReportFilters['targetType'],
+      status: (status || undefined) as ReportFilters['status'],
+    }),
+    [query, status, targetType],
+  );
+  const reportsQuery = generated.useListAdminReports(params);
   const closeExport = () => setExportOpen(false);
+  const downloadReports = () => {
+    const headers = ['콘텐츠명', '신고 유형', '등록기관', '신고요약', '상태', '신고자', '신고일시'];
+    const rows = (reportsQuery.data?.data ?? []).map((report) => [
+      report.content ?? '',
+      targetTypeLabel[report.targetType ?? ''] ?? report.targetType ?? '',
+      report.org ?? '',
+      report.summary ?? '',
+      statusLabel[report.status ?? ''] ?? report.status ?? '',
+      report.reporter ?? '',
+      report.reportedAt ? new Date(report.reportedAt).toLocaleString('ko-KR') : '',
+    ]);
+    downloadCsv('semochal-reports.csv', headers, rows);
+    closeExport();
+  };
 
   return (
     <>
@@ -42,11 +80,33 @@ export function AdminReportsScreen() {
         </ExportButton>
       </TitleRow>
       <FilterBar>
-        <SearchFilter placeholder="기관명/담당자 검색" label="기관명/담당자 검색" />
-        <SelectFilter label="기관유형" options={['비영리', '학교', '협회', '기업']} />
-        <SelectFilter label="상태" options={['대기', '승인', '거부']} />
+        <SearchFilter
+          placeholder="콘텐츠명/기관명 검색"
+          label="콘텐츠명/기관명 검색"
+          value={query}
+          onChange={setQuery}
+        />
+        <SelectFilter
+          label="신고 유형"
+          options={['공모전', '팀 모집', '수상작', '프로필']}
+          value={targetTypeLabel[targetType] ?? ''}
+          onChange={(value) =>
+            setTargetType(
+              { 공모전: 'challenge', '팀 모집': 'team', 수상작: 'award', 프로필: 'user' }[value] ??
+                '',
+            )
+          }
+        />
+        <SelectFilter
+          label="상태"
+          options={['대기', '승인', '거부']}
+          value={statusLabel[status] ?? ''}
+          onChange={(value) =>
+            setStatus({ 대기: 'open', 승인: 'resolved', 거부: 'dismissed' }[value] ?? '')
+          }
+        />
       </FilterBar>
-      <ReportLogTable />
+      <ReportLogTable params={params} />
       {exportOpen &&
         typeof document !== 'undefined' &&
         createPortal(
@@ -59,14 +119,14 @@ export function AdminReportsScreen() {
             >
               <ModalContent>
                 <ExcelLogo src="/assets/microsoft/exel.png" alt="Excel" />
-                <ModalTitle id="report-export-title">exel 파일로 다운 받기</ModalTitle>
-                <ModalText>신고 처리 목록을 엑셀 파일로 저장할 수 있습니다.</ModalText>
+                <ModalTitle id="report-export-title">CSV 파일로 다운로드</ModalTitle>
+                <ModalText>현재 필터가 적용된 신고 목록을 CSV 파일로 저장합니다.</ModalText>
               </ModalContent>
               <ModalActions>
                 <ModalButton type="button" onClick={closeExport}>
                   취소
                 </ModalButton>
-                <ModalButton type="button" primary onClick={closeExport}>
+                <ModalButton type="button" primary onClick={downloadReports}>
                   다운로드
                 </ModalButton>
               </ModalActions>

@@ -16,14 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { ListAdminReportsStatus } from './listAdminReportsStatus';
-import type { ListAdminReportsTargetType } from './listAdminReportsTargetType';
 
-export type ListAdminReportsParams = {
-  q?: string;
-  status?: ListAdminReportsStatus;
-  /**
-   * 신고 대상 유형
-   */
-  targetType?: ListAdminReportsTargetType;
-};
+export type ListAdminReportsTargetType =
+  (typeof ListAdminReportsTargetType)[keyof typeof ListAdminReportsTargetType];
+
+export const ListAdminReportsTargetType = {
+  challenge: 'challenge',
+  team: 'team',
+  award: 'award',
+  user: 'user',
+} as const;
