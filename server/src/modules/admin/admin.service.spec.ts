@@ -89,7 +89,17 @@ function referencesColumn(node: any, target: unknown, seen = new Set<unknown>())
 }
 
 function createService(db: any, notifications = createNotificationsStub()) {
-  return { service: new AdminService(db, notifications as any), notifications };
+  const adsService = {
+    getReportForAdmin: vi.fn().mockResolvedValue({
+      totals: { impressions: 0, clicks: 0, ctr: 0 },
+      daily: [],
+    }),
+  };
+  return {
+    service: new AdminService(db, notifications as any, adsService as any),
+    notifications,
+    adsService,
+  };
 }
 
 const verificationRow = { id: 'v1', businessId: 'b1', status: 'pending' };

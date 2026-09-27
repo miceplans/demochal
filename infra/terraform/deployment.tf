@@ -30,12 +30,13 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       values   = ["sts.amazonaws.com"]
     }
     # The production GitHub Environment must be restricted to main. Its
-    # The existing GitHub Environment is named `Production`; the standard OIDC
-    # subject is environment-scoped rather than ref-scoped and is case-sensitive.
+    # GitHub uses immutable repository IDs for this repository's OIDC subject.
+    # Keep the trust environment-scoped and exact rather than adding a legacy
+    # or branch-wide fallback.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:miceplans/demochal:environment:Production"]
+      values   = ["repo:miceplans@297952556/demochal@1361046246:environment:Production"]
     }
   }
 }

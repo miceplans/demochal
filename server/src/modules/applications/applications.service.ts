@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, exists, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, orders } from '../../db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
@@ -113,8 +113,56 @@ export class ApplicationsService {
     return { id: order.id, amount: order.amount, name: tossOrderName(challenge.title) };
   }
 
+  // 마이페이지 지원현황 테이블(챌린지/협회/결과)에 바로 그릴 수 있게
+  // 챌린지 제목과 주최 기업명을 함께 남긴다.
   async listForUser(userId: string) {
-    return this.db.select().from(applications).where(eq(applications.userId, userId));
+    const rows = await this.db
+      .select({
+        application: applications,
+        challengeTitle: challenges.title,
+        businessName: businesses.name,
+      })
+      .from(applications)
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(eq(applications.userId, userId))
+      .orderBy(desc(applications.createdAt));
+    return rows.map(({ application, challengeTitle, businessName }) => ({
+      ...application,
+      challengeTitle,
+      businessName,
+    }));
+  }
+
+  async listForBusinessOwner(
+    ownerUserId: string,
+    filters: { challengeId?: string; status?: string },
+  ) {
+    const conditions = [eq(businesses.ownerUserId, ownerUserId)];
+    if (filters.challengeId) conditions.push(eq(applications.challengeId, filters.challengeId));
+    if (filters.status) conditions.push(eq(applications.status, filters.status));
+    const rows = await this.db
+      .select({ application: applications })
+      .from(applications)
+      .innerJoin(challenges, eq(applications.challengeId, challenges.id))
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(
+        and(
+          ...conditions,
+          or(
+            eq(challenges.price, 0),
+            exists(
+              this.db
+                .select({ id: orders.id })
+                .from(orders)
+                .where(and(eq(orders.applicationId, applications.id), eq(orders.status, 'paid'))),
+            ),
+          ),
+        ),
+      )
+      .orderBy(desc(applications.createdAt))
+      .limit(100);
+    return rows.map(({ application }) => application);
   }
 
   // Visible to the applicant themselves, or to the business that owns the challenge.

@@ -5,10 +5,12 @@ import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
 import { SectionHeader, Row, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
-import { desktopContests, teams, type Contest } from '@/data/user-design';
+import { desktopContests, type Contest } from '@/data/user-design';
+import { toTeamCard } from '@/components/teams/team-model';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
@@ -55,6 +57,8 @@ export function HomePage() {
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: teamList } = generated.useListTeams();
+  const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 6 },
     { query: { enabled: auth?.status === 200 } },
@@ -129,14 +133,23 @@ export function HomePage() {
               <DesktopOnly>
                 <Rail>
                   {recommendationContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                    />
                   ))}
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
                 <Rail>
                   {recommendationContests.slice(0, 2).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} simple />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                      simple
+                    />
                   ))}
                 </Rail>
               </MobileOnly>
@@ -150,7 +163,11 @@ export function HomePage() {
                 <div style={{ height: 16 }} />
                 <Rail>
                   {desktopContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                    />
                   ))}
                 </Rail>
               </DesktopOnly>
@@ -161,7 +178,12 @@ export function HomePage() {
                 />
                 <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
                   {desktopContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} horizontal />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                      horizontal
+                    />
                   ))}
                 </div>
               </MobileOnly>

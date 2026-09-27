@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, count, desc, eq, gte, gt, inArray, lt, ne, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -11,6 +17,7 @@ import {
   users,
 } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
+import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
 
@@ -97,6 +104,50 @@ export class ChallengesService {
       })
       .returning();
     return challenge;
+  }
+
+  /**
+   * 공고 내용 부분 수정. 소유 비즈니스 또는 admin만 가능하며, 권한이 없으면 존재 여부를
+   * 노출하지 않도록 404로 응답한다(updateStatus와 동일).
+   * TODO: 모집 중/마감 공고의 수정 가능 범위(예: 신청자가 있을 때 참가비·정원 축소 금지)는
+   * 정책 미확정. https://docs.nestjs.com/exception-filters#built-in-http-exceptions
+   */
+  async update(id: string, dto: UpdateChallengeDto, user: { id: string; role: string }) {
+    const ownership =
+      user.role === 'admin'
+        ? eq(challenges.id, id)
+        : and(eq(challenges.id, id), eq(businesses.ownerUserId, user.id));
+    const [current] = await this.db
+      .select({ startDate: challenges.startDate, endDate: challenges.endDate })
+      .from(challenges)
+      .innerJoin(businesses, eq(businesses.id, challenges.businessId))
+      .where(ownership)
+      .limit(1);
+    if (!current) throw new NotFoundException('Challenge not found');
+
+    const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
+    const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
+    if (endDate.getTime() < startDate.getTime()) {
+      throw new BadRequestException('endDate must not be before startDate');
+    }
+
+    const patch = {
+      ...(dto.title !== undefined && { title: dto.title }),
+      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.price !== undefined && { price: dto.price }),
+      ...(dto.capacity !== undefined && { capacity: dto.capacity }),
+      ...(dto.startDate !== undefined && { startDate }),
+      ...(dto.endDate !== undefined && { endDate }),
+      ...(dto.category !== undefined && { category: dto.category }),
+    };
+    if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
+
+    const [updated] = await this.db
+      .update(challenges)
+      .set(patch)
+      .where(eq(challenges.id, id))
+      .returning();
+    return updated;
   }
 
   async updateStatus(id: string, dto: UpdateChallengeStatusDto, ownerUserId: string) {
