@@ -2224,8 +2224,7 @@ components:
             type: string,
             description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
           }
-        recruitMethod:
-          { type: string, enum: [seMOchall, external], default: external }
+        recruitMethod: { type: string, enum: [seMOchall, external], default: external }
     UpdateChallengeRequest:
       type: object
       description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
