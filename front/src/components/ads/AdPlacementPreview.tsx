@@ -14,6 +14,8 @@ export type AdPlacement = 'hero' | 'gallery';
 type Props = {
   view: AdPreviewView;
   price?: number;
+  /** 서버 광고 상품(`GET /ads/products`)의 1일 가격. 없으면 fallbackPrice를 쓴다. */
+  dailyPrices?: Partial<Record<AdPlacement, number>>;
   onSelect?: (placement: AdPlacement) => void;
   selectImmediately?: boolean;
   uploadPlacement?: AdPlacement | null;
@@ -27,15 +29,18 @@ const artwork = {
   mobile: { width: 358, background: '/assets/mobile-screen.png' },
 } as const;
 
+// fallbackPrice는 서버 기본 상품(server/src/modules/ads/ads.service.ts DEFAULT_PRODUCTS)의
+// dailyPrice와 맞춘다. 상품 조회 전이나 실패 시에만 쓰인다.
 const adInfo = {
   hero: { name: '홈 상단 배너 광고', fallbackPrice: 100000 },
-  gallery: { name: '홈 중간 이미지 광고', fallbackPrice: 60000 },
+  gallery: { name: '홈 중간 이미지 광고', fallbackPrice: 50000 },
 } as const;
 
 /** Shared Figma-faithful advertising preview for business and admin screens. */
 export function AdPlacementPreview({
   view,
   price,
+  dailyPrices,
   onSelect,
   selectImmediately = false,
   uploadPlacement = null,
@@ -61,7 +66,8 @@ export function AdPlacementPreview({
 
   const screen = artwork[view];
   const Slot = view === 'mobile' ? MobileHeroSlot : HeroSlot;
-  const priceOf = (placement: AdPlacement) => price ?? adInfo[placement].fallbackPrice;
+  const priceOf = (placement: AdPlacement) =>
+    price ?? dailyPrices?.[placement] ?? adInfo[placement].fallbackPrice;
   const isPricingPreview = !onSelect;
   const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
     const canvas = canvasRef.current?.getBoundingClientRect();
@@ -219,9 +225,7 @@ export function AdPlacementPreview({
       {tooltip && (
         <TooltipCard role="tooltip" top={tooltip.top} left={tooltip.left}>
           <strong style={textStyle.bodyStrong}>{adInfo[tooltip.placement].name}</strong>
-          <p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>
-            8/25일 ~ 9/24일까지 광고비
-          </p>
+          <p style={{ margin: '4px 0', color: c.gray500, ...textStyle.metaText }}>1일 광고비</p>
           <strong style={{ fontSize: 22 }}>{priceOf(tooltip.placement).toLocaleString()}원</strong>
           {onSelect && !selectImmediately && (
             <PriceAction
@@ -250,7 +254,7 @@ export function AdPlacementPreview({
                 단기 결제
               </h2>
               <p style={{ margin: '10px 0 4px', color: c.gray500, ...textStyle.caption }}>
-                8/25일 ~ 8/27일까지 광고비
+                1일 광고비
               </p>
               <strong style={{ fontSize: 18 }}>{priceOf(active).toLocaleString()}원</strong>
               <PaymentActions>

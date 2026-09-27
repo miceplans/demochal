@@ -1,6 +1,5 @@
 -- Exposure-boost contract: challenges recruiting through the in-service
--- application form (recruit_method = 'seMOchall') rank higher in
--- recommendations, which is surfaced as a hint on the biz posting form.
+-- application form rank higher in recommendations.
 -- Existing rows default to 'external' so current rankings do not regress.
 -- Idempotent: re-running on an already-migrated database is a no-op.
 --> statement-breakpoint

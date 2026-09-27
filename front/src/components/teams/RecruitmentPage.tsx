@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
@@ -56,14 +56,47 @@ export function RecruitmentPage() {
   const setDraft = useUserStore((s) => s.setRecruitment);
   const toast = useToast();
   const router = useRouter();
-  const [slots, setSlots] = useState<{ id: number; role: string; count: number }[]>([]);
+  // 역할 슬롯도 draft에 함께 저장해 페이지를 나갔다 와도 유지한다.
+  const slots = draft.slots ?? [];
+  const setSlots = (next: typeof slots) => setDraft({ ...draft, slots: next });
+  const challengesQuery = generated.useListChallenges({ limit: 50 });
+  const challengeOptions = challengesQuery.data?.data.items ?? [];
+  const createTeam = generated.useCreateTeam({
+    mutation: {
+      onSuccess: (result) => {
+        setDraft({
+          challenge: '',
+          introduction: '',
+          role: draft.role,
+          preferred: '',
+          etc: '',
+          slots: [],
+        });
+        toast.success('모집글을 게시했어요');
+        router.push(`/teams/${result.data.id}`);
+      },
+    },
+  });
   return (
     <UserShell title="모집글 작성" back="/teams" footer={false}>
       <FormContainer
         onSubmit={(e) => {
           e.preventDefault();
-          toast.success('모집글을 저장했어요');
-          router.push('/my/teams');
+          const challenge = challengeOptions.find((x) => x.title === draft.challenge.trim());
+          if (!challenge?.id) {
+            toast.error('챌린지를 찾을 수 없어요', '목록에서 챌린지를 선택해주세요');
+            return;
+          }
+          createTeam.mutate({
+            data: {
+              challengeId: challenge.id,
+              introduction: draft.introduction.trim() || undefined,
+              openRoles: slots.map(({ role, count }) => ({ role, count })),
+              myRole: draft.role,
+              preferred: draft.preferred?.trim() || undefined,
+              etc: draft.etc?.trim() || undefined,
+            },
+          });
         }}
       >
         <DesktopOnly>
@@ -83,19 +116,20 @@ export function RecruitmentPage() {
             style={{ color: draft.challenge ? c.gray900 : c.gray500 }}
           />
           <datalist id="challenges">
-            <option>2025 공공데이터 활용 창업 대회</option>
-            <option>2025 지역문제 해결 해커톤</option>
+            {challengeOptions.map((x) => (
+              <option key={x.id} value={x.title} />
+            ))}
           </datalist>
         </Stack>
         <Stack gap={10}>
           <StepLabel number={2} completed={!!draft.introduction}>
-            팀 소개 한줄
+            팀 소개
           </StepLabel>
           <Input
-            aria-label="팀 소개 한줄"
-            placeholder="팀을 한 줄로 소개해주세요"
+            aria-label="팀 소개"
+            placeholder="팀을 소개해주세요"
             required
-            maxLength={100}
+            maxLength={300}
             value={draft.introduction}
             onChange={(e) => setDraft({ ...draft, introduction: e.target.value })}
             style={{ color: draft.introduction ? c.gray900 : c.gray500 }}
@@ -123,7 +157,7 @@ export function RecruitmentPage() {
                 min={1}
                 max={10}
                 value={slot.count}
-                style={{ width: 80 }}
+                style={{ width: 100, textAlign: 'center' }}
                 onChange={(e) =>
                   setSlots(
                     slots.map((s) =>
@@ -161,7 +195,31 @@ export function RecruitmentPage() {
             options={roles.map((x) => ({ value: x, label: x }))}
           />
         </Stack>
-        <Button type="submit" fullWidth disabled={!slots.length}>
+        <Stack gap={10}>
+          <StepLabel number={5} completed={!!draft.preferred}>
+            우대사항
+          </StepLabel>
+          <Input
+            aria-label="우대사항"
+            placeholder="우대하는 경험이나 성향을 적어주세요"
+            maxLength={200}
+            value={draft.preferred ?? ''}
+            onChange={(e) => setDraft({ ...draft, preferred: e.target.value })}
+          />
+        </Stack>
+        <Stack gap={10}>
+          <StepLabel number={6} completed={!!draft.etc}>
+            기타
+          </StepLabel>
+          <Input
+            aria-label="기타"
+            placeholder="팀원에게 전할 내용이 있다면 적어주세요"
+            maxLength={200}
+            value={draft.etc ?? ''}
+            onChange={(e) => setDraft({ ...draft, etc: e.target.value })}
+          />
+        </Stack>
+        <Button type="submit" fullWidth disabled={!slots.length || createTeam.isPending}>
           게시하기
         </Button>
       </FormContainer>

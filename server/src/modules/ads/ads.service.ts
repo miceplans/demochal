@@ -8,15 +8,16 @@ import {
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, desc, eq, gt, inArray, or } from 'drizzle-orm';
+import { and, desc, eq, gt, gte, inArray, lt, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { adProducts, ads, files, orders } from '../../db/schema.js';
+import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import type { UpdateAdDto } from './dto/update-ad.dto.js';
+import type { RecordAdEventDto } from './dto/record-ad-event.dto.js';
 
 // Unpaid ('preparing') reservations stop blocking a placement's dates this
 // long after creation, so an abandoned checkout can't lock inventory forever.
@@ -48,8 +49,15 @@ const DEFAULT_PRODUCTS = [
   },
 ];
 
+const SEOUL_TIME_ZONE = 'Asia/Seoul';
+const EVENT_WINDOW_MS = 60_000;
+const MAX_EVENTS_PER_WINDOW = 120;
+
 @Injectable()
 export class AdsService implements OnModuleInit {
+  private readonly recentEventIds = new Map<string, number>();
+  private readonly eventWindowStarts = new Map<string, { startedAt: number; count: number }>();
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly businessesService: BusinessesService,
@@ -221,10 +229,6 @@ export class AdsService implements OnModuleInit {
     return updated;
   }
 
-  /**
-   * 광고 성과 리포트. 노출/클릭 계측 비콘이 아직 없어(광고는 클라이언트에서만
-   * 렌더링) 구조는 실제 스키마와 동일하되 모든 지표가 정직하게 0으로 채워진다.
-   */
   async report(id: string, query: AdReportQueryDto, user: AuthenticatedUser) {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
@@ -232,26 +236,141 @@ export class AdsService implements OnModuleInit {
       throw new ForbiddenException('Only the owning business can view this report');
     }
 
-    const end = query.to ? parseDate(query.to) : new Date();
-    let start = query.from ? parseDate(query.from) : addDays(end, -6);
+    const end = query.to ?? seoulDateString(new Date());
+    let start = query.from ?? addDateString(end, -6);
     // 기간 상한 31일: 그 이상 요청되면 시작일을 당겨 맞춘다.
-    if (diffDays(start, end) > 30) start = addDays(end, -30);
-    if (start.getTime() > end.getTime()) start = end;
+    if (diffDays(start, end) > 30) start = addDateString(end, -30);
+    if (start > end) start = end;
 
-    const zero = { impressions: 0, clicks: 0, ctr: 0 };
-    const daily = enumerateDays(start, end).map((date) => ({ date, ...zero }));
-    const hourly = Array.from({ length: 24 }, (_, hour) => ({
-      hour,
-      label: `${hour}시~${hour + 1}시`,
-      ...zero,
-    }));
-    return { totals: { ...zero }, daily, hourly, monthlyClicks: [] };
+    return this.buildReport(id, start, end);
   }
 
   async getReportForAdmin(id: string) {
-    await this.findById(id);
-    const zero = { impressions: 0, clicks: 0, ctr: 0 };
-    return { totals: zero, daily: [], hourly: [], monthlyClicks: [] };
+    const ad = await this.findById(id);
+    const rawStart = seoulDateString(ad.startDate);
+    const end = seoulDateString(new Date(Math.min(ad.endDate.getTime(), Date.now())));
+    // 관리자 리포트도 공개 리포트와 동일하게 최대 31일만 계산한다.
+    const start =
+      rawStart > end
+        ? end
+        : rawStart > addDateString(end, -30)
+          ? rawStart
+          : addDateString(end, -30);
+    return this.buildReport(id, start, end);
+  }
+
+  async recordEvent(id: string, type: 'impressions' | 'clicks', dto: RecordAdEventDto) {
+    const [ad] = await this.db
+      .select({ id: ads.id, status: ads.status })
+      .from(ads)
+      .where(eq(ads.id, id))
+      .limit(1);
+    if (!ad || ad.status !== 'active') return { recorded: false };
+
+    const now = Date.now();
+    this.pruneRecentEventIds(now);
+    if (dto.eventId) {
+      const key = `${id}:${type}:${dto.eventId}`;
+      if (this.recentEventIds.has(key)) return { recorded: false };
+      this.recentEventIds.set(key, now + EVENT_WINDOW_MS);
+    }
+    const rateKey = `${id}:${type}`;
+    const window = this.eventWindowStarts.get(rateKey);
+    if (!window || now - window.startedAt >= EVENT_WINDOW_MS) {
+      this.eventWindowStarts.set(rateKey, { startedAt: now, count: 1 });
+    } else if (window.count >= MAX_EVENTS_PER_WINDOW) {
+      return { recorded: false };
+    } else {
+      window.count += 1;
+    }
+
+    const bucketStart = hourBucket(new Date());
+    const increment = type === 'impressions' ? { impressions: 1 } : { clicks: 1 };
+    await this.db
+      .insert(adEventCounters)
+      .values({ adId: id, bucketStart, ...increment })
+      .onConflictDoUpdate({
+        target: [adEventCounters.adId, adEventCounters.bucketStart],
+        set:
+          type === 'impressions'
+            ? { impressions: sql`${adEventCounters.impressions} + 1` }
+            : { clicks: sql`${adEventCounters.clicks} + 1` },
+      });
+    return { recorded: true };
+  }
+
+  async monthlyExposureForBusiness(businessId: string) {
+    const result = await this.db
+      .select({
+        bucketStart: adEventCounters.bucketStart,
+        impressions: adEventCounters.impressions,
+      })
+      .from(adEventCounters)
+      .innerJoin(ads, eq(adEventCounters.adId, ads.id))
+      .where(eq(ads.businessId, businessId));
+    const rows = Array.isArray(result) ? result : [];
+    const byMonth = new Map<string, number>();
+    for (const row of rows) {
+      const month = seoulMonthKey(row.bucketStart);
+      byMonth.set(month, (byMonth.get(month) ?? 0) + row.impressions);
+    }
+    return [...byMonth.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([month, value]) => ({ label: `${Number(month.slice(5))}월`, value }));
+  }
+
+  private async buildReport(id: string, start: string, end: string) {
+    // 집계 시간대는 서비스 사업 기준인 Asia/Seoul이며, DB에는 UTC timestamp 버킷을 저장한다.
+    const result = await this.db
+      .select({
+        bucketStart: adEventCounters.bucketStart,
+        impressions: adEventCounters.impressions,
+        clicks: adEventCounters.clicks,
+      })
+      .from(adEventCounters)
+      .where(
+        and(
+          eq(adEventCounters.adId, id),
+          gte(adEventCounters.bucketStart, seoulDate(start)),
+          lt(adEventCounters.bucketStart, seoulDate(addDateString(end, 1))),
+        ),
+      );
+    const rows = Array.isArray(result) ? result : [];
+    const dailyMap = new Map<string, Metric>();
+    const hourlyMap = new Map<number, Metric>();
+    const monthlyMap = new Map<string, number>();
+    for (const row of rows) {
+      const date = seoulDateString(row.bucketStart);
+      addMetric(dailyMap, date, row);
+      const hour = seoulHour(row.bucketStart);
+      addMetric(hourlyMap, hour, row);
+      const month = date.slice(0, 7);
+      monthlyMap.set(month, (monthlyMap.get(month) ?? 0) + row.clicks);
+    }
+    const daily = enumerateDateStrings(start, end).map((date) => ({
+      date,
+      ...withCtr(dailyMap.get(date) ?? emptyMetric()),
+    }));
+    const hourly = Array.from({ length: 24 }, (_, hour) => ({
+      hour,
+      label: `${hour}시~${hour + 1}시`,
+      ...metricRow(hourlyMap.get(hour)),
+    }));
+    const totals = daily.reduce((sum, row) => addMetric(sum, row), emptyMetric());
+    return {
+      totals: withCtr(totals),
+      daily,
+      hourly,
+      monthlyClicks: [...monthlyMap.entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([month, value]) => ({ label: `${Number(month.slice(5))}월`, value })),
+    };
+  }
+
+  private pruneRecentEventIds(now: number) {
+    for (const [key, expiresAt] of this.recentEventIds) {
+      if (expiresAt <= now) this.recentEventIds.delete(key);
+    }
   }
 
   // Rows that currently occupy a placement's calendar: paid/active ads, plus
@@ -265,24 +384,92 @@ export class AdsService implements OnModuleInit {
 }
 
 function parseDate(value: string) {
-  return new Date(`${value}T00:00:00Z`);
+  return new Date(`${value}T00:00:00+09:00`);
 }
 
-function addDays(date: Date, days: number) {
-  const next = new Date(date);
+function seoulDate(value: string | Date) {
+  return typeof value === 'string' ? parseDate(value) : value;
+}
+
+function addDateString(date: string, days: number) {
+  const next = new Date(`${date}T00:00:00Z`);
   next.setUTCDate(next.getUTCDate() + days);
-  return next;
+  return next.toISOString().slice(0, 10);
 }
 
-function diffDays(start: Date, end: Date) {
-  return Math.round((end.getTime() - start.getTime()) / 86_400_000);
+function diffDays(start: string, end: string) {
+  return Math.round(
+    (new Date(`${end}T00:00:00Z`).getTime() - new Date(`${start}T00:00:00Z`).getTime()) /
+      86_400_000,
+  );
 }
 
 /** Inclusive [start..end] as YYYY-MM-DD strings. */
-function enumerateDays(start: Date, end: Date) {
+function enumerateDateStrings(start: string, end: string) {
   const dates: string[] = [];
-  for (let day = start; day.getTime() <= end.getTime(); day = addDays(day, 1)) {
-    dates.push(day.toISOString().slice(0, 10));
+  for (let day = start; day <= end; day = addDateString(day, 1)) {
+    dates.push(day);
   }
   return dates;
+}
+
+type Metric = { impressions: number; clicks: number };
+
+function emptyMetric(): Metric {
+  return { impressions: 0, clicks: 0 };
+}
+
+function addMetric(target: Map<unknown, Metric>, key: unknown, value: Metric): void;
+function addMetric(target: Metric, value: Metric): Metric;
+function addMetric(target: Map<unknown, Metric> | Metric, key: unknown, value?: Metric) {
+  if (target instanceof Map) {
+    const current = target.get(key) ?? emptyMetric();
+    target.set(key, {
+      impressions: current.impressions + value!.impressions,
+      clicks: current.clicks + value!.clicks,
+    });
+    return;
+  }
+  return {
+    impressions: target.impressions + (key as Metric).impressions,
+    clicks: target.clicks + (key as Metric).clicks,
+  };
+}
+
+function withCtr(metric: Metric) {
+  return {
+    ...metric,
+    ctr: metric.impressions ? Number(((metric.clicks / metric.impressions) * 100).toFixed(2)) : 0,
+  };
+}
+
+function metricRow(metric?: Metric) {
+  return withCtr(metric ?? emptyMetric());
+}
+
+function seoulDateString(value: Date) {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: SEOUL_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
+}
+
+function seoulMonthKey(value: Date) {
+  return seoulDateString(value).slice(0, 7);
+}
+
+function seoulHour(value: Date) {
+  return Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: SEOUL_TIME_ZONE, hour: '2-digit', hour12: false })
+      .format(value)
+      .replace(/^24$/, '0'),
+  );
+}
+
+function hourBucket(value: Date) {
+  const bucket = new Date(value);
+  bucket.setUTCMinutes(0, 0, 0);
+  return bucket;
 }
