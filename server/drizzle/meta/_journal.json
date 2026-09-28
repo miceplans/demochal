@@ -119,6 +119,20 @@
       "when": 1790170000000,
       "tag": "0017_biz_signup_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790180000000,
+      "tag": "0018_add_challenges_recruit_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790190000000,
+      "tag": "0019_email_send_states",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdsService } from './ads.service.js';
 
+vi.mock('../files/public-file-url.js', () => ({
+  buildPublicFileUrl: vi.fn((file: { id: string }) =>
+    file.id === 'file-visible' ? 'https://cdn.example.com/ads/visible.png' : null,
+  ),
+}));
+
 function createDbStub(
   existingAd?: Record<string, unknown>,
   activationOrder?: Record<string, unknown>,
@@ -165,6 +171,57 @@ describe('AdsService.updateStatus', () => {
   });
 });
 
+describe('AdsService.listPublic', () => {
+  it('returns only image-ready minimal public fields for the requested placement', async () => {
+    const where = vi.fn(() => ({
+      orderBy: vi.fn().mockResolvedValue([
+        {
+          id: 'ad-visible',
+          title: '진행 중 히어로 광고',
+          imageFileId: 'file-visible',
+          landingUrl: 'https://example.com/landing',
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+        },
+        {
+          id: 'ad-no-image',
+          title: '이미지 없는 광고',
+          imageFileId: null,
+          landingUrl: null,
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-02T00:00:00.000Z'),
+        },
+      ]),
+    }));
+    const db: any = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where })) })),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue([{ id: 'file-visible' }]),
+          })),
+        })),
+    };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(service.listPublic('hero')).resolves.toEqual([
+      {
+        id: 'ad-visible',
+        title: '진행 중 히어로 광고',
+        imageUrl: expect.any(String),
+        landingUrl: 'https://example.com/landing',
+        placement: 'hero',
+      },
+    ]);
+    expect(where).toHaveBeenCalledOnce();
+  });
+});
+
 describe('AdsService.report', () => {
   const businesses = () => createBusinessesStub({ id: 'biz-1' });
 
@@ -183,8 +240,15 @@ describe('AdsService.report', () => {
 
     expect(report.totals).toEqual({ impressions: 0, clicks: 0, ctr: 0 });
     expect(report.daily).toHaveLength(7);
-    const today = new Date().toISOString().slice(0, 10);
-    const sixDaysAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+    const seoulDate = (value: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(value);
+    const today = seoulDate(new Date());
+    const sixDaysAgo = seoulDate(new Date(Date.now() - 6 * 86_400_000));
     expect(report.daily![0]!.date).toBe(sixDaysAgo);
     expect(report.daily![6]!.date).toBe(today);
     for (const row of report.daily!) {

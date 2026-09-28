@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(18);
+    expect(journal.entries).toHaveLength(20);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -172,6 +172,7 @@ describe('migration chain coverage', () => {
       'outbox_events',
       'billing_auth_attempts',
       'ad_event_counters',
+      'email_send_states',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
@@ -360,6 +361,33 @@ describe('0017_biz_signup_contract migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "terms_agreements" jsonb');
     expect(sql).toContain('ALTER COLUMN "registration_number" DROP NOT NULL');
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS "contact_verifications"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0018_add_challenges_recruit_method migration', () => {
+  it('adds the exposure-boost column idempotently with an external backfill default', () => {
+    const tag = journal.entries[18]?.tag;
+    expect(tag).toBe('0018_add_challenges_recruit_method');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      `ADD COLUMN IF NOT EXISTS "recruit_method" varchar(20) DEFAULT 'external' NOT NULL`,
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0019_email_send_states migration', () => {
+  it('creates the SES send-state idempotency table without destructive DDL', () => {
+    const tag = journal.entries[19]?.tag;
+    expect(tag).toBe('0019_email_send_states');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "email_send_states"');
+    expect(sql).toContain('"outbox_event_id" uuid NOT NULL');
+    expect(sql).toContain('email_send_states_outbox_event_id_unique');
+    expect(sql).toContain('email_send_states_outbox_event_id_outbox_events_id_fk');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

@@ -91,6 +91,7 @@ import type {
   ListMyNotificationsParams,
   ListPaymentHistory200,
   ListPaymentHistoryParams,
+  ListPublicAdsParams,
   ListRecommendedChallenges200,
   ListRecommendedChallengesParams,
   ListTeamsParams,
@@ -103,6 +104,7 @@ import type {
   Order,
   PaymentCard,
   PresignedUploadRequest,
+  PublicAd,
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
@@ -1375,10 +1377,27 @@ export type saveOnboardingSurveyResponse200 = {
   status: 200;
 };
 
+export type saveOnboardingSurveyResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type saveOnboardingSurveyResponse409 = {
+  data: void;
+  status: 409;
+};
+
 export type saveOnboardingSurveyResponseSuccess = saveOnboardingSurveyResponse200 & {
   headers: Headers;
 };
-export type saveOnboardingSurveyResponse = saveOnboardingSurveyResponseSuccess;
+export type saveOnboardingSurveyResponseError = (
+  saveOnboardingSurveyResponse401 | saveOnboardingSurveyResponse409
+) & {
+  headers: Headers;
+};
+
+export type saveOnboardingSurveyResponse =
+  saveOnboardingSurveyResponseSuccess | saveOnboardingSurveyResponseError;
 
 export const getSaveOnboardingSurveyUrl = () => {
   return `/users/me/survey`;
@@ -1386,7 +1405,8 @@ export const getSaveOnboardingSurveyUrl = () => {
 
 /**
  * 가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
- * 프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
+ * 첫 가입/로그인 사용자만 한 번 제출할 수 있다(`User.onboardingSurvey`가 null일 때).
+ * 이미 설문을 저장한 사용자는 409를 받으며, 이후 관심분야 변경은 `PUT /interests`를 쓴다.
  * @summary 온보 설문 저장 (4단계)
  */
 export const saveOnboardingSurvey = async (
@@ -1423,7 +1443,7 @@ export const saveOnboardingSurvey = async (
 export const getSaveOnboardingSurveyMutationKey = () => ['saveOnboardingSurvey'] as const;
 
 export const getSaveOnboardingSurveyMutationOptions = <
-  TError = unknown,
+  TError = UnauthorizedResponse | void,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1462,13 +1482,13 @@ export type SaveOnboardingSurveyMutationResult = NonNullable<
   Awaited<ReturnType<typeof saveOnboardingSurvey>>
 >;
 export type SaveOnboardingSurveyMutationBody = OnboardingSurvey;
-export type SaveOnboardingSurveyMutationError = unknown;
+export type SaveOnboardingSurveyMutationError = UnauthorizedResponse | void;
 export type SaveOnboardingSurveyMutationVariables = { data: OnboardingSurvey };
 
 /**
  * @summary 온보 설문 저장 (4단계)
  */
-export const useSaveOnboardingSurvey = <TError = unknown, TContext = unknown>(
+export const useSaveOnboardingSurvey = <TError = UnauthorizedResponse | void, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof saveOnboardingSurvey>>,
@@ -7834,6 +7854,145 @@ export function useListAdProducts<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListAdProductsQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type listPublicAdsResponse200 = {
+  data: PublicAd[];
+  status: 200;
+};
+
+export type listPublicAdsResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type listPublicAdsResponseSuccess = listPublicAdsResponse200 & {
+  headers: Headers;
+};
+export type listPublicAdsResponseError = listPublicAdsResponse400 & {
+  headers: Headers;
+};
+
+export type listPublicAdsResponse = listPublicAdsResponseSuccess | listPublicAdsResponseError;
+
+export const getListPublicAdsUrl = (params: ListPublicAdsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/ads/public?${stringifiedParams}` : `/ads/public`;
+};
+
+/**
+ * 인증 없이 홈 캐러셀에 표시할 현재 게재 중인 광고 소재를 위치별로 반환한다. 내부 광고주·결제 정보와 이미지가 준비되지 않은 광고는 포함하지 않는다.
+ * @summary 홈 게재 중 광고 조회
+ */
+export const listPublicAds = async (
+  params: ListPublicAdsParams,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listPublicAdsResponse> => {
+  return apiFetch<listPublicAdsResponse>(getListPublicAdsUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListPublicAdsQueryKey = (params?: ListPublicAdsParams) => {
+  return [`/ads/public`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPublicAdsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPublicAds>>,
+  TError = void,
+>(
+  params: ListPublicAdsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublicAds>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPublicAdsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPublicAds>>> = ({ signal }) =>
+    listPublicAds(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPublicAds>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListPublicAdsQueryResult = NonNullable<Awaited<ReturnType<typeof listPublicAds>>>;
+export type ListPublicAdsQueryError = void;
+
+export function useListPublicAds<TData = Awaited<ReturnType<typeof listPublicAds>>, TError = void>(
+  params: ListPublicAdsParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublicAds>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPublicAds>>,
+          TError,
+          Awaited<ReturnType<typeof listPublicAds>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPublicAds<TData = Awaited<ReturnType<typeof listPublicAds>>, TError = void>(
+  params: ListPublicAdsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublicAds>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPublicAds>>,
+          TError,
+          Awaited<ReturnType<typeof listPublicAds>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPublicAds<TData = Awaited<ReturnType<typeof listPublicAds>>, TError = void>(
+  params: ListPublicAdsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublicAds>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 홈 게재 중 광고 조회
+ */
+
+export function useListPublicAds<TData = Awaited<ReturnType<typeof listPublicAds>>, TError = void>(
+  params: ListPublicAdsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPublicAds>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListPublicAdsQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

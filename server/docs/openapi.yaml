@@ -356,7 +356,8 @@ paths:
       x-impl-status: implemented
       description: |
         가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
-        프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
+        첫 가입/로그인 사용자만 한 번 제출할 수 있다(`User.onboardingSurvey`가 null일 때).
+        이미 설문을 저장한 사용자는 409를 받으며, 이후 관심분야 변경은 `PUT /interests`를 쓴다.
       requestBody:
         required: true
         content:
@@ -368,6 +369,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OnboardingSurvey' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: 이미 온보딩 설문을 완료한 사용자
 
   # ---------------------------------------------------------------- Challenges
   /challenges:
@@ -1485,6 +1489,26 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AdProduct' } }
+  /ads/public:
+    get:
+      tags: [Ads]
+      summary: 홈 게재 중 광고 조회
+      operationId: listPublicAds
+      x-impl-status: implemented
+      description: 인증 없이 홈 캐러셀에 표시할 현재 게재 중인 광고 소재를 위치별로 반환한다. 내부 광고주·결제 정보와 이미지가 준비되지 않은 광고는 포함하지 않는다.
+      parameters:
+        - name: placement
+          in: query
+          required: true
+          schema: { type: string, enum: [hero, gallery] }
+      responses:
+        '200':
+          description: 현재 게재 중이며 이미지가 준비된 공개 광고 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PublicAd' } }
+        '400':
+          description: 지원하지 않는 광고 위치
   /ads:
     get:
       tags: [Ads]
@@ -2174,6 +2198,10 @@ components:
           type: object
           additionalProperties: { type: boolean }
           description: 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다.
+        onboardingSurvey:
+          allOf: [{ $ref: '#/components/schemas/OnboardingSurvey' }]
+          nullable: true
+          description: 온보딩 설문 응답. null이면 아직 설문을 완료하지 않은 첫 가입 사용자.
     ExternalLink:
       type: object
       properties:
@@ -2215,7 +2243,12 @@ components:
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
         recruitMethod:
-          { type: string, enum: [seMOchall, external], description: 세모챌 내 신청폼 | 외부 링크 }
+          {
+            type: string,
+            enum: [seMOchall, external],
+            default: external,
+            description: 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상,
+          }
         recruitUrl: { type: string }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
@@ -2237,6 +2270,7 @@ components:
             type: string,
             description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
           }
+        recruitMethod: { type: string, enum: [seMOchall, external], default: external }
     UpdateChallengeRequest:
       type: object
       description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
@@ -2575,6 +2609,15 @@ components:
         impressions: { type: integer, nullable: true, description: 누적 노출수 (준비중이면 null) }
         bookmarks: { type: integer, nullable: true, description: 누적 북마크수 (준비중이면 null) }
         paidAmount: { type: integer, description: 결제 금액 (원) }
+    PublicAd:
+      type: object
+      required: [id, title, imageUrl, placement]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, description: 광고 대체 텍스트 }
+        imageUrl: { type: string, description: 공개 광고 소재 URL }
+        landingUrl: { type: string, nullable: true, description: 광고 클릭 시 이동할 URL }
+        placement: { type: string, enum: [hero, gallery] }
     AdReport:
       type: object
       properties:
