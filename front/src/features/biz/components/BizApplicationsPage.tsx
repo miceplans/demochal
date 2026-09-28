@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
+import { generated } from '@semochal/api-client';
 import type { Application } from '@semochal/api-client';
-import { adApi } from '@/lib/ad-api';
 import { BizContent } from '@/components/biz/BizShell';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { ApplicationTable, EVALUATION_LABEL } from './ApplicationTable';
+import { ApplicationTable, EVALUATION_LABEL, type ApplicationPatch } from './ApplicationTable';
 
 const FILTER_OPTIONS: DropdownOption[] = [
   { value: '', label: '전체' },
@@ -19,42 +20,27 @@ const FILTER_OPTIONS: DropdownOption[] = [
 ];
 
 export function BizApplicationsPage() {
-  const [rows, setRows] = useState<Application[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const queryClient = useQueryClient();
   const [keyword, setKeyword] = useState('');
   const [evaluation, setEvaluation] = useState('');
-  const requestVersions = useRef(new Map<string, number>());
-  useEffect(() => {
-    let cancelled = false;
-    void adApi.applications
-      .listManaged()
-      .then((items) => {
-        if (!cancelled) setRows(items);
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+  const applicationsQuery = generated.useListManagedApplications();
+  const rows = applicationsQuery.data?.status === 200 ? applicationsQuery.data.data : [];
+  const loading = applicationsQuery.isPending;
+  const error = applicationsQuery.isError;
+  const updateApplicationMutation = generated.useUpdateApplication();
+
+  const update = async (id: string, body: ApplicationPatch) => {
+    try {
+      await updateApplicationMutation.mutateAsync({
+        id,
+        data: body as Parameters<typeof updateApplicationMutation.mutateAsync>[0]['data'],
       });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const update = (id: string, body: Parameters<typeof adApi.applications.update>[1]) => {
-    const version = (requestVersions.current.get(id) ?? 0) + 1;
-    requestVersions.current.set(id, version);
-    void adApi.applications
-      .update(id, body)
-      .then((updated) =>
-        setRows((current) =>
-          requestVersions.current.get(id) === version
-            ? current.map((row) => (row.id === id ? { ...row, ...updated } : row))
-            : current,
-        ),
-      )
-      .catch(() => setError(true));
+      await queryClient.invalidateQueries({
+        queryKey: generated.getListManagedApplicationsQueryKey(),
+      });
+    } catch {
+      // 전역 MutationCache onError 토스트가 실패를 알린다.
+    }
   };
   const count = (predicate: (row: Application) => boolean) => rows.filter(predicate).length;
   const stats = [
