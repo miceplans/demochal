@@ -76,8 +76,13 @@ export class AdminController {
   }
 
   @Get('users')
-  listUsers(@Query('q') q?: string, @Query('status') status?: string) {
-    return this.adminService.listUsers(q, status);
+  listUsers(
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('joinedWithin') joinedWithin?: string,
+    @Query('position') position?: string,
+  ) {
+    return this.adminService.listUsers(q, status, joinedWithin, position);
   }
 
   @Post('users/:id/suspend')

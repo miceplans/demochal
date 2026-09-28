@@ -28,8 +28,13 @@ export interface AdminUserEntry {
   email?: string;
   /** 포지션 (프론트엔드/백엔드/디자이너/기획 등) */
   position?: string;
-  /** 신고 누적 건수 */
+  /** 이 사용자를 대상으로 접수된 신고 누적 건수 */
   reports?: number;
   /** 활성/정지 뱃지 */
   status?: AdminUserEntryStatus;
+  /**
+   * 정지 사유 (정지 상태일 때)
+   * @nullable
+   */
+  suspendedReason?: string | null;
 }
