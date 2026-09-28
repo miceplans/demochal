@@ -1,5 +1,6 @@
 'use client';
 import { useState, type ChangeEvent, type ComponentProps, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
@@ -58,7 +59,7 @@ function apiErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-export function BizLoginFlow() {
+export function BizSignupFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
@@ -221,8 +222,8 @@ export function BizLoginFlow() {
           });
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
-            toast.error('이미 가입된 이메일 또는 아이디예요.');
-            setStep(1);
+            toast.error('이미 가입된 이메일 또는 아이디예요. 로그인 페이지로 이동할게요.');
+            router.replace(hrefOf('/login'));
             return;
           }
           throw error;
@@ -403,6 +404,10 @@ export function BizLoginFlow() {
             </ActionPrimary>
           )}
         </Actions>
+        <ExistingAccount>
+          이미 계정이 있나요?{' '}
+          <ExistingAccountLink href={hrefOf('/login')}>로그인</ExistingAccountLink>
+        </ExistingAccount>
       </Card>
     </Wrap>
   );
@@ -611,4 +616,15 @@ const ActionOutline = styled(OutlineButton)({
   width: 94,
   height: 37,
   ...textStyle.mCounterText,
+});
+const ExistingAccount = styled.p({
+  margin: 0,
+  textAlign: 'center',
+  ...textStyle.mInfoText,
+  color: c.gray700,
+});
+const ExistingAccountLink = styled(Link)({
+  color: c.primary,
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
 });
