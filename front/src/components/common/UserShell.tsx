@@ -49,14 +49,28 @@ const Search = styled.form({
   '& input': { border: 0, padding: 0, height: 42 },
   '& input:focus': { outline: 'none', boxShadow: 'none' },
   '&:focus-within': { boxShadow: s.focus },
+  // Figma 모바일 헤더(1217:15811)의 SearchBar: 회색 배경, 13.5px 아이콘, 10.5px 문구.
   [mobile]: {
+    flex: '1 0 0',
+    minWidth: 0,
+    gap: 6,
+    width: 'auto',
+    padding: '9px 12px',
     background: '#f7f8fa',
-    width: '100%',
     border: 0,
-    borderRadius: 14,
-    '& input': { background: 'transparent' },
+    borderRadius: 10.5,
+    '& input': {
+      height: 'auto',
+      minWidth: 0,
+      background: 'transparent',
+      fontSize: 10.5,
+      lineHeight: 'normal',
+    },
+    '& input::placeholder': { color: c.gray500 },
   },
 });
+const DesktopSearchIcon = styled(Icon)({ [mobile]: { display: 'none' } });
+const MobileSearchIcon = styled(Icon)({ display: 'none', [mobile]: { display: 'block' } });
 function SearchBar() {
   const query = useUserStore((s) => s.query),
     setQuery = useUserStore((s) => s.setQuery);
@@ -69,7 +83,8 @@ function SearchBar() {
         router.push('/explore');
       }}
     >
-      <Icon src="/assets/icons/search.png" size={16} alt="검색" />
+      <DesktopSearchIcon src="/assets/icons/search.png" size={16} alt="검색" />
+      <MobileSearchIcon src="/assets/icons/figma-header-search.svg" size={13.5} alt="검색" />
       <Input
         aria-label="챌린지, 팀, 분야 검색"
         placeholder="챌린지, 팀, 분야를 검색하세요"
@@ -107,15 +122,39 @@ const HeaderActionLink = styled(Link)({
   transition: 'background 0.15s ease',
   '&:hover': { background: c.gray50 },
 });
-const MobileHeader = styled.header({
+const MobileHeader = styled('header', { shouldForwardProp: (prop) => prop !== 'bar' })<{
+  bar: boolean;
+}>(({ bar }) => ({
   display: 'none',
   [mobile]: {
     display: 'flex',
     flexDirection: 'column',
     gap: 16,
-    padding: '16px',
+    padding: bar ? '12px 16px 16px' : '16px',
     borderBottom: `1px solid ${c.gray100}`,
   },
+}));
+// Figma 모바일 헤더(1217:15811): 로고 마크 + 검색바 + 로그인 버튼을 한 줄에 둔다.
+const MobileHeaderBar = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: '100%',
+  minWidth: 0,
+});
+const MobileBrandMark = styled(Link)({ display: 'block', flexShrink: 0 });
+const MobileLoginLink = styled(Link)({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  height: 27,
+  padding: '4px 6px',
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+  ...textStyle.mMiniCardTitle,
+  whiteSpace: 'nowrap',
 });
 const MobileTitleBar = styled.div({
   display: 'grid',
@@ -321,7 +360,7 @@ export function UserShell({
           </Nav>
         )}
       </HeaderBox>
-      <MobileHeader>
+      <MobileHeader bar={!title && !compact}>
         {title ? (
           <MobileTitleBar>
             <MobileBackLink href={back} aria-label="뒤로가기">
@@ -329,11 +368,17 @@ export function UserShell({
             </MobileBackLink>
             <MobileTitle>{title}</MobileTitle>
           </MobileTitleBar>
+        ) : compact ? (
+          <Logo dot />
         ) : (
-          <>
-            <Logo dot />
-            {!compact && <SearchBar />}
-          </>
+          <MobileHeaderBar>
+            <MobileBrandMark href="/" aria-label="SEMO 홈">
+              <Icon src="/assets/icons/semo-mark.svg" alt="SEMO" width={26.15} height={26.28} />
+            </MobileBrandMark>
+            <SearchBar />
+            {/* 로그인 후에는 하단 메뉴에 알림·MY가 있어 헤더 버튼을 두지 않는다. */}
+            {!isLoggedIn && <MobileLoginLink href="/login">로그인</MobileLoginLink>}
+          </MobileHeaderBar>
         )}
       </MobileHeader>
       <main style={{ minWidth: 0, flex: 1 }}>
