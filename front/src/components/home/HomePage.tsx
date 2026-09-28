@@ -19,23 +19,7 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-const fallbackHeroAds: AdCarouselItem[] = [
-  {
-    src: '/assets/Hero-animation.webm',
-    alt: 'SEMO 브랜드 로고 애니메이션 광고',
-    type: 'video' as const,
-  },
-  { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
-  { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
-];
-
-const fallbackGalleryAds: AdCarouselItem[] = [
-  { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
-  { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
-  { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
-];
-
-// 게재 중인 광고가 없거나 조회에 실패하면 기존 자체 광고를 그대로 보여준다(전역 에러 토스트도 띄우지 않음).
+// 게재 중인 광고가 없거나 조회에 실패하면 광고 섹션을 그리지 않는다(전역 에러 토스트도 띄우지 않음).
 const publicAdsQuery = { query: { meta: { silentError: true } } };
 
 function toAdItems(
@@ -96,18 +80,21 @@ export function HomePage() {
     <PreviewLock locked={adPreviewPrice !== null}>
       <UserShell>
         <Home>
-          <AdCarousel
-            // 정적 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
-            key={liveHeroAds ? 'hero-live' : 'hero-fallback'}
-            ariaLabel="홈 상단 광고"
-            items={liveHeroAds ?? fallbackHeroAds}
-            variant="hero"
-            priceOverlay={
-              adPreviewPrice
-                ? { label: '하루 광고비', value: `${adPreviewPrice.toLocaleString()}원` }
-                : undefined
-            }
-          />
+          {/* 광고가 도착한 뒤에 마운트해야 캐러셀의 뷰포트 측정·노출 계측이 실제 슬라이드 기준으로 시작된다. */}
+          {liveHeroAds ? (
+            <AdCarousel
+              ariaLabel="홈 상단 광고"
+              items={liveHeroAds}
+              variant="hero"
+              priceOverlay={
+                adPreviewPrice
+                  ? { label: '하루 광고비', value: `${adPreviewPrice.toLocaleString()}원` }
+                  : undefined
+              }
+            />
+          ) : (
+            <HeroGap />
+          )}
           <Sections>
             <section>
               <DesktopOnly style={{ margin: '28px 0' }}>
@@ -210,13 +197,16 @@ export function HomePage() {
               </MobileOnly>
             </section>
           </Sections>
-          <AdCarousel
-            key={liveGalleryAds ? 'gallery-live' : 'gallery-fallback'}
-            ariaLabel="홈 중간 광고"
-            items={liveGalleryAds ?? fallbackGalleryAds}
-            variant="gallery"
-            interval={4000}
-          />
+          {liveGalleryAds ? (
+            <AdCarousel
+              ariaLabel="홈 중간 광고"
+              items={liveGalleryAds}
+              variant="gallery"
+              interval={4000}
+            />
+          ) : (
+            <SectionGap />
+          )}
           <Sections last>
             <section>
               <MobileOnly style={{ marginBottom: 16 }}>
@@ -273,6 +263,10 @@ const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { pad
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
+// 중간 광고가 없을 때도 위아래 섹션 간격은 광고 섹션의 바깥 여백(PC 60 / 모바일 32)과 같게 둔다.
+// 상단 광고가 없을 때 모바일 첫 섹션이 헤더에 붙지 않게 광고 아래 여백(16px)만 남긴다.
+const HeroGap = styled.div({ display: 'none', [mobile]: { display: 'block', height: 16 } });
+const SectionGap = styled.div({ height: 60, [mobile]: { height: 32 } });
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   maxWidth: 1200,
   margin: '0 auto',
