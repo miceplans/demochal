@@ -41,6 +41,26 @@ resource "aws_sqs_queue" "verifications" {
   })
 }
 
+# Service email (SES) jobs relayed from the notification outbox. Kept separate
+# from the verifications queue so a SES outage cannot delay verifications.
+resource "aws_sqs_queue" "emails_dlq" {
+  name                      = "${local.name_prefix}-emails-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue" "emails" {
+  name = "${local.name_prefix}-emails"
+  # Covers a full serial batch of 10 SES sends; also shorter than the worker's
+  # 5-minute send-claim lease (EMAIL_SEND_LEASE_MS) so a redelivery during an
+  # in-flight send backs off rather than taking over the claim.
+  visibility_timeout_seconds = 120
+  receive_wait_time_seconds  = 20
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.emails_dlq.arn
+    maxReceiveCount     = 5
+  })
+}
+
 resource "aws_s3_bucket" "private" {
   bucket_prefix = "${local.name_prefix}-private-"
 }
