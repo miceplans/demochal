@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserShell, Content, MyShell, myMenu } from '@/components/common/UserShell';
@@ -31,25 +32,19 @@ import {
 } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import {
-  contests,
   desktopContests,
   preferenceGroups,
   notificationSettings,
   participatingTeams,
-  contestApplications,
-  teamApplications,
-  teamApplicants,
-  notificationItems,
   notificationTabs,
-  contestDetail,
-  stacks,
   skillCatalog,
 } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
+import { useBookmarks } from '@/features/bookmarks/useBookmarks';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -123,43 +118,92 @@ const UploadMark = styled.img({ width: 40, height: 26 });
 const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
 const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
 
-function CertificateModal({
-  open,
-  onClose,
-  onVerified,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onVerified: (label: string) => void;
-}) {
+const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const CERTIFICATE_MAX_BYTES = 10 * 1024 * 1024;
+type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
+
+function CertificateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
+  const queryClient = useQueryClient();
   const [badge, setBadge] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const requestUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  const createCertificate = generated.useCreateCertificate();
   const pickFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) setFileName(file.name);
+    const picked = e.target.files?.[0];
+    // 잘못된 파일을 다시 고르면 이전 파일로 제출되지 않게 먼저 비운다.
+    setFile(null);
+    if (!picked) return;
+    if (!CERTIFICATE_CONTENT_TYPES.includes(picked.type)) {
+      toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP, PDF만 올릴 수 있어요');
+      return;
+    }
+    if (picked.size === 0) {
+      toast.error('빈 파일은 올릴 수 없어요', '내용이 있는 파일을 선택해주세요');
+      return;
+    }
+    if (picked.size > CERTIFICATE_MAX_BYTES) {
+      toast.error('파일이 너무 커요', '10MB 이하 파일만 올릴 수 있어요');
+      return;
+    }
+    setFile(picked);
   };
   const reset = () => {
     setBadge(null);
-    setFileName(null);
+    setFile(null);
   };
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!badge) return;
-    onVerified(badge);
+  // 업로드 중에는 닫지 않는다(닫힌 뒤 요청이 끝나 새로 연 폼을 닫아버리는 것을 막는다).
+  const close = () => {
+    if (submitting) return;
     reset();
     onClose();
-    toast.success('자격증 인증 요청을 보냈어요', '검토가 끝나면 뱃지가 표시돼요');
+  };
+  // 증명 문서는 개인정보라 private 버킷에만 올린다(presigned PUT 5분 → finalize 검증 → 인증 요청).
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!badge || !file || submitting) return;
+    setSubmitting(true);
+    try {
+      const presigned = await requestUpload.mutateAsync({
+        data: {
+          bucket: 'private',
+          contentType: file.type as UploadContentType,
+          fileName: file.name.replace(/[/\\]/g, '_'),
+          sizeBytes: file.size,
+        },
+      });
+      const { uploadUrl, fileId } = presigned.data;
+      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
+      // presigned URL은 우리 API가 아니라 S3로 직접 올리는 주소라 api-client를 거치지 않는다.
+      const uploaded = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      });
+      if (!uploaded.ok) throw new Error('upload failed');
+      await finalizeUpload.mutateAsync({ id: fileId });
+      await createCertificate.mutateAsync({
+        data: { award: badge, category: badge === '수상경력' ? 'award' : 'participation', fileId },
+      });
+      await queryClient.invalidateQueries({
+        queryKey: generated.getListMyCertificatesQueryKey(),
+      });
+      reset();
+      onClose();
+      toast.success('자격증 인증 요청을 보냈어요', '검토가 끝나면 뱃지가 표시돼요');
+    } catch (error) {
+      // API 단계 실패는 전역 MutationCache 토스트가 띄운다. S3 업로드 실패만 여기서 알린다.
+      if (!(error instanceof ApiError)) {
+        toast.error('인증 요청에 실패했어요', '잠시 후 다시 시도해주세요');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
   return (
-    <Modal
-      open={open}
-      onClose={() => {
-        reset();
-        onClose();
-      }}
-      title="자격증 인증"
-    >
+    <Modal open={open} onClose={close} title="자격증 인증">
       <form onSubmit={submit}>
         <Stack gap={12}>
           <Wrap>
@@ -177,15 +221,20 @@ function CertificateModal({
           </Wrap>
           <UploadBox aria-label="증명 파일 첨부">
             <UploadMark src="/assets/icons/fileuploader.png" alt="" aria-hidden />
-            {fileName ?? '증명 파일 첨부 (이미지, PDF)'}
-            <HiddenInput type="file" accept="image/*,.pdf" onChange={pickFile} required />
+            {file?.name ?? '증명 파일 첨부 (JPG, PNG, WEBP, PDF · 10MB 이하)'}
+            <HiddenInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={pickFile}
+              required
+            />
           </UploadBox>
           <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
-            <Button type="button" small tone="plain" onClick={onClose}>
+            <Button type="button" small tone="plain" onClick={close} disabled={submitting}>
               취소
             </Button>
-            <Button type="submit" small disabled={!badge}>
-              인증 요청
+            <Button type="submit" small disabled={!badge || !file || submitting}>
+              {submitting ? '요청 중…' : '인증 요청'}
             </Button>
           </Row>
         </Stack>
@@ -203,11 +252,12 @@ function SkillAddModal({
   open: boolean;
   onClose: () => void;
   existing: string[];
-  onAdd: (skills: string[]) => void;
+  onAdd: (skills: string[]) => Promise<unknown>;
 }) {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [picked, setPicked] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const options = useMemo(
     () =>
       skillCatalog.filter(
@@ -251,11 +301,18 @@ function SkillAddModal({
         <Button
           type="button"
           small
-          disabled={picked.length === 0}
-          onClick={() => {
-            onAdd(picked);
-            toast.success(`기술 ${picked.length}개를 추가했어요`);
-            close();
+          disabled={picked.length === 0 || saving}
+          onClick={async () => {
+            setSaving(true);
+            try {
+              await onAdd(picked);
+              toast.success(`기술 ${picked.length}개를 추가했어요`);
+              close();
+            } catch {
+              // 실패 토스트는 전역 MutationCache가 띄운다. 모달은 열어 둬 다시 시도할 수 있게 한다.
+            } finally {
+              setSaving(false);
+            }
           }}
         >
           추가하기{picked.length > 0 ? ` (${picked.length})` : ''}
@@ -268,8 +325,21 @@ function SkillAddModal({
 export function MyPage() {
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
-  const [certificates, setCertificates] = useState<string[]>([]);
-  const [mySkills, setMySkills] = useState<string[]>(stacks);
+  const queryClient = useQueryClient();
+  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const mySkills = (me.data?.status === 200 ? me.data.data.stacks : undefined) ?? [];
+  const certificatesQuery = generated.useListMyCertificates();
+  // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
+  const certificates = (certificatesQuery.data?.data ?? [])
+    .filter((x) => x.status !== 'rejected')
+    .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+  const updateProfile = generated.useUpdateMyProfile({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
+      },
+    },
+  });
   return (
     <MyShell title="MY">
       <Stack gap={28}>
@@ -301,7 +371,12 @@ export function MyPage() {
         <SkillStack
           skills={mySkills}
           trailing={
-            <AddButton aria-label="기술 스택 추가하기" onClick={() => setSkillOpen(true)}>
+            <AddButton
+              aria-label="기술 스택 추가하기"
+              // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
+              disabled={me.data?.status !== 200}
+              onClick={() => setSkillOpen(true)}
+            >
               <Icon name="imgAddSlotIc" size={12} />
             </AddButton>
           }
@@ -335,19 +410,15 @@ export function MyPage() {
           <History compact />
         </MobileOnly>
       </Stack>
-      <CertificateModal
-        open={certOpen}
-        onClose={() => setCertOpen(false)}
-        onVerified={(label) =>
-          setCertificates((prev) => (label && !prev.includes(label) ? [...prev, label] : prev))
-        }
-      />
+      <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
       <SkillAddModal
         open={skillOpen}
         onClose={() => setSkillOpen(false)}
         existing={mySkills}
         onAdd={(skills) =>
-          setMySkills((prev) => [...prev, ...skills.filter((s) => !prev.includes(s))])
+          updateProfile.mutateAsync({
+            data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
+          })
         }
       />
     </MyShell>
@@ -372,18 +443,20 @@ const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
   [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
 }));
 export function BookmarksPage() {
-  const ids = useUserStore((s) => s.bookmarks);
   const [sort, setSort] = useState('마감임박');
   const [two, setTwo] = useState(false);
-  const data = contests
-    .filter((x) => ids.includes(x.id))
-    .sort((a, b) =>
-      sort === '인기'
-        ? (b.teams ?? 0) - (a.teams ?? 0)
-        : sort === '최신'
-          ? b.id.localeCompare(a.id)
-          : a.days - b.days,
-    );
+  const serverSort = sort === '인기' ? 'popular' : sort === '최신' ? 'latest' : 'deadline';
+  const { bookmarks, isPending, isError } = useBookmarks(serverSort);
+  // D-day 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
+  const data = bookmarks.map((challenge) => ({
+    id: challenge.id ?? '',
+    title: challenge.title ?? '제목 없음',
+    category: challenge.category ?? '기타',
+    days: challenge.endDate
+      ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))
+      : 0,
+  }));
   return (
     <MyShell title="북마크 챌린지">
       <Stack>
@@ -416,7 +489,9 @@ export function BookmarksPage() {
             <ContestCard key={x.id} contest={x} />
           ))}
         </BookmarkGrid>
-        {data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
+        {isPending && <Muted>북마크를 불러오는 중이에요.</Muted>}
+        {isError && <Muted>북마크를 불러오지 못했어요.</Muted>}
+        {!isPending && !isError && data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
       </Stack>
     </MyShell>
   );
@@ -518,9 +593,32 @@ const SettingsGroup = styled.section({
     '.setting': { padding: '16px 0' },
   },
 });
+const notificationSettingKeys = notificationSettings.flatMap((g) => g.rows.map(([key]) => key));
 export function NotificationSettingsPage() {
-  const values = useUserStore((s) => s.notifications);
-  const toggle = useUserStore((s) => s.toggleNotification);
+  const queryClient = useQueryClient();
+  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const saved = me.data?.status === 200 ? me.data.data.notificationSettings : undefined;
+  // 저장된 적 없는 키는 기본 on. 서버(users.notification_settings)가 유일한 기준값이다.
+  const values: Record<string, boolean> = Object.fromEntries(
+    notificationSettingKeys.map((key) => [key, saved?.[key] ?? true]),
+  );
+  // TODO: 알림 생성 시(NotificationsService.create) 이 설정을 확인해 끈 유형은 저장하지 않도록 서버에서 강제해야 한다.
+  // https://orm.drizzle.team/docs/select
+  const save = generated.useSaveNotificationSettings({
+    mutation: {
+      onSuccess: () =>
+        queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() }),
+    },
+  });
+  const toggle = (key: string) => {
+    // 서버 값을 받기 전이나 저장 중에는 이전 값 기준으로 덮어쓰지 않게 막는다.
+    if (me.data?.status !== 200 || save.isPending) return;
+    save.mutate({
+      data: Object.fromEntries(
+        notificationSettingKeys.map((k) => [k, { enabled: k === key ? !values[k] : values[k] }]),
+      ),
+    });
+  };
   return (
     <MyShell title="알림 설정">
       <Stack>
@@ -562,73 +660,96 @@ const Table = styled.table({
   '& tbody tr:hover': { background: c.gray50 },
   [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
 });
+// 지원현황 결과 태그 매핑 — 서버 status 값을 화면 라벨/색상으로 바꾼다.
+// 챌린지 지원: accepted→예선 통과, rejected→불합격, 그 외(pending 등)→심사중.
+function challengeResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
+  if (status === 'accepted') return { label: '예선 통과', tone: 'green' };
+  if (status === 'rejected') return { label: '불합격', tone: 'red' };
+  return { label: '심사중', tone: 'blue' };
+}
+// 팀 지원: accepted→확정, rejected→불합격, pending→검토중.
+function teamResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
+  if (status === 'accepted') return { label: '확정', tone: 'blue' };
+  if (status === 'rejected') return { label: '불합격', tone: 'red' };
+  return { label: '검토중', tone: 'green' };
+}
 export function ApplicationsPage() {
+  const challengeQuery = generated.useListMyApplications();
+  const teamQuery = generated.useListMyTeamApplications();
+  const challengeApps = challengeQuery.data?.status === 200 ? challengeQuery.data.data : [];
+  const teamApps = teamQuery.data?.status === 200 ? teamQuery.data.data : [];
   return (
     <MyShell title="지원현황">
       <Stack gap={40}>
         <section>
           <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
-          <Table>
-            <thead>
-              <tr>
-                <th>챌린지</th>
-                <th>협회</th>
-                <th>결과</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contestApplications.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <Link href={row.href}>{row.contest}</Link>
-                  </td>
-                  <td>{row.org}</td>
-                  <td>
-                    <Tag
-                      tone={
-                        row.result === '예선 통과'
-                          ? 'green'
-                          : row.result === '심사중'
-                            ? 'blue'
-                            : 'red'
-                      }
-                    >
-                      {row.result}
-                    </Tag>
-                  </td>
+          {challengeQuery.isPending ? (
+            <Muted>불러오는 중이에요.</Muted>
+          ) : challengeQuery.isError ? (
+            <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
+          ) : challengeApps.length === 0 ? (
+            <Muted>아직 지원한 챌린지가 없어요.</Muted>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <th>챌린지</th>
+                  <th>협회</th>
+                  <th>결과</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {challengeApps.map((row) => {
+                  const result = challengeResultTag(row.status);
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <Link href="/contests/public-data">{row.challengeTitle ?? '챌린지'}</Link>
+                      </td>
+                      <td>{row.businessName ?? '-'}</td>
+                      <td>
+                        <Tag tone={result.tone}>{result.label}</Tag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </section>
         <section>
           <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
-          <Table>
-            <thead>
-              <tr>
-                <th>챌린지</th>
-                <th>팀</th>
-                <th>결과</th>
-              </tr>
-            </thead>
-            <tbody>
-              {teamApplications.map((row) => (
-                <tr key={row.id}>
-                  <td>{row.contest}</td>
-                  <td>{row.team}</td>
-                  <td>
-                    <Tag
-                      tone={
-                        row.result === '확정' ? 'blue' : row.result === '검토중' ? 'green' : 'red'
-                      }
-                    >
-                      {row.result}
-                    </Tag>
-                  </td>
+          {teamQuery.isPending ? (
+            <Muted>불러오는 중이에요.</Muted>
+          ) : teamQuery.isError ? (
+            <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
+          ) : teamApps.length === 0 ? (
+            <Muted>아직 지원한 팀이 없어요.</Muted>
+          ) : (
+            <Table>
+              <thead>
+                <tr>
+                  <th>챌린지</th>
+                  <th>팀</th>
+                  <th>결과</th>
                 </tr>
-              ))}
-            </tbody>
-          </Table>
+              </thead>
+              <tbody>
+                {teamApps.map((row) => {
+                  const result = teamResultTag(row.status);
+                  return (
+                    <tr key={row.id}>
+                      <td>{row.challengeTitle ?? '챌린지'}</td>
+                      <td>{row.teamTitle ?? '팀'}</td>
+                      <td>
+                        <Tag tone={result.tone}>{result.label}</Tag>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </Table>
+          )}
         </section>
       </Stack>
     </MyShell>
@@ -638,85 +759,180 @@ const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
   value: x,
   label: x,
 }));
+type ApplicantResult = '미정' | '합격' | '불합격';
+const resultFromStatus = (status?: string): ApplicantResult =>
+  status === 'accepted' ? '합격' : status === 'rejected' ? '불합격' : '미정';
 export function TeamApplicantsPage() {
-  const [results, setResults] = useState<string[]>(teamApplicants.map(() => '미정'));
-  const [open, setOpen] = useState(false);
-  const [link, setLink] = useState('');
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const managedQuery = generated.useListManagedTeams();
+  const teams = managedQuery.data?.status === 200 ? managedQuery.data.data : [];
+  // 서버에서 받은 status를 기본값으로 하되, 드롭다운에서 바꾼 선택은 로컬에서 덮어쓴다.
+  const [overrides, setOverrides] = useState<Record<string, ApplicantResult>>({});
+  const [sendTargetId, setSendTargetId] = useState<string | null>(null);
+  const [link, setLink] = useState('');
+  const updateMember = generated.useUpdateTeamMember();
+  const sendTarget = teams.find((team) => team.id === sendTargetId);
+
+  const resultOf = (memberId: string | undefined, status?: string): ApplicantResult =>
+    (memberId ? overrides[memberId] : undefined) ?? resultFromStatus(status);
+
+  // 이번에 드롭다운으로 바꾼 지원자만 전송한다(이미 결정된 지원자에게 알림을 다시 보내지 않는다).
+  const changedMembers = (team: (typeof teams)[number]) =>
+    (team.members ?? []).filter((member) => {
+      const override = member.id ? overrides[member.id] : undefined;
+      return (
+        override !== undefined &&
+        override !== '미정' &&
+        override !== resultFromStatus(member.status)
+      );
+    });
+  const closeSendModal = () => {
+    // 다른 팀 모달로 링크가 넘어가지 않게 닫을 때마다 초기화한다.
+    setSendTargetId(null);
+    setLink('');
+  };
+  const refreshTeams = () => {
+    void queryClient.invalidateQueries({ queryKey: generated.getListManagedTeamsQueryKey() });
+    void queryClient.invalidateQueries({
+      queryKey: generated.getListMyTeamApplicationsQueryKey(),
+    });
+  };
+
+  const send = async (team: (typeof teams)[number]) => {
+    const decided = changedMembers(team);
+    if (decided.length === 0) {
+      toast.error('전송할 결과가 없어요', '지원자의 결과를 먼저 선택해주세요');
+      return;
+    }
+    // TODO: 여러 지원자 결과를 한 트랜잭션으로 저장하는 일괄 API가 없어 지원자별로 보낸다.
+    // 부분 실패 시 성공한 건은 반영된 상태로 두고 실패한 지원자만 다시 보낼 수 있게 한다.
+    // https://orm.drizzle.team/docs/transactions
+    const results = await Promise.allSettled(
+      decided.map((member) => {
+        const result = resultOf(member.id, member.status);
+        return updateMember.mutateAsync({
+          id: team.id ?? '',
+          memberId: member.id ?? '',
+          data: {
+            status: result === '합격' ? 'accepted' : 'rejected',
+            // 합격자에게만 채팅방 링크를 저장해 알림으로 함께 본다.
+            ...(result === '합격' && link.trim() ? { chatLink: link.trim() } : {}),
+          },
+        });
+      }),
+    );
+    const succeededIds = decided
+      .filter((_, i) => results[i]?.status === 'fulfilled')
+      .map((member) => member.id);
+    setOverrides((prev) =>
+      Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.includes(id))),
+    );
+    refreshTeams();
+    const failed = results.length - succeededIds.length;
+    if (failed > 0) {
+      toast.error(
+        `${failed}명에게 결과를 전송하지 못했어요`,
+        succeededIds.length > 0
+          ? `${succeededIds.length}명은 전송됐어요. 실패한 지원자만 다시 시도해주세요`
+          : '다시 시도해주세요',
+      );
+      return;
+    }
+    closeSendModal();
+    toast.success('결과를 전송했어요', '지원자에게 알림으로 알려드릴게요');
+  };
+  const sendNeedsLink =
+    sendTarget !== undefined &&
+    changedMembers(sendTarget).some((member) => resultOf(member.id, member.status) === '합격');
   return (
     <MyShell title="팀 지원현황">
-      <Stack gap={28}>
-        <div style={{ height: 220, borderRadius: 20, background: c.gray100 }} />
-        <div>
-          <Title>{contestDetail.title}</Title>
-          <Muted style={{ marginTop: 8 }}>{contestDetail.org}</Muted>
-        </div>
-        <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
-          <Heading>팀 지원현황</Heading>
-          <Button small onClick={() => setOpen(true)}>
-            결과 전송하기
-          </Button>
-        </Row>
-        <Table>
-          <thead>
-            <tr>
-              <th>이름</th>
-              <th>뱃지</th>
-              <th>결과</th>
-            </tr>
-          </thead>
-          <tbody>
-            {teamApplicants.map((applicant, i) => (
-              <tr key={applicant.id}>
-                <td>
-                  <Link href={applicant.href}>{applicant.name}</Link>
-                </td>
-                <td>
-                  <Wrap style={{ gap: 6 }}>
-                    {applicant.badges.map((badge) => (
-                      <Tag key={badge} tone="blue">
-                        {badge}
-                      </Tag>
+      <Stack gap={40}>
+        {managedQuery.isPending ? (
+          <Muted>불러오는 중이에요.</Muted>
+        ) : managedQuery.isError ? (
+          <Muted>팀 지원 현황을 불러오지 못했어요. 새로고침해주세요.</Muted>
+        ) : teams.length === 0 ? (
+          <Muted>아직 리더로 있는 팀이 없어요.</Muted>
+        ) : (
+          teams.map((team) => (
+            <section key={team.id}>
+              <div>
+                <Title>{team.title}</Title>
+                <Muted style={{ marginTop: 8 }}>
+                  {team.challengeTitle ?? '챌린지'} · {team.businessName ?? '-'}
+                </Muted>
+              </div>
+              <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
+                <Heading>팀 지원현황</Heading>
+                <Button small onClick={() => setSendTargetId(team.id ?? null)}>
+                  결과 전송하기
+                </Button>
+              </Row>
+              {(team.members ?? []).length === 0 ? (
+                <Muted style={{ marginTop: 16 }}>아직 지원자가 없어요.</Muted>
+              ) : (
+                <Table>
+                  <thead>
+                    <tr>
+                      <th>이름</th>
+                      <th>지원 역할</th>
+                      <th>결과</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(team.members ?? []).map((member) => (
+                      <tr key={member.id}>
+                        <td>{member.name ?? '지원자'}</td>
+                        <td>
+                          {member.role ? <Tag tone="blue">{member.role}</Tag> : <Muted>-</Muted>}
+                        </td>
+                        <td style={{ width: 130 }}>
+                          <Dropdown
+                            aria-label={`${member.name ?? '지원자'} 결과`}
+                            size="S"
+                            value={resultOf(member.id, member.status)}
+                            onChange={(x) =>
+                              member.id &&
+                              setOverrides((prev) => ({
+                                ...prev,
+                                [member.id as string]: x as ApplicantResult,
+                              }))
+                            }
+                            options={applicantResultOptions}
+                          />
+                        </td>
+                      </tr>
                     ))}
-                  </Wrap>
-                </td>
-                <td style={{ width: 130 }}>
-                  <Dropdown
-                    aria-label={`${applicant.name} 결과`}
-                    size="S"
-                    value={results[i]}
-                    onChange={(x) => setResults(results.map((y, j) => (j === i ? x : y)))}
-                    options={applicantResultOptions}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </Table>
+                  </tbody>
+                </Table>
+              )}
+            </section>
+          ))
+        )}
       </Stack>
-      <Modal open={open} onClose={() => setOpen(false)} title="결과 전송하기">
+      <Modal open={sendTarget !== undefined} onClose={closeSendModal} title="결과 전송하기">
         <Muted style={{ color: c.red }}>*이 활동은 되돌릴 수 없어요</Muted>
         <p style={{ fontSize: 13 }}>합격자들에게 전송할 채팅방 링크를 첨부해주세요.</p>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            setOpen(false);
-            toast.info('결과 전송 화면을 확인했어요', '실제 전송은 연결 후 사용할 수 있어요');
+            if (sendTarget) void send(sendTarget);
           }}
         >
           <Input
             aria-label="채팅방 링크"
             placeholder="링크"
             type="url"
-            required
+            required={sendNeedsLink}
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
           <Row style={{ justifyContent: 'flex-end', marginTop: 16 }}>
-            <Button type="button" small tone="plain" onClick={() => setOpen(false)}>
+            <Button type="button" small tone="plain" onClick={closeSendModal}>
               취소
             </Button>
-            <Button type="submit" small>
+            <Button type="submit" small disabled={updateMember.isPending}>
               확인
             </Button>
           </Row>
@@ -740,10 +956,54 @@ const NotificationItem = styled.div({
   transition: 'background 0.15s ease',
   '&:hover': { background: c.gray50 },
   '&:active': { background: c.gray100 },
+  '&[data-unread] h2': { fontWeight: 700 },
+  '&:not([data-unread])': { opacity: 0.7 },
 });
+// 서버 알림 type → 화면 탭. 매핑되지 않은 유형(verification.result 등)은 '전체'에서만 보인다.
+const notificationCategory: Record<string, (typeof notificationTabs)[number]> = {
+  team_matching: '팀매칭',
+  deadline: '마감',
+  posting: '공고',
+};
+function describeNotification(type: string, payload: Record<string, unknown>) {
+  if (type === 'team_matching') {
+    if (payload.status === 'accepted') return '팀 지원이 수락되었어요';
+    if (payload.status === 'rejected') return '팀 지원 결과가 도착했어요';
+    return typeof payload.role === 'string'
+      ? `내 모집글에 새 ${payload.role} 지원자가 있어요`
+      : '내 모집글에 새 지원자가 있어요';
+  }
+  if (type === 'verification.result') return '기업 인증 결과가 도착했어요';
+  return '새 알림이 있어요';
+}
+function timeAgo(iso: string | undefined, now: number) {
+  if (!iso) return '';
+  const minutes = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60_000));
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}시간 전`;
+  return `${Math.floor(minutes / (60 * 24))}일 전`;
+}
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
-  const items = notificationItems.filter((x) => tab === '전체' || x.category === tab);
+  // 상대 시간 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const notificationsQuery = generated.useListMyNotifications();
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: generated.getListMyNotificationsQueryKey() });
+  const markRead = generated.useMarkNotificationRead({ mutation: { onSuccess: invalidate } });
+  const markAllRead = generated.useMarkAllNotificationsRead({
+    mutation: { onSuccess: invalidate },
+  });
+  const all = notificationsQuery.data?.data ?? [];
+  const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
+  const hasUnread = all.some((x) => !x.readAt);
+  const openItem = (id?: string, readAt?: string | null, teamId?: string) => {
+    if (id && !readAt) markRead.mutate({ id });
+    if (teamId) router.push(`/teams/${teamId}`);
+  };
   return (
     <UserShell title="알림">
       <Content>
@@ -751,22 +1011,54 @@ export function NotificationsPage() {
           <DesktopOnly>
             <Title>알림</Title>
           </DesktopOnly>
-          <Row>
-            {notificationTabs.map((x) => (
-              <Chip key={x} selected={x === tab} aria-pressed={x === tab} onClick={() => setTab(x)}>
-                {x}
-              </Chip>
-            ))}
+          <Row style={{ justifyContent: 'space-between' }}>
+            <Row>
+              {notificationTabs.map((x) => (
+                <Chip
+                  key={x}
+                  selected={x === tab}
+                  aria-pressed={x === tab}
+                  onClick={() => setTab(x)}
+                >
+                  {x}
+                </Chip>
+              ))}
+            </Row>
+            <Button
+              small
+              tone="plain"
+              disabled={!hasUnread || markAllRead.isPending}
+              onClick={() => markAllRead.mutate()}
+            >
+              모두 읽음
+            </Button>
           </Row>
           <NotificationList>
-            {items.map((item) => (
-              <NotificationItem key={item.id}>
-                <Heading style={{ fontSize: 14 }}>{item.title}</Heading>
-                <Muted>{item.body}</Muted>
-              </NotificationItem>
-            ))}
+            {items.map((item) => {
+              const payload = (item.payload ?? {}) as Record<string, unknown>;
+              const teamId = typeof payload.teamId === 'string' ? payload.teamId : undefined;
+              return (
+                <NotificationItem
+                  key={item.id}
+                  role="button"
+                  tabIndex={0}
+                  data-unread={!item.readAt || undefined}
+                  onClick={() => openItem(item.id, item.readAt, teamId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') openItem(item.id, item.readAt, teamId);
+                  }}
+                >
+                  <Heading style={{ fontSize: 14 }}>
+                    {describeNotification(item.type ?? '', payload)}
+                  </Heading>
+                  <Muted>{timeAgo(item.createdAt, now)}</Muted>
+                </NotificationItem>
+              );
+            })}
           </NotificationList>
-          {items.length === 0 && <Muted>알림이 없어요.</Muted>}
+          {notificationsQuery.isPending && <Muted>알림을 불러오는 중이에요.</Muted>}
+          {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
+          {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
       </Content>
     </UserShell>

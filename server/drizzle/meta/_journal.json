@@ -98,6 +98,41 @@
       "when": 1790130000000,
       "tag": "0014_team_recruitment_details",
       "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1790151251341,
+      "tag": "0015_add_ad_event_counters",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790152251341,
+      "tag": "0016_team_member_chat_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1790170000000,
+      "tag": "0017_biz_signup_contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1790180000000,
+      "tag": "0018_add_challenges_recruit_method",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790190000000,
+      "tag": "0019_email_send_states",
+      "breakpoints": true
     }
   ]
 }

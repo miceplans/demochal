@@ -24,9 +24,16 @@ const rules = [
     'credential-assignment',
     /\b(?:api[_-]?key|secret|token|password|passwd|private[_-]?key)\b\s*[:=]\s*['"][^'"]{8,}['"]/i,
   ],
+  // dotenv/shell style, quoted or not (`GLM_API_KEY=abc...`), which the rule above misses:
+  // `\b` doesn't split GLM_API_KEY and it requires quotes. Limited to UPPER_SNAKE names at
+  // line start with no spaces around `=`, so code and Terraform (`X = a.b`) aren't flagged.
+  [
+    'dotenv-credential',
+    /^\s*(?:export\s+)?[A-Z0-9_]*(?:API_?KEY|SECRET|TOKEN|PASSWORD|PASSWD|PRIVATE_?KEY)[A-Z0-9_]*=['"]?[^\s'"#]{8,}/,
+  ],
 ];
 const safeValue =
-  /(?:example|placeholder|changeme|your[_-]|<[^>]+>|\$\{|process\.env|import\.meta\.env|test[-_]?key)/i;
+  /(?:example|placeholder|change[-_]?me|your[_-]|<[^>]+>|\$\{|process\.env|import\.meta\.env|test[-_]?key)/i;
 const findings = [];
 let file = '';
 let line = 0;

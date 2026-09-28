@@ -1,9 +1,11 @@
-import { randomBytes } from 'node:crypto';
+import { hkdfSync, randomBytes } from 'node:crypto';
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
 // No-op in production (ECS/Vercel inject env vars directly, no .env file present).
 loadDotenv({ quiet: true });
+
+export const MIN_JWT_SECRET_LENGTH = 32;
 
 const envSchema = z
   .object({
@@ -19,6 +21,11 @@ const envSchema = z
     S3_PRIVATE_BUCKET: z.string().default('semochal-private-dev'),
 
     SQS_VERIFICATIONS_QUEUE_URL: z.string().default(''),
+
+    // Service email delivery (SES). Empty in local dev — the email worker
+    // no-ops and DB notifications keep working without either value.
+    SES_FROM_EMAIL: z.string().default(''),
+    SQS_EMAILS_QUEUE_URL: z.string().default(''),
 
     TOSS_SECRET_KEY: z.string().default(''),
 
@@ -47,11 +54,15 @@ const envSchema = z
       .default('http://localhost:3001/auth/social/naver/callback'),
   })
   .superRefine((value, ctx) => {
-    if (value.NODE_ENV === 'production' && !value.JWT_SECRET) {
+    // HS256 key: anything shorter than 32 bytes is brute-forceable offline from one issued token.
+    if (
+      value.NODE_ENV === 'production' &&
+      (value.JWT_SECRET?.length ?? 0) < MIN_JWT_SECRET_LENGTH
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['JWT_SECRET'],
-        message: 'JWT_SECRET must be set in production',
+        message: `JWT_SECRET must be set to at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
       });
     }
   });
@@ -62,6 +73,7 @@ if (!parsed.success) {
 }
 
 const raw = parsed.data;
+const jwtSecret = raw.JWT_SECRET ?? randomBytes(32).toString('hex');
 
 export const env = {
   nodeEnv: raw.NODE_ENV,
@@ -76,6 +88,8 @@ export const env = {
   s3PrivateBucket: raw.S3_PRIVATE_BUCKET,
 
   sqsVerificationsQueueUrl: raw.SQS_VERIFICATIONS_QUEUE_URL,
+  sesFromEmail: raw.SES_FROM_EMAIL,
+  sqsEmailsQueueUrl: raw.SQS_EMAILS_QUEUE_URL,
 
   tossSecretKey: raw.TOSS_SECRET_KEY,
 
@@ -84,7 +98,9 @@ export const env = {
 
   ntsApiKey: raw.NTS_API_KEY,
 
-  jwtSecret: raw.JWT_SECRET ?? randomBytes(32).toString('hex'),
+  jwtSecret,
+  // OAuth state HMAC key, derived (HKDF) so it never equals the session-signing key.
+  oauthStateSecret: Buffer.from(hkdfSync('sha256', jwtSecret, '', 'semochal/oauth-state', 32)),
   frontendOrigins: raw.FRONTEND_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),

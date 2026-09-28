@@ -55,6 +55,8 @@ export interface Team {
   challengeTitle?: string;
   /** 목록·상세 응답에 포함 */
   leaderName?: string;
+  /** listManagedTeams 응답 전용 — 주최 기업(협회)명 */
+  businessName?: string;
   /** 목록 응답 전용 — 승인(accepted)된 팀원 역할 */
   filledRoles?: string[];
   /** 상세 응답 전용 — 팀원(대기·승인·거절 포함) */

@@ -86,8 +86,12 @@ export class AdminController {
   }
 
   @Get('reports')
-  listReports(@Query('q') q?: string, @Query('status') status?: string) {
-    return this.adminService.listReports(q, status);
+  listReports(
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('targetType') targetType?: string,
+  ) {
+    return this.adminService.listReports(q, status, targetType);
   }
 
   @Post('reports/:id/resolve')
