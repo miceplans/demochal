@@ -1965,6 +1965,10 @@ paths:
         - name: status
           in: query
           schema: { type: string, enum: [open, resolved, dismissed] }
+        - name: targetType
+          in: query
+          description: 신고 대상 유형
+          schema: { type: string, enum: [challenge, team, award, user] }
       responses:
         '200':
           description: 신고 목록
