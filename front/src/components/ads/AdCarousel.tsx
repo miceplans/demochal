@@ -35,9 +35,11 @@ type AdCarouselProps = {
 
 const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) PC와 같은 1060:250 비율을 유지한다.
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) Figma 모바일 홈 광고 자리 높이(150px)를 쓴다.
+// 소재는 PC용 1060:250이라 object-fit: cover로 좌우가 일부 잘린다.
 const MOBILE_HERO_INSET = 0;
 const MOBILE_HERO_GAP = 0;
+const MOBILE_HERO_HEIGHT = 150;
 const MOBILE_GALLERY_WIDTH = 240;
 const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
 const MOBILE_GALLERY_GAP = 16;
@@ -68,8 +70,7 @@ const HeroViewport = styled.div({
     margin: '0 0 16px',
     '& img, & video': {
       width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
-      height: 'auto',
-      aspectRatio: '1060 / 250',
+      height: `${MOBILE_HERO_HEIGHT}px`,
       borderRadius: 0,
     },
   },
