@@ -224,7 +224,11 @@ export function BizAdsPage() {
     }
   };
   const submitReservation = async () => {
-    if (!selectedAd || submitting || overlaps) return;
+    if (!selectedAd || submitting) return;
+    if (overlaps) {
+      toast.error('이미 계약된 기간이 포함되어 있습니다.');
+      return;
+    }
     setSubmitting(true);
     try {
       const ad = await adApi.ads.create({
@@ -491,7 +495,6 @@ export function BizAdsPage() {
                       예약 불가: {period.startDate.slice(0, 10)} ~ {period.endDate.slice(0, 10)}
                     </small>
                   ))}
-                  {overlaps && <p role="alert">이미 계약된 기간이 포함되어 있습니다.</p>}
                   <div style={{ position: 'relative' }} ref={datePickerRef}>
                     <PaymentDate>
                       <PaymentDateText>
@@ -549,11 +552,7 @@ export function BizAdsPage() {
                   <PopupAction type="button" secondary onClick={() => setPaymentOpen(false)}>
                     취소
                   </PopupAction>
-                  <PopupAction
-                    type="button"
-                    disabled={submitting || overlaps}
-                    onClick={submitReservation}
-                  >
+                  <PopupAction type="button" disabled={submitting} onClick={submitReservation}>
                     {submitting ? '신청 중…' : '계약 신청'}
                   </PopupAction>
                 </div>

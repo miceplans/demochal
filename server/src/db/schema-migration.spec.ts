@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(20);
+    expect(journal.entries).toHaveLength(21);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -388,6 +388,20 @@ describe('0019_email_send_states migration', () => {
     expect(sql).toContain('"outbox_event_id" uuid NOT NULL');
     expect(sql).toContain('email_send_states_outbox_event_id_unique');
     expect(sql).toContain('email_send_states_outbox_event_id_outbox_events_id_fk');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0020_add_kakao_auth migration', () => {
+  it('adds the Kakao OAuth identity column without destructive DDL', () => {
+    const tag = journal.entries[20]?.tag;
+    expect(tag).toBe('0020_add_kakao_auth');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "kakao_subject"');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "users_kakao_subject_unique" ON "users" ("kakao_subject")',
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

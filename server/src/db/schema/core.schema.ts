@@ -21,6 +21,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   googleSubject: varchar('google_subject', { length: 255 }).unique(),
   naverSubject: varchar('naver_subject', { length: 255 }).unique(),
+  kakaoSubject: varchar('kakao_subject', { length: 255 }).unique(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   position: varchar('position', { length: 100 }),
   region: varchar('region', { length: 100 }),

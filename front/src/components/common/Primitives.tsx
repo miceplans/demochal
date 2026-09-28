@@ -164,6 +164,7 @@ export const IconButton = styled.button({
   transition: 'background 0.15s ease, transform 0.1s ease',
   '&:hover': { background: c.gray50 },
   '&:active': { transform: 'scale(0.85)' },
+  '&:disabled': { cursor: 'not-allowed' },
 });
 export const EmptyArtwork = styled.div({ background: c.gray100, borderRadius: 12 });
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {

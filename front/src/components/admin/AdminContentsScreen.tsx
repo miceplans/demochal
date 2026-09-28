@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { keepPreviousData } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -154,29 +155,6 @@ type ContestCardRow = {
   unread: boolean;
 };
 
-const ErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 16,
-  padding: '14px 20px',
-  borderRadius: 10,
-  background: '#FEF2F2',
-  border: '1px solid #FCA5A5',
-  color: '#B91C1C',
-  ...textStyle.body,
-});
-const RetryButton = styled.button({
-  flexShrink: 0,
-  border: '1px solid #B91C1C',
-  borderRadius: 6,
-  padding: '6px 12px',
-  background: c.white,
-  color: '#B91C1C',
-  cursor: 'pointer',
-  ...textStyle.overline,
-});
-
 export function AdminContentsScreen() {
   const [teamsLimit, setTeamsLimit] = useState(PAGE_SIZE);
   const [contestsLimit, setContestsLimit] = useState(PAGE_SIZE);
@@ -185,7 +163,7 @@ export function AdminContentsScreen() {
   const contentsQuery = generated.useListAdminContents(
     { teamsLimit, contestsLimit },
     // 더보기로 limit이 바뀌는 동안 기존 카드를 유지한다.
-    { query: { placeholderData: keepPreviousData } },
+    { query: { placeholderData: keepPreviousData, meta: LOCAL_ERROR_TOAST_META } },
   );
   const teamsTotal = contentsQuery.data?.data.teamsTotal ?? 0;
   const contestsTotal = contentsQuery.data?.data.contestsTotal ?? 0;
@@ -193,6 +171,16 @@ export function AdminContentsScreen() {
     () => ({ q: reportQuery || undefined, targetType: kindOptionToTargetType[kind] }),
     [reportQuery, kind],
   );
+  const refetchContents = contentsQuery.refetch;
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!contentsQuery.isError) return;
+    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchContents() },
+    });
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, refetchContents, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>
@@ -224,15 +212,6 @@ export function AdminContentsScreen() {
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
-
-      {contentsQuery.isError ? (
-        <ErrorBanner role="alert">
-          <span>콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => contentsQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </ErrorBanner>
-      ) : null}
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader>

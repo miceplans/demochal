@@ -427,3 +427,24 @@
   line-height: normal;
   letter-spacing: 0;
 }
+
+/* Interaction cursor feedback baseline (#255).
+   Enabled interactive elements → pointer, disabled → not-allowed, busy → progress.
+   Keep the disabled block after the pointer block so it wins at equal specificity. */
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+a[href],
+label[for],
+summary,
+select:not(:disabled) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled='true'] {
+  cursor: not-allowed;
+}
+
+[aria-busy='true'] {
+  cursor: progress;
+}

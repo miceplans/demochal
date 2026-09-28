@@ -12,7 +12,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { MovingAds } from '@/components/ads/MovingAds';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { useAdminHref } from './AdminShell';
 
 type PreviewView = 'mobile' | 'pc';
@@ -35,29 +35,6 @@ const MOBILE_GALLERY_STEP = MOBILE_GALLERY_ITEM + MOBILE_GALLERY_GAP;
 const MOBILE_GALLERY_CENTER = 358 / 2;
 
 const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 32, width: '100%' });
-
-const PricingErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 16,
-  padding: '14px 20px',
-  borderRadius: 10,
-  background: '#FEF2F2',
-  border: '1px solid #FCA5A5',
-  color: '#B91C1C',
-  ...textStyle.body,
-});
-const RetryButton = styled.button({
-  flexShrink: 0,
-  border: '1px solid #B91C1C',
-  borderRadius: 6,
-  padding: '6px 12px',
-  background: c.white,
-  color: '#B91C1C',
-  cursor: 'pointer',
-  ...textStyle.overline,
-});
 
 const ViewSwitch = styled.div({
   display: 'flex',
@@ -365,9 +342,18 @@ export function AdminAdPricingScreen() {
   const inputId = useId();
   const hrefOf = useAdminHref();
 
-  const pricingQuery = generated.useGetAdPricing();
+  const pricingQuery = generated.useGetAdPricing({ query: { meta: LOCAL_ERROR_TOAST_META } });
+  const refetchPricing = pricingQuery.refetch;
   const hero = pricingQuery.data?.data.find((item) => item.slot === 'hero');
   const dailyPrice = hero?.dailyPrice ?? 0;
+
+  useEffect(() => {
+    if (!pricingQuery.isError) return;
+    toast.error('단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchPricing() },
+    });
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [pricingQuery.isError, pricingQuery.errorUpdatedAt, refetchPricing, toast]);
 
   const updatePricingMutation = generated.useUpdateAdPricing({
     mutation: {
@@ -459,14 +445,6 @@ export function AdminAdPricingScreen() {
         기존 광고 계약의 금액과 기간은 유지됩니다. 단가 변경 시 기존 계약자에게 안내하며, 변경된
         금액은 새 계약부터 적용됩니다.
       </p>
-      {pricingQuery.isError ? (
-        <PricingErrorBanner role="alert">
-          <span>단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => pricingQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </PricingErrorBanner>
-      ) : null}
       <ViewSwitch>
         <ViewSwitchGroup role="tablist" aria-label="미리보기 화면 전환">
           <ViewButton
