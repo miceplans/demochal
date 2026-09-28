@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
     MockApiError,
   };
 });
+const TEST_PASSWORD = 'placeholder-password';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: mocks.replace }) }));
 vi.mock('next/link', () => ({
@@ -56,11 +57,11 @@ describe('BizLoginPage', () => {
     renderLogin();
 
     await user.type(screen.getByLabelText('이메일 또는 아이디'), 'biz_owner');
-    await user.type(screen.getByLabelText('비밀번호'), 'password123');
+    await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
     await waitFor(() =>
-      expect(mocks.login).toHaveBeenCalledWith({ username: 'biz_owner', password: 'password123' }),
+      expect(mocks.login).toHaveBeenCalledWith({ username: 'biz_owner', password: TEST_PASSWORD }),
     );
     expect(mocks.replace).toHaveBeenCalledWith('/biz/dashboard');
   });
@@ -72,7 +73,7 @@ describe('BizLoginPage', () => {
     renderLogin();
 
     await user.type(screen.getByLabelText('이메일 또는 아이디'), 'member@semochal.kr');
-    await user.type(screen.getByLabelText('비밀번호'), 'password123');
+    await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledOnce());
