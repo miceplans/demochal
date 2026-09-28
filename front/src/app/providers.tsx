@@ -25,7 +25,18 @@ function QueryProvider({ children }: { children: ReactNode }) {
           },
         }),
         mutationCache: new MutationCache({
-          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요'),
+          // 호출부에서 직접 처리하는 상태 코드는 mutation `meta.handledErrorStatuses`로 지정해 제외한다
+          // (예: 온보딩 설문 409 = 이미 완료).
+          onError: (error, _variables, _onMutateResult, mutation) => {
+            const handled = mutation.meta?.handledErrorStatuses;
+            if (
+              error instanceof ApiError &&
+              Array.isArray(handled) &&
+              handled.includes(error.status)
+            )
+              return;
+            toast.error('서버 오류', '잠시 후 다시 시도해주세요');
+          },
         }),
         defaultOptions: {
           queries: {
