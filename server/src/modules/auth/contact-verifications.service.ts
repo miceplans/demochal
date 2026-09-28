@@ -29,6 +29,8 @@ export interface ContactVerificationMessage {
 const CODE_TTL_MS = 5 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
+// Only environments that never face real users may echo the code back as `devCode`.
+const CODE_IN_RESPONSE_ENVS = new Set(['development', 'test']);
 // A confirmed code must be used for signup within this window.
 const VERIFIED_USABLE_MS = 30 * 60 * 1000;
 
@@ -52,7 +54,9 @@ export class ContactVerificationsService {
     // TODO: 이메일(SES)/SMS 발송 relay가 아직 없다 — CONTACT_VERIFICATION_REQUESTED_EVENT를
     // 소비하는 발송기를 worker에 붙이기 전까지 production에서는 발송 불가로 응답한다.
     // https://docs.aws.amazon.com/ses/latest/dg/send-email-api.html
-    if (env.nodeEnv === 'production') {
+    // Allowlist rather than `=== 'production'`: any other deployed NODE_ENV (staging,
+    // a typo) must not fall through to the path that returns the code in the response.
+    if (!CODE_IN_RESPONSE_ENVS.has(env.nodeEnv)) {
       throw new ServiceUnavailableException('인증번호 발송이 아직 준비되지 않았어요.');
     }
 
@@ -89,8 +93,8 @@ export class ContactVerificationsService {
       return row!;
     });
 
-    // Delivery is not wired yet, so non-production responses carry the code
-    // to keep the signup flow testable locally.
+    // Delivery is not wired yet, so local/test responses carry the code to keep
+    // the signup flow testable; every other environment was rejected above.
     return { id: verification.id, expiresAt, devCode: code };
   }
 
