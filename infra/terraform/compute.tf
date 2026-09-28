@@ -154,10 +154,8 @@ data "aws_iam_policy_document" "api_task" {
     actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.public.arn}/*"]
   }
-  statement {
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.verifications.arn]
-  }
+  # No SQS access: the API only writes outbox rows in the request transaction;
+  # the worker's OutboxRelayService is the sole SQS sender.
 }
 
 resource "aws_iam_role_policy" "api_task" {
@@ -173,7 +171,9 @@ resource "aws_iam_role" "worker_task" {
 
 data "aws_iam_policy_document" "worker_task" {
   statement {
-    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    # SendMessage: worker.ts relays verification outbox rows to this queue
+    # (OutboxRelayService) before consuming them.
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.verifications.arn]
   }
   statement {
