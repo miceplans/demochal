@@ -54,13 +54,15 @@ export function BizProfileEditPage() {
   // refetch로 다시 값이 오더라도 사용자가 입력 중인 form을 덮어쓰지 않는다.
   useEffect(() => {
     if (business && !initialized) {
+      // business는 라우트 진입 시 한 번만 조회되는 외부 API 동기화이며,
+      // 이후 form은 로컬 편집 상태가 진실의 원천이다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         name: business.name ?? '',
         address: business.address ?? '',
         phone: business.phone ?? '',
         email: business.email ?? '',
       });
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInitialized(true);
     }
   }, [business, initialized]);

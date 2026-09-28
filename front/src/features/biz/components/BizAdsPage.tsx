@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { DayPicker, type DateRange } from 'react-day-picker';
@@ -16,12 +16,14 @@ import {
   type AdPlacement,
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
-import { ApiError, type Ad, type AdProduct, type Notification } from '@semochal/api-client';
-import { adApi, adError } from '@/lib/ad-api';
+import { ApiError, generated } from '@semochal/api-client';
 import { toDateKey } from '@/lib/date';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
+
+type Ad = Awaited<ReturnType<typeof generated.listMyAds>>['data'][number];
+type AdProduct = Awaited<ReturnType<typeof generated.listAdProducts>>['data'][number];
 
 type AdsScreen = 'manage' | 'products' | 'complete';
 type SelectedAd = {
@@ -37,24 +39,40 @@ function formatSlash(dateKey: string) {
   return `${Number(month)}/${Number(day)}`;
 }
 
-const MY_ADS_QUERY_KEY = ['biz', 'ads', 'mine'] as const;
+// generated 클라이언트는 실패 시 ApiError(status, body)를 던진다 — 서버가 남긴 message가
+// 있으면 그대로 보여주고, 없으면 공통 안내 문구로 대체한다(기존 adError와 동일한 규칙).
+function extractErrorMessage(error: unknown): string {
+  if (
+    error instanceof ApiError &&
+    error.body &&
+    typeof error.body === 'object' &&
+    'message' in error.body
+  ) {
+    const message = error.body.message;
+    if (typeof message === 'string') return message;
+  }
+  return '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.';
+}
 
 export function BizAdsPage() {
   // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.
   // 오류 토스트는 전역 QueryCache onError가 담당한다(401은 제외).
   const queryClient = useQueryClient();
-  // TODO: openapi의 Ad 스키마 required 필드를 정리한 뒤 generated.useListMyAds로 전환한다.
-  // https://orval.dev/reference/configuration/output
-  const contractsQuery = useQuery({
-    queryKey: MY_ADS_QUERY_KEY,
-    queryFn: () => adApi.ads.listMine(),
-  });
-  const contracts = contractsQuery.data ?? [];
+  const contractsQuery = generated.useListMyAds();
+  const contracts = contractsQuery.data?.status === 200 ? contractsQuery.data.data : [];
   const contractsLoading = contractsQuery.isPending;
   const contractsError = contractsQuery.isError;
-  const setContracts = (update: (items: Ad[]) => Ad[]) =>
-    queryClient.setQueryData<Ad[]>(MY_ADS_QUERY_KEY, (current) => current && update(current));
-  const [priceNotices, setPriceNotices] = useState<Notification[]>([]);
+  const updateAdMutation = generated.useUpdateAd();
+  const createAdMutation = generated.useCreateAd();
+  const requestPresignedUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  // 알림 폴링 30초 간격 — 401은 전역 QueryCache onError에서 이미 제외된다.
+  const notificationsQuery = generated.useListMyNotifications(undefined, {
+    query: { refetchInterval: 30_000 },
+  });
+  const priceNotices = (notificationsQuery.data?.data ?? []).filter(
+    (item) => item.type === 'ad_price_changed',
+  );
   const [pausingId, setPausingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
@@ -78,30 +96,15 @@ export function BizAdsPage() {
     if (ad.status !== 'active' || pausingId) return;
     setPausingId(ad.id);
     try {
-      const updated = await adApi.ads.update(ad.id, 'paused');
-      setContracts((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+      await updateAdMutation.mutateAsync({ id: ad.id, data: { status: 'paused' } });
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
       toast.success('광고를 중단했습니다.');
-    } catch (error) {
-      toast.error('광고를 중단하지 못했습니다.', adError(error));
+    } catch {
+      // 전역 MutationCache onError 토스트가 실패를 알린다.
     } finally {
       setPausingId(null);
     }
   };
-  useEffect(() => {
-    const refresh = () =>
-      adApi.notifications
-        .list()
-        .then((items) => setPriceNotices(items.filter((item) => item.type === 'ad_price_changed')))
-        .catch((error) => {
-          if (error instanceof ApiError && error.status === 401) return;
-          toast.error('알림을 불러오지 못했습니다', adError(error));
-        });
-    void refresh();
-    const timer = window.setInterval(() => {
-      void refresh();
-    }, 30_000);
-    return () => window.clearInterval(timer);
-  }, [toast]);
   const [view, setView] = useState<AdPreviewView>('pc');
   const [screen, setScreen] = useState<AdsScreen>('manage');
   const [selectedAd, setSelectedAd] = useState<SelectedAd | null>(null);
@@ -114,19 +117,17 @@ export function BizAdsPage() {
   const datePickerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   // 미리보기 툴팁 가격을 서버 상품 가격과 맞춘다. 실패 시 미리보기의 fallback 가격을 쓴다.
-  const productsQuery = useQuery({
-    queryKey: ['biz', 'ads', 'products'],
-    queryFn: () => adApi.ads.listProducts(),
-  });
+  const productsQuery = generated.useListAdProducts();
   const dailyPrices: Partial<Record<AdPlacement, number>> = {};
-  for (const product of productsQuery.data ?? []) {
+  for (const product of productsQuery.data?.data ?? []) {
     if (product.placement === 'hero' || product.placement === 'gallery') {
       dailyPrices[product.placement] = product.dailyPrice;
     }
   }
   const openPayment = async (placement: AdPlacement) => {
     try {
-      const products = await adApi.ads.listProducts();
+      // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
+      const { data: products } = await generated.listAdProducts();
       const product = products.find((item) => item.placement === placement);
       if (!product) throw new Error('상품 없음');
       let start = toDateKey(new Date());
@@ -152,7 +153,7 @@ export function BizAdsPage() {
       setDatePickerOpen(false);
       setPaymentOpen(true);
     } catch (error) {
-      toast.error('광고 상품 정보를 불러오지 못했습니다', adError(error));
+      toast.error('광고 상품 정보를 불러오지 못했습니다', extractErrorMessage(error));
     }
   };
   const paymentDays = Math.max(
@@ -180,19 +181,22 @@ export function BizAdsPage() {
     let image: CompressedAdImage | undefined;
     try {
       image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
-      const presigned = await adApi.files.requestUpload({
-        bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
+      const presigned = await requestPresignedUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          // compressToWebP는 항상 image/webp로 재인코딩한다.
+          contentType: 'image/webp',
+          fileName: image.file.name,
+          sizeBytes: image.file.size,
+        },
       });
-      const uploadRes = await fetch(presigned.uploadUrl, {
+      const uploadRes = await fetch(presigned.data.uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': image.file.type },
         body: image.file,
       });
       if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await adApi.files.finalizeUpload(presigned.fileId);
+      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       const previous = uploadedImages[placement];
       if (previous) {
@@ -201,7 +205,7 @@ export function BizAdsPage() {
       }
       previewUrls.current.add(image.previewUrl);
       setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
-      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.fileId }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.data.fileId }));
       setUploadPlacement(null);
       toast.success(
         '업로드 되었습니다',
@@ -224,26 +228,29 @@ export function BizAdsPage() {
     }
     setSubmitting(true);
     try {
-      const ad = await adApi.ads.create({
-        productId: selectedAd.product.id,
-        startDate: paymentStart,
-        endDate: paymentEnd,
-        expectedDailyPrice: selectedAd.product.dailyPrice,
-        title: selectedAd.name,
-        imageFileId: uploadedFileIds[selectedAd.placement],
+      const created = await createAdMutation.mutateAsync({
+        data: {
+          productId: selectedAd.product.id,
+          startDate: paymentStart,
+          endDate: paymentEnd,
+          expectedDailyPrice: selectedAd.product.dailyPrice,
+          title: selectedAd.name,
+          imageFileId: uploadedFileIds[selectedAd.placement],
+        },
       });
-      setContracts((items) => [ad, ...items]);
+      if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
       setSelectedAd({
         ...selectedAd,
-        price: ad.paidAmount,
+        price: created.data.paidAmount,
         period: `${paymentStart} ~ ${paymentEnd}`,
       });
       setPaymentOpen(false);
       setScreen('complete');
     } catch (error) {
-      toast.error('광고 계약 신청에 실패했습니다', adError(error));
+      toast.error('광고 계약 신청에 실패했습니다', extractErrorMessage(error));
       try {
-        const products = await adApi.ads.listProducts();
+        const { data: products } = await generated.listAdProducts();
         const product = products.find((item) => item.id === selectedAd.product.id);
         if (product) setSelectedAd({ ...selectedAd, product });
       } catch {
