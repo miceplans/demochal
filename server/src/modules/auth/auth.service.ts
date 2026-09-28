@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -8,12 +9,20 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { eq, ilike, or } from 'drizzle-orm';
+import { and, eq, ilike, isNull, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
+import {
+  bookmarks,
+  businesses,
+  notifications,
+  teamMembers,
+  teams,
+  users,
+} from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
+import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
 const DUPLICATE_ACCOUNT_MESSAGE = 'Email or username already registered';
@@ -129,7 +138,7 @@ export class AuthService {
       password,
       user?.passwordHash ?? (await dummyPasswordHash),
     );
-    if (!user?.passwordHash || !passwordMatches) {
+    if (!user?.passwordHash || !passwordMatches || user.withdrawnAt) {
       throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
     }
 
@@ -140,6 +149,103 @@ export class AuthService {
       this.usersService.findById(user.id),
     ]);
     return { accessToken, user: publicUser };
+  }
+
+  /** Erases direct identifiers while preserving a non-personal FK anchor for content and orders. */
+  async withdraw(userId: string, dto: WithdrawAccountDto) {
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user || user.withdrawnAt || !user.passwordHash) {
+      throw new UnauthorizedException('Account cannot be withdrawn');
+    }
+    if (!(await compare(dto.password, user.passwordHash))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+
+    await this.db.transaction(async (tx) => {
+      const leadingTeams = await tx
+        .select({ id: teams.id })
+        .from(teams)
+        .where(eq(teams.leaderUserId, userId));
+      const transfers = new Map(
+        dto.teamTransfers?.map((transfer) => [transfer.teamId, transfer.newLeaderUserId]),
+      );
+      if (leadingTeams.some((team) => !transfers.has(team.id))) {
+        throw new BadRequestException(
+          '모든 팀장 권한을 수락된 팀원에게 이전한 뒤 탈퇴할 수 있습니다.',
+        );
+      }
+      for (const team of leadingTeams) {
+        const newLeaderUserId = transfers.get(team.id)!;
+        if (newLeaderUserId === userId)
+          throw new BadRequestException('본인에게 권한을 이전할 수 없습니다.');
+        const [member] = await tx
+          .select({ id: teamMembers.id })
+          .from(teamMembers)
+          .innerJoin(users, eq(teamMembers.userId, users.id))
+          .where(
+            and(
+              eq(teamMembers.teamId, team.id),
+              eq(teamMembers.userId, newLeaderUserId),
+              eq(teamMembers.status, 'accepted'),
+              isNull(users.withdrawnAt),
+            ),
+          )
+          .limit(1);
+        if (!member) throw new BadRequestException('새 팀장은 수락된 활성 팀원이어야 합니다.');
+        await tx.update(teams).set({ leaderUserId: newLeaderUserId }).where(eq(teams.id, team.id));
+      }
+      const [ownedBusiness] = await tx
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.ownerUserId, userId))
+        .limit(1);
+      if (ownedBusiness) {
+        if (!dto.newBusinessOwnerUserId || dto.newBusinessOwnerUserId === userId) {
+          throw new BadRequestException(
+            '기관 소유권을 다른 활성 사용자에게 이전한 뒤 탈퇴할 수 있습니다.',
+          );
+        }
+        const [newOwner] = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(and(eq(users.id, dto.newBusinessOwnerUserId), isNull(users.withdrawnAt)))
+          .limit(1);
+        if (!newOwner) throw new BadRequestException('새 기관 소유자는 활성 사용자여야 합니다.');
+        await tx
+          .update(businesses)
+          .set({ ownerUserId: newOwner.id })
+          .where(eq(businesses.id, ownedBusiness.id));
+        await tx.update(users).set({ role: 'business' }).where(eq(users.id, newOwner.id));
+      }
+      await tx.delete(bookmarks).where(eq(bookmarks.userId, userId));
+      await tx.delete(notifications).where(eq(notifications.userId, userId));
+      await tx.delete(teamMembers).where(eq(teamMembers.userId, userId));
+      await tx
+        .update(users)
+        .set({
+          name: '탈퇴한 사용자',
+          email: null,
+          username: null,
+          phone: null,
+          passwordHash: null,
+          googleSubject: null,
+          naverSubject: null,
+          position: null,
+          region: null,
+          stacks: [],
+          badges: [],
+          externalLinks: [],
+          awardHistory: [],
+          onboardingSurvey: null,
+          interests: [],
+          notificationSettings: {},
+          termsAgreements: null,
+          emailVerifiedAt: null,
+          phoneVerifiedAt: null,
+          withdrawnAt: new Date(),
+        })
+        .where(eq(users.id, userId));
+    });
   }
 
   /** Finds or creates the local account for a verified Google identity. */
@@ -275,7 +381,7 @@ export class AuthService {
   }
 
   private issueToken(user: typeof users.$inferSelect): Promise<string> {
-    const payload: JwtPayload = { sub: user.id, email: user.email, role: user.role };
+    const payload: JwtPayload = { sub: user.id, email: user.email ?? '', role: user.role };
     return this.jwtService.signAsync(payload);
   }
 }

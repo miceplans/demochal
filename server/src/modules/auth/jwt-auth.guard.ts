@@ -66,11 +66,12 @@ export class JwtAuthGuard implements CanActivate {
         role: users.role,
         suspended: users.suspended,
         suspendedReason: users.suspendedReason,
+        withdrawnAt: users.withdrawnAt,
       })
       .from(users)
       .where(eq(users.id, payload.sub))
       .limit(1);
-    if (!user) throw new UnauthorizedException('User no longer exists');
+    if (!user || user.withdrawnAt) throw new UnauthorizedException('User no longer exists');
     if (user.suspended) {
       throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
     }
@@ -78,7 +79,7 @@ export class JwtAuthGuard implements CanActivate {
     (request as AuthenticatedRequest).user = {
       id: payload.sub,
       email: payload.email,
-      name: user.name,
+      name: user.name ?? '탈퇴한 사용자',
       // The token's role claim is a snapshot from login; the DB row is authoritative.
       role: user.role,
     };

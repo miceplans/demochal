@@ -490,7 +490,7 @@ export class AdminService {
     return rows.map((row) => ({
       id: row.id,
       name: row.name,
-      email: maskEmail(row.email),
+      email: row.email ? maskEmail(row.email) : '탈퇴한 사용자',
       position: row.position ?? '',
       reports: countByUser.get(row.id) ?? 0,
       status: row.suspended ? ('suspended' as const) : ('active' as const),
@@ -517,7 +517,7 @@ export class AdminService {
     return {
       id: user.id,
       name: user.name,
-      email: maskEmail(user.email),
+      email: user.email ? maskEmail(user.email) : '탈퇴한 사용자',
       position: user.position ?? '',
       reports: filedCount?.count ?? 0,
       status: user.suspended ? ('suspended' as const) : ('active' as const),

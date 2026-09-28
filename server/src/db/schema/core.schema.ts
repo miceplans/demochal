@@ -15,8 +15,9 @@ import {
 type OpenRole = { role: string; count: number };
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  name: varchar('name', { length: 100 }).notNull(),
+  // A withdrawn account retains only this FK anchor; personal fields are erased.
+  email: varchar('email', { length: 255 }).unique(),
+  name: varchar('name', { length: 100 }),
   role: varchar('role', { length: 20 }).notNull().default('user'),
   passwordHash: text('password_hash'),
   googleSubject: varchar('google_subject', { length: 255 }).unique(),
@@ -45,6 +46,7 @@ export const users = pgTable('users', {
   phoneVerifiedAt: timestamp('phone_verified_at'),
   // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
   termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
+  withdrawnAt: timestamp('withdrawn_at'),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
