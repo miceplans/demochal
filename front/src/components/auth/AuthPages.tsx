@@ -9,7 +9,6 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
-import { adApi } from '@/lib/ad-api';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
@@ -42,24 +41,17 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
     borderRadius: 8,
   },
 }));
+const SOCIAL_LOGIN_PATHS: Record<string, string> = {
+  Kakao: '/auth/social/kakao',
+  Google: '/auth/google',
+  Naver: '/auth/social/naver',
+};
 export function LoginPage() {
-  const router = useRouter();
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
-  const continueAfterLogin = async () => {
-    try {
-      const user = await adApi.auth.me();
-      router.push(user.onboardingSurvey ? '/' : '/onboarding/activity');
-    } catch {
-      router.push(hasCompletedOnboarding ? '/' : '/onboarding/activity');
-    }
-  };
-  const startGoogleLogin = () => {
+  const startSocialLogin = (provider: string) => {
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
-    window.location.assign(`${apiOrigin.replace(/\/$/, '')}/auth/google`);
-  };
-  const startNaverLogin = () => {
-    const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
-    window.location.assign(`${apiOrigin.replace(/\/$/, '')}/auth/social/naver`);
+    const path = SOCIAL_LOGIN_PATHS[provider];
+    if (path) window.location.assign(`${apiOrigin.replace(/\/$/, '')}${path}`);
   };
 
   return (
@@ -77,15 +69,7 @@ export function LoginPage() {
               provider={provider}
               onClick={(event) => {
                 event.preventDefault();
-                if (provider === 'Google') {
-                  startGoogleLogin();
-                  return;
-                }
-                if (provider === 'Naver') {
-                  startNaverLogin();
-                  return;
-                }
-                void continueAfterLogin();
+                startSocialLogin(provider);
               }}
             >
               <Icon

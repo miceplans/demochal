@@ -52,6 +52,15 @@ const envSchema = z
       .string()
       .url()
       .default('http://localhost:3001/auth/social/naver/callback'),
+
+    // Kakao "REST API 키" is the OAuth client_id. The client secret is optional and
+    // only sent when enabled in Kakao Developers (앱 > 플랫폼 키 > 클라이언트 시크릿).
+    KAKAO_CLIENT_ID: z.string().default(''),
+    KAKAO_CLIENT_SECRET: z.string().default(''),
+    KAKAO_REDIRECT_URI: z
+      .string()
+      .url()
+      .default('http://localhost:3001/auth/social/kakao/callback'),
   })
   .superRefine((value, ctx) => {
     // HS256 key: anything shorter than 32 bytes is brute-forceable offline from one issued token.
@@ -114,4 +123,8 @@ export const env = {
   naverClientId: raw.NAVER_CLIENT_ID,
   naverClientSecret: raw.NAVER_CLIENT_SECRET,
   naverRedirectUri: raw.NAVER_REDIRECT_URI,
+
+  kakaoClientId: raw.KAKAO_CLIENT_ID,
+  kakaoClientSecret: raw.KAKAO_CLIENT_SECRET,
+  kakaoRedirectUri: raw.KAKAO_REDIRECT_URI,
 };

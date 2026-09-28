@@ -81,6 +81,7 @@ describe('AuthController Google callback input-security opt-out', () => {
     for (const callback of [
       AuthController.prototype.googleCallback,
       AuthController.prototype.naverCallback,
+      AuthController.prototype.kakaoCallback,
     ]) {
       expect(reflector.get(SKIP_INPUT_SECURITY_KEY, callback)).toBe(true);
     }
@@ -90,6 +91,7 @@ describe('AuthController Google callback input-security opt-out', () => {
       AuthController.prototype.register,
       AuthController.prototype.googleLogin,
       AuthController.prototype.naverLogin,
+      AuthController.prototype.kakaoLogin,
       AuthController.prototype.logout,
     ]) {
       expect(reflector.get(SKIP_INPUT_SECURITY_KEY, handler)).toBeUndefined();
@@ -255,5 +257,107 @@ describe('AuthController Naver callback', () => {
     });
     expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed.jwt', authCookieOptions);
     expect(res.redirect).toHaveBeenCalledWith('http://localhost:3000/');
+  });
+});
+
+describe('AuthController Kakao callback', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function setup() {
+    vi.resetModules();
+    vi.stubEnv('KAKAO_CLIENT_ID', 'test-kakao-rest-api-key');
+    const { AuthController: FreshController } = await import('./auth.controller.js');
+    const { env } = await import('../../config/env.js');
+    const { fetchJson: fetchJsonMock } = await import('../../common/http/fetch-json.js');
+    const mockedFetchJson = vi.mocked(fetchJsonMock);
+    mockedFetchJson.mockReset();
+
+    const nonce = 'kakao-state-nonce-with-entropy';
+    const signature = createHmac('sha256', env.oauthStateSecret).update(nonce).digest('base64url');
+    const service = {
+      loginWithKakao: vi.fn().mockResolvedValue({
+        accessToken: 'signed.jwt',
+        user: { ...user, onboardingSurvey: false },
+      }),
+    };
+    const controller = new FreshController(
+      service as unknown as AuthService,
+      {} as unknown as ContactVerificationsService,
+    );
+    const request = { headers: { cookie: `semochal_kakao_oauth_state=${nonce}` } } as Request;
+    return { controller, service, mockedFetchJson, request, state: `${nonce}.${signature}` };
+  }
+
+  function mockKakaoResponses(
+    mockedFetchJson: ReturnType<typeof vi.mocked<typeof fetchJson>>,
+    account: Record<string, unknown>,
+  ) {
+    mockedFetchJson
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'kakao-access-token' }),
+      } as unknown as Awaited<ReturnType<typeof fetchJson>>)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1234567890, kakao_account: account }),
+      } as unknown as Awaited<ReturnType<typeof fetchJson>>);
+  }
+
+  it('rejects a state that does not match the cookie nonce without exchanging the code', async () => {
+    const { controller, service, mockedFetchJson, request } = await setup();
+    const res = response();
+
+    await controller.kakaoCallback('kakao--code', 'tampered.c2ln', undefined, request, res);
+
+    expect(mockedFetchJson).not.toHaveBeenCalled();
+    expect(service.loginWithKakao).not.toHaveBeenCalled();
+    expect(res.redirect).toHaveBeenCalledWith(
+      'http://localhost:3000/login?error=kakao_login_failed',
+    );
+  });
+
+  it('logs in with a verified Kakao email and redirects to onboarding', async () => {
+    const { controller, service, mockedFetchJson, request, state } = await setup();
+    mockKakaoResponses(mockedFetchJson, {
+      email: 'Member@Kakao.com',
+      is_email_valid: true,
+      is_email_verified: true,
+      profile: { nickname: '카카오회원' },
+    });
+    const res = response();
+
+    await controller.kakaoCallback('kakao--code', state, undefined, request, res);
+
+    const tokenExchangeBody = new URLSearchParams(String(mockedFetchJson.mock.calls[0]?.[1]?.body));
+    expect(tokenExchangeBody.get('code')).toBe('kakao--code');
+    expect(tokenExchangeBody.get('client_id')).toBe('test-kakao-rest-api-key');
+    expect(tokenExchangeBody.has('client_secret')).toBe(false);
+    expect(service.loginWithKakao).toHaveBeenCalledWith({
+      subject: '1234567890',
+      email: 'member@kakao.com',
+      name: '카카오회원',
+    });
+    expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed.jwt', authCookieOptions);
+    expect(res.redirect).toHaveBeenCalledWith('http://localhost:3000/onboarding/activity');
+  });
+
+  it('refuses an unverified Kakao email so it cannot be linked to an existing account', async () => {
+    const { controller, service, mockedFetchJson, request, state } = await setup();
+    mockKakaoResponses(mockedFetchJson, {
+      email: 'member@kakao.com',
+      is_email_valid: true,
+      is_email_verified: false,
+    });
+    const res = response();
+
+    await controller.kakaoCallback('kakao-code', state, undefined, request, res);
+
+    expect(service.loginWithKakao).not.toHaveBeenCalled();
+    expect(res.redirect).toHaveBeenCalledWith(
+      'http://localhost:3000/login?error=kakao_login_failed',
+    );
   });
 });
