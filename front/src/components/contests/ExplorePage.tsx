@@ -17,7 +17,9 @@ import {
 } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
-import { categories, desktopContests, contests, teams } from '@/data/user-design';
+import { categories, desktopContests, contests, roles } from '@/data/user-design';
+import { generated } from '@semochal/api-client';
+import { toTeamCard } from '@/components/teams/team-model';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
@@ -27,7 +29,24 @@ import { RangeSlider } from '@/components/ui/RangeSlider';
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
   const [category, setCategory] = useState('');
+  const [challengeId, setChallengeId] = useState('');
   const [role, setRole] = useState('');
+  const [region, setRegion] = useState('');
+  const challengesQuery = generated.useListChallenges(
+    { limit: 50 },
+    { query: { enabled: teamMode } },
+  );
+  const challengeOptions = challengesQuery.data?.data.items ?? [];
+  const teamsQuery = generated.useListTeams(
+    {
+      challengeId: challengeId || undefined,
+      role: role || undefined,
+      region: region || undefined,
+      q: query || undefined,
+    },
+    { query: { enabled: teamMode } },
+  );
+  const teamCards = (teamsQuery.data?.data ?? []).map(toTeamCard);
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(6);
   const [prize, setPrize] = useState<[number, number]>([3000, 8000]);
@@ -62,11 +81,11 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 <Dropdown
                   aria-label="챌린지"
                   size="S"
-                  value={category}
-                  onChange={setCategory}
+                  value={challengeId}
+                  onChange={setChallengeId}
                   options={[
                     { value: '', label: '전체 챌린지' },
-                    { value: '공공데이터', label: '공공데이터 챌린지' },
+                    ...challengeOptions.map((x) => ({ value: x.id ?? '', label: x.title ?? '' })),
                   ]}
                 />
               </div>
@@ -79,9 +98,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   onChange={setRole}
                   options={[
                     { value: '', label: '모든 역할' },
-                    { value: '백엔드', label: '백엔드' },
-                    { value: '프론트', label: '프론트' },
-                    { value: '디자인', label: '디자인' },
+                    ...roles.map((x) => ({ value: x, label: x })),
                   ]}
                 />
               </div>
@@ -90,8 +107,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 <Dropdown
                   aria-label="지역"
                   size="S"
-                  value={category}
-                  onChange={setCategory}
+                  value={region}
+                  onChange={setRegion}
                   options={[
                     { value: '', label: '전체' },
                     { value: '서울', label: '서울' },
@@ -174,24 +191,59 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
         </Sidebar>
         <Results>
           <MobileFilters>
-            {(teamMode
-              ? ['전체 챌린지', '필요역할', '지역']
-              : ['분야', '대상', '주최기관', '상금']
-            ).map((x, i) => (
-              <Select
-                key={x}
-                aria-label={x}
-                value={i === 0 ? category : undefined}
-                onChange={(e) => {
-                  if (i === 0) setCategory(e.target.value);
-                }}
-              >
-                <option value="">{x}</option>
-                {(i === 0 ? categories : ['전체', '대학생', '일반인']).map((v) => (
-                  <option key={v}>{v}</option>
+            {teamMode
+              ? [
+                  {
+                    label: '전체 챌린지',
+                    value: challengeId,
+                    onChange: setChallengeId,
+                    options: challengeOptions.map((x) => ({
+                      value: x.id ?? '',
+                      label: x.title ?? '',
+                    })),
+                  },
+                  {
+                    label: '필요역할',
+                    value: role,
+                    onChange: setRole,
+                    options: roles.map((x) => ({ value: x, label: x })),
+                  },
+                  {
+                    label: '지역',
+                    value: region,
+                    onChange: setRegion,
+                    options: ['서울', '부산'].map((x) => ({ value: x, label: x })),
+                  },
+                ].map((filter) => (
+                  <Select
+                    key={filter.label}
+                    aria-label={filter.label}
+                    value={filter.value}
+                    onChange={(e) => filter.onChange(e.target.value)}
+                  >
+                    <option value="">{filter.label}</option>
+                    {filter.options.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                ))
+              : ['분야', '대상', '주최기관', '상금'].map((x, i) => (
+                  <Select
+                    key={x}
+                    aria-label={x}
+                    value={i === 0 ? category : undefined}
+                    onChange={(e) => {
+                      if (i === 0) setCategory(e.target.value);
+                    }}
+                  >
+                    <option value="">{x}</option>
+                    {(i === 0 ? categories : ['전체', '대학생', '일반인']).map((v) => (
+                      <option key={v}>{v}</option>
+                    ))}
+                  </Select>
                 ))}
-              </Select>
-            ))}
           </MobileFilters>
           <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>
             {teamMode ? (
@@ -225,20 +277,14 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           </Row>
           {teamMode ? (
             <>
-              <DesktopOnly>
-                <TeamGrid>
-                  {Array.from({ length: 9 }, (_, i) => (
-                    <TeamCard key={i} />
-                  ))}
-                </TeamGrid>
-              </DesktopOnly>
-              <MobileOnly>
-                <TeamGrid>
-                  {teams.map((t) => (
-                    <TeamCard team={t} key={t.id} />
-                  ))}
-                </TeamGrid>
-              </MobileOnly>
+              <TeamGrid>
+                {teamCards.map((team) => (
+                  <TeamCard key={team.id} team={team} />
+                ))}
+              </TeamGrid>
+              {teamsQuery.isSuccess && teamCards.length === 0 && (
+                <Muted>조건에 맞는 팀 모집글이 없어요.</Muted>
+              )}
             </>
           ) : (
             <>

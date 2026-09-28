@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(15);
+    expect(journal.entries).toHaveLength(20);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -171,10 +171,21 @@ describe('migration chain coverage', () => {
       'admin_settings',
       'outbox_events',
       'billing_auth_attempts',
+      'ad_event_counters',
       'email_send_states',
     ]) {
       expect(chainSql).toMatch(new RegExp(`CREATE TABLE (?:IF NOT EXISTS )?"${table}"`));
     }
+  });
+
+  it('0015_add_ad_event_counters stores privacy-safe hourly ad aggregates', () => {
+    const tag = journal.entries[15]?.tag;
+    expect(tag).toBe('0015_add_ad_event_counters');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "ad_event_counters"');
+    expect(sql).toContain('ad_event_counters_ad_bucket_unique');
+    expect(sql).toContain('ad_event_counters_ad_id_ads_id_fk');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 
   it('has no orphan migration files outside the journal chain', () => {
@@ -314,10 +325,63 @@ describe('0013_billing_auth_attempts migration', () => {
   });
 });
 
-describe('0014_email_send_states migration', () => {
-  it('creates the SES send-state idempotency table without destructive DDL', () => {
+describe('0014_team_recruitment_details migration', () => {
+  it('adds the team recruitment survey columns without destructive DDL', () => {
     const tag = journal.entries[14]?.tag;
-    expect(tag).toBe('0014_email_send_states');
+    expect(tag).toBe('0014_team_recruitment_details');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "introduction" text');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "preferred" varchar(200)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "etc" varchar(200)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0016_team_member_chat_link migration', () => {
+  it('adds the applicant chat link column without destructive DDL', () => {
+    const tag = journal.entries[16]?.tag;
+    expect(tag).toBe('0016_team_member_chat_link');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "chat_link" varchar(500)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0017_biz_signup_contract migration', () => {
+  it('adds the biz signup columns and contact verification table without destructive DDL', () => {
+    const tag = journal.entries[17]?.tag;
+    expect(tag).toBe('0017_biz_signup_contract');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "username" varchar(50)');
+    expect(sql).toContain('"users_username_unique" UNIQUE("username")');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "phone_verified_at" timestamp');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "terms_agreements" jsonb');
+    expect(sql).toContain('ALTER COLUMN "registration_number" DROP NOT NULL');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "contact_verifications"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0018_add_challenges_recruit_method migration', () => {
+  it('adds the exposure-boost column idempotently with an external backfill default', () => {
+    const tag = journal.entries[18]?.tag;
+    expect(tag).toBe('0018_add_challenges_recruit_method');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      `ADD COLUMN IF NOT EXISTS "recruit_method" varchar(20) DEFAULT 'external' NOT NULL`,
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0019_email_send_states migration', () => {
+  it('creates the SES send-state idempotency table without destructive DDL', () => {
+    const tag = journal.entries[19]?.tag;
+    expect(tag).toBe('0019_email_send_states');
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS "email_send_states"');

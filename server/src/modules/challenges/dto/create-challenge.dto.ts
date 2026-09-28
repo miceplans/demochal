@@ -1,8 +1,10 @@
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsPositive,
+  Min,
   IsString,
   IsUUID,
   MaxLength,
@@ -21,7 +23,7 @@ export class CreateChallengeDto {
   description!: string;
 
   @IsInt()
-  @IsPositive()
+  @Min(0)
   price!: number;
 
   @IsInt()
@@ -38,4 +40,8 @@ export class CreateChallengeDto {
   @IsString()
   @MaxLength(100)
   category?: string;
+
+  @IsOptional()
+  @IsIn(['seMOchall', 'external'])
+  recruitMethod?: 'seMOchall' | 'external';
 }

@@ -22,10 +22,13 @@ export const desktopContests = Array.from({ length: 8 }, (_, i) => ({
   ...contests[0],
   id: `contest-${i + 1}`,
 }));
+// 팀 모집글 커버는 해당 챌린지 포스터를 쓴다(챌린지 상세 contestDetail.poster와 동일 목 이미지).
+const mockChallengePoster = '/mock/mock-poster.png';
 export type Team = {
   id: string;
   name: string;
   challenge: string;
+  poster: string;
   members: string;
   filledRoles: string[];
   recruitingRoles: string[];
@@ -34,6 +37,7 @@ export const teams: Team[] = [
   {
     id: 'team-1',
     name: '프로젝트팀 A',
+    poster: mockChallengePoster,
     challenge: 'OO챌린지',
     members: '2/4명 참여중',
     filledRoles: ['기획', '프론트엔드'],
@@ -42,6 +46,7 @@ export const teams: Team[] = [
   {
     id: 'team-2',
     name: '프로젝트팀 B',
+    poster: mockChallengePoster,
     challenge: 'AI 해커톤',
     members: '3/5명 참여중',
     filledRoles: ['기획', '프론트엔드'],
@@ -50,6 +55,7 @@ export const teams: Team[] = [
   {
     id: 'team-3',
     name: '프로젝트팀 C',
+    poster: mockChallengePoster,
     challenge: '공공데이터 챌린지',
     members: '1/4명 참여중',
     filledRoles: ['기획', '디자이너'],
@@ -58,6 +64,7 @@ export const teams: Team[] = [
   {
     id: 'team-4',
     name: '프로젝트팀 D',
+    poster: mockChallengePoster,
     challenge: '청년 창업 챌린지',
     members: '2/5명 참여중',
     filledRoles: ['기획', '백엔드'],
@@ -85,6 +92,7 @@ export const categories = [
   '해외',
 ];
 export const roles = ['프론트엔드', '백엔드', '디자이너', '기획자', '풀스택'];
+
 export const stacks = ['React', 'TypeScript', 'Next.js', 'Node.js', 'Figma', 'Python'];
 export const skillCatalog = [
   'React',

@@ -3,3 +3,5 @@ dist
 build
 coverage
 pnpm-lock.yaml
+# Next.js가 생성하는 gitignore 대상 파일
+front/next-env.d.ts
