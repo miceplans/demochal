@@ -45,9 +45,19 @@ export function AdminDashboardScreen() {
         <AdminSectionTitle style={{ color: '#111827' }}>신고 로그</AdminSectionTitle>
         <ReportLogTable />
       </section>
-      <span style={{ ...textStyle.metaText, color: c.gray500 }}>2025.05.12 기준</span>
+      {dashboard?.generatedAt && (
+        <span style={{ ...textStyle.metaText, color: c.gray500 }}>
+          {formatBaseDate(dashboard.generatedAt)} 기준
+        </span>
+      )}
     </>
   );
+}
+
+function formatBaseDate(iso: string) {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const ChartsRow = styled.div({ display: 'flex', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' });

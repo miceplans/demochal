@@ -19,9 +19,9 @@
 
 export type GetAdminAnalyticsParams = {
   /**
-   * 광고 번호 (특정 광고 리포트 시, ?ad=N)
+   * 광고 uuid 또는 고정 광고 번호(ads.ad_number). 목록 순번이 아니다.
    */
-  ad?: number;
+  ad?: string;
   from?: string;
   to?: string;
 };
