@@ -2,13 +2,6 @@
 // 결제수단/결제 내역(`/biz/billing`)은 #109에서 실 API로 전환되어 이 파일의 paymentHistory 목업은 제거됐다.
 // 대시보드 등 나머지 화면의 목업(paymentCard·payments·paymentTotal 등)은 해당 화면 연동 시 각각 교체한다.
 
-export const admin = {
-  name: '황지영',
-  company: '(주)마이스플랜즈',
-  email: 'yuiyui6780@miceplans.com',
-  phone: '051-783-1170',
-  id: 'yuiyui6780',
-};
 export const orgProfile = {
   name: '(주)마이스 플랜즈',
   address: '부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호',

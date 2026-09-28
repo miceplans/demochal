@@ -10,22 +10,25 @@ export function BizAccessCover({ children }: { children: ReactNode }) {
   const { data: auth, isLoading } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const isBiz = auth?.status === 200 && auth.data.role === 'business';
 
-  return (
-    <>
-      {children}
-      {!isLoading && !isBiz ? (
-        <Cover>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: 26, width: 'auto' }} />
-          <Link href="/biz/login">
-            <PrimaryButton as="span" style={{ width: 130, textAlign: 'center' }}>
-              회원가입 하기
-            </PrimaryButton>
-          </Link>
-        </Cover>
-      ) : null}
-    </>
-  );
+  if (isLoading) {
+    return <LoadingView aria-busy aria-label="접근 권한 확인 중" />;
+  }
+
+  if (!isBiz) {
+    return (
+      <Cover>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: 26, width: 'auto' }} />
+        <Link href="/biz/login">
+          <PrimaryButton as="span" style={{ width: 130, textAlign: 'center' }}>
+            회원가입 하기
+          </PrimaryButton>
+        </Link>
+      </Cover>
+    );
+  }
+
+  return <>{children}</>;
 }
 
 const Cover = styled.div({
@@ -40,4 +43,11 @@ const Cover = styled.div({
   background: 'rgba(255,255,255,0.65)',
   backdropFilter: 'blur(3px)',
   WebkitBackdropFilter: 'blur(3px)',
+});
+
+const LoadingView = styled.div({
+  position: 'fixed',
+  inset: 0,
+  zIndex: 50,
+  background: '#ffffff',
 });
