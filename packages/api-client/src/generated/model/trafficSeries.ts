@@ -18,14 +18,14 @@
  */
 
 /**
- * '유저 트래픽' 차트 데이터 — 라벨 배열 + 일반 유저(primary)·비즈니스(secondary) 두 시리즈.
+ * '유저 트래픽' 차트 데이터 — 라벨 배열 + 신규 가입(primary)·신규 제출물(secondary) 두 시리즈.
  * labels[i]와 primary[i]/secondary[i]가 인덱스로 대응 (recharts 데이터 조립 방식).
  */
 export interface TrafficSeries {
   /** X축 라벨 (예: 'JAN'~'DEC' 또는 '1일'~'7일') */
   labels?: string[];
-  /** 일반 유저 트래픽 */
+  /** 기간별 일반 사용자 신규 가입 수 */
   primary?: number[];
-  /** 비즈니스 트래픽 */
+  /** 기간별 신규 제출물 수 */
   secondary?: number[];
 }
