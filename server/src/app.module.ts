@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { HealthModule } from './common/health/health.module.js';
 import { DbModule } from './db/db.module.js';
 import { QueueModule } from './queue/queue.module.js';
@@ -18,6 +19,7 @@ import { CertificatesModule } from './modules/certificates/certificates.module.j
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
+import { DEFAULT_THROTTLE } from './common/throttling/throttling.js';
 import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { BillingModule } from './modules/billing/billing.module.js';
@@ -30,6 +32,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
 // Full module tree, served over HTTP by main.ts.
 @Module({
   imports: [
+    ThrottlerModule.forRoot({ throttlers: [DEFAULT_THROTTLE] }),
     DbModule,
     QueueModule,
     HealthModule,
@@ -56,6 +59,8 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     OperationsModule,
   ],
   providers: [
+    // Runs first so floods are rejected before the per-request auth DB lookup.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useExisting: JwtAuthGuard },
     { provide: APP_GUARD, useClass: MaintenanceGuard },
   ],

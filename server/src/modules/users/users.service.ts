@@ -1,5 +1,5 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq, isNull } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
 import type { UpdateProfileDto } from './dto/update-profile.dto.js';
@@ -41,14 +41,20 @@ export class UsersService {
     return toPublicUser(user);
   }
 
+  /**
+   * 온보딩 설문은 첫 가입/로그인 시 한 번만 받는다. 이미 저장된 설문은 덮어쓰지 않도록
+   * `onboarding_survey IS NULL` 조건으로 갱신해 동시 제출도 한 건만 반영되게 한다.
+   * 이후 관심분야 변경은 `PUT /interests`(관심분야 설정 페이지)가 담당한다.
+   */
   async saveOnboardingSurvey(userId: string, dto: SaveOnboardingSurveyDto) {
     const [user] = await this.db
       .update(users)
       .set({ onboardingSurvey: dto })
-      .where(eq(users.id, userId))
+      .where(and(eq(users.id, userId), isNull(users.onboardingSurvey)))
       .returning();
-    if (!user) throw new NotFoundException('User not found');
-    return user.onboardingSurvey ?? {};
+    if (user) return user.onboardingSurvey ?? {};
+    await this.findById(userId);
+    throw new ConflictException('이미 관심분야 설문을 완료했습니다.');
   }
 }
 

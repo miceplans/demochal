@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { generated } from '@semochal/api-client';
 import { useUserStore } from '@/stores/useUserStore';
 
 // Google redirects the backend here after it sets the session cookie
@@ -12,15 +13,14 @@ export default function GoogleAuthCallbackPage() {
   const login = useUserStore((s) => s.login);
 
   useEffect(() => {
-    const apiUrl = (process.env.NEXT_PUBLIC_API_URL ?? '/api').replace(/\/$/, '');
-
     async function syncSession() {
       await useUserStore.persist.rehydrate();
       try {
-        const res = await fetch(`${apiUrl}/auth/me`, { credentials: 'include' });
-        if (!res.ok) throw new Error('not authenticated');
+        const res = await generated.getMyAuthInfo();
+        if (res.status !== 200) throw new Error('not authenticated');
         login();
-        router.replace('/onboarding/activity');
+        // 관심분야 설문은 아직 설문을 저장하지 않은 첫 가입/로그인 사용자만 진행한다.
+        router.replace(res.data.onboardingSurvey ? '/' : '/onboarding/activity');
       } catch {
         router.replace('/login');
       }

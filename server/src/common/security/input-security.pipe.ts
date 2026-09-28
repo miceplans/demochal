@@ -4,6 +4,7 @@ import {
   type ArgumentMetadata,
   type PipeTransform,
 } from '@nestjs/common';
+import { inputSecurityContext } from './input-security.context.js';
 
 // This is a deliberately narrow deny-list.  It blocks payloads that can execute
 // in a browser or alter the structure of a SQL statement, while allowing normal
@@ -17,10 +18,16 @@ export function hasUnsafeInput(value: string): boolean {
   return SCRIPT_INJECTION.test(value) || SQL_INJECTION.test(value);
 }
 
-/** Rejects hostile text before it reaches DTOs, services, logs, or the database. */
+/**
+ * Rejects hostile text before it reaches DTOs, services, logs, or the database.
+ * Handlers annotated with `@SkipInputSecurity()` (opaque protocol parameters,
+ * e.g. the Google OAuth callback) opt out per-handler via
+ * `SkipInputSecurityInterceptor`; every other handler keeps this validation.
+ */
 @Injectable()
 export class InputSecurityPipe implements PipeTransform {
   transform(value: unknown, _metadata: ArgumentMetadata): unknown {
+    if (inputSecurityContext.getStore()?.skipInputSecurity) return value;
     this.assertSafe(value);
     return value;
   }
