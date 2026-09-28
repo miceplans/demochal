@@ -16,9 +16,14 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ListAdminCertificatesCategory } from './listAdminCertificatesCategory';
 import type { ListAdminCertificatesStatus } from './listAdminCertificatesStatus';
 
 export type ListAdminCertificatesParams = {
   status?: ListAdminCertificatesStatus;
   q?: string;
+  /**
+   * 수상 실적 | 출품 이력
+   */
+  category?: ListAdminCertificatesCategory;
 };

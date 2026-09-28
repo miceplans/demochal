@@ -1,7 +1,5 @@
 // 관리자 콘솔 목업 데이터 — Figma "세모챌 ADMIN" 디자인 기반. 실제 데이터는 관리자 API 연동 시 교체 (TODO).
 
-export const adminUser = { name: '김관리자', role: 'Super Admin' };
-
 export const adminMenu: [string, string][] = [
   ['/', '대시보드'],
   ['/biz-review', '기관 심사'],
