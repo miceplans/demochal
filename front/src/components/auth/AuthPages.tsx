@@ -154,12 +154,20 @@ export function OnboardingPage({ step }: { step: string }) {
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
   const queryClient = useQueryClient();
   // 설문은 첫 가입/로그인 사용자만 진행한다. 로컬 플래그는 기기·계정별로 어긋날 수 있어
-  // 서버의 onboardingSurvey(null = 미완료)를 기준으로 판단한다.
-  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const alreadySurveyed = auth.data?.status === 200 && Boolean(auth.data.data.onboardingSurvey);
+  // 서버의 onboardingSurvey(null = 미완료)를 기준으로 판단한다. 다른 탭에서 계정이 바뀌었을 수
+  // 있으므로 캐시된 /auth/me를 믿지 않고 진입할 때마다 새로 조회한 결과로만 판단한다.
+  const auth = generated.useGetMyAuthInfo({
+    query: { retry: false, staleTime: 0, refetchOnMount: 'always' },
+  });
+  const authChecked = auth.isFetchedAfterMount && !auth.isFetching;
+  const unauthenticated =
+    auth.error instanceof ApiError && (auth.error.status === 401 || auth.error.status === 403);
+  const alreadySurveyed =
+    authChecked && auth.data?.status === 200 && Boolean(auth.data.data.onboardingSurvey);
   // 실패하면 전역 MutationCache가 에러 토스트를 띄우고, 로컬 완료 처리하지 않아 다시 시도할 수 있다.
   const saveSurvey = generated.useSaveOnboardingSurvey({
     mutation: {
+      meta: { handledErrorStatuses: [409] },
       onSuccess: () => {
         completeOnboarding();
         void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
@@ -177,12 +185,13 @@ export function OnboardingPage({ step }: { step: string }) {
   });
 
   useEffect(() => {
-    if (auth.isError) router.replace('/login');
+    if (!authChecked) return;
+    if (unauthenticated) router.replace('/login');
     else if (alreadySurveyed) {
       completeOnboarding();
       router.replace('/');
     }
-  }, [auth.isError, alreadySurveyed, completeOnboarding, router]);
+  }, [authChecked, unauthenticated, alreadySurveyed, completeOnboarding, router]);
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',
@@ -192,7 +201,24 @@ export function OnboardingPage({ step }: { step: string }) {
   const options = index === 1 ? copy.fields : index === 2 ? copy.purposes : copy.types;
   const toggle = (x: string) =>
     setSurvey(step, selected.includes(x) ? selected.filter((v) => v !== x) : [...selected, x]);
-  if (!auth.data || alreadySurveyed) return null;
+  if (!authChecked || unauthenticated || alreadySurveyed) return null;
+  if (auth.isError) {
+    // 네트워크/서버 오류는 로그인 만료가 아니므로 설문 화면에 머물며 다시 확인할 수 있게 한다.
+    // (오류 토스트는 전역 QueryCache가 띄운다.)
+    return (
+      <UserShell compact navigation={false} footer={false}>
+        <Survey>
+          <Logo dot />
+          <Stack gap={16} style={{ marginTop: 64, alignItems: 'flex-start' }}>
+            <p style={{ ...textStyle.body, color: c.gray700 }}>
+              로그인 정보를 확인하지 못했어요. 잠시 후 다시 시도해주세요.
+            </p>
+            <Button onClick={() => void auth.refetch()}>다시 시도</Button>
+          </Stack>
+        </Survey>
+      </UserShell>
+    );
+  }
   return (
     <UserShell compact navigation={false} footer={false}>
       <Survey>

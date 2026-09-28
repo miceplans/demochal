@@ -2,11 +2,11 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -49,25 +49,6 @@ const PricingLink = styled(Link)({
   color: c.white,
   textDecoration: 'none',
 });
-const ErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 12,
-  padding: '12px 16px',
-  border: `1px solid ${c.red}`,
-  borderRadius: 8,
-  background: c.lightRed,
-  color: c.red,
-});
-const RetryButton = styled.button({
-  border: 0,
-  borderRadius: 6,
-  background: c.primary,
-  color: c.white,
-  padding: '6px 12px',
-  cursor: 'pointer',
-});
 
 type AdRow = {
   id: string;
@@ -106,10 +87,22 @@ export function AdminAdsScreen() {
   const toast = useToast();
   const hrefOf = useAdminHref();
 
-  const adsQuery = generated.useListAdminAds({
-    q: query || undefined,
-    status: statusOptionToParam[statusLabel],
-  });
+  const adsQuery = generated.useListAdminAds(
+    {
+      q: query || undefined,
+      status: statusOptionToParam[statusLabel],
+    },
+    { query: { meta: LOCAL_ERROR_TOAST_META } },
+  );
+  const refetchAds = adsQuery.refetch;
+
+  useEffect(() => {
+    if (!adsQuery.isError) return;
+    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchAds() },
+    });
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [adsQuery.isError, adsQuery.errorUpdatedAt, refetchAds, toast]);
 
   const rows = useMemo<AdRow[]>(
     () =>
@@ -180,14 +173,6 @@ export function AdminAdsScreen() {
         />
         <SelectFilter label="활동" options={['광고 중단하기']} onChange={handleActivity} />
       </FilterBar>
-      {adsQuery.isError ? (
-        <ErrorBanner role="alert">
-          <span>광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => adsQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </ErrorBanner>
-      ) : null}
       {adsQuery.isPending ? (
         <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
       ) : adsQuery.isError ? null : rows.length === 0 ? (

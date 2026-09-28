@@ -6,9 +6,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adminMenu, adminUser } from '@/data/admin-design';
+import { adminMenu } from '@/data/admin-design';
+
+const roleLabel: Record<string, string> = {
+  admin: '관리자',
+  business: '기업',
+  user: '일반 사용자',
+};
 
 const AdminNavContext = createContext('');
 export function AdminNavProvider({ base, children }: { base: string; children: ReactNode }) {
@@ -42,6 +49,10 @@ export const AdminGlobalStyles = (
 function AdminSidebar() {
   const route = routeOf(usePathname() ?? '');
   const hrefOf = useAdminHref();
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const me = auth?.status === 200 ? auth.data : undefined;
+  const name = me?.name ?? '';
+  const role = me?.role ? (roleLabel[me.role] ?? me.role) : '';
   return (
     <SidebarBox>
       <div>
@@ -66,12 +77,12 @@ function AdminSidebar() {
         </NavItems>
       </div>
       <ProfileRow>
-        <Avatar aria-hidden>{adminUser.name[0]}</Avatar>
+        <Avatar aria-hidden>{name.charAt(0)}</Avatar>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <strong style={{ ...textStyle.caption2, color: '#111827' }}>{adminUser.name}</strong>
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{adminUser.role}</span>
+          <strong style={{ ...textStyle.caption2, color: '#111827' }}>{name}</strong>
+          <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{role}</span>
         </span>
-        <GearIcon aria-hidden>
+        <GearIcon href={hrefOf('/settings')} aria-label="설정">
           <svg
             width="24"
             height="24"
@@ -81,6 +92,7 @@ function AdminSidebar() {
             strokeWidth="1.6"
             strokeLinecap="round"
             strokeLinejoin="round"
+            aria-hidden
           >
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
             <circle cx="12" cy="12" r="3" />
@@ -157,4 +169,9 @@ const Avatar = styled.span({
   justifyContent: 'center',
   ...textStyle.caption2,
 });
-const GearIcon = styled.span({ display: 'inline-flex', marginLeft: 'auto', color: c.gray500 });
+const GearIcon = styled(Link)({
+  display: 'inline-flex',
+  marginLeft: 'auto',
+  color: c.gray500,
+  '&:hover': { color: c.gray900 },
+});

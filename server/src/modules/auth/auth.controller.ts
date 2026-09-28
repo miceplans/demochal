@@ -226,6 +226,9 @@ export class AuthController {
     response.redirect(authorizationUrl.toString());
   }
 
+  // Same opt-out rationale as googleCallback: `code`/`state` are opaque
+  // provider tokens that may contain deny-list sequences such as `--`.
+  @SkipInputSecurity()
   @Get('social/naver/callback')
   async naverCallback(
     @Query('code') code: string | undefined,

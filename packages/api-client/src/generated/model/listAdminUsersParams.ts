@@ -16,9 +16,18 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ListAdminUsersJoinedWithin } from './listAdminUsersJoinedWithin';
 import type { ListAdminUsersStatus } from './listAdminUsersStatus';
 
 export type ListAdminUsersParams = {
   q?: string;
   status?: ListAdminUsersStatus;
+  /**
+   * 가입일 범위 (생략 시 전체)
+   */
+  joinedWithin?: ListAdminUsersJoinedWithin;
+  /**
+   * 포지션 뱃지 (부분 일치, 예: 프론트엔드)
+   */
+  position?: string;
 };

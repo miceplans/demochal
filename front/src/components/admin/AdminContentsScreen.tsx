@@ -1,16 +1,17 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
+import { keepPreviousData } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
   AdminSectionTitle,
   FilterBar,
-  MoreLink,
   SearchFilter,
   SelectFilter,
   SectionHeader,
@@ -111,34 +112,29 @@ const TeamCount = styled.span({
   color: c.primary,
   ...textStyle.label,
 });
-const ScrapButton = styled.button({
-  marginLeft: 'auto',
+const MoreButton = styled.button({
   border: 0,
   background: 'none',
+  padding: 0,
+  ...textStyle.caption,
   color: c.gray500,
-  display: 'inline-flex',
-  padding: 4,
+  cursor: 'pointer',
+  '&:hover:not(:disabled)': { color: c.gray900 },
+  '&:disabled': { cursor: 'wait' },
 });
 
 /* ---------- 신고 테이블 ---------- */
 
-function ScrapGlyph() {
-  return (
-    <svg
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" />
-    </svg>
-  );
-}
+// '더보기'는 섹션 limit을 한 페이지씩 늘려 다시 조회한다 (서버 상한 50).
+const PAGE_SIZE = 8;
+const MAX_LIMIT = 50;
+
+const kindOptionToTargetType: Record<string, 'challenge' | 'team' | 'award' | 'user'> = {
+  챌린지: 'challenge',
+  '팀 모집': 'team',
+  수상작: 'award',
+  프로필: 'user',
+};
 
 type TeamCardRow = {
   id: string;
@@ -159,31 +155,32 @@ type ContestCardRow = {
   unread: boolean;
 };
 
-const ErrorBanner = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 16,
-  padding: '14px 20px',
-  borderRadius: 10,
-  background: '#FEF2F2',
-  border: '1px solid #FCA5A5',
-  color: '#B91C1C',
-  ...textStyle.body,
-});
-const RetryButton = styled.button({
-  flexShrink: 0,
-  border: '1px solid #B91C1C',
-  borderRadius: 6,
-  padding: '6px 12px',
-  background: c.white,
-  color: '#B91C1C',
-  cursor: 'pointer',
-  ...textStyle.overline,
-});
-
 export function AdminContentsScreen() {
-  const contentsQuery = generated.useListAdminContents();
+  const [teamsLimit, setTeamsLimit] = useState(PAGE_SIZE);
+  const [contestsLimit, setContestsLimit] = useState(PAGE_SIZE);
+  const [reportQuery, setReportQuery] = useState('');
+  const [kind, setKind] = useState('');
+  const contentsQuery = generated.useListAdminContents(
+    { teamsLimit, contestsLimit },
+    // 더보기로 limit이 바뀌는 동안 기존 카드를 유지한다.
+    { query: { placeholderData: keepPreviousData, meta: LOCAL_ERROR_TOAST_META } },
+  );
+  const teamsTotal = contentsQuery.data?.data.teamsTotal ?? 0;
+  const contestsTotal = contentsQuery.data?.data.contestsTotal ?? 0;
+  const reportParams = useMemo(
+    () => ({ q: reportQuery || undefined, targetType: kindOptionToTargetType[kind] }),
+    [reportQuery, kind],
+  );
+  const refetchContents = contentsQuery.refetch;
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!contentsQuery.isError) return;
+    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
+      action: { label: '다시 시도', onClick: () => void refetchContents() },
+    });
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, refetchContents, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>
@@ -216,19 +213,18 @@ export function AdminContentsScreen() {
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
 
-      {contentsQuery.isError ? (
-        <ErrorBanner role="alert">
-          <span>콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.</span>
-          <RetryButton type="button" onClick={() => contentsQuery.refetch()}>
-            다시 시도
-          </RetryButton>
-        </ErrorBanner>
-      ) : null}
-
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader>
           <AdminSectionTitle>확인해야하는 팀</AdminSectionTitle>
-          <MoreLink>더보기 →</MoreLink>
+          {adminTeams.length < teamsTotal && teamsLimit < MAX_LIMIT ? (
+            <MoreButton
+              type="button"
+              disabled={contentsQuery.isFetching}
+              onClick={() => setTeamsLimit((limit) => Math.min(limit + PAGE_SIZE, MAX_LIMIT))}
+            >
+              더보기 ({adminTeams.length}/{teamsTotal}) →
+            </MoreButton>
+          ) : null}
         </SectionHeader>
         <CardGrid>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
@@ -261,7 +257,15 @@ export function AdminContentsScreen() {
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionHeader>
           <AdminSectionTitle>확인해야하는 챌린지</AdminSectionTitle>
-          <MoreLink>더보기 →</MoreLink>
+          {adminContests.length < contestsTotal && contestsLimit < MAX_LIMIT ? (
+            <MoreButton
+              type="button"
+              disabled={contentsQuery.isFetching}
+              onClick={() => setContestsLimit((limit) => Math.min(limit + PAGE_SIZE, MAX_LIMIT))}
+            >
+              더보기 ({adminContests.length}/{contestsTotal}) →
+            </MoreButton>
+          ) : null}
         </SectionHeader>
         <CardGrid>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
@@ -275,9 +279,6 @@ export function AdminContentsScreen() {
                   <CategoryTag>{contest.category}</CategoryTag>
                   <DDay>{contest.dday}</DDay>
                   <TeamCount>{contest.teams}</TeamCount>
-                  <ScrapButton aria-label="스크랩">
-                    <ScrapGlyph />
-                  </ScrapButton>
                 </TagRow>
               </ContestBody>
             </ContestCard>
@@ -287,10 +288,20 @@ export function AdminContentsScreen() {
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <FilterBar>
-          <SearchFilter placeholder="콘텐츠명 검색" label="콘텐츠명 검색" />
-          <SelectFilter label="종류" options={['챌린지', '팀 모집', '수상작']} />
+          <SearchFilter
+            placeholder="콘텐츠명 검색"
+            label="콘텐츠명 검색"
+            value={reportQuery}
+            onChange={setReportQuery}
+          />
+          <SelectFilter
+            label="종류"
+            options={['전체', '챌린지', '팀 모집', '수상작', '프로필']}
+            value={kind}
+            onChange={setKind}
+          />
         </FilterBar>
-        <ReportLogTable />
+        <ReportLogTable params={reportParams} />
       </section>
     </>
   );
