@@ -8,7 +8,7 @@ import {
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
@@ -18,7 +18,6 @@ import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import type { UpdateAdDto } from './dto/update-ad.dto.js';
 import type { RecordAdEventDto } from './dto/record-ad-event.dto.js';
-import type { PublicAdPlacement } from './dto/public-ads-query.dto.js';
 
 // Unpaid ('preparing') reservations stop blocking a placement's dates this
 // long after creation, so an abandoned checkout can't lock inventory forever.
@@ -99,30 +98,45 @@ export class AdsService implements OnModuleInit {
     return this.withImageUrls(rows);
   }
 
-  // 홈 캐러셀에 노출할 광고: 결제로 active가 된 광고 중 오늘(Asia/Seoul)이 게재기간
-  // (종료일 포함) 안에 있고 이미지가 준비된 것만, 광고주·결제 정보 없이 반환한다.
-  async listPublic(placement: PublicAdPlacement) {
+  async listPublic(placement: 'hero' | 'gallery') {
+    const now = new Date();
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
     const rows = await this.db
       .select({
         id: ads.id,
         title: ads.title,
         imageFileId: ads.imageFileId,
         landingUrl: ads.landingUrl,
+        placement: adProducts.placement,
         startDate: ads.startDate,
-        endDate: ads.endDate,
+        createdAt: ads.createdAt,
       })
       .from(ads)
       .innerJoin(adProducts, eq(ads.productId, adProducts.id))
-      .where(and(eq(ads.status, 'active'), eq(adProducts.placement, placement)))
+      .where(
+        and(
+          eq(ads.status, 'active'),
+          eq(adProducts.placement, placement),
+          lte(ads.startDate, now),
+          // Ad dates are stored at midnight. Compare the end date with the
+          // start of today so a contract remains visible through its stated
+          // end date, not only until that day's first instant.
+          gte(ads.endDate, todayStart),
+        ),
+      )
       .orderBy(asc(ads.startDate), asc(ads.createdAt));
 
-    const today = seoulDateString(new Date());
-    const serving = rows.filter(
-      (ad) => seoulDateString(ad.startDate) <= today && seoulDateString(ad.endDate) >= today,
-    );
-    return (await this.withImageUrls(serving)).flatMap(({ id, title, imageUrl, landingUrl }) =>
-      imageUrl ? [{ id, title, imageUrl, landingUrl, placement }] : [],
-    );
+    return (await this.withImageUrls(rows))
+      .filter((ad): ad is typeof ad & { imageUrl: string } => ad.imageUrl !== null)
+      .map(({ id, title, imageUrl, landingUrl, placement: adPlacement }) => ({
+        id,
+        title,
+        imageUrl,
+        landingUrl,
+        placement: adPlacement as 'hero' | 'gallery',
+      }));
   }
 
   // Promoted ad creatives live in the public bucket; resolve imageFileId to a

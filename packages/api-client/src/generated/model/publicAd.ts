@@ -19,7 +19,6 @@
 import type { PublicAdPlacement } from './publicAdPlacement';
 
 export interface PublicAd {
-  /** 노출/클릭 계측에 쓰는 광고 ID */
   id: string;
   /** 광고 대체 텍스트 */
   title: string;
@@ -29,6 +28,6 @@ export interface PublicAd {
    * 광고 클릭 시 이동할 URL
    * @nullable
    */
-  landingUrl: string | null;
+  landingUrl?: string | null;
   placement: PublicAdPlacement;
 }

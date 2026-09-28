@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { AdsService } from './ads.service.js';
 
 vi.mock('../files/public-file-url.js', () => ({
   buildPublicFileUrl: vi.fn((file: { id: string }) =>
-    file.id === 'file-1' ? 'https://cdn.example.com/ads/hero.png' : null,
+    file.id === 'file-visible' ? 'https://cdn.example.com/ads/visible.png' : null,
   ),
 }));
 
@@ -172,13 +172,29 @@ describe('AdsService.updateStatus', () => {
 });
 
 describe('AdsService.listPublic', () => {
-  afterEach(() => vi.useRealTimers());
-
-  function createPublicDbStub(
-    rows: Record<string, unknown>[],
-    imageFiles: Record<string, unknown>[],
-  ) {
-    const where = vi.fn(() => ({ orderBy: vi.fn().mockResolvedValue(rows) }));
+  it('returns only image-ready minimal public fields for the requested placement', async () => {
+    const where = vi.fn(() => ({
+      orderBy: vi.fn().mockResolvedValue([
+        {
+          id: 'ad-visible',
+          title: '진행 중 히어로 광고',
+          imageFileId: 'file-visible',
+          landingUrl: 'https://example.com/landing',
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+        },
+        {
+          id: 'ad-no-image',
+          title: '이미지 없는 광고',
+          imageFileId: null,
+          landingUrl: null,
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-02T00:00:00.000Z'),
+        },
+      ]),
+    }));
     const db: any = {
       select: vi
         .fn()
@@ -186,66 +202,23 @@ describe('AdsService.listPublic', () => {
           from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where })) })),
         }))
         .mockImplementationOnce(() => ({
-          from: vi.fn(() => ({ where: vi.fn().mockResolvedValue(imageFiles) })),
+          from: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue([{ id: 'file-visible' }]),
+          })),
         })),
     };
-    return db;
-  }
-
-  const imageFile = { id: 'file-1' };
-
-  it('returns only serving, image-ready ads with minimal public fields', async () => {
-    // 2026-09-28 00:30 KST — UTC로는 아직 27일이지만 서울 기준 28일로 판단해야 한다.
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-27T15:30:00.000Z'));
-    const base = { landingUrl: 'https://example.com', imageFileId: 'file-1' };
-    const db = createPublicDbStub(
-      [
-        {
-          ...base,
-          id: 'ad-serving',
-          title: '게재 중',
-          startDate: new Date('2026-09-28T00:00:00.000Z'),
-          endDate: new Date('2026-09-28T00:00:00.000Z'),
-        },
-        {
-          ...base,
-          id: 'ad-ended',
-          title: '종료',
-          startDate: new Date('2026-09-20T00:00:00.000Z'),
-          endDate: new Date('2026-09-27T00:00:00.000Z'),
-        },
-        {
-          ...base,
-          id: 'ad-future',
-          title: '예정',
-          startDate: new Date('2026-09-29T00:00:00.000Z'),
-          endDate: new Date('2026-09-30T00:00:00.000Z'),
-        },
-        {
-          ...base,
-          id: 'ad-no-image',
-          title: '이미지 없음',
-          imageFileId: null,
-          startDate: new Date('2026-09-28T00:00:00.000Z'),
-          endDate: new Date('2026-09-28T00:00:00.000Z'),
-        },
-      ],
-      [imageFile],
-    );
     const service = new AdsService(db, createBusinessesStub() as any);
 
-    const result = await service.listPublic('hero');
-
-    expect(result).toEqual([
+    await expect(service.listPublic('hero')).resolves.toEqual([
       {
-        id: 'ad-serving',
-        title: '게재 중',
-        imageUrl: 'https://cdn.example.com/ads/hero.png',
-        landingUrl: 'https://example.com',
+        id: 'ad-visible',
+        title: '진행 중 히어로 광고',
+        imageUrl: expect.any(String),
+        landingUrl: 'https://example.com/landing',
         placement: 'hero',
       },
     ]);
+    expect(where).toHaveBeenCalledOnce();
   });
 });
 

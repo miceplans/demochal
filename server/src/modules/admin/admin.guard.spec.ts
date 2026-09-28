@@ -107,12 +107,31 @@ describe('JwtAuthGuard', () => {
   it('attaches the verified user to the request', async () => {
     const request: Record<string, unknown> = { headers: cookieHeader('valid.jwt') };
     const { guard, verifyAsync } = createGuard(
-      createDbStub([{ suspended: false, suspendedReason: null }]),
+      createDbStub([{ name: '관리자', role: 'admin', suspended: false, suspendedReason: null }]),
       vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin' }),
     );
 
     await expect(guard.canActivate(httpContext(request))).resolves.toBe(true);
     expect(verifyAsync).toHaveBeenCalledWith('valid.jwt');
-    expect(request.user).toEqual({ id: 'u1', email: 'u@semochal.kr', role: 'admin' });
+    expect(request.user).toEqual({
+      id: 'u1',
+      email: 'u@semochal.kr',
+      name: '관리자',
+      role: 'admin',
+    });
+  });
+
+  it('takes the role from the DB so a demoted admin loses access before the token expires', async () => {
+    const request: Record<string, unknown> = { headers: cookieHeader('valid.jwt') };
+    const { guard } = createGuard(
+      createDbStub([{ name: '전 관리자', role: 'user', suspended: false, suspendedReason: null }]),
+      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin' }),
+    );
+
+    await expect(guard.canActivate(httpContext(request))).resolves.toBe(true);
+    expect(request.user).toMatchObject({ role: 'user' });
+    expect(() => new AdminRoleGuard().canActivate(httpContext(request))).toThrow(
+      ForbiddenException,
+    );
   });
 });

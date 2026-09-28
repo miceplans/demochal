@@ -154,10 +154,8 @@ data "aws_iam_policy_document" "api_task" {
     actions   = ["s3:PutObject"]
     resources = ["${aws_s3_bucket.public.arn}/*"]
   }
-  statement {
-    actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.verifications.arn]
-  }
+  # No SQS access: the API only writes outbox rows in the request transaction;
+  # the worker's OutboxRelayService is the sole SQS sender.
 }
 
 resource "aws_iam_role_policy" "api_task" {
@@ -173,7 +171,9 @@ resource "aws_iam_role" "worker_task" {
 
 data "aws_iam_policy_document" "worker_task" {
   statement {
-    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    # SendMessage: worker.ts relays verification outbox rows to this queue
+    # (OutboxRelayService) before consuming them.
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.verifications.arn]
   }
   statement {
@@ -181,6 +181,33 @@ data "aws_iam_policy_document" "worker_task" {
     # provider can fetch it; the signature only works if this role can read it.
     actions   = ["s3:GetObject"]
     resources = ["${aws_s3_bucket.private.arn}/*"]
+  }
+  statement {
+    # The worker relays notification email outbox rows to this queue and
+    # consumes them; the API task only writes outbox rows and gets no access.
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    resources = [aws_sqs_queue.emails.arn]
+  }
+  dynamic "statement" {
+    # Only once a sender is configured; limited to the verified sending
+    # identity and that exact From address. The API task has no SES access.
+    for_each = var.ses_from_email != "" ? [1] : []
+    content {
+      actions   = ["ses:SendEmail"]
+      resources = [aws_sesv2_email_identity.service[0].arn]
+      condition {
+        test     = "StringEquals"
+        variable = "ses:FromAddress"
+        values   = [var.ses_from_email]
+      }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.ses_from_email == "" || (local.ses_enabled && endswith(var.ses_from_email, "@${var.ses_domain}"))
+      error_message = "ses_from_email requires ses_domain to be set to the sender's domain."
+    }
   }
 }
 
@@ -260,13 +287,14 @@ resource "aws_lb_listener" "https" {
 }
 
 locals {
-  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "TOSS_SECRET_KEY", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
+  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "KAKAO_REDIRECT_URI", "TOSS_SECRET_KEY", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
   app_secrets = [for key in local.secret_keys : { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }]
   common_environment = [
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
     { name = "DATABASE_SSL_CA_PATH", value = "/app/certs/global-bundle.pem" },
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
-    { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
+    { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url },
+    { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]

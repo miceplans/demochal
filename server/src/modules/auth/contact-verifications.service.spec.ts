@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
+import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { env } from '../../config/env.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 
 const hash = (code: string) => createHash('sha256').update(code).digest('hex');
@@ -68,4 +70,24 @@ describe('ContactVerificationsService.confirm', () => {
     );
     await expect(exhausted.confirm('cv-1', '123456')).rejects.toThrow('시도 횟수');
   });
+});
+
+describe('ContactVerificationsService.request', () => {
+  it.each(['production', 'staging', 'prod'])(
+    'refuses to issue a code (and so never returns devCode) when NODE_ENV=%s',
+    async (nodeEnv) => {
+      const original = env.nodeEnv;
+      env.nodeEnv = nodeEnv;
+      try {
+        const db = { select: vi.fn(), transaction: vi.fn() };
+        const service = new ContactVerificationsService(db as any, {} as any);
+        await expect(service.request('email', 'biz@semo.kr')).rejects.toBeInstanceOf(
+          ServiceUnavailableException,
+        );
+        expect(db.transaction).not.toHaveBeenCalled();
+      } finally {
+        env.nodeEnv = original;
+      }
+    },
+  );
 });

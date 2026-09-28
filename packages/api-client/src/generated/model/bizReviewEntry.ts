@@ -26,7 +26,7 @@ export interface BizReviewEntry {
   id?: string;
   /** 기관명 (활동유형 컬럼) */
   org?: string;
-  /** 기관 유형 (비영리/학교/협회/기업) */
+  /** 기관 유형 (비영리/학교/협회/기업, 값이 없으면 미지정) */
   type?: string;
   /** 마스킹된 사업자번호 (예: 110-81-*****) */
   bizNumber?: string;

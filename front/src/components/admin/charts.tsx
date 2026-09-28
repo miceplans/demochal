@@ -409,7 +409,8 @@ export function ActivityChart({
   corp?: number[];
   yMax?: number;
   // 'pending'일 때만(최초 로딩) 목업 시리즈로 대체한다. 'error'일 때는 목업을 그대로
-  // 보여주면 실패한 요청이 정상 데이터처럼 보이므로 별도 에러 상태를 렌더링한다.
+  // 보여주면 실패한 요청이 정상 데이터처럼 보이므로 차트를 비워 두고, 알림은 쿼리를
+  // 소유한 부모 화면(AdminAnalyticsScreen)의 토스트가 담당한다.
   status?: ActivityChartStatus;
 } = {}) {
   const useMockFallback = status === 'pending';
@@ -461,25 +462,7 @@ export function ActivityChart({
           </Legend>
         </span>
       </div>
-      {status === 'error' ? (
-        <div
-          role="alert"
-          style={{
-            width: '100%',
-            height: 360,
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 4,
-            color: c.gray500,
-            ...textStyle.body,
-          }}
-        >
-          <span>활동 데이터를 불러올 수 없어요</span>
-          <span style={{ ...textStyle.metaText }}>잠시 후 다시 시도해주세요</span>
-        </div>
-      ) : (
+      {status === 'error' ? null : (
         <div style={{ width: '100%', height: 360 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>

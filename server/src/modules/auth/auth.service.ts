@@ -16,6 +16,11 @@ import { ContactVerificationsService, normalizeContact } from './contact-verific
 import type { RegisterDto } from './dto/register.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
+const DUPLICATE_ACCOUNT_MESSAGE = 'Email or username already registered';
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
+// Compared against when the account doesn't exist (or has no password), so login
+// spends the same bcrypt time either way and response latency doesn't reveal accounts.
+const dummyPasswordHash = hash(randomBytes(32).toString('base64url'), PASSWORD_HASH_ROUNDS);
 // pg unique_violation (see https://www.postgresql.org/docs/current/errcodes-appendix.html).
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
@@ -46,7 +51,7 @@ export class AuthService {
   async register(dto: RegisterDto) {
     const { email, password, name, username } = dto;
     const [existing] = await this.db
-      .select({ email: users.email, username: users.username })
+      .select({ id: users.id })
       .from(users)
       .where(
         username
@@ -54,11 +59,11 @@ export class AuthService {
           : eq(users.email, email),
       )
       .limit(1);
-    if (existing) {
-      throw new ConflictException(
-        existing.email === email ? 'Email already registered' : 'Username already taken',
-      );
-    }
+    // One message for both collisions so signup can't be used to tell which of an
+    // email/username pair exists.
+    // TODO: 409 자체가 가입 여부를 드러낸다 — 이메일 인증 필수화 후에는 "인증 메일 발송"으로 통일한다.
+    // https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-and-error-messages
+    if (existing) throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
 
     const passwordHash = await hash(password, PASSWORD_HASH_ROUNDS);
     const now = new Date().toISOString();
@@ -97,8 +102,7 @@ export class AuthService {
       });
     } catch (err) {
       // Lost a race against a concurrent signup for the same email/username.
-      if (isUniqueViolation(err))
-        throw new ConflictException('Email or username already registered');
+      if (isUniqueViolation(err)) throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
       throw err;
     }
     if (!user) throw new Error('Failed to create user');
@@ -121,11 +125,13 @@ export class AuthService {
           : eq(users.username, identifier.toLowerCase()),
       )
       .limit(1);
-    if (!user) throw new UnauthorizedException('Invalid email or password');
-
-    if (!user.passwordHash) throw new UnauthorizedException('Invalid email or password');
-    const passwordMatches = await compare(password, user.passwordHash);
-    if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
+    const passwordMatches = await compare(
+      password,
+      user?.passwordHash ?? (await dummyPasswordHash),
+    );
+    if (!user?.passwordHash || !passwordMatches) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
 
     if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
@@ -237,6 +243,65 @@ export class AuthService {
       }
     }
     if (!user) throw new Error('Failed to create or link Naver user');
+    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+
+    const [accessToken, publicUser] = await Promise.all([
+      this.issueToken(user),
+      this.usersService.findById(user.id),
+    ]);
+    return { accessToken, user: publicUser };
+  }
+
+  /** Finds or creates the local account for a Kakao identity with a verified email. */
+  async loginWithKakao(profile: { subject: string; email: string; name: string }) {
+    const [byKakaoSubject] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.kakaoSubject, profile.subject))
+      .limit(1);
+
+    let user = byKakaoSubject;
+    if (!user) {
+      // Case-insensitive for the same reason as loginWithNaver.
+      const [byEmail] = await this.db
+        .select()
+        .from(users)
+        .where(ilike(users.email, profile.email))
+        .limit(1);
+      if (byEmail) {
+        // Only verified Kakao emails reach here (see kakaoCallback), so linking is safe.
+        [user] = await this.db
+          .update(users)
+          .set({ kakaoSubject: profile.subject })
+          .where(eq(users.id, byEmail.id))
+          .returning();
+      } else {
+        const passwordHash = await hash(
+          randomBytes(32).toString('base64url'),
+          PASSWORD_HASH_ROUNDS,
+        );
+        try {
+          [user] = await this.db
+            .insert(users)
+            .values({
+              email: profile.email,
+              name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Kakao 사용자',
+              passwordHash,
+              kakaoSubject: profile.subject,
+            })
+            .returning();
+        } catch (err) {
+          // A concurrent callback for the same identity may have inserted first.
+          if (!isUniqueViolation(err)) throw err;
+          [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.kakaoSubject, profile.subject))
+            .limit(1);
+        }
+      }
+    }
+    if (!user) throw new Error('Failed to create or link Kakao user');
     if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
     const [accessToken, publicUser] = await Promise.all([

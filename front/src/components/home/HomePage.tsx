@@ -19,13 +19,24 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-// 게재 중인 광고가 없거나 조회에 실패하면 광고 자리 기본 이미지를 보여준다(전역 에러 토스트도 띄우지 않음).
-const defaultHeroAds: AdCarouselItem[] = [
-  { src: '/assets/figma-ads/home-hero.png', alt: '세모챌 광고 영역' },
-];
-const defaultGalleryAds: AdCarouselItem[] = [
-  { src: '/assets/figma-ads/home-gallery.png', alt: '세모챌 광고 영역' },
-];
+const fallbackAds: Record<'hero' | 'gallery', AdCarouselItem[]> = {
+  hero: [
+    {
+      src: '/assets/Hero-animation.webm',
+      alt: 'SEMO 브랜드 로고 애니메이션 광고',
+      type: 'video' as const,
+    },
+    { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
+    { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
+  ],
+  gallery: [
+    { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
+    { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
+    { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
+  ],
+};
+
+// 게재 중인 광고가 없거나 조회에 실패하면 위 기본 광고 세트를 보여준다(전역 에러 토스트도 띄우지 않음).
 const publicAdsQuery = { query: { meta: { silentError: true } } };
 
 function toAdItems(
@@ -56,13 +67,6 @@ function MoreIcon() {
 }
 
 export function HomePage() {
-  const adPriceParam = useSyncExternalStore(
-    noopSubscribe,
-    getAdPreviewPriceSnapshot,
-    getAdPreviewPriceServerSnapshot,
-  );
-  const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
-  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
   const { data: galleryAdList } = generated.useListPublicAds(
     { placement: 'gallery' },
@@ -70,6 +74,13 @@ export function HomePage() {
   );
   const liveHeroAds = toAdItems(heroAdList);
   const liveGalleryAds = toAdItems(galleryAdList);
+  const adPriceParam = useSyncExternalStore(
+    noopSubscribe,
+    getAdPreviewPriceSnapshot,
+    getAdPreviewPriceServerSnapshot,
+  );
+  const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const { data: teamList } = generated.useListTeams();
   const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   const { data: recommended } = generated.useListRecommendedChallenges(
@@ -87,10 +98,10 @@ export function HomePage() {
       <UserShell>
         <Home>
           <AdCarousel
-            // 기본 이미지 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
+            // 기본 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
             key={liveHeroAds ? 'hero-live' : 'hero-default'}
             ariaLabel="홈 상단 광고"
-            items={liveHeroAds ?? defaultHeroAds}
+            items={liveHeroAds ?? fallbackAds.hero}
             variant="hero"
             priceOverlay={
               adPreviewPrice
@@ -203,7 +214,7 @@ export function HomePage() {
           <AdCarousel
             key={liveGalleryAds ? 'gallery-live' : 'gallery-default'}
             ariaLabel="홈 중간 광고"
-            items={liveGalleryAds ?? defaultGalleryAds}
+            items={liveGalleryAds ?? fallbackAds.gallery}
             variant="gallery"
             interval={4000}
           />
@@ -263,7 +274,6 @@ const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { pad
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
-// 중간 광고가 없을 때도 위아래 섹션 간격은 광고 섹션의 바깥 여백(PC 60 / 모바일 32)과 같게 둔다.
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   maxWidth: 1200,
   margin: '0 auto',
