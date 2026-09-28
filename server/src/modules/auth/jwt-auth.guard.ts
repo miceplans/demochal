@@ -59,10 +59,11 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // Re-checked on every request (not just at login) so suspending an account
-    // takes effect immediately for tokens issued before the suspension.
+    // or revoking a role takes effect immediately for tokens issued before the change.
     const [user] = await this.db
       .select({
         name: users.name,
+        role: users.role,
         suspended: users.suspended,
         suspendedReason: users.suspendedReason,
       })
@@ -78,7 +79,8 @@ export class JwtAuthGuard implements CanActivate {
       id: payload.sub,
       email: payload.email,
       name: user.name,
-      role: payload.role,
+      // The token's role claim is a snapshot from login; the DB row is authoritative.
+      role: user.role,
     };
     return true;
   }

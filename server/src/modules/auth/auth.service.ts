@@ -8,12 +8,19 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { eq, ilike } from 'drizzle-orm';
+import { eq, ilike, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
+import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
+import type { RegisterDto } from './dto/register.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
+const DUPLICATE_ACCOUNT_MESSAGE = 'Email or username already registered';
+const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
+// Compared against when the account doesn't exist (or has no password), so login
+// spends the same bcrypt time either way and response latency doesn't reveal accounts.
+const dummyPasswordHash = hash(randomBytes(32).toString('base64url'), PASSWORD_HASH_ROUNDS);
 // pg unique_violation (see https://www.postgresql.org/docs/current/errcodes-appendix.html).
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
@@ -38,14 +45,66 @@ export class AuthService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly contactVerifications: ContactVerificationsService,
   ) {}
 
-  async register(email: string, password: string, name: string) {
-    const [existing] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existing) throw new ConflictException('Email already registered');
+  async register(dto: RegisterDto) {
+    const { email, password, name, username } = dto;
+    const [existing] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(
+        username
+          ? or(eq(users.email, email), eq(users.username, username))
+          : eq(users.email, email),
+      )
+      .limit(1);
+    // One message for both collisions so signup can't be used to tell which of an
+    // email/username pair exists.
+    // TODO: 409 자체가 가입 여부를 드러낸다 — 이메일 인증 필수화 후에는 "인증 메일 발송"으로 통일한다.
+    // https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-and-error-messages
+    if (existing) throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
 
     const passwordHash = await hash(password, PASSWORD_HASH_ROUNDS);
-    const [user] = await this.db.insert(users).values({ email, name, passwordHash }).returning();
+    const now = new Date().toISOString();
+    let user: typeof users.$inferSelect | undefined;
+    try {
+      user = await this.db.transaction(async (tx) => {
+        const emailVerifiedAt = dto.emailVerificationId
+          ? await this.contactVerifications.consume(tx, dto.emailVerificationId, 'email', email)
+          : null;
+        // TODO: 발송 relay가 붙으면 기업 가입에서 휴대폰/이메일 인증을 필수로 전환한다.
+        const phoneVerifiedAt =
+          dto.phoneVerificationId && dto.phone
+            ? await this.contactVerifications.consume(
+                tx,
+                dto.phoneVerificationId,
+                'phone',
+                dto.phone,
+              )
+            : null;
+        const [created] = await tx
+          .insert(users)
+          .values({
+            email,
+            name,
+            passwordHash,
+            username: username ?? null,
+            phone: dto.phone ? normalizeContact('phone', dto.phone) : null,
+            emailVerifiedAt,
+            phoneVerifiedAt,
+            termsAgreements: dto.agreements?.length
+              ? Object.fromEntries(dto.agreements.map((key) => [key, now]))
+              : null,
+          })
+          .returning();
+        return created;
+      });
+    } catch (err) {
+      // Lost a race against a concurrent signup for the same email/username.
+      if (isUniqueViolation(err)) throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
+      throw err;
+    }
     if (!user) throw new Error('Failed to create user');
 
     const [accessToken, publicUser] = await Promise.all([
@@ -55,13 +114,24 @@ export class AuthService {
     return { accessToken, user: publicUser };
   }
 
-  async login(email: string, password: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (!user) throw new UnauthorizedException('Invalid email or password');
-
-    if (!user.passwordHash) throw new UnauthorizedException('Invalid email or password');
-    const passwordMatches = await compare(password, user.passwordHash);
-    if (!passwordMatches) throw new UnauthorizedException('Invalid email or password');
+  /** `identifier` is an email, or a biz account's username when it has no `@`. */
+  async login(identifier: string, password: string) {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(
+        identifier.includes('@')
+          ? eq(users.email, identifier)
+          : eq(users.username, identifier.toLowerCase()),
+      )
+      .limit(1);
+    const passwordMatches = await compare(
+      password,
+      user?.passwordHash ?? (await dummyPasswordHash),
+    );
+    if (!user?.passwordHash || !passwordMatches) {
+      throw new UnauthorizedException(INVALID_CREDENTIALS_MESSAGE);
+    }
 
     if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 

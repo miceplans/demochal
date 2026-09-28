@@ -1,10 +1,11 @@
 'use client';
-import { useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
 import { SectionHeader, Row, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel } from '@/components/ads/AdCarousel';
@@ -18,17 +19,10 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-const heroAds = [
-  { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
-  { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
-  { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
-];
-
-const galleryAds = [
-  { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
-  { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
-  { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
-];
+const fallbackAds = {
+  hero: [{ src: '/assets/ads/hero-fallback.png', alt: '세모챌 광고' }],
+  gallery: [{ src: '/assets/ads/gallery-fallback.png', alt: '세모챌 광고' }],
+};
 
 function MoreIcon() {
   return (
@@ -45,6 +39,12 @@ function MoreIcon() {
 }
 
 export function HomePage() {
+  const [heroAds, setHeroAds] = useState<Array<{ src: string; alt: string; href?: string }>>(
+    fallbackAds.hero,
+  );
+  const [galleryAds, setGalleryAds] = useState<Array<{ src: string; alt: string; href?: string }>>(
+    fallbackAds.gallery,
+  );
   const adPriceParam = useSyncExternalStore(
     noopSubscribe,
     getAdPreviewPriceSnapshot,
@@ -63,6 +63,43 @@ export function HomePage() {
   const recommendationContests = recommendedItems?.length
     ? recommendedItems.map(challengeToContest)
     : desktopContests;
+
+  useEffect(() => {
+    let mounted = true;
+    const loadAds = async () => {
+      const [hero, gallery] = await Promise.allSettled([
+        generated.listPublicAds({ placement: 'hero' }),
+        generated.listPublicAds({ placement: 'gallery' }),
+      ]);
+      if (!mounted) return;
+      if (hero.status === 'fulfilled' && hero.value.status === 200 && hero.value.data.length > 0) {
+        setHeroAds(
+          hero.value.data.map((ad) => ({
+            src: ad.imageUrl,
+            alt: ad.title,
+            href: ad.landingUrl ?? undefined,
+          })),
+        );
+      }
+      if (
+        gallery.status === 'fulfilled' &&
+        gallery.value.status === 200 &&
+        gallery.value.data.length > 0
+      ) {
+        setGalleryAds(
+          gallery.value.data.map((ad) => ({
+            src: ad.imageUrl,
+            alt: ad.title,
+            href: ad.landingUrl ?? undefined,
+          })),
+        );
+      }
+    };
+    void loadAds();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -128,14 +165,23 @@ export function HomePage() {
               <DesktopOnly>
                 <Rail>
                   {recommendationContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                    />
                   ))}
                 </Rail>
               </DesktopOnly>
               <MobileOnly>
                 <Rail>
                   {recommendationContests.slice(0, 2).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} simple />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                      simple
+                    />
                   ))}
                 </Rail>
               </MobileOnly>
@@ -149,7 +195,11 @@ export function HomePage() {
                 <div style={{ height: 16 }} />
                 <Rail>
                   {desktopContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                    />
                   ))}
                 </Rail>
               </DesktopOnly>
@@ -160,7 +210,12 @@ export function HomePage() {
                 />
                 <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
                   {desktopContests.slice(0, 4).map((contest) => (
-                    <ContestCard key={contest.id} contest={contest} horizontal />
+                    <ContestCard
+                      key={contest.id}
+                      contest={contest}
+                      href={contestHref(contest.id)}
+                      horizontal
+                    />
                   ))}
                 </div>
               </MobileOnly>

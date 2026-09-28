@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { AdsService } from './ads.service.js';
 
+vi.mock('../files/public-file-url.js', () => ({
+  buildPublicFileUrl: vi.fn((file: { id: string }) =>
+    file.id === 'file-visible' ? 'https://cdn.example.com/ads/visible.png' : null,
+  ),
+}));
+
 function createDbStub(
   existingAd?: Record<string, unknown>,
   activationOrder?: Record<string, unknown>,
@@ -31,6 +37,20 @@ function createDbStub(
 
 function createBusinessesStub(business?: { id: string }) {
   return { findByOwner: vi.fn().mockResolvedValue(business) };
+}
+
+function createReportDbStub(rows: Record<string, unknown>[]) {
+  const db: any = {
+    select: vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([AD]) })) })),
+      }))
+      .mockImplementationOnce(() => ({
+        from: vi.fn(() => ({ where: vi.fn(() => Promise.resolve(rows)) })),
+      })),
+  };
+  return db;
 }
 
 const OWNER = { id: 'user-1', email: 'biz@x.com', name: 'Biz', role: 'business' };
@@ -151,6 +171,57 @@ describe('AdsService.updateStatus', () => {
   });
 });
 
+describe('AdsService.listPublic', () => {
+  it('returns only image-ready minimal public fields for the requested placement', async () => {
+    const where = vi.fn(() => ({
+      orderBy: vi.fn().mockResolvedValue([
+        {
+          id: 'ad-visible',
+          title: '진행 중 히어로 광고',
+          imageFileId: 'file-visible',
+          landingUrl: 'https://example.com/landing',
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-01T00:00:00.000Z'),
+        },
+        {
+          id: 'ad-no-image',
+          title: '이미지 없는 광고',
+          imageFileId: null,
+          landingUrl: null,
+          placement: 'hero',
+          startDate: new Date('2026-09-21T00:00:00.000Z'),
+          createdAt: new Date('2026-09-02T00:00:00.000Z'),
+        },
+      ]),
+    }));
+    const db: any = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn(() => ({ innerJoin: vi.fn(() => ({ where })) })),
+        }))
+        .mockImplementationOnce(() => ({
+          from: vi.fn(() => ({
+            where: vi.fn().mockResolvedValue([{ id: 'file-visible' }]),
+          })),
+        })),
+    };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(service.listPublic('hero')).resolves.toEqual([
+      {
+        id: 'ad-visible',
+        title: '진행 중 히어로 광고',
+        imageUrl: expect.any(String),
+        landingUrl: 'https://example.com/landing',
+        placement: 'hero',
+      },
+    ]);
+    expect(where).toHaveBeenCalledOnce();
+  });
+});
+
 describe('AdsService.report', () => {
   const businesses = () => createBusinessesStub({ id: 'biz-1' });
 
@@ -169,8 +240,15 @@ describe('AdsService.report', () => {
 
     expect(report.totals).toEqual({ impressions: 0, clicks: 0, ctr: 0 });
     expect(report.daily).toHaveLength(7);
-    const today = new Date().toISOString().slice(0, 10);
-    const sixDaysAgo = new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10);
+    const seoulDate = (value: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(value);
+    const today = seoulDate(new Date());
+    const sixDaysAgo = seoulDate(new Date(Date.now() - 6 * 86_400_000));
     expect(report.daily![0]!.date).toBe(sixDaysAgo);
     expect(report.daily![6]!.date).toBe(today);
     for (const row of report.daily!) {
@@ -212,5 +290,59 @@ describe('AdsService.report', () => {
     expect(report.daily).toHaveLength(31);
     expect(report.daily[0]!.date).toBe('2026-08-15');
     expect(report.daily[30]!.date).toBe('2026-09-14');
+  });
+
+  it('aggregates counters by Seoul day/hour and calculates CTR and monthly clicks', async () => {
+    const db = createReportDbStub([
+      { bucketStart: new Date('2026-09-01T00:00:00Z'), impressions: 3, clicks: 1 },
+      { bucketStart: new Date('2026-09-01T15:00:00Z'), impressions: 2, clicks: 2 },
+    ]);
+    const service = new AdsService(db, businesses() as any);
+
+    const report = await service.report('ad-1', { from: '2026-09-01', to: '2026-09-02' }, OWNER);
+
+    expect(report.totals).toEqual({ impressions: 5, clicks: 3, ctr: 60 });
+    expect(report.daily[0]).toEqual({ date: '2026-09-01', impressions: 3, clicks: 1, ctr: 33.33 });
+    expect(report.daily[1]).toEqual({ date: '2026-09-02', impressions: 2, clicks: 2, ctr: 100 });
+    expect(report.hourly[9]).toMatchObject({ impressions: 3, clicks: 1, ctr: 33.33 });
+    expect(report.hourly[0]).toMatchObject({ impressions: 2, clicks: 2, ctr: 100 });
+    expect(report.monthlyClicks).toEqual([{ label: '9월', value: 3 }]);
+  });
+});
+
+describe('AdsService.recordEvent', () => {
+  it('records active ads once per event id and ignores inactive ads', async () => {
+    const insert = vi.fn(() => ({
+      values: vi.fn(() => ({ onConflictDoUpdate: vi.fn().mockResolvedValue(undefined) })),
+    }));
+    const select = vi.fn((..._args: unknown[]) => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([{ id: 'ad-1', status: 'active' }]),
+        })),
+      })),
+    }));
+    const db: any = { select, insert };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(
+      service.recordEvent('ad-1', 'impressions', { eventId: crypto.randomUUID() }),
+    ).resolves.toEqual({ recorded: true });
+    const eventId = crypto.randomUUID();
+    await service.recordEvent('ad-1', 'clicks', { eventId });
+    await service.recordEvent('ad-1', 'clicks', { eventId });
+    expect(insert).toHaveBeenCalledTimes(2);
+
+    select.mockImplementationOnce(() => ({
+      from: vi.fn(() => ({
+        where: vi.fn(() => ({
+          limit: vi.fn().mockResolvedValue([{ id: 'ad-2', status: 'paused' }]),
+        })),
+      })),
+    }));
+    await expect(service.recordEvent('ad-2', 'impressions', {})).resolves.toEqual({
+      recorded: false,
+    });
+    expect(insert).toHaveBeenCalledTimes(2);
   });
 });

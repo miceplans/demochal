@@ -18,31 +18,76 @@ import {
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
+import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
-export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
-  const saved = useUserStore((s) => s.bookmarks.includes('contest-1'));
-  // TODO: 챌린지 상세가 아직 목데이터(challengeId 없음)라 팀모집 탭은 전체 모집글을 보여준다.
-  // 상세를 GET /challenges/{id}로 연결하면 listTeams({ challengeId })로 좁힌다.
-  // https://tanstack.com/query/latest/docs/framework/react/guides/dependent-queries
-  const { data: teamList } = generated.useListTeams(undefined, { query: { enabled: teamTab } });
-  const toggle = useUserStore((s) => s.toggleBookmark);
+
+const formatDate = (value?: string) => (value ? value.slice(0, 10).replaceAll('-', '.') : '');
+
+// challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
+export function ContestDetailPage({
+  teamTab = false,
+  challengeId,
+}: {
+  teamTab?: boolean;
+  challengeId?: string;
+}) {
+  // 실제 챌린지 상세만 서버 북마크 대상이다. 데모 상세(/contests/public-data)는 UUID가 없어 비활성.
+  const bookmarkId = challengeId;
+  const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
+  const saved = bookmarks.some((item) => item.id === bookmarkId);
+  const [applyVisible, setApplyVisible] = useState(true);
+  // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
+  const challengeQuery = generated.useGetChallenge(challengeId ?? '', {
+    query: { enabled: Boolean(challengeId) },
+  });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
+  const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
+    query: { enabled: teamTab },
+  });
+  const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
+  const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
+  // 신청 API는 ?challenge=<uuid>가 있어야 실제 신청·결제 흐름으로 동작한다(ApplicationPage).
+  const applyHref = challengeId
+    ? `/applications/new?challenge=${encodeURIComponent(challengeId)}`
+    : '/applications/new';
+  const detail = challenge
+    ? {
+        title: challenge.title ?? '',
+        org: challenge.organizer ?? '',
+        eligibility: challenge.eligibility ?? '-',
+        period: [formatDate(challenge.startDate), formatDate(challenge.endDate)]
+          .filter(Boolean)
+          .join(' ~ '),
+        dday: challenge.endDate
+          ? `D-${Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))}`
+          : '',
+        deadline: formatDate(challenge.endDate) || '-',
+        prizeTotal: '-',
+        teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
+        sections: challenge.description
+          ? [{ title: '상세 안내', body: challenge.description }]
+          : [],
+      }
+    : contestDetail;
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
-  const [applyVisible, setApplyVisible] = useState(true);
+  // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
+  const ready = !challengeId || Boolean(challenge);
   useEffect(() => {
-    if (teamTab) return;
+    if (teamTab || !ready) return;
     const el = applyRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) => setApplyVisible(entry.isIntersecting));
     observer.observe(el);
     return () => observer.disconnect();
-  }, [teamTab]);
+  }, [teamTab, ready]);
   const share = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -63,33 +108,47 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
       <b>대회 요약</b>
       <dl>
         <dt>마감일</dt>
-        <dd>{contestDetail.deadline}</dd>
+        <dd>{detail.deadline}</dd>
         <dt>총 상금</dt>
-        <dd>{contestDetail.prizeTotal}</dd>
+        <dd>{detail.prizeTotal}</dd>
         <dt>팀 구성</dt>
-        <dd>{contestDetail.teamSize}</dd>
+        <dd>{detail.teamSize}</dd>
       </dl>
     </Summary>
   );
+  if (challengeId && !challenge) {
+    // 로딩 중이거나 조회 실패 — 목데이터로 대신 채우지 않는다(에러 토스트는 전역 QueryCache가 띄운다).
+    return (
+      <UserShell title="챌린지 상세" back="/explore">
+        <Content>
+          <Muted>
+            {challengeQuery.isError ? '챌린지를 불러오지 못했어요' : '챌린지를 불러오는 중이에요'}
+          </Muted>
+        </Content>
+      </UserShell>
+    );
+  }
   return (
     <UserShell title="챌린지 상세" back="/explore">
       <Content>
         <Intro>
           <div className="cover" />
           <div className="intro-body">
-            <Title>{contestDetail.title}</Title>
-            <Muted>{contestDetail.org}</Muted>
+            <Title>{detail.title}</Title>
+            <Muted>{detail.org}</Muted>
             <div className="facts">
-              자격 / 대상　{contestDetail.eligibility}
+              자격 / 대상　{detail.eligibility}
               <br />
-              접수기간　{contestDetail.period}
+              접수기간　{detail.period}
             </div>
             <Row>
-              <Tag tone="blue">{contestDetail.dday}</Tag>
+              <Tag tone="blue">{detail.dday}</Tag>
               <IconButton
                 aria-label="북마크"
                 aria-pressed={saved}
-                onClick={() => toggle('contest-1')}
+                disabled={!isBookmarkableId(bookmarkId) || isToggling}
+                title={bookmarkId ? undefined : '데모 챌린지는 북마크할 수 없어요'}
+                onClick={() => toggleBookmark(bookmarkId)}
               >
                 <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
               </IconButton>
@@ -106,10 +165,10 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
         <Columns>
           <div>
             <Tabs>
-              <Link href="/contests/public-data" aria-current={!teamTab ? 'page' : undefined}>
+              <Link href={basePath} aria-current={!teamTab ? 'page' : undefined}>
                 정보
               </Link>
-              <Link href="/contests/public-data/teams" aria-current={teamTab ? 'page' : undefined}>
+              <Link href={`${basePath}/teams`} aria-current={teamTab ? 'page' : undefined}>
                 팀모집
               </Link>
             </Tabs>
@@ -121,34 +180,47 @@ export function ContestDetailPage({ teamTab = false }: { teamTab?: boolean }) {
               </TeamGrid>
             ) : (
               <Stack gap={28}>
-                <DesktopOnly>
-                  <img
-                    src={contestDetail.poster}
-                    alt={`${contestDetail.title} 포스터`}
-                    width={860}
-                    height={860}
-                    style={{ width: '100%', height: 'auto' }}
-                  />
-                </DesktopOnly>
+                {!challengeId && (
+                  <DesktopOnly>
+                    <img
+                      src={contestDetail.poster}
+                      alt={`${detail.title} 포스터`}
+                      width={860}
+                      height={860}
+                      style={{ width: '100%', height: 'auto' }}
+                    />
+                  </DesktopOnly>
+                )}
                 <MobileOnly>{summaryBox}</MobileOnly>
-                {contestDetail.sections.map(({ title, body }) => (
+                {detail.sections.map(({ title, body }) => (
                   <section key={title}>
                     <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
                     <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
                   </section>
                 ))}
-                <Link href="/applications/new" ref={applyRef}>
-                  <Button as="span" fullWidth>
-                    참가 신청하기
-                  </Button>
-                </Link>
+                {external ? (
+                  <a href={external} target="_blank" rel="noopener noreferrer" ref={applyRef}>
+                    <Button as="span" fullWidth>
+                      참가 신청하기
+                    </Button>
+                  </a>
+                ) : (
+                  <Link href={applyHref} ref={applyRef}>
+                    <Button as="span" fullWidth>
+                      참가 신청하기
+                    </Button>
+                  </Link>
+                )}
                 <MobileOnly>{teamCta}</MobileOnly>
               </Stack>
             )}
           </div>
           <Sidebar>
             {!teamTab && !applyVisible && (
-              <Link href="/applications/new">
+              <Link
+                href={external || applyHref}
+                {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+              >
                 <Button as="span" fullWidth>
                   참가 신청하기
                 </Button>

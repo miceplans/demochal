@@ -1,5 +1,4 @@
 'use client';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -57,13 +56,22 @@ export function RecruitmentPage() {
   const setDraft = useUserStore((s) => s.setRecruitment);
   const toast = useToast();
   const router = useRouter();
-  const [slots, setSlots] = useState<{ id: number; role: string; count: number }[]>([]);
+  // 역할 슬롯도 draft에 함께 저장해 페이지를 나갔다 와도 유지한다.
+  const slots = draft.slots ?? [];
+  const setSlots = (next: typeof slots) => setDraft({ ...draft, slots: next });
   const challengesQuery = generated.useListChallenges({ limit: 50 });
   const challengeOptions = challengesQuery.data?.data.items ?? [];
   const createTeam = generated.useCreateTeam({
     mutation: {
       onSuccess: (result) => {
-        setDraft({ challenge: '', introduction: '', role: draft.role, preferred: '', etc: '' });
+        setDraft({
+          challenge: '',
+          introduction: '',
+          role: draft.role,
+          preferred: '',
+          etc: '',
+          slots: [],
+        });
         toast.success('모집글을 게시했어요');
         router.push(`/teams/${result.data.id}`);
       },
