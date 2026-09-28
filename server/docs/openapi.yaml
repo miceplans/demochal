@@ -356,7 +356,8 @@ paths:
       x-impl-status: implemented
       description: |
         가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
-        프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
+        첫 가입/로그인 사용자만 한 번 제출할 수 있다(`User.onboardingSurvey`가 null일 때).
+        이미 설문을 저장한 사용자는 409를 받으며, 이후 관심분야 변경은 `PUT /interests`를 쓴다.
       requestBody:
         required: true
         content:
@@ -368,6 +369,9 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/OnboardingSurvey' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409':
+          description: 이미 온보딩 설문을 완료한 사용자
 
   # ---------------------------------------------------------------- Challenges
   /challenges:
@@ -2160,6 +2164,10 @@ components:
           type: object
           additionalProperties: { type: boolean }
           description: 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다.
+        onboardingSurvey:
+          allOf: [{ $ref: '#/components/schemas/OnboardingSurvey' }]
+          nullable: true
+          description: 온보딩 설문 응답. null이면 아직 설문을 완료하지 않은 첫 가입 사용자.
     ExternalLink:
       type: object
       properties:

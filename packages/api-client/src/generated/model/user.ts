@@ -18,6 +18,7 @@
  */
 import type { AwardRecord } from './awardRecord';
 import type { ExternalLink } from './externalLink';
+import type { OnboardingSurvey } from './onboardingSurvey';
 import type { UserNotificationSettings } from './userNotificationSettings';
 import type { UserRole } from './userRole';
 
@@ -49,4 +50,6 @@ export interface User {
   awardHistory?: AwardRecord[];
   /** 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다. */
   notificationSettings?: UserNotificationSettings;
+  /** 온보딩 설문 응답. null이면 아직 설문을 완료하지 않은 첫 가입 사용자. */
+  onboardingSurvey?: OnboardingSurvey | null;
 }

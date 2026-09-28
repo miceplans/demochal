@@ -1374,10 +1374,27 @@ export type saveOnboardingSurveyResponse200 = {
   status: 200;
 };
 
+export type saveOnboardingSurveyResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type saveOnboardingSurveyResponse409 = {
+  data: void;
+  status: 409;
+};
+
 export type saveOnboardingSurveyResponseSuccess = saveOnboardingSurveyResponse200 & {
   headers: Headers;
 };
-export type saveOnboardingSurveyResponse = saveOnboardingSurveyResponseSuccess;
+export type saveOnboardingSurveyResponseError = (
+  saveOnboardingSurveyResponse401 | saveOnboardingSurveyResponse409
+) & {
+  headers: Headers;
+};
+
+export type saveOnboardingSurveyResponse =
+  saveOnboardingSurveyResponseSuccess | saveOnboardingSurveyResponseError;
 
 export const getSaveOnboardingSurveyUrl = () => {
   return `/users/me/survey`;
@@ -1385,7 +1402,8 @@ export const getSaveOnboardingSurveyUrl = () => {
 
 /**
  * 가입 후 4단계 설문: 활동 여부 → 관심 분야 Chip → 목적 Chip → 도전 유형 Chip.
- * 프론트는 `useUserStore`(zustand persist)에 저장, 홈의 AI 추천 챌린지 개인화에 사용.
+ * 첫 가입/로그인 사용자만 한 번 제출할 수 있다(`User.onboardingSurvey`가 null일 때).
+ * 이미 설문을 저장한 사용자는 409를 받으며, 이후 관심분야 변경은 `PUT /interests`를 쓴다.
  * @summary 온보 설문 저장 (4단계)
  */
 export const saveOnboardingSurvey = async (
@@ -1422,7 +1440,7 @@ export const saveOnboardingSurvey = async (
 export const getSaveOnboardingSurveyMutationKey = () => ['saveOnboardingSurvey'] as const;
 
 export const getSaveOnboardingSurveyMutationOptions = <
-  TError = unknown,
+  TError = UnauthorizedResponse | void,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -1461,13 +1479,13 @@ export type SaveOnboardingSurveyMutationResult = NonNullable<
   Awaited<ReturnType<typeof saveOnboardingSurvey>>
 >;
 export type SaveOnboardingSurveyMutationBody = OnboardingSurvey;
-export type SaveOnboardingSurveyMutationError = unknown;
+export type SaveOnboardingSurveyMutationError = UnauthorizedResponse | void;
 export type SaveOnboardingSurveyMutationVariables = { data: OnboardingSurvey };
 
 /**
  * @summary 온보 설문 저장 (4단계)
  */
-export const useSaveOnboardingSurvey = <TError = unknown, TContext = unknown>(
+export const useSaveOnboardingSurvey = <TError = UnauthorizedResponse | void, TContext = unknown>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof saveOnboardingSurvey>>,
