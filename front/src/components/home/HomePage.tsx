@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useSyncExternalStore, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
@@ -36,6 +36,22 @@ const fallbackAds: Record<'hero' | 'gallery', AdCarouselItem[]> = {
   ],
 };
 
+// 게재 중인 광고가 없거나 조회에 실패하면 위 기본 광고 세트를 보여준다(전역 에러 토스트도 띄우지 않음).
+const publicAdsQuery = { query: { meta: { silentError: true } } };
+
+function toAdItems(
+  response: Awaited<ReturnType<typeof generated.listPublicAds>> | undefined,
+): AdCarouselItem[] | undefined {
+  if (response?.status !== 200 || response.data.length === 0) return undefined;
+  return response.data.map((ad) => ({
+    src: ad.imageUrl,
+    alt: ad.title,
+    adId: ad.id,
+    // 랜딩은 광고주 입력값이라 http(s)만 링크로 쓴다(javascript: 등 차단).
+    href: ad.landingUrl && /^https?:\/\//i.test(ad.landingUrl) ? ad.landingUrl : undefined,
+  }));
+}
+
 function MoreIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
@@ -51,8 +67,13 @@ function MoreIcon() {
 }
 
 export function HomePage() {
-  const [heroAds, setHeroAds] = useState<AdCarouselItem[]>(fallbackAds.hero);
-  const [galleryAds, setGalleryAds] = useState<AdCarouselItem[]>(fallbackAds.gallery);
+  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
+  const { data: galleryAdList } = generated.useListPublicAds(
+    { placement: 'gallery' },
+    publicAdsQuery,
+  );
+  const liveHeroAds = toAdItems(heroAdList);
+  const liveGalleryAds = toAdItems(galleryAdList);
   const adPriceParam = useSyncExternalStore(
     noopSubscribe,
     getAdPreviewPriceSnapshot,
@@ -72,50 +93,15 @@ export function HomePage() {
     ? recommendedItems.map(challengeToContest)
     : desktopContests;
 
-  useEffect(() => {
-    let mounted = true;
-    const loadAds = async () => {
-      const [hero, gallery] = await Promise.allSettled([
-        generated.listPublicAds({ placement: 'hero' }),
-        generated.listPublicAds({ placement: 'gallery' }),
-      ]);
-      if (!mounted) return;
-      if (hero.status === 'fulfilled' && hero.value.status === 200 && hero.value.data.length > 0) {
-        setHeroAds(
-          hero.value.data.map((ad) => ({
-            src: ad.imageUrl,
-            alt: ad.title,
-            href: ad.landingUrl ?? undefined,
-          })),
-        );
-      }
-      if (
-        gallery.status === 'fulfilled' &&
-        gallery.value.status === 200 &&
-        gallery.value.data.length > 0
-      ) {
-        setGalleryAds(
-          gallery.value.data.map((ad) => ({
-            src: ad.imageUrl,
-            alt: ad.title,
-            href: ad.landingUrl ?? undefined,
-          })),
-        );
-      }
-    };
-    void loadAds();
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
       <UserShell>
         <Home>
           <AdCarousel
+            // 기본 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
+            key={liveHeroAds ? 'hero-live' : 'hero-default'}
             ariaLabel="홈 상단 광고"
-            items={heroAds}
+            items={liveHeroAds ?? fallbackAds.hero}
             variant="hero"
             priceOverlay={
               adPreviewPrice
@@ -123,10 +109,6 @@ export function HomePage() {
                 : undefined
             }
           />
-          <MobileHero href="/my/interests">
-            <h2>나에게 맞는 챌린지 찾기</h2>
-            <p>관심분야 등록하고 맞춤 추천 받아보세요</p>
-          </MobileHero>
           <Sections>
             <section>
               <DesktopOnly style={{ margin: '28px 0' }}>
@@ -230,8 +212,9 @@ export function HomePage() {
             </section>
           </Sections>
           <AdCarousel
+            key={liveGalleryAds ? 'gallery-live' : 'gallery-default'}
             ariaLabel="홈 중간 광고"
-            items={galleryAds}
+            items={liveGalleryAds ?? fallbackAds.gallery}
             variant="gallery"
             interval={4000}
           />
@@ -291,21 +274,6 @@ const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { pad
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
-const MobileHero = styled(Link)({
-  display: 'none',
-  [mobile]: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-    height: 150,
-    padding: 20,
-    marginBottom: 16,
-    background: c.lightBlue,
-    borderRadius: 6,
-    '& h2': textStyle.h2_2,
-    '& p': textStyle.metaText,
-  },
-});
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   maxWidth: 1200,
   margin: '0 auto',
