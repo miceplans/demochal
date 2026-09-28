@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import type { Ad, AdReport } from '@semochal/api-client';
-import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizContent, FieldSelect, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
@@ -51,41 +50,35 @@ export function BizReportsPage() {
   const hrefOf = useBizHref();
   const searchParams = useSearchParams();
   const requestedId = searchParams.get('adId');
-  const [ads, setAds] = useState<Ad[]>([]);
-  const [selectedId, setSelectedId] = useState(requestedId ?? '');
-  const [report, setReport] = useState<AdReport | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const requestId = useRef(0);
 
+  const adsQuery = generated.useListMyAds();
+  const ads = adsQuery.data?.status === 200 ? adsQuery.data.data : [];
+
+  const [selectedId, setSelectedId] = useState(requestedId ?? '');
+  const [initialized, setInitialized] = useState(false);
   useEffect(() => {
-    const currentRequestId = ++requestId.current;
-    // Loading is an external API synchronization triggered by the selected ad change.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setError(false);
-    void adApi.ads
-      .listMine()
-      .then((items) => {
-        if (requestId.current !== currentRequestId) return;
-        setAds(items);
-        const id =
-          requestedId && items.some((item) => item.id === requestedId)
-            ? requestedId
-            : (items[0]?.id ?? '');
-        setSelectedId(id);
-        if (!id) return;
-        return adApi.ads.getReport(id).then((result) => {
-          if (requestId.current === currentRequestId) setReport(result);
-        });
-      })
-      .catch(() => {
-        if (requestId.current === currentRequestId) setError(true);
-      })
-      .finally(() => {
-        if (requestId.current === currentRequestId) setLoading(false);
-      });
-  }, [requestedId]);
+    if (!initialized && adsQuery.data) {
+      const id =
+        requestedId && ads.some((item) => item.id === requestedId)
+          ? requestedId
+          : (ads[0]?.id ?? '');
+      // 광고 목록이 처음 도착했을 때만 selectedId를 정한다(이후는 사용자의 드롭다운 선택이 우선).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedId(id);
+      setInitialized(true);
+    }
+    // ads/requestedId는 최초 진입 시 한 번만 selectedId를 정하는 데 쓰이고,
+    // 이후 selectedId는 사용자의 드롭다운 선택이 진실의 원천이다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adsQuery.data, initialized]);
+
+  const reportQuery = generated.useGetAdReport(selectedId, undefined, {
+    query: { enabled: !!selectedId },
+  });
+  const report = reportQuery.data?.data;
+
+  const loading = adsQuery.isPending || (!!selectedId && reportQuery.isPending);
+  const error = adsQuery.isError || reportQuery.isError;
 
   const selectAd = (id: string) => {
     setSelectedId(id);

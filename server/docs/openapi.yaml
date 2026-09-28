@@ -2989,6 +2989,7 @@ components:
         placement: { type: string, enum: [hero, gallery] }
     AdReport:
       type: object
+      required: [totals, daily, hourly, monthlyClicks]
       properties:
         totals: { $ref: '#/components/schemas/MetricTotals' }
         daily:
@@ -3090,6 +3091,7 @@ components:
         activeAds: { type: array, items: { $ref: '#/components/schemas/Ad' } }
     DailyMetric:
       type: object
+      required: [date, impressions, clicks, ctr]
       properties:
         date: { type: string, format: date }
         impressions: { type: integer, description: 노출수 }

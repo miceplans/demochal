@@ -22,10 +22,10 @@ import type { MetricTotals } from './metricTotals';
 import type { MonthlyBar } from './monthlyBar';
 
 export interface AdReport {
-  totals?: MetricTotals;
-  daily?: DailyMetric[];
+  totals: MetricTotals;
+  daily: DailyMetric[];
   /** 24시간 슬롯 (0시~1시 … 23시~24시) */
-  hourly?: HourlyMetric[];
+  hourly: HourlyMetric[];
   /** 상단 월별 클릭수 바차트 (라벨 + 값) */
-  monthlyClicks?: MonthlyBar[];
+  monthlyClicks: MonthlyBar[];
 }
