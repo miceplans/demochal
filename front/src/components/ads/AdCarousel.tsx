@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type TransitionEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type TouchEvent,
+  type TransitionEvent,
+} from 'react';
 import Image from 'next/image';
 import styled from '@emotion/styled';
 import { colors as c, mobile, shadows } from '@/styles/design';
@@ -34,6 +41,8 @@ type AdCarouselProps = {
 };
 
 const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
+// 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
+const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
 // 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) Figma 모바일 홈 광고 자리 높이(150px)를 쓴다.
 // 소재는 PC용 1060:250이라 object-fit: cover로 좌우가 일부 잘린다.
@@ -203,22 +212,8 @@ const NavButton = styled.button<{
   },
   '&:hover svg': { transform: 'scale(1.15)', opacity: 1 },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
-  // 모바일도 PC와 같은 자리(hero: 슬라이드 안쪽 가장자리, gallery: 가운데 슬라이드 바깥)에 둡니다.
-  [mobile]:
-    variant === 'hero'
-      ? {
-          width: '32px',
-          height: '32px',
-          [direction === 'prev' ? 'left' : 'right']: `${MOBILE_HERO_INSET + 8}px`,
-          '& svg': { width: '28px', height: '28px' },
-        }
-      : {
-          width: '46px',
-          height: '46px',
-          [direction === 'prev' ? 'left' : 'right']:
-            `calc(50% - ${MOBILE_GALLERY_WIDTH / 2 + 4 + 46}px)`,
-          '& svg': { width: '40px', height: '40px' },
-        },
+  // 모바일은 화살표 없이 자동 넘김만 쓴다.
+  [mobile]: { display: 'none' },
 }));
 
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
@@ -256,6 +251,7 @@ export function AdCarousel({
   const [isPaused, setIsPaused] = useState(false);
   const [isInViewport, setIsInViewport] = useState(false);
   const seenImpressions = useRef(new Set<string>());
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
   const itemCount = items.length;
 
   useEffect(() => {
@@ -354,6 +350,26 @@ export function AdCarousel({
   const goToPrev = () => goToRail(railIndex - 1);
   const goToNext = () => goToRail(railIndex + 1);
 
+  // 모바일은 화살표 대신 좌우 스와이프로 넘긴다. 터치 중에는 자동 넘김을 멈춘다.
+  const handleTouchStart = (event: TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0];
+    if (!touch) return;
+    touchStart.current = { x: touch.clientX, y: touch.clientY };
+    setIsPaused(true);
+  };
+  const handleTouchEnd = (event: TouchEvent<HTMLDivElement>) => {
+    const start = touchStart.current;
+    const touch = event.changedTouches[0];
+    touchStart.current = null;
+    setIsPaused(false);
+    if (!start || !touch || itemCount < 2) return;
+    const dx = touch.clientX - start.x;
+    const dy = touch.clientY - start.y;
+    if (Math.abs(dx) < SWIPE_THRESHOLD || Math.abs(dx) <= Math.abs(dy)) return;
+    if (dx < 0) goToNext();
+    else goToPrev();
+  };
+
   const handleTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
     // 내부 요소(버튼 등)의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
     if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
@@ -378,7 +394,15 @@ export function AdCarousel({
         if (!event.currentTarget.contains(event.relatedTarget)) setIsPaused(false);
       }}
     >
-      <Viewport ref={viewportRef}>
+      <Viewport
+        ref={viewportRef}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchCancel={() => {
+          touchStart.current = null;
+          setIsPaused(false);
+        }}
+      >
         <Rail
           activeIndex={railIndex}
           variant={variant}
