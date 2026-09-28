@@ -67,6 +67,7 @@ import type {
   CreateReportRequest,
   CreateTeamRequest,
   FileMeta,
+  ForbiddenResponse,
   GetAdReportParams,
   GetAdminAnalytics200,
   GetAdminAnalyticsParams,
@@ -81,6 +82,7 @@ import type {
   ListAdminBusinessesParams,
   ListAdminCertificatesParams,
   ListAdminContents200,
+  ListAdminContentsParams,
   ListAdminReportsParams,
   ListAdminUsersParams,
   ListChallenges200,
@@ -5561,6 +5563,149 @@ export const useRegisterBusiness = <TError = unknown, TContext = unknown>(
   return useMutation(getRegisterBusinessMutationOptions(options), queryClient);
 };
 
+export type findMyBusinessResponse200 = {
+  data: Business;
+  status: 200;
+};
+
+export type findMyBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type findMyBusinessResponse403 = {
+  data: ForbiddenResponse;
+  status: 403;
+};
+
+export type findMyBusinessResponseSuccess = findMyBusinessResponse200 & {
+  headers: Headers;
+};
+export type findMyBusinessResponseError = (
+  findMyBusinessResponse401 | findMyBusinessResponse403
+) & {
+  headers: Headers;
+};
+
+export type findMyBusinessResponse = findMyBusinessResponseSuccess | findMyBusinessResponseError;
+
+export const getFindMyBusinessUrl = () => {
+  return `/businesses/me`;
+};
+
+/**
+ * 로그인한 계정이 소유한 기업 정보를 반환한다(`ownerUserId` 기준).
+ * Biz 프로필(`/biz/profile`) 조회·편집의 데이터 소스이며, 소유한 기업이 없으면 403.
+ * 인증: JWT 쿠키(필수). 역할은 별도 검증하지 않고 소유 여부만 판단한다(기업 등록은
+ * 인증된 계정이면 가능하므로 business 역할 전용 엔드포인트가 아님).
+ * @summary 내 기업 조회 (소유자)
+ */
+export const findMyBusiness = async (
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<findMyBusinessResponse> => {
+  return apiFetch<findMyBusinessResponse>(getFindMyBusinessUrl(), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getFindMyBusinessQueryKey = () => {
+  return [`/businesses/me`] as const;
+};
+
+export const getFindMyBusinessQueryOptions = <
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(options?: {
+  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+  request?: SecondParameter<typeof apiFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getFindMyBusinessQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof findMyBusiness>>> = ({ signal }) =>
+    findMyBusiness({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof findMyBusiness>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type FindMyBusinessQueryResult = NonNullable<Awaited<ReturnType<typeof findMyBusiness>>>;
+export type FindMyBusinessQueryError = UnauthorizedResponse | ForbiddenResponse;
+
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findMyBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof findMyBusiness>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof findMyBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof findMyBusiness>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업 조회 (소유자)
+ */
+
+export function useFindMyBusiness<
+  TData = Awaited<ReturnType<typeof findMyBusiness>>,
+  TError = UnauthorizedResponse | ForbiddenResponse,
+>(
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof findMyBusiness>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getFindMyBusinessQueryOptions(options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getBusinessResponse200 = {
   data: Business;
   status: 200;
@@ -5710,18 +5855,42 @@ export type updateBusinessResponse200 = {
   status: 200;
 };
 
+export type updateBusinessResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateBusinessResponse403 = {
+  data: ForbiddenResponse;
+  status: 403;
+};
+
+export type updateBusinessResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
 export type updateBusinessResponseSuccess = updateBusinessResponse200 & {
   headers: Headers;
 };
-export type updateBusinessResponse = updateBusinessResponseSuccess;
+export type updateBusinessResponseError = (
+  updateBusinessResponse401 | updateBusinessResponse403 | updateBusinessResponse404
+) & {
+  headers: Headers;
+};
+
+export type updateBusinessResponse = updateBusinessResponseSuccess | updateBusinessResponseError;
 
 export const getUpdateBusinessUrl = (id: string) => {
   return `/businesses/${id}`;
 };
 
 /**
- * 기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign`),
+ * 기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign` →
+ * S3 PUT → `POST /files/{id}/finalize`. 요청/응답에는 파일 id(`bannerImageFileId`/`logoImageFileId`)만
+ * 쓰고, 로컬 미리보기용 object URL을 파일 id처럼 본문에 넣지 않는다),
  * 기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
+ * 인증: JWT 쿠키(필수), 소유자 본인 기업만 수정 가능(다른 소유자의 기업은 404).
  * @summary 기업 프로필 수정
  */
 export const updateBusiness = async (
@@ -5758,7 +5927,10 @@ export const updateBusiness = async (
 
 export const getUpdateBusinessMutationKey = () => ['updateBusiness'] as const;
 
-export const getUpdateBusinessMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+export const getUpdateBusinessMutationOptions = <
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof updateBusiness>>,
     TError,
@@ -5793,13 +5965,17 @@ export const getUpdateBusinessMutationOptions = <TError = unknown, TContext = un
 
 export type UpdateBusinessMutationResult = NonNullable<Awaited<ReturnType<typeof updateBusiness>>>;
 export type UpdateBusinessMutationBody = UpdateBusinessBody;
-export type UpdateBusinessMutationError = unknown;
+export type UpdateBusinessMutationError =
+  UnauthorizedResponse | ForbiddenResponse | NotFoundResponse;
 export type UpdateBusinessMutationVariables = { id: string; data: UpdateBusinessBody };
 
 /**
  * @summary 기업 프로필 수정
  */
-export const useUpdateBusiness = <TError = unknown, TContext = unknown>(
+export const useUpdateBusiness = <
+  TError = UnauthorizedResponse | ForbiddenResponse | NotFoundResponse,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof updateBusiness>>,
@@ -8762,6 +8938,10 @@ export const getSubmitOperationsInquiryUrl = () => {
 /**
  * 운영대행 페이지(`/biz/operations`, MICE PLANS X SEMO)의 온라인 상담/견적 문의 폼
  * (성함/연락처/문의내용). 회사 위치 지도·주소·연락처는 정적 정보.
+ * **인증 정책(현재 확정)**: 공개 문의 — 로그인하지 않은 방문자도 제출할 수 있다.
+ * business 전용 접수가 아니며 제출에 인증 쿠키/JWT를 요구하지 않는다(`@Public`).
+ * 개인정보(성함/연락처)는 접수 저장(DB) 목적이며 서버 로그에 기록하지 않는다.
+ * 향후 business 전용 운영대행 견적/배정 기능은 별도 Issue로 확정한다(본 계약 변경 전까지 공개 유지).
  * @summary 운영대행 문의 접수
  */
 export const submitOperationsInquiry = async (
@@ -8892,9 +9072,11 @@ export const getGetAdminDashboardUrl = (params?: GetAdminDashboardParams) => {
 /**
  * 관리자 대시보드(`/admin`)의 위젯 데이터 묶음.
  * - `stats`: 통계 카드 4종(승인된 기관/진행 중 챌린지/누적 제출물/신규 가입자) — label + 값 + 보조 문구
- * - `adRatio`: '유저 광고 비율' 반원 게이지 (RadialBarChart) — `ratio`는 0~1, 화면에서 ×100 퍼센트 표기
- * - `traffic`: '유저 트래픽' 라인·영역 혼합 차트(ComposedChart) — `range` 쿼리로 7일/30일/1년 전환,
- *   primary(일반 유저)·secondary(비즈니스) 두 개 시리즈
+ * - `adRatio`: '유저 광고 비율' 반원 게이지 (RadialBarChart) — `range` 기간 결제 완료 순매출 중
+ *   광고 주문(orders.adId) 순매출 금액(`value`)과 비중(`ratio` 0~1, 화면에서 ×100 퍼센트 표기)
+ * - `traffic`: '유저 트래픽' 라인·영역 혼합 차트(ComposedChart) — `range` 쿼리로 7일(일별)/30일(일별)/1년(월별) 전환,
+ *   primary(신규 가입 users)·secondary(신규 제출물 applications) 두 개 시리즈. 페이지뷰 계측 전까지 가입·제출 수로 대신한다.
+ * - `generatedAt`: 집계 기준 시각
  * - `reports`: 신고 로그 테이블(ReportLogTable)
  * @summary 관리자 대시보드 통계
  */
@@ -10046,7 +10228,7 @@ export const getListAdminUsersUrl = (params?: ListAdminUsersParams) => {
 
 /**
  * 사용자 관리(`/admin/users`): 이름/이메일(마스킹)/포지션/신고 누적/상태(활성·정지) 테이블,
- * 가입일/뱃지/활동상태 필터.
+ * 가입일/뱃지/활동상태 필터. 신고 누적은 해당 사용자를 대상으로 한 신고(`reportedUserId`) 수.
  * @summary 사용자 목록 조회
  */
 export const listAdminUsers = async (
@@ -10541,43 +10723,59 @@ export type listAdminContentsResponseSuccess = listAdminContentsResponse200 & {
 };
 export type listAdminContentsResponse = listAdminContentsResponseSuccess;
 
-export const getListAdminContentsUrl = () => {
-  return `/admin/contents`;
+export const getListAdminContentsUrl = (params?: ListAdminContentsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/contents?${stringifiedParams}` : `/admin/contents`;
 };
 
 /**
  * 콘텐츠 모니터링(`/admin/contents`).
- * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트)
- * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트)
+ * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
+ * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
+ * - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
  * - `reports`: 신고 로그 테이블
+ * - 미확인 도트(`unread`) = 처리되지 않은(open) 신고가 걸린 팀/챌린지
  * @summary 콘텐츠 모니터링 조회
  */
 export const listAdminContents = async (
+  params?: ListAdminContentsParams,
   options?: Parameters<typeof apiFetch>[1],
 ): Promise<listAdminContentsResponse> => {
-  return apiFetch<listAdminContentsResponse>(getListAdminContentsUrl(), {
+  return apiFetch<listAdminContentsResponse>(getListAdminContentsUrl(params), {
     ...options,
     method: 'GET',
   });
 };
 
-export const getListAdminContentsQueryKey = () => {
-  return [`/admin/contents`] as const;
+export const getListAdminContentsQueryKey = (params?: ListAdminContentsParams) => {
+  return [`/admin/contents`, ...(params ? [params] : [])] as const;
 };
 
 export const getListAdminContentsQueryOptions = <
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
->(options?: {
-  query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
-  request?: SecondParameter<typeof apiFetch>;
-}) => {
+>(
+  params?: ListAdminContentsParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
   const { query: queryOptions, request: requestOptions } = options ?? {};
 
-  const queryKey = queryOptions?.queryKey ?? getListAdminContentsQueryKey();
+  const queryKey = queryOptions?.queryKey ?? getListAdminContentsQueryKey(params);
 
   const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminContents>>> = ({ signal }) =>
-    listAdminContents({ signal, ...requestOptions });
+    listAdminContents(params, { signal, ...requestOptions });
 
   return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
     Awaited<ReturnType<typeof listAdminContents>>,
@@ -10595,6 +10793,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params: undefined | ListAdminContentsParams,
   options: {
     query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>> &
       Pick<
@@ -10613,6 +10812,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>> &
       Pick<
@@ -10631,6 +10831,7 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
     request?: SecondParameter<typeof apiFetch>;
@@ -10645,13 +10846,14 @@ export function useListAdminContents<
   TData = Awaited<ReturnType<typeof listAdminContents>>,
   TError = unknown,
 >(
+  params?: ListAdminContentsParams,
   options?: {
     query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminContents>>, TError, TData>>;
     request?: SecondParameter<typeof apiFetch>;
   },
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
-  const queryOptions = getListAdminContentsQueryOptions(options);
+  const queryOptions = getListAdminContentsQueryOptions(params, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;
@@ -10688,10 +10890,10 @@ export const getGetAdminAnalyticsUrl = (params?: GetAdminAnalyticsParams) => {
 
 /**
  * 리포트(`/admin/analytics`).
- * - `?ad=N` 지정 시: 빅배버 N번 광고 리포트 — 기관·기간, 통계 카드 4종(노출수/클릭수/CTR/집행 광고비),
- *   일별 성과 차트(AdReportChart: 노출 영역 + 클릭 라인, 이중 Y축)
- * - `stats`: 전체 통계 카드 3종(신규 가입자/신규 챌린지/플랫폼 수익)
- * - `activity`: 활동 차트(ActivityChart, 월별 일반/기업 이중 영역차트, yMax 상한)
+ * - `?ad=` 지정 시: 광고 리포트 — 기관·기간, 통계 카드 4종(노출수/클릭수/CTR/집행 광고비),
+ *   일별 성과 차트(AdReportChart: 노출 영역 + 클릭 라인, 이중 Y축). 노출/클릭은 AdsService 집계.
+ * - `stats`: 전체 통계 카드 3종(최근 30일 신규 가입자/최근 30일 신규 챌린지/플랫폼 수익)
+ * - `activity`: 활동 차트(ActivityChart) — 최근 6개월 월별 일반(일반 사용자 신규 가입)/기업(신규 기업 가입), yMax 상한
  * - 납볍하기 버튼
  * @summary 전체 리포트/분석
  */

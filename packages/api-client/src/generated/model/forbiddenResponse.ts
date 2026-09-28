@@ -17,10 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestRecruitMethod =
-  (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
-
-export const CreateChallengeRequestRecruitMethod = {
-  seMOchall: 'seMOchall',
-  external: 'external',
-} as const;
+export type ForbiddenResponse = {
+  statusCode?: number;
+  message?: string;
+};

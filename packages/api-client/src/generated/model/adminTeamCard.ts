@@ -27,10 +27,10 @@ export interface AdminTeamCard {
   challenge?: string;
   /** '2/4명 참여중' 형태 */
   members?: string;
-  /** 모집 완료된 역할 뱃지 */
+  /** 모집 완료된 역할 뱃지 (accepted 멤버가 모집 인원을 채운 openRoles) */
   roles?: string[];
   /** 모집 중인 역할 뱃지 */
   otherRoles?: string[];
-  /** 미확인 도트 표시 여부 */
+  /** 처리되지 않은(open) 신고가 있으면 true */
   unread?: boolean;
 }

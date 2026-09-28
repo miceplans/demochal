@@ -17,13 +17,28 @@ function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         queryCache: new QueryCache({
           // 401은 로그인하지 않은 상태(예: /auth/me)일 수 있으므로 전역 토스트에서 제외
-          onError: (error) => {
+          // meta.localErrorToast 쿼리는 화면이 직접 액션 토스트로 알리므로 전역 토스트에서 제외
+          // meta.silentError 쿼리(예: 홈 광고)는 실패해도 기본 광고가 있어 방문자에게 알리지 않는다
+          onError: (error, query) => {
             if (error instanceof ApiError && error.status === 401) return;
+            if (query.meta?.localErrorToast) return;
+            if (query.meta?.silentError) return;
             toast.error('서버 오류', '잠시 후 다시 시도해주세요');
           },
         }),
         mutationCache: new MutationCache({
-          onError: () => toast.error('서버 오류', '잠시 후 다시 시도해주세요'),
+          // 호출부에서 직접 처리하는 상태 코드는 mutation `meta.handledErrorStatuses`로 지정해 제외한다
+          // (예: 온보딩 설문 409 = 이미 완료).
+          onError: (error, _variables, _onMutateResult, mutation) => {
+            const handled = mutation.meta?.handledErrorStatuses;
+            if (
+              error instanceof ApiError &&
+              Array.isArray(handled) &&
+              handled.includes(error.status)
+            )
+              return;
+            toast.error('서버 오류', '잠시 후 다시 시도해주세요');
+          },
         }),
         defaultOptions: {
           queries: {

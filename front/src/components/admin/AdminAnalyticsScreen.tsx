@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
@@ -62,12 +63,24 @@ function AdReportSection({ report }: { report?: AdReport }) {
 // useSearchParams는 Suspense 경계가 필요해 이 컴포넌트를 별도로 분리했다.
 function AdminAnalyticsContent() {
   const searchParams = useSearchParams();
-  const adParam = searchParams.get('ad');
-  const adNumber = adParam ? Number(adParam) : undefined;
-  const adEnabled = adNumber !== undefined && Number.isFinite(adNumber);
+  // 광고 uuid 또는 고정 광고 번호(ads.ad_number) — 서버가 둘 다 해석한다.
+  const adParam = searchParams.get('ad') || undefined;
 
-  const analyticsQuery = generated.useGetAdminAnalytics({ ad: adEnabled ? adNumber : undefined });
+  const analyticsQuery = generated.useGetAdminAnalytics(
+    { ad: adParam },
+    { query: { meta: LOCAL_ERROR_TOAST_META } },
+  );
   const analytics = analyticsQuery.data?.data;
+  const refetchAnalytics = analyticsQuery.refetch;
+  const toast = useToast();
+
+  useEffect(() => {
+    if (!analyticsQuery.isError) return;
+    toast.error('활동 데이터를 불러올 수 없어요', '잠시 후 다시 시도해주세요', {
+      action: { label: '다시 시도', onClick: () => void refetchAnalytics() },
+    });
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [analyticsQuery.isError, analyticsQuery.errorUpdatedAt, refetchAnalytics, toast]);
   const downloadAnalytics = () => {
     const rows: string[][] = [];
     for (const stat of analytics?.stats ?? []) {

@@ -17,10 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestRecruitMethod =
-  (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
+export type ListAdminCertificatesCategory =
+  (typeof ListAdminCertificatesCategory)[keyof typeof ListAdminCertificatesCategory];
 
-export const CreateChallengeRequestRecruitMethod = {
-  seMOchall: 'seMOchall',
-  external: 'external',
+export const ListAdminCertificatesCategory = {
+  award: 'award',
+  participation: 'participation',
 } as const;

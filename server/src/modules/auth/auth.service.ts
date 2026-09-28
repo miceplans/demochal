@@ -358,6 +358,65 @@ export class AuthService {
     return { accessToken, user: publicUser };
   }
 
+  /** Finds or creates the local account for a Kakao identity with a verified email. */
+  async loginWithKakao(profile: { subject: string; email: string; name: string }) {
+    const [byKakaoSubject] = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.kakaoSubject, profile.subject))
+      .limit(1);
+
+    let user = byKakaoSubject;
+    if (!user) {
+      // Case-insensitive for the same reason as loginWithNaver.
+      const [byEmail] = await this.db
+        .select()
+        .from(users)
+        .where(ilike(users.email, profile.email))
+        .limit(1);
+      if (byEmail) {
+        // Only verified Kakao emails reach here (see kakaoCallback), so linking is safe.
+        [user] = await this.db
+          .update(users)
+          .set({ kakaoSubject: profile.subject })
+          .where(eq(users.id, byEmail.id))
+          .returning();
+      } else {
+        const passwordHash = await hash(
+          randomBytes(32).toString('base64url'),
+          PASSWORD_HASH_ROUNDS,
+        );
+        try {
+          [user] = await this.db
+            .insert(users)
+            .values({
+              email: profile.email,
+              name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Kakao 사용자',
+              passwordHash,
+              kakaoSubject: profile.subject,
+            })
+            .returning();
+        } catch (err) {
+          // A concurrent callback for the same identity may have inserted first.
+          if (!isUniqueViolation(err)) throw err;
+          [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.kakaoSubject, profile.subject))
+            .limit(1);
+        }
+      }
+    }
+    if (!user) throw new Error('Failed to create or link Kakao user');
+    if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
+
+    const [accessToken, publicUser] = await Promise.all([
+      this.issueToken(user),
+      this.usersService.findById(user.id),
+    ]);
+    return { accessToken, user: publicUser };
+  }
+
   async me(token: string) {
     if (!token) throw new UnauthorizedException('Missing authentication cookie');
 

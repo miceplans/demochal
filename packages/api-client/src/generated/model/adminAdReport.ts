@@ -20,10 +20,11 @@ import type { AdminStatCardList } from './adminStatCardList';
 import type { DailyMetric } from './dailyMetric';
 
 /**
- * 빅배너 N번 광고 리포트 (AdReportData) — `?ad=N` 조회 시 반환
+ * 광고 리포트 (AdReportData) — `?ad=` 조회 시 반환
  */
 export interface AdminAdReport {
-  /** 빅배너 번호 */
+  adId?: string;
+  /** 고정 광고 번호 (ads.ad_number) */
   adNumber?: number;
   /** 광고 기관 */
   organization?: string;

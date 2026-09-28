@@ -63,6 +63,19 @@ const NAVER_AUTHORIZATION_URL = 'https://nid.naver.com/oauth2.0/authorize';
 const NAVER_TOKEN_URL = 'https://nid.naver.com/oauth2.0/token';
 const NAVER_USERINFO_URL = 'https://openapi.naver.com/v1/nid/me';
 
+// https://developers.kakao.com/docs/latest/ko/kakaologin/rest-api
+const KAKAO_STATE_COOKIE_NAME = 'semochal_kakao_oauth_state';
+const KAKAO_STATE_COOKIE_OPTIONS = {
+  httpOnly: true,
+  maxAge: 10 * 60 * 1000,
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: env.nodeEnv === 'production',
+};
+const KAKAO_AUTHORIZATION_URL = 'https://kauth.kakao.com/oauth/authorize';
+const KAKAO_TOKEN_URL = 'https://kauth.kakao.com/oauth/token';
+const KAKAO_USERINFO_URL = 'https://kapi.kakao.com/v2/user/me';
+
 @Public()
 @Controller('auth')
 export class AuthController {
@@ -216,6 +229,9 @@ export class AuthController {
     response.redirect(authorizationUrl.toString());
   }
 
+  // Same opt-out rationale as googleCallback: `code`/`state` are opaque
+  // provider tokens that may contain deny-list sequences such as `--`.
+  @SkipInputSecurity()
   @Get('social/naver/callback')
   async naverCallback(
     @Query('code') code: string | undefined,
@@ -268,6 +284,99 @@ export class AuthController {
     } catch (err) {
       console.error('[auth] naver_login_failed:', err);
       response.redirect(this.frontendUrl('/login?error=naver_login_failed'));
+    }
+  }
+
+  @Get('social/kakao')
+  kakaoLogin(@Res() response: Response) {
+    this.assertKakaoConfigured();
+    const nonce = randomBytes(32).toString('base64url');
+    const state = `${nonce}.${this.signKakaoState(nonce)}`;
+    response.cookie(KAKAO_STATE_COOKIE_NAME, nonce, KAKAO_STATE_COOKIE_OPTIONS);
+
+    // Consent items (nickname, account email) are configured in Kakao Developers,
+    // so no `scope` is requested here.
+    const authorizationUrl = new URL(KAKAO_AUTHORIZATION_URL);
+    authorizationUrl.search = new URLSearchParams({
+      response_type: 'code',
+      client_id: env.kakaoClientId,
+      redirect_uri: env.kakaoRedirectUri,
+      state,
+    }).toString();
+    response.redirect(authorizationUrl.toString());
+  }
+
+  // Same opt-out rationale as googleCallback: `code`/`state` are opaque
+  // provider tokens that may contain deny-list sequences such as `--`.
+  @SkipInputSecurity()
+  @Get('social/kakao/callback')
+  async kakaoCallback(
+    @Query('code') code: string | undefined,
+    @Query('state') state: string | undefined,
+    @Query('error') error: string | undefined,
+    @Req() request: Request,
+    @Res() response: Response,
+  ) {
+    response.clearCookie(KAKAO_STATE_COOKIE_NAME, { path: '/' });
+    try {
+      this.assertKakaoConfigured();
+      if (error || !code || !this.isValidKakaoState(state, request)) {
+        throw new UnauthorizedException('Kakao login was cancelled or could not be verified');
+      }
+
+      const tokenBody = new URLSearchParams({
+        grant_type: 'authorization_code',
+        client_id: env.kakaoClientId,
+        redirect_uri: env.kakaoRedirectUri,
+        code,
+      });
+      if (env.kakaoClientSecret) tokenBody.set('client_secret', env.kakaoClientSecret);
+      const tokenResponse = await fetchJson(KAKAO_TOKEN_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded;charset=utf-8' },
+        body: tokenBody.toString(),
+      });
+      const token = (await tokenResponse.json()) as { access_token?: string };
+      if (!tokenResponse.ok || !token.access_token)
+        throw new UnauthorizedException('Kakao token exchange failed');
+
+      const userInfoResponse = await fetchJson(KAKAO_USERINFO_URL, {
+        headers: { authorization: `Bearer ${token.access_token}` },
+      });
+      const profile = (await userInfoResponse.json()) as {
+        id?: number | string;
+        kakao_account?: {
+          email?: string;
+          is_email_valid?: boolean;
+          is_email_verified?: boolean;
+          profile?: { nickname?: string };
+        };
+      };
+      const account = profile.kakao_account;
+      // Email is only returned when the user consented to it; a missing, invalid,
+      // or unverified email must not be linked to an existing account.
+      if (
+        !userInfoResponse.ok ||
+        profile.id === undefined ||
+        !account?.email ||
+        !account.is_email_valid ||
+        !account.is_email_verified
+      ) {
+        throw new UnauthorizedException('Kakao did not return a verified email address');
+      }
+
+      const { accessToken, user } = await this.authService.loginWithKakao({
+        subject: String(profile.id),
+        email: account.email.toLowerCase(),
+        name: account.profile?.nickname ?? '',
+      });
+      response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
+      response.redirect(
+        user.onboardingSurvey ? this.frontendUrl('/') : this.frontendUrl('/onboarding/activity'),
+      );
+    } catch (err) {
+      console.error('[auth] kakao_login_failed:', err);
+      response.redirect(this.frontendUrl('/login?error=kakao_login_failed'));
     }
   }
 
@@ -335,6 +444,32 @@ export class AuthController {
     const [nonce, signature] = state.split('.');
     if (!nonce || !signature || nonce !== cookie) return false;
     const expected = this.signNaverState(nonce);
+    return (
+      signature.length === expected.length &&
+      timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
+    );
+  }
+
+  private assertKakaoConfigured() {
+    if (!env.kakaoClientId) {
+      throw new ServiceUnavailableException('Kakao login is not configured');
+    }
+  }
+
+  private signKakaoState(nonce: string) {
+    return createHmac('sha256', env.oauthStateSecret).update(nonce).digest('base64url');
+  }
+
+  private isValidKakaoState(state: string | undefined, request: Request) {
+    const cookie = request.headers.cookie
+      ?.split(';')
+      .map((value) => value.trim())
+      .find((value) => value.startsWith(`${KAKAO_STATE_COOKIE_NAME}=`))
+      ?.slice(KAKAO_STATE_COOKIE_NAME.length + 1);
+    if (!state || !cookie) return false;
+    const [nonce, signature] = state.split('.');
+    if (!nonce || !signature || nonce !== cookie) return false;
+    const expected = this.signKakaoState(nonce);
     return (
       signature.length === expected.length &&
       timingSafeEqual(Buffer.from(signature), Buffer.from(expected))

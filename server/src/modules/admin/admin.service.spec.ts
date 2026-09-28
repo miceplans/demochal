@@ -1,7 +1,23 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
-import { ads, businesses, payments, reports } from '../../db/schema.js';
-import { AdminService, maskBizNumber, maskEmail, maskReporterName } from './admin.service.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  ads,
+  applications,
+  businesses,
+  certificates,
+  orders,
+  payments,
+  reports,
+  users,
+} from '../../db/schema.js';
+import {
+  AdminService,
+  maskBizNumber,
+  maskEmail,
+  maskReporterName,
+  niceMax,
+  timeBuckets,
+} from './admin.service.js';
 import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
 
 /**
@@ -88,15 +104,31 @@ function referencesColumn(node: any, target: unknown, seen = new Set<unknown>())
   return false;
 }
 
-function createService(db: any, notifications = createNotificationsStub()) {
-  const adsService = {
-    getReportForAdmin: vi.fn().mockResolvedValue({
-      totals: { impressions: 0, clicks: 0, ctr: 0 },
-      daily: [],
-    }),
-  };
+const zeroAdReport = {
+  totals: { impressions: 0, clicks: 0, ctr: 0 },
+  daily: [],
+  hourly: [],
+  monthlyClicks: [],
+};
+
+function createAdsStub(report: unknown = zeroAdReport) {
+  return { getReportForAdmin: vi.fn().mockResolvedValue(report) };
+}
+
+function createFilesStub() {
   return {
-    service: new AdminService(db, notifications as any, adsService as any),
+    getPrivateReadUrl: vi.fn(async (key: string) => `https://signed.example/${key}`),
+  };
+}
+
+function createService(
+  db: any,
+  notifications = createNotificationsStub(),
+  adsService = createAdsStub(),
+  files = createFilesStub(),
+) {
+  return {
+    service: new AdminService(db, notifications as any, adsService as any, files as any),
     notifications,
     adsService,
   };
@@ -243,6 +275,163 @@ describe('AdminService — certificates', () => {
     ]);
     expect(db.update).toHaveBeenCalledTimes(1);
   });
+
+  it('reject without a reason is refused before touching the DB', async () => {
+    const { db } = createDbStub();
+    const { service } = createService(db);
+
+    await expect(
+      service.verifyCertificate('c1', { action: 'reject', reason: '  ' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  describe('list', () => {
+    const base = {
+      certificate: {
+        id: 'c1',
+        title: '대상',
+        category: 'award',
+        fileId: 'f1',
+        status: 'pending',
+      },
+      userName: '김수아',
+    };
+
+    it('filters by category', async () => {
+      const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+      const { service } = createService(db);
+
+      await service.listCertificates('pending', undefined, 'participation');
+
+      const where = selectWhereCalls[0]?.[0];
+      expect(referencesColumn(where, certificates.category)).toBe(true);
+      expect(collectStrings(where)).toContain('participation');
+    });
+
+    it('presigns private originals and never exposes a raw key', async () => {
+      const privateFile = {
+        id: 'f1',
+        bucket: 'private',
+        key: 'pending/f1.png',
+        uploadStatus: 'ready',
+        contentType: 'image/png',
+      };
+      const { db } = createDbStub({ select: [[{ ...base, file: privateFile }]] });
+      const files = createFilesStub();
+      const { service } = createService(db, createNotificationsStub(), undefined, files);
+
+      const [row] = await service.listCertificates();
+
+      expect(files.getPrivateReadUrl).toHaveBeenCalledWith('pending/f1.png');
+      expect(row).toMatchObject({
+        fileUrl: 'https://signed.example/pending/f1.png',
+        fileContentType: 'image/png',
+      });
+    });
+
+    it('returns no URL for a missing or unfinished upload', async () => {
+      const pendingFile = {
+        id: 'f1',
+        bucket: 'private',
+        key: 'pending/f1.png',
+        uploadStatus: 'pending',
+        contentType: 'image/png',
+      };
+      const { db } = createDbStub({
+        select: [
+          [
+            { ...base, file: pendingFile },
+            { ...base, file: null },
+          ],
+        ],
+      });
+      const files = createFilesStub();
+      const { service } = createService(db, createNotificationsStub(), undefined, files);
+
+      const rows = await service.listCertificates();
+
+      expect(rows.map((row) => row.fileUrl)).toEqual([null, null]);
+      expect(files.getPrivateReadUrl).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('AdminService — contents', () => {
+  const team = {
+    id: 't1',
+    title: '세모팀',
+    openRoles: [
+      { role: '프론트엔드', count: 1 },
+      { role: '백엔드', count: 2 },
+    ],
+  };
+  const challenge = {
+    id: 'ch1',
+    title: 'AI 챌린지',
+    category: 'IT',
+    endDate: new Date(Date.now() + 3 * 86_400_000),
+  };
+
+  it('splits filled vs open roles, flags open reports and returns section totals', async () => {
+    const { db } = createDbStub({
+      select: [
+        [{ count: 12 }], // teams total
+        [{ team, challengeTitle: 'AI 챌린지' }],
+        [
+          { teamId: 't1', role: '프론트엔드', count: 1 },
+          { teamId: 't1', role: '백엔드', count: 1 },
+        ],
+        [{ count: 30 }], // challenges total
+        [challenge],
+        [{ challengeId: 'ch1', count: 1 }],
+        [{ targetId: 'ch1' }], // open report on the challenge only
+        [],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getContents();
+
+    expect(result.teams).toEqual([
+      {
+        id: 't1',
+        name: '세모팀',
+        challenge: 'AI 챌린지',
+        roles: ['프론트엔드'],
+        otherRoles: ['백엔드'],
+        members: '2/4명 참여중',
+        unread: false,
+      },
+    ]);
+    expect(result.contests[0]).toMatchObject({ id: 'ch1', teams: '팀 모집 1건', unread: true });
+    expect(result.teamsTotal).toBe(12);
+    expect(result.contestsTotal).toBe(30);
+  });
+
+  it('clamps section limits to 1..50 with a default page of 8', async () => {
+    const limits: unknown[] = [];
+    const db: any = {
+      select: vi.fn(() => {
+        const proxy: any = new Proxy(function () {}, {
+          get(_target, prop) {
+            if (prop === 'then') return (resolve: (value: unknown) => unknown) => resolve([]);
+            return (...args: unknown[]) => {
+              if (prop === 'limit') limits.push(args[0]);
+              return proxy;
+            };
+          },
+        });
+        return proxy;
+      }),
+    };
+    const { service } = createService(db);
+
+    await service.getContents('500', 'abc');
+
+    // teams, challenges, then the fixed 5-row report log.
+    expect(limits).toEqual([50, 8, 5]);
+  });
 });
 
 describe('AdminService — users', () => {
@@ -253,10 +442,11 @@ describe('AdminService — users', () => {
       email: 'kim.dev@gmail.com',
       position: null,
       suspended: true,
+      suspendedReason: 'spam',
     };
     const { db, setCalls } = createDbStub({
-      select: [[userRow], [{ count: 3 }]],
-      update: [[]],
+      select: [[{ reportedUserId: 'u1', count: 3 }]],
+      update: [[userRow]],
     });
     const { service } = createService(db);
 
@@ -276,6 +466,7 @@ describe('AdminService — users', () => {
       position: '',
       reports: 3,
       status: 'suspended',
+      suspendedReason: 'spam',
     });
   });
 
@@ -286,10 +477,11 @@ describe('AdminService — users', () => {
       email: 'kim.dev@gmail.com',
       position: '프론트엔드',
       suspended: false,
+      suspendedReason: null,
     };
     const { db, setCalls } = createDbStub({
-      select: [[userRow], [{ count: 0 }]],
-      update: [[]],
+      select: [[]],
+      update: [[userRow]],
     });
     const { service } = createService(db);
 
@@ -303,7 +495,98 @@ describe('AdminService — users', () => {
       position: '프론트엔드',
       reports: 0,
       status: 'active',
+      suspendedReason: null,
     });
+  });
+
+  it('suspend throws NotFound when no user row was updated', async () => {
+    const { db } = createDbStub({ update: [[]] });
+    const { service } = createService(db);
+
+    await expect(service.suspendUser('missing', { suspended: true })).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+  });
+
+  it('list counts reports filed against each user (reportedUserId), not by them', async () => {
+    const rows = [
+      { id: 'u1', name: '김수아', email: 'kim@a.com', position: '백엔드', suspended: false },
+      { id: 'u2', name: '이도윤', email: 'lee@a.com', position: null, suspended: true },
+    ];
+    const { db, selectWhereCalls } = createDbStub({
+      select: [rows, [{ reportedUserId: 'u2', count: 4 }]],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listUsers();
+
+    expect(result.map((row) => [row.id, row.reports, row.status])).toEqual([
+      ['u1', 0, 'active'],
+      ['u2', 4, 'suspended'],
+    ]);
+    const countWhere = selectWhereCalls[1]?.[0];
+    expect(referencesColumn(countWhere, reports.reportedUserId)).toBe(true);
+    expect(referencesColumn(countWhere, reports.reporterUserId)).toBe(false);
+  });
+
+  it('list applies joinedWithin and position filters', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listUsers(undefined, undefined, '30d', '프론트엔드');
+
+    const where = selectWhereCalls[0]?.[0];
+    expect(referencesColumn(where, users.createdAt)).toBe(true);
+    expect(referencesColumn(where, users.position)).toBe(true);
+    expect(collectStrings(where)).toContain('%프론트엔드%');
+    // No users → the report-count query is skipped entirely.
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it('list ignores an unknown joinedWithin value', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    await service.listUsers(undefined, undefined, 'forever');
+
+    expect(selectWhereCalls[0]?.[0]).toBeUndefined();
+  });
+});
+
+describe('AdminService — businesses', () => {
+  const businessRow = {
+    id: 'b1',
+    name: '세모재단',
+    type: '비영리' as string | null,
+    registrationNumber: '123-45-67890',
+    verificationStatus: 'pending',
+    createdAt: new Date('2026-09-01T00:00:00Z'),
+  };
+  const statCounts = [[{ count: 1 }], [{ count: 0 }], [{ count: 0 }], [{ count: 1 }]];
+
+  it('filters by businesses.type and returns the stored type', async () => {
+    const { db, selectWhereCalls } = createDbStub({
+      select: [...statCounts, [businessRow], []],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses(undefined, '비영리');
+
+    const listWhere = selectWhereCalls[3]?.[0];
+    expect(referencesColumn(listWhere, businesses.type)).toBe(true);
+    expect(collectStrings(listWhere)).toContain('비영리');
+    expect(result.items[0]?.type).toBe('비영리');
+  });
+
+  it("falls back to '미지정' when a business has no type", async () => {
+    const { db } = createDbStub({
+      select: [...statCounts, [{ ...businessRow, type: null }], []],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items[0]?.type).toBe('미지정');
   });
 });
 
@@ -417,34 +700,131 @@ describe('AdminService — ads list', () => {
   });
 });
 
+describe('AdminService — time buckets', () => {
+  const now = new Date('2026-09-23T10:00:00Z');
+
+  it('builds consecutive day buckets ending today', () => {
+    const buckets = timeBuckets('day', 3, now);
+    expect(buckets.keys).toEqual(['2026-09-21', '2026-09-22', '2026-09-23']);
+    expect(buckets.labels).toEqual(['9/21', '9/22', '9/23']);
+    expect(buckets.since.toISOString()).toBe('2026-09-21T00:00:00.000Z');
+  });
+
+  it('builds month buckets across a year boundary', () => {
+    const buckets = timeBuckets('month', 12, now);
+    expect(buckets.keys[0]).toBe('2025-10-01');
+    expect(buckets.keys[11]).toBe('2026-09-01');
+    expect(buckets.labels[0]).toBe('10월');
+    expect(buckets.labels[11]).toBe('9월');
+  });
+
+  it('rounds chart maxima up to 1/2/5 steps with a floor of 10', () => {
+    expect(niceMax(0)).toBe(10);
+    expect(niceMax(7)).toBe(10);
+    expect(niceMax(11)).toBe(20);
+    expect(niceMax(37)).toBe(50);
+    expect(niceMax(120)).toBe(200);
+  });
+});
+
 describe('AdminService — dashboard', () => {
-  it('returns stat cards, honest-zero adRatio/traffic and latest reports', async () => {
-    const { db } = createDbStub({
-      select: [[{ count: 5 }], [{ count: 3 }], [{ count: 10 }], [{ count: 2 }], []],
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-23T10:00:00Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('fills traffic buckets from user signups and application submissions and computes the ad revenue share', async () => {
+    const { db, selectWhereCalls } = createDbStub({
+      select: [
+        [{ count: 5 }],
+        [{ count: 3 }],
+        [{ count: 10 }],
+        [{ count: 2 }],
+        [],
+        [
+          { bucket: '2026-09-17', count: 4 },
+          { bucket: '2026-09-23', count: 1 },
+        ],
+        [{ bucket: '2026-09-23', count: 2 }],
+        [{ total: 40_000, ad: 10_000 }],
+      ],
     });
     const { service } = createService(db);
 
     const result = await service.getDashboard('7days');
 
     expect(result.stats.map((card) => card.value)).toEqual(['5', '3', '10', '2']);
-    expect(result.adRatio).toEqual({ value: '0 ₩', ratio: 0 });
-    expect(result.traffic.labels).toEqual(['1일', '2일', '3일', '4일', '5일', '6일', '7일']);
-    expect(result.traffic.primary).toEqual([0, 0, 0, 0, 0, 0, 0]);
-    expect(result.traffic.secondary).toEqual([0, 0, 0, 0, 0, 0, 0]);
-    expect(result.reports).toEqual([]);
+    expect(result.traffic.labels).toEqual(['9/17', '9/18', '9/19', '9/20', '9/21', '9/22', '9/23']);
+    expect(result.traffic.primary).toEqual([4, 0, 0, 0, 0, 0, 1]);
+    expect(result.traffic.secondary).toEqual([0, 0, 0, 0, 0, 0, 2]);
+    expect(result.adRatio).toEqual({ value: '10,000 ₩', ratio: 0.25 });
+    expect(result.generatedAt).toBe('2026-09-23T10:00:00.000Z');
+
+    // Traffic: primary는 일반 사용자(user) 신규 가입, secondary는 신규 제출물(applications).
+    const signupSelect = db.select.mock.calls[5]![0];
+    expect(referencesColumn(signupSelect.bucket, users.createdAt)).toBe(true);
+    expect(collectStrings(selectWhereCalls[3])).toContain('user');
+    const submissionSelect = db.select.mock.calls[6]![0];
+    expect(referencesColumn(submissionSelect.bucket, applications.createdAt)).toBe(true);
+
+    // Revenue is scoped to completed payments (paid + legacy done) within the
+    // same window, and the ad share keys off orders.adId.
+    const revenueSelect = db.select.mock.calls[7]![0];
+    expect(referencesColumn(revenueSelect.ad, orders.adId)).toBe(true);
+    expect(referencesColumn(revenueSelect.total, payments.refundedAmount)).toBe(true);
+    const revenueWhere = selectWhereCalls[selectWhereCalls.length - 1];
+    expect(collectStrings(revenueWhere)).toEqual(expect.arrayContaining(['paid', 'done']));
   });
 
-  it('defaults to 12 month labels for the 1year range', async () => {
+  it('counts legacy done payments alongside paid in the ad revenue window', async () => {
+    const { db, selectWhereCalls } = createDbStub({
+      select: [
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [],
+        [],
+        [],
+        [{ total: 50_000, ad: 20_000 }],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getDashboard('7days');
+
+    expect(result.adRatio).toEqual({ value: '20,000 ₩', ratio: 0.4 });
+    const revenueWhere = selectWhereCalls[selectWhereCalls.length - 1];
+    expect(collectStrings(revenueWhere)).toEqual(expect.arrayContaining(['paid', 'done']));
+  });
+
+  it('returns a zero ratio instead of dividing by zero when there is no revenue', async () => {
     const { db } = createDbStub({
-      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], []],
+      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], [], []],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getDashboard('30days');
+
+    expect(result.adRatio).toEqual({ value: '0 ₩', ratio: 0 });
+    expect(result.traffic.labels).toHaveLength(30);
+    expect(result.traffic.primary.every((value) => value === 0)).toBe(true);
+  });
+
+  it('defaults to 12 month buckets ending this month', async () => {
+    const { db } = createDbStub({
+      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], [], []],
     });
     const { service } = createService(db);
 
     const result = await service.getDashboard();
 
     expect(result.traffic.labels).toHaveLength(12);
-    expect(result.traffic.labels[0]).toBe('1월');
-    expect(result.traffic.labels[11]).toBe('12월');
+    expect(result.traffic.labels[0]).toBe('10월');
+    expect(result.traffic.labels[11]).toBe('9월');
   });
 });
 
@@ -562,99 +942,160 @@ describe('AdminService — user-facing masking', () => {
 });
 
 describe('AdminService — analytics', () => {
-  const adRow = (id: string, paidAmount: number) => ({
-    ad: {
-      id,
-      startDate: new Date('2026-08-24T00:00:00Z'),
-      endDate: new Date('2026-09-24T00:00:00Z'),
-      paidAmount,
-    },
-    organization: '부산광역시',
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-23T10:00:00Z'));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  it('resolves ?ad=N (numeric ordinal) without ever querying the uuid-typed ads.id column', async () => {
-    const { db, selectWhereCalls } = createDbStub({
-      select: [
-        [{ count: 7 }],
-        [{ count: 4 }],
-        [{ total: 300 }],
-        // Numeric path must go straight to the ordinal lookup — no prior
-        // `eq(ads.id, '2')` select against the uuid column.
-        [adRow('ad-1', 100), adRow('ad-2', 250)],
-      ],
-    });
+  const uuid = '11111111-1111-1111-1111-111111111111';
+  const adRow = {
+    ad: {
+      id: uuid,
+      adNumber: 7,
+      startDate: new Date('2026-08-24T00:00:00Z'),
+      endDate: new Date('2026-09-24T00:00:00Z'),
+      paidAmount: 250,
+    },
+    organization: '부산광역시',
+  };
+  // users(30d), challenges(30d), payments, user signups/month, new businesses/month
+  const baseSelects = () => [
+    [{ count: 7 }],
+    [{ count: 4 }],
+    [{ total: 300 }],
+    [
+      { bucket: '2026-04-01', count: 3 },
+      { bucket: '2026-09-01', count: 12 },
+    ],
+    [{ bucket: '2026-08-01', count: 2 }],
+  ];
+
+  it('counts new users/challenges over the last 30 days and fills monthly activity', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: baseSelects() });
     const { service } = createService(db);
 
-    const result = await service.getAnalytics('2');
+    const result = await service.getAnalytics();
 
-    // 플랫폼 수익 집계는 payments.status = 'paid'만 대상으로 한다
-    // (레거시 'done' 어휘를 쓰면 실제 저장 값과 안 맞아 수익이 항상 0이 됨).
-    const whereStrings = selectWhereCalls.flatMap((call) => collectStrings(call));
-    expect(whereStrings.filter((s) => s === 'paid')).toHaveLength(1);
-    expect(result.stats.map((card) => card.value)).toEqual(['7', '4', '300']);
-    expect(result.activity.yMax).toBe(10);
-    expect(result.activity.general).toEqual([0, 0, 0, 0, 0, 0]);
+    expect(result.stats.map((card) => [card.value, card.meta])).toEqual([
+      ['7', '최근 30일'],
+      ['4', '최근 30일'],
+      ['300', '결제 완료 기준'],
+    ]);
+    // Both "신규" cards are windowed, not all-time totals.
+    expect(selectWhereCalls[0]?.[0]).toBeDefined();
+    expect(selectWhereCalls[1]?.[0]).toBeDefined();
+    expect(result.activity.months).toEqual(['4월', '5월', '6월', '7월', '8월', '9월']);
+    expect(result.activity.general).toEqual([3, 0, 0, 0, 0, 12]);
+    expect(result.activity.corp).toEqual([0, 0, 0, 0, 2, 0]);
+    expect(result.activity.yMax).toBe(20);
+    expect(result.adReport).toBeUndefined();
+
+    // Activity: general은 일반 사용자(user) 신규 가입, corp는 신규 기업(businesses) 가입.
+    expect(referencesColumn(db.select.mock.calls[3]![0].bucket, users.createdAt)).toBe(true);
+    expect(collectStrings(selectWhereCalls[3])).toContain('user');
+    expect(referencesColumn(db.select.mock.calls[4]![0].bucket, businesses.createdAt)).toBe(true);
+  });
+
+  it('nets platform revenue against refundedAmount on paid and legacy done payments', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: baseSelects() });
+    const { service } = createService(db);
+
+    await service.getAnalytics();
+
+    const revenueSelectArg = db.select.mock.calls[2]![0];
+    expect(referencesColumn(revenueSelectArg.total, payments.amount)).toBe(true);
+    expect(referencesColumn(revenueSelectArg.total, payments.refundedAmount)).toBe(true);
+    expect(collectStrings(selectWhereCalls[2])).toEqual(expect.arrayContaining(['paid', 'done']));
+  });
+
+  it('resolves ?ad=N by the stable ads.ad_number column, not list position', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [...baseSelects(), [adRow]] });
+    const { service, adsService } = createService(db);
+
+    const result = await service.getAnalytics('7');
+
+    const adWhere = selectWhereCalls[selectWhereCalls.length - 1]?.[0];
+    expect(referencesColumn(adWhere, ads.adNumber)).toBe(true);
+    expect(referencesColumn(adWhere, ads.id)).toBe(false);
+    expect(adsService.getReportForAdmin).toHaveBeenCalledWith(uuid);
     expect(result.adReport).toMatchObject({
-      adNumber: 2,
+      adId: uuid,
+      adNumber: 7,
       organization: '부산광역시',
       period: '8/24~9/24',
       daily: [],
     });
     expect(result.adReport?.stats.map((card) => card.value)).toEqual(['0', '0', '0%', '250']);
-    // Exactly 4 selects were consumed: users, challenges, payments, ordinal ads lookup.
-    expect(db.select).toHaveBeenCalledTimes(4);
   });
 
-  it('throws NotFoundException for an out-of-range numeric ?ad=', async () => {
-    const { db } = createDbStub({
-      select: [[{ count: 7 }], [{ count: 4 }], [{ total: 300 }], [adRow('ad-1', 100)]],
-    });
-    const { service } = createService(db);
-
-    await expect(service.getAnalytics('99')).rejects.toBeInstanceOf(NotFoundException);
-  });
-
-  it('resolves a uuid-shaped ?ad= via the ads.id lookup', async () => {
-    const uuid = '11111111-1111-1111-1111-111111111111';
-    const { db } = createDbStub({
-      select: [
-        [{ count: 7 }],
-        [{ count: 4 }],
-        [{ total: 300 }],
-        [adRow(uuid, 250)], // uuid lookup hit
-        [{ id: 'ad-0' }, { id: uuid }], // rank lookup for banner number
-      ],
-    });
-    const { service } = createService(db);
+  it('resolves a uuid ?ad= via ads.id and passes through AdsService metrics', async () => {
+    const report = {
+      totals: { impressions: 1200, clicks: 36, ctr: 3 },
+      daily: [{ date: '2026-09-22', impressions: 1200, clicks: 36, ctr: 3 }],
+      hourly: [],
+      monthlyClicks: [],
+    };
+    const { db, selectWhereCalls } = createDbStub({ select: [...baseSelects(), [adRow]] });
+    const { service } = createService(db, createNotificationsStub(), createAdsStub(report));
 
     const result = await service.getAnalytics(uuid);
 
-    expect(result.adReport).toMatchObject({ adNumber: 2, organization: '부산광역시' });
+    const adWhere = selectWhereCalls[selectWhereCalls.length - 1]?.[0];
+    expect(referencesColumn(adWhere, ads.id)).toBe(true);
+    expect(result.adReport?.stats.map((card) => card.value)).toEqual(['1200', '36', '3%', '250']);
+    expect(result.adReport?.daily).toEqual(report.daily);
   });
 
-  it('nets platform revenue against refundedAmount so partial refunds reduce it and full cancels stay 0', async () => {
-    const { db } = createDbStub({
-      select: [[{ count: 0 }], [{ count: 0 }], [{ total: 30_000 }]],
-    });
+  it('throws NotFound for an unknown ad number without touching AdsService', async () => {
+    const { db } = createDbStub({ select: [...baseSelects(), []] });
+    const { service, adsService } = createService(db);
+
+    await expect(service.getAnalytics('99')).rejects.toBeInstanceOf(NotFoundException);
+    expect(adsService.getReportForAdmin).not.toHaveBeenCalled();
+  });
+
+  it('rejects a malformed ?ad= before it can reach the uuid column', async () => {
+    const { db } = createDbStub({ select: baseSelects() });
     const { service } = createService(db);
 
-    const result = await service.getAnalytics();
+    await expect(service.getAnalytics('not-a-uuid')).rejects.toBeInstanceOf(NotFoundException);
+    // Only the five analytics selects ran — no ads lookup.
+    expect(db.select).toHaveBeenCalledTimes(5);
+  });
 
-    // The revenue query's `total` expression must subtract refundedAmount from
-    // amount, not just sum amount — otherwise a PARTIAL_CANCELED refund never
-    // reduces reported revenue. (Fully 'canceled' payments already contribute 0
-    // via the row.status = 'paid' filter asserted in the test above.)
-    const revenueSelectArg = db.select.mock.calls[2]![0];
-    expect(referencesColumn(revenueSelectArg.total, payments.amount)).toBe(true);
-    expect(referencesColumn(revenueSelectArg.total, payments.refundedAmount)).toBe(true);
-    // The DB does the sum/subtraction; this just confirms the aggregate result
-    // flows straight through to the stat card unmodified.
-    expect(result.stats.map((card) => card.value)).toEqual(['0', '0', '30000']);
+  it('rejects digit ad numbers past the int4 range before querying', async () => {
+    // 2147483648 = int4 max + 1, 9999999999과 30자리 수는 파싱해도 int4를 넘는다.
+    for (const ad of ['2147483648', '9999999999', '9'.repeat(30)]) {
+      const { db } = createDbStub({ select: baseSelects() });
+      const { service, adsService } = createService(db);
+
+      await expect(service.getAnalytics(ad)).rejects.toBeInstanceOf(NotFoundException);
+      // Only the five analytics selects ran — no ads lookup.
+      expect(db.select).toHaveBeenCalledTimes(5);
+      expect(adsService.getReportForAdmin).not.toHaveBeenCalled();
+    }
   });
 });
 
 describe('AdminService — settings', () => {
-  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
+  const user = {
+    id: 'admin-1',
+    name: '관리자',
+    email: 'admin@example.com',
+    role: 'admin',
+  } as never;
+
+  it('getSettings는 프로필 역할을 로그인 사용자의 role에서 가져온다', async () => {
+    const { db } = createDbStub({ select: [[]] });
+    const { service } = createService(db);
+
+    const result = await service.getSettings(user);
+
+    expect(result.profile).toMatchObject({ name: '관리자', role: '관리자' });
+  });
 
   it('row가 없어도 getSettings는 DEFAULT_VALUES 기본값을 반환한다', async () => {
     const { db } = createDbStub({ select: [[]] });

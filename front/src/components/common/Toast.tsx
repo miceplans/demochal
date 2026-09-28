@@ -14,8 +14,21 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 export type ToastVariant = 'success' | 'error' | 'info';
-type ToastItem = { id: number; variant: ToastVariant; message: string; description?: string };
-export type ToastApi = Record<ToastVariant, (message: string, description?: string) => void>;
+export type ToastAction = { label: string; onClick: () => void };
+type ToastOptions = { action?: ToastAction };
+type ToastItem = {
+  id: number;
+  variant: ToastVariant;
+  message: string;
+  description?: string;
+  action?: ToastAction;
+};
+// 화면에서 자체 액션 토스트로 조회 실패를 알리는 쿼리는 전역 QueryCache 에러 토스트를 건너뛴다(중복 알림 방지).
+export const LOCAL_ERROR_TOAST_META = { localErrorToast: true } as const;
+export type ToastApi = Record<
+  ToastVariant,
+  (message: string, description?: string, options?: ToastOptions) => void
+>;
 
 const ToastContext = createContext<ToastApi | null>(null);
 
@@ -29,6 +42,12 @@ const iconNames: Record<ToastVariant, string> = {
   success: 'imgToastSuccess',
   error: 'imgToastError',
   info: 'imgToastInfo',
+};
+// Figma 토스트 모바일 변형(Variant4~6)은 16px 아이콘을 쓰는 흰 배경 한 줄 알약형이다.
+const mobileIconSources: Record<ToastVariant, string> = {
+  success: '/assets/icons/toast/mobile-success.svg',
+  error: '/assets/icons/toast/mobile-error.svg',
+  info: '/assets/icons/toast/mobile-info.svg',
 };
 const backgrounds: Record<ToastVariant, string> = {
   success: `radial-gradient(circle at 0% 50%, #b9ffd2 0%, ${c.white} 29%)`,
@@ -76,35 +95,76 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
     from: { opacity: 0, transform: 'translateY(8px)' },
     to: { opacity: 1, transform: 'none' },
   },
-  [mobile]: { animationName: 'semo-toast-in-up' },
+  [mobile]: {
+    gap: 4,
+    width: 'auto',
+    padding: 6,
+    backgroundImage: 'none',
+    backgroundColor: c.white,
+    animationName: 'semo-toast-in-up',
+  },
 }));
+const DesktopIcon = styled(Icon)({ [mobile]: { display: 'none' } });
+const MobileIcon = styled(Icon)({ display: 'none', [mobile]: { display: 'block' } });
 const TextBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'center',
   gap: 2,
   minWidth: 0,
+  [mobile]: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
-const Message = styled.p({ ...textStyle.subtitle, color: c.gray900 });
-const Description = styled.p({ fontSize: 8, lineHeight: 1.4, color: c.gray900 });
+const Message = styled.p({
+  ...textStyle.subtitle,
+  color: c.gray900,
+  [mobile]: {
+    ...textStyle.mBadgeText,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
+const Description = styled.p({
+  fontSize: 8,
+  lineHeight: 1.4,
+  color: c.gray900,
+  [mobile]: { display: 'none' },
+});
+const ActionButton = styled.button({
+  alignSelf: 'flex-start',
+  marginTop: 2,
+  border: 0,
+  borderRadius: 6,
+  padding: '4px 10px',
+  background: c.primary,
+  color: c.white,
+  cursor: 'pointer',
+  ...textStyle.label,
+  // 모바일 알약형 토스트에서는 메시지 옆 한 줄에 둔다.
+  [mobile]: { alignSelf: 'center', marginTop: 0, padding: '2px 8px', flexShrink: 0 },
+});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
   const dismiss = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
   const show = useCallback(
-    (variant: ToastVariant, message: string, description?: string) => {
+    (variant: ToastVariant, message: string, description?: string, options?: ToastOptions) => {
       const id = ++idRef.current;
-      setToasts((ts) => [...ts.slice(-2), { id, variant, message, description }]);
-      setTimeout(() => dismiss(id), 3000);
+      setToasts((ts) => [
+        ...ts.slice(-2),
+        { id, variant, message, description, action: options?.action },
+      ]);
+      // 액션이 있는 토스트는 자동으로 사라지지 않고 사용자가 액션을 실행하거나 직접 닫을 때까지 유지된다.
+      if (!options?.action) setTimeout(() => dismiss(id), 3000);
     },
     [dismiss],
   );
   const toast = useMemo<ToastApi>(
     () => ({
-      success: (message, description) => show('success', message, description),
-      error: (message, description) => show('error', message, description),
-      info: (message, description) => show('info', message, description),
+      success: (message, description, options) => show('success', message, description, options),
+      error: (message, description, options) => show('error', message, description, options),
+      info: (message, description, options) => show('info', message, description, options),
     }),
     [show],
   );
@@ -119,10 +179,23 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             role={t.variant === 'error' ? 'alert' : 'status'}
             onClick={() => dismiss(t.id)}
           >
-            <Icon name={iconNames[t.variant]} size={26} alt="" />
+            <DesktopIcon name={iconNames[t.variant]} size={26} alt="" />
+            <MobileIcon src={mobileIconSources[t.variant]} size={16} alt="" />
             <TextBox>
               <Message>{t.message}</Message>
               {t.description ? <Description>{t.description}</Description> : null}
+              {t.action ? (
+                <ActionButton
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    t.action?.onClick();
+                    dismiss(t.id);
+                  }}
+                >
+                  {t.action.label}
+                </ActionButton>
+              ) : null}
             </TextBox>
           </Card>
         ))}

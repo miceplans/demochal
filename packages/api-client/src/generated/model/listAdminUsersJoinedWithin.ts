@@ -17,10 +17,11 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestRecruitMethod =
-  (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
+export type ListAdminUsersJoinedWithin =
+  (typeof ListAdminUsersJoinedWithin)[keyof typeof ListAdminUsersJoinedWithin];
 
-export const CreateChallengeRequestRecruitMethod = {
-  seMOchall: 'seMOchall',
-  external: 'external',
+export const ListAdminUsersJoinedWithin = {
+  '7d': '7d',
+  '30d': '30d',
+  '1y': '1y',
 } as const;
