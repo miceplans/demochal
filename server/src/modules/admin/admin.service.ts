@@ -356,9 +356,10 @@ export class AdminService {
       const appliedAt = latest?.createdAt ?? business.createdAt;
       return {
         id: business.id,
-        org: business.name,
-        type: '기업',
-        bizNumber: maskBizNumber(business.registrationNumber),
+        org: business.name ?? '기관명 미등록',
+        type: business.type ?? '기업',
+        // 학교/비영리 등은 사업자번호가 없다.
+        bizNumber: business.registrationNumber ? maskBizNumber(business.registrationNumber) : '-',
         appliedAt: formatMonthDay(appliedAt),
         nts,
         status: business.verificationStatus,
@@ -609,7 +610,7 @@ export class AdminService {
 
   // ------------------------------------------------------------------- reports
 
-  async listReports(q?: string, status?: string) {
+  async listReports(q?: string, status?: string, targetType?: string) {
     const conditions = [];
     if (q) {
       conditions.push(
@@ -621,6 +622,7 @@ export class AdminService {
       );
     }
     if (status) conditions.push(eq(reports.status, status));
+    if (targetType) conditions.push(eq(reports.targetType, targetType));
     const rows = await this.db
       .select()
       .from(reports)

@@ -52,6 +52,7 @@ export function BizPostingFormPage() {
         const challenge = await adApi.challenges.create({ businessId, ...values });
         router.push(hrefOf(`/postings/${challenge.id}`));
       }}
+      showRecruitMethod
     />
   );
 }
@@ -117,6 +118,7 @@ type PostingInput = {
   startDate: string;
   endDate: string;
   category: string;
+  recruitMethod?: 'seMOchall' | 'external';
 };
 type PostingValues = {
   title: string;
@@ -126,6 +128,7 @@ type PostingValues = {
   startDate: string;
   endDate: string;
   category: string | null;
+  recruitMethod?: 'seMOchall' | 'external';
 };
 
 const EMPTY_POSTING: PostingInput = {
@@ -146,6 +149,7 @@ function PostingForm({
   submittingLabel,
   disabled = false,
   initialError = '',
+  showRecruitMethod = false,
   onSubmit,
 }: {
   heading: string;
@@ -155,6 +159,7 @@ function PostingForm({
   submittingLabel: string;
   disabled?: boolean;
   initialError?: string;
+  showRecruitMethod?: boolean;
   onSubmit: (values: PostingValues) => Promise<void>;
 }) {
   const router = useRouter();
@@ -165,6 +170,9 @@ function PostingForm({
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
   const [category, setCategory] = useState(initial.category);
+  const [recruitMethod, setRecruitMethod] = useState<'seMOchall' | 'external'>(
+    initial.recruitMethod ?? 'seMOchall',
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const shownError = error || initialError;
@@ -196,6 +204,7 @@ function PostingForm({
         startDate: toLocalBoundary(startDate, false),
         endDate: toLocalBoundary(endDate, true),
         category: category || null,
+        ...(showRecruitMethod ? { recruitMethod } : {}),
       });
     } catch (cause) {
       setError(adError(cause));
@@ -280,6 +289,34 @@ function PostingForm({
             ))}
           </FieldSelect>
         </Field>
+        {showRecruitMethod && (
+          <Field>
+            모집방법
+            <RecruitOptions>
+              <label>
+                <input
+                  type="radio"
+                  name="recruitMethod"
+                  value="seMOchall"
+                  checked={recruitMethod === 'seMOchall'}
+                  onChange={() => setRecruitMethod('seMOchall')}
+                />{' '}
+                세모챌에서 만들기
+              </label>
+              <RecruitBoostHint>신청폼을 세모챌에서 만들면 노출 순위가 올라갑니다</RecruitBoostHint>
+              <label>
+                <input
+                  type="radio"
+                  name="recruitMethod"
+                  value="external"
+                  checked={recruitMethod === 'external'}
+                  onChange={() => setRecruitMethod('external')}
+                />{' '}
+                외부 링크 추가
+              </label>
+            </RecruitOptions>
+          </Field>
+        )}
         {shownError && <Error role="alert">{shownError}</Error>}
         <Actions>
           <OutlineButton type="button" onClick={() => router.back()}>
@@ -316,6 +353,8 @@ const Grid = styled.div({
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 10 });
 const Error = styled.p({ color: c.red, margin: 0 });
 const Message = styled.p({ color: c.gray700, margin: 0 });
+const RecruitOptions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const RecruitBoostHint = styled.span({ color: c.primary, fontSize: 13 });
 
 function toDateInput(value: string | undefined) {
   if (!value) return '';

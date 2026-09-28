@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ads, businesses, orders, payments } from '../../db/schema.js';
+import { ads, businesses, orders, payments, reports } from '../../db/schema.js';
 import {
   AdminService,
   maskBizNumber,
@@ -533,6 +533,28 @@ describe('AdminService — dashboard', () => {
 });
 
 describe('AdminService — reports', () => {
+  it('applies status and target type filters when listing reports', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[reportRow]] });
+    const { service } = createService(db);
+
+    const result = await service.listReports('피싱', 'open', 'challenge');
+
+    expect(result).toHaveLength(1);
+    expect(selectWhereCalls).toHaveLength(1);
+    expect(referencesColumn(selectWhereCalls[0], reports.content)).toBe(true);
+    expect(referencesColumn(selectWhereCalls[0], reports.status)).toBe(true);
+    expect(referencesColumn(selectWhereCalls[0], reports.targetType)).toBe(true);
+  });
+
+  it('omits optional report filters when they are not provided', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[reportRow]] });
+    const { service } = createService(db);
+
+    await service.listReports();
+
+    expect(selectWhereCalls).toEqual([[undefined]]);
+  });
+
   it('resolve sets resolved + note + resolvedAt and maps the contract shape', async () => {
     const updated = { ...reportRow, status: 'resolved', note: '조치 완료' };
     const { db, setCalls } = createDbStub({ update: [[updated]] });

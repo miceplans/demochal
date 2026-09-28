@@ -9,6 +9,8 @@ import { generated } from '@semochal/api-client';
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  href?: string;
+  type?: 'image' | 'video';
   /** DB 광고에만 설정한다. 정적/미리보기 슬라이드는 계측하지 않는다. */
   adId?: string;
 };
@@ -40,6 +42,14 @@ const HeroViewport = styled.div({
     borderRadius: '12px',
     objectFit: 'cover',
     flexShrink: 0,
+  },
+  '& video': {
+    width: '1060px',
+    height: '250px',
+    borderRadius: '12px',
+    objectFit: 'cover',
+    flexShrink: 0,
+    display: 'block',
   },
   [mobile]: { display: 'none' },
 });
@@ -126,6 +136,8 @@ const SlideButton = styled.button({
   cursor: 'pointer',
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
 });
+
+const SlideLink = SlideButton.withComponent('a');
 
 // hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
@@ -334,7 +346,31 @@ export function AdCarousel({
         >
           {slides.map((item, index) => {
             const itemIndex = (((index - pad) % itemCount) + itemCount) % itemCount;
-            return (
+            const slide =
+              item.type === 'video' ? (
+                <video
+                  src={item.src}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  aria-label={index === railIndex ? item.alt : undefined}
+                  aria-hidden={index === railIndex ? undefined : true}
+                />
+              ) : (
+                <Image
+                  src={item.src}
+                  alt={index === railIndex ? item.alt : ''}
+                  width={SLIDE_WIDTH[variant]}
+                  height={variant === 'hero' ? 250 : 190}
+                  unoptimized={item.src.startsWith('http')}
+                />
+              );
+            return item.href ? (
+              <SlideLink key={`${item.src}-${index}`} href={item.href}>
+                {slide}
+              </SlideLink>
+            ) : (
               <SlideButton
                 key={`${item.src}-${index}`}
                 type="button"
@@ -343,12 +379,7 @@ export function AdCarousel({
                   goTo(itemIndex);
                 }}
               >
-                <Image
-                  src={item.src}
-                  alt={index === railIndex ? item.alt : ''}
-                  width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
-                />
+                {slide}
               </SlideButton>
             );
           })}
