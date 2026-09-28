@@ -16,6 +16,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import { CreateAdDto } from './dto/create-ad.dto.js';
+import { PublicAdsQueryDto } from './dto/public-ads-query.dto.js';
 import { UpdateAdDto } from './dto/update-ad.dto.js';
 import { RecordAdEventDto } from './dto/record-ad-event.dto.js';
 
@@ -30,6 +31,13 @@ export class AdsController {
   @Get('products')
   listProducts() {
     return this.adsService.listProducts();
+  }
+
+  // 홈 캐러셀용 공개 조회. ':id' 라우트보다 먼저 선언해 'public'이 id로 잡히지 않게 한다.
+  @Public()
+  @Get('public')
+  listPublic(@Query() query: PublicAdsQueryDto) {
+    return this.adsService.listPublic(query.placement);
   }
 
   @Get()

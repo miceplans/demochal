@@ -30,6 +30,12 @@ const iconNames: Record<ToastVariant, string> = {
   error: 'imgToastError',
   info: 'imgToastInfo',
 };
+// Figma 토스트 모바일 변형(Variant4~6)은 16px 아이콘을 쓰는 흰 배경 한 줄 알약형이다.
+const mobileIconSources: Record<ToastVariant, string> = {
+  success: '/assets/icons/toast/mobile-success.svg',
+  error: '/assets/icons/toast/mobile-error.svg',
+  info: '/assets/icons/toast/mobile-info.svg',
+};
 const backgrounds: Record<ToastVariant, string> = {
   success: `radial-gradient(circle at 0% 50%, #b9ffd2 0%, ${c.white} 29%)`,
   error: `linear-gradient(90deg, #ffe0d2 0%, ${c.white} 28%)`,
@@ -76,8 +82,17 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
     from: { opacity: 0, transform: 'translateY(8px)' },
     to: { opacity: 1, transform: 'none' },
   },
-  [mobile]: { animationName: 'semo-toast-in-up' },
+  [mobile]: {
+    gap: 4,
+    width: 'auto',
+    padding: 6,
+    backgroundImage: 'none',
+    backgroundColor: c.white,
+    animationName: 'semo-toast-in-up',
+  },
 }));
+const DesktopIcon = styled(Icon)({ [mobile]: { display: 'none' } });
+const MobileIcon = styled(Icon)({ display: 'none', [mobile]: { display: 'block' } });
 const TextBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
@@ -85,8 +100,22 @@ const TextBox = styled.div({
   gap: 2,
   minWidth: 0,
 });
-const Message = styled.p({ ...textStyle.subtitle, color: c.gray900 });
-const Description = styled.p({ fontSize: 8, lineHeight: 1.4, color: c.gray900 });
+const Message = styled.p({
+  ...textStyle.subtitle,
+  color: c.gray900,
+  [mobile]: {
+    ...textStyle.mBadgeText,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+  },
+});
+const Description = styled.p({
+  fontSize: 8,
+  lineHeight: 1.4,
+  color: c.gray900,
+  [mobile]: { display: 'none' },
+});
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
@@ -119,7 +148,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             role={t.variant === 'error' ? 'alert' : 'status'}
             onClick={() => dismiss(t.id)}
           >
-            <Icon name={iconNames[t.variant]} size={26} alt="" />
+            <DesktopIcon name={iconNames[t.variant]} size={26} alt="" />
+            <MobileIcon src={mobileIconSources[t.variant]} size={16} alt="" />
             <TextBox>
               <Message>{t.message}</Message>
               {t.description ? <Description>{t.description}</Description> : null}

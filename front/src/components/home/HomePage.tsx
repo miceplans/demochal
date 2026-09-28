@@ -8,7 +8,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
-import { AdCarousel } from '@/components/ads/AdCarousel';
+import { AdCarousel, type AdCarouselItem } from '@/components/ads/AdCarousel';
 import { desktopContests, type Contest } from '@/data/user-design';
 import { toTeamCard } from '@/components/teams/team-model';
 import { mobile, colors as c } from '@/styles/design';
@@ -19,7 +19,7 @@ const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
 
-const heroAds = [
+const fallbackHeroAds: AdCarouselItem[] = [
   {
     src: '/assets/Hero-animation.webm',
     alt: 'SEMO 브랜드 로고 애니메이션 광고',
@@ -29,11 +29,27 @@ const heroAds = [
   { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
 ];
 
-const galleryAds = [
+const fallbackGalleryAds: AdCarouselItem[] = [
   { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
   { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
   { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
 ];
+
+// 게재 중인 광고가 없거나 조회에 실패하면 기존 자체 광고를 그대로 보여준다(전역 에러 토스트도 띄우지 않음).
+const publicAdsQuery = { query: { meta: { silentError: true } } };
+
+function toAdItems(
+  response: Awaited<ReturnType<typeof generated.listPublicAds>> | undefined,
+): AdCarouselItem[] | undefined {
+  if (response?.status !== 200 || response.data.length === 0) return undefined;
+  return response.data.map((ad) => ({
+    src: ad.imageUrl,
+    alt: ad.title,
+    adId: ad.id,
+    // 랜딩은 광고주 입력값이라 http(s)만 링크로 쓴다(javascript: 등 차단).
+    href: ad.landingUrl && /^https?:\/\//i.test(ad.landingUrl) ? ad.landingUrl : undefined,
+  }));
+}
 
 function MoreIcon() {
   return (
@@ -57,6 +73,13 @@ export function HomePage() {
   );
   const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
+  const { data: galleryAdList } = generated.useListPublicAds(
+    { placement: 'gallery' },
+    publicAdsQuery,
+  );
+  const liveHeroAds = toAdItems(heroAdList);
+  const liveGalleryAds = toAdItems(galleryAdList);
   const { data: teamList } = generated.useListTeams();
   const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   const { data: recommended } = generated.useListRecommendedChallenges(
@@ -74,8 +97,10 @@ export function HomePage() {
       <UserShell>
         <Home>
           <AdCarousel
+            // 정적 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
+            key={liveHeroAds ? 'hero-live' : 'hero-fallback'}
             ariaLabel="홈 상단 광고"
-            items={heroAds}
+            items={liveHeroAds ?? fallbackHeroAds}
             variant="hero"
             priceOverlay={
               adPreviewPrice
@@ -190,8 +215,9 @@ export function HomePage() {
             </section>
           </Sections>
           <AdCarousel
+            key={liveGalleryAds ? 'gallery-live' : 'gallery-fallback'}
             ariaLabel="홈 중간 광고"
-            items={galleryAds}
+            items={liveGalleryAds ?? fallbackGalleryAds}
             variant="gallery"
             interval={4000}
           />

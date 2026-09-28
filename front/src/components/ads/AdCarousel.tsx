@@ -10,6 +10,8 @@ export type AdCarouselItem = {
   alt: string;
   src: string;
   type?: 'image' | 'video';
+  /** 광고 클릭 시 이동할 랜딩 URL(http/https만 허용). */
+  href?: string;
   /** DB 광고에만 설정한다. 정적/미리보기 슬라이드는 계측하지 않는다. */
   adId?: string;
 };
@@ -31,6 +33,17 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
+const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
+const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
+// 모바일 hero는 화면 양옆 24px 안쪽에 슬라이드를 두고 8px 간격이라 이웃 슬라이드가 16px씩 보인다.
+const MOBILE_HERO_INSET = 24;
+const MOBILE_HERO_GAP = 8;
+const MOBILE_GALLERY_WIDTH = 240;
+const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
+const MOBILE_GALLERY_GAP = 16;
+const MOBILE_GALLERY_STEP = MOBILE_GALLERY_WIDTH + MOBILE_GALLERY_GAP;
+const mobileLayoutQuery = '(max-width: 480px)';
+
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
@@ -50,7 +63,17 @@ const HeroViewport = styled.div({
     flexShrink: 0,
     display: 'block',
   },
-  [mobile]: { display: 'none' },
+  // 모바일도 PC처럼 가운데 슬라이드 + 양옆 슬라이드가 살짝 보이는 형태로 둔다.
+  [mobile]: {
+    height: 'auto',
+    margin: '8px 0 16px',
+    '& img, & video': {
+      width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
+      height: 'auto',
+      aspectRatio: '1060 / 250',
+      borderRadius: '8px',
+    },
+  },
 });
 
 const PriceOverlay = styled.div({
@@ -70,6 +93,7 @@ const PriceOverlayLabel = styled.p({
   fontSize: '24px',
   fontWeight: 400,
   color: '#101010',
+  [mobile]: { fontSize: '12px' },
 });
 const PriceOverlayValue = styled.p({
   margin: 0,
@@ -78,6 +102,7 @@ const PriceOverlayValue = styled.p({
   fontWeight: 600,
   letterSpacing: '-0.49px',
   color: '#101010',
+  [mobile]: { fontSize: '20px', letterSpacing: 0 },
 });
 
 const GalleryViewport = styled.div({
@@ -92,17 +117,17 @@ const GalleryViewport = styled.div({
     objectFit: 'cover',
     flexShrink: 0,
   },
+  // 모바일도 PC처럼 가운데 한 장을 크게 두고 양옆 슬라이드와 화살표를 보여준다(315:190 비율 유지).
   [mobile]: {
     margin: '32px 0',
-    padding: '0 16px',
-    '& img': { width: '122px', height: '74px', borderRadius: '3px' },
+    padding: `0 calc((100% - ${MOBILE_GALLERY_WIDTH}px) / 2)`,
+    '& img': {
+      width: `${MOBILE_GALLERY_WIDTH}px`,
+      height: `${MOBILE_GALLERY_HEIGHT}px`,
+      borderRadius: '6px',
+    },
   },
 });
-
-const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
-const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-const MOBILE_GALLERY_STEP = 122 + 12;
-const mobileLayoutQuery = '(max-width: 480px)';
 
 const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant'] }>(
   ({ activeIndex, variant }) => {
@@ -119,8 +144,16 @@ const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant
       transition: 'transform 0.5s ease-in-out',
       [mobile]:
         variant === 'gallery'
-          ? { gap: '12px', transform: `translateX(${-activeIndex * MOBILE_GALLERY_STEP}px)` }
-          : undefined,
+          ? {
+              gap: `${MOBILE_GALLERY_GAP}px`,
+              transform: `translateX(${-activeIndex * MOBILE_GALLERY_STEP}px)`,
+            }
+          : {
+              gap: `${MOBILE_HERO_GAP}px`,
+              transform: `translateX(calc(${MOBILE_HERO_INSET}px - ${activeIndex} * (100vw - ${
+                MOBILE_HERO_INSET * 2 - MOBILE_HERO_GAP
+              }px)))`,
+            },
     };
   },
 );
@@ -135,6 +168,8 @@ const SlideButton = styled.button({
   cursor: 'pointer',
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
 });
+
+const SlideLink = SlideButton.withComponent('a');
 
 // hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
@@ -168,16 +203,22 @@ const NavButton = styled.button<{
   },
   '&:hover svg': { transform: 'scale(1.15)', opacity: 1 },
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
-  ...(variant === 'gallery' && {
-    [mobile]: {
-      width: '46px',
-      height: '46px',
-      // GalleryViewport는 overflow: hidden이라 클리핑 경계가 뷰포트의 바깥 테두리와 일치합니다.
-      // focus-visible 아웃라인(3px) + outline-offset(3px)만큼 안쪽으로 떨어뜨려야
-      // 키보드 포커스 링과 그림자가 잘리지 않습니다.
-      ...(direction === 'prev' ? { left: '6px' } : { right: '6px' }),
-    },
-  }),
+  // 모바일도 PC와 같은 자리(hero: 슬라이드 안쪽 가장자리, gallery: 가운데 슬라이드 바깥)에 둡니다.
+  [mobile]:
+    variant === 'hero'
+      ? {
+          width: '32px',
+          height: '32px',
+          [direction === 'prev' ? 'left' : 'right']: `${MOBILE_HERO_INSET + 4}px`,
+          '& svg': { width: '28px', height: '28px' },
+        }
+      : {
+          width: '46px',
+          height: '46px',
+          [direction === 'prev' ? 'left' : 'right']:
+            `calc(50% - ${MOBILE_GALLERY_WIDTH / 2 + 4 + 46}px)`,
+          '& svg': { width: '40px', height: '40px' },
+        },
 }));
 
 function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
@@ -238,10 +279,13 @@ export function AdCarousel({
   }, [isInViewport, itemCount, items, pad, railIndex]);
 
   const getStep = useCallback(() => {
-    if (variant === 'hero') return SLIDE_WIDTH.hero + SLIDE_GAP.hero;
-    return window.matchMedia(mobileLayoutQuery).matches
-      ? MOBILE_GALLERY_STEP
-      : SLIDE_WIDTH.gallery + SLIDE_GAP.gallery;
+    const isMobile = window.matchMedia(mobileLayoutQuery).matches;
+    if (variant === 'hero') {
+      return isMobile
+        ? window.innerWidth - MOBILE_HERO_INSET * 2 + MOBILE_HERO_GAP
+        : SLIDE_WIDTH.hero + SLIDE_GAP.hero;
+    }
+    return isMobile ? MOBILE_GALLERY_STEP : SLIDE_WIDTH.gallery + SLIDE_GAP.gallery;
   }, [variant]);
 
   // 뷰포트 폭이 넓어 슬라이드가 여러 장 동시에 보일 때 복제본이 1장뿐이면 경계
@@ -343,33 +387,53 @@ export function AdCarousel({
         >
           {slides.map((item, index) => {
             const itemIndex = (((index - pad) % itemCount) + itemCount) % itemCount;
-            return (
+            const isActive = index === railIndex;
+            // 옆 슬라이드 클릭은 가운데로 가져오는 내비게이션이라 광고 클릭으로 세지 않는다.
+            const recordClick = () => {
+              if (isActive && item.adId) sendAdBeacon(generated.recordAdClick, item.adId);
+            };
+            const media =
+              item.type === 'video' ? (
+                <video
+                  src={item.src}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  aria-label={index === railIndex ? item.alt : undefined}
+                  aria-hidden={index === railIndex ? undefined : true}
+                />
+              ) : (
+                <Image
+                  src={item.src}
+                  alt={index === railIndex ? item.alt : ''}
+                  width={SLIDE_WIDTH[variant]}
+                  height={variant === 'hero' ? 250 : 190}
+                  // DB 광고 소재는 CloudFront 절대 URL이라 next/image 최적화 대상(remotePatterns)이 아니다.
+                  unoptimized={/^https?:/.test(item.src)}
+                />
+              );
+            // 가운데 슬라이드만 랜딩으로 이동하고, 옆 슬라이드는 PC처럼 클릭 시 가운데로 가져온다.
+            return item.href && isActive ? (
+              <SlideLink
+                key={`${item.src}-${index}`}
+                href={item.href}
+                target="_blank"
+                rel="noopener noreferrer sponsored"
+                onClick={recordClick}
+              >
+                {media}
+              </SlideLink>
+            ) : (
               <SlideButton
                 key={`${item.src}-${index}`}
                 type="button"
                 onClick={() => {
-                  if (item.adId) sendAdBeacon(generated.recordAdClick, item.adId);
+                  recordClick();
                   goTo(itemIndex);
                 }}
               >
-                {item.type === 'video' ? (
-                  <video
-                    src={item.src}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    aria-label={index === railIndex ? item.alt : undefined}
-                    aria-hidden={index === railIndex ? undefined : true}
-                  />
-                ) : (
-                  <Image
-                    src={item.src}
-                    alt={index === railIndex ? item.alt : ''}
-                    width={SLIDE_WIDTH[variant]}
-                    height={variant === 'hero' ? 250 : 190}
-                  />
-                )}
+                {media}
               </SlideButton>
             );
           })}
