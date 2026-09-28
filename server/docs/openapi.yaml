@@ -1358,6 +1358,7 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [uploadUrl, fileId, key]
                 properties:
                   uploadUrl: { type: string, description: S3 PUT용 presigned URL (5분 유효) }
                   fileId: { type: string, format: uuid }

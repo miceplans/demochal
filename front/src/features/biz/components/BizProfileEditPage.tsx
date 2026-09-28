@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { adApi } from '@/lib/ad-api';
 import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
+import { generated } from '@semochal/api-client';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
@@ -12,54 +13,58 @@ import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compr
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
 
-async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
-  if (!fileId) return null;
-  try {
-    const file = await adApi.files.get(fileId);
-    return file.url ?? null;
-  } catch {
-    return null;
-  }
+function useExistingImageUrl(fileId?: string | null): string | null {
+  const query = generated.useGetFile(fileId ?? '', { query: { enabled: !!fileId } });
+  return query.data?.status === 200 ? (query.data.data.url ?? null) : null;
 }
 
 export function BizProfileEditPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
-  const [id, setId] = useState('');
+  const queryClient = useQueryClient();
+  const businessQuery = generated.useFindMyBusiness();
+  const business = businessQuery.data?.status === 200 ? businessQuery.data.data : undefined;
+  const businessLoadError = businessQuery.isError;
+
   const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
-  const [state, setState] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading');
-  const [existingImages, setExistingImages] = useState<Record<ImageKind, string | null>>({
-    banner: null,
-    logo: null,
-  });
+  const [initialized, setInitialized] = useState(false);
   const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
   const [logoImage, setLogoImage] = useState<UploadedImage | null>(null);
   const [uploading, setUploading] = useState<ImageKind | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const previewUrls = useRef(new Set<string>());
+
+  const existingBannerUrl = useExistingImageUrl(business?.bannerImageFileId);
+  const existingLogoUrl = useExistingImageUrl(business?.logoImageFileId);
+  const existingImages: Record<ImageKind, string | null> = {
+    banner: existingBannerUrl,
+    logo: existingLogoUrl,
+  };
+
+  const requestPresignedUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  const updateBusiness = generated.useUpdateBusiness();
+
   useEffect(() => {
     const urls = previewUrls.current;
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, []);
+
+  // business는 한 번만 로드되면 되고, 이후 로컬 편집 상태가 진실의 원천이므로
+  // refetch로 다시 값이 오더라도 사용자가 입력 중인 form을 덮어쓰지 않는다.
   useEffect(() => {
-    void adApi.businesses
-      .me()
-      .then(async (business) => {
-        setId(business.id);
-        setForm({
-          name: business.name,
-          address: business.address ?? '',
-          phone: business.phone ?? '',
-          email: business.email ?? '',
-        });
-        const [banner, logo] = await Promise.all([
-          resolveFileUrl(business.bannerImageFileId),
-          resolveFileUrl(business.logoImageFileId),
-        ]);
-        setExistingImages({ banner, logo });
-        setState('ready');
-      })
-      .catch(() => setState('error'));
-  }, []);
+    if (business && !initialized) {
+      setForm({
+        name: business.name ?? '',
+        address: business.address ?? '',
+        phone: business.phone ?? '',
+        email: business.email ?? '',
+      });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setInitialized(true);
+    }
+  }, [business, initialized]);
+
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
@@ -73,19 +78,21 @@ export function BizProfileEditPage() {
         file,
         kind === 'banner' ? AD_IMAGE_PRESETS.hero : AD_IMAGE_PRESETS.gallery,
       );
-      const presigned = await adApi.files.requestUpload({
-        bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
+      const presigned = await requestPresignedUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          contentType: image.file.type,
+          fileName: image.file.name,
+          sizeBytes: image.file.size,
+        },
       });
-      const uploadRes = await fetch(presigned.uploadUrl, {
+      const uploadRes = await fetch(presigned.data.uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': image.file.type },
         body: image.file,
       });
       if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await adApi.files.finalizeUpload(presigned.fileId);
+      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       const previous = kind === 'banner' ? bannerImage : logoImage;
       if (previous) {
@@ -93,7 +100,7 @@ export function BizProfileEditPage() {
         previewUrls.current.delete(previous.previewUrl);
       }
       previewUrls.current.add(image.previewUrl);
-      const next = { fileId: presigned.fileId, previewUrl: image.previewUrl };
+      const next = { fileId: presigned.data.fileId, previewUrl: image.previewUrl };
       if (kind === 'banner') setBannerImage(next);
       else setLogoImage(next);
       toast.success(
@@ -109,16 +116,21 @@ export function BizProfileEditPage() {
   };
 
   const save = async () => {
-    setState('saving');
+    if (!business) return;
+    setSaveError(false);
     try {
-      await adApi.businesses.update(id, {
-        ...form,
-        ...(bannerImage ? { bannerImageFileId: bannerImage.fileId } : {}),
-        ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
+      await updateBusiness.mutateAsync({
+        id: business.id,
+        data: {
+          ...form,
+          ...(bannerImage ? { bannerImageFileId: bannerImage.fileId } : {}),
+          ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
+        },
       });
+      await queryClient.invalidateQueries({ queryKey: generated.getFindMyBusinessQueryKey() });
       window.location.href = hrefOf('/profile');
     } catch {
-      setState('error');
+      setSaveError(true);
       toast.error('저장 실패', '기업 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요');
     }
   };
@@ -129,7 +141,7 @@ export function BizProfileEditPage() {
       accept="image/*"
       hidden
       aria-label={kind === 'banner' ? '배너 이미지 선택' : '로고 이미지 선택'}
-      disabled={uploading !== null || state === 'saving'}
+      disabled={uploading !== null || updateBusiness.isPending}
       onChange={(event) => {
         const file = event.target.files?.[0];
         event.target.value = '';
@@ -138,13 +150,13 @@ export function BizProfileEditPage() {
     />
   );
 
-  if (state === 'loading')
+  if (!initialized && businessQuery.isPending)
     return (
       <BizContent>
         <p>기업 정보를 불러오는 중입니다.</p>
       </BizContent>
     );
-  if (!id)
+  if (!business || businessLoadError)
     return (
       <BizContent>
         <p>기업 정보를 불러오지 못했습니다.</p>
@@ -158,10 +170,10 @@ export function BizProfileEditPage() {
         </OutlineButton>
         <PrimaryButton
           type="button"
-          disabled={state === 'saving' || uploading !== null}
+          disabled={updateBusiness.isPending || uploading !== null}
           onClick={() => void save()}
         >
-          {state === 'saving' ? '저장 중…' : '저장'}
+          {updateBusiness.isPending ? '저장 중…' : '저장'}
         </PrimaryButton>
       </Actions>
       {/* TODO: Figma 하단 플로팅 툴바(링크·텍스트·파일·레이아웃·이미지)로 contentBlocks 편집 — 블록 에디터 미구현 */}
@@ -191,7 +203,7 @@ export function BizProfileEditPage() {
           />
         }
       />
-      {state === 'error' && <p role="alert">저장하지 못했습니다.</p>}
+      {saveError && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
 }

@@ -19,7 +19,7 @@
 
 export type RequestPresignedUpload201 = {
   /** S3 PUT용 presigned URL (5분 유효) */
-  uploadUrl?: string;
-  fileId?: string;
-  key?: string;
+  uploadUrl: string;
+  fileId: string;
+  key: string;
 };
