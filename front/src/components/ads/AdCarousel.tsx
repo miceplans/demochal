@@ -35,8 +35,9 @@ type AdCarouselProps = {
 
 const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 양옆 24px 안쪽에 슬라이드를 두고 8px 간격이라 이웃 슬라이드가 16px씩 보인다.
-const MOBILE_HERO_INSET = 24;
+// 모바일 hero는 홈 상단 광고 자리(페이지 좌우 여백 16px)를 PC와 같은 1060:250 비율로 채우고,
+// 8px 간격이라 이웃 슬라이드가 8px씩 보인다.
+const MOBILE_HERO_INSET = 16;
 const MOBILE_HERO_GAP = 8;
 const MOBILE_GALLERY_WIDTH = 240;
 const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
@@ -71,7 +72,7 @@ const HeroViewport = styled.div({
       width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
       height: 'auto',
       aspectRatio: '1060 / 250',
-      borderRadius: '8px',
+      borderRadius: '6px',
     },
   },
 });

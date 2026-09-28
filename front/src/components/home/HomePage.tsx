@@ -108,10 +108,6 @@ export function HomePage() {
                 : undefined
             }
           />
-          <MobileHero href="/my/interests">
-            <h2>나에게 맞는 챌린지 찾기</h2>
-            <p>관심분야 등록하고 맞춤 추천 받아보세요</p>
-          </MobileHero>
           <Sections>
             <section>
               <DesktopOnly style={{ margin: '28px 0' }}>
@@ -277,21 +273,6 @@ const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { pad
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
-const MobileHero = styled(Link)({
-  display: 'none',
-  [mobile]: {
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'flex-end',
-    height: 150,
-    padding: 20,
-    marginBottom: 16,
-    background: c.lightBlue,
-    borderRadius: 6,
-    '& h2': textStyle.h2_2,
-    '& p': textStyle.metaText,
-  },
-});
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   maxWidth: 1200,
   margin: '0 auto',
