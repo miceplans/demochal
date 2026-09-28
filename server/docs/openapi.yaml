@@ -1782,7 +1782,7 @@ paths:
           schema: { type: string, description: 기관 유형 (비영리/학교/협회/기업) }
         - name: status
           in: query
-          schema: { type: string, enum: [pending, approved, rejected] }
+          schema: { type: string, enum: [pending, verified, rejected] }
       responses:
         '200':
           description: 기관 심사 목록과 통계
@@ -1799,7 +1799,7 @@ paths:
       summary: 기관 인증 승인
       operationId: approveVerification
       x-impl-status: implemented
-      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
+      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
       parameters:
         - name: id
           in: path
@@ -2477,7 +2477,7 @@ components:
           nullable: true
           description: 사업자등록번호 (10자리, 학교/비영리 등은 null, 관리자 화면에서 마스킹 표시)
         type: { type: string, enum: [기업, 학교, 비영리, 협회], nullable: true }
-        verificationStatus: { type: string, enum: [pending, approved, rejected] }
+        verificationStatus: { type: string, enum: [pending, verified, rejected] }
         createdAt: { type: string, format: date-time }
         # planned 확장 (기업 프로필 편집 목업 기준)
         bannerImageFileId: { type: string, format: uuid }
@@ -2505,7 +2505,7 @@ components:
         id: { type: string, format: uuid }
         businessId: { type: string, format: uuid }
         documentFileId: { type: string, format: uuid }
-        status: { type: string, enum: [pending, approved, rejected] }
+        status: { type: string, enum: [pending, processing, verified, rejected] }
         ocrResult:
           {
             type: object,
@@ -2812,7 +2812,14 @@ components:
       type: object
       description: 기관 심사 테이블 행 (BizRow). 사업자번호는 서버에서 마스킹 후 전달.
       properties:
-        id: { type: string, format: uuid }
+        id: { type: string, format: uuid, description: 기관 id }
+        verificationId:
+          {
+            type: string,
+            format: uuid,
+            nullable: true,
+            description: '최신 인증 요청 id — 승인/거부 API의 path id. 인증 요청이 없으면 null',
+          }
         org: { type: string, description: 기관명 (활동유형 컬럼) }
         type: { type: string, description: '기관 유형 (비영리/학교/협회/기업, 값이 없으면 미지정)' }
         bizNumber: { type: string, description: '마스킹된 사업자번호 (예: 110-81-*****)' }
@@ -2826,7 +2833,7 @@ components:
         status:
           {
             type: string,
-            enum: [pending, approved, rejected],
+            enum: [pending, verified, rejected],
             description: 심사 상태 — 대기(파랑)/승인(초록)/거부(빨강) 뱃지,
           }
     CertificateEntry:

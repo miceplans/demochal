@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(22);
+    expect(journal.entries).toHaveLength(23);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');

@@ -21,13 +21,16 @@ import {
   type AdminColumn,
 } from './parts';
 
+// 승인/거부 API는 기관 id가 아니라 최신 인증 요청 id를 받는다(없으면 심사 불가).
+type BizReviewRow = BizRow & { verificationId: string | null };
+
 const statusBadge: Record<BizRow['status'], 'blue' | 'green' | 'red'> = {
   대기: 'blue',
   승인: 'green',
   거부: 'red',
 };
 
-const columns: AdminColumn<BizRow>[] = [
+const columns: AdminColumn<BizReviewRow>[] = [
   { key: 'org', header: '활동유형', width: 100 },
   { key: 'type', header: '유형', width: 80 },
   {
@@ -79,7 +82,7 @@ function BizDetailPanel({
   onReject,
   pending,
 }: {
-  row: BizRow;
+  row: BizReviewRow;
   onClose: () => void;
   onApprove: () => void;
   onReject: (reason: string) => void;
@@ -117,7 +120,9 @@ function BizDetailPanel({
           </InfoItem>
         ))}
       </InfoList>
-      {row.status === '대기' && rejecting ? (
+      {row.status === '대기' && !row.verificationId ? (
+        <PanelNotice>제출된 인증 서류가 없어 심사할 수 없어요.</PanelNotice>
+      ) : row.status === '대기' && rejecting ? (
         <RejectForm>
           <RejectLabel htmlFor="biz-reject-reason">거부 사유</RejectLabel>
           <RejectTextarea
@@ -155,9 +160,9 @@ function BizDetailPanel({
   );
 }
 
-const statusParam: Record<string, 'pending' | 'approved' | 'rejected'> = {
+const statusParam: Record<string, 'pending' | 'verified' | 'rejected'> = {
   대기: 'pending',
-  승인: 'approved',
+  승인: 'verified',
   거부: 'rejected',
 };
 const ntsLabel: Record<string, BizRow['nts']> = {
@@ -168,12 +173,12 @@ const ntsLabel: Record<string, BizRow['nts']> = {
 };
 const bizStatusLabel: Record<string, BizRow['status']> = {
   pending: '대기',
-  approved: '승인',
+  verified: '승인',
   rejected: '거부',
 };
 
 export function AdminBizReviewScreen() {
-  const [selected, setSelected] = useState<BizRow | null>(null);
+  const [selected, setSelected] = useState<BizReviewRow | null>(null);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [bizType, setBizType] = useState('');
@@ -185,10 +190,11 @@ export function AdminBizReviewScreen() {
     status: statusParam[status],
   });
 
-  const bizRows = useMemo<BizRow[]>(
+  const bizRows = useMemo<BizReviewRow[]>(
     () =>
       (businessesQuery.data?.data.items ?? []).map((entry, index) => ({
         id: entry.id ?? String(index),
+        verificationId: entry.verificationId ?? null,
         org: entry.org ?? '',
         type: entry.type ?? '',
         bizNumber: entry.bizNumber ?? '',
@@ -200,7 +206,7 @@ export function AdminBizReviewScreen() {
   );
   const bizStats = businessesQuery.data?.data.stats ?? [];
 
-  const selectBiz = (row: BizRow) =>
+  const selectBiz = (row: BizReviewRow) =>
     setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
 
@@ -274,8 +280,13 @@ export function AdminBizReviewScreen() {
             row={selected}
             onClose={closePanel}
             pending={actionPending}
-            onApprove={() => approveMutation.mutate({ id: selected.id })}
-            onReject={(reason) => rejectMutation.mutate({ id: selected.id, data: { reason } })}
+            onApprove={() => {
+              if (selected.verificationId) approveMutation.mutate({ id: selected.verificationId });
+            }}
+            onReject={(reason) => {
+              if (!selected.verificationId) return;
+              rejectMutation.mutate({ id: selected.verificationId, data: { reason } });
+            }}
           />
         ) : null}
       </BizWorkspace>
@@ -379,6 +390,12 @@ const RejectForm = styled.div({
   gap: 8,
   marginTop: 'auto',
   paddingTop: 4,
+});
+const PanelNotice = styled.p({
+  margin: 0,
+  marginTop: 'auto',
+  ...textStyle.bodySmall,
+  color: c.gray500,
 });
 const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const RejectTextarea = styled.textarea({

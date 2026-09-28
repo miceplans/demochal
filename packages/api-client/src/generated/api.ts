@@ -9370,7 +9370,7 @@ export const getApproveVerificationUrl = (id: string) => {
 };
 
 /**
- * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
+ * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
  * @summary 기관 인증 승인
  */
 export const approveVerification = async (

@@ -58,7 +58,7 @@ export interface Business {
   ownerUserId: string;
   name: string;
   registrationNumber: string;
-  verificationStatus: 'pending' | 'approved' | 'rejected';
+  verificationStatus: 'pending' | 'verified' | 'rejected';
   createdAt: string;
   bannerImageFileId?: string | null;
   logoImageFileId?: string | null;
@@ -82,7 +82,7 @@ export interface Verification {
   id: string;
   businessId: string;
   documentFileId: string;
-  status: 'pending' | 'processing' | 'verified' | 'approved' | 'rejected';
+  status: 'pending' | 'processing' | 'verified' | 'rejected';
   ocrResult?: Record<string, unknown>;
   rejectionReason?: string;
   createdAt: string;

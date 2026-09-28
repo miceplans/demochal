@@ -127,7 +127,7 @@ export class AdminController {
   }
 
   @Put('settings')
-  updateSettings(@Body() values: Record<string, boolean>, @CurrentUser() user: AuthenticatedUser) {
+  updateSettings(@Body() values: Record<string, unknown>, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.updateSettings(values, user);
   }
 }
