@@ -18,6 +18,8 @@
  */
 import type { AwardRecord } from './awardRecord';
 import type { ExternalLink } from './externalLink';
+import type { OnboardingSurvey } from './onboardingSurvey';
+import type { UserNotificationSettings } from './userNotificationSettings';
 import type { UserRole } from './userRole';
 
 export interface User {
@@ -26,6 +28,17 @@ export interface User {
   name?: string;
   /** 사용자 | 기업 | 관리자 */
   role?: UserRole;
+  /**
+   * 기업 계정 로그인 아이디
+   * @nullable
+   */
+  username?: string | null;
+  /** @nullable */
+  phone?: string | null;
+  /** @nullable */
+  emailVerifiedAt?: string | null;
+  /** @nullable */
+  phoneVerifiedAt?: string | null;
   createdAt?: string;
   /** 포지션 */
   position?: string;
@@ -35,4 +48,8 @@ export interface User {
   badges?: string[];
   externalLinks?: ExternalLink[];
   awardHistory?: AwardRecord[];
+  /** 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다. */
+  notificationSettings?: UserNotificationSettings;
+  /** 온보딩 설문 응답. null이면 아직 설문을 완료하지 않은 첫 가입 사용자. */
+  onboardingSurvey?: OnboardingSurvey | null;
 }

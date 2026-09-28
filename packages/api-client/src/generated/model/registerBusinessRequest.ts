@@ -16,12 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { RegisterBusinessRequestType } from './registerBusinessRequestType';
 
 export interface RegisterBusinessRequest {
-  name: string;
-  /**
-   * @minLength 10
-   * @maxLength 10
-   */
-  registrationNumber: string;
+  /** 기관 유형 */
+  type: RegisterBusinessRequestType;
+  /** @maxLength 200 */
+  name?: string;
+  /** @pattern ^\d{10}$ */
+  registrationNumber?: string;
 }

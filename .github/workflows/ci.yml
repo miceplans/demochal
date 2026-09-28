@@ -207,12 +207,29 @@ jobs:
             local service="$1" expected_task_definition="$2"
             local primary_task_definition rollout_state
             primary_task_definition=$(aws ecs describe-services --cluster "$PRODUCTION_ECS_CLUSTER" --services "$service" --query 'services[0].deployments[?status==`PRIMARY`].taskDefinition | [0]' --output text)
-            rollout_state=$(aws ecs describe-services --cluster "$PRODUCTION_ECS_CLUSTER" --services "$service" --query 'services[0].deployments[?status==`PRIMARY`].rolloutState | [0]' --output text)
-            test "$primary_task_definition" = "$expected_task_definition"
-            test "$rollout_state" = COMPLETED
+            if [ "$primary_task_definition" != "$expected_task_definition" ]; then
+              echo "Service $service primary revision is $primary_task_definition, expected $expected_task_definition (circuit-breaker rollback?)" >&2
+              return 1
+            fi
+            # services-stable returns before rolloutState flips to COMPLETED
+            # (observed ~18s early), so poll instead of asserting a snapshot.
+            for _ in $(seq 1 18); do
+              rollout_state=$(aws ecs describe-services --cluster "$PRODUCTION_ECS_CLUSTER" --services "$service" --query 'services[0].deployments[?status==`PRIMARY`].rolloutState | [0]' --output text)
+              if [ "$rollout_state" = COMPLETED ]; then
+                return 0
+              fi
+              if [ "$rollout_state" = FAILED ]; then
+                echo "Service $service rollout FAILED (circuit-breaker rollback in progress)" >&2
+                return 1
+              fi
+              sleep 10
+            done
+            echo "Service $service rolloutState stayed $rollout_state for 3 minutes without reaching COMPLETED" >&2
+            return 1
           }
 
           # The ECS waiter becomes stable after a circuit-breaker rollback as
-          # well. Assert the primary revision to make that rollback fail CI.
+          # well. Assert the primary revision and rollout state to make that
+          # rollback fail CI.
           verify_primary_revision "$PRODUCTION_API_SERVICE" "$API_TASK_DEFINITION"
           verify_primary_revision "$PRODUCTION_WORKER_SERVICE" "$WORKER_TASK_DEFINITION"
