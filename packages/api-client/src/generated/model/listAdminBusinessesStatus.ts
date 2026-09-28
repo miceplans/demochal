@@ -22,6 +22,6 @@ export type ListAdminBusinessesStatus =
 
 export const ListAdminBusinessesStatus = {
   pending: 'pending',
-  approved: 'approved',
+  verified: 'verified',
   rejected: 'rejected',
 } as const;

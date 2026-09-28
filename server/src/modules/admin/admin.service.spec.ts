@@ -10,15 +10,8 @@ import {
   reports,
   users,
 } from '../../db/schema.js';
-import {
-  AdminService,
-  maskBizNumber,
-  maskEmail,
-  maskReporterName,
-  niceMax,
-  timeBuckets,
-} from './admin.service.js';
-import { DEFAULT_VALUES, ADMIN_SETTINGS_ID } from './admin-settings.service.js';
+import { AdminService, maskBizNumber, maskEmail, niceMax, timeBuckets } from './admin.service.js';
+import { DEFAULT_VALUES, SETTINGS_GROUPS } from './admin-settings.service.js';
 
 /**
  * Auto-chaining thenable stand-in for a drizzle query builder: every method
@@ -126,11 +119,25 @@ function createService(
   notifications = createNotificationsStub(),
   adsService = createAdsStub(),
   files = createFilesStub(),
+  settings = createSettingsStub(),
 ) {
   return {
-    service: new AdminService(db, notifications as any, adsService as any, files as any),
+    service: new AdminService(
+      db,
+      notifications as any,
+      adsService as any,
+      files as any,
+      settings as any,
+    ),
     notifications,
     adsService,
+  };
+}
+
+function createSettingsStub(values: Record<string, boolean> = DEFAULT_VALUES) {
+  return {
+    get: vi.fn().mockResolvedValue({ groups: SETTINGS_GROUPS, values }),
+    update: vi.fn().mockResolvedValue(values),
   };
 }
 
@@ -150,8 +157,8 @@ const reportRow = {
 };
 
 describe('AdminService — verifications', () => {
-  it('approve sets verification + business approved and notifies the owner', async () => {
-    const updatedVerification = { ...verificationRow, status: 'approved' };
+  it('approve sets verification + business verified and notifies the owner', async () => {
+    const updatedVerification = { ...verificationRow, status: 'verified' };
     const { db, setCalls } = createDbStub({
       select: [[verificationRow], [businessRow]],
       update: [[updatedVerification], []],
@@ -162,12 +169,12 @@ describe('AdminService — verifications', () => {
 
     expect(result).toEqual(updatedVerification);
     expect(setCalls[0]).toEqual([
-      expect.objectContaining({ status: 'approved', updatedAt: expect.any(Date) }),
+      expect.objectContaining({ status: 'verified', updatedAt: expect.any(Date) }),
     ]);
-    expect(setCalls[1]).toEqual([{ verificationStatus: 'approved' }]);
+    expect(setCalls[1]).toEqual([{ verificationStatus: 'verified' }]);
     expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
       verificationId: 'v1',
-      status: 'approved',
+      status: 'verified',
     });
   });
 
@@ -588,6 +595,54 @@ describe('AdminService — businesses', () => {
 
     expect(result.items[0]?.type).toBe('미지정');
   });
+
+  it('returns the latest verification id so approve/reject target the request, not the business', async () => {
+    const { db } = createDbStub({
+      select: [
+        ...statCounts,
+        [businessRow, { ...businessRow, id: 'b2' }],
+        // desc(createdAt): v-new is the latest for b1; b2 has none.
+        [
+          { id: 'v-new', businessId: 'b1', status: 'pending', ocrResult: null },
+          { id: 'v-old', businessId: 'b1', status: 'rejected', ocrResult: null },
+        ],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items.map((item) => [item.id, item.verificationId])).toEqual([
+      ['b1', 'v-new'],
+      ['b2', null],
+    ]);
+  });
+
+  it("counts '승인' and filters by the canonical verified status", async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [...statCounts, [], []] });
+    const { service } = createService(db);
+
+    await service.listBusinesses(undefined, undefined, 'verified');
+
+    // [0] 승인 count, [1] 거부, [2] 대기, [3] list filter
+    expect(collectStrings(selectWhereCalls[0]?.[0])).toContain('verified');
+    expect(collectStrings(selectWhereCalls[3]?.[0])).toContain('verified');
+  });
+
+  it('marks NTS success from a verified verification row', async () => {
+    const { db } = createDbStub({
+      select: [
+        ...statCounts,
+        [{ ...businessRow, verificationStatus: 'verified' }],
+        [{ id: 'v1', businessId: 'b1', status: 'verified', ocrResult: null }],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items[0]).toMatchObject({ nts: 'success', status: 'verified' });
+  });
 });
 
 describe('AdminService — ad pricing', () => {
@@ -905,39 +960,8 @@ describe('AdminService — user-facing masking', () => {
     expect(maskEmail('a@semochal.kr')).toBe('a***@semochal.kr');
   });
 
-  it('masks reporter names', () => {
-    expect(maskReporterName('김수아')).toBe('김*아');
-    expect(maskReporterName('김아')).toBe('김*');
-  });
-
   it('masks business numbers to the first 6 chars', () => {
     expect(maskBizNumber('123-45-67890')).toBe('123-45-*****');
-  });
-
-  it('createReport stores the masked reporter name and returns the contract row', async () => {
-    const created = {
-      ...reportRow,
-      reporterName: '김*아',
-      createdAt: new Date('2026-09-14T00:00:00Z'),
-    };
-    const { db, valuesCalls } = createDbStub({ insert: [[created]] });
-    const { service } = createService(db);
-
-    const result = await service.createReport(
-      {
-        content: '2025 AI챌린지',
-        targetType: 'challenge',
-        org: '테스트기관',
-        summary: '피싱 의심',
-        detail: '상세 내용',
-      },
-      { id: 'u1', email: 'kim.dev@gmail.com', name: '김수아', role: 'user' },
-    );
-
-    expect(valuesCalls[0]).toEqual([
-      expect.objectContaining({ reporterUserId: 'u1', reporterName: '김*아' }),
-    ]);
-    expect(result.reporter).toBe('김*아');
   });
 });
 
@@ -1089,7 +1113,7 @@ describe('AdminService — settings', () => {
   } as never;
 
   it('getSettings는 프로필 역할을 로그인 사용자의 role에서 가져온다', async () => {
-    const { db } = createDbStub({ select: [[]] });
+    const { db } = createDbStub();
     const { service } = createService(db);
 
     const result = await service.getSettings(user);
@@ -1097,60 +1121,28 @@ describe('AdminService — settings', () => {
     expect(result.profile).toMatchObject({ name: '관리자', role: '관리자' });
   });
 
-  it('row가 없어도 getSettings는 DEFAULT_VALUES 기본값을 반환한다', async () => {
-    const { db } = createDbStub({ select: [[]] });
-    const { service } = createService(db);
+  it('getSettings는 AdminSettingsService의 그룹/값(기본값 병합)을 그대로 쓴다', async () => {
+    const { db } = createDbStub();
+    const settings = createSettingsStub({ ...DEFAULT_VALUES, maintenanceMode: true });
+    const { service } = createService(db, undefined, undefined, undefined, settings);
 
     const result = await service.getSettings(user);
 
+    expect(result.groups).toBe(SETTINGS_GROUPS);
+    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+    // 설정 row는 AdminSettingsService만 읽는다 — 중복 정의/기본값 불일치 방지.
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it('updateSettings는 AdminSettingsService.update에 위임하고 최신 설정을 돌려준다', async () => {
+    const { db } = createDbStub();
+    const settings = createSettingsStub();
+    const { service } = createService(db, undefined, undefined, undefined, settings);
+
+    const result = await service.updateSettings({ maintenanceMode: true }, user);
+
+    expect(settings.update).toHaveBeenCalledWith({ maintenanceMode: true });
     expect(result.values).toEqual(DEFAULT_VALUES);
-  });
-
-  it('getSettings는 저장 값을 DEFAULT_VALUES 위에 병합한다', async () => {
-    const { db } = createDbStub({
-      select: [[{ id: 'default', values: { maintenanceMode: true } }]],
-    });
-    const { service } = createService(db);
-
-    const result = await service.getSettings(user);
-
-    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
-  });
-
-  it('updateSettings는 공유 id 아래 저장하고 병합된 값을 반환한다', async () => {
-    const { db, setCalls, valuesCalls } = createDbStub({
-      select: [
-        [{ id: 'default', values: { reportAlert: true } }],
-        [{ id: 'default', values: { reportAlert: true, maintenanceMode: true } }],
-      ],
-    });
-    const { service } = createService(db);
-
-    const result = await service.updateSettings({ maintenanceMode: true }, user);
-
-    expect(setCalls[0]?.[0]).toMatchObject({
-      values: { reportAlert: true, maintenanceMode: true },
-    });
-    expect(valuesCalls).toHaveLength(0); // 기존 row가 있으므로 insert 경로가 아니다
-    expect(result.values).toEqual({ ...DEFAULT_VALUES, reportAlert: true, maintenanceMode: true });
-  });
-});
-
-describe('AdminService — settings insert 경로', () => {
-  const user = { id: 'admin-1', name: '관리자', email: 'admin@example.com' } as never;
-
-  it('row가 없으면 insert 경로로 공유 id 아래 저장한다', async () => {
-    const { db, valuesCalls } = createDbStub({
-      select: [[], [{ id: ADMIN_SETTINGS_ID, values: { maintenanceMode: true } }]],
-    });
-    const { service } = createService(db);
-
-    const result = await service.updateSettings({ maintenanceMode: true }, user);
-
-    expect(valuesCalls[0]?.[0]).toMatchObject({
-      id: ADMIN_SETTINGS_ID,
-      values: { maintenanceMode: true },
-    });
-    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+    expect(db.insert).not.toHaveBeenCalled();
   });
 });

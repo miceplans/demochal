@@ -23,7 +23,13 @@ import type { BizReviewEntryStatus } from './bizReviewEntryStatus';
  * 기관 심사 테이블 행 (BizRow). 사업자번호는 서버에서 마스킹 후 전달.
  */
 export interface BizReviewEntry {
+  /** 기관 id */
   id?: string;
+  /**
+   * 최신 인증 요청 id — 승인/거부 API의 path id. 인증 요청이 없으면 null
+   * @nullable
+   */
+  verificationId?: string | null;
   /** 기관명 (활동유형 컬럼) */
   org?: string;
   /** 기관 유형 (비영리/학교/협회/기업, 값이 없으면 미지정) */
