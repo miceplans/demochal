@@ -133,6 +133,13 @@
       "when": 1790190000000,
       "tag": "0019_email_send_states",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790200000000,
+      "tag": "0020_add_kakao_auth",
+      "breakpoints": true
     }
   ]
 }
