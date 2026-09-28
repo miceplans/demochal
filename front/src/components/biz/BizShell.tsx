@@ -7,7 +7,6 @@ import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
-import { adApi } from '@/lib/ad-api';
 import { Badge as BaseBadge } from '@/components/ui/Badge';
 
 const BizNavContext = createContext('');
@@ -259,12 +258,13 @@ export function BizSidebar() {
   const { data: business } = generated.useFindMyBusiness({ query: { retry: false } });
   const accountName = (auth?.status === 200 ? auth.data.name : undefined) ?? '불러오는 중';
   const businessName = (business?.status === 200 ? business.data.name : undefined) ?? '불러오는 중';
+  const logoutMutation = generated.useLogout();
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
     '',
   );
   const logout = () => {
-    void adApi.auth.logout().finally(() => router.push(`${base}/login`));
+    logoutMutation.mutate(undefined, { onSettled: () => router.push(`${base}/login`) });
   };
   return (
     <SidebarBox>
