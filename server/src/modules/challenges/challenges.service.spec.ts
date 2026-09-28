@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { challenges } from '../../db/schema.js';
+import { challenges, type ApplicationFormQuestion } from '../../db/schema.js';
 import { ChallengesService } from './challenges.service.js';
 
 type ChallengeRow = {
@@ -715,6 +715,63 @@ describe('ChallengesService.update', () => {
     const { service, set } = createUpdateService([{ ...current, recruitMethod: 'seMOchall' }]);
     await service.update('ch-1', { title: 'new', recruitUrl: 'https://example.com/apply' }, owner);
     expect(set).toHaveBeenCalledWith({ title: 'new' });
+  });
+
+  it('persists applicationForm as-is so a later get returns the same questions', async () => {
+    const applicationForm: ApplicationFormQuestion[] = [
+      { id: 'q-1', title: '자기소개를 해주세요', type: 'long', options: [], required: true },
+      {
+        id: 'q-2',
+        title: '희망 역할',
+        type: 'radio',
+        options: ['기획', '디자인', '개발'],
+        required: false,
+      },
+    ];
+    const { service, set } = createUpdateService([current]);
+
+    await service.update('ch-1', { applicationForm }, owner);
+
+    expect(set).toHaveBeenCalledWith({ applicationForm });
+  });
+});
+
+describe('ChallengesService.findById', () => {
+  it('returns applicationForm exactly as stored on the row (GET reflects a prior PATCH)', async () => {
+    const applicationForm = [
+      { id: 'q-1', title: '자기소개', type: 'short', options: [], required: true },
+    ];
+    const row = { id: 'ch-1', applicationForm };
+    const limit = vi.fn().mockResolvedValue([row]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const values = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+      insert: vi.fn().mockReturnValue({ values }),
+    } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.applicationForm).toEqual(applicationForm);
+  });
+
+  it('returns null applicationForm for a challenge that never had a form saved', async () => {
+    const row = { id: 'ch-1', applicationForm: null };
+    const limit = vi.fn().mockResolvedValue([row]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const values = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+      insert: vi.fn().mockReturnValue({ values }),
+    } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.applicationForm).toBeNull();
   });
 });
 

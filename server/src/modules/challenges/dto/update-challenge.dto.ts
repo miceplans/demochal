@@ -1,4 +1,6 @@
+import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   ArrayUnique,
   IsArray,
   IsDateString,
@@ -12,8 +14,10 @@ import {
   MaxLength,
   Min,
   ValidateIf,
+  ValidateNested,
 } from 'class-validator';
 import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
+import { ApplicationFormQuestionDto } from './application-form-question.dto.js';
 
 /** 공고 부분 수정. businessId/status는 바꿀 수 없다(상태는 PATCH /challenges/:id/status). */
 export class UpdateChallengeDto {
@@ -79,4 +83,11 @@ export class UpdateChallengeDto {
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsUUID()
   posterFileId?: string | null;
+  // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 작성한 경우에만 전체를 교체한다.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ApplicationFormQuestionDto)
+  applicationForm?: ApplicationFormQuestionDto[];
 }

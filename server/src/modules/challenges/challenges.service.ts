@@ -344,6 +344,7 @@ export class ChallengesService {
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
       ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
+      ...(dto.applicationForm !== undefined && { applicationForm: dto.applicationForm }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 

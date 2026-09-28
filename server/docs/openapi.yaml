@@ -2516,8 +2516,33 @@ components:
           }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
-        applicationFormId:
-          { type: string, format: uuid, description: 신청폼 (질문 유형 6가지 빌더) }
+        applicationForm:
+          {
+            type: array,
+            nullable: true,
+            items: { $ref: '#/components/schemas/ApplicationFormQuestion' },
+            description: 'implemented(#264) — biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 아직 저장한 신청서가 없으면 null',
+          }
+    ApplicationFormQuestion:
+      type: object
+      required: [id, title, type, required]
+      properties:
+        id: { type: string }
+        title: { type: string, maxLength: 500 }
+        type:
+          {
+            type: string,
+            enum: [dropdown, checkbox, radio, file, short, long],
+            description: 질문 유형 6종,
+          }
+        options:
+          {
+            type: array,
+            maxItems: 50,
+            items: { type: string, maxLength: 500 },
+            description: '선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)',
+          }
+        required: { type: boolean, description: 필수 질문 여부 }
     CreateChallengeRequest:
       type: object
       required: [businessId, title, description, price, capacity, startDate, endDate]
@@ -2642,6 +2667,13 @@ components:
         prizeAmount: { type: integer, nullable: true, minimum: 0, description: 총상금(만원) }
         posterFileId:
           { type: string, nullable: true, format: uuid, description: null이면 포스터를 제거 }
+        applicationForm:
+          {
+            type: array,
+            maxItems: 100,
+            items: { $ref: '#/components/schemas/ApplicationFormQuestion' },
+            description: '신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.',
+          }
     Team:
       type: object
       properties:
