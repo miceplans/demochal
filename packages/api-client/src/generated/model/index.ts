@@ -115,6 +115,7 @@ export * from './listAdminContentsParams';
 export * from './listAdminReportsParams';
 export * from './listAdminReportsStatus';
 export * from './listAdminReportsTargetType';
+export * from './listAdminUsersJoinedWithin';
 export * from './listAdminUsersParams';
 export * from './listAdminUsersStatus';
 export * from './listChallenges200';

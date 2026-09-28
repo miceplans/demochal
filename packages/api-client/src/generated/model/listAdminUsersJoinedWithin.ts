@@ -16,24 +16,12 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { BizReviewEntryNts } from './bizReviewEntryNts';
-import type { BizReviewEntryStatus } from './bizReviewEntryStatus';
 
-/**
- * 기관 심사 테이블 행 (BizRow). 사업자번호는 서버에서 마스킹 후 전달.
- */
-export interface BizReviewEntry {
-  id?: string;
-  /** 기관명 (활동유형 컬럼) */
-  org?: string;
-  /** 기관 유형 (비영리/학교/협회/기업, 값이 없으면 미지정) */
-  type?: string;
-  /** 마스킹된 사업자번호 (예: 110-81-*****) */
-  bizNumber?: string;
-  /** 신청일 (예: 05.12) */
-  appliedAt?: string;
-  /** NTS OCR 검증 결과 — 성공/실패/폐업·폐점/인식불가 (실패 계열은 빨간색 표기) */
-  nts?: BizReviewEntryNts;
-  /** 심사 상태 — 대기(파랑)/승인(초록)/거부(빨강) 뱃지 */
-  status?: BizReviewEntryStatus;
-}
+export type ListAdminUsersJoinedWithin =
+  (typeof ListAdminUsersJoinedWithin)[keyof typeof ListAdminUsersJoinedWithin];
+
+export const ListAdminUsersJoinedWithin = {
+  '7d': '7d',
+  '30d': '30d',
+  '1y': '1y',
+} as const;
