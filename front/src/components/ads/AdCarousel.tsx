@@ -35,10 +35,9 @@ type AdCarouselProps = {
 
 const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 홈 상단 광고 자리(페이지 좌우 여백 16px)를 PC와 같은 1060:250 비율로 채우고,
-// 8px 간격이라 이웃 슬라이드가 8px씩 보인다.
-const MOBILE_HERO_INSET = 16;
-const MOBILE_HERO_GAP = 8;
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) PC와 같은 1060:250 비율을 유지한다.
+const MOBILE_HERO_INSET = 0;
+const MOBILE_HERO_GAP = 0;
 const MOBILE_GALLERY_WIDTH = 240;
 const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
 const MOBILE_GALLERY_GAP = 16;
@@ -64,15 +63,14 @@ const HeroViewport = styled.div({
     flexShrink: 0,
     display: 'block',
   },
-  // 모바일도 PC처럼 가운데 슬라이드 + 양옆 슬라이드가 살짝 보이는 형태로 둔다.
   [mobile]: {
     height: 'auto',
-    margin: '8px 0 16px',
+    margin: '0 0 16px',
     '& img, & video': {
       width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
       height: 'auto',
       aspectRatio: '1060 / 250',
-      borderRadius: '6px',
+      borderRadius: 0,
     },
   },
 });
@@ -210,7 +208,7 @@ const NavButton = styled.button<{
       ? {
           width: '32px',
           height: '32px',
-          [direction === 'prev' ? 'left' : 'right']: `${MOBILE_HERO_INSET + 4}px`,
+          [direction === 'prev' ? 'left' : 'right']: `${MOBILE_HERO_INSET + 8}px`,
           '& svg': { width: '28px', height: '28px' },
         }
       : {
