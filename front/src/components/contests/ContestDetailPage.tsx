@@ -156,7 +156,14 @@ export function ContestDetailPage({
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
-              <IconLink href="/reports/new?type=challenge" aria-label="신고">
+              <IconLink
+                href={
+                  challengeId
+                    ? `/reports/new?type=challenge&id=${challengeId}`
+                    : '/reports/new?type=challenge'
+                }
+                aria-label="신고"
+              >
                 <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
               </IconLink>
             </Row>

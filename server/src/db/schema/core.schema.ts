@@ -56,6 +56,7 @@ export const businesses = pgTable('businesses', {
   name: varchar('name', { length: 200 }),
   // 학교/비영리 등 사업자번호가 없는 기관은 null.
   registrationNumber: varchar('registration_number', { length: 20 }),
+  // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨)
   verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 기관 유형: 기업 | 학교 | 비영리 | 협회
@@ -73,6 +74,7 @@ export const verifications = pgTable('verifications', {
     .notNull()
     .references(() => businesses.id),
   documentFileId: uuid('document_file_id').notNull(),
+  // pending | processing | verified | rejected
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   ocrResult: jsonb('ocr_result'),
   rejectionReason: text('rejection_reason'),

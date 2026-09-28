@@ -6,9 +6,9 @@ import {
 } from './admin-settings.service.js';
 
 /** 인메모리 settings row를 돌리는 drizzle 스텁. */
-function createDbStub(initial?: { id: string; values: Record<string, boolean> }) {
+function createDbStub(initial?: { id: string; values: Record<string, unknown> }) {
   let row = initial;
-  const insertCalls: { id: string; values: Record<string, boolean> }[] = [];
+  const insertCalls: { id: string; values: Record<string, unknown> }[] = [];
   const db: any = {
     select: () => ({
       from: () => ({
@@ -18,17 +18,17 @@ function createDbStub(initial?: { id: string; values: Record<string, boolean> })
       }),
     }),
     insert: () => ({
-      values: (v: { id: string; values: Record<string, boolean> }) => {
+      values: (v: { id: string; values: Record<string, unknown> }) => {
         insertCalls.push(v);
         return {
-          onConflictDoUpdate: async ({ set }: { set: { values: Record<string, boolean> } }) => {
+          onConflictDoUpdate: async ({ set }: { set: { values: Record<string, unknown> } }) => {
             row = { id: v.id, values: set.values };
           },
         };
       },
     }),
   };
-  return { db: db as never, insertCalls };
+  return { db: db as never, insertCalls, current: () => row };
 }
 
 describe('AdminSettingsService', () => {
@@ -55,11 +55,36 @@ describe('AdminSettingsService', () => {
     expect(await service.isEnabled('contestAutoPublish')).toBe(false);
   });
 
-  it('공유 id로 저장된 기존 row를 isEnabled가 읽는다', async () => {
-    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { contestAutoPublish: true } });
+  it('일부 키만 저장된 row에서도 저장하지 않은 키는 기본값(true 포함)으로 읽는다', async () => {
+    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { maintenanceMode: true } });
     const service = new AdminSettingsService(db);
 
-    expect(await service.isEnabled('contestAutoPublish')).toBe(true);
-    expect(await service.isEnabled('maintenanceMode')).toBe(false);
+    // reportAlert 기본값은 true — row에 없다고 false로 읽으면 안 된다.
+    expect(await service.isEnabled('reportAlert')).toBe(true);
+    expect((await service.get()).values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+  });
+
+  it('update는 기존 값 위에 병합하고 알 수 없는 키·불리언이 아닌 값은 저장하지 않는다', async () => {
+    const { db, current } = createDbStub({
+      id: ADMIN_SETTINGS_ID,
+      values: { contestAutoPublish: true },
+    });
+    const service = new AdminSettingsService(db);
+
+    const result = await service.update({
+      maintenanceMode: true,
+      unknownFlag: true,
+      reportAlert: 'no',
+    });
+
+    expect(current()?.values).toEqual({ contestAutoPublish: true, maintenanceMode: true });
+    expect(result).toEqual({ ...DEFAULT_VALUES, contestAutoPublish: true, maintenanceMode: true });
+  });
+
+  it('저장된 row의 알 수 없는 키는 읽을 때 무시한다', async () => {
+    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { legacyKey: true } });
+    const service = new AdminSettingsService(db);
+
+    expect((await service.get()).values).toEqual(DEFAULT_VALUES);
   });
 });
