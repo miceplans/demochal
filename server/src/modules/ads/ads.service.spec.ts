@@ -183,7 +183,13 @@ describe('AdsService.report', () => {
 
     expect(report.totals).toEqual({ impressions: 0, clicks: 0, ctr: 0 });
     expect(report.daily).toHaveLength(7);
-    const seoulDate = (date: Date) => date.toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+    const seoulDate = (value: Date) =>
+      new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(value);
     const today = seoulDate(new Date());
     const sixDaysAgo = seoulDate(new Date(Date.now() - 6 * 86_400_000));
     expect(report.daily![0]!.date).toBe(sixDaysAgo);
