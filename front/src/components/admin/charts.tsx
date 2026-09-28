@@ -301,7 +301,7 @@ export function TrafficChart({
             </Legend>
             <Legend>
               <LegendDot color={c.lightBlue} />
-              비즈니스 가입
+              신규 제출물
             </Legend>
           </span>
         </div>
@@ -380,7 +380,7 @@ export function TrafficChart({
               <Line
                 type="monotone"
                 dataKey="secondary"
-                name="비즈니스 가입"
+                name="신규 제출물"
                 stroke={c.lightBlue}
                 strokeWidth={2.5}
                 strokeLinecap="round"
@@ -442,11 +442,11 @@ export function ActivityChart({
         <span style={{ display: 'flex', gap: 16 }}>
           <Legend>
             <LegendDot color={c.primary} />
-            일반 (지원서 제출)
+            일반 (사용자 가입)
           </Legend>
           <Legend>
             <LegendDot color={c.lightBlue} />
-            기업 (챌린지 등록)
+            기업 (기업 가입)
           </Legend>
         </span>
       </div>

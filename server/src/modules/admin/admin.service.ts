@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -211,22 +211,27 @@ export class AdminService {
     const [unit, count] = RANGE_BUCKETS[range ?? ''] ?? RANGE_BUCKETS['1year']!;
     const buckets = timeBuckets(unit, count, now);
 
-    // TODO: 페이지뷰 계측이 없어 '유저 트래픽'은 기간별 신규 가입(일반 user / 비즈니스
-    // business)으로 대신한다. 방문 계측을 도입하면 이 시리즈를 교체한다.
-    const userBucket = bucketKey(unit, users.createdAt);
+    // TODO: 페이지뷰 계측이 없어 '유저 트래픽'은 기간별 신규 가입(users)과
+    // 신규 제출물(applications)로 대신한다. 방문 계측을 도입하면 이 시리즈를 교체한다.
+    const signupBucket = bucketKey(unit, users.createdAt);
     const signupRows = await this.db
-      .select({ bucket: userBucket, role: users.role, count: countRows })
+      .select({ bucket: signupBucket, count: countRows })
       .from(users)
-      .where(and(gte(users.createdAt, buckets.since), inArray(users.role, ['user', 'business'])))
-      .groupBy(userBucket, users.role);
-    const signupsOf = (role: string) => {
-      const byBucket = new Map(
-        signupRows.filter((row) => row.role === role).map((row) => [row.bucket, row.count]),
-      );
+      .where(and(gte(users.createdAt, buckets.since), eq(users.role, 'user')))
+      .groupBy(signupBucket);
+    const submissionBucket = bucketKey(unit, applications.createdAt);
+    const submissionRows = await this.db
+      .select({ bucket: submissionBucket, count: countRows })
+      .from(applications)
+      .where(gte(applications.createdAt, buckets.since))
+      .groupBy(submissionBucket);
+    const seriesOf = (rows: { bucket: string; count: number }[]) => {
+      const byBucket = new Map(rows.map((row) => [row.bucket, row.count]));
       return buckets.keys.map((key) => byBucket.get(key) ?? 0);
     };
 
-    // 광고 비율: 같은 기간 결제 완료 매출 중 광고 주문(orders.adId)에서 나온 순매출 비중.
+    // 광고 비율: 같은 기간 결제 완료(paid + legacy done, billing-history.service.ts의
+    // charged 정의와 동일) 순매출 중 광고 주문(orders.adId)에서 나온 순매출 비중.
     const [revenueRow] = await this.db
       .select({
         total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
@@ -234,7 +239,9 @@ export class AdminService {
       })
       .from(payments)
       .innerJoin(orders, eq(payments.orderId, orders.id))
-      .where(and(eq(payments.status, 'paid'), gte(payments.approvedAt, buckets.since)));
+      .where(
+        and(inArray(payments.status, ['paid', 'done']), gte(payments.approvedAt, buckets.since)),
+      );
     const totalRevenue = revenueRow?.total ?? 0;
     const adRevenue = revenueRow?.ad ?? 0;
 
@@ -273,8 +280,8 @@ export class AdminService {
       },
       traffic: {
         labels: buckets.labels,
-        primary: signupsOf('user'),
-        secondary: signupsOf('business'),
+        primary: seriesOf(signupRows),
+        secondary: seriesOf(submissionRows),
       },
       reports: recentReports.map((row) => this.toReport(row)),
       generatedAt: now.toISOString(),
@@ -735,7 +742,8 @@ export class AdminService {
       .select({ count: countRows })
       .from(challenges)
       .where(gte(challenges.createdAt, monthAgo));
-    // 'paid' 행만 대상으로 하고(취소/만료/미결제 제외), 부분환불(Toss PARTIAL_CANCELED)이
+    // 결제 완료(paid + legacy done, billing-history.service.ts의 charged 정의와 동일) 행만
+    // 대상으로 하고(취소/만료/미결제 제외), 부분환불(Toss PARTIAL_CANCELED)이
     // 반영된 refundedAmount를 뺀 순수익을 합산한다 — refundedAmount는
     // PaymentsService의 PARTIAL_CANCELED 재조회로 채워진다(payments.service.ts).
     const [revenueRow] = await this.db
@@ -743,12 +751,17 @@ export class AdminService {
         total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
       })
       .from(payments)
-      .where(eq(payments.status, 'paid'));
+      .where(inArray(payments.status, ['paid', 'done']));
 
-    // 활동: 최근 6개월 월별 일반 사용자 지원서 제출(applications) / 기업 챌린지 등록(challenges).
+    // 활동: 최근 6개월 월별 일반 사용자 신규 가입(users) / 신규 기업 가입(businesses).
     const buckets = timeBuckets('month', 6);
-    const general = await this.countByMonth(applications, applications.createdAt, buckets);
-    const corp = await this.countByMonth(challenges, challenges.createdAt, buckets);
+    const general = await this.countByMonth(
+      users,
+      users.createdAt,
+      buckets,
+      eq(users.role, 'user'),
+    );
+    const corp = await this.countByMonth(businesses, businesses.createdAt, buckets);
 
     const stats: AdminStatCard[] = [
       {
@@ -787,15 +800,16 @@ export class AdminService {
   }
 
   private async countByMonth(
-    table: typeof applications | typeof challenges,
+    table: typeof applications | typeof challenges | typeof users | typeof businesses,
     column: PgColumn,
     buckets: TimeBuckets,
+    extra?: SQL,
   ) {
     const bucket = bucketKey('month', column);
     const rows = await this.db
       .select({ bucket, count: countRows })
       .from(table)
-      .where(gte(column, buckets.since))
+      .where(and(gte(column, buckets.since), extra))
       .groupBy(bucket);
     const byBucket = new Map(rows.map((row) => [row.bucket, row.count]));
     return buckets.keys.map((key) => byBucket.get(key) ?? 0);
@@ -806,11 +820,15 @@ export class AdminService {
    * list position, so reordering/deleting ads can't open another ad's report.
    */
   private async buildAdReport(adParam: string): Promise<AdminAdReport> {
-    const condition = /^\d+$/.test(adParam)
-      ? eq(ads.adNumber, Number.parseInt(adParam, 10))
-      : UUID_PATTERN.test(adParam)
-        ? eq(ads.id, adParam)
-        : null;
+    // ads.ad_number는 int4 serial이라 그 범위를 넘는 숫자는 DB 캐스트 전에 404로 막는다.
+    const MAX_AD_NUMBER = 2_147_483_647;
+    const adNumber = /^\d+$/.test(adParam) ? Number.parseInt(adParam, 10) : null;
+    const condition =
+      adNumber !== null && adNumber <= MAX_AD_NUMBER
+        ? eq(ads.adNumber, adNumber)
+        : UUID_PATTERN.test(adParam)
+          ? eq(ads.id, adParam)
+          : null;
     if (!condition) throw new NotFoundException('Ad not found');
 
     const [row] = await this.db

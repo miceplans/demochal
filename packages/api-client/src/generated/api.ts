@@ -9074,7 +9074,7 @@ export const getGetAdminDashboardUrl = (params?: GetAdminDashboardParams) => {
  * - `adRatio`: '유저 광고 비율' 반원 게이지 (RadialBarChart) — `range` 기간 결제 완료 순매출 중
  *   광고 주문(orders.adId) 순매출 금액(`value`)과 비중(`ratio` 0~1, 화면에서 ×100 퍼센트 표기)
  * - `traffic`: '유저 트래픽' 라인·영역 혼합 차트(ComposedChart) — `range` 쿼리로 7일(일별)/30일(일별)/1년(월별) 전환,
- *   primary(일반 user 신규 가입)·secondary(business 신규 가입) 두 개 시리즈. 페이지뷰 계측 전까지 가입 수로 대신한다.
+ *   primary(신규 가입 users)·secondary(신규 제출물 applications) 두 개 시리즈. 페이지뷰 계측 전까지 가입·제출 수로 대신한다.
  * - `generatedAt`: 집계 기준 시각
  * - `reports`: 신고 로그 테이블(ReportLogTable)
  * @summary 관리자 대시보드 통계
@@ -10872,7 +10872,7 @@ export const getGetAdminAnalyticsUrl = (params?: GetAdminAnalyticsParams) => {
  * - `?ad=` 지정 시: 광고 리포트 — 기관·기간, 통계 카드 4종(노출수/클릭수/CTR/집행 광고비),
  *   일별 성과 차트(AdReportChart: 노출 영역 + 클릭 라인, 이중 Y축). 노출/클릭은 AdsService 집계.
  * - `stats`: 전체 통계 카드 3종(최근 30일 신규 가입자/최근 30일 신규 챌린지/플랫폼 수익)
- * - `activity`: 활동 차트(ActivityChart) — 최근 6개월 월별 일반(지원서 제출)/기업(챌린지 등록), yMax 상한
+ * - `activity`: 활동 차트(ActivityChart) — 최근 6개월 월별 일반(일반 사용자 신규 가입)/기업(신규 기업 가입), yMax 상한
  * - 납볍하기 버튼
  * @summary 전체 리포트/분석
  */

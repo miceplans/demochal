@@ -17,9 +17,6 @@
  * OpenAPI spec version: 0.0.1
  */
 
-/**
- * 모집방법. seMOchall(세모챌 신청폼)은 추천 노출 순위 부스트 대상
- */
 export type CreateChallengeRequestRecruitMethod =
   (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
 

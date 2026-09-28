@@ -1,6 +1,14 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ads, businesses, orders, payments, reports } from '../../db/schema.js';
+import {
+  ads,
+  applications,
+  businesses,
+  orders,
+  payments,
+  reports,
+  users,
+} from '../../db/schema.js';
 import {
   AdminService,
   maskBizNumber,
@@ -469,7 +477,7 @@ describe('AdminService — dashboard', () => {
     vi.useRealTimers();
   });
 
-  it('fills traffic buckets from signups per role and computes the ad revenue share', async () => {
+  it('fills traffic buckets from user signups and application submissions and computes the ad revenue share', async () => {
     const { db, selectWhereCalls } = createDbStub({
       select: [
         [{ count: 5 }],
@@ -478,10 +486,10 @@ describe('AdminService — dashboard', () => {
         [{ count: 2 }],
         [],
         [
-          { bucket: '2026-09-17', role: 'user', count: 4 },
-          { bucket: '2026-09-23', role: 'user', count: 1 },
-          { bucket: '2026-09-23', role: 'business', count: 2 },
+          { bucket: '2026-09-17', count: 4 },
+          { bucket: '2026-09-23', count: 1 },
         ],
+        [{ bucket: '2026-09-23', count: 2 }],
         [{ total: 40_000, ad: 10_000 }],
       ],
     });
@@ -496,18 +504,47 @@ describe('AdminService — dashboard', () => {
     expect(result.adRatio).toEqual({ value: '10,000 ₩', ratio: 0.25 });
     expect(result.generatedAt).toBe('2026-09-23T10:00:00.000Z');
 
-    // Revenue is scoped to paid payments within the same window, and the ad
-    // share keys off orders.adId.
-    const revenueSelect = db.select.mock.calls[6]![0];
+    // Traffic: primary는 일반 사용자(user) 신규 가입, secondary는 신규 제출물(applications).
+    const signupSelect = db.select.mock.calls[5]![0];
+    expect(referencesColumn(signupSelect.bucket, users.createdAt)).toBe(true);
+    expect(collectStrings(selectWhereCalls[3])).toContain('user');
+    const submissionSelect = db.select.mock.calls[6]![0];
+    expect(referencesColumn(submissionSelect.bucket, applications.createdAt)).toBe(true);
+
+    // Revenue is scoped to completed payments (paid + legacy done) within the
+    // same window, and the ad share keys off orders.adId.
+    const revenueSelect = db.select.mock.calls[7]![0];
     expect(referencesColumn(revenueSelect.ad, orders.adId)).toBe(true);
     expect(referencesColumn(revenueSelect.total, payments.refundedAmount)).toBe(true);
     const revenueWhere = selectWhereCalls[selectWhereCalls.length - 1];
-    expect(collectStrings(revenueWhere)).toContain('paid');
+    expect(collectStrings(revenueWhere)).toEqual(expect.arrayContaining(['paid', 'done']));
+  });
+
+  it('counts legacy done payments alongside paid in the ad revenue window', async () => {
+    const { db, selectWhereCalls } = createDbStub({
+      select: [
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [{ count: 0 }],
+        [],
+        [],
+        [],
+        [{ total: 50_000, ad: 20_000 }],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.getDashboard('7days');
+
+    expect(result.adRatio).toEqual({ value: '20,000 ₩', ratio: 0.4 });
+    const revenueWhere = selectWhereCalls[selectWhereCalls.length - 1];
+    expect(collectStrings(revenueWhere)).toEqual(expect.arrayContaining(['paid', 'done']));
   });
 
   it('returns a zero ratio instead of dividing by zero when there is no revenue', async () => {
     const { db } = createDbStub({
-      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], []],
+      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], [], []],
     });
     const { service } = createService(db);
 
@@ -520,7 +557,7 @@ describe('AdminService — dashboard', () => {
 
   it('defaults to 12 month buckets ending this month', async () => {
     const { db } = createDbStub({
-      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], []],
+      select: [[{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [{ count: 0 }], [], [], [], []],
     });
     const { service } = createService(db);
 
@@ -665,7 +702,7 @@ describe('AdminService — analytics', () => {
     },
     organization: '부산광역시',
   };
-  // users(30d), challenges(30d), payments, applications/month, challenges/month
+  // users(30d), challenges(30d), payments, user signups/month, new businesses/month
   const baseSelects = () => [
     [{ count: 7 }],
     [{ count: 4 }],
@@ -696,9 +733,14 @@ describe('AdminService — analytics', () => {
     expect(result.activity.corp).toEqual([0, 0, 0, 0, 2, 0]);
     expect(result.activity.yMax).toBe(20);
     expect(result.adReport).toBeUndefined();
+
+    // Activity: general은 일반 사용자(user) 신규 가입, corp는 신규 기업(businesses) 가입.
+    expect(referencesColumn(db.select.mock.calls[3]![0].bucket, users.createdAt)).toBe(true);
+    expect(collectStrings(selectWhereCalls[3])).toContain('user');
+    expect(referencesColumn(db.select.mock.calls[4]![0].bucket, businesses.createdAt)).toBe(true);
   });
 
-  it('nets platform revenue against refundedAmount on paid payments only', async () => {
+  it('nets platform revenue against refundedAmount on paid and legacy done payments', async () => {
     const { db, selectWhereCalls } = createDbStub({ select: baseSelects() });
     const { service } = createService(db);
 
@@ -707,7 +749,7 @@ describe('AdminService — analytics', () => {
     const revenueSelectArg = db.select.mock.calls[2]![0];
     expect(referencesColumn(revenueSelectArg.total, payments.amount)).toBe(true);
     expect(referencesColumn(revenueSelectArg.total, payments.refundedAmount)).toBe(true);
-    expect(collectStrings(selectWhereCalls[2])).toContain('paid');
+    expect(collectStrings(selectWhereCalls[2])).toEqual(expect.arrayContaining(['paid', 'done']));
   });
 
   it('resolves ?ad=N by the stable ads.ad_number column, not list position', async () => {
@@ -763,6 +805,19 @@ describe('AdminService — analytics', () => {
     await expect(service.getAnalytics('not-a-uuid')).rejects.toBeInstanceOf(NotFoundException);
     // Only the five analytics selects ran — no ads lookup.
     expect(db.select).toHaveBeenCalledTimes(5);
+  });
+
+  it('rejects digit ad numbers past the int4 range before querying', async () => {
+    // 2147483648 = int4 max + 1, 9999999999과 30자리 수는 파싱해도 int4를 넘는다.
+    for (const ad of ['2147483648', '9999999999', '9'.repeat(30)]) {
+      const { db } = createDbStub({ select: baseSelects() });
+      const { service, adsService } = createService(db);
+
+      await expect(service.getAnalytics(ad)).rejects.toBeInstanceOf(NotFoundException);
+      // Only the five analytics selects ran — no ads lookup.
+      expect(db.select).toHaveBeenCalledTimes(5);
+      expect(adsService.getReportForAdmin).not.toHaveBeenCalled();
+    }
   });
 });
 

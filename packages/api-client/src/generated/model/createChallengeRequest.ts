@@ -30,6 +30,5 @@ export interface CreateChallengeRequest {
   endDate: string;
   /** 유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현. */
   category?: string;
-  /** 모집방법. seMOchall(세모챌 신청폼)은 추천 노출 순위 부스트 대상 */
   recruitMethod?: CreateChallengeRequestRecruitMethod;
 }

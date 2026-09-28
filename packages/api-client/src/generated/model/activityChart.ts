@@ -18,15 +18,15 @@
  */
 
 /**
- * 활동 차트 (ActivityChart) — 월별 일반/기업 이중 영역차트 (recharts ComposedChart).
+ * 활동 차트 (ActivityChart) — 월별 일반 사용자/기업 신규 가입 이중 영역차트 (recharts ComposedChart).
  * months[i]와 general[i]/corp[i]가 인덱스로 대응.
  */
 export interface ActivityChart {
   /** 월 라벨 (예: 'JAN'~'JUN') */
   months?: string[];
-  /** 일반 사용자 지원서 제출 수 */
+  /** 월별 일반 사용자 신규 가입 수 */
   general?: number[];
-  /** 기업 챌린지 등록 수 */
+  /** 월별 신규 기업 가입 수 */
   corp?: number[];
   /** Y축 상한 (1/2/5×10ⁿ, 최소 10 — 화면은 5등분 tick) */
   yMax?: number;
