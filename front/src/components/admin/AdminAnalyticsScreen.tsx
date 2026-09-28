@@ -6,6 +6,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
 
@@ -67,9 +68,42 @@ function AdminAnalyticsContent() {
 
   const analyticsQuery = generated.useGetAdminAnalytics({ ad: adEnabled ? adNumber : undefined });
   const analytics = analyticsQuery.data?.data;
+  const downloadAnalytics = () => {
+    const rows: string[][] = [];
+    for (const stat of analytics?.stats ?? []) {
+      rows.push(['통계', stat.label ?? '', stat.value ?? '', stat.meta ?? '']);
+    }
+    for (const [index, month] of (analytics?.activity?.months ?? []).entries()) {
+      rows.push([
+        '활동',
+        month ?? '',
+        String(analytics?.activity?.general?.[index] ?? 0),
+        `기업 ${analytics?.activity?.corp?.[index] ?? 0}`,
+      ]);
+    }
+    if (analytics?.adReport) {
+      for (const stat of analytics.adReport.stats ?? []) {
+        rows.push(['광고 리포트', stat.label ?? '', stat.value ?? '', stat.meta ?? '']);
+      }
+      for (const day of analytics.adReport.daily ?? []) {
+        rows.push([
+          '광고 일별',
+          day.date ?? '',
+          String(day.impressions ?? 0),
+          `클릭 ${day.clicks ?? 0}, CTR ${day.ctr ?? 0}`,
+        ]);
+      }
+    }
+    downloadCsv('semochal-analytics.csv', ['구분', '항목', '값', '비고'], rows);
+  };
 
   return (
     <>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 24 }}>
+        <ExportButton type="button" onClick={downloadAnalytics}>
+          내보내기
+        </ExportButton>
+      </div>
       <AdReportSection report={analytics?.adReport} />
       <StatRow>
         {(analytics?.stats ?? []).map((stat) => (
@@ -98,7 +132,6 @@ export function AdminAnalyticsScreen() {
     <>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <AdminPageTitle>리포트</AdminPageTitle>
-        <ExportButton>내보내기</ExportButton>
       </div>
       <Suspense fallback={null}>
         <AdminAnalyticsContent />
