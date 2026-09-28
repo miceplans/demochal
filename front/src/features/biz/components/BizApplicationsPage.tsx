@@ -11,16 +11,24 @@ export function BizApplicationsPage() {
   const [error, setError] = useState(false);
   const [statusFilter, setStatusFilter] = useState<Application['status'] | ''>('');
   const requestVersions = useRef(new Map<string, number>());
+  const listRequestId = useRef(0);
   useEffect(() => {
+    const requestId = ++listRequestId.current;
     // Loading is an external API synchronization triggered by the filter change.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(false);
     void adApi.applications
       .listManaged(statusFilter ? { status: statusFilter } : undefined)
-      .then(setRows)
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .then((items) => {
+        if (listRequestId.current === requestId) setRows(items);
+      })
+      .catch(() => {
+        if (listRequestId.current === requestId) setError(true);
+      })
+      .finally(() => {
+        if (listRequestId.current === requestId) setLoading(false);
+      });
   }, [statusFilter]);
   const update = (id: string, body: Parameters<typeof adApi.applications.update>[1]) => {
     const version = (requestVersions.current.get(id) ?? 0) + 1;
