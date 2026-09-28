@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(18);
+    expect(journal.entries).toHaveLength(19);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -360,6 +360,19 @@ describe('0017_biz_signup_contract migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "terms_agreements" jsonb');
     expect(sql).toContain('ALTER COLUMN "registration_number" DROP NOT NULL');
     expect(sql).toContain('CREATE TABLE IF NOT EXISTS "contact_verifications"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0018_add_challenges_recruit_method migration', () => {
+  it('adds the exposure-boost column idempotently with an external backfill default', () => {
+    const tag = journal.entries[18]?.tag;
+    expect(tag).toBe('0018_add_challenges_recruit_method');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      `ADD COLUMN IF NOT EXISTS "recruit_method" varchar(20) DEFAULT 'external' NOT NULL`,
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

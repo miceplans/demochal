@@ -82,6 +82,7 @@ export * from './createAdBody';
 export * from './createCertificateRequest';
 export * from './createCertificateRequestCategory';
 export * from './createChallengeRequest';
+export * from './createChallengeRequestRecruitMethod';
 export * from './createReportRequest';
 export * from './createReportRequestTargetType';
 export * from './createTeamRequest';
