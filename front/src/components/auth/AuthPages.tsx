@@ -10,7 +10,8 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { adApi } from '@/lib/ad-api';
-import { generated } from '@semochal/api-client';
+import { useQueryClient } from '@tanstack/react-query';
+import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
 const Login = styled.div({
@@ -166,22 +167,38 @@ export function OnboardingPage({ step }: { step: string }) {
   const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
-  const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
   const completeOnboarding = useUserStore((s) => s.completeOnboarding);
+  const queryClient = useQueryClient();
+  // 설문은 첫 가입/로그인 사용자만 진행한다. 로컬 플래그는 기기·계정별로 어긋날 수 있어
+  // 서버의 onboardingSurvey(null = 미완료)를 기준으로 판단한다.
+  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const alreadySurveyed = auth.data?.status === 200 && Boolean(auth.data.data.onboardingSurvey);
   // 실패하면 전역 MutationCache가 에러 토스트를 띄우고, 로컬 완료 처리하지 않아 다시 시도할 수 있다.
   const saveSurvey = generated.useSaveOnboardingSurvey({
     mutation: {
       onSuccess: () => {
         completeOnboarding();
+        void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
         celebrateBadgeAcquisition();
         router.replace('/');
+      },
+      onError: (error) => {
+        // 409: 다른 탭/기기에서 이미 설문을 완료했다.
+        if (error instanceof ApiError && error.status === 409) {
+          completeOnboarding();
+          router.replace('/');
+        }
       },
     },
   });
 
   useEffect(() => {
-    if (hasCompletedOnboarding) router.replace('/');
-  }, [hasCompletedOnboarding, router]);
+    if (auth.isError) router.replace('/login');
+    else if (alreadySurveyed) {
+      completeOnboarding();
+      router.replace('/');
+    }
+  }, [auth.isError, alreadySurveyed, completeOnboarding, router]);
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',
@@ -191,6 +208,7 @@ export function OnboardingPage({ step }: { step: string }) {
   const options = index === 1 ? copy.fields : index === 2 ? copy.purposes : copy.types;
   const toggle = (x: string) =>
     setSurvey(step, selected.includes(x) ? selected.filter((v) => v !== x) : [...selected, x]);
+  if (!auth.data || alreadySurveyed) return null;
   return (
     <UserShell compact navigation={false} footer={false}>
       <Survey>

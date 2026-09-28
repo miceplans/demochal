@@ -3,13 +3,17 @@ import {
   Controller,
   Get,
   HttpCode,
+  Param,
+  ParseUUIDPipe,
   Post,
   Query,
   Req,
   Res,
   ServiceUnavailableException,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
@@ -21,9 +25,15 @@ import {
 } from './auth.cookie.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
+import {
+  ConfirmContactVerificationDto,
+  RequestContactVerificationDto,
+} from './dto/contact-verification.dto.js';
+import { ContactVerificationsService } from './contact-verifications.service.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
+import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../common/throttling/throttling.js';
 import { Public } from './public.decorator.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
@@ -53,25 +63,45 @@ const NAVER_USERINFO_URL = 'https://openapi.naver.com/v1/nid/me';
 @Public()
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly contactVerifications: ContactVerificationsService,
+  ) {}
 
-  // Not yet in openapi.yaml: email/password login has no signup path there
-  // (production signup is social-only, still `planned`). Added so /auth/login
-  // and /auth/me are actually exercisable in the meantime.
+  // Email/password signup; the biz signup (`/biz/login`) also sends username,
+  // phone, contact verification ids and terms agreements.
   @Post('register')
+  @Throttle(AUTH_THROTTLE)
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
-    const { accessToken, user } = await this.authService.register(
-      dto.email,
-      dto.password,
-      dto.name,
-    );
+    const { accessToken, user } = await this.authService.register(dto);
     response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
     return { user };
   }
 
+  @Post('contact-verifications')
+  @Throttle(AUTH_THROTTLE)
+  requestContactVerification(@Body() dto: RequestContactVerificationDto) {
+    return this.contactVerifications.request(dto.channel, dto.target);
+  }
+
+  @Post('contact-verifications/:id/confirm')
+  @HttpCode(200)
+  @Throttle(AUTH_THROTTLE)
+  confirmContactVerification(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ConfirmContactVerificationDto,
+  ) {
+    return this.contactVerifications.confirm(id, dto.code);
+  }
+
   @Post('login')
+  @Throttle(AUTH_THROTTLE)
+  @UseGuards(LoginAttemptThrottlerGuard)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-    const { accessToken, user } = await this.authService.login(dto.email, dto.password);
+    const { accessToken, user } = await this.authService.login(
+      dto.email ?? dto.username ?? '',
+      dto.password,
+    );
     response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
     return { user };
   }
@@ -251,7 +281,7 @@ export class AuthController {
   }
 
   private signGoogleState(nonce: string) {
-    return createHmac('sha256', env.jwtSecret).update(nonce).digest('base64url');
+    return createHmac('sha256', env.oauthStateSecret).update(nonce).digest('base64url');
   }
 
   private isValidGoogleState(state: string | undefined, request: Request) {
@@ -277,7 +307,7 @@ export class AuthController {
   }
 
   private signNaverState(nonce: string) {
-    return createHmac('sha256', env.jwtSecret).update(nonce).digest('base64url');
+    return createHmac('sha256', env.oauthStateSecret).update(nonce).digest('base64url');
   }
 
   private isValidNaverState(state: string | undefined, request: Request) {

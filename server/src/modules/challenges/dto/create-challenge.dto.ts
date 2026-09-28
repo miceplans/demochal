@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsIn,
   IsInt,
   IsOptional,
   IsPositive,
@@ -39,4 +40,8 @@ export class CreateChallengeDto {
   @IsString()
   @MaxLength(100)
   category?: string;
+
+  @IsOptional()
+  @IsIn(['seMOchall', 'external'])
+  recruitMethod?: 'seMOchall' | 'external';
 }
