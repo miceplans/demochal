@@ -80,7 +80,8 @@ function AdminAnalyticsContent() {
     toast.error('활동 데이터를 불러올 수 없어요', '잠시 후 다시 시도해주세요', {
       action: { label: '다시 시도', onClick: () => void refetchAnalytics() },
     });
-  }, [analyticsQuery.isError, refetchAnalytics, toast]);
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [analyticsQuery.isError, analyticsQuery.errorUpdatedAt, refetchAnalytics, toast]);
   const downloadAnalytics = () => {
     const rows: string[][] = [];
     for (const stat of analytics?.stats ?? []) {

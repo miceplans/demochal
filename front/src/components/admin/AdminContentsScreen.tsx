@@ -172,7 +172,8 @@ export function AdminContentsScreen() {
     toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
       action: { label: '다시 시도', onClick: () => void refetchContents() },
     });
-  }, [contentsQuery.isError, refetchContents, toast]);
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, refetchContents, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>

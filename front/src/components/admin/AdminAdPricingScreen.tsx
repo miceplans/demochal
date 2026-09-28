@@ -352,7 +352,8 @@ export function AdminAdPricingScreen() {
     toast.error('단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
       action: { label: '다시 시도', onClick: () => void refetchPricing() },
     });
-  }, [pricingQuery.isError, refetchPricing, toast]);
+    // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
+  }, [pricingQuery.isError, pricingQuery.errorUpdatedAt, refetchPricing, toast]);
 
   const updatePricingMutation = generated.useUpdateAdPricing({
     mutation: {

@@ -552,11 +552,7 @@ export function BizAdsPage() {
                   <PopupAction type="button" secondary onClick={() => setPaymentOpen(false)}>
                     취소
                   </PopupAction>
-                  <PopupAction
-                    type="button"
-                    disabled={submitting || overlaps}
-                    onClick={submitReservation}
-                  >
+                  <PopupAction type="button" disabled={submitting} onClick={submitReservation}>
                     {submitting ? '신청 중…' : '계약 신청'}
                   </PopupAction>
                 </div>
