@@ -10,6 +10,7 @@ import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApplicationTable, EVALUATION_LABEL, type ApplicationPatch } from './ApplicationTable';
+import { apiErrorMessage } from '@/lib/api-error';
 
 const FILTER_OPTIONS: DropdownOption[] = [
   { value: '', label: '전체' },
@@ -26,7 +27,9 @@ export function BizApplicationsPage() {
   const applicationsQuery = generated.useListManagedApplications();
   const rows = applicationsQuery.data?.status === 200 ? applicationsQuery.data.data : [];
   const loading = applicationsQuery.isPending;
-  const error = applicationsQuery.isError;
+  const error = applicationsQuery.isError
+    ? apiErrorMessage(applicationsQuery.error, '지원서를 불러오거나 저장하지 못했습니다.')
+    : null;
   const updateApplicationMutation = generated.useUpdateApplication();
 
   const update = async (id: string, body: ApplicationPatch) => {
@@ -94,7 +97,7 @@ export function BizApplicationsPage() {
           </div>
         </Toolbar>
         {loading && <Message>지원서를 불러오는 중입니다.</Message>}
-        {error && <Message role="alert">지원서를 불러오거나 저장하지 못했습니다.</Message>}
+        {error && <Message role="alert">{error}</Message>}
         {!loading && <ApplicationTable rows={filtered} onUpdate={update} />}
       </section>
     </BizContent>

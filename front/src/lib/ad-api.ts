@@ -1,4 +1,6 @@
-import { ApiError, HttpClient, createApiClient } from '@semochal/api-client';
+import { HttpClient, createApiClient } from '@semochal/api-client';
+
+import { apiErrorMessage } from './api-error';
 
 const options = {
   baseUrl: process.env.NEXT_PUBLIC_API_URL ?? '/api',
@@ -12,14 +14,8 @@ export type AdPricing = {
   period: string | null;
 };
 export function adError(error: unknown) {
-  if (
-    error instanceof ApiError &&
-    error.body &&
-    typeof error.body === 'object' &&
-    'message' in error.body
-  ) {
-    const message = error.body.message;
-    if (typeof message === 'string') return message;
-  }
-  return '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.';
+  return apiErrorMessage(
+    error,
+    '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.',
+  );
 }

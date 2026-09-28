@@ -30,7 +30,7 @@ export class ApplicationsService {
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
-      if (!challenge) throw new NotFoundException('Challenge not found');
+      if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its
       // payable pending order instead of duplicating rows.
@@ -54,7 +54,7 @@ export class ApplicationsService {
         challenge.startDate.getTime() > now.getTime() ||
         challenge.endDate.getTime() < now.getTime()
       ) {
-        throw new BadRequestException('Challenge is not accepting applications');
+        throw new BadRequestException('신청을 받지 않는 챌린지입니다.');
       }
 
       const [application] = await tx
@@ -186,7 +186,7 @@ export class ApplicationsService {
   async findById(id: string, userId: string) {
     const row = await this.findWithBusinessOwner(id);
     if (!row || (row.application.userId !== userId && row.businessOwnerId !== userId)) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     }
     return row.application;
   }
@@ -195,7 +195,7 @@ export class ApplicationsService {
   async update(id: string, dto: UpdateApplicationDto, userId: string) {
     const row = await this.findWithBusinessOwner(id);
     if (!row || row.businessOwnerId !== userId) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     }
 
     const [application] = await this.db
@@ -207,7 +207,7 @@ export class ApplicationsService {
       })
       .where(eq(applications.id, id))
       .returning();
-    if (!application) throw new NotFoundException('Application not found');
+    if (!application) throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     return application;
   }
 

@@ -19,7 +19,7 @@ export class BillingController {
   @Get('cards')
   async listCards(@CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingService.listCards(business.id);
   }
 
@@ -27,7 +27,7 @@ export class BillingController {
   @HttpCode(201)
   async registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingService.registerCard(business.id, dto);
   }
 
@@ -37,7 +37,7 @@ export class BillingController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingHistoryService.forBusiness(business.id, query);
   }
 
@@ -45,7 +45,7 @@ export class BillingController {
   @Get('authorizations/customer-key')
   async getCustomerKey(@CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return { customerKey: this.billingService.getCustomerKey(business.id) };
   }
 
@@ -57,7 +57,7 @@ export class BillingController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingService.issueCard(business.id, dto.authKey);
   }
 }

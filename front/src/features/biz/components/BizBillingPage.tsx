@@ -10,6 +10,7 @@ import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
 import { requestTossBillingAuth } from '@/lib/payments';
+import { apiErrorMessage } from '@/lib/api-error';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -53,8 +54,11 @@ export function BizBillingPage() {
           'NEXT_PUBLIC_TOSS_CLIENT_KEY가 설정되지 않았어요',
         );
       }
-    } catch {
-      toast.error('카드 등록을 시작하지 못했어요', '잠시 후 다시 시도해주세요');
+    } catch (error) {
+      toast.error(
+        '카드 등록을 시작하지 못했어요',
+        apiErrorMessage(error, '잠시 후 다시 시도해주세요'),
+      );
     } finally {
       setRegistering(false);
     }

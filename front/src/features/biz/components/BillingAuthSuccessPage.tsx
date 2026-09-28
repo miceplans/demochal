@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { Button } from '@/components/common/Primitives';
+import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 
 const PageWrap = styled.div({
@@ -31,6 +32,7 @@ export function BillingAuthSuccessPage() {
   // 토스 빌링 인증 성공 리다이렉트 쿼리 — 클라이언트에서만 확정되므로 Suspense 경계 하위에서 읽는다.
   const authKey = useSearchParams().get('authKey');
   const [failed, setFailed] = useState(false);
+  const [failReason, setFailReason] = useState('');
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -43,8 +45,10 @@ export function BillingAuthSuccessPage() {
         setDone(true);
         router.replace('/biz/billing');
       })
-      .catch(() => {
-        if (!cancelled) setFailed(true);
+      .catch((error) => {
+        if (cancelled) return;
+        setFailed(true);
+        setFailReason(apiErrorMessage(error, ''));
       });
     return () => {
       cancelled = true;
@@ -55,7 +59,9 @@ export function BillingAuthSuccessPage() {
     return (
       <PageWrap>
         <Title>카드 등록을 완료하지 못했어요</Title>
-        <Description>인증 정보가 올바르지 않거나 처리에 실패했어요. 다시 시도해주세요.</Description>
+        <Description>
+          {failReason || '인증 정보가 올바르지 않거나 처리에 실패했어요. 다시 시도해주세요.'}
+        </Description>
         <Actions>
           <Button onClick={() => router.push('/biz/billing')}>결제수단 관리로</Button>
         </Actions>

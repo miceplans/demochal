@@ -14,6 +14,7 @@ import {
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { apiErrorMessage } from '@/lib/api-error';
 
 const formatDate = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
 const formatDelta = (stat?: { deltaPercent?: number }) => {
@@ -183,7 +184,9 @@ export function BizDashboardPage() {
   if (dashboardQuery.isError)
     return (
       <BizContent>
-        <p>대시보드 데이터를 불러오지 못했습니다.</p>
+        <p role="alert">
+          {apiErrorMessage(dashboardQuery.error, '대시보드 데이터를 불러오지 못했습니다.')}
+        </p>
       </BizContent>
     );
   if (!data)

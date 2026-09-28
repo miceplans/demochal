@@ -16,6 +16,7 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 import { Icon } from '@/components/common/Primitives';
+import { apiErrorMessage } from '@/lib/api-error';
 
 const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 const daysLeft = (endDate: string) =>
@@ -27,7 +28,12 @@ export function BizPostingsPage() {
   const page = challengesQuery.data?.status === 200 ? challengesQuery.data.data : undefined;
   const items = page?.items ?? [];
   const loading = challengesQuery.isPending;
-  const error = challengesQuery.isError;
+  const error = challengesQuery.isError
+    ? apiErrorMessage(
+        challengesQuery.error,
+        '공고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.',
+      )
+    : null;
   const latest = items[0];
   const statsQuery = generated.useGetMyChallengeStats(latest?.id ?? '', {
     query: { enabled: !!latest },
@@ -38,7 +44,7 @@ export function BizPostingsPage() {
   return (
     <BizContent>
       {loading && <Message>공고를 불러오는 중입니다.</Message>}
-      {error && <Message>공고를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.</Message>}
+      {error && <Message role="alert">{error}</Message>}
       {!loading && !error && !latest && (
         <>
           <Message>등록된 공고가 없습니다.</Message>

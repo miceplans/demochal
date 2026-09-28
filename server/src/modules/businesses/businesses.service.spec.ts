@@ -66,7 +66,7 @@ describe('BusinessesService', () => {
     const service = new BusinessesService(db, { notify: vi.fn() } as any);
 
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
-      'Business not found or not owned by user',
+      '기업 정보를 찾을 수 없거나 조회 권한이 없습니다.',
     );
   });
 });
@@ -104,7 +104,7 @@ describe('BusinessesService.register', () => {
     const service = new BusinessesService(createRegisterDb([{ id: 'biz-old' }]), alerts as any);
 
     await expect(service.register({ type: 'corp' } as any, 'user-1')).rejects.toThrow(
-      'Business already registered',
+      '이미 등록된 기업 정보가 있습니다.',
     );
     expect(alerts.notify).not.toHaveBeenCalled();
   });

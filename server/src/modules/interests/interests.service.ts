@@ -39,7 +39,7 @@ export class InterestsService {
 
   private assertSettingsShape(input: unknown): asserts input is SaveNotificationSettingsDto {
     if (typeof input !== 'object' || input === null || Array.isArray(input)) {
-      throw new BadRequestException('Body must be an object of { enabled: boolean } settings');
+      throw new BadRequestException('알림 설정 형식이 올바르지 않습니다.');
     }
     for (const [key, value] of Object.entries(input)) {
       if (
@@ -48,9 +48,7 @@ export class InterestsService {
         Array.isArray(value) ||
         typeof (value as { enabled?: unknown }).enabled !== 'boolean'
       ) {
-        throw new BadRequestException(
-          `Setting "${key}" must be an object with a boolean "enabled" flag`,
-        );
+        throw new BadRequestException(`"${key}" 설정은 enabled(true/false) 값을 포함해야 합니다.`);
       }
     }
   }

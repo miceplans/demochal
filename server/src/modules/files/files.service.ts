@@ -53,7 +53,7 @@ export class FilesService {
 
   async requestUpload(dto: PresignedUploadRequest, uploaderUserId: string) {
     if (dto.bucket === 'public' && dto.contentType === 'application/pdf') {
-      throw new BadRequestException('PDF files can only be uploaded to the private bucket.');
+      throw new BadRequestException('PDF 파일은 보안 저장소에만 업로드할 수 있습니다.');
     }
 
     // Never write an untrusted object directly to the public bucket.  A caller
@@ -104,7 +104,7 @@ export class FilesService {
       head.ContentLength > 10 * 1024 * 1024
     ) {
       await this.rejectUpload(file.key, id);
-      throw new NotFoundException('Uploaded file is invalid');
+      throw new NotFoundException('업로드된 파일이 유효하지 않습니다.');
     }
 
     const object = await this.s3.send(
@@ -113,7 +113,7 @@ export class FilesService {
     const bytes = new Uint8Array(await object.Body!.transformToByteArray());
     if (!hasExpectedMagicBytes(file.contentType as AllowedUploadContentType, bytes)) {
       await this.rejectUpload(file.key, id);
-      throw new NotFoundException('Uploaded file is invalid');
+      throw new NotFoundException('업로드된 파일이 유효하지 않습니다.');
     }
 
     const targetBucket =
@@ -150,12 +150,12 @@ export class FilesService {
 
   async findById(id: string, userId: string) {
     const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
-    if (!file) throw new NotFoundException('File not found');
+    if (!file) throw new NotFoundException('파일을 찾을 수 없습니다.');
     // 공개 버킷의 업로드 완료 파일은 어차피 CloudFront 공개 URL로 누구나 볼 수 있으므로
     // (공고 포스터처럼) 업로더 본인만 조회할 수 있을 필요가 없다. 그 외 파일은 기존처럼 소유자만 조회한다.
     const publiclyServed = file.bucket === 'public' && file.uploadStatus === 'ready';
     if (!publiclyServed && file.uploaderUserId !== userId) {
-      throw new NotFoundException('File not found');
+      throw new NotFoundException('파일을 찾을 수 없습니다.');
     }
     return this.withPublicUrl(file);
   }
@@ -171,7 +171,7 @@ export class FilesService {
   async assertOwnedReadyPrivate(id: string, userId: string) {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus !== 'ready' || file.bucket !== 'private') {
-      throw new BadRequestException('A verified private file is required');
+      throw new BadRequestException('검증된 개인 파일이 필요합니다.');
     }
     return file;
   }
@@ -210,7 +210,8 @@ export class FilesService {
 
   private async findOwnedFile(id: string, userId: string) {
     const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
-    if (!file || file.uploaderUserId !== userId) throw new NotFoundException('File not found');
+    if (!file || file.uploaderUserId !== userId)
+      throw new NotFoundException('파일을 찾을 수 없습니다.');
     return file;
   }
 }

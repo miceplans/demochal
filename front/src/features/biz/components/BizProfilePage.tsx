@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
 import { Modal } from '@/components/common/Feedback';
 import { useToast } from '@/components/common/Toast';
@@ -10,6 +10,7 @@ import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { BizContent, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { apiErrorMessage } from '@/lib/api-error';
 
 async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
   if (!fileId) return null;
@@ -61,15 +62,21 @@ export function BizProfilePage() {
       if (result.status !== 200) throw new Error('password-change-failed');
       closePasswordDialog();
       toast.success('비밀번호를 변경했습니다.');
-    } catch {
-      toast.error('현재 비밀번호를 확인하고 다시 시도해 주세요.');
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? apiErrorMessage(error, '현재 비밀번호를 확인하고 다시 시도해 주세요.')
+          : '현재 비밀번호를 확인하고 다시 시도해 주세요.',
+      );
     }
   };
 
   if (businessQuery.isError)
     return (
       <BizContent>
-        <p>기업 정보를 불러오지 못했습니다.</p>
+        <p role="alert">
+          {apiErrorMessage(businessQuery.error, '기업 정보를 불러오지 못했습니다.')}
+        </p>
       </BizContent>
     );
   if (!business)

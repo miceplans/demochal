@@ -98,7 +98,7 @@ export class NotificationsService {
       .set({ readAt: new Date() })
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId)))
       .returning();
-    if (!notification) throw new NotFoundException('Notification not found');
+    if (!notification) throw new NotFoundException('알림을 찾을 수 없습니다.');
     return notification;
   }
 

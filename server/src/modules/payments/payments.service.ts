@@ -93,7 +93,7 @@ export class PaymentsService {
     }
     if (dto.amount !== order.amount) {
       this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
-      throw new UnauthorizedException('Payment amount does not match the order');
+      throw new UnauthorizedException('결제 금액이 주문 금액과 일치하지 않습니다.');
     }
 
     const tossPayment = await this.confirmWithToss(dto);
@@ -103,7 +103,7 @@ export class PaymentsService {
       tossPayment.totalAmount !== order.amount
     ) {
       this.logger.warn(`Rejected unverified Toss confirmation for order ${order.id}`);
-      throw new UnauthorizedException('Toss payment did not match the order');
+      throw new UnauthorizedException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
 
     // The payment write and the order transition must commit or roll back
@@ -125,7 +125,7 @@ export class PaymentsService {
 
   private async confirmWithToss(dto: ConfirmPaymentDto): Promise<TossPayment> {
     if (!env.tossSecretKey) {
-      throw new BadGatewayException('Toss payment confirmation is not configured');
+      throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }
 
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
@@ -146,13 +146,13 @@ export class PaymentsService {
         `Toss payment confirm transport failed for order ${dto.orderId}`,
         (error as Error | undefined)?.stack,
       );
-      throw new BadGatewayException('Toss payment confirmation failed');
+      throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
     if (!response.ok) {
       this.logger.error(
         `Toss payment confirm rejected for order ${dto.orderId}: HTTP ${response.status}`,
       );
-      throw new BadGatewayException('Toss payment confirmation failed');
+      throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
     return (await response.json()) as TossPayment;
   }

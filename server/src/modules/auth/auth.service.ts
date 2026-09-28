@@ -28,8 +28,8 @@ import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
 import type { ChangePasswordDto } from './dto/change-password.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
-const DUPLICATE_ACCOUNT_MESSAGE = 'Email or username already registered';
-const INVALID_CREDENTIALS_MESSAGE = 'Invalid email or password';
+const DUPLICATE_ACCOUNT_MESSAGE = '이미 등록된 이메일 또는 아이디입니다.';
+const INVALID_CREDENTIALS_MESSAGE = '이메일 또는 비밀번호가 올바르지 않습니다.';
 // Compared against when the account doesn't exist (or has no password), so login
 // spends the same bcrypt time either way and response latency doesn't reveal accounts.
 const dummyPasswordHash = hash(randomBytes(32).toString('base64url'), PASSWORD_HASH_ROUNDS);
@@ -164,10 +164,10 @@ export class AuthService {
   async withdraw(userId: string, dto: WithdrawAccountDto) {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user || user.withdrawnAt || !user.passwordHash) {
-      throw new UnauthorizedException('Account cannot be withdrawn');
+      throw new UnauthorizedException('탈퇴할 수 없는 계정입니다.');
     }
     if (!(await compare(dto.password, user.passwordHash))) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
     }
 
     await this.db.transaction(async (tx) => {
@@ -284,14 +284,14 @@ export class AuthService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     if (dto.newPassword !== dto.confirmNewPassword) {
-      throw new BadRequestException('New password confirmation does not match');
+      throw new BadRequestException('새 비밀번호 확인이 일치하지 않습니다.');
     }
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user || user.withdrawnAt || !user.passwordHash) {
-      throw new BadRequestException('Account does not have a local password');
+      throw new BadRequestException('비밀번호가 설정되지 않은 계정입니다.');
     }
     if (!(await compare(dto.currentPassword, user.passwordHash))) {
-      throw new UnauthorizedException('Current password is incorrect');
+      throw new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.');
     }
     const passwordHash = await hash(dto.newPassword, PASSWORD_HASH_ROUNDS);
     await this.db.update(users).set({ passwordHash }).where(eq(users.id, userId));
@@ -493,25 +493,25 @@ export class AuthService {
   }
 
   async me(token: string) {
-    if (!token) throw new UnauthorizedException('Missing authentication cookie');
+    if (!token) throw new UnauthorizedException('로그인이 필요합니다.');
 
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(token);
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.');
     }
 
     let profile;
     try {
       profile = await this.usersService.findById(payload.sub);
     } catch {
-      throw new UnauthorizedException('User no longer exists');
+      throw new UnauthorizedException('존재하지 않는 계정입니다.');
     }
     if (profile.suspended) {
       throw new ForbiddenException(profile.suspendedReason ?? '정지된 계정입니다.');
     }
-    if (profile.withdrawnAt) throw new UnauthorizedException('User no longer exists');
+    if (profile.withdrawnAt) throw new UnauthorizedException('존재하지 않는 계정입니다.');
     return profile;
   }
 

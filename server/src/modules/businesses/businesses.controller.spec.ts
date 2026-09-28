@@ -43,11 +43,11 @@ describe('BusinessesController', () => {
   it('propagates the service rejection when updating a business owned by someone else', async () => {
     const { controller, businessesService } = createController();
     businessesService.update.mockRejectedValue(
-      new Error('Business not found or not owned by user'),
+      new Error('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.'),
     );
 
     await expect(controller.update('biz-2', { name: '새 이름' }, user)).rejects.toThrow(
-      'Business not found or not owned by user',
+      '기업 정보를 찾을 수 없거나 조회 권한이 없습니다.',
     );
     expect(businessesService.update).toHaveBeenCalledWith('biz-2', { name: '새 이름' }, 'user-1');
   });
