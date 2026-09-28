@@ -16,21 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AdProductPlacement } from './adProductPlacement';
-import type { AdProductReservedPeriodsItem } from './adProductReservedPeriodsItem';
+import type { Challenge } from './challenge';
 
-export interface AdProduct {
-  /** 결제 대기, 진행 중, 일시 정지 계약의 예약 불가 기간. 종료일 포함. */
-  reservedPeriods: AdProductReservedPeriodsItem[];
-  id: string;
-  /** 상품명 (예: 메인 배너 (대)) */
-  name: string;
-  /** 노출 설명 (예: 홈 상단 대형 배너, 마감 임박 공고 우선 노출) */
-  description?: string;
-  /** 노출 위치 — hero: 홈 상단, gallery: 홈 중간 갤러리, team: 팀 탐색 페이지, */
-  placement: AdProductPlacement;
-  /** 일일 광고비 (원, 관리자가 설정한 단가) */
-  dailyPrice: number;
-  /** PC/모바일 뷰 미리보기 이미지 */
-  previewImageUrl?: string;
-}
+export type ListMyChallenges200 = {
+  items: Challenge[];
+  /**
+   * 다음 페이지 커서 (없으면 null)
+   * @nullable
+   */
+  nextCursor: string | null;
+};

@@ -19,12 +19,12 @@
 import type { NotificationPayload } from './notificationPayload';
 
 export interface Notification {
-  id?: string;
+  id: string;
   userId?: string;
   /** 알림 유형 (team_matching | deadline | posting 등) */
-  type?: string;
-  payload?: NotificationPayload;
+  type: string;
+  payload: NotificationPayload;
   /** @nullable */
   readAt?: string | null;
-  createdAt?: string;
+  createdAt: string;
 }

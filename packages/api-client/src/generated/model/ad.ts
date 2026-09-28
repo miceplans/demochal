@@ -19,11 +19,11 @@
 import type { AdStatus } from './adStatus';
 
 export interface Ad {
-  id?: string;
-  businessId?: string;
-  productId?: string;
+  id: string;
+  businessId: string;
+  productId: string;
   /** 광고명 (연결된 챌린지명) */
-  title?: string;
+  title: string;
   imageFileId?: string;
   /**
    * imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음)
@@ -31,10 +31,10 @@ export interface Ad {
    */
   imageUrl?: string | null;
   landingUrl?: string;
-  startDate?: string;
-  endDate?: string;
+  startDate: string;
+  endDate: string;
   /** 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용 */
-  status?: AdStatus;
+  status: AdStatus;
   /**
    * 누적 노출수 (준비중이면 null)
    * @nullable
@@ -46,5 +46,5 @@ export interface Ad {
    */
   bookmarks?: number | null;
   /** 결제 금액 (원) */
-  paidAmount?: number;
+  paidAmount: number;
 }

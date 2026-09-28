@@ -22,18 +22,18 @@ import type { ChallengeStatus } from './challengeStatus';
 import type { ChallengeTargetsItem } from './challengeTargetsItem';
 
 export interface Challenge {
-  id?: string;
+  id: string;
   businessId?: string;
-  title?: string;
+  title: string;
   description?: string;
   /** 참가비 (원) */
   price?: number;
   /** 모집 인원 */
-  capacity?: number;
-  startDate?: string;
-  endDate?: string;
+  capacity: number;
+  startDate: string;
+  endDate: string;
   /** 등록 시 draft */
-  status?: ChallengeStatus;
+  status: ChallengeStatus;
   createdAt?: string;
   /** implemented — 생성 시 저장, 유사 챌린지 추천에 사용 */
   category?: string;

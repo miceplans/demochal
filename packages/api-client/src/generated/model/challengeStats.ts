@@ -24,8 +24,8 @@ import type { StatWithDelta } from './statWithDelta';
  * 공고 관리 화면의 그래프 데이터 묶음
  */
 export interface ChallengeStats {
-  clicks?: StatWithDelta;
-  bookmarks?: StatWithDelta;
+  clicks: StatWithDelta;
+  bookmarks: StatWithDelta;
   /** 노출수 (예: 124,582 조회수 / +12.5% 전주 대비) */
   exposure?: StatWithDelta;
   /** 지원자 분포 파이차트 — value는 백분율(0~100), 합계 100 */

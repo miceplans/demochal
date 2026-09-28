@@ -23,7 +23,7 @@
  * 서버는 원시 수치와 퍼센트를 남기고, 화면에서 '8,341번' 형태로 포맷팅.
  */
 export interface StatWithDelta {
-  value?: number;
+  value: number;
   /** 전주 대비 증감률 (%) — 음수면 감소 */
   deltaPercent?: number;
 }
