@@ -136,7 +136,7 @@ describe('AuthController Google callback input-security opt-out', () => {
     const mockedFetchJson = vi.mocked(fetchJsonMock);
 
     const nonce = 'state-nonce-with-enough-entropy';
-    const signature = createHmac('sha256', env.jwtSecret).update(nonce).digest('base64url');
+    const signature = createHmac('sha256', env.oauthStateSecret).update(nonce).digest('base64url');
     const service = {
       loginWithGoogle: vi.fn().mockResolvedValue({
         accessToken: 'signed.jwt',
