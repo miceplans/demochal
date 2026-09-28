@@ -111,8 +111,28 @@ variable "api_desired_count" {
   }
 }
 
+variable "ses_domain" {
+  description = "Domain to create as the SES sending identity (Easy DKIM, custom MAIL FROM, DMARC records in hosted_zone_id), e.g. semochall.com. Empty creates no SES identity."
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.ses_domain == "" || can(regex("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", var.ses_domain))
+    error_message = "ses_domain must be empty or a lowercase domain name."
+  }
+}
+
+variable "ses_dmarc_policy" {
+  description = "DMARC policy published for ses_domain. Start with none and tighten after reviewing delivery."
+  type        = string
+  default     = "none"
+  validation {
+    condition     = contains(["none", "quarantine", "reject"], var.ses_dmarc_policy)
+    error_message = "ses_dmarc_policy must be none, quarantine or reject."
+  }
+}
+
 variable "ses_from_email" {
-  description = "Verified SES sender for service emails (e.g. no-reply@miceplans.com). Empty disables email delivery and grants no SES permission."
+  description = "SES sender for service emails at ses_domain (e.g. no-reply@semochall.com). Set only after the identity is verified and the account has production access. Empty disables email delivery and grants no SES permission."
   type        = string
   default     = ""
   validation {

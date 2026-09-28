@@ -194,12 +194,19 @@ data "aws_iam_policy_document" "worker_task" {
     for_each = var.ses_from_email != "" ? [1] : []
     content {
       actions   = ["ses:SendEmail"]
-      resources = ["arn:${data.aws_partition.current.partition}:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${split("@", var.ses_from_email)[1]}"]
+      resources = [aws_sesv2_email_identity.service[0].arn]
       condition {
         test     = "StringEquals"
         variable = "ses:FromAddress"
         values   = [var.ses_from_email]
       }
+    }
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.ses_from_email == "" || (local.ses_enabled && endswith(var.ses_from_email, "@${var.ses_domain}"))
+      error_message = "ses_from_email requires ses_domain to be set to the sender's domain."
     }
   }
 }

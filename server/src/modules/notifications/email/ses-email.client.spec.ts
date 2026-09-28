@@ -14,12 +14,12 @@ describe('SesEmailClient', () => {
   it('reports configuration from SES_FROM_EMAIL', () => {
     env.sesFromEmail = '';
     expect(new SesEmailClient().isConfigured()).toBe(false);
-    env.sesFromEmail = 'no-reply@miceplans.com';
+    env.sesFromEmail = 'no-reply@semochall.com';
     expect(new SesEmailClient().isConfigured()).toBe(true);
   });
 
   it('sends a SESv2 simple email with UTF-8 text and html bodies', async () => {
-    env.sesFromEmail = 'no-reply@miceplans.com';
+    env.sesFromEmail = 'no-reply@semochall.com';
     const send = vi.spyOn(SESv2Client.prototype, 'send').mockResolvedValue({} as never);
 
     await new SesEmailClient().send({
@@ -32,7 +32,7 @@ describe('SesEmailClient', () => {
     const command = send.mock.calls[0]?.[0] as SendEmailCommand;
     expect(command).toBeInstanceOf(SendEmailCommand);
     expect(command.input).toEqual({
-      FromEmailAddress: 'no-reply@miceplans.com',
+      FromEmailAddress: 'no-reply@semochall.com',
       Destination: { ToAddresses: ['owner@example.com'] },
       Content: {
         Simple: {
@@ -47,7 +47,7 @@ describe('SesEmailClient', () => {
   });
 
   it('propagates SES errors to the caller', async () => {
-    env.sesFromEmail = 'no-reply@miceplans.com';
+    env.sesFromEmail = 'no-reply@semochall.com';
     vi.spyOn(SESv2Client.prototype, 'send').mockRejectedValue(new Error('Throttling'));
 
     await expect(
