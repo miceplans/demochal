@@ -29,13 +29,13 @@ export class BizService {
       .limit(1);
 
     // stats 소스는 GET /challenges/{id}/stats와 동일 (ChallengeStats 재사용).
-    const stats = recentPosting ? await this.challengesService.stats(recentPosting.id) : null;
+    const stats = recentPosting ? await this.challengesService.getStats(recentPosting.id) : null;
     const history = await this.billingHistoryService.forBusiness(business.id, {});
-    // 노출 비콘이 없어 월별 광고 노출은 정직하게 0 구조만 반환 (리포트 주석 참고).
+    const monthlyAdExposure = await this.adsService.monthlyExposureForBusiness(business.id);
     return {
       recentPosting: recentPosting ?? null,
       stats,
-      monthlyAdExposure: [] as { label: string; value: number }[],
+      monthlyAdExposure,
       payments: history.items.slice(0, 3),
       paymentTotal: history.total,
       activeAds: await this.adsService.listMine(business.id, 'active'),

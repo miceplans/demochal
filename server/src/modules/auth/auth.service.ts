@@ -8,10 +8,12 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { eq, ilike } from 'drizzle-orm';
+import { eq, ilike, or } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { users } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
+import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
+import type { RegisterDto } from './dto/register.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
 // pg unique_violation (see https://www.postgresql.org/docs/current/errcodes-appendix.html).
@@ -38,14 +40,67 @@ export class AuthService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
+    private readonly contactVerifications: ContactVerificationsService,
   ) {}
 
-  async register(email: string, password: string, name: string) {
-    const [existing] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
-    if (existing) throw new ConflictException('Email already registered');
+  async register(dto: RegisterDto) {
+    const { email, password, name, username } = dto;
+    const [existing] = await this.db
+      .select({ email: users.email, username: users.username })
+      .from(users)
+      .where(
+        username
+          ? or(eq(users.email, email), eq(users.username, username))
+          : eq(users.email, email),
+      )
+      .limit(1);
+    if (existing) {
+      throw new ConflictException(
+        existing.email === email ? 'Email already registered' : 'Username already taken',
+      );
+    }
 
     const passwordHash = await hash(password, PASSWORD_HASH_ROUNDS);
-    const [user] = await this.db.insert(users).values({ email, name, passwordHash }).returning();
+    const now = new Date().toISOString();
+    let user: typeof users.$inferSelect | undefined;
+    try {
+      user = await this.db.transaction(async (tx) => {
+        const emailVerifiedAt = dto.emailVerificationId
+          ? await this.contactVerifications.consume(tx, dto.emailVerificationId, 'email', email)
+          : null;
+        // TODO: 발송 relay가 붙으면 기업 가입에서 휴대폰/이메일 인증을 필수로 전환한다.
+        const phoneVerifiedAt =
+          dto.phoneVerificationId && dto.phone
+            ? await this.contactVerifications.consume(
+                tx,
+                dto.phoneVerificationId,
+                'phone',
+                dto.phone,
+              )
+            : null;
+        const [created] = await tx
+          .insert(users)
+          .values({
+            email,
+            name,
+            passwordHash,
+            username: username ?? null,
+            phone: dto.phone ? normalizeContact('phone', dto.phone) : null,
+            emailVerifiedAt,
+            phoneVerifiedAt,
+            termsAgreements: dto.agreements?.length
+              ? Object.fromEntries(dto.agreements.map((key) => [key, now]))
+              : null,
+          })
+          .returning();
+        return created;
+      });
+    } catch (err) {
+      // Lost a race against a concurrent signup for the same email/username.
+      if (isUniqueViolation(err))
+        throw new ConflictException('Email or username already registered');
+      throw err;
+    }
     if (!user) throw new Error('Failed to create user');
 
     const [accessToken, publicUser] = await Promise.all([
@@ -55,8 +110,17 @@ export class AuthService {
     return { accessToken, user: publicUser };
   }
 
-  async login(email: string, password: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.email, email)).limit(1);
+  /** `identifier` is an email, or a biz account's username when it has no `@`. */
+  async login(identifier: string, password: string) {
+    const [user] = await this.db
+      .select()
+      .from(users)
+      .where(
+        identifier.includes('@')
+          ? eq(users.email, identifier)
+          : eq(users.username, identifier.toLowerCase()),
+      )
+      .limit(1);
     if (!user) throw new UnauthorizedException('Invalid email or password');
 
     if (!user.passwordHash) throw new UnauthorizedException('Invalid email or password');

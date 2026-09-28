@@ -1,7 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses } from '../../db/schema.js';
+import { businesses, challenges, users } from '../../db/schema.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
@@ -11,15 +17,28 @@ export class BusinessesService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
-    const [business] = await this.db
-      .insert(businesses)
-      .values({
-        name: dto.name,
-        registrationNumber: dto.registrationNumber,
-        type: dto.type,
-        ownerUserId,
-      })
-      .returning();
+    // One business per owner — findByOwner and the biz console assume it.
+    if (await this.findByOwner(ownerUserId)) {
+      throw new ConflictException('Business already registered for this user');
+    }
+    const business = await this.db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(businesses)
+        .values({
+          name: dto.name ?? null,
+          registrationNumber: dto.registrationNumber ?? null,
+          type: dto.type,
+          ownerUserId,
+        })
+        .returning();
+      // 기업을 등록한 일반 회원은 기업 회원이 된다(BizAccessCover가 role로 콘솔 접근을 판단).
+      // 관리자 권한은 낮추지 않는다.
+      await tx
+        .update(users)
+        .set({ role: 'business' })
+        .where(and(eq(users.id, ownerUserId), eq(users.role, 'user')));
+      return created;
+    });
     return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
   }
 
@@ -42,6 +61,26 @@ export class BusinessesService {
     return business
       ? { ...business, ...verificationStatusPresentation(business.verificationStatus) }
       : null;
+  }
+
+  async findByOwnerOrThrow(ownerUserId: string) {
+    const business = await this.findByOwner(ownerUserId);
+    if (!business) throw new ForbiddenException('Business account required');
+    return business;
+  }
+
+  async listMyChallenges(ownerUserId: string, cursor?: string, limit = 20) {
+    const where = cursor ? lt(challenges.createdAt, new Date(cursor)) : undefined;
+    const rows = await this.db
+      .select({ challenge: challenges })
+      .from(challenges)
+      .innerJoin(businesses, eq(businesses.id, challenges.businessId))
+      .where(and(eq(businesses.ownerUserId, ownerUserId), where))
+      .orderBy(desc(challenges.createdAt))
+      .limit(Math.min(Math.max(limit, 1), 100) + 1);
+    const hasMore = rows.length > limit;
+    const items = rows.slice(0, limit).map(({ challenge }) => challenge);
+    return { items, nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {

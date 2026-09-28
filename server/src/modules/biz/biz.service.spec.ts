@@ -19,14 +19,18 @@ function createDeps(overrides: {
   stats?: unknown;
   history?: { items: unknown[]; total: number };
   activeAds?: unknown[];
+  monthlyAdExposure?: { label: string; value: number }[];
 }) {
   return {
     businessesService: { findByOwner: vi.fn().mockResolvedValue(overrides.business) },
-    challengesService: { stats: vi.fn().mockResolvedValue(overrides.stats) },
+    challengesService: { getStats: vi.fn().mockResolvedValue(overrides.stats) },
     billingHistoryService: {
       forBusiness: vi.fn().mockResolvedValue(overrides.history ?? { items: [], total: 0 }),
     },
-    adsService: { listMine: vi.fn().mockResolvedValue(overrides.activeAds ?? []) },
+    adsService: {
+      listMine: vi.fn().mockResolvedValue(overrides.activeAds ?? []),
+      monthlyExposureForBusiness: vi.fn().mockResolvedValue(overrides.monthlyAdExposure ?? []),
+    },
   };
 }
 
@@ -48,7 +52,7 @@ describe('BizService', () => {
 
     expect(dashboard.recentPosting).toBeNull();
     expect(dashboard.stats).toBeNull();
-    expect(deps.challengesService.stats).not.toHaveBeenCalled();
+    expect(deps.challengesService.getStats).not.toHaveBeenCalled();
     expect(dashboard.monthlyAdExposure).toEqual([]);
     expect(dashboard.payments).toEqual([]);
     expect(dashboard.paymentTotal).toBe(0);
@@ -71,6 +75,7 @@ describe('BizService', () => {
       stats,
       history: { items: historyItems, total: -100 },
       activeAds,
+      monthlyAdExposure: [{ label: '9월', value: 42 }],
     });
     const service = new BizService(
       db,
@@ -83,9 +88,11 @@ describe('BizService', () => {
     const dashboard = await service.dashboard(OWNER.id);
 
     expect(dashboard.recentPosting).toEqual(recent);
-    expect(deps.challengesService.stats).toHaveBeenCalledWith('ch-1');
+    expect(deps.challengesService.getStats).toHaveBeenCalledWith('ch-1');
     expect(dashboard.stats).toEqual(stats);
     expect(deps.billingHistoryService.forBusiness).toHaveBeenCalledWith('biz-1', {});
+    expect(deps.adsService.monthlyExposureForBusiness).toHaveBeenCalledWith('biz-1');
+    expect(dashboard.monthlyAdExposure).toEqual([{ label: '9월', value: 42 }]);
     // Only the top 3 history items, but the total covers all of them.
     expect(dashboard.payments).toHaveLength(3);
     expect(dashboard.paymentTotal).toBe(-100);

@@ -9,7 +9,7 @@ AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성�
 - ECS Fargate + ALB (API 서비스, 워커 서비스 — 같은 소스, 다른 CMD)
 - RDS PostgreSQL Single-AZ (private subnet)
 - NAT Gateway, RDS Multi-AZ는 초기 단계에서 제외 (필요해지면 도입)
-- SQS (verifications 큐) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
+- SQS (verifications 큐, emails 큐) + SES(서비스성 이메일) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
 
 ## 적용 전 준비
 
@@ -29,7 +29,7 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
      --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw migrate_task_subnet_id)],securityGroups=[$(terraform output -raw migrate_task_security_group_id)],assignPublicIp=ENABLED}"
    ```
 
-   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 스키마 변경마다(즉 새 `server/drizzle/*.sql`이 추가된 `api_image`를 배포할 때마다) 재실행해야 합니다.
+   CloudWatch Logs(`/ecs/semochal-staging/migrate`)에서 태스크가 `Migrations applied successfully.`를 남기고 exit code 0으로 종료했는지 확인합니다. 이 수동 실행은 최초 bootstrap용입니다. 이후 스키마 변경(새 `server/drizzle/*.sql`)은 `main` 배포 시 CI가 `production` 승인 후 같은 migrate task를 서비스 갱신 전에 자동 실행합니다([Production ECS release automation](#production-ecs-release-automation)).
 
 6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
 7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
@@ -39,6 +39,17 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 Grafana Cloud에서 발급한 external ID는 저장소나 `tfvars`에 기록하지 않습니다. apply를 실행하는 승인된 운영자 세션에서 `TF_VAR_grafana_external_id` 환경변수로만 제공하고, apply 후 `terraform output -raw grafana_cloudwatch_role_arn`의 ARN을 Grafana Cloud CloudWatch integration에 등록합니다. external ID는 IAM trust policy의 일부이므로 Terraform state에는 포함될 수 있습니다. state backend와 state를 읽을 수 있는 IAM principal은 승인된 운영자로 제한합니다. Terraform은 Grafana Labs AWS account에만 이 역할을 assume하도록 제한하며, trust policy의 external ID 조건도 함께 검증합니다.
 
 ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP를 사용합니다. API의 인바운드는 ALB security group만 허용하며 worker와 migrate task에는 인바운드가 없습니다. RDS는 private subnet 및 ECS task(API/worker/migrate) security group에서만 접근됩니다. 비용 최소화를 위해 기본값은 API task 1개(0.25 vCPU/0.5 GB), worker 0개, RDS `db.t4g.micro` 20 GiB·1일 백업, CloudWatch 7일 보존입니다. ECR은 `test-` 태그 이미지 2개, `deploy-` 태그 이미지 10개를 보존합니다(4단계 참고).
+
+### 서비스성 이메일 (SES)
+
+알림 이메일 워커(`SQS_EMAILS_QUEUE_URL` → SES `SendEmail`)용 발신 identity는 `ses.tf`가 관리합니다. identity 생성(`ses_domain`)과 발송 활성화(`ses_from_email`)는 분리돼 있습니다. 샌드박스 계정에서 발송을 켜면 검증되지 않은 수신자 메일이 전부 실패해 emails DLQ로 쌓이기 때문입니다.
+
+1. tfvars에 `ses_domain = "semochall.com"`을 넣고 apply합니다. SES 도메인 identity(Easy DKIM, RSA 2048)와 `hosted_zone_id` zone의 레코드(DKIM CNAME 3개, `mail.<domain>` MX·SPF, `_dmarc` TXT `p=none`)가 생성됩니다. `ses_domain`은 해당 zone 안의 도메인이어야 합니다.
+2. DKIM 검증 완료를 확인합니다(보통 수 분~72시간): `aws sesv2 get-email-identity --email-identity semochall.com --query '{dkim:DkimAttributes.Status,mailFrom:MailFromAttributes.MailFromDomainStatus}'`가 `SUCCESS`여야 합니다.
+3. SES production access를 요청합니다. Terraform 리소스가 없어 계정 소유자가 콘솔(SES → Account dashboard → Request production access)에서 진행합니다. 서비스성 알림만 보내고 bounce/complaint는 계정 단위 suppression list(`BOUNCE`, `COMPLAINT`)로 처리한다고 적습니다. https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html
+4. 승인 후 `ses_from_email = "no-reply@semochall.com"`을 넣고 apply합니다. 워커 task role에 이 identity, 이 From 주소로 제한된 `ses:SendEmail`이 붙고 워커 task definition에 `SES_FROM_EMAIL`이 들어갑니다. ECS 서비스는 `task_definition`을 무시하므로 다음 `main` 배포(또는 승인된 수동 배포)가 새 revision을 사용합니다.
+
+DMARC는 `p=none`으로 시작합니다. 전달 상태를 확인한 뒤 `ses_dmarc_policy`를 `quarantine`/`reject`로 올립니다.
 
 ## RDS TLS 서버 인증서 검증
 
@@ -59,8 +70,8 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
    갱신합니다. bundle은 image runtime에 포함되므로 별도 CA secret이나
    `NODE_TLS_REJECT_UNAUTHORIZED` 설정은 사용하지 않습니다.
 4. API service와 필요 시 worker를 배포하고, API `/health`와 CloudWatch 로그를 확인합니다.
-   마이그레이션이 필요한 release라면 새 이미지의 migrate task를 먼저 실행해 exit code 0을
-   확인합니다.
+   마이그레이션은 CI 배포가 서비스 갱신 전에 migrate task로 적용하고 exit code 0을
+   확인합니다. CI를 거치지 않는 수동 배포라면 새 이미지의 migrate task를 먼저 실행합니다.
 
 인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
 확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
