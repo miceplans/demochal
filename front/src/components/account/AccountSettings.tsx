@@ -20,9 +20,12 @@ export function AccountSettings() {
     useUserStore.persist.clearStorage();
   };
   const logout = async () => {
-    await adApi.auth.logout();
-    clearClient();
-    router.replace('/login');
+    try {
+      await adApi.auth.logout();
+    } finally {
+      clearClient();
+      router.replace('/login');
+    }
   };
   const withdraw = async () => {
     setError('');
