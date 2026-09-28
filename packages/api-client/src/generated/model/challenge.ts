@@ -42,6 +42,7 @@ export interface Challenge {
   hashtags?: string[];
   /** 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
   recruitMethod?: ChallengeRecruitMethod;
+  /** implemented — recruitMethod가 external일 때 저장되는 외부 지원 링크 URL */
   recruitUrl?: string;
   /** 문의 연락처 */
   contact?: string;

@@ -18,7 +18,7 @@
  */
 
 /**
- * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
+ * 보낸 필드만 수정한다. businessId/status/recruitMethod는 수정할 수 없다.
  */
 export interface UpdateChallengeRequest {
   /** @maxLength 200 */
@@ -37,4 +37,9 @@ export interface UpdateChallengeRequest {
    * @nullable
    */
   category?: string | null;
+  /**
+   * 기존 공고의 recruitMethod가 external일 때만 반영된다. seMOchall 공고에 보낸 값은 무시한다.
+   * @maxLength 2048
+   */
+  recruitUrl?: string;
 }

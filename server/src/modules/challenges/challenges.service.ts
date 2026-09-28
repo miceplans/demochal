@@ -93,6 +93,11 @@ export class ChallengesService {
       .limit(1);
     if (!business) throw new NotFoundException('Business not found or not owned by user');
 
+    const recruitMethod = dto.recruitMethod ?? 'external';
+    if (recruitMethod === 'external' && !dto.recruitUrl) {
+      throw new BadRequestException('recruitUrl is required when recruitMethod is external');
+    }
+
     const [challenge] = await this.db
       .insert(challenges)
       .values({
@@ -104,7 +109,9 @@ export class ChallengesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         category: dto.category,
-        recruitMethod: dto.recruitMethod ?? 'external',
+        recruitMethod,
+        // seMOchall(내부 신청폼) 공고에는 잘못된 외부 링크가 남지 않도록 저장하지 않는다.
+        recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
           : 'draft',
@@ -125,7 +132,11 @@ export class ChallengesService {
         ? eq(challenges.id, id)
         : and(eq(challenges.id, id), eq(businesses.ownerUserId, user.id));
     const [current] = await this.db
-      .select({ startDate: challenges.startDate, endDate: challenges.endDate })
+      .select({
+        startDate: challenges.startDate,
+        endDate: challenges.endDate,
+        recruitMethod: challenges.recruitMethod,
+      })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(ownership)
@@ -138,6 +149,8 @@ export class ChallengesService {
       throw new BadRequestException('endDate must not be before startDate');
     }
 
+    // recruitMethod는 수정할 수 없으므로, 기존 공고가 external일 때만 recruitUrl을
+    // 반영한다 — seMOchall 공고에 보내진 값은 조용히 무시한다.
     const patch = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.description !== undefined && { description: dto.description }),
@@ -146,6 +159,8 @@ export class ChallengesService {
       ...(dto.startDate !== undefined && { startDate }),
       ...(dto.endDate !== undefined && { endDate }),
       ...(dto.category !== undefined && { category: dto.category }),
+      ...(dto.recruitUrl !== undefined &&
+        current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 

@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  IsUrl,
   MaxLength,
   Min,
   ValidateIf,
@@ -44,4 +45,11 @@ export class UpdateChallengeDto {
   @IsString()
   @MaxLength(100)
   category?: string | null;
+
+  // recruitMethod는 수정할 수 없다(생성 시점 고정) — 기존 공고가 external일 때만 서비스
+  // 레벨에서 반영하고, seMOchall 공고에 보내진 값은 무시한다.
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(2048)
+  recruitUrl?: string;
 }

@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(21);
+    expect(journal.entries).toHaveLength(22);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -402,6 +402,17 @@ describe('0020_add_kakao_auth migration', () => {
     expect(sql).toContain(
       'CREATE UNIQUE INDEX IF NOT EXISTS "users_kakao_subject_unique" ON "users" ("kakao_subject")',
     );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0021_add_challenges_recruit_url migration', () => {
+  it('adds the external recruit link column without destructive DDL', () => {
+    const tag = journal.entries[21]?.tag;
+    expect(tag).toBe('0021_add_challenges_recruit_url');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "recruit_url" varchar(2048)');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

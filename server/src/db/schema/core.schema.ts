@@ -97,6 +97,8 @@ export const challenges = pgTable('challenges', {
   // Valid values: seMOchall | external. Challenges recruiting through the
   // in-service application form get an exposure boost in recommendations.
   recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
+  // recruitMethod === 'external'일 때만 의미 있는 외부 지원 링크. seMOchall 공고에는 남기지 않는다.
+  recruitUrl: varchar('recruit_url', { length: 2048 }),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),

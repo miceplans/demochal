@@ -140,6 +140,13 @@
       "when": 1790200000000,
       "tag": "0020_add_kakao_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790210000000,
+      "tag": "0021_add_challenges_recruit_url",
+      "breakpoints": true
     }
   ]
 }

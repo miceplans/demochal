@@ -33,4 +33,40 @@ describe('CreateChallengeDto', () => {
       expect(errors.map((error) => error.property)).toEqual(['recruitMethod']);
     }
   });
+
+  it('accepts a valid http(s) recruitUrl or omitting it entirely', async () => {
+    for (const recruitUrl of [
+      'https://example.com/apply',
+      'http://forms.example.com/path?x=1',
+      undefined,
+    ]) {
+      const dto = Object.assign(
+        new CreateChallengeDto(),
+        recruitUrl === undefined ? base : { ...base, recruitUrl },
+      );
+
+      const errors = await validate(dto);
+
+      expect(errors.map((error) => error.property)).not.toContain('recruitUrl');
+    }
+  });
+
+  it('rejects an invalid or non-http(s) recruitUrl', async () => {
+    for (const recruitUrl of ['not-a-url', 'ftp://example.com/file', '   ', 'example.com']) {
+      const dto = Object.assign(new CreateChallengeDto(), { ...base, recruitUrl });
+
+      const errors = await validate(dto);
+
+      expect(errors.map((error) => error.property)).toEqual(['recruitUrl']);
+    }
+  });
+
+  it('rejects a recruitUrl longer than 2048 characters', async () => {
+    const recruitUrl = `https://example.com/${'a'.repeat(2040)}`;
+    const dto = Object.assign(new CreateChallengeDto(), { ...base, recruitUrl });
+
+    const errors = await validate(dto);
+
+    expect(errors.map((error) => error.property)).toEqual(['recruitUrl']);
+  });
 });

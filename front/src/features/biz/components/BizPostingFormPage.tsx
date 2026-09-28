@@ -97,6 +97,8 @@ export function BizPostingEditPage() {
         startDate: toDateInput(challenge.startDate),
         endDate: toDateInput(challenge.endDate),
         category: challenge.category ?? '',
+        recruitMethod: challenge.recruitMethod,
+        recruitUrl: challenge.recruitUrl ?? '',
       }}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
@@ -119,6 +121,7 @@ type PostingInput = {
   endDate: string;
   category: string;
   recruitMethod?: 'seMOchall' | 'external';
+  recruitUrl?: string;
 };
 type PostingValues = {
   title: string;
@@ -129,6 +132,7 @@ type PostingValues = {
   endDate: string;
   category: string | null;
   recruitMethod?: 'seMOchall' | 'external';
+  recruitUrl?: string;
 };
 
 const EMPTY_POSTING: PostingInput = {
@@ -173,6 +177,8 @@ function PostingForm({
   const [recruitMethod, setRecruitMethod] = useState<'seMOchall' | 'external'>(
     initial.recruitMethod ?? 'seMOchall',
   );
+  const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
+  const isExternalRecruit = recruitMethod === 'external';
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const shownError = error || initialError;
@@ -194,6 +200,12 @@ function PostingForm({
     if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
       return setError('모집 인원은 1명 이상으로 입력해 주세요.');
     if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
+    const trimmedRecruitUrl = recruitUrl.trim();
+    if (isExternalRecruit) {
+      if (!trimmedRecruitUrl) return setError('외부 지원 링크 URL을 입력해 주세요.');
+      if (!isHttpUrl(trimmedRecruitUrl))
+        return setError('외부 지원 링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
+    }
     setSubmitting(true);
     try {
       await onSubmit({
@@ -205,6 +217,7 @@ function PostingForm({
         endDate: toLocalBoundary(endDate, true),
         category: category || null,
         ...(showRecruitMethod ? { recruitMethod } : {}),
+        ...(isExternalRecruit ? { recruitUrl: trimmedRecruitUrl } : {}),
       });
     } catch (cause) {
       setError(adError(cause));
@@ -317,6 +330,23 @@ function PostingForm({
             </RecruitOptions>
           </Field>
         )}
+        {isExternalRecruit && (
+          <Field>
+            외부 지원 링크 URL
+            <FieldInput
+              type="url"
+              value={recruitUrl}
+              onChange={(e) => setRecruitUrl(e.target.value)}
+              placeholder="https://example.com/apply"
+              required
+            />
+            {!showRecruitMethod && (
+              <RecruitBoostHint>
+                모집방법은 등록 시 설정되며 수정할 수 없습니다. 링크만 다시 저장할 수 있습니다.
+              </RecruitBoostHint>
+            )}
+          </Field>
+        )}
         {shownError && <Error role="alert">{shownError}</Error>}
         <Actions>
           <OutlineButton type="button" onClick={() => router.back()}>
@@ -355,6 +385,15 @@ const Error = styled.p({ color: c.red, margin: 0 });
 const Message = styled.p({ color: c.gray700, margin: 0 });
 const RecruitOptions = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const RecruitBoostHint = styled.span({ color: c.primary, fontSize: 13 });
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 
 function toDateInput(value: string | undefined) {
   if (!value) return '';
