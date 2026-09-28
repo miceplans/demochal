@@ -17,8 +17,10 @@ function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         queryCache: new QueryCache({
           // 401은 로그인하지 않은 상태(예: /auth/me)일 수 있으므로 전역 토스트에서 제외
-          onError: (error) => {
+          // meta.localErrorToast 쿼리는 화면이 직접 액션 토스트로 알리므로 전역 토스트에서 제외
+          onError: (error, query) => {
             if (error instanceof ApiError && error.status === 401) return;
+            if (query.meta?.localErrorToast) return;
             toast.error('서버 오류', '잠시 후 다시 시도해주세요');
           },
         }),

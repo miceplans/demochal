@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -87,10 +87,13 @@ export function AdminAdsScreen() {
   const toast = useToast();
   const hrefOf = useAdminHref();
 
-  const adsQuery = generated.useListAdminAds({
-    q: query || undefined,
-    status: statusOptionToParam[statusLabel],
-  });
+  const adsQuery = generated.useListAdminAds(
+    {
+      q: query || undefined,
+      status: statusOptionToParam[statusLabel],
+    },
+    { query: { meta: LOCAL_ERROR_TOAST_META } },
+  );
   const refetchAds = adsQuery.refetch;
 
   useEffect(() => {

@@ -23,6 +23,8 @@ type ToastItem = {
   description?: string;
   action?: ToastAction;
 };
+// 화면에서 자체 액션 토스트로 조회 실패를 알리는 쿼리는 전역 QueryCache 에러 토스트를 건너뛴다(중복 알림 방지).
+export const LOCAL_ERROR_TOAST_META = { localErrorToast: true } as const;
 export type ToastApi = Record<
   ToastVariant,
   (message: string, description?: string, options?: ToastOptions) => void

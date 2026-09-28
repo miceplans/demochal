@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, AdminSectionTitle, SectionHeader, StatCard, StatRow } from './parts';
 import { ActivityChart, AdReportChart } from './charts';
@@ -67,7 +67,10 @@ function AdminAnalyticsContent() {
   const adNumber = adParam ? Number(adParam) : undefined;
   const adEnabled = adNumber !== undefined && Number.isFinite(adNumber);
 
-  const analyticsQuery = generated.useGetAdminAnalytics({ ad: adEnabled ? adNumber : undefined });
+  const analyticsQuery = generated.useGetAdminAnalytics(
+    { ad: adEnabled ? adNumber : undefined },
+    { query: { meta: LOCAL_ERROR_TOAST_META } },
+  );
   const analytics = analyticsQuery.data?.data;
   const refetchAnalytics = analyticsQuery.refetch;
   const toast = useToast();

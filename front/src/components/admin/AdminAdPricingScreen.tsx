@@ -12,7 +12,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { MovingAds } from '@/components/ads/MovingAds';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { useAdminHref } from './AdminShell';
 
 type PreviewView = 'mobile' | 'pc';
@@ -342,7 +342,7 @@ export function AdminAdPricingScreen() {
   const inputId = useId();
   const hrefOf = useAdminHref();
 
-  const pricingQuery = generated.useGetAdPricing();
+  const pricingQuery = generated.useGetAdPricing({ query: { meta: LOCAL_ERROR_TOAST_META } });
   const refetchPricing = pricingQuery.refetch;
   const hero = pricingQuery.data?.data.find((item) => item.slot === 'hero');
   const dailyPrice = hero?.dailyPrice ?? 0;
