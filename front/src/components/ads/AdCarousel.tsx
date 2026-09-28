@@ -9,6 +9,7 @@ import { generated } from '@semochal/api-client';
 export type AdCarouselItem = {
   alt: string;
   src: string;
+  type?: 'image' | 'video';
   /** DB 광고에만 설정한다. 정적/미리보기 슬라이드는 계측하지 않는다. */
   adId?: string;
 };
@@ -40,6 +41,14 @@ const HeroViewport = styled.div({
     borderRadius: '12px',
     objectFit: 'cover',
     flexShrink: 0,
+  },
+  '& video': {
+    width: '1060px',
+    height: '250px',
+    borderRadius: '12px',
+    objectFit: 'cover',
+    flexShrink: 0,
+    display: 'block',
   },
   [mobile]: { display: 'none' },
 });
@@ -343,12 +352,24 @@ export function AdCarousel({
                   goTo(itemIndex);
                 }}
               >
-                <Image
-                  src={item.src}
-                  alt={index === railIndex ? item.alt : ''}
-                  width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
-                />
+                {item.type === 'video' ? (
+                  <video
+                    src={item.src}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-label={index === railIndex ? item.alt : undefined}
+                    aria-hidden={index === railIndex ? undefined : true}
+                  />
+                ) : (
+                  <Image
+                    src={item.src}
+                    alt={index === railIndex ? item.alt : ''}
+                    width={SLIDE_WIDTH[variant]}
+                    height={variant === 'hero' ? 250 : 190}
+                  />
+                )}
               </SlideButton>
             );
           })}

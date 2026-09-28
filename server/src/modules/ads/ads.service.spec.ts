@@ -183,8 +183,6 @@ describe('AdsService.report', () => {
 
     expect(report.totals).toEqual({ impressions: 0, clicks: 0, ctr: 0 });
     expect(report.daily).toHaveLength(7);
-    // The service buckets days in Asia/Seoul, so UTC dates would be off by one
-    // between 15:00 and 24:00 UTC.
     const seoulDate = (value: Date) =>
       new Intl.DateTimeFormat('en-CA', {
         timeZone: 'Asia/Seoul',
