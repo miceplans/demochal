@@ -26,6 +26,10 @@ export function BizReportsPage() {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // Loading is an external API synchronization triggered by the selected ad change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setError(false);
     void adApi.ads
       .listMine()
       .then((items) => {

@@ -12,6 +12,10 @@ export function BizApplicationsPage() {
   const [statusFilter, setStatusFilter] = useState<Application['status'] | ''>('');
   const requestVersions = useRef(new Map<string, number>());
   useEffect(() => {
+    // Loading is an external API synchronization triggered by the filter change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setError(false);
     void adApi.applications
       .listManaged(statusFilter ? { status: statusFilter } : undefined)
       .then(setRows)
