@@ -1,9 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import type { Challenge, ChallengeStats } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
-import { adApi } from '@/lib/ad-api';
 import { siteHref } from '@/lib/biz';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -25,24 +23,18 @@ const daysLeft = (endDate: string) =>
 
 export function BizPostingsPage() {
   const hrefOf = useBizHref();
-  const [items, setItems] = useState<Challenge[]>([]);
-  const [stats, setStats] = useState<ChallengeStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  useEffect(() => {
-    void adApi.businesses
-      .listMyChallenges()
-      .then(async ({ items: challenges }) => {
-        setItems(challenges);
-        if (challenges[0]) setStats(await adApi.challenges.getStats(challenges[0].id));
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
-  }, []);
+  const challengesQuery = generated.useListMyChallenges();
+  const page = challengesQuery.data?.status === 200 ? challengesQuery.data.data : undefined;
+  const items = page?.items ?? [];
+  const loading = challengesQuery.isPending;
+  const error = challengesQuery.isError;
   const latest = items[0];
+  const statsQuery = generated.useGetChallengeStats(latest?.id ?? '', {
+    query: { enabled: !!latest },
+  });
+  const stats = statsQuery.data?.data;
   const distribution = stats?.applicantDistribution ?? [];
   const primaryShare = distribution[0]?.value ?? 0;
-
   return (
     <BizContent>
       {loading && <Message>공고를 불러오는 중입니다.</Message>}

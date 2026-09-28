@@ -81,7 +81,8 @@ export function BizProfileEditPage() {
       const presigned = await requestPresignedUpload.mutateAsync({
         data: {
           bucket: 'public',
-          contentType: image.file.type,
+          // compressToWebP는 항상 image/webp로 재인코딩한다.
+          contentType: 'image/webp',
           fileName: image.file.name,
           sizeBytes: image.file.size,
         },
