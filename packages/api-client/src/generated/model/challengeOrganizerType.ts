@@ -16,37 +16,23 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
-import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
 
 /**
- * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
+ * 주최기관 유형. 탐색 필터용
+ * @nullable
  */
-export interface UpdateChallengeRequest {
-  /** @maxLength 200 */
-  title?: string;
-  /** @maxLength 20000 */
-  description?: string;
-  /** @minimum 0 */
-  price?: number;
-  /** @minimum 1 */
-  capacity?: number;
-  startDate?: string;
-  endDate?: string;
-  /**
-   * null이면 카테고리를 비운다
-   * @maxLength 100
-   * @nullable
-   */
-  category?: string | null;
-  /** @nullable */
-  targets?: UpdateChallengeRequestTargetsItem[] | null;
-  /** @nullable */
-  organizerType?: UpdateChallengeRequestOrganizerType;
-  /**
-   * 총상금(만원)
-   * @minimum 0
-   * @nullable
-   */
-  prizeAmount?: number | null;
-}
+export type ChallengeOrganizerType =
+  (typeof ChallengeOrganizerType)[keyof typeof ChallengeOrganizerType] | null;
+
+export const ChallengeOrganizerType = {
+  '중앙정부/기관': '중앙정부/기관',
+  대기업: '대기업',
+  외국계기업: '외국계기업',
+  '학교/재단/협회': '학교/재단/협회',
+  '학회/비영리단체': '학회/비영리단체',
+  진흥원: '진흥원',
+  언론: '언론',
+  지방자치단체: '지방자치단체',
+  '중소/벤처기업': '중소/벤처기업',
+  기타: '기타',
+} as const;

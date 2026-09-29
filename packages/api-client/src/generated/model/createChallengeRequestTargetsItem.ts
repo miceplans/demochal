@@ -16,37 +16,19 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
-import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
 
-/**
- * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
- */
-export interface UpdateChallengeRequest {
-  /** @maxLength 200 */
-  title?: string;
-  /** @maxLength 20000 */
-  description?: string;
-  /** @minimum 0 */
-  price?: number;
-  /** @minimum 1 */
-  capacity?: number;
-  startDate?: string;
-  endDate?: string;
-  /**
-   * null이면 카테고리를 비운다
-   * @maxLength 100
-   * @nullable
-   */
-  category?: string | null;
-  /** @nullable */
-  targets?: UpdateChallengeRequestTargetsItem[] | null;
-  /** @nullable */
-  organizerType?: UpdateChallengeRequestOrganizerType;
-  /**
-   * 총상금(만원)
-   * @minimum 0
-   * @nullable
-   */
-  prizeAmount?: number | null;
-}
+export type CreateChallengeRequestTargetsItem =
+  (typeof CreateChallengeRequestTargetsItem)[keyof typeof CreateChallengeRequestTargetsItem];
+
+export const CreateChallengeRequestTargetsItem = {
+  어린이: '어린이',
+  초등학생: '초등학생',
+  중학생: '중학생',
+  고등학생: '고등학생',
+  대학생: '대학생',
+  대학원생: '대학원생',
+  제한없음: '제한없음',
+  지역제한: '지역제한',
+  일반인: '일반인',
+  기업: '기업',
+} as const;
