@@ -17,15 +17,18 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListTeamsParams = {
-  challengeId?: string;
-  /**
-   * 필요 역할 (기획/디자인/개발 등). 콤마로 구분해 복수 역할(OR)을 줄 수 있다
-   */
-  role?: string;
-  /**
-   * 지역. 콤마로 구분해 복수 지역(OR)을 줄 수 있다
-   */
-  region?: string;
-  q?: string;
-};
+export type CreateChallengeRequestTargetsItem =
+  (typeof CreateChallengeRequestTargetsItem)[keyof typeof CreateChallengeRequestTargetsItem];
+
+export const CreateChallengeRequestTargetsItem = {
+  어린이: '어린이',
+  초등학생: '초등학생',
+  중학생: '중학생',
+  고등학생: '고등학생',
+  대학생: '대학생',
+  대학원생: '대학원생',
+  제한없음: '제한없음',
+  지역제한: '지역제한',
+  일반인: '일반인',
+  기업: '기업',
+} as const;

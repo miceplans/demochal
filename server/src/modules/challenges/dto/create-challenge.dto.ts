@@ -1,4 +1,6 @@
 import {
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -9,6 +11,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
 
 export class CreateChallengeDto {
   @IsUUID()
@@ -44,4 +47,20 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsIn(['seMOchall', 'external'])
   recruitMethod?: 'seMOchall' | 'external';
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(CHALLENGE_TARGETS, { each: true })
+  targets?: string[];
+
+  @IsOptional()
+  @IsIn(CHALLENGE_ORGANIZER_TYPES)
+  organizerType?: string;
+
+  // 총상금(만원)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  prizeAmount?: number;
 }

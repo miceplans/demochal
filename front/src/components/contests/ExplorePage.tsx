@@ -15,20 +15,36 @@ import {
 import { ContestCard, ContestGrid } from './ContestCard';
 import { contestHref } from './contest-links';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
-import { categories, roles, type Contest } from '@/data/user-design';
+import {
+  categories,
+  challengeTargets,
+  organizerTypes,
+  regionGroups,
+  roles,
+  type Contest,
+} from '@/data/user-design';
 import { generated } from '@semochal/api-client';
 import { toTeamCard } from '@/components/teams/team-model';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { RangeSlider } from '@/components/ui/RangeSlider';
+import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
+
+// 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
+const PRIZE_MIN = 0;
+const PRIZE_MAX = 10_000;
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
-  const [category, setCategory] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [targets, setTargets] = useState<string[]>([]);
+  const [organizers, setOrganizers] = useState<string[]>([]);
+  const [prize, setPrize] = useState<[number, number]>([PRIZE_MIN, PRIZE_MAX]);
   const [challengeId, setChallengeId] = useState('');
-  const [role, setRole] = useState('');
-  const [region, setRegion] = useState('');
+  const [teamRoles, setTeamRoles] = useState<string[]>([]);
+  const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(6);
   const [includeClosed, setIncludeClosed] = useState(true);
@@ -39,7 +55,11 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const challengesQuery = generated.useListChallenges({
     limit: teamMode ? 50 : limit,
     q: query || undefined,
-    category: category || undefined,
+    category: selectedCategories.join(',') || undefined,
+    targets: targets.join(',') || undefined,
+    organizerType: organizers.join(',') || undefined,
+    prizeMin: prize[0] > PRIZE_MIN ? prize[0] : undefined,
+    prizeMax: prize[1] < PRIZE_MAX ? prize[1] : undefined,
     includeClosed,
     sort: sort === '마감임박' ? 'deadline' : sort === '인기' ? 'popular' : 'latest',
   });
@@ -47,8 +67,12 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const teamsQuery = generated.useListTeams(
     {
       challengeId: challengeId || undefined,
-      role: role || undefined,
-      region: region || undefined,
+      role: teamRoles.join(',') || undefined,
+      region:
+        regionGroups
+          .filter((group) => regionLabels.includes(group.label))
+          .flatMap((group) => group.members)
+          .join(',') || undefined,
       q: query || undefined,
     },
     { query: { enabled: teamMode } },
@@ -73,8 +97,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           <Heading>필터</Heading>
           {teamMode ? (
             <>
-              <div>
-                <h3>챌린지</h3>
+              <FilterGroup title="챌린지">
                 <Dropdown
                   aria-label="챌린지"
                   size="S"
@@ -85,62 +108,71 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                     ...challengeOptions.map((x) => ({ value: x.id ?? '', label: x.title ?? '' })),
                   ]}
                 />
-              </div>
-              <div>
-                <h3>필요 역할</h3>
-                <Dropdown
-                  aria-label="필요 역할"
-                  size="S"
-                  value={role}
-                  onChange={setRole}
-                  options={[
-                    { value: '', label: '모든 역할' },
-                    ...roles.map((x) => ({ value: x, label: x })),
-                  ]}
+              </FilterGroup>
+              <FilterGroup title="필요 역할">
+                <ChipFilter
+                  ariaLabel="필요 역할"
+                  options={roles}
+                  selected={teamRoles}
+                  onToggle={(value) => setTeamRoles((list) => toggleValue(list, value))}
                 />
-              </div>
-              <div>
-                <h3>지역</h3>
-                <Dropdown
-                  aria-label="지역"
-                  size="S"
-                  value={region}
-                  onChange={setRegion}
-                  options={[
-                    { value: '', label: '전체' },
-                    { value: '서울', label: '서울' },
-                    { value: '부산', label: '부산' },
-                  ]}
+              </FilterGroup>
+              <FilterGroup title="지역">
+                <CheckFilter
+                  options={regionGroups.map((group) => group.label)}
+                  selected={regionLabels}
+                  onToggle={(value) => setRegionLabels((list) => toggleValue(list, value))}
+                  rows={4}
+                  columnGap={40}
                 />
-              </div>
+              </FilterGroup>
             </>
           ) : (
             <>
-              <div>
-                <h3>분야</h3>
-                <Dropdown
-                  aria-label="분야"
-                  size="S"
-                  value={category}
-                  onChange={setCategory}
-                  options={[
-                    { value: '', label: '전체' },
-                    ...categories.map((cat) => ({ value: cat, label: cat })),
-                  ]}
+              <FilterGroup title="분야">
+                <ChipFilter
+                  ariaLabel="분야"
+                  options={categories}
+                  selected={selectedCategories}
+                  onToggle={(value) => setSelectedCategories((list) => toggleValue(list, value))}
                 />
-              </div>
-              <IncludeClosed>
-                <input
-                  type="checkbox"
-                  checked={includeClosed}
-                  onChange={(e) => setIncludeClosed(e.target.checked)}
+              </FilterGroup>
+              <FilterGroup title="대상">
+                <CheckFilter
+                  options={challengeTargets}
+                  selected={targets}
+                  onToggle={(value) => setTargets((list) => toggleValue(list, value))}
+                  rows={5}
+                  columnGap={51}
                 />
-                마감된 챌린지도 포함하기
-              </IncludeClosed>
+              </FilterGroup>
+              <FilterGroup title="주최기관">
+                <CheckFilter
+                  options={organizerTypes}
+                  selected={organizers}
+                  onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
+                  rows={5}
+                  columnGap={7}
+                />
+              </FilterGroup>
+              <FilterGroup title="상금">
+                <PrizeLabel>
+                  {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
+                </PrizeLabel>
+                <RangeSlider
+                  min={PRIZE_MIN}
+                  max={PRIZE_MAX}
+                  step={500}
+                  value={prize}
+                  onChange={setPrize}
+                  minAriaLabel="상금 최솟값"
+                  maxAriaLabel="상금 최댓값"
+                />
+              </FilterGroup>
             </>
           )}
         </Sidebar>
-        <Results>
+        <Results $team={teamMode}>
           <MobileFilters>
             {teamMode ? (
               [
@@ -155,15 +187,18 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 },
                 {
                   label: '필요역할',
-                  value: role,
-                  onChange: setRole,
+                  value: teamRoles[0] ?? '',
+                  onChange: (value: string) => setTeamRoles(value ? [value] : []),
                   options: roles.map((x) => ({ value: x, label: x })),
                 },
                 {
                   label: '지역',
-                  value: region,
-                  onChange: setRegion,
-                  options: ['서울', '부산'].map((x) => ({ value: x, label: x })),
+                  value: regionLabels[0] ?? '',
+                  onChange: (value: string) => setRegionLabels(value ? [value] : []),
+                  options: regionGroups.map((group) => ({
+                    value: group.label,
+                    label: group.label,
+                  })),
                 },
               ].map((filter) => (
                 <Select
@@ -184,8 +219,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               <>
                 <Select
                   aria-label="분야"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
+                  value={selectedCategories[0] ?? ''}
+                  onChange={(e) => setSelectedCategories(e.target.value ? [e.target.value] : [])}
                 >
                   <option value="">분야</option>
                   {categories.map((v) => (
@@ -203,23 +238,34 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               </>
             )}
           </MobileFilters>
-          <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>
+          <TopBar>
             {teamMode ? (
-              <Link href="/teams/new" style={{ marginLeft: 'auto' }}>
-                <Button as="span" small>
-                  ＋ 모집글 작성
-                </Button>
-              </Link>
+              <>
+                <Toggle>팀 찾기</Toggle>
+                <CreateLink href="/teams/new">
+                  <img src="/assets/icons/figma-create-plus.svg" alt="" width={14} height={14} />
+                  모집글 작성
+                </CreateLink>
+              </>
             ) : (
-              <Row>
-                {['마감임박', '최신', '인기'].map((x) => (
-                  <Sort key={x} active={sort === x} onClick={() => setSort(x)}>
-                    {x}
-                  </Sort>
-                ))}
-              </Row>
+              <>
+                <Row>
+                  {['마감임박', '최신', '인기'].map((x) => (
+                    <Sort key={x} active={sort === x} onClick={() => setSort(x)}>
+                      {x}
+                    </Sort>
+                  ))}
+                </Row>
+                <DesktopOnly>
+                  <Checkbox
+                    label="마감된 챌린지도 포함하기"
+                    checked={includeClosed}
+                    onChange={setIncludeClosed}
+                  />
+                </DesktopOnly>
+              </>
             )}
-          </Row>
+          </TopBar>
           {teamMode ? (
             <>
               <TeamGrid>
@@ -271,21 +317,50 @@ const Layout = styled.div({
   [mobile]: { display: 'block' },
 });
 const Sidebar = styled.aside({
-  padding: '28px 20px',
+  padding: '24px 20px',
   background: c.gray50,
+  borderRight: `0.5px solid ${c.gray100}`,
   display: 'flex',
   flexDirection: 'column',
-  gap: 44,
-  '& h3': { ...textStyle.subtitle, marginBottom: 12 },
-  '& button': { ...textStyle.metaText, padding: '5px 10px' },
+  gap: 40,
+  '& h2': { ...textStyle.h1, lineHeight: 'normal' },
   [mobile]: { display: 'none' },
 });
-const Results = styled.div({
-  padding: '60px 32px 100px',
+const PrizeLabel = styled.p({ ...textStyle.caption, color: c.gray700, margin: 0 });
+const TopBar = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  flexWrap: 'wrap',
+  gap: 12,
+  marginBottom: 20,
+});
+const Toggle = styled.span({
+  ...textStyle.subtitle,
+  display: 'flex',
+  alignItems: 'center',
+  height: 36,
+  padding: '0 20px',
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
+const CreateLink = styled(Link)({
+  ...textStyle.subtitle,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 6,
+  padding: '8px 16px',
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
+const Results = styled.div<{ $team?: boolean }>(({ $team }) => ({
+  padding: $team ? '24px 32px 100px' : '60px 32px 100px',
   minWidth: 0,
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
-});
+}));
 const IncludeClosed = styled.label({
   ...textStyle.metaText,
   color: c.gray700,

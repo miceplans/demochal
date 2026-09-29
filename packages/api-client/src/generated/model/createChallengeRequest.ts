@@ -16,7 +16,9 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { CreateChallengeRequestOrganizerType } from './createChallengeRequestOrganizerType';
 import type { CreateChallengeRequestRecruitMethod } from './createChallengeRequestRecruitMethod';
+import type { CreateChallengeRequestTargetsItem } from './createChallengeRequestTargetsItem';
 
 export interface CreateChallengeRequest {
   businessId: string;
@@ -30,5 +32,12 @@ export interface CreateChallengeRequest {
   endDate: string;
   /** 유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현. */
   category?: string;
+  targets?: CreateChallengeRequestTargetsItem[];
+  organizerType?: CreateChallengeRequestOrganizerType;
+  /**
+   * 총상금(만원)
+   * @minimum 0
+   */
+  prizeAmount?: number;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
 }

@@ -29,9 +29,25 @@ export type ListChallengesParams = {
    */
   q?: string;
   /**
-   * challenges.category 정확 일치 필터
+   * challenges.category 정확 일치 필터. 콤마로 구분해 복수 분야(OR)를 줄 수 있다(예 `IT/SW,디자인`).
    */
   category?: string;
+  /**
+   * 콤마 구분 대상 목록(어린이, 초등학생, …, 기업). 하나라도 겹치는 챌린지를 반환한다.
+   */
+  targets?: string;
+  /**
+   * 콤마 구분 주최기관 유형 목록(OR, 정확 일치).
+   */
+  organizerType?: string;
+  /**
+   * 총상금 하한(만원). 지정하면 상금이 없는 챌린지는 제외된다.
+   */
+  prizeMin?: number;
+  /**
+   * 총상금 상한(만원). 지정하면 상금이 없는 챌린지는 제외된다.
+   */
+  prizeMax?: number;
   /**
    * false면 마감(status=closed) 챌린지를 제외한다(하위호환 기본값 true).
    */

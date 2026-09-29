@@ -16,6 +16,8 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
+import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
 
 /**
  * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
@@ -37,4 +39,14 @@ export interface UpdateChallengeRequest {
    * @nullable
    */
   category?: string | null;
+  /** @nullable */
+  targets?: UpdateChallengeRequestTargetsItem[] | null;
+  /** @nullable */
+  organizerType?: UpdateChallengeRequestOrganizerType;
+  /**
+   * 총상금(만원)
+   * @minimum 0
+   * @nullable
+   */
+  prizeAmount?: number | null;
 }

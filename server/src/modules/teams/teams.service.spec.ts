@@ -120,6 +120,26 @@ describe('TeamsService', () => {
     expect(result[1]?.filledRoles).toEqual([]);
   });
 
+  it('list accepts comma-separated regions and roles (OR)', async () => {
+    const rows = [
+      { id: 'team-1', region: '서울', openRoles: [{ role: '개발', count: 1 }] },
+      { id: 'team-2', region: '부산', openRoles: [{ role: '디자인', count: 1 }] },
+      { id: 'team-3', region: '제주', openRoles: [{ role: '개발', count: 1 }] },
+      { id: 'team-4', region: '서울', openRoles: [{ role: '기획', count: 1 }] },
+    ].map((team) => ({
+      team: { challengeId: 'c', title: 't', introduction: null, ...team },
+      challengeTitle: 'c',
+      leaderName: 'Leader',
+    }));
+    const db = createDbStub();
+    db.select.mockReturnValueOnce(selectChain(rows)).mockReturnValueOnce(selectChain([]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    const result = await service.list({ region: '서울,부산', role: '개발,디자인' });
+
+    expect(result.map((team) => team.id)).toEqual(['team-1', 'team-2']);
+  });
+
   it('list skips the member query when nothing matches', async () => {
     const db = createDbStub();
     db.select.mockReturnValueOnce(selectChain([]));

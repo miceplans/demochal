@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(23);
+    expect(journal.entries).toHaveLength(24);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -419,5 +419,17 @@ describe('ORM column coverage', () => {
         expect(chainSql, `${tableName}.${column.name}`).toContain(`"${column.name}"`);
       }
     }
+  });
+});
+
+describe('0023_challenge_filter_meta migration', () => {
+  it('adds the explore filter columns without destructive DDL', () => {
+    const tag = journal.entries[23]?.tag;
+    expect(tag).toBe('0023_challenge_filter_meta');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "targets" text[]');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "organizer_type" varchar(30)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "prize_amount" integer');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

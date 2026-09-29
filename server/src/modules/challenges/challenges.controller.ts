@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -16,6 +17,13 @@ import { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 
+const parseOptionalInt = (value: string | undefined, name: string) => {
+  if (value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) throw new BadRequestException(`${name} must be an integer`);
+  return parsed;
+};
+
 @Controller('challenges')
 export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
@@ -26,6 +34,10 @@ export class ChallengesController {
     @Query('limit') limit = '20',
     @Query('q') q?: string,
     @Query('category') category?: string,
+    @Query('targets') targets?: string,
+    @Query('organizerType') organizerType?: string,
+    @Query('prizeMin') prizeMin?: string,
+    @Query('prizeMax') prizeMax?: string,
     @Query('includeClosed') includeClosed?: string,
     @Query('sort') sort?: string,
   ) {
@@ -34,6 +46,10 @@ export class ChallengesController {
       limit: Number(limit),
       q,
       category,
+      targets,
+      organizerType,
+      prizeMin: parseOptionalInt(prizeMin, 'prizeMin'),
+      prizeMax: parseOptionalInt(prizeMax, 'prizeMax'),
       includeClosed: includeClosed !== 'false',
       sort,
     });

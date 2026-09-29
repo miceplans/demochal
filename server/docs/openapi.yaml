@@ -400,7 +400,23 @@ paths:
         - name: category
           in: query
           schema: { type: string }
-          description: challenges.category 정확 일치 필터
+          description: challenges.category 정확 일치 필터. 콤마로 구분해 복수 분야(OR)를 줄 수 있다(예 `IT/SW,디자인`).
+        - name: targets
+          in: query
+          schema: { type: string }
+          description: 콤마 구분 대상 목록(어린이, 초등학생, …, 기업). 하나라도 겹치는 챌린지를 반환한다.
+        - name: organizerType
+          in: query
+          schema: { type: string }
+          description: 콤마 구분 주최기관 유형 목록(OR, 정확 일치).
+        - name: prizeMin
+          in: query
+          schema: { type: integer }
+          description: 총상금 하한(만원). 지정하면 상금이 없는 챌린지는 제외된다.
+        - name: prizeMax
+          in: query
+          schema: { type: integer }
+          description: 총상금 상한(만원). 지정하면 상금이 없는 챌린지는 제외된다.
         - name: includeClosed
           in: query
           schema: { type: boolean, default: true }
@@ -571,10 +587,14 @@ paths:
           schema: { type: string, format: uuid }
         - name: role
           in: query
-          schema: { type: string, description: 필요 역할 (기획/디자인/개발 등) }
+          schema:
+            {
+              type: string,
+              description: 필요 역할 (기획/디자인/개발 등). 콤마로 구분해 복수 역할(OR)을 줄 수 있다,
+            }
         - name: region
           in: query
-          schema: { type: string }
+          schema: { type: string, description: 지역. 콤마로 구분해 복수 지역(OR)을 줄 수 있다 }
         - name: q
           in: query
           schema: { type: string }
@@ -2350,6 +2370,49 @@ components:
         createdAt: { type: string, format: date-time }
         category:
           { type: string, description: 'implemented — 생성 시 저장, 유사 챌린지 추천에 사용' }
+        targets:
+          {
+            type: array,
+            nullable: true,
+            items:
+              {
+                type: string,
+                enum:
+                  [
+                    어린이,
+                    초등학생,
+                    중학생,
+                    고등학생,
+                    대학생,
+                    대학원생,
+                    제한없음,
+                    지역제한,
+                    일반인,
+                    기업,
+                  ],
+              },
+            description: 참가 대상(복수). 탐색 필터용,
+          }
+        organizerType:
+          {
+            type: string,
+            nullable: true,
+            enum:
+              [
+                중앙정부/기관,
+                대기업,
+                외국계기업,
+                학교/재단/협회,
+                학회/비영리단체,
+                진흥원,
+                언론,
+                지방자치단체,
+                중소/벤처기업,
+                기타,
+              ],
+            description: 주최기관 유형. 탐색 필터용,
+          }
+        prizeAmount: { type: integer, nullable: true, description: 총상금(만원). 탐색 필터용 }
         # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
         posterFileId: { type: string, format: uuid }
         organizer: { type: string }
@@ -2383,6 +2446,45 @@ components:
             type: string,
             description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
           }
+        targets:
+          {
+            type: array,
+            items:
+              {
+                type: string,
+                enum:
+                  [
+                    어린이,
+                    초등학생,
+                    중학생,
+                    고등학생,
+                    대학생,
+                    대학원생,
+                    제한없음,
+                    지역제한,
+                    일반인,
+                    기업,
+                  ],
+              },
+          }
+        organizerType:
+          {
+            type: string,
+            enum:
+              [
+                중앙정부/기관,
+                대기업,
+                외국계기업,
+                학교/재단/협회,
+                학회/비영리단체,
+                진흥원,
+                언론,
+                지방자치단체,
+                중소/벤처기업,
+                기타,
+              ],
+          }
+        prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
     UpdateChallengeRequest:
       type: object
@@ -2396,6 +2498,47 @@ components:
         endDate: { type: string, format: date-time }
         category:
           { type: string, nullable: true, maxLength: 100, description: null이면 카테고리를 비운다 }
+        targets:
+          {
+            type: array,
+            nullable: true,
+            items:
+              {
+                type: string,
+                enum:
+                  [
+                    어린이,
+                    초등학생,
+                    중학생,
+                    고등학생,
+                    대학생,
+                    대학원생,
+                    제한없음,
+                    지역제한,
+                    일반인,
+                    기업,
+                  ],
+              },
+          }
+        organizerType:
+          {
+            type: string,
+            nullable: true,
+            enum:
+              [
+                중앙정부/기관,
+                대기업,
+                외국계기업,
+                학교/재단/협회,
+                학회/비영리단체,
+                진흥원,
+                언론,
+                지방자치단체,
+                중소/벤처기업,
+                기타,
+              ],
+          }
+        prizeAmount: { type: integer, nullable: true, minimum: 0, description: 총상금(만원) }
     Team:
       type: object
       properties:

@@ -17,15 +17,22 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListTeamsParams = {
-  challengeId?: string;
-  /**
-   * 필요 역할 (기획/디자인/개발 등). 콤마로 구분해 복수 역할(OR)을 줄 수 있다
-   */
-  role?: string;
-  /**
-   * 지역. 콤마로 구분해 복수 지역(OR)을 줄 수 있다
-   */
-  region?: string;
-  q?: string;
-};
+/**
+ * @nullable
+ */
+export type UpdateChallengeRequestOrganizerType =
+  | (typeof UpdateChallengeRequestOrganizerType)[keyof typeof UpdateChallengeRequestOrganizerType]
+  | null;
+
+export const UpdateChallengeRequestOrganizerType = {
+  '중앙정부/기관': '중앙정부/기관',
+  대기업: '대기업',
+  외국계기업: '외국계기업',
+  '학교/재단/협회': '학교/재단/협회',
+  '학회/비영리단체': '학회/비영리단체',
+  진흥원: '진흥원',
+  언론: '언론',
+  지방자치단체: '지방자치단체',
+  '중소/벤처기업': '중소/벤처기업',
+  기타: '기타',
+} as const;

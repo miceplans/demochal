@@ -154,6 +154,13 @@
       "when": 1790660000000,
       "tag": "0022_account_withdrawal",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1790670000000,
+      "tag": "0023_challenge_filter_meta",
+      "breakpoints": true
     }
   ]
 }

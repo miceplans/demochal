@@ -314,6 +314,29 @@ describe('ChallengesService.list', () => {
     expect(values).toContain('%해커톤%');
   });
 
+  it('accepts comma-separated categories and applies target, organizer and prize filters', async () => {
+    const { service, where } = createListService([]);
+
+    await service.list({
+      limit: 20,
+      category: 'IT/SW,디자인',
+      targets: '대학생,일반인',
+      organizerType: '대기업',
+      prizeMin: 3000,
+      prizeMax: 8000,
+    });
+
+    const condition = where.mock.calls[0]![0];
+    const values = whereValues(where);
+    expect(referencesColumn(condition, challenges.category)).toBe(true);
+    expect(referencesColumn(condition, challenges.targets)).toBe(true);
+    expect(referencesColumn(condition, challenges.organizerType)).toBe(true);
+    expect(referencesColumn(condition, challenges.prizeAmount)).toBe(true);
+    expect(values).toEqual(
+      expect.arrayContaining(['IT/SW', '디자인', '대학생', '일반인', '대기업', 3000, 8000]),
+    );
+  });
+
   it('orders by endDate ascending for the deadline sort', async () => {
     const { service, orderBy } = createListService([]);
 
