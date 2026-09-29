@@ -118,11 +118,11 @@ const Survey = styled.div({
 });
 const Choices = styled(Wrap)({
   gap: 8,
-  '& button': { borderRadius: 999, padding: '6px 12px', fontSize: 12 },
+  '& button': { borderRadius: 999, padding: '5px 10px', fontSize: 11 },
   '& button[aria-pressed="true"]': { fontWeight: 600 },
   [mobile]: {
-    gap: 8,
-    '& button': { padding: '10px 14px', fontSize: textStyle.mBodyDetail.fontSize },
+    gap: 6,
+    '& button': { padding: '7px 12px', fontSize: 12 },
   },
 });
 const CheckGrid = styled.div({
@@ -143,25 +143,26 @@ const CheckOption = styled.button({
   cursor: 'pointer',
   textAlign: 'left',
   ...textStyle.mBodyDetail,
+  fontSize: 12,
   color: c.gray700,
-  [mobile]: { padding: '13px 0', gap: 12, ...textStyle.mListText },
+  [mobile]: { padding: '8px 0', gap: 8, ...textStyle.mBodyDetail },
 });
 const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 16,
-  height: 16,
+  width: 14,
+  height: 14,
   flexShrink: 0,
   borderRadius: 3,
   border: selected ? 0 : `0.5px solid ${c.gray100}`,
   background: selected ? c.primary : c.white,
   [mobile]: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
     border: selected ? 0 : `1px solid ${c.gray100}`,
-    '& img': { width: '14px !important', height: '14px !important' },
+    '& img': { width: '11px !important', height: '11px !important' },
   },
 }));
 const ActivityDropdown = styled.div({
@@ -316,7 +317,7 @@ export function OnboardingPage({ step }: { step: string }) {
               >
                 <CheckBox selected={selected.includes(x)}>
                   {selected.includes(x) && (
-                    <Icon src="/assets/icons/check.svg" width={11} height={11} alt="" />
+                    <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
                   )}
                 </CheckBox>
                 {x}
