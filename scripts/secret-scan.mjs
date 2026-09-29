@@ -4,7 +4,8 @@
  * It scans only added lines in the requested git diff and deliberately reports
  * a rule and location, never the matched value.
  */
-import { execFileSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
+import { createInterface } from 'node:readline';
 
 const baseFlag = process.argv.indexOf('--base');
 const base = baseFlag >= 0 ? process.argv[baseFlag + 1] : undefined;
@@ -12,8 +13,14 @@ if (!base) throw new Error('usage: secret-scan.mjs --base <git-ref>');
 
 // Comparing against the base ref includes committed and uncommitted worker changes
 // locally, while the Actions checkout has the PR head checked out.
-const diff = execFileSync('git', ['diff', '--no-ext-diff', '--unified=0', base], {
-  encoding: 'utf8',
+// `--diff-filter=d` drops deleted files (they add no lines), and the output is streamed
+// line by line instead of buffered, so large diffs can't hit execFileSync's maxBuffer (ENOBUFS).
+const git = spawn('git', ['diff', '--no-ext-diff', '--unified=0', '--diff-filter=d', base], {
+  stdio: ['ignore', 'pipe', 'inherit'],
+});
+const gitExit = new Promise((resolve, reject) => {
+  git.once('error', reject);
+  git.once('close', resolve);
 });
 
 const rules = [
@@ -38,7 +45,7 @@ const findings = [];
 let file = '';
 let line = 0;
 
-for (const raw of diff.split('\n')) {
+for await (const raw of createInterface({ input: git.stdout, crlfDelay: Infinity })) {
   if (raw.startsWith('+++ b/')) {
     file = raw.slice(6);
     continue;
@@ -58,6 +65,13 @@ for (const raw of diff.split('\n')) {
   } else if (!raw.startsWith('-')) {
     line += 1;
   }
+}
+
+// Fail closed: a truncated or failed diff must never read as a clean scan.
+const exitCode = await gitExit;
+if (exitCode !== 0) {
+  console.error(`secret-scan: git diff failed (exit ${exitCode}) against base "${base}"`);
+  process.exit(2);
 }
 
 if (findings.length) {
