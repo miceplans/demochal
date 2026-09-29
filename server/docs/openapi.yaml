@@ -2008,7 +2008,8 @@ paths:
                 required: [slot, dailyPrice]
                 properties:
                   slot: { type: string, enum: [hero, gallery, team] }
-                  dailyPrice: { type: integer, minimum: 1, maximum: 100000000, description: 일일 광고비 (원) }
+                  dailyPrice:
+                    { type: integer, minimum: 1, maximum: 100000000, description: 일일 광고비 (원) }
       responses:
         '200':
           description: 저장된 단가

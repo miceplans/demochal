@@ -7,6 +7,7 @@ import styled from '@emotion/styled';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
+import { generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
 import { loginSchema, type LoginFormValues } from '../schema';
 
@@ -34,6 +35,8 @@ export function AdminLoginForm() {
     try {
       const { user } = await adApi.auth.login(values);
       if (user.role !== 'admin') {
+        // 비관리자 세션 쿠키가 남지 않도록 즉시 로그아웃한다.
+        await generated.logout().catch(() => undefined);
         toast.error('관리자 계정이 아닙니다.');
         return;
       }

@@ -23,11 +23,7 @@ describe('VerificationsService.submit', () => {
     const { db, insert } = createDbStub(insertedVerification);
     const outboxService = { enqueue: vi.fn().mockResolvedValue(undefined) };
     const filesService = { assertOwnedReadyPrivate: vi.fn().mockResolvedValue(undefined) };
-    const service = new VerificationsService(
-      db,
-      outboxService as any,
-      filesService as any,
-    );
+    const service = new VerificationsService(db, outboxService as any, filesService as any);
 
     const result = await service.submit(
       { businessId: 'biz-1', documentFileId: 'file-1' },
@@ -55,12 +51,7 @@ describe('VerificationsService.submit', () => {
     const filesService = {
       assertOwnedReadyPrivate: vi.fn().mockRejectedValue(new Error('not owned')),
     };
-    const service = new VerificationsService(
-      db,
-      outboxService as any,
-      filesService as any,
-      {} as any,
-    );
+    const service = new VerificationsService(db, outboxService as any, filesService as any);
 
     await expect(
       service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
@@ -74,12 +65,7 @@ describe('VerificationsService.submit', () => {
     const { db, insert } = createDbStub({ id: 'verif-1', status: 'pending' }, 'someone-else');
     const outboxService = { enqueue: vi.fn() };
     const filesService = { assertOwnedReadyPrivate: vi.fn() };
-    const service = new VerificationsService(
-      db,
-      outboxService as any,
-      filesService as any,
-      {} as any,
-    );
+    const service = new VerificationsService(db, outboxService as any, filesService as any);
 
     await expect(
       service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),

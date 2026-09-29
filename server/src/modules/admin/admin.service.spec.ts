@@ -1,4 +1,9 @@
-import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ads,
@@ -10,7 +15,14 @@ import {
   reports,
   users,
 } from '../../db/schema.js';
-import { AdminService, escapeLike, maskBizNumber, maskEmail, niceMax, timeBuckets } from './admin.service.js';
+import {
+  AdminService,
+  escapeLike,
+  maskBizNumber,
+  maskEmail,
+  niceMax,
+  timeBuckets,
+} from './admin.service.js';
 import { DEFAULT_VALUES, SETTINGS_GROUPS } from './admin-settings.service.js';
 
 /**
