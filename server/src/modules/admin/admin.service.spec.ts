@@ -286,6 +286,16 @@ describe('AdminService — certificates', () => {
     expect(sqlText).toContain(certificateRow.title);
   });
 
+  it('refuses to decide a certificate that already has that status (no duplicate badge)', async () => {
+    const { db } = createDbStub({ select: [[{ ...certificateRow, status: 'verified' }]] });
+    const { service } = createService(db);
+
+    await expect(service.verifyCertificate('c1', { action: 'approve' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
   it('reject stores the rejection reason', async () => {
     const updated = { ...certificateRow, status: 'rejected', rejectionReason: '이미지 훼손' };
     const owner = { id: 'u1', name: '김수아', badges: [] };
@@ -1185,5 +1195,29 @@ describe('escapeLike', () => {
   it('escapes ilike wildcards and the escape character', () => {
     expect(escapeLike('100%_a\\b')).toBe('100\\%\\_a\\\\b');
     expect(escapeLike('plain')).toBe('plain');
+  });
+});
+
+describe('AdminService — ad pause', () => {
+  it('pauses an active ad with an atomic conditional update', async () => {
+    const { db, setCalls } = createDbStub({ update: [[{ id: 'ad1', status: 'paused' }]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('ad1')).resolves.toEqual({ id: 'ad1', status: 'paused' });
+    expect(setCalls[0]).toEqual([{ status: 'paused' }]);
+  });
+
+  it('refuses a non-active ad with 400', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[{ id: 'ad1' }]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('ad1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws 404 for an unknown ad', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

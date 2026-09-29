@@ -482,6 +482,9 @@ export class AdminService {
     if (!certificate) throw new NotFoundException('Certificate not found');
 
     const status = dto.action === 'approve' ? 'verified' : 'rejected';
+    if (certificate.status === status) {
+      throw new ConflictException(`Certificate is already ${status}`);
+    }
     const [updated] = await this.db
       .update(certificates)
       .set({
@@ -520,6 +523,23 @@ export class AdminService {
   }
 
   // ---------------------------------------------------------------------- ads
+
+  /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */
+  async pauseAd(id: string) {
+    const [updated] = await this.db
+      .update(ads)
+      .set({ status: 'paused' })
+      .where(and(eq(ads.id, id), eq(ads.status, 'active')))
+      .returning({ id: ads.id, status: ads.status });
+    if (updated) return updated;
+    const [existing] = await this.db
+      .select({ id: ads.id })
+      .from(ads)
+      .where(eq(ads.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Ad not found');
+    throw new BadRequestException('Only active ads can be paused');
+  }
 
   async listAds(q?: string, status?: string) {
     const conditions = [];

@@ -1657,7 +1657,7 @@ paths:
       summary: 광고 상태 변경 (중단 등)
       operationId: updateAd
       x-impl-status: implemented
-      description: 관리자 광고 관리(`/admin/ad-pricing`)의 활동 메뉴(수정/납볍/중단)와 기업측 중단.
+      description: 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
       parameters:
         - name: id
           in: path
@@ -1973,6 +1973,28 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AdminAdEntry' } }
+  /admin/ads/{id}/pause:
+    post:
+      tags: [Admin]
+      summary: 관리자 광고 중단
+      operationId: pauseAdminAd
+      x-impl-status: implemented
+      description: 진행중(active) 광고만 paused로 전환한다. 진행중이 아니면 400, 없으면 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 중단된 광고
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [paused] }
   /admin/ad-pricing:
     get:
       tags: [Admin]

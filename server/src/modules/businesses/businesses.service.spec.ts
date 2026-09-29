@@ -37,7 +37,7 @@ function createDbStub(updated: Record<string, unknown> | undefined) {
 describe('BusinessesService', () => {
   it('scopes the update to the authenticated owner and applies only provided fields', async () => {
     const { db, set, where } = createDbStub({ id: 'biz-1', name: '새 이름' });
-    const service = new BusinessesService(db);
+    const service = new BusinessesService(db, { notify: vi.fn() } as any);
 
     await service.update('biz-1', { name: '새 이름', bannerImageFileId: 'file-1' }, 'user-1');
 
@@ -63,7 +63,7 @@ describe('BusinessesService', () => {
 
   it('rejects with NotFound when no row matches id and owner (no partial leak)', async () => {
     const { db } = createDbStub(undefined);
-    const service = new BusinessesService(db);
+    const service = new BusinessesService(db, { notify: vi.fn() } as any);
 
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
       'Business not found or not owned by user',

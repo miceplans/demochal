@@ -67,6 +67,11 @@ export class AdminController {
     return this.adminService.listAds(q, status);
   }
 
+  @Post('ads/:id/pause')
+  pauseAd(@Param('id') id: string) {
+    return this.adminService.pauseAd(id);
+  }
+
   @Get('ad-pricing')
   getAdPricing() {
     return this.adminService.getAdPricing();
