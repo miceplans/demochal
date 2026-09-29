@@ -3,11 +3,21 @@ import { env } from '../../config/env.js';
 import { NotificationsService } from './notifications.service.js';
 import { NOTIFICATION_EMAIL_EVENT } from './email/notification-email.js';
 
-function createDbStub(notification: { id: string } | undefined = { id: 'notification-1' }) {
+function createDbStub(
+  notification: { id: string } | undefined = { id: 'notification-1' },
+  settings?: Record<string, boolean> | null,
+) {
   const returning = vi.fn().mockResolvedValue(notification ? [notification] : []);
   const values = vi.fn().mockReturnValue({ returning });
   const tx = { insert: vi.fn().mockReturnValue({ values }) };
-  const db = { transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)) };
+  const limit = vi
+    .fn()
+    .mockResolvedValue(settings === null ? [] : [{ notificationSettings: settings ?? {} }]);
+  const userWhere = vi.fn().mockReturnValue({ limit });
+  const db = {
+    transaction: vi.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
+    select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where: userWhere }) }),
+  };
   return { db, tx, values };
 }
 
@@ -88,5 +98,68 @@ describe('NotificationsService.create', () => {
     await expect(service.create('user-1', 'verification.result', {})).rejects.toThrow(
       'insert failed',
     );
+  });
+
+  describe('recipient notification settings', () => {
+    it('skips insert and email when the applicant setting is off', async () => {
+      const { db, tx, values } = createDbStub({ id: 'notification-1' }, { applicant: false });
+      const outbox = { enqueue: vi.fn() };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'team_matching', {
+        teamId: 'team-1',
+        applicantUserId: 'user-2',
+      });
+
+      expect(result).toBeNull();
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(tx.insert).not.toHaveBeenCalled();
+      expect(values).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('skips insert and email when the result setting is off', async () => {
+      const { db, tx } = createDbStub({ id: 'notification-1' }, { result: false });
+      const outbox = { enqueue: vi.fn() };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'team_matching', {
+        teamId: 'team-1',
+        status: 'accepted',
+      });
+
+      expect(result).toBeNull();
+      expect(tx.insert).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the setting is on', { applicant: true }],
+      ['no setting is configured', {}],
+      ['the user row is missing', null],
+    ])('still creates the notification when %s', async (_, settings) => {
+      const { db, values } = createDbStub({ id: 'notification-1' }, settings);
+      const outbox = { enqueue: vi.fn().mockResolvedValue(undefined) };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'team_matching', {
+        teamId: 'team-1',
+        applicantUserId: 'user-2',
+      });
+
+      expect(result).toEqual({ id: 'notification-1' });
+      expect(values).toHaveBeenCalled();
+    });
+
+    it('always sends types without a settings mapping', async () => {
+      const { db, values } = createDbStub({ id: 'notification-1' }, { result: false });
+      const outbox = { enqueue: vi.fn().mockResolvedValue(undefined) };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'verification.result', { status: 'verified' });
+
+      expect(result).toEqual({ id: 'notification-1' });
+      expect(values).toHaveBeenCalled();
+    });
   });
 });

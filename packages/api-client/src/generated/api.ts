@@ -50,6 +50,7 @@ import type {
   Application,
   ApplyChallenge201,
   ApplyChallengeRequest,
+  BadRequestResponse,
   BizDashboard,
   Business,
   Certificate,
@@ -1534,8 +1535,10 @@ export const getListChallengesUrl = (params?: ListChallengesParams) => {
 };
 
 /**
- * 생성일 내림차순 키셋 페이지네이션. 탐색 화면(`/explore`)의 필터(분야/대상/주최기관/상금 범위),
- * 정렬(마감임박/최신/인기), 검색어, "마감된 챌린지 포함"은 쿼리 확장으로 지원 예정.
+ * 공개 챌린지 목록(키셋 페이지네이션). 기본 where는 항상 status != draft이며(공개 리스트에
+ * draft 유출 방지), includeClosed=false면 status != closed가 추가된다. q는 title/category
+ * ILIKE 검색, category는 정확 일치, sort는 latest(createdAt desc, 기본) | deadline(endDate asc)
+ * | popular(viewCount desc). 정렬 컬럼이 같으면 id로 2차 정렬해 결정적으로 페이지네이션한다.
  * @summary 챌린지 목록 조회 (커서 페이지네이션)
  */
 export const listChallenges = async (
@@ -5327,6 +5330,11 @@ export type createReportResponse201 = {
   status: 201;
 };
 
+export type createReportResponse400 = {
+  data: BadRequestResponse;
+  status: 400;
+};
+
 export type createReportResponse401 = {
   data: UnauthorizedResponse;
   status: 401;
@@ -5335,7 +5343,7 @@ export type createReportResponse401 = {
 export type createReportResponseSuccess = createReportResponse201 & {
   headers: Headers;
 };
-export type createReportResponseError = createReportResponse401 & {
+export type createReportResponseError = (createReportResponse400 | createReportResponse401) & {
   headers: Headers;
 };
 
@@ -5348,6 +5356,8 @@ export const getCreateReportUrl = () => {
 /**
  * 신고하기 화면(`/reports/new`)의 제출. 공모전 상세, 팀 모집글, 다른 사용자 프로필에서
  * 신고 버튼으로 진입하며 대상 미리보기가 폼 상단에 표시된다.
+ * targetId는 필수이며 접수 시 대상 존재를 검증한다(challenge→challenges, team→teams,
+ * user→users 테이블 조회, 없으면 400. award는 별도 테이블이 없어 형식(UUID)만 검증).
  * 인증: 전역 `JwtAuthGuard`(HttpOnly 쿠키) — 로그인 사용자만 접수 가능, reporter는 세션에서 식별.
  * @summary 신고 접수
  */
@@ -5385,7 +5395,7 @@ export const createReport = async (
 export const getCreateReportMutationKey = () => ['createReport'] as const;
 
 export const getCreateReportMutationOptions = <
-  TError = UnauthorizedResponse,
+  TError = BadRequestResponse | UnauthorizedResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -5422,13 +5432,16 @@ export const getCreateReportMutationOptions = <
 
 export type CreateReportMutationResult = NonNullable<Awaited<ReturnType<typeof createReport>>>;
 export type CreateReportMutationBody = CreateReportRequest;
-export type CreateReportMutationError = UnauthorizedResponse;
+export type CreateReportMutationError = BadRequestResponse | UnauthorizedResponse;
 export type CreateReportMutationVariables = { data: CreateReportRequest };
 
 /**
  * @summary 신고 접수
  */
-export const useCreateReport = <TError = UnauthorizedResponse, TContext = unknown>(
+export const useCreateReport = <
+  TError = BadRequestResponse | UnauthorizedResponse,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof createReport>>,
