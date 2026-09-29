@@ -109,27 +109,27 @@ export function LoginPage({ next = null }: { next?: string | null }) {
   );
 }
 const Survey = styled.div({
-  width: 600,
+  width: 480,
   maxWidth: 'calc(100% - 32px)',
   margin: '0 auto',
-  padding: '80px 0',
-  minHeight: 676,
-  [mobile]: { padding: '44px 0 110px', minHeight: 'calc(100dvh - 64px)' },
+  padding: '56px 0',
+  minHeight: 560,
+  [mobile]: { padding: '32px 0 96px', minHeight: 'calc(100dvh - 64px)' },
 });
 const Choices = styled(Wrap)({
   gap: 8,
-  '& button': { borderRadius: 999, padding: '8px 14px', fontSize: 12 },
+  '& button': { borderRadius: 999, padding: '6px 12px', fontSize: 12 },
   '& button[aria-pressed="true"]': { fontWeight: 600 },
   [mobile]: {
-    gap: 10,
-    '& button': { padding: '13px 18px', fontSize: textStyle.mCardTitle.fontSize },
+    gap: 8,
+    '& button': { padding: '10px 14px', fontSize: textStyle.mBodyDetail.fontSize },
   },
 });
 const CheckGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  columnGap: 30,
-  rowGap: 16,
+  columnGap: 24,
+  rowGap: 12,
   width: '100%',
   [mobile]: { gridTemplateColumns: '1fr', rowGap: 12 },
 });
@@ -171,7 +171,7 @@ const ActivityDropdown = styled.div({
   },
 });
 const Next = styled.div({
-  marginTop: 40,
+  marginTop: 32,
   display: 'flex',
   justifyContent: 'flex-end',
   [mobile]: {
@@ -270,23 +270,23 @@ export function OnboardingPage({ step }: { step: string }) {
           aria-valuemax={4}
           aria-valuenow={index + 1}
           style={{
-            height: 6,
+            height: 4,
             background: c.lightBlue,
             borderRadius: 30,
-            marginTop: 16,
-            marginBottom: 64,
+            marginTop: 12,
+            marginBottom: 40,
           }}
         >
           <div
             style={{
-              height: 6,
+              height: 4,
               width: `${(index + 1) * 25}%`,
               background: c.primary,
               borderRadius: 30,
             }}
           />
         </div>
-        <h1 style={{ ...textStyle.h2, marginBottom: 20 }}>{titles[index]}</h1>
+        <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
         {index === 0 ? (
           <ActivityDropdown>
             <Dropdown
