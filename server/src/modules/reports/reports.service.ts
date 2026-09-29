@@ -75,7 +75,8 @@ export class ReportsService {
         .where(eq(users.id, targetId))
         .limit(1);
       if (!row) throw new NotFoundException('Report target not found');
-      return { content: row.name, org: row.position, reportedUserId: targetId };
+      // 탈퇴 tombstone은 이름이 파기돼 null이다.
+      return { content: row.name ?? '탈퇴한 사용자', org: row.position, reportedUserId: targetId };
     }
     return null;
   }

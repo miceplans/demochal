@@ -35,6 +35,9 @@ import { SkipInputSecurity } from '../../common/security/skip-input-security.dec
 import { env } from '../../config/env.js';
 import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../common/throttling/throttling.js';
 import { Public } from './public.decorator.js';
+import { CurrentUser } from './current-user.decorator.js';
+import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard.js';
+import { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
 const GOOGLE_STATE_COOKIE_OPTIONS = {
@@ -380,6 +383,18 @@ export class AuthController {
   @Post('logout')
   @HttpCode(204)
   logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie(AUTH_COOKIE_NAME, authCookieClearOptions);
+  }
+
+  @Post('withdraw')
+  @HttpCode(204)
+  @UseGuards(JwtAuthGuard)
+  async withdraw(
+    @Body() dto: WithdrawAccountDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.authService.withdraw(user.id, dto);
     response.clearCookie(AUTH_COOKIE_NAME, authCookieClearOptions);
   }
 

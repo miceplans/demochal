@@ -606,8 +606,8 @@ export class AdminService {
   private toAdminUser(row: typeof users.$inferSelect, reportCount: number) {
     return {
       id: row.id,
-      name: row.name,
-      email: maskEmail(row.email),
+      name: row.name ?? '탈퇴한 사용자',
+      email: row.email ? maskEmail(row.email) : '탈퇴한 사용자',
       position: row.position ?? '',
       reports: reportCount,
       status: row.suspended ? ('suspended' as const) : ('active' as const),

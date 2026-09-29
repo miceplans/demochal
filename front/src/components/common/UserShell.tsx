@@ -374,6 +374,7 @@ export const myMenu = [
   ['/my/applications', '지원현황'],
   ['/my/interests', '관심분야 설정'],
   ['/my/notifications', '알림 설정'],
+  ['/my/account', '계정 설정'],
 ];
 const MyGrid = styled.div({
   display: 'grid',

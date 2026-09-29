@@ -42,6 +42,12 @@ export function createApiClient(options: HttpClientOptions) {
       register: (body: { email: string; password: string; name: string }) =>
         http.post<{ user: User }>('/auth/register', body),
       logout: () => http.post<void>('/auth/logout'),
+      withdraw: (body: {
+        password: string;
+        confirmation: '회원 탈퇴';
+        teamTransfers?: { teamId: string; newLeaderUserId: string }[];
+        newBusinessOwnerUserId?: string;
+      }) => http.post<void>('/auth/withdraw', body),
     },
     users: {
       get: (id: string) => http.get<User>(`/users/${id}`),

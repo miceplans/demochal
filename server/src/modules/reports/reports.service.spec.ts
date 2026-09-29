@@ -106,6 +106,15 @@ describe('ReportsService.create', () => {
     });
   });
 
+  it('labels a withdrawn user (erased name) as 탈퇴한 사용자', async () => {
+    const { db, inserted } = createDbStub([{ name: null, position: null }]);
+    const service = new ReportsService(db);
+
+    await service.create({ targetType: 'user', targetId: TARGET_ID, summary: '비방' }, reporter);
+
+    expect(inserted[0]).toMatchObject({ content: '탈퇴한 사용자', reportedUserId: TARGET_ID });
+  });
+
   it('rejects a missing target with 404 and inserts nothing', async () => {
     const { db } = createDbStub([]);
     const service = new ReportsService(db);
