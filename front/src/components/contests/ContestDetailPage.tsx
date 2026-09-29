@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell, Content } from '@/components/common/UserShell';
@@ -24,24 +24,10 @@ import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
-import { contestDetail, type Contest } from '@/data/user-design';
+import type { Contest } from '@/data/user-design';
+import { desktopContests, contests, contestDetail } from '@/data/user-design';
 
 const formatDate = (value?: string) => (value ? value.slice(0, 10).replaceAll('-', '.') : '');
-
-// 챌린지 목록 응답을 추천 카드 모델로 바꾼다(팀 모집 수는 목록 응답에 없어 배지를 숨긴다).
-function toContestCard(
-  challenge: { id?: string; title?: string; category?: string; endDate?: string },
-  now: number,
-): Contest {
-  const end = challenge.endDate ? new Date(challenge.endDate).getTime() : now;
-  return {
-    id: challenge.id ?? '',
-    title: challenge.title ?? '챌린지',
-    category: challenge.category ?? '기타',
-    days: Math.max(0, Math.ceil((end - now) / 86_400_000)),
-    teams: undefined,
-  };
-}
 
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
@@ -62,16 +48,25 @@ export function ContestDetailPage({
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
-  // '이 챌린지와 유사한 챌린지'는 실제 챌린지 목록에서 현재 상세를 빼고 채운다.
-  const relatedQuery = generated.useListChallenges({ limit: 9 });
-  const relatedContests = (relatedQuery.data?.data.items ?? [])
-    .filter((item) => item.id !== challengeId)
-    .slice(0, 6)
-    .map((item) => toContestCard(item, now));
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
   });
+  // 유사 챌린지 추천 — 실제 챌린지(id 있음)일 때만 조회한다.
+  const similarQuery = generated.useListSimilarChallenges(challengeId ?? '', {
+    query: { enabled: Boolean(challengeId) },
+  });
+  const similar = similarQuery.data?.status === 200 ? similarQuery.data.data : [];
+  const similarContests: Contest[] = similar
+    .filter((item) => Boolean(item.id))
+    .map((item) => ({
+      id: item.id ?? '',
+      title: item.title ?? '',
+      category: item.category ?? '',
+      days: item.endDate
+        ? Math.max(0, Math.ceil((new Date(item.endDate).getTime() - now) / 86_400_000))
+        : 0,
+    }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
   // 신청 API는 ?challenge=<uuid>가 있어야 실제 신청·결제 흐름으로 동작한다(ApplicationPage).
@@ -90,15 +85,34 @@ export function ContestDetailPage({
           ? `D-${Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))}`
           : '',
         deadline: formatDate(challenge.endDate) || '-',
-        prizeTotal: '-',
         teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
         sections: challenge.description
           ? [{ title: '상세 안내', body: challenge.description }]
           : [],
       }
     : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
-      // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다.
+      // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다(#278).
       contestDetail;
+  // 상단 요약 — 실제 챌린지는 가짜 상금 대신 서버 값(참가비·분야·정원)만 쓴다.
+  const summaryRows: [string, string][] = challenge
+    ? [
+        ['마감일', detail.deadline],
+        [
+          '참가비',
+          challenge.price === undefined
+            ? '-'
+            : challenge.price > 0
+              ? `${challenge.price.toLocaleString('ko-KR')}원`
+              : '무료',
+        ],
+        ['분야', challenge.category ?? '-'],
+        ['팀 구성', detail.teamSize],
+      ]
+    : [
+        ['마감일', contestDetail.deadline],
+        ['총 상금', contestDetail.prizeTotal],
+        ['팀 구성', contestDetail.teamSize],
+      ];
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
@@ -120,7 +134,11 @@ export function ContestDetailPage({
     }
   };
   const teamCta = (
-    <Link href="/teams/new">
+    <Link
+      href={
+        challengeId ? `/teams/new?challengeId=${encodeURIComponent(challengeId)}` : '/teams/new'
+      }
+    >
       <Button as="span" tone="outline" fullWidth>
         이 챌린지 팀 구하기
       </Button>
@@ -130,12 +148,12 @@ export function ContestDetailPage({
     <Summary>
       <b>대회 요약</b>
       <dl>
-        <dt>마감일</dt>
-        <dd>{detail.deadline}</dd>
-        <dt>총 상금</dt>
-        <dd>{detail.prizeTotal}</dd>
-        <dt>팀 구성</dt>
-        <dd>{detail.teamSize}</dd>
+        {summaryRows.map(([label, value]) => (
+          <Fragment key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </Fragment>
+        ))}
       </dl>
     </Summary>
   );
@@ -155,7 +173,9 @@ export function ContestDetailPage({
     <UserShell title="챌린지 상세" back="/explore">
       <Content>
         <Intro>
-          <div className="cover" />
+          <div className="cover" aria-hidden="true">
+            <span>{detail.title.slice(0, 1)}</span>
+          </div>
           <div className="intro-body">
             <Title>{detail.title}</Title>
             <Muted>{detail.org}</Muted>
@@ -182,8 +202,8 @@ export function ContestDetailPage({
               <IconLink
                 href={
                   challengeId
-                    ? `/reports/new?type=challenge&id=${challengeId}`
-                    : '/reports/new?type=challenge'
+                    ? `/reports/new?targetType=challenge&targetId=${encodeURIComponent(challengeId)}`
+                    : '/reports/new?targetType=challenge'
                 }
                 aria-label="신고"
               >
@@ -260,32 +280,55 @@ export function ContestDetailPage({
             {summaryBox}
           </Sidebar>
         </Columns>
-        {relatedContests.length > 0 && (
-          <section style={{ marginTop: 60 }}>
-            <SectionHeader
-              title="이 챌린지와 유사한 챌린지"
-              action={
-                <Link href="/explore" style={{ fontSize: 13, color: c.gray500 }}>
-                  더보기 →
-                </Link>
-              }
-            />
-            <DesktopOnly>
-              <Related>
-                {relatedContests.slice(0, 3).map((x) => (
-                  <ContestCard key={x.id} contest={x} />
-                ))}
-              </Related>
-            </DesktopOnly>
-            <MobileOnly>
-              <Related>
-                {relatedContests.slice(0, 2).map((x) => (
-                  <ContestCard key={x.id} contest={x} />
-                ))}
-              </Related>
-            </MobileOnly>
-          </section>
-        )}
+        <section style={{ marginTop: 60 }}>
+          <SectionHeader
+            title="이 챌린지와 유사한 챌린지"
+            action={
+              <Link href="/explore" style={{ fontSize: 13, color: c.gray500 }}>
+                더보기 →
+              </Link>
+            }
+          />
+          {challenge ? (
+            similarQuery.isPending ? null : similarContests.length ? (
+              <>
+                <DesktopOnly>
+                  <Related>
+                    {similarContests.slice(0, 3).map((x) => (
+                      <ContestCard key={x.id} contest={x} href={`/contests/${x.id}`} />
+                    ))}
+                  </Related>
+                </DesktopOnly>
+                <MobileOnly>
+                  <Related>
+                    {similarContests.slice(0, 2).map((x) => (
+                      <ContestCard key={x.id} contest={x} href={`/contests/${x.id}`} />
+                    ))}
+                  </Related>
+                </MobileOnly>
+              </>
+            ) : (
+              <Muted>아직 추천할 유사 챌린지가 없어요.</Muted>
+            )
+          ) : (
+            <>
+              <DesktopOnly>
+                <Related>
+                  {desktopContests.slice(0, 3).map((x) => (
+                    <ContestCard key={x.id} contest={x} />
+                  ))}
+                </Related>
+              </DesktopOnly>
+              <MobileOnly>
+                <Related>
+                  {contests.slice(4, 6).map((x) => (
+                    <ContestCard key={x.id} contest={x} />
+                  ))}
+                </Related>
+              </MobileOnly>
+            </>
+          )}
+        </section>
       </Content>
     </UserShell>
   );
@@ -294,7 +337,16 @@ const Intro = styled.div({
   display: 'flex',
   gap: 24,
   marginBottom: 60,
-  '.cover': { width: 315, height: 220, borderRadius: 12, background: c.gray100 },
+  '.cover': {
+    width: 315,
+    height: 220,
+    borderRadius: 12,
+    background: '#d8e4f0',
+    display: 'grid',
+    placeItems: 'center',
+    flexShrink: 0,
+    span: { fontSize: 56, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
+  },
   '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
   '.facts': { marginTop: 'auto', ...textStyle.metaText, color: c.gray700, lineHeight: 1.8 },
   [mobile]: {
@@ -307,6 +359,7 @@ const Intro = styled.div({
       margin: '-24px -16px 0',
       background: '#d8e4f0',
       borderRadius: 0,
+      span: { fontSize: 44 },
     },
     '.facts': { display: 'none' },
     '.intro-body': { gap: 12 },

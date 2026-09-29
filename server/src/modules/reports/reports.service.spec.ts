@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { maskReporterName, ReportsService } from './reports.service.js';
 
@@ -124,4 +124,17 @@ describe('ReportsService.create', () => {
     ).rejects.toBeInstanceOf(NotFoundException);
     expect(db.insert).not.toHaveBeenCalled();
   });
+
+  it.each(['challenge', 'team', 'user'] as const)(
+    'rejects a missing targetId for targetType %s with 400 and inserts nothing',
+    async (targetType) => {
+      const { db } = createDbStub();
+      const service = new ReportsService(db);
+
+      await expect(
+        service.create({ targetType, summary: '비방' }, reporter),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.insert).not.toHaveBeenCalled();
+    },
+  );
 });

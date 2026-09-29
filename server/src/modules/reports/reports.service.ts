@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, reports, teams, users } from '../../db/schema.js';
@@ -24,6 +24,11 @@ export class ReportsService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async create(dto: CreateReportDto, reporter: AuthenticatedUser) {
+    // award는 대상 테이블이 없어 targetId 없이 접수 가능하지만, 나머지 타입은 묵시적
+    // 무타겟 신고(undefined 접수)를 막기 위해 targetId를 필수로 한다.
+    if (dto.targetType !== 'award' && !dto.targetId) {
+      throw new BadRequestException(`targetId is required for targetType '${dto.targetType}'`);
+    }
     const target = dto.targetId ? await this.resolveTarget(dto.targetType, dto.targetId) : null;
     const [report] = await this.db
       .insert(reports)

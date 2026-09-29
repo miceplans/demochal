@@ -52,8 +52,10 @@ export class ContactVerificationsService {
 
   async request(channel: ContactChannel, rawTarget: string) {
     // TODO: 이메일(SES)/SMS 발송 relay가 아직 없다 — CONTACT_VERIFICATION_REQUESTED_EVENT를
-    // 소비하는 발송기를 worker에 붙이기 전까지 production에서는 발송 불가로 응답한다.
+    // 소비하는 발송기를 worker에 붙이고, SES SendEmail 및 SMS 발송을 구현한다. 그 전까지
+    // production에서는 발송 불가로 응답한다.
     // https://docs.aws.amazon.com/ses/latest/dg/send-email-api.html
+    // https://docs.aws.amazon.com/sns/latest/dg/sns-mobile-phone-number-as-subscriber.html
     // Allowlist rather than `=== 'production'`: any other deployed NODE_ENV (staging,
     // a typo) must not fall through to the path that returns the code in the response.
     if (!CODE_IN_RESPONSE_ENVS.has(env.nodeEnv)) {

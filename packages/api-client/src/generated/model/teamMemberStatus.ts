@@ -17,10 +17,14 @@
  * OpenAPI spec version: 0.0.1
  */
 
+/**
+ * pending=지원 대기(사용자→리더) · invited=초대 대기(리더→사용자, 본인이 수락/거절) · accepted/rejected=확정
+ */
 export type TeamMemberStatus = (typeof TeamMemberStatus)[keyof typeof TeamMemberStatus];
 
 export const TeamMemberStatus = {
   pending: 'pending',
+  invited: 'invited',
   accepted: 'accepted',
   rejected: 'rejected',
 } as const;
