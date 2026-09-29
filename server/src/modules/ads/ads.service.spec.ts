@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ads } from '../../db/schema.js';
 import { AdsService } from './ads.service.js';
 
 vi.mock('../files/public-file-url.js', () => ({
@@ -56,6 +57,27 @@ function createReportDbStub(rows: Record<string, unknown>[]) {
 const OWNER = { id: 'user-1', email: 'biz@x.com', name: 'Biz', role: 'business' };
 const ADMIN = { id: 'admin-1', email: 'a@x.com', name: 'Admin', role: 'admin' };
 const AD = { id: 'ad-1', businessId: 'biz-1', status: 'active', title: '히어로 광고' };
+
+// drizzle 조건이 실제 컬럼을 참조하는지 확인한다 (challenges.spec과 동일한 방식).
+function referencesColumn(node: any, column: unknown, seen = new Set<unknown>()): boolean {
+  if (node === column) return true;
+  if (!node || typeof node !== 'object' || seen.has(node)) return false;
+  seen.add(node);
+  if (Array.isArray(node)) return node.some((chunk) => referencesColumn(chunk, column, seen));
+  return Array.isArray(node.queryChunks) && referencesColumn(node.queryChunks, column, seen);
+}
+
+// drizzle 조건에 바인딩된 문자열/날짜 값을 모은다 (연산자와 Param 값 확인용).
+function collectSqlValues(node: any, values: unknown[] = []): unknown[] {
+  if (typeof node === 'string' || node instanceof Date) values.push(node);
+  if (node?.constructor?.name === 'Param') values.push(node.value);
+  if (Array.isArray(node?.value))
+    node.value.forEach((chunk: any) => collectSqlValues(chunk, values));
+  if (Array.isArray(node)) node.forEach((chunk) => collectSqlValues(chunk, values));
+  if (Array.isArray(node?.queryChunks))
+    node.queryChunks.forEach((chunk: any) => collectSqlValues(chunk, values));
+  return values;
+}
 
 describe('AdsService.updateStatus', () => {
   it('rejects a non-owning business with 403', async () => {
@@ -168,6 +190,106 @@ describe('AdsService.updateStatus', () => {
     await expect(service.updateStatus('missing', { status: 'paused' }, OWNER)).rejects.toThrow(
       'Ad not found',
     );
+  });
+});
+
+describe('AdsService.listMine', () => {
+  const DAY_MS = 86_400_000;
+
+  function createListMineDbStub(rows: unknown[]) {
+    const where = vi.fn((..._args: unknown[]) => ({ orderBy: vi.fn().mockResolvedValue(rows) }));
+    const db: any = { select: vi.fn(() => ({ from: vi.fn(() => ({ where })) })) };
+    return { db, where };
+  }
+
+  // 스텁은 drizzle 조건을 평가할 수 없으니, 서빙 기간 필터의 DB 적용 결과를
+  // listPublic과 동일한 startDate/endDate 규칙으로 재현한다.
+  function simulateServingWindow<T extends { startDate: Date; endDate: Date }>(
+    rows: T[],
+    now: Date,
+  ) {
+    const todayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
+    return rows.filter((row) => row.startDate <= now && row.endDate >= todayStart);
+  }
+
+  it('excludes expired-but-active ads when withinServingWindow is set', async () => {
+    const before = new Date();
+    const liveAd = {
+      ...AD,
+      id: 'ad-live',
+      startDate: new Date(before.getTime() - 2 * DAY_MS),
+      endDate: new Date(before.getTime() + 5 * DAY_MS),
+    };
+    const expiredAd = {
+      ...AD,
+      id: 'ad-expired',
+      startDate: new Date(before.getTime() - 30 * DAY_MS),
+      endDate: new Date(before.getTime() - 3 * DAY_MS),
+    };
+    const { db, where } = createListMineDbStub(simulateServingWindow([liveAd, expiredAd], before));
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const result = await service.listMine('biz-1', 'active', { withinServingWindow: true });
+
+    expect(result.map((ad) => ad.id)).toEqual(['ad-live']);
+    const condition = where.mock.calls[0]![0];
+    expect(referencesColumn(condition, ads.startDate)).toBe(true);
+    expect(referencesColumn(condition, ads.endDate)).toBe(true);
+    const values = collectSqlValues(condition);
+    expect(values.some((v) => typeof v === 'string' && v.includes('<='))).toBe(true);
+    expect(values.some((v) => typeof v === 'string' && v.includes('>='))).toBe(true);
+    const dates = values.filter((v): v is Date => v instanceof Date);
+    const after = new Date();
+    expect(
+      dates.some((d) => d.getTime() >= before.getTime() && d.getTime() <= after.getTime()),
+    ).toBe(true);
+    const expectedTodayStart = new Date(
+      Date.UTC(before.getUTCFullYear(), before.getUTCMonth(), before.getUTCDate()),
+    );
+    expect(dates).toContainEqual(expectedTodayStart);
+  });
+
+  it('keeps an active ad whose contract ends today when withinServingWindow is set', async () => {
+    const now = new Date();
+    const endsTodayAd = {
+      ...AD,
+      id: 'ad-ends-today',
+      startDate: new Date(now.getTime() - 2 * DAY_MS),
+      endDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+    };
+    const { db, where } = createListMineDbStub(simulateServingWindow([endsTodayAd], now));
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const result = await service.listMine('biz-1', 'active', { withinServingWindow: true });
+
+    expect(result.map((ad) => ad.id)).toEqual(['ad-ends-today']);
+    expect(referencesColumn(where.mock.calls[0]![0], ads.endDate)).toBe(true);
+  });
+
+  it('adds no date conditions when the option is not set', async () => {
+    const now = new Date();
+    const expiredAd = {
+      ...AD,
+      id: 'ad-expired',
+      startDate: new Date(now.getTime() - 30 * DAY_MS),
+      endDate: new Date(now.getTime() - 3 * DAY_MS),
+    };
+    const { db, where } = createListMineDbStub([expiredAd]);
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    // GET /ads 경로(status 유무 모두)는 기존처럼 만료 여부와 무관하게 전부 남긴다.
+    const withStatus = await service.listMine('biz-1', 'active');
+    const withoutStatus = await service.listMine('biz-1');
+
+    expect(withStatus.map((ad) => ad.id)).toEqual(['ad-expired']);
+    expect(withoutStatus.map((ad) => ad.id)).toEqual(['ad-expired']);
+    expect(where).toHaveBeenCalledTimes(2);
+    for (const call of where.mock.calls) {
+      expect(referencesColumn(call[0], ads.startDate)).toBe(false);
+      expect(referencesColumn(call[0], ads.endDate)).toBe(false);
+    }
   });
 });
 
