@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { TeamsService } from './teams.service.js';
@@ -488,5 +493,146 @@ describe('TeamsService', () => {
 
     await expect(service.listManaged(leader.id)).resolves.toEqual([]);
     expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it('invite throws 403 for non-leaders', async () => {
+    const db = createDbStub();
+    db.select.mockReturnValue(selectChain([{ id: 'team-1', leaderUserId: leader.id }]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(service.invite('team-1', { userId: 'user-x' }, applicant)).rejects.toThrow(
+      ForbiddenException,
+    );
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('invite throws 400 for the leader themselves and 404 for a missing user or team', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(service.invite('team-1', { userId: leader.id }, leader)).rejects.toThrow(
+      BadRequestException,
+    );
+    await expect(service.invite('team-1', { userId: 'user-x' }, leader)).rejects.toThrow(
+      NotFoundException,
+    );
+    await expect(service.invite('team-x', { userId: applicant.id }, leader)).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('invite throws 409 when the user already applied or was invited', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: applicant.id }]))
+      .mockReturnValueOnce(selectChain([{ id: 'member-1' }]));
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(service.invite('team-1', { userId: applicant.id }, leader)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('invite inserts an invited member and notifies the invitee', async () => {
+    const memberRow = {
+      id: 'member-9',
+      teamId: 'team-1',
+      userId: applicant.id,
+      role: '백엔드',
+      status: 'invited',
+    };
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: applicant.id }]))
+      .mockReturnValueOnce(selectChain([]));
+    const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([memberRow]) });
+    db.insert = vi.fn().mockReturnValue({ values });
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any);
+
+    const result = await service.invite('team-1', { userId: applicant.id, role: '백엔드' }, leader);
+
+    expect(values).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      userId: applicant.id,
+      role: '백엔드',
+      status: 'invited',
+    });
+    expect(notifications.create).toHaveBeenCalledWith(applicant.id, 'team_matching', {
+      teamId: 'team-1',
+      invitedUserId: applicant.id,
+      memberId: 'member-9',
+      role: '백엔드',
+    });
+    expect(result).toEqual(memberRow);
+  });
+
+  it('updateMember lets the invitee accept their own invite and notifies the leader', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-9', userId: applicant.id, status: 'invited', chatLink: null }]),
+      );
+    const set = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'member-9', status: 'accepted' }]),
+      }),
+    });
+    db.update = vi.fn().mockReturnValue({ set });
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any);
+
+    await service.updateMember('team-1', 'member-9', { status: 'accepted' }, applicant);
+
+    expect(set).toHaveBeenCalledWith({ status: 'accepted', chatLink: null });
+    expect(notifications.create).toHaveBeenCalledWith(leader.id, 'team_matching', {
+      teamId: 'team-1',
+      applicantUserId: applicant.id,
+    });
+  });
+
+  it('updateMember invite rejection stores the decision without notifying the leader', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-9', userId: applicant.id, status: 'invited', chatLink: null }]),
+      );
+    const set = vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 'member-9', status: 'rejected' }]),
+      }),
+    });
+    db.update = vi.fn().mockReturnValue({ set });
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any);
+
+    await service.updateMember('team-1', 'member-9', { status: 'rejected' }, applicant);
+
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('updateMember still forbids a non-leader deciding an application that is not their invite', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-1', userId: applicant.id, status: 'pending' }]),
+      );
+    const service = new TeamsService(db, createNotificationsStub() as any);
+
+    await expect(
+      service.updateMember('team-1', 'member-1', { status: 'accepted' }, applicant),
+    ).rejects.toThrow(ForbiddenException);
   });
 });

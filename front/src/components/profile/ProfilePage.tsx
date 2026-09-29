@@ -1,11 +1,13 @@
 'use client';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
 import { Button, Heading, Stack, Icon, Row, Muted } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
+import { useToast } from '@/components/common/Toast';
 import { Badges, Identity, SkillStack, History } from './ProfileCards';
 import { colors as c, mobile } from '@/styles/design';
 
@@ -20,6 +22,33 @@ function ProfilePageContent() {
     query: { enabled: Boolean(userId), retry: false },
   });
   const user = userQuery.data?.status === 200 ? userQuery.data.data : undefined;
+
+  const toast = useToast();
+  // 내가 팀장인 팀 목록 — '팀에 초대'의 대상 팀 선택지. 팀장인 팀이 없으면 초대 UI를 숨긴다.
+  const managedQuery = generated.useListManagedTeams();
+  const myTeams = managedQuery.data?.status === 200 ? managedQuery.data.data : [];
+  const inviteOptions = myTeams.map((team) => ({ value: team.id ?? '', label: team.title ?? '' }));
+  const [pickedTeamId, setPickedTeamId] = useState('');
+  const inviteTarget = inviteOptions.some((option) => option.value === pickedTeamId)
+    ? pickedTeamId
+    : (inviteOptions[0]?.value ?? '');
+  const canInvite = Boolean(me) && userId !== me?.id && inviteOptions.length > 0;
+  const invite = generated.useInviteTeam();
+  const onInvite = () => {
+    if (!inviteTarget || !userId) return;
+    invite.mutate(
+      { id: inviteTarget, data: { userId } },
+      {
+        onSuccess: () => toast.success('초대를 볃었어요', '수락하면 팀원으로 합류해요'),
+        onError: (error) => {
+          const status = (error as { status?: number }).status;
+          if (status === 409) toast.error('이미 지원하거나 초대된 멤버예요');
+          else if (status === 403) toast.error('팀장만 초대할 수 있어요');
+          else toast.error('초대에 실패했어요', '잠시 후 다시 시도해주세요');
+        },
+      },
+    );
+  };
 
   if (!paramId && auth.isPending) {
     return (
@@ -77,6 +106,23 @@ function ProfilePageContent() {
                 ))
               )}
             </Stack>
+            {canInvite && (
+              <Stack gap={8} style={{ borderTop: `1px solid ${c.gray100}`, paddingTop: 20 }}>
+                <Heading>팀에 초대</Heading>
+                <Row gap={8}>
+                  <Dropdown
+                    aria-label="초대할 팀"
+                    size="S"
+                    value={inviteTarget}
+                    onChange={setPickedTeamId}
+                    options={inviteOptions}
+                  />
+                  <Button small onClick={onInvite} disabled={invite.isPending || !inviteTarget}>
+                    팀에 초대
+                  </Button>
+                </Row>
+              </Stack>
+            )}
             <Link
               href={`/reports/new?targetType=user&targetId=${userId}`}
               style={{ alignSelf: 'center' }}

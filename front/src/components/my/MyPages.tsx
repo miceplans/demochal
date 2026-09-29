@@ -1063,7 +1063,9 @@ const notificationCategory: Record<string, NotificationTab> = {
 };
 function describeNotification(type: string, payload: Record<string, unknown>) {
   if (type === 'team_matching') {
-    // 지원 알림은 applicantUserId, 결과 알림은 status로 구분한다(NotificationsService.settingsKeyFor와 동일).
+    // 초대 알림은 invitedUserId, 지원 알림은 applicantUserId, 결과 알림은 status로 구분한다
+    // (NotificationsService.settingsKeyFor와 동일).
+    if (typeof payload.invitedUserId === 'string') return '팀에 초대가 왔어요';
     if (typeof payload.applicantUserId === 'string') {
       // 목록 payload로는 팀명을 조회할 수 없어 generic 문구를 쓴다.
       return '새 지원자가 팀에 지원했어요';
@@ -1094,12 +1096,26 @@ export function NotificationsPage() {
   const [now] = useState(() => Date.now());
   const queryClient = useQueryClient();
   const router = useRouter();
+  const toast = useToast();
   const notificationsQuery = generated.useListMyNotifications();
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: generated.getListMyNotificationsQueryKey() });
   const markRead = generated.useMarkNotificationRead({ mutation: { onSuccess: invalidate } });
   const markAllRead = generated.useMarkAllNotificationsRead({
     mutation: { onSuccess: invalidate },
+  });
+  // 팀 초대 알림의 수락/거절 — 본인이 받은 invited 멤버 행을 결정한다(서버 권한과 동일).
+  const [inviteResponses, setInviteResponses] = useState<Record<string, 'accepted' | 'rejected'>>(
+    {},
+  );
+  const respondInvite = generated.useUpdateTeamMember({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        setInviteResponses((prev) => ({ ...prev, [variables.memberId]: variables.data.status }));
+        invalidate();
+      },
+      onError: () => toast.error('응답에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
   });
   const all = notificationsQuery.data?.data ?? [];
   const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
@@ -1141,6 +1157,11 @@ export function NotificationsPage() {
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
               const teamId = typeof payload.teamId === 'string' ? payload.teamId : undefined;
+              const inviteMemberId =
+                typeof payload.invitedUserId === 'string' && typeof payload.memberId === 'string'
+                  ? payload.memberId
+                  : undefined;
+              const inviteResponse = inviteMemberId ? inviteResponses[inviteMemberId] : undefined;
               return (
                 <NotificationItem
                   key={item.id}
@@ -1155,6 +1176,44 @@ export function NotificationsPage() {
                   <Heading style={{ fontSize: 14 }}>
                     {describeNotification(item.type ?? '', payload)}
                   </Heading>
+                  {inviteMemberId && teamId && !inviteResponse && (
+                    <Row gap={8} style={{ marginTop: 8 }}>
+                      <Button
+                        small
+                        disabled={respondInvite.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          respondInvite.mutate({
+                            id: teamId,
+                            memberId: inviteMemberId,
+                            data: { status: 'accepted' },
+                          });
+                        }}
+                      >
+                        수락
+                      </Button>
+                      <Button
+                        small
+                        tone="plain"
+                        disabled={respondInvite.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          respondInvite.mutate({
+                            id: teamId,
+                            memberId: inviteMemberId,
+                            data: { status: 'rejected' },
+                          });
+                        }}
+                      >
+                        거절
+                      </Button>
+                    </Row>
+                  )}
+                  {inviteResponse && (
+                    <Muted style={{ marginTop: 8 }}>
+                      {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
+                    </Muted>
+                  )}
                   <Muted>{timeAgo(item.createdAt, now)}</Muted>
                 </NotificationItem>
               );

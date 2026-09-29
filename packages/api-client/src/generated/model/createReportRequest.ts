@@ -24,8 +24,8 @@ import type { CreateReportRequestTargetType } from './createReportRequestTargetT
 export interface CreateReportRequest {
   /** 신고 대상 종류 — 공모전/팀 모집글/수상작/사용자 프로필 */
   targetType: CreateReportRequestTargetType;
-  /** 신고 대상 id (필수 — 접수 시 대상 존재 검증, 없으면 400) */
-  targetId: string;
+  /** 신고 대상 id — challenge/team/user는 필수(접수 시 대상 존재 검증, 없으면 400). award는 생략 가능 */
+  targetId?: string;
   /**
    * 신고 사유 (예: 비방)
    * @maxLength 200

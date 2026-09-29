@@ -680,6 +680,39 @@ paths:
         '400': { description: 팀장 본인 또는 중복 신청 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /teams/{id}/invite:
+    post:
+      tags: [Teams]
+      summary: 팀원 초대 (팀장)
+      operationId: inviteTeam
+      x-impl-status: implemented
+      description: |
+        프로필(`/profile?id=`)의 "팀에 초대" — 팀장이 특정 사용자를 본인 팀에 초대한다.
+        `invited` 상태의 팀원 행이 생기고 피초대자에게 `team_matching` 초대 알림이 간다
+        (payload: invitedUserId·memberId·role). 수락/거절은 피초대자가
+        `PATCH /teams/{id}/members/{memberId}`로 직접 결정하며, 수락 시 팀장에게 새 멤버 알림.
+        팀장 본인이 아니면 403, 이미 지원/초대된 멤버면 409.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InviteTeamRequest' }
+      responses:
+        '201':
+          description: 생성된 초대 (status=invited)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamMember' }
+        '400': { description: 팀장 본인 대상 초대 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: 팀장만 초대 가능 }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 이미 지원하거나 초대된 멤버 }
   /teams/{id}/members/{memberId}:
     patch:
       tags: [Teams]
@@ -690,6 +723,8 @@ paths:
         팀 지원자 관리 화면의 "결과 전송하기". 팀장(또는 관리자)만 결정할 수 있고, 다른 사용자는 403으로 거부된다.
         accepted이면 채팅방 링크를 함께 저장해 지원자에게 `team_matching` 알림으로 전달하고,
         rejected이면 저장된 링크를 지운다. 팀장이 자기 자신의 행을 결정하면 400.
+        예외 — 본인이 받은 팀 초대(`status=invited`)는 피초대자 본인이 수락/거절할 수 있다.
+        본인 수락 시 팀장에게 새 멤버 알림이 가고, 거절은 알림을 별도로 본인에게 복사하지 않는다.
       parameters:
         - name: id
           in: path
@@ -2405,7 +2440,10 @@ components:
         userId: { type: string, format: uuid }
         name: { type: string, description: 상세·관리 응답에 포함 }
         role: { type: string, nullable: true }
-        status: { type: string, enum: [pending, accepted, rejected] }
+        status:
+          type: string
+          enum: [pending, invited, accepted, rejected]
+          description: 'pending=지원 대기(사용자→리더) · invited=초대 대기(리더→사용자, 본인이 수락/거절) · accepted/rejected=확정'
         chatLink:
           {
             type: string,
@@ -2425,6 +2463,12 @@ components:
       type: object
       properties:
         role: { type: string, description: 지원 역할 }
+    InviteTeamRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string, format: uuid, description: 초대할 사용자 id }
+        role: { type: string, maxLength: 100, description: 초대 시 제안하는 역할 }
     TeamRoleSlot:
       type: object
       properties:
