@@ -89,7 +89,7 @@ export function SkillStack({
     </Wrap>
   );
 }
-const HistoryCard = styled(Link)({
+export const HistoryCard = styled(Link)({
   display: 'flex',
   alignItems: 'center',
   gap: 16,

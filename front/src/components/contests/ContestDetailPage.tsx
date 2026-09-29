@@ -24,9 +24,24 @@ import { ContestCard } from './ContestCard';
 import { TeamGrid, TeamCard } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
-import { desktopContests, contests, contestDetail } from '@/data/user-design';
+import { contestDetail, type Contest } from '@/data/user-design';
 
 const formatDate = (value?: string) => (value ? value.slice(0, 10).replaceAll('-', '.') : '');
+
+// 챌린지 목록 응답을 추천 카드 모델로 바꾼다(팀 모집 수는 목록 응답에 없어 배지를 숨긴다).
+function toContestCard(
+  challenge: { id?: string; title?: string; category?: string; endDate?: string },
+  now: number,
+): Contest {
+  const end = challenge.endDate ? new Date(challenge.endDate).getTime() : now;
+  return {
+    id: challenge.id ?? '',
+    title: challenge.title ?? '챌린지',
+    category: challenge.category ?? '기타',
+    days: Math.max(0, Math.ceil((end - now) / 86_400_000)),
+    teams: undefined,
+  };
+}
 
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
@@ -47,6 +62,12 @@ export function ContestDetailPage({
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  // '이 챌린지와 유사한 챌린지'는 실제 챌린지 목록에서 현재 상세를 빼고 채운다.
+  const relatedQuery = generated.useListChallenges({ limit: 9 });
+  const relatedContests = (relatedQuery.data?.data.items ?? [])
+    .filter((item) => item.id !== challengeId)
+    .slice(0, 6)
+    .map((item) => toContestCard(item, now));
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
@@ -75,7 +96,9 @@ export function ContestDetailPage({
           ? [{ title: '상세 안내', body: challenge.description }]
           : [],
       }
-    : contestDetail;
+    : // TODO: 데모 상세(/contests/public-data) 폼백으로 쓰는 user-design.ts contestDetail 목업이다.
+      // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다.
+      contestDetail;
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
@@ -237,30 +260,32 @@ export function ContestDetailPage({
             {summaryBox}
           </Sidebar>
         </Columns>
-        <section style={{ marginTop: 60 }}>
-          <SectionHeader
-            title="이 챌린지와 유사한 챌린지"
-            action={
-              <Link href="/explore" style={{ fontSize: 13, color: c.gray500 }}>
-                더보기 →
-              </Link>
-            }
-          />
-          <DesktopOnly>
-            <Related>
-              {desktopContests.slice(0, 3).map((x) => (
-                <ContestCard key={x.id} contest={x} />
-              ))}
-            </Related>
-          </DesktopOnly>
-          <MobileOnly>
-            <Related>
-              {contests.slice(4, 6).map((x) => (
-                <ContestCard key={x.id} contest={x} />
-              ))}
-            </Related>
-          </MobileOnly>
-        </section>
+        {relatedContests.length > 0 && (
+          <section style={{ marginTop: 60 }}>
+            <SectionHeader
+              title="이 챌린지와 유사한 챌린지"
+              action={
+                <Link href="/explore" style={{ fontSize: 13, color: c.gray500 }}>
+                  더보기 →
+                </Link>
+              }
+            />
+            <DesktopOnly>
+              <Related>
+                {relatedContests.slice(0, 3).map((x) => (
+                  <ContestCard key={x.id} contest={x} />
+                ))}
+              </Related>
+            </DesktopOnly>
+            <MobileOnly>
+              <Related>
+                {relatedContests.slice(0, 2).map((x) => (
+                  <ContestCard key={x.id} contest={x} />
+                ))}
+              </Related>
+            </MobileOnly>
+          </section>
+        )}
       </Content>
     </UserShell>
   );

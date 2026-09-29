@@ -27,7 +27,7 @@ import {
   Identity,
   Badges,
   SkillStack,
-  History,
+  HistoryCard,
   AddButton,
 } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
@@ -39,7 +39,6 @@ import {
   notificationTabs,
   skillCatalog,
 } from '@/data/user-design';
-import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -322,6 +321,54 @@ function SkillAddModal({
   );
 }
 
+// 모바일 마이페이지 '참가 이력' — 지원현황(데스크톱)과 같은 실데이터를 쓴다.
+// 챌린지 지원(결과 태그 포함)과 팀 지원을 지원일 내림차순으로 합쳐 보여준다.
+function ParticipationHistory() {
+  const challengeQuery = generated.useListMyApplications();
+  const teamQuery = generated.useListMyTeamApplications();
+  const challengeApps = challengeQuery.data?.status === 200 ? challengeQuery.data.data : [];
+  const teamApps = teamQuery.data?.status === 200 ? teamQuery.data.data : [];
+  const items = [
+    ...challengeApps.map((row) => ({
+      id: row.id ?? '',
+      title: row.challengeTitle ?? '챌린지',
+      sub: row.businessName ?? '-',
+      createdAt: row.createdAt ?? '',
+      href: row.challengeId ? `/contests/${row.challengeId}` : '/my/applications',
+      result: challengeResultTag(row.status),
+    })),
+    ...teamApps.map((row) => ({
+      id: row.id ?? '',
+      title: row.teamTitle ?? '팀',
+      sub: row.challengeTitle ?? '챌린지',
+      createdAt: row.createdAt ?? '',
+      href: '/my/applications',
+      result: teamResultTag(row.status),
+    })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const isPending = challengeQuery.isPending || teamQuery.isPending;
+  const isError = challengeQuery.isError || teamQuery.isError;
+  return (
+    <Stack gap={16}>
+      {items.map((item) => (
+        <HistoryCard key={item.id} href={item.href}>
+          <div className="thumb" />
+          <div>
+            <h3>{item.title}</h3>
+            <Row gap={8}>
+              <Tag tone={item.result.tone}>{item.result.label}</Tag>
+              <Muted>{item.sub}</Muted>
+            </Row>
+          </div>
+        </HistoryCard>
+      ))}
+      {isPending && <Muted>참가 이력을 불러오는 중이에요.</Muted>}
+      {isError && <Muted>참가 이력을 불러오지 못했어요. 새로고침해주세요.</Muted>}
+      {!isPending && !isError && items.length === 0 && <Muted>아직 참가 이력이 없어요.</Muted>}
+    </Stack>
+  );
+}
+
 export function MyPage() {
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
@@ -407,7 +454,7 @@ export function MyPage() {
         </DesktopOnly>
         <MobileOnly>
           <Heading style={{ marginBottom: 12 }}>참가 이력</Heading>
-          <History compact />
+          <ParticipationHistory />
         </MobileOnly>
       </Stack>
       <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
@@ -497,23 +544,17 @@ export function BookmarksPage() {
   );
 }
 export function InterestsPage() {
-  const state = useUserStore();
   const toast = useToast();
   const queryClient = useQueryClient();
   // 관심분야는 서버 값이 기준이다. 브라우저에 남은 기본값이나 다른 계정의 값으로 덮어쓰지
-  // 않도록, 서버 값을 받은 뒤에만 편집/저장할 수 있게 한다. 역할/대상은 기존대로 로컬 상태.
+  // 않도록, 서버 값을 받은 뒤에만 편집/저장할 수 있게 한다.
   const interestsQuery = generated.useGetInterests();
   const [editedInterests, setEditedInterests] = useState<string[] | null>(null);
   const interests = editedInterests ?? interestsQuery.data?.data.categories ?? [];
   const interestsReady = interestsQuery.isSuccess;
   const saveInterests = generated.useSaveInterests();
-  const isSelected = (key: (typeof preferenceGroups)[number]['key'], value: string) =>
-    key === 'interests' ? interests.includes(value) : state[key].includes(value);
-  const toggle = (key: (typeof preferenceGroups)[number]['key'], value: string) => {
-    if (key !== 'interests') {
-      state.togglePreference(key, value);
-      return;
-    }
+  const isSelected = (value: string) => interests.includes(value);
+  const toggle = (value: string) => {
     if (!interestsReady) return;
     setEditedInterests(
       interests.includes(value) ? interests.filter((x) => x !== value) : [...interests, value],
@@ -551,10 +592,10 @@ export function InterestsPage() {
               {g.options.map((x) => (
                 <Chip
                   key={x}
-                  selected={isSelected(g.key, x)}
-                  aria-pressed={isSelected(g.key, x)}
-                  disabled={g.key === 'interests' && !interestsReady}
-                  onClick={() => toggle(g.key, x)}
+                  selected={isSelected(x)}
+                  aria-pressed={isSelected(x)}
+                  disabled={!interestsReady}
+                  onClick={() => toggle(x)}
                 >
                   {x}
                 </Chip>
@@ -704,7 +745,13 @@ export function ApplicationsPage() {
                   return (
                     <tr key={row.id}>
                       <td>
-                        <Link href="/contests/public-data">{row.challengeTitle ?? '챌린지'}</Link>
+                        {row.challengeId ? (
+                          <Link href={`/contests/${row.challengeId}`}>
+                            {row.challengeTitle ?? '챌린지'}
+                          </Link>
+                        ) : (
+                          (row.challengeTitle ?? '챌린지')
+                        )}
                       </td>
                       <td>{row.businessName ?? '-'}</td>
                       <td>
