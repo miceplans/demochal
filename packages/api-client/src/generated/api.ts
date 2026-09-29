@@ -9545,7 +9545,7 @@ export const getApproveVerificationUrl = (id: string) => {
 };
 
 /**
- * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
+ * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송. 이미 승인된 요청은 409.
  * @summary 기관 인증 승인
  */
 export const approveVerification = async (
@@ -9641,7 +9641,7 @@ export const getRejectVerificationUrl = (id: string) => {
 };
 
 /**
- * 거부 사유(`rejectionReason`) 기록 + 기업에 알림.
+ * 거부 사유(`rejectionReason`) 기록 + 기업에 알림. 이미 거부된 요청은 409.
  * @summary 기관 인증 거부
  */
 export const rejectVerification = async (
@@ -10535,7 +10535,7 @@ export const getSuspendUserUrl = (id: string) => {
 };
 
 /**
- * 상태 뱃지(활성·정지) 토글.
+ * 상태 뱃지(활성·정지) 토글. 관리자(admin) 계정은 자기 자신 포함 정지할 수 없다(403).
  * @summary 사용자 정지/해제
  */
 export const suspendUser = async (

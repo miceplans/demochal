@@ -60,7 +60,7 @@ function pickKnownBooleans(values: unknown): Record<string, boolean> {
   if (!values || typeof values !== 'object') return {};
   return Object.fromEntries(
     Object.entries(values).filter(
-      ([key, value]) => key in DEFAULT_VALUES && typeof value === 'boolean',
+      ([key, value]) => Object.hasOwn(DEFAULT_VALUES, key) && typeof value === 'boolean',
     ),
   ) as Record<string, boolean>;
 }

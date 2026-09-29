@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -55,6 +62,12 @@ export interface AdminAnalytics {
 }
 
 const countRows = sql<number>`count(*)::int`;
+
+/** ilike 검색어의 %, _, 역슬래시를 이스케이프해 리터럴 부분 문자열로 매칭한다. */
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+}
+const like = (value: string) => `%${escapeLike(value)}%`;
 
 const DAY_MS = 86_400_000;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -279,7 +292,7 @@ export class AdminService {
       .where(eq(businesses.verificationStatus, 'pending'));
 
     const conditions = [];
-    if (q) conditions.push(ilike(businesses.name, `%${q}%`));
+    if (q) conditions.push(ilike(businesses.name, like(q)));
     if (status) conditions.push(eq(businesses.verificationStatus, status));
     if (type) conditions.push(eq(businesses.type, type));
     const rows = await this.db
@@ -364,36 +377,48 @@ export class AdminService {
     status: 'verified' | 'rejected',
     reason: string | null,
   ) {
-    const [verification] = await this.db
-      .select()
-      .from(verifications)
-      .where(eq(verifications.id, id))
-      .limit(1);
-    if (!verification) throw new NotFoundException('Verification not found');
+    // 조회·상태 전이·기관 상태 갱신을 한 트랜잭션에서 처리하고(행 잠금), 알림은 커밋 후 발송한다.
+    const { updated, ownerUserId } = await this.db.transaction(async (tx) => {
+      const [verification] = await tx
+        .select()
+        .from(verifications)
+        .where(eq(verifications.id, id))
+        .for('update')
+        .limit(1);
+      if (!verification) throw new NotFoundException('Verification not found');
+      if (verification.status === status) {
+        throw new ConflictException(`Verification is already ${status}`);
+      }
 
-    const [updated] = await this.db
-      .update(verifications)
-      .set({
-        status,
-        rejectionReason: status === 'rejected' ? reason : null,
-        updatedAt: new Date(),
-      })
-      .where(eq(verifications.id, id))
-      .returning();
+      const [row] = await tx
+        .update(verifications)
+        .set({
+          status,
+          rejectionReason: status === 'rejected' ? reason : null,
+          updatedAt: new Date(),
+        })
+        .where(eq(verifications.id, id))
+        .returning();
 
-    const [business] = await this.db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, verification.businessId))
-      .limit(1);
-    if (business) {
-      await this.db
-        .update(businesses)
-        .set({ verificationStatus: status })
-        .where(eq(businesses.id, business.id));
-      await this.notificationsService.create(business.ownerUserId, 'verification.result', {
+      const [business] = await tx
+        .select()
+        .from(businesses)
+        .where(eq(businesses.id, verification.businessId))
+        .limit(1);
+      if (business) {
+        await tx
+          .update(businesses)
+          .set({ verificationStatus: status })
+          .where(eq(businesses.id, business.id));
+      }
+      return { updated: row, ownerUserId: business?.ownerUserId };
+    });
+
+    if (ownerUserId) {
+      await this.notificationsService.create(ownerUserId, 'verification.result', {
         verificationId: id,
         status,
+        ...(reason ? { reason } : {}),
       });
     }
 
@@ -407,7 +432,7 @@ export class AdminService {
     if (status) conditions.push(eq(certificates.status, status));
     if (category) conditions.push(eq(certificates.category, category));
     if (q) {
-      conditions.push(or(ilike(certificates.title, `%${q}%`), ilike(users.name, `%${q}%`)));
+      conditions.push(or(ilike(certificates.title, like(q)), ilike(users.name, like(q))));
     }
     const rows = await this.db
       .select({ certificate: certificates, userName: users.name, file: files })
@@ -473,13 +498,15 @@ export class AdminService {
       .limit(1);
 
     if (dto.action === 'approve' && owner) {
-      const badges = owner.badges ?? [];
-      if (!badges.includes(certificate.title)) {
-        await this.db
-          .update(users)
-          .set({ badges: [...badges, certificate.title] })
-          .where(eq(users.id, owner.id));
-      }
+      // read-modify-write 대신 단일 UPDATE로 원자적으로 중복 없이 추가한다.
+      await this.db
+        .update(users)
+        .set({
+          badges: sql`case when ${users.badges} @> jsonb_build_array(${certificate.title}::text)
+            then ${users.badges}
+            else ${users.badges} || jsonb_build_array(${certificate.title}::text) end`,
+        })
+        .where(eq(users.id, owner.id));
     }
 
     return {
@@ -496,7 +523,7 @@ export class AdminService {
 
   async listAds(q?: string, status?: string) {
     const conditions = [];
-    if (q) conditions.push(or(ilike(ads.title, `%${q}%`), ilike(businesses.name, `%${q}%`)));
+    if (q) conditions.push(or(ilike(ads.title, like(q)), ilike(businesses.name, like(q))));
     if (status) conditions.push(eq(ads.status, status));
     const rows = await this.db
       .select({ ad: ads, organization: businesses.name, productName: adProducts.name })
@@ -554,14 +581,14 @@ export class AdminService {
 
   async listUsers(q?: string, status?: string, joinedWithin?: string, position?: string) {
     const conditions = [];
-    if (q) conditions.push(or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)));
+    if (q) conditions.push(or(ilike(users.name, like(q)), ilike(users.email, like(q))));
     if (status) conditions.push(eq(users.suspended, status === 'suspended'));
     const joinedWithinDays = joinedWithin ? JOINED_WITHIN_DAYS[joinedWithin] : undefined;
     if (joinedWithinDays !== undefined) {
       conditions.push(gte(users.createdAt, new Date(Date.now() - joinedWithinDays * 86_400_000)));
     }
     // users.position is free text ("프론트엔드 개발자" etc.), so match the badge as a substring.
-    if (position) conditions.push(ilike(users.position, `%${position}%`));
+    if (position) conditions.push(ilike(users.position, like(position)));
     const rows = await this.db
       .select()
       .from(users)
@@ -573,6 +600,13 @@ export class AdminService {
   }
 
   async suspendUser(id: string, dto: SuspendUserDto) {
+    const [target] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    if (!target) throw new NotFoundException('User not found');
+    // 관리자(자기 자신 포함)를 정지하면 JwtAuthGuard가 즉시 차단해 콘솔이 복구 불가가 된다.
+    if (dto.suspended && target.role === 'admin') {
+      throw new ForbiddenException('Admin accounts cannot be suspended');
+    }
+
     const [user] = await this.db
       .update(users)
       .set(
@@ -622,9 +656,9 @@ export class AdminService {
     if (q) {
       conditions.push(
         or(
-          ilike(reports.content, `%${q}%`),
-          ilike(reports.summary, `%${q}%`),
-          ilike(reports.org, `%${q}%`),
+          ilike(reports.content, like(q)),
+          ilike(reports.summary, like(q)),
+          ilike(reports.org, like(q)),
         ),
       );
     }
@@ -879,16 +913,16 @@ export class AdminService {
         {
           label: '노출수',
           value: String(report.totals.impressions),
-          meta: '누적 계측값',
+          meta: '최근 31일 계측값',
           dot: '#0877FF',
         },
         {
           label: '클릭수',
           value: String(report.totals.clicks),
-          meta: '누적 계측값',
+          meta: '최근 31일 계측값',
           dot: '#22C55E',
         },
-        { label: 'CTR', value: `${report.totals.ctr}%`, meta: '누적 계측값', dot: '#F59E0B' },
+        { label: 'CTR', value: `${report.totals.ctr}%`, meta: '최근 31일 계측값', dot: '#F59E0B' },
         {
           label: '집행 광고비',
           value: String(row.ad.paidAmount),

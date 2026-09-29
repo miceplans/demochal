@@ -23,12 +23,10 @@ describe('VerificationsService.submit', () => {
     const { db, insert } = createDbStub(insertedVerification);
     const outboxService = { enqueue: vi.fn().mockResolvedValue(undefined) };
     const filesService = { assertOwnedReadyPrivate: vi.fn().mockResolvedValue(undefined) };
-    const notificationsService = {};
     const service = new VerificationsService(
       db,
       outboxService as any,
       filesService as any,
-      notificationsService as any,
     );
 
     const result = await service.submit(
