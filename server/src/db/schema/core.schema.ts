@@ -15,8 +15,9 @@ import {
 type OpenRole = { role: string; count: number };
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
-  name: varchar('name', { length: 100 }).notNull(),
+  // A withdrawn account retains only this FK anchor; personal fields are erased.
+  email: varchar('email', { length: 255 }).unique(),
+  name: varchar('name', { length: 100 }),
   role: varchar('role', { length: 20 }).notNull().default('user'),
   passwordHash: text('password_hash'),
   googleSubject: varchar('google_subject', { length: 255 }).unique(),
@@ -46,6 +47,7 @@ export const users = pgTable('users', {
   phoneVerifiedAt: timestamp('phone_verified_at'),
   // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
   termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
+  withdrawnAt: timestamp('withdrawn_at'),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -56,6 +58,7 @@ export const businesses = pgTable('businesses', {
   name: varchar('name', { length: 200 }),
   // 학교/비영리 등 사업자번호가 없는 기관은 null.
   registrationNumber: varchar('registration_number', { length: 20 }),
+  // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨)
   verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('pending'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 기관 유형: 기업 | 학교 | 비영리 | 협회
@@ -73,6 +76,7 @@ export const verifications = pgTable('verifications', {
     .notNull()
     .references(() => businesses.id),
   documentFileId: uuid('document_file_id').notNull(),
+  // pending | processing | verified | rejected
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   ocrResult: jsonb('ocr_result'),
   rejectionReason: text('rejection_reason'),
@@ -133,6 +137,7 @@ export const teamMembers = pgTable('team_members', {
     .notNull()
     .references(() => users.id),
   role: varchar('role', { length: 100 }),
+  // pending=지원 대기(사용자→리더), invited=초대 대기(리더→사용자, 수락/거절은 본인), accepted/rejected=확정.
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
   chatLink: varchar('chat_link', { length: 500 }),

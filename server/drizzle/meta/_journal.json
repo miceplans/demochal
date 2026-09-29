@@ -140,6 +140,20 @@
       "when": 1790200000000,
       "tag": "0020_add_kakao_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1790210000000,
+      "tag": "0021_normalize_verification_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1790660000000,
+      "tag": "0022_account_withdrawal",
+      "breakpoints": true
     }
   ]
 }

@@ -50,6 +50,7 @@ import type {
   Application,
   ApplyChallenge201,
   ApplyChallengeRequest,
+  BadRequestResponse,
   BizDashboard,
   Business,
   Certificate,
@@ -75,6 +76,7 @@ import type {
   GetBillingCustomerKey200,
   GetInterests200,
   HandleTossWebhook200,
+  InviteTeamRequest,
   IssueBillingAuthorizationBody,
   JoinTeamRequest,
   ListAdminAdsParams,
@@ -1534,8 +1536,10 @@ export const getListChallengesUrl = (params?: ListChallengesParams) => {
 };
 
 /**
- * 생성일 내림차순 키셋 페이지네이션. 탐색 화면(`/explore`)의 필터(분야/대상/주최기관/상금 범위),
- * 정렬(마감임박/최신/인기), 검색어, "마감된 챌린지 포함"은 쿼리 확장으로 지원 예정.
+ * 공개 챌린지 목록(키셋 페이지네이션). 기본 where는 항상 status != draft이며(공개 리스트에
+ * draft 유출 방지), includeClosed=false면 status != closed가 추가된다. q는 title/category
+ * ILIKE 검색, category는 정확 일치, sort는 latest(createdAt desc, 기본) | deadline(endDate asc)
+ * | popular(viewCount desc). 정렬 컬럼이 같으면 id로 2차 정렬해 결정적으로 페이지네이션한다.
  * @summary 챌린지 목록 조회 (커서 페이지네이션)
  */
 export const listChallenges = async (
@@ -3456,6 +3460,164 @@ export const useJoinTeam = <
   return useMutation(getJoinTeamMutationOptions(options), queryClient);
 };
 
+export type inviteTeamResponse201 = {
+  data: TeamMember;
+  status: 201;
+};
+
+export type inviteTeamResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type inviteTeamResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type inviteTeamResponse403 = {
+  data: void;
+  status: 403;
+};
+
+export type inviteTeamResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type inviteTeamResponse409 = {
+  data: void;
+  status: 409;
+};
+
+export type inviteTeamResponseSuccess = inviteTeamResponse201 & {
+  headers: Headers;
+};
+export type inviteTeamResponseError = (
+  | inviteTeamResponse400
+  | inviteTeamResponse401
+  | inviteTeamResponse403
+  | inviteTeamResponse404
+  | inviteTeamResponse409
+) & {
+  headers: Headers;
+};
+
+export type inviteTeamResponse = inviteTeamResponseSuccess | inviteTeamResponseError;
+
+export const getInviteTeamUrl = (id: string) => {
+  return `/teams/${id}/invite`;
+};
+
+/**
+ * 프로필(`/profile?id=`)의 "팀에 초대" — 팀장이 특정 사용자를 본인 팀에 초대한다.
+ * `invited` 상태의 팀원 행이 생기고 피초대자에게 `team_matching` 초대 알림이 간다
+ * (payload: invitedUserId·memberId·role). 수락/거절은 피초대자가
+ * `PATCH /teams/{id}/members/{memberId}`로 직접 결정하며, 수락 시 팀장에게 새 멤버 알림.
+ * 팀장 본인이 아니면 403, 이미 지원/초대된 멤버면 409.
+ * @summary 팀원 초대 (팀장)
+ */
+export const inviteTeam = async (
+  id: string,
+  inviteTeamRequest: InviteTeamRequest,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<inviteTeamResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<inviteTeamResponse>(getInviteTeamUrl(id), {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(inviteTeamRequest),
+  });
+};
+
+export const getInviteTeamMutationKey = () => ['inviteTeam'] as const;
+
+export const getInviteTeamMutationOptions = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof inviteTeam>>,
+    TError,
+    InviteTeamMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof inviteTeam>>,
+  TError,
+  InviteTeamMutationVariables,
+  TContext
+> => {
+  const mutationKey = getInviteTeamMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof inviteTeam>>,
+    InviteTeamMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return inviteTeam(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type InviteTeamMutationResult = NonNullable<Awaited<ReturnType<typeof inviteTeam>>>;
+export type InviteTeamMutationBody = InviteTeamRequest;
+export type InviteTeamMutationError = void | UnauthorizedResponse | NotFoundResponse;
+export type InviteTeamMutationVariables = { id: string; data: InviteTeamRequest };
+
+/**
+ * @summary 팀원 초대 (팀장)
+ */
+export const useInviteTeam = <
+  TError = void | UnauthorizedResponse | NotFoundResponse,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof inviteTeam>>,
+      TError,
+      InviteTeamMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof inviteTeam>>,
+  TError,
+  InviteTeamMutationVariables,
+  TContext
+> => {
+  return useMutation(getInviteTeamMutationOptions(options), queryClient);
+};
+
 export type updateTeamMemberResponse200 = {
   data: TeamMember;
   status: 200;
@@ -3504,6 +3666,8 @@ export const getUpdateTeamMemberUrl = (id: string, memberId: string) => {
  * 팀 지원자 관리 화면의 "결과 전송하기". 팀장(또는 관리자)만 결정할 수 있고, 다른 사용자는 403으로 거부된다.
  * accepted이면 채팅방 링크를 함께 저장해 지원자에게 `team_matching` 알림으로 전달하고,
  * rejected이면 저장된 링크를 지운다. 팀장이 자기 자신의 행을 결정하면 400.
+ * 예외 — 본인이 받은 팀 초대(`status=invited`)는 피초대자 본인이 수락/거절할 수 있다.
+ * 본인 수락 시 팀장에게 새 멤버 알림이 가고, 거절은 알림을 별도로 본인에게 복사하지 않는다.
  * @summary 팀 지원자 합격/불합격 결정 (+ 채팅방 링크 저장)
  */
 export const updateTeamMember = async (
@@ -5327,6 +5491,11 @@ export type createReportResponse201 = {
   status: 201;
 };
 
+export type createReportResponse400 = {
+  data: BadRequestResponse;
+  status: 400;
+};
+
 export type createReportResponse401 = {
   data: UnauthorizedResponse;
   status: 401;
@@ -5335,7 +5504,7 @@ export type createReportResponse401 = {
 export type createReportResponseSuccess = createReportResponse201 & {
   headers: Headers;
 };
-export type createReportResponseError = createReportResponse401 & {
+export type createReportResponseError = (createReportResponse400 | createReportResponse401) & {
   headers: Headers;
 };
 
@@ -5348,6 +5517,9 @@ export const getCreateReportUrl = () => {
 /**
  * 신고하기 화면(`/reports/new`)의 제출. 공모전 상세, 팀 모집글, 다른 사용자 프로필에서
  * 신고 버튼으로 진입하며 대상 미리보기가 폼 상단에 표시된다.
+ * targetId는 challenge/team/user 신고에서 필수이며 접수 시 대상 존재를 검증한다
+ * (challenge→challenges, team→teams, user→users 테이블 조회, 없으면 400).
+ * award는 대상 테이블이 없어 targetId 없이도 접수 가능하다(형식(UUID)만 검증).
  * 인증: 전역 `JwtAuthGuard`(HttpOnly 쿠키) — 로그인 사용자만 접수 가능, reporter는 세션에서 식별.
  * @summary 신고 접수
  */
@@ -5385,7 +5557,7 @@ export const createReport = async (
 export const getCreateReportMutationKey = () => ['createReport'] as const;
 
 export const getCreateReportMutationOptions = <
-  TError = UnauthorizedResponse,
+  TError = BadRequestResponse | UnauthorizedResponse,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -5422,13 +5594,16 @@ export const getCreateReportMutationOptions = <
 
 export type CreateReportMutationResult = NonNullable<Awaited<ReturnType<typeof createReport>>>;
 export type CreateReportMutationBody = CreateReportRequest;
-export type CreateReportMutationError = UnauthorizedResponse;
+export type CreateReportMutationError = BadRequestResponse | UnauthorizedResponse;
 export type CreateReportMutationVariables = { data: CreateReportRequest };
 
 /**
  * @summary 신고 접수
  */
-export const useCreateReport = <TError = UnauthorizedResponse, TContext = unknown>(
+export const useCreateReport = <
+  TError = BadRequestResponse | UnauthorizedResponse,
+  TContext = unknown,
+>(
   options?: {
     mutation?: UseMutationOptions<
       Awaited<ReturnType<typeof createReport>>,
@@ -9370,7 +9545,7 @@ export const getApproveVerificationUrl = (id: string) => {
 };
 
 /**
- * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
+ * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
  * @summary 기관 인증 승인
  */
 export const approveVerification = async (

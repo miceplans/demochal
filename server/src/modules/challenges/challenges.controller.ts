@@ -21,8 +21,22 @@ export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
 
   @Get()
-  list(@Query('cursor') cursor?: string, @Query('limit') limit = '20') {
-    return this.challengesService.list(cursor, Number(limit));
+  list(
+    @Query('cursor') cursor?: string,
+    @Query('limit') limit = '20',
+    @Query('q') q?: string,
+    @Query('category') category?: string,
+    @Query('includeClosed') includeClosed?: string,
+    @Query('sort') sort?: string,
+  ) {
+    return this.challengesService.list({
+      cursor,
+      limit: Number(limit),
+      q,
+      category,
+      includeClosed: includeClosed !== 'false',
+      sort,
+    });
   }
 
   @Get('recommended')

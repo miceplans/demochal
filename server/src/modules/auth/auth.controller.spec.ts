@@ -11,7 +11,7 @@ import { fetchJson } from '../../common/http/fetch-json.js';
 
 vi.mock('../../common/http/fetch-json.js', () => ({ fetchJson: vi.fn() }));
 
-const user = { id: 'user-1', email: 'member@semochal.kr', name: '회원' };
+const user = { id: 'user-1', email: 'member@semochal.kr', name: '회원', role: 'user' };
 const testPassword = ['test', 'password'].join('-');
 
 function response() {
@@ -23,6 +23,7 @@ function createController() {
     login: vi.fn().mockResolvedValue({ accessToken: 'signed.jwt', user }),
     register: vi.fn().mockResolvedValue({ accessToken: 'signed.jwt', user }),
     me: vi.fn().mockResolvedValue(user),
+    withdraw: vi.fn().mockResolvedValue(undefined),
   };
   return {
     controller: new AuthController(
@@ -62,6 +63,22 @@ describe('AuthController cookie session flow', () => {
     const res = response();
 
     controller.logout(res);
+    expect(res.clearCookie).toHaveBeenCalledWith(
+      AUTH_COOKIE_NAME,
+      expect.objectContaining({ path: '/' }),
+    );
+  });
+
+  it('withdraws the authenticated account and clears its session cookie', async () => {
+    const { controller, service } = createController();
+    const res = response();
+    await expect(
+      controller.withdraw({ password: testPassword, confirmation: '회원 탈퇴' }, user, res),
+    ).resolves.toBeUndefined();
+    expect(service.withdraw).toHaveBeenCalledWith(user.id, {
+      password: testPassword,
+      confirmation: '회원 탈퇴',
+    });
     expect(res.clearCookie).toHaveBeenCalledWith(
       AUTH_COOKIE_NAME,
       expect.objectContaining({ path: '/' }),

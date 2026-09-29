@@ -17,7 +17,7 @@ const Form = styled.form`
   width: 100%;
 `;
 
-export function LoginForm() {
+export function LoginForm({ next = null }: { next?: string | null }) {
   const router = useRouter();
   const toast = useToast();
 
@@ -33,7 +33,7 @@ export function LoginForm() {
   const onSubmit = async (values: LoginFormValues) => {
     try {
       await adApi.auth.login(values);
-      router.push('/my');
+      router.push(next ?? '/my');
     } catch {
       toast.error('이메일 또는 비밀번호를 확인해 주세요.');
     }

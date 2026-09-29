@@ -228,6 +228,7 @@ export function UserShell({
   compact = false,
   footer = true,
   navigation = true,
+  hideMobileHeader = false,
   back = '/my',
 }: {
   children: ReactNode;
@@ -235,6 +236,7 @@ export function UserShell({
   compact?: boolean;
   footer?: boolean;
   navigation?: boolean;
+  hideMobileHeader?: boolean;
   back?: string;
 }) {
   const path = usePathname();
@@ -321,21 +323,23 @@ export function UserShell({
           </Nav>
         )}
       </HeaderBox>
-      <MobileHeader>
-        {title ? (
-          <MobileTitleBar>
-            <MobileBackLink href={back} aria-label="뒤로가기">
-              ‹
-            </MobileBackLink>
-            <MobileTitle>{title}</MobileTitle>
-          </MobileTitleBar>
-        ) : (
-          <>
-            <Logo dot />
-            {!compact && <SearchBar />}
-          </>
-        )}
-      </MobileHeader>
+      {!hideMobileHeader && (
+        <MobileHeader>
+          {title ? (
+            <MobileTitleBar>
+              <MobileBackLink href={back} aria-label="뒤로가기">
+                ‹
+              </MobileBackLink>
+              <MobileTitle>{title}</MobileTitle>
+            </MobileTitleBar>
+          ) : (
+            <>
+              <Logo dot />
+              {!compact && <SearchBar />}
+            </>
+          )}
+        </MobileHeader>
+      )}
       <main style={{ minWidth: 0, flex: 1 }}>
         <div>{children}</div>
       </main>
@@ -374,6 +378,7 @@ export const myMenu = [
   ['/my/applications', '지원현황'],
   ['/my/interests', '관심분야 설정'],
   ['/my/notifications', '알림 설정'],
+  ['/my/account', '계정 설정'],
 ];
 const MyGrid = styled.div({
   display: 'grid',

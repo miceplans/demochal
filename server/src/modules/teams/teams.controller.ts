@@ -3,6 +3,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { Public } from '../auth/public.decorator.js';
 import { CreateTeamDto } from './dto/create-team.dto.js';
+import { InviteTeamDto } from './dto/invite-team.dto.js';
 import { JoinTeamDto } from './dto/join-team.dto.js';
 import { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
 import { TeamsService } from './teams.service.js';
@@ -50,6 +51,15 @@ export class TeamsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.teamsService.join(id, dto.role, user.id);
+  }
+
+  @Post(':id/invite')
+  invite(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InviteTeamDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.teamsService.invite(id, dto, user);
   }
 
   @Patch(':id/members/:memberId')

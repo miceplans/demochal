@@ -24,6 +24,6 @@ export type BizReviewEntryStatus = (typeof BizReviewEntryStatus)[keyof typeof Bi
 
 export const BizReviewEntryStatus = {
   pending: 'pending',
-  approved: 'approved',
+  verified: 'verified',
   rejected: 'rejected',
 } as const;

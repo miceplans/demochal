@@ -1,16 +1,18 @@
 'use client';
 import Link from 'next/link';
 import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
 import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { TEAM_COVER_FALLBACK, teamCapacity } from './team-model';
+import { teamCapacity } from './team-model';
 
 function formatDate(iso?: string) {
   if (!iso) return '-';
@@ -43,6 +45,8 @@ export function TeamDetailPage() {
   const saved = bookmarks.some((item) => item.id === bookmarkId);
 
   const goLogin = () => router.push(`/login?next=${encodeURIComponent(pathname)}`);
+  // 팀 지원 시 맡을 역할. 팀 조회가 끝난 뒤 openRoles로 선택지를 만들고, 선택값이 유효하지 않으면 첫 슬롯으로 되돌린다.
+  const [pickedRole, setPickedRole] = useState('');
   const join = generated.useJoinTeam({
     mutation: {
       onSuccess: () => {
@@ -88,7 +92,11 @@ export function TeamDetailPage() {
   const myMembership = me ? members.find((member) => member.userId === me.id) : undefined;
   const isLeader = !!me && me.id === team.leaderUserId;
   const capacity = teamCapacity(team);
-  const openRoles = (team.openRoles ?? []).map((slot) => slot.role).filter(Boolean);
+  const openRoles = (team.openRoles ?? []).map((slot) => slot.role ?? '').filter(Boolean);
+  const roleOptions = openRoles.map((role) => ({ value: role, label: role }));
+  const joinRole = roleOptions.some((option) => option.value === pickedRole)
+    ? pickedRole
+    : (roleOptions[0]?.value ?? '');
   const facts = [
     ['필요역할', openRoles.length ? openRoles.join(', ') : '없음'],
     ['우대사항', team.preferred || '없음'],
@@ -108,19 +116,16 @@ export function TeamDetailPage() {
       goLogin();
       return;
     }
-    join.mutate({ id, data: {} });
+    join.mutate({ id, data: { role: joinRole || undefined } });
   };
 
   return (
     <UserShell title="팀 모집글" back="/teams">
       <Content>
         <Header>
-          <Cover
-            src={TEAM_COVER_FALLBACK}
-            alt={`${team.challengeTitle ?? '챌린지'} 포스터`}
-            width={1200}
-            height={222}
-          />
+          <Cover aria-hidden="true">
+            <span>{(team.challengeTitle || team.title || '팀').trim().slice(0, 1)}</span>
+          </Cover>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="heading">
               <h1>
@@ -144,7 +149,7 @@ export function TeamDetailPage() {
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
                 공유
               </Button>
-              <IconLink href={`/reports/new?type=team&id=${team.id}`} aria-label="신고">
+              <IconLink href={`/reports/new?targetType=team&targetId=${team.id}`} aria-label="신고">
                 <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
               </IconLink>
             </Row>
@@ -187,14 +192,34 @@ export function TeamDetailPage() {
             </section>
           </Main>
           <Sidebar>
+            {!isLeader && !myMembership && roleOptions.length > 0 && (
+              <RolePicker>
+                <span className="label">지원 역할</span>
+                <Dropdown
+                  aria-label="지원 역할"
+                  value={joinRole}
+                  onChange={setPickedRole}
+                  options={roleOptions}
+                />
+              </RolePicker>
+            )}
             <Button
               type="button"
               fullWidth
-              disabled={authPending || join.isPending || isLeader || !!myMembership}
+              disabled={
+                authPending ||
+                join.isPending ||
+                isLeader ||
+                !!myMembership ||
+                roleOptions.length === 0
+              }
               onClick={apply}
             >
               {ctaLabel}
             </Button>
+            {!isLeader && !myMembership && roleOptions.length === 0 && (
+              <Muted style={{ textAlign: 'center' }}>현재 모집 중인 역할이 없어요.</Muted>
+            )}
             <Summary>
               <b>대회 요약</b>
               <dl>
@@ -225,14 +250,21 @@ const Header = styled.div({
   '.heading p': { ...textStyle.caption, color: c.gray900 },
   [mobile]: { gap: 20, marginBottom: 24 },
 });
-const Cover = styled.img({
+const Cover = styled.div({
+  display: 'grid',
+  placeItems: 'center',
   width: '100%',
   height: 222,
-  objectFit: 'cover',
-  objectPosition: 'center top',
   borderRadius: 19,
-  background: c.gray100,
-  [mobile]: { height: 180, borderRadius: 12 },
+  background: '#d8e4f0',
+  span: { fontSize: 64, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
+  [mobile]: { height: 180, borderRadius: 12, span: { fontSize: 44 } },
+});
+const RolePicker = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  '& .label': { ...textStyle.caption, color: c.gray500 },
 });
 const BookmarkButton = styled(IconButton)({
   '&[aria-pressed="true"], &[aria-pressed="true"]:hover': { background: c.lightBlue },

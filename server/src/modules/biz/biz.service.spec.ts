@@ -96,7 +96,9 @@ describe('BizService', () => {
     // Only the top 3 history items, but the total covers all of them.
     expect(dashboard.payments).toHaveLength(3);
     expect(dashboard.paymentTotal).toBe(-100);
-    expect(deps.adsService.listMine).toHaveBeenCalledWith('biz-1', 'active');
+    expect(deps.adsService.listMine).toHaveBeenCalledWith('biz-1', 'active', {
+      withinServingWindow: true,
+    });
     expect(dashboard.activeAds).toEqual(activeAds);
   });
 

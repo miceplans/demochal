@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import type { Ad, AdReport } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
@@ -24,11 +24,18 @@ export function BizReportsPage() {
   const [report, setReport] = useState<AdReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const requestId = useRef(0);
 
   useEffect(() => {
+    const currentRequestId = ++requestId.current;
+    // Loading is an external API synchronization triggered by the selected ad change.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    setError(false);
     void adApi.ads
       .listMine()
       .then((items) => {
+        if (requestId.current !== currentRequestId) return;
         setAds(items);
         const id =
           requestedId && items.some((item) => item.id === requestedId)
@@ -36,10 +43,16 @@ export function BizReportsPage() {
             : (items[0]?.id ?? '');
         setSelectedId(id);
         if (!id) return;
-        return adApi.ads.getReport(id).then(setReport);
+        return adApi.ads.getReport(id).then((result) => {
+          if (requestId.current === currentRequestId) setReport(result);
+        });
       })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (requestId.current === currentRequestId) setError(true);
+      })
+      .finally(() => {
+        if (requestId.current === currentRequestId) setLoading(false);
+      });
   }, [requestedId]);
 
   const selectAd = (id: string) => {

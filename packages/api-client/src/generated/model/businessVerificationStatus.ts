@@ -22,6 +22,6 @@ export type BusinessVerificationStatus =
 
 export const BusinessVerificationStatus = {
   pending: 'pending',
-  approved: 'approved',
+  verified: 'verified',
   rejected: 'rejected',
 } as const;

@@ -23,22 +23,11 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
-import {
-  Identity,
-  Badges,
-  SkillStack,
-  History,
-  AddButton,
-} from '@/components/profile/ProfileCards';
+import { Badges, SkillStack, History, AddButton } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
-import {
-  desktopContests,
-  preferenceGroups,
-  notificationSettings,
-  participatingTeams,
-  notificationTabs,
-  skillCatalog,
-} from '@/data/user-design';
+import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
+import { toTeamCard } from '@/components/teams/team-model';
+import { preferenceGroups, notificationSettings, skillCatalog } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
@@ -116,6 +105,16 @@ const HiddenInput = styled.input({
 });
 const UploadMark = styled.img({ width: 40, height: 26 });
 const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
+// ProfileCards.Identity는 user-design 목업 이름을 하드코딩해 실 이름을 못 쓴다.
+// 아바타 스타일만 맞춰 마이페이지에서 실 인증 정보를 직접 렌더한다.
+const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
+  width: large ? 110 : 64,
+  height: large ? 110 : 64,
+  borderRadius: '50%',
+  background: c.gray100,
+  flexShrink: 0,
+  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+}));
 const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
 
 const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -322,17 +321,61 @@ function SkillAddModal({
   );
 }
 
+const formatParticipatingDay = (iso?: string) =>
+  iso ? new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) : '';
+type ParticipatingItem = {
+  key: string;
+  href: string;
+  title: string;
+  sub?: string;
+  role?: string;
+  meta: string;
+};
+
 export function MyPage() {
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const mySkills = (me.data?.status === 200 ? me.data.data.stacks : undefined) ?? [];
+  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  // 이름이 없으면 이메일 앞부분을, 그마저 없으면 표시명을 쓴다.
+  const displayName =
+    meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
+  const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
+  const mySkills = meInfo?.stacks ?? [];
   const certificatesQuery = generated.useListMyCertificates();
   // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
   const certificates = (certificatesQuery.data?.data ?? [])
     .filter((x) => x.status !== 'rejected')
     .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+  // 참여중 = 수락된 팀 멤버십과 챌린지 지원(예선 통과). 심사중 지원은 지원현황 페이지에서 본다.
+  const participatingTeamsQuery = generated.useListMyTeamApplications();
+  const participatingChallengesQuery = generated.useListMyApplications();
+  const participatingItems: ParticipatingItem[] = [
+    ...(participatingTeamsQuery.data?.status === 200 ? participatingTeamsQuery.data.data : [])
+      .filter((x) => x.status === 'accepted')
+      .map((x) => ({
+        key: `team-${x.id ?? ''}`,
+        href: x.teamId ? `/teams/${x.teamId}` : '/teams',
+        title: x.challengeTitle ?? x.teamTitle ?? '챌린지',
+        sub: x.challengeTitle ? x.teamTitle : undefined,
+        role: x.role ?? undefined,
+        meta: ['팀 참여 확정', formatParticipatingDay(x.createdAt)].filter(Boolean).join(' · '),
+      })),
+    ...(participatingChallengesQuery.data?.status === 200
+      ? participatingChallengesQuery.data.data
+      : []
+    )
+      .filter((x) => x.status === 'accepted')
+      .map((x) => ({
+        key: `challenge-${x.id ?? ''}`,
+        href: x.challengeId ? `/contests/${x.challengeId}` : '/contests',
+        title: x.challengeTitle ?? '챌린지',
+        sub: x.businessName ?? undefined,
+        role: x.role ?? undefined,
+        meta: ['예선 통과', formatParticipatingDay(x.createdAt)].filter(Boolean).join(' · '),
+      })),
+  ];
   const updateProfile = generated.useUpdateMyProfile({
     mutation: {
       onSuccess: () => {
@@ -344,7 +387,13 @@ export function MyPage() {
     <MyShell title="MY">
       <Stack gap={28}>
         <Link href="/profile">
-          <Identity large />
+          <Row gap={24}>
+            <MyAvatar large />
+            <Stack gap={8}>
+              <h2 style={{ fontSize: 20 }}>{displayName}</h2>
+              {profileMeta && <Muted>{profileMeta}</Muted>}
+            </Stack>
+          </Row>
         </Link>
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
@@ -383,27 +432,28 @@ export function MyPage() {
         />
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
-          <Participating>
-            {participatingTeams.map((team) => (
-              <Link key={team.id} href={team.href}>
-                <Heading>{team.challenge}</Heading>
-                <Muted>{team.description}</Muted>
-                <Wrap style={{ margin: '20px 0' }}>
-                  {team.filledRoles.map((role) => (
-                    <Tag key={role} tone="blue">
-                      {role}
-                    </Tag>
-                  ))}
-                  {team.recruitingRoles.map((role) => (
-                    <Tag key={role}>{role}</Tag>
-                  ))}
-                </Wrap>
-                <Muted>
-                  {team.dday} · {team.deadline}
-                </Muted>
-              </Link>
-            ))}
-          </Participating>
+          {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
+            <Muted>불러오는 중이에요.</Muted>
+          ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
+            <Muted>참여 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
+          ) : participatingItems.length === 0 ? (
+            <Muted>아직 참여 중인 팀이나 챌린지가 없어요.</Muted>
+          ) : (
+            <Participating>
+              {participatingItems.map((item) => (
+                <Link key={item.key} href={item.href}>
+                  <Heading>{item.title}</Heading>
+                  {item.sub && <Muted>{item.sub}</Muted>}
+                  {item.role && (
+                    <Wrap style={{ margin: '20px 0' }}>
+                      <Tag tone="blue">{item.role}</Tag>
+                    </Wrap>
+                  )}
+                  <Muted>{item.meta}</Muted>
+                </Link>
+              ))}
+            </Participating>
+          )}
         </DesktopOnly>
         <MobileOnly>
           <Heading style={{ marginBottom: 12 }}>참가 이력</Heading>
@@ -425,15 +475,43 @@ export function MyPage() {
   );
 }
 export function MyTeamsPage() {
+  const managedQuery = generated.useListManagedTeams();
+  const teams = managedQuery.data?.status === 200 ? managedQuery.data.data : [];
   return (
     <MyShell title="내 팀">
       <Stack>
-        <Title>내가 만든 팀이 있는 챌린지</Title>
-        <ContestGrid style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))' }}>
-          {desktopContests.slice(0, 2).map((x) => (
-            <ContestCard contest={x} key={x.id} href="/my/teams/public-data" />
-          ))}
-        </ContestGrid>
+        <DesktopOnly>
+          <Title>내 팀</Title>
+        </DesktopOnly>
+        {managedQuery.isPending ? (
+          <Muted>불러오는 중이에요.</Muted>
+        ) : managedQuery.isError ? (
+          <Muted>팀 목록을 불러오지 못했어요. 새로고침해주세요.</Muted>
+        ) : teams.length === 0 ? (
+          <Muted>아직 내가 만든 팀이 없어요.</Muted>
+        ) : (
+          <TeamGrid>
+            {teams.map((team) => {
+              const applicants = (team.members ?? []).filter(
+                (member) => member.status === 'pending',
+              ).length;
+              return (
+                <Stack key={team.id} gap={8}>
+                  <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
+                    <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
+                      <Muted>지원자 {applicants}명</Muted>
+                      <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
+                        {team.status === 'closed' ? '모집마감' : '모집중'}
+                      </Tag>
+                    </Row>
+                  </Row>
+                  <TeamCard team={toTeamCard(team)} />
+                </Stack>
+              );
+            })}
+          </TeamGrid>
+        )}
       </Stack>
     </MyShell>
   );
@@ -602,8 +680,6 @@ export function NotificationSettingsPage() {
   const values: Record<string, boolean> = Object.fromEntries(
     notificationSettingKeys.map((key) => [key, saved?.[key] ?? true]),
   );
-  // TODO: 알림 생성 시(NotificationsService.create) 이 설정을 확인해 끈 유형은 저장하지 않도록 서버에서 강제해야 한다.
-  // https://orm.drizzle.team/docs/select
   const save = generated.useSaveNotificationSettings({
     mutation: {
       onSuccess: () =>
@@ -771,6 +847,8 @@ export function TeamApplicantsPage() {
   const [overrides, setOverrides] = useState<Record<string, ApplicantResult>>({});
   const [sendTargetId, setSendTargetId] = useState<string | null>(null);
   const [link, setLink] = useState('');
+  // 전송에 실패한 지원자 id. 목록에 '전송 실패'로 표시하고 재전송 대상으로 남겨둔다.
+  const [failedIds, setFailedIds] = useState<string[]>([]);
   const updateMember = generated.useUpdateTeamMember();
   const sendTarget = teams.find((team) => team.id === sendTargetId);
 
@@ -825,9 +903,18 @@ export function TeamApplicantsPage() {
     const succeededIds = decided
       .filter((_, i) => results[i]?.status === 'fulfilled')
       .map((member) => member.id);
+    const failedMemberIds = decided
+      .filter((_, i) => results[i]?.status === 'rejected')
+      .map((member) => member.id)
+      .filter((id): id is string => Boolean(id));
     setOverrides((prev) =>
       Object.fromEntries(Object.entries(prev).filter(([id]) => !succeededIds.includes(id))),
     );
+    // 성공한 지원자는 실패 목록에서 빼고, 이번에 실패한 지원자만 표시한다.
+    setFailedIds((prev) => [
+      ...prev.filter((id) => !succeededIds.includes(id) && !failedMemberIds.includes(id)),
+      ...failedMemberIds,
+    ]);
     refreshTeams();
     const failed = results.length - succeededIds.length;
     if (failed > 0) {
@@ -888,19 +975,26 @@ export function TeamApplicantsPage() {
                           {member.role ? <Tag tone="blue">{member.role}</Tag> : <Muted>-</Muted>}
                         </td>
                         <td style={{ width: 130 }}>
-                          <Dropdown
-                            aria-label={`${member.name ?? '지원자'} 결과`}
-                            size="S"
-                            value={resultOf(member.id, member.status)}
-                            onChange={(x) =>
-                              member.id &&
-                              setOverrides((prev) => ({
-                                ...prev,
-                                [member.id as string]: x as ApplicantResult,
-                              }))
-                            }
-                            options={applicantResultOptions}
-                          />
+                          <Row gap={6} style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+                            <Dropdown
+                              aria-label={`${member.name ?? '지원자'} 결과`}
+                              size="S"
+                              value={resultOf(member.id, member.status)}
+                              onChange={(x) => {
+                                if (!member.id) return;
+                                // 결과를 다시 선택하면 실패 표시를 지워 재전송 대상에서 빠진다.
+                                setOverrides((prev) => ({
+                                  ...prev,
+                                  [member.id as string]: x as ApplicantResult,
+                                }));
+                                setFailedIds((prev) => prev.filter((id) => id !== member.id));
+                              }}
+                              options={applicantResultOptions}
+                            />
+                            {member.id && failedIds.includes(member.id) && (
+                              <Tag tone="red">전송 실패</Tag>
+                            )}
+                          </Row>
                         </td>
                       </tr>
                     ))}
@@ -959,21 +1053,35 @@ const NotificationItem = styled.div({
   '&[data-unread] h2': { fontWeight: 700 },
   '&:not([data-unread])': { opacity: 0.7 },
 });
-// 서버 알림 type → 화면 탭. 매핑되지 않은 유형(verification.result 등)은 '전체'에서만 보인다.
-const notificationCategory: Record<string, (typeof notificationTabs)[number]> = {
+// 서버는 team_matching(팀 지원·결과)과 verification.result(사업자 인증 결과) 알림만 생성한다.
+// 탭도 그 두 유형으로만 구성하고, 매핑되지 않은 유형은 '전체'에서만 보인다.
+const notificationTabs = ['전체', '팀매칭', '인증·결과'] as const;
+type NotificationTab = (typeof notificationTabs)[number];
+const notificationCategory: Record<string, NotificationTab> = {
   team_matching: '팀매칭',
-  deadline: '마감',
-  posting: '공고',
+  'verification.result': '인증·결과',
 };
 function describeNotification(type: string, payload: Record<string, unknown>) {
   if (type === 'team_matching') {
-    if (payload.status === 'accepted') return '팀 지원이 수락되었어요';
-    if (payload.status === 'rejected') return '팀 지원 결과가 도착했어요';
-    return typeof payload.role === 'string'
-      ? `내 모집글에 새 ${payload.role} 지원자가 있어요`
-      : '내 모집글에 새 지원자가 있어요';
+    // 초대 알림은 invitedUserId, 지원 알림은 applicantUserId, 결과 알림은 status로 구분한다
+    // (NotificationsService.settingsKeyFor와 동일).
+    if (typeof payload.invitedUserId === 'string') return '팀에 초대가 왔어요';
+    if (typeof payload.applicantUserId === 'string') {
+      // 초대 수락은 팀장에게 가는 별도 알림 — 일반 지원과 문구를 구분한다.
+      if (payload.inviteAccepted === true) return '초대가 수락했어요';
+      // 목록 payload로는 팀명을 조회할 수 없어 generic 문구를 쓴다.
+      return '새 지원자가 팀에 지원했어요';
+    }
+    if (payload.status === 'accepted') return '지원이 수락됐어요';
+    if (payload.status === 'rejected') return '지원이 거절됐어요';
+    return '팀 매칭 알림이 있어요';
   }
-  if (type === 'verification.result') return '기업 인증 결과가 도착했어요';
+  if (type === 'verification.result') {
+    if (payload.status === 'approved' || payload.status === 'verified')
+      return '사업자 인증이 승인됐어요';
+    if (payload.status === 'rejected') return '사업자 인증이 반려됐어요';
+    return '사업자 인증 결과가 도착했어요';
+  }
   return '새 알림이 있어요';
 }
 function timeAgo(iso: string | undefined, now: number) {
@@ -990,12 +1098,26 @@ export function NotificationsPage() {
   const [now] = useState(() => Date.now());
   const queryClient = useQueryClient();
   const router = useRouter();
+  const toast = useToast();
   const notificationsQuery = generated.useListMyNotifications();
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: generated.getListMyNotificationsQueryKey() });
   const markRead = generated.useMarkNotificationRead({ mutation: { onSuccess: invalidate } });
   const markAllRead = generated.useMarkAllNotificationsRead({
     mutation: { onSuccess: invalidate },
+  });
+  // 팀 초대 알림의 수락/거절 — 본인이 받은 invited 멤버 행을 결정한다(서버 권한과 동일).
+  const [inviteResponses, setInviteResponses] = useState<Record<string, 'accepted' | 'rejected'>>(
+    {},
+  );
+  const respondInvite = generated.useUpdateTeamMember({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        setInviteResponses((prev) => ({ ...prev, [variables.memberId]: variables.data.status }));
+        invalidate();
+      },
+      onError: () => toast.error('응답에 실패했어요', '잠시 후 다시 시도해주세요'),
+    },
   });
   const all = notificationsQuery.data?.data ?? [];
   const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
@@ -1037,6 +1159,11 @@ export function NotificationsPage() {
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
               const teamId = typeof payload.teamId === 'string' ? payload.teamId : undefined;
+              const inviteMemberId =
+                typeof payload.invitedUserId === 'string' && typeof payload.memberId === 'string'
+                  ? payload.memberId
+                  : undefined;
+              const inviteResponse = inviteMemberId ? inviteResponses[inviteMemberId] : undefined;
               return (
                 <NotificationItem
                   key={item.id}
@@ -1051,6 +1178,44 @@ export function NotificationsPage() {
                   <Heading style={{ fontSize: 14 }}>
                     {describeNotification(item.type ?? '', payload)}
                   </Heading>
+                  {inviteMemberId && teamId && !inviteResponse && (
+                    <Row gap={8} style={{ marginTop: 8 }}>
+                      <Button
+                        small
+                        disabled={respondInvite.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          respondInvite.mutate({
+                            id: teamId,
+                            memberId: inviteMemberId,
+                            data: { status: 'accepted' },
+                          });
+                        }}
+                      >
+                        수락
+                      </Button>
+                      <Button
+                        small
+                        tone="plain"
+                        disabled={respondInvite.isPending}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          respondInvite.mutate({
+                            id: teamId,
+                            memberId: inviteMemberId,
+                            data: { status: 'rejected' },
+                          });
+                        }}
+                      >
+                        거절
+                      </Button>
+                    </Row>
+                  )}
+                  {inviteResponse && (
+                    <Muted style={{ marginTop: 8 }}>
+                      {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
+                    </Muted>
+                  )}
                   <Muted>{timeAgo(item.createdAt, now)}</Muted>
                 </NotificationItem>
               );

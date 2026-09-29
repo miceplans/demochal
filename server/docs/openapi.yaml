@@ -381,16 +381,34 @@ paths:
       operationId: listChallenges
       x-impl-status: implemented
       description: |
-        생성일 내림차순 키셋 페이지네이션. 탐색 화면(`/explore`)의 필터(분야/대상/주최기관/상금 범위),
-        정렬(마감임박/최신/인기), 검색어, "마감된 챌린지 포함"은 쿼리 확장으로 지원 예정.
+        공개 챌린지 목록(키셋 페이지네이션). 기본 where는 항상 status != draft이며(공개 리스트에
+        draft 유출 방지), includeClosed=false면 status != closed가 추가된다. q는 title/category
+        ILIKE 검색, category는 정확 일치, sort는 latest(createdAt desc, 기본) | deadline(endDate asc)
+        | popular(viewCount desc). 정렬 컬럼이 같으면 id로 2차 정렬해 결정적으로 페이지네이션한다.
       parameters:
         - name: cursor
           in: query
-          schema: { type: string, format: date-time }
-          description: 이전 페이지의 nextCursor (ISO 8601)
+          schema: { type: string }
+          description: 이전 페이지의 nextCursor — `${정렬컬럼값}|${id}` 복합 형태. sort=latest는 레거시 단일 ISO 8601 createdAt 커서도 받는다.
         - name: limit
           in: query
           schema: { type: integer, default: 20 }
+        - name: q
+          in: query
+          schema: { type: string }
+          description: title 또는 category ILIKE `%q%` 검색어
+        - name: category
+          in: query
+          schema: { type: string }
+          description: challenges.category 정확 일치 필터
+        - name: includeClosed
+          in: query
+          schema: { type: boolean, default: true }
+          description: false면 마감(status=closed) 챌린지를 제외한다(하위호환 기본값 true).
+        - name: sort
+          in: query
+          schema: { type: string, enum: [latest, deadline, popular], default: latest }
+          description: latest=최신순(createdAt desc) | deadline=마감임박순(endDate asc) | popular=인기순(viewCount desc)
       responses:
         '200':
           description: 챌린지 페이지
@@ -662,6 +680,39 @@ paths:
         '400': { description: 팀장 본인 또는 중복 신청 }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /teams/{id}/invite:
+    post:
+      tags: [Teams]
+      summary: 팀원 초대 (팀장)
+      operationId: inviteTeam
+      x-impl-status: implemented
+      description: |
+        프로필(`/profile?id=`)의 "팀에 초대" — 팀장이 특정 사용자를 본인 팀에 초대한다.
+        `invited` 상태의 팀원 행이 생기고 피초대자에게 `team_matching` 초대 알림이 간다
+        (payload: invitedUserId·memberId·role). 수락/거절은 피초대자가
+        `PATCH /teams/{id}/members/{memberId}`로 직접 결정하며, 수락 시 팀장에게 새 멤버 알림.
+        팀장 본인이 아니면 403, 이미 지원/초대된 멤버면 409.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InviteTeamRequest' }
+      responses:
+        '201':
+          description: 생성된 초대 (status=invited)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TeamMember' }
+        '400': { description: 팀장 본인 대상 초대 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { description: 팀장만 초대 가능 }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 이미 지원하거나 초대된 멤버 }
   /teams/{id}/members/{memberId}:
     patch:
       tags: [Teams]
@@ -672,6 +723,8 @@ paths:
         팀 지원자 관리 화면의 "결과 전송하기". 팀장(또는 관리자)만 결정할 수 있고, 다른 사용자는 403으로 거부된다.
         accepted이면 채팅방 링크를 함께 저장해 지원자에게 `team_matching` 알림으로 전달하고,
         rejected이면 저장된 링크를 지운다. 팀장이 자기 자신의 행을 결정하면 400.
+        예외 — 본인이 받은 팀 초대(`status=invited`)는 피초대자 본인이 수락/거절할 수 있다.
+        본인 수락 시 팀장에게 새 멤버 알림이 가고, 거절은 알림을 별도로 본인에게 복사하지 않는다.
       parameters:
         - name: id
           in: path
@@ -1039,6 +1092,9 @@ paths:
       description: |
         신고하기 화면(`/reports/new`)의 제출. 공모전 상세, 팀 모집글, 다른 사용자 프로필에서
         신고 버튼으로 진입하며 대상 미리보기가 폼 상단에 표시된다.
+        targetId는 challenge/team/user 신고에서 필수이며 접수 시 대상 존재를 검증한다
+        (challenge→challenges, team→teams, user→users 테이블 조회, 없으면 400).
+        award는 대상 테이블이 없어 targetId 없이도 접수 가능하다(형식(UUID)만 검증).
         인증: 전역 `JwtAuthGuard`(HttpOnly 쿠키) — 로그인 사용자만 접수 가능, reporter는 세션에서 식별.
       requestBody:
         required: true
@@ -1051,6 +1107,8 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Report' }
+        '400':
+          $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
 
@@ -1782,7 +1840,7 @@ paths:
           schema: { type: string, description: 기관 유형 (비영리/학교/협회/기업) }
         - name: status
           in: query
-          schema: { type: string, enum: [pending, approved, rejected] }
+          schema: { type: string, enum: [pending, verified, rejected] }
       responses:
         '200':
           description: 기관 심사 목록과 통계
@@ -1799,7 +1857,7 @@ paths:
       summary: 기관 인증 승인
       operationId: approveVerification
       x-impl-status: implemented
-      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=approved`로 갱신 + 알림 발송.
+      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
       parameters:
         - name: id
           in: path
@@ -2188,6 +2246,15 @@ components:
       description: |
         JWT 액세스 토큰(향후 도입). 현재는 `x-user-id` 헤더로 사용자를 식별하는 개발 중 상태.
   responses:
+    BadRequest:
+      description: 요청 본문/파라미터가 유효하지 않음 (validation 실패 또는 대상 리소스 없음)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              statusCode: { type: integer, example: 400 }
+              message: { type: string, example: Bad request }
     NotFound:
       description: 리소스를 찾을 수 없음
       content:
@@ -2373,7 +2440,10 @@ components:
         userId: { type: string, format: uuid }
         name: { type: string, description: 상세·관리 응답에 포함 }
         role: { type: string, nullable: true }
-        status: { type: string, enum: [pending, accepted, rejected] }
+        status:
+          type: string
+          enum: [pending, invited, accepted, rejected]
+          description: 'pending=지원 대기(사용자→리더) · invited=초대 대기(리더→사용자, 본인이 수락/거절) · accepted/rejected=확정'
         chatLink:
           {
             type: string,
@@ -2393,6 +2463,12 @@ components:
       type: object
       properties:
         role: { type: string, description: 지원 역할 }
+    InviteTeamRequest:
+      type: object
+      required: [userId]
+      properties:
+        userId: { type: string, format: uuid, description: 초대할 사용자 id }
+        role: { type: string, maxLength: 100, description: 초대 시 제안하는 역할 }
     TeamRoleSlot:
       type: object
       properties:
@@ -2477,7 +2553,7 @@ components:
           nullable: true
           description: 사업자등록번호 (10자리, 학교/비영리 등은 null, 관리자 화면에서 마스킹 표시)
         type: { type: string, enum: [기업, 학교, 비영리, 협회], nullable: true }
-        verificationStatus: { type: string, enum: [pending, approved, rejected] }
+        verificationStatus: { type: string, enum: [pending, verified, rejected] }
         createdAt: { type: string, format: date-time }
         # planned 확장 (기업 프로필 편집 목업 기준)
         bannerImageFileId: { type: string, format: uuid }
@@ -2505,7 +2581,7 @@ components:
         id: { type: string, format: uuid }
         businessId: { type: string, format: uuid }
         documentFileId: { type: string, format: uuid }
-        status: { type: string, enum: [pending, approved, rejected] }
+        status: { type: string, enum: [pending, processing, verified, rejected] }
         ocrResult:
           {
             type: object,
@@ -2812,7 +2888,14 @@ components:
       type: object
       description: 기관 심사 테이블 행 (BizRow). 사업자번호는 서버에서 마스킹 후 전달.
       properties:
-        id: { type: string, format: uuid }
+        id: { type: string, format: uuid, description: 기관 id }
+        verificationId:
+          {
+            type: string,
+            format: uuid,
+            nullable: true,
+            description: '최신 인증 요청 id — 승인/거부 API의 path id. 인증 요청이 없으면 null',
+          }
         org: { type: string, description: 기관명 (활동유형 컬럼) }
         type: { type: string, description: '기관 유형 (비영리/학교/협회/기업, 값이 없으면 미지정)' }
         bizNumber: { type: string, description: '마스킹된 사업자번호 (예: 110-81-*****)' }
@@ -2826,7 +2909,7 @@ components:
         status:
           {
             type: string,
-            enum: [pending, approved, rejected],
+            enum: [pending, verified, rejected],
             description: 심사 상태 — 대기(파랑)/승인(초록)/거부(빨강) 뱃지,
           }
     CertificateEntry:
@@ -3012,7 +3095,12 @@ components:
             enum: [challenge, team, award, user],
             description: 신고 대상 종류 — 공모전/팀 모집글/수상작/사용자 프로필,
           }
-        targetId: { type: string, format: uuid, description: '신고 대상 id (없으면 미상 대상)' }
+        targetId:
+          {
+            type: string,
+            format: uuid,
+            description: '신고 대상 id — challenge/team/user는 필수(접수 시 대상 존재 검증, 없으면 400). award는 생략 가능',
+          }
         summary: { type: string, maxLength: 200, description: '신고 사유 (예: 비방)' }
         detail: { type: string, description: 자세한 신고 내용 }
         reportedUserId:

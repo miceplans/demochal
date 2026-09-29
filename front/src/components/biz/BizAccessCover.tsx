@@ -4,9 +4,10 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { PrimaryButton } from './BizShell';
+import { PrimaryButton, useBizHref } from './BizShell';
 
 export function BizAccessCover({ children }: { children: ReactNode }) {
+  const hrefOf = useBizHref();
   const { data: auth, isLoading } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const isBiz = auth?.status === 200 && auth.data.role === 'business';
 
@@ -19,7 +20,7 @@ export function BizAccessCover({ children }: { children: ReactNode }) {
       <Cover>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: 26, width: 'auto' }} />
-        <Link href="/biz/login">
+        <Link href={hrefOf('/signup')}>
           <PrimaryButton as="span" style={{ width: 130, textAlign: 'center' }}>
             회원가입 하기
           </PrimaryButton>

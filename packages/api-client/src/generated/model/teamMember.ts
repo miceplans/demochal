@@ -26,6 +26,7 @@ export interface TeamMember {
   name?: string;
   /** @nullable */
   role?: string | null;
+  /** pending=지원 대기(사용자→리더) · invited=초대 대기(리더→사용자, 본인이 수락/거절) · accepted/rejected=확정 */
   status?: TeamMemberStatus;
   /**
    * 합격 시 저장된 채팅방 링크 (미정/불합격은 null)

@@ -77,14 +77,14 @@ export class VerificationsService {
   // Manual admin decision (`/admin/biz-review`) — distinct from the automatic
   // NTS/OCR pipeline in verifications.processor.ts.
   async approve(id: string) {
-    return this.decide(id, 'approved');
+    return this.decide(id, 'verified');
   }
 
   async reject(id: string, reason: string) {
     return this.decide(id, 'rejected', reason);
   }
 
-  private async decide(id: string, status: 'approved' | 'rejected', reason?: string) {
+  private async decide(id: string, status: 'verified' | 'rejected', reason?: string) {
     const [verification] = await this.db
       .update(verifications)
       .set({ status, rejectionReason: reason ?? null, updatedAt: new Date() })
