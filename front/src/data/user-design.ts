@@ -115,7 +115,28 @@ export const organizerTypes = [
   '중소/벤처기업',
   '기타',
 ];
-export const roles = ['프론트엔드', '백엔드', '디자이너', '기획자', '풀스택'];
+export const roles = [
+  '프론트엔드',
+  '백엔드',
+  '풀스택',
+  '모바일',
+  '디자이너',
+  '기획자',
+  '데이터/AI',
+  '마케터',
+  '영상/콘텐츠',
+  '기타',
+];
+// 팀 탐색 지역 필터 — 도 단위로 묶고, 팀에 저장된 지역명(시·도 자유 입력)을 members로 매칭한다.
+export const regionGroups = [
+  { label: '서울', members: ['서울'] },
+  { label: '경기/인천', members: ['경기', '인천'] },
+  { label: '강원', members: ['강원'] },
+  { label: '충청', members: ['대전', '세종', '충북', '충남', '충청'] },
+  { label: '전라', members: ['광주', '전북', '전남', '전라'] },
+  { label: '경상', members: ['부산', '대구', '울산', '경북', '경남', '경상'] },
+  { label: '제주', members: ['제주'] },
+];
 
 export const skillCatalog = [
   'React',

@@ -19,6 +19,7 @@ import {
   categories,
   challengeTargets,
   organizerTypes,
+  regionGroups,
   roles,
   type Contest,
 } from '@/data/user-design';
@@ -42,8 +43,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [organizers, setOrganizers] = useState<string[]>([]);
   const [prize, setPrize] = useState<[number, number]>([PRIZE_MIN, PRIZE_MAX]);
   const [challengeId, setChallengeId] = useState('');
-  const [role, setRole] = useState('');
-  const [region, setRegion] = useState('');
+  const [teamRoles, setTeamRoles] = useState<string[]>([]);
+  const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(6);
   const [includeClosed, setIncludeClosed] = useState(true);
@@ -66,8 +67,12 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const teamsQuery = generated.useListTeams(
     {
       challengeId: challengeId || undefined,
-      role: role || undefined,
-      region: region || undefined,
+      role: teamRoles.join(',') || undefined,
+      region:
+        regionGroups
+          .filter((group) => regionLabels.includes(group.label))
+          .flatMap((group) => group.members)
+          .join(',') || undefined,
       q: query || undefined,
     },
     { query: { enabled: teamMode } },
@@ -108,19 +113,18 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 <ChipFilter
                   ariaLabel="필요 역할"
                   options={roles}
-                  selected={role ? [role] : []}
-                  onToggle={(value) => setRole(role === value ? '' : value)}
+                  selected={teamRoles}
+                  onToggle={(value) => setTeamRoles((list) => toggleValue(list, value))}
                 />
               </FilterGroup>
               <FilterGroup title="지역">
-                {['서울', '부산'].map((name) => (
-                  <Checkbox
-                    key={name}
-                    label={name}
-                    checked={region === name}
-                    onChange={(checked) => setRegion(checked ? name : '')}
-                  />
-                ))}
+                <CheckFilter
+                  options={regionGroups.map((group) => group.label)}
+                  selected={regionLabels}
+                  onToggle={(value) => setRegionLabels((list) => toggleValue(list, value))}
+                  rows={4}
+                  columnGap={40}
+                />
               </FilterGroup>
             </>
           ) : (
@@ -183,15 +187,18 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 },
                 {
                   label: '필요역할',
-                  value: role,
-                  onChange: setRole,
+                  value: teamRoles[0] ?? '',
+                  onChange: (value: string) => setTeamRoles(value ? [value] : []),
                   options: roles.map((x) => ({ value: x, label: x })),
                 },
                 {
                   label: '지역',
-                  value: region,
-                  onChange: setRegion,
-                  options: ['서울', '부산'].map((x) => ({ value: x, label: x })),
+                  value: regionLabels[0] ?? '',
+                  onChange: (value: string) => setRegionLabels(value ? [value] : []),
+                  options: regionGroups.map((group) => ({
+                    value: group.label,
+                    label: group.label,
+                  })),
                 },
               ].map((filter) => (
                 <Select

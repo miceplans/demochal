@@ -17,10 +17,18 @@ import type { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
 
 export interface TeamListFilters {
   challengeId?: string;
+  /** 콤마 구분 필요 역할 목록 — 하나라도 모집 중인 팀을 반환(OR). */
   role?: string;
+  /** 콤마 구분 지역 목록 — 하나라도 일치하는 팀을 반환(OR, 정확 일치). */
   region?: string;
   q?: string;
 }
+
+const splitList = (value?: string) =>
+  (value ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
 
 @Injectable()
 export class TeamsService {
@@ -40,9 +48,11 @@ export class TeamsService {
       .innerJoin(users, eq(teams.leaderUserId, users.id))
       .orderBy(desc(teams.createdAt));
     const q = filters.q?.toLowerCase();
+    const regionList = splitList(filters.region);
+    const roleList = splitList(filters.role);
     const matched = rows.filter(({ team }) => {
       if (filters.challengeId && team.challengeId !== filters.challengeId) return false;
-      if (filters.region && team.region !== filters.region) return false;
+      if (regionList.length && !regionList.includes(team.region ?? '')) return false;
       if (
         q &&
         !team.title.toLowerCase().includes(q) &&
@@ -50,7 +60,10 @@ export class TeamsService {
       ) {
         return false;
       }
-      if (filters.role && !(team.openRoles ?? []).some((slot) => slot.role === filters.role)) {
+      if (
+        roleList.length &&
+        !(team.openRoles ?? []).some((slot) => roleList.includes(slot.role ?? ''))
+      ) {
         return false;
       }
       return true;
