@@ -70,3 +70,42 @@ describe('BusinessesService', () => {
     );
   });
 });
+
+describe('BusinessesService.register', () => {
+  function createRegisterDb(existing: unknown[]) {
+    const created = { id: 'biz-new', verificationStatus: 'pending', ownerUserId: 'user-1' };
+    const tx: any = {
+      insert: () => ({ values: () => ({ returning: async () => [created] }) }),
+      update: () => ({ set: () => ({ where: async () => [] }) }),
+    };
+    const db: any = {
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => existing }) }) }),
+      transaction: async (callback: (tx: unknown) => unknown) => callback(tx),
+    };
+    return db;
+  }
+
+  it('raises the newBusinessAlert admin alert with the business id only', async () => {
+    const alerts = { notify: vi.fn().mockResolvedValue(undefined) };
+    const service = new BusinessesService(createRegisterDb([]), alerts as any);
+
+    await service.register(
+      { name: '한빛협회', registrationNumber: '123-45-67890', type: 'corp' } as any,
+      'user-1',
+    );
+
+    expect(alerts.notify).toHaveBeenCalledWith('newBusinessAlert', 'admin.business', {
+      businessId: 'biz-new',
+    });
+  });
+
+  it('does not alert when the owner already has a business', async () => {
+    const alerts = { notify: vi.fn() };
+    const service = new BusinessesService(createRegisterDb([{ id: 'biz-old' }]), alerts as any);
+
+    await expect(service.register({ type: 'corp' } as any, 'user-1')).rejects.toThrow(
+      'Business already registered',
+    );
+    expect(alerts.notify).not.toHaveBeenCalled();
+  });
+});
