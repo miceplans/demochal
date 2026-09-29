@@ -15,12 +15,16 @@ export function teamCapacity(team: Pick<ApiTeam, 'openRoles'>): number {
 
 export function toTeamCard(team: ApiTeam): Team {
   const filledRoles = team.filledRoles ?? [];
+  const joined = Math.max(filledRoles.length, 1);
+  const capacity = teamCapacity(team);
   return {
     id: team.id ?? '',
     name: team.title ?? '',
     challenge: team.challengeTitle ?? '',
     poster: '',
-    members: `${Math.max(filledRoles.length, 1)}/${teamCapacity(team)}명 참여중`,
+    members: `${joined}/${capacity}명 참여중`,
+    joined,
+    capacity,
     filledRoles,
     recruitingRoles: (team.openRoles ?? []).map((slot) => slot.role ?? '').filter(Boolean),
   };
