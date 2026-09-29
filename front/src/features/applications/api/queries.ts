@@ -1,12 +1,8 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { myApplications } from '@/data/user-design';
+import { generated } from '@semochal/api-client';
 
-// 화면 시연용: 서버 대신 로컬 목업 데이터를 사용한다.
+// 내 챌린지 지원 현황(GET /applications/me). 서버 데이터를 그대로 쓴다.
 export function useMyApplications() {
-  return useQuery({
-    queryKey: ['applications', 'me'],
-    queryFn: () => Promise.resolve(myApplications),
-  });
+  return generated.useListMyApplications();
 }
