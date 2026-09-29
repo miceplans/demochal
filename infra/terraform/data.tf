@@ -81,13 +81,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
 }
 
 # requestUpload() returns a presigned PUT for this bucket that the browser calls
-# directly from frontend_origin; without CORS the preflight for that cross-origin
+# directly from frontend_origin (comma-separated list, same as the API's FRONTEND_ORIGIN); without CORS the preflight for that cross-origin
 # PUT has no Access-Control-Allow-Origin and the upload never happens.
 resource "aws_s3_bucket_cors_configuration" "private" {
   bucket = aws_s3_bucket.private.id
   cors_rule {
     allowed_methods = ["PUT"]
-    allowed_origins = [var.frontend_origin]
+    allowed_origins = [for origin in split(",", var.frontend_origin) : trimspace(origin) if trimspace(origin) != ""]
     allowed_headers = ["Content-Type", "Content-Length"]
     max_age_seconds = 3000
   }
