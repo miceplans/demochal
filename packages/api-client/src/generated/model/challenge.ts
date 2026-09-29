@@ -52,7 +52,8 @@ export interface Challenge {
    * @nullable
    */
   prizeAmount?: number | null;
-  posterFileId?: string;
+  /** 챌린지 포스터 파일 ID */
+  posterFileId?: string | null;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;

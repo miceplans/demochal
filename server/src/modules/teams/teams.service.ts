@@ -42,7 +42,12 @@ export class TeamsService {
   // loaded in one extra query so list cards can show filled roles and headcount.
   async list(filters: TeamListFilters) {
     const rows = await this.db
-      .select({ team: teams, challengeTitle: challenges.title, leaderName: users.name })
+      .select({
+        team: teams,
+        challengeTitle: challenges.title,
+        challengePosterFileId: challenges.posterFileId,
+        leaderName: users.name,
+      })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
       .innerJoin(users, eq(teams.leaderUserId, users.id))
@@ -82,9 +87,10 @@ export class TeamsService {
           eq(teamMembers.status, 'accepted'),
         ),
       );
-    return matched.map(({ team, challengeTitle, leaderName }) => ({
+    return matched.map(({ team, challengeTitle, challengePosterFileId, leaderName }) => ({
       ...team,
       challengeTitle,
+      challengePosterFileId,
       leaderName,
       filledRoles: accepted
         .filter((member) => member.teamId === team.id)
@@ -132,6 +138,7 @@ export class TeamsService {
       .select({
         team: teams,
         challengeTitle: challenges.title,
+        challengePosterFileId: challenges.posterFileId,
         leaderName: users.name,
       })
       .from(teams)
@@ -153,7 +160,13 @@ export class TeamsService {
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, id));
 
-    return { ...row.team, challengeTitle: row.challengeTitle, leaderName: row.leaderName, members };
+    return {
+      ...row.team,
+      challengeTitle: row.challengeTitle,
+      challengePosterFileId: row.challengePosterFileId,
+      leaderName: row.leaderName,
+      members,
+    };
   }
 
   // 마이페이지 지원현황의 "팀 지원현황" — 내가 지원한 팀(리더로 참여 중인 팀은 제외)과 그 결과.

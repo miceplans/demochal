@@ -549,6 +549,15 @@ describe('ChallengesService.create', () => {
     );
     expect(valuesCalls).toHaveLength(0);
   });
+
+  it('persists the optional poster file id on create', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create({ ...baseDto, posterFileId: 'file-1' } as any, 'user-1');
+
+    expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1' });
+  });
 });
 
 describe('ChallengesService.update', () => {
@@ -585,6 +594,16 @@ describe('ChallengesService.update', () => {
       'Challenge not found',
     );
     expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('updates or clears the optional poster file id', async () => {
+    const withPoster = createUpdateService([current]);
+    await withPoster.service.update('ch-1', { posterFileId: 'file-1' }, owner);
+    expect(withPoster.set).toHaveBeenCalledWith({ posterFileId: 'file-1' });
+
+    const cleared = createUpdateService([current]);
+    await cleared.service.update('ch-1', { posterFileId: null }, owner);
+    expect(cleared.set).toHaveBeenCalledWith({ posterFileId: null });
   });
 
   it('scopes the lookup to the owner unless the user is an admin', async () => {

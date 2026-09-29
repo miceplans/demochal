@@ -39,6 +39,8 @@ export interface CreateChallengeRequest {
    * @minimum 0
    */
   prizeAmount?: number;
+  /** 챌린지 포스터 파일 ID */
+  posterFileId?: string;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
   /**
    * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.

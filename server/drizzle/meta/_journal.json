@@ -175,6 +175,13 @@
       "when": 1790680000000,
       "tag": "0025_notification_dedupe_key",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1790755144209,
+      "tag": "0026_challenge_poster_file",
+      "breakpoints": true
     }
   ]
 }

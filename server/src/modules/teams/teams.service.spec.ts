@@ -231,6 +231,7 @@ describe('TeamsService', () => {
           {
             team: { id: 'team-1', title: 'AI 해커톤 팀' },
             challengeTitle: '2026 AI 챌린지',
+            challengePosterFileId: 'file-poster-1',
             leaderName: 'Leader',
           },
         ]),
@@ -245,6 +246,7 @@ describe('TeamsService', () => {
     const result = await service.findById('team-1');
 
     expect(result.challengeTitle).toBe('2026 AI 챌린지');
+    expect(result.challengePosterFileId).toBe('file-poster-1');
     expect(result.leaderName).toBe('Leader');
     expect(result.members).toHaveLength(1);
     expect(result.members[0]).toMatchObject({ userId: leader.id, status: 'accepted' });

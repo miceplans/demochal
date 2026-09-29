@@ -27,6 +27,7 @@ import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 import { daysUntil, formatDateDot } from '@/lib/date';
+import { useFileUrl } from '@/lib/useFileUrl';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 
@@ -49,6 +50,7 @@ export function ContestDetailPage({
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const posterUrl = useFileUrl(challenge?.posterFileId);
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
@@ -171,7 +173,7 @@ export function ContestDetailPage({
       <Content>
         <Intro>
           <div className="cover" aria-hidden="true">
-            <span>{detail.title.slice(0, 1)}</span>
+            {posterUrl ? <img src={posterUrl} alt="" /> : <span>{detail.title.slice(0, 1)}</span>}
           </div>
           <div className="intro-body">
             <Title>{detail.title}</Title>
@@ -342,6 +344,8 @@ const Intro = styled.div({
     display: 'grid',
     placeItems: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+    img: { width: '100%', height: '100%', objectFit: 'cover' },
     span: { fontSize: 56, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
   },
   '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },

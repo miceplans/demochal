@@ -70,4 +70,8 @@ export class CreateChallengeDto {
   @IsInt()
   @Min(0)
   prizeAmount?: number;
+
+  @IsOptional()
+  @IsUUID()
+  posterFileId?: string;
 }

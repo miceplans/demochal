@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
+import type { UpdateChallengeRequest } from '@semochal/api-client/src/generated/model/updateChallengeRequest';
 import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
@@ -12,6 +13,9 @@ import { adApi, adError } from '@/lib/ad-api';
 import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { challengeTargets, organizerTypes } from '@/data/user-design';
+import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
+import { useFileUrl } from '@/lib/useFileUrl';
 
 const ICON = '/assets/icons';
 
@@ -104,13 +108,23 @@ export function BizPostingEditPage() {
         startDate: toDateInput(challenge.startDate),
         endDate: toDateInput(challenge.endDate),
         category: challenge.category ?? '',
+        posterFileId: challenge.posterFileId ?? undefined,
+        targets: challenge.targets ?? [],
+        organizerType: challenge.organizerType ?? '',
+        prizeAmount:
+          challenge.prizeAmount === undefined || challenge.prizeAmount === null
+            ? ''
+            : String(challenge.prizeAmount),
         recruitMethod: challenge.recruitMethod,
         recruitUrl: challenge.recruitUrl ?? '',
       }}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
       onSubmit={async (values) => {
-        await updateChallenge.mutateAsync({ id, data: values });
+        await updateChallenge.mutateAsync({
+          id,
+          data: values as UpdateChallengeRequest,
+        });
         await queryClient.invalidateQueries({ queryKey: generated.getGetChallengeQueryKey(id) });
         toast.success('공고를 수정했습니다');
         router.push(hrefOf(`/postings/${id}`));
@@ -128,6 +142,10 @@ type PostingInput = {
   startDate: string;
   endDate: string;
   category: string;
+  posterFileId?: string;
+  targets: string[];
+  organizerType: (typeof organizerTypes)[number] | '' | null;
+  prizeAmount: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
 };
@@ -139,6 +157,10 @@ type PostingValues = {
   startDate: string;
   endDate: string;
   category: string | null;
+  targets: string[];
+  organizerType: (typeof organizerTypes)[number] | null;
+  prizeAmount: number | null;
+  posterFileId?: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
 };
@@ -151,11 +173,15 @@ const EMPTY_POSTING: PostingInput = {
   startDate: '',
   endDate: '',
   category: '',
+  targets: [],
+  organizerType: '',
+  prizeAmount: '',
 };
 
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
+const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
-// TODO: 툴바 중 정렬/색상/텍스트 스타일/링크/이미지/인용/코드/구분선은 서식 저장 API(현재 description은 평문)가
+// TODO: 툴팁 중 정렬/색상/텍스트 스타일/링크/이미지/인용/코드/구분선은 서식 저장 API(현재 description은 평문)가
 // 생긴 뒤 연결한다. https://developer.mozilla.org/docs/Web/API/Document/execCommand
 const EDITOR_COMMANDS = {
   undo: 'undo',
@@ -218,11 +244,17 @@ function PostingForm({
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
   const [category, setCategory] = useState(initial.category);
+  const [targets, setTargets] = useState(initial.targets);
+  const [organizerType, setOrganizerType] = useState(initial.organizerType);
+  const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
+  const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
+  const existingPosterUrl = useFileUrl(initial.posterFileId);
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const posterObjectUrl = useRef<string | null>(null);
   const [recruit, setRecruit] = useState<'semo' | 'external'>(
     initial.recruitMethod === 'external' ? 'external' : 'semo',
   );
   const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
-  const [posterPreview, setPosterPreview] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [submitting, setSubmitting] = useState(false);
@@ -239,26 +271,64 @@ function PostingForm({
   }, [initial.description]);
   useEffect(
     () => () => {
-      if (posterPreview) URL.revokeObjectURL(posterPreview);
+      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
     },
-    [posterPreview],
+    [],
   );
 
   const toggleTopic = (topic: string) =>
     setTopics((s) => (s.includes(topic) ? s.filter((x) => x !== topic) : [...s, topic]));
+  const toggleTarget = (target: string) =>
+    setTargets((s) => (s.includes(target) ? s.filter((x) => x !== target) : [...s, target]));
   const runCommand = (command: EditorCommand) => {
     editorRef.current?.focus();
     document.execCommand(EDITOR_COMMANDS[command]);
+  };
+
+  const uploadPoster = async (file: File) => {
+    if (uploadingPoster) return;
+    setUploadingPoster(true);
+    let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
+    try {
+      image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
+      const presigned = await adApi.files.requestUpload({
+        bucket: 'public',
+        contentType: image.file.type,
+        fileName: image.file.name,
+        sizeBytes: image.file.size,
+      });
+      const response = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
+      await adApi.files.finalizeUpload(presigned.fileId);
+      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
+      posterObjectUrl.current = image.previewUrl;
+      setPoster({ fileId: presigned.fileId, previewUrl: image.previewUrl });
+    } catch {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setUploadingPoster(false);
+    }
   };
 
   async function submit() {
     setError('');
     const description = (editorRef.current?.innerText ?? '').trim();
     const parsedCapacity = Number(capacity);
+    const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
     if (!title.trim() || !description || !startDate || !endDate)
       return setError('제목, 상세정보, 접수 기간을 입력해 주세요.');
     if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
       return setError('모집 인원은 1명 이상으로 입력해 주세요.');
+    if (
+      parsedPrizeAmount !== null &&
+      (!Number.isInteger(parsedPrizeAmount) || parsedPrizeAmount < 0)
+    )
+      return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
     if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
     if (recruit === 'external') {
@@ -276,6 +346,10 @@ function PostingForm({
         startDate: toLocalBoundary(startDate, false),
         endDate: toLocalBoundary(endDate, true),
         category: category || null,
+        targets,
+        organizerType: organizerType || null,
+        prizeAmount: parsedPrizeAmount,
+        ...(poster ? { posterFileId: poster.fileId } : {}),
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
@@ -298,18 +372,22 @@ function PostingForm({
           style={{ display: 'none' }}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            // TODO: 포스터 업로드는 challenges에 posterFileId 컬럼/DTO가 생기면 presign 업로드로 연결한다.
-            if (file) setPosterPreview(URL.createObjectURL(file));
+            event.target.value = '';
+            if (file) void uploadPoster(file);
           }}
         />
-        {posterPreview ? (
-          <PosterPreview src={posterPreview} alt="포스터 미리보기" />
+        {poster?.previewUrl || existingPosterUrl ? (
+          <PosterPreview
+            src={poster?.previewUrl ?? existingPosterUrl ?? ''}
+            alt="포스터 미리보기"
+          />
         ) : (
           <>
             <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
             <UploadText>파일 찾기</UploadText>
           </>
         )}
+        {uploadingPoster && <UploadText>포스터를 업로드하는 중입니다…</UploadText>}
       </Uploader>
 
       <Body>
@@ -492,6 +570,52 @@ function PostingForm({
             </TopicBlock>
           </TwoCol>
 
+          <FieldBlock>
+            <FieldLabel>대상</FieldLabel>
+            <Chips role="group" aria-label="대상">
+              <ChipRow>
+                {challengeTargets.map((target) => (
+                  <Chip
+                    key={target}
+                    type="button"
+                    selected={targets.includes(target)}
+                    aria-pressed={targets.includes(target)}
+                    onClick={() => toggleTarget(target)}
+                  >
+                    {target}
+                  </Chip>
+                ))}
+              </ChipRow>
+            </Chips>
+          </FieldBlock>
+
+          <TwoCol>
+            <CategoryBlock>
+              <FieldLabel>주최기관</FieldLabel>
+              <Dropdown
+                options={organizerTypeOptions}
+                value={organizerType || undefined}
+                placeholder="선택 안 함"
+                size="L"
+                aria-label="주최기관"
+                onChange={(value) =>
+                  setOrganizerType(value as (typeof organizerTypes)[number])
+                }
+              />
+            </CategoryBlock>
+            <FieldBlock>
+              <FieldLabel>총상금(만원)</FieldLabel>
+              <LineInput
+                type="number"
+                min={0}
+                step={1}
+                value={prizeAmount}
+                onChange={(e) => setPrizeAmount(e.target.value)}
+                aria-label="총상금(만원)"
+              />
+            </FieldBlock>
+          </TwoCol>
+
           {showRecruitMethod && (
             <FieldBlock wide>
               <FieldLabel>모집방법</FieldLabel>
@@ -586,7 +710,7 @@ function PostingForm({
         </CancelButton>
         <PublishButton
           type="button"
-          disabled={disabled || submitting}
+          disabled={disabled || submitting || uploadingPoster}
           onClick={() => void submit()}
         >
           {submitting ? submittingLabel : submitLabel}

@@ -53,6 +53,8 @@ export interface Team {
   createdAt?: string;
   /** 목록·상세 응답에 포함 */
   challengeTitle?: string;
+  /** 목록·상세 응답의 챌린지 포스터 파일 ID */
+  challengePosterFileId?: string | null;
   /** 목록·상세 응답에 포함 */
   leaderName?: string;
   /** listManagedTeams 응답 전용 — 주최 기업(협회)명 */

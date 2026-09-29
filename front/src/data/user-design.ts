@@ -29,6 +29,7 @@ export type Team = {
   name: string;
   challenge: string;
   poster: string;
+  posterFileId?: string | null;
   members: string;
   joined: number;
   capacity: number;

@@ -283,6 +283,7 @@ export class ChallengesService {
         targets: dto.targets,
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
+        posterFileId: dto.posterFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
@@ -335,6 +336,7 @@ export class ChallengesService {
       ...(dto.targets !== undefined && { targets: dto.targets }),
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
+      ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 
