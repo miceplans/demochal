@@ -21,6 +21,7 @@ export type VerificationStatus = (typeof VerificationStatus)[keyof typeof Verifi
 
 export const VerificationStatus = {
   pending: 'pending',
-  approved: 'approved',
+  processing: 'processing',
+  verified: 'verified',
   rejected: 'rejected',
 } as const;

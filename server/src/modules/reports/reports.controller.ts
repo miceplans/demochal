@@ -11,6 +11,6 @@ export class ReportsController {
 
   @Post()
   create(@Body() dto: CreateReportDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.reportsService.create(dto, user.id);
+    return this.reportsService.create(dto, user);
   }
 }

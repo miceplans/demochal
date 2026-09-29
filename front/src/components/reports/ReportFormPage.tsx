@@ -8,7 +8,6 @@ import { UserShell } from '@/components/common/UserShell';
 import { Button, EmptyArtwork, Muted, Title } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
-import { contestDetail, profileUser, teams } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -22,46 +21,94 @@ function isReportType(value: string | null): value is ReportType {
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function getReportPreview(type: ReportType, targetId: string | null) {
-  if (type === 'team') {
-    const team = teams.find((t) => t.id === targetId) ?? teams[0]!;
-    return {
-      title: team.name,
-      org: team.challenge,
-      meta: [
-        { label: '모집 인원', value: team.members },
-        { label: '모집 역할', value: team.recruitingRoles.join(', ') || '모집 완료' },
-      ],
-    };
-  }
-  if (type === 'user') {
-    return {
-      title: profileUser.name,
-      org: profileUser.role,
-      meta: [
-        { label: '활동 지역', value: profileUser.region },
-        { label: '소개', value: profileUser.intro },
-      ],
-    };
-  }
-  return {
-    title: contestDetail.title,
-    org: contestDetail.org,
-    meta: [
-      { label: '자격 / 대상', value: contestDetail.eligibility },
-      { label: '접수기간', value: contestDetail.period },
-    ],
-  };
+function formatDate(iso?: string) {
+  if (!iso) return '-';
+  const date = new Date(iso);
+  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
 }
+
+type PreviewMeta = { label: string; value: string };
+type Preview = { title: string; org?: string; meta: PreviewMeta[] };
 
 function ReportFormContent() {
   const router = useRouter();
   const toast = useToast();
   const searchParams = useSearchParams();
-  const typeParam = searchParams.get('type');
-  const type = isReportType(typeParam) ? typeParam : 'challenge';
-  const targetId = searchParams.get('id');
-  const preview = getReportPreview(type, targetId);
+  // 기존 링크(?type=&id=)와 새 링크(?targetType=&targetId=) 둘 다 받는다.
+  const typeParam = searchParams.get('targetType') ?? searchParams.get('type');
+  const type = isReportType(typeParam) ? typeParam : null;
+  const rawTargetId = searchParams.get('targetId') ?? searchParams.get('id');
+  const targetId = rawTargetId && UUID_RE.test(rawTargetId) ? rawTargetId : null;
+
+  const enabled = type !== null && targetId !== null;
+  const challengeQuery = generated.useGetChallenge(targetId ?? '', {
+    query: { enabled: enabled && type === 'challenge', retry: false },
+  });
+  const teamQuery = generated.useGetTeam(targetId ?? '', {
+    query: { enabled: enabled && type === 'team', retry: false },
+  });
+  const userQuery = generated.useGetUser(targetId ?? '', {
+    query: { enabled: enabled && type === 'user', retry: false },
+  });
+
+  const challenge =
+    type === 'challenge' && challengeQuery.data?.status === 200
+      ? challengeQuery.data.data
+      : undefined;
+  const team = type === 'team' && teamQuery.data?.status === 200 ? teamQuery.data.data : undefined;
+  const user = type === 'user' && userQuery.data?.status === 200 ? userQuery.data.data : undefined;
+  const targetPending = enabled
+    ? type === 'challenge'
+      ? challengeQuery.isPending
+      : type === 'team'
+        ? teamQuery.isPending
+        : userQuery.isPending
+    : false;
+  const target = challenge ?? team ?? user;
+
+  let preview: Preview | undefined;
+  if (challenge) {
+    preview = {
+      title: challenge.title ?? '챌린지',
+      org: challenge.organizer,
+      meta: [
+        { label: '자격 / 대상', value: challenge.eligibility ?? '-' },
+        {
+          label: '접수기간',
+          value: `${formatDate(challenge.startDate)} ~ ${formatDate(challenge.endDate)}`,
+        },
+      ],
+    };
+  } else if (team) {
+    preview = {
+      title: team.title ?? '팀 모집글',
+      org: team.challengeTitle,
+      meta: [
+        {
+          label: '모집 역할',
+          value:
+            team.openRoles
+              ?.map((slot) => (slot.count ? `${slot.role} ${slot.count}명` : (slot.role ?? '')))
+              .filter(Boolean)
+              .join(', ') || '모집 완료',
+        },
+        { label: '활동 지역', value: team.region ?? '-' },
+      ],
+    };
+  } else if (user) {
+    preview = {
+      title: user.name ?? '사용자',
+      org: user.position,
+      meta: [
+        { label: '활동 지역', value: user.region ?? '-' },
+        { label: '가입일', value: formatDate(user.createdAt) },
+      ],
+    };
+  }
+  // 대상 id/종류가 유효하지 않거나 조회에 실패하면 폼을 비활성화한다.
+  const targetMissing = !enabled || (!targetPending && !preview);
 
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
@@ -81,13 +128,15 @@ function ReportFormContent() {
       toast.error('신고 사유를 선택해주세요');
       return;
     }
+    if (!type || !targetId || !preview) return;
     createReport.mutate({
       data: {
         targetType: type,
-        targetId: targetId && UUID_RE.test(targetId) ? targetId : undefined,
+        targetId,
         summary: reason,
         detail: detail || undefined,
         org: preview.org,
+        reportedUserId: type === 'user' ? targetId : undefined,
       },
     });
   };
@@ -96,23 +145,29 @@ function ReportFormContent() {
     <UserShell compact navigation={false} footer={false}>
       <Form>
         <Title>신고하기</Title>
-        <PreviewHeader>
-          <EmptyArtwork style={{ width: 223, height: 156, flexShrink: 0 }} />
-          <PreviewBody>
-            <div>
-              <p className="preview-title">{preview.title}</p>
-              <Muted>{preview.org}</Muted>
-            </div>
-            <dl>
-              {preview.meta.map((row) => (
-                <div key={row.label}>
-                  <dt>{row.label}</dt>
-                  <dd>{row.value}</dd>
-                </div>
-              ))}
-            </dl>
-          </PreviewBody>
-        </PreviewHeader>
+        {targetPending ? (
+          <Muted>신고 대상을 불러오는 중이에요…</Muted>
+        ) : !preview ? (
+          <Muted>신고 대상을 찾을 수 없어요. 대상 링크를 다시 확인해주세요.</Muted>
+        ) : (
+          <PreviewHeader>
+            <EmptyArtwork style={{ width: 223, height: 156, flexShrink: 0 }} />
+            <PreviewBody>
+              <div>
+                <p className="preview-title">{preview.title}</p>
+                <Muted>{preview.org}</Muted>
+              </div>
+              <dl>
+                {preview.meta.map((row) => (
+                  <div key={row.label}>
+                    <dt>{row.label}</dt>
+                    <dd>{row.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </PreviewBody>
+          </PreviewHeader>
+        )}
         <Field>
           <label>신고 사유를 선택해주세요</label>
           <Dropdown
@@ -121,14 +176,24 @@ function ReportFormContent() {
             value={reason}
             onChange={setReason}
             options={REPORT_REASONS.map((x) => ({ value: x, label: x }))}
+            disabled={targetMissing}
           />
         </Field>
         <Field>
           <label>자세한 내용을 기술해주세요</label>
-          <Textarea value={detail} onChange={(e) => setDetail(e.target.value)} />
+          <Textarea
+            value={detail}
+            onChange={(e) => setDetail(e.target.value)}
+            disabled={targetMissing}
+          />
         </Field>
-        <Button fullWidth style={{ height: 48 }} disabled={createReport.isPending} onClick={submit}>
-          게시하기
+        <Button
+          fullWidth
+          style={{ height: 48 }}
+          disabled={targetMissing || createReport.isPending}
+          onClick={submit}
+        >
+          신고하기
         </Button>
       </Form>
     </UserShell>

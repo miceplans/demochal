@@ -16,11 +16,28 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ListChallengesSort } from './listChallengesSort';
 
 export type ListChallengesParams = {
   /**
-   * 이전 페이지의 nextCursor (ISO 8601)
+   * 이전 페이지의 nextCursor — `${정렬컬럼값}|${id}` 복합 형태. sort=latest는 레거시 단일 ISO 8601 createdAt 커서도 받는다.
    */
   cursor?: string;
   limit?: number;
+  /**
+   * title 또는 category ILIKE `%q%` 검색어
+   */
+  q?: string;
+  /**
+   * challenges.category 정확 일치 필터
+   */
+  category?: string;
+  /**
+   * false면 마감(status=closed) 챌린지를 제외한다(하위호환 기본값 true).
+   */
+  includeClosed?: boolean;
+  /**
+   * latest=최신순(createdAt desc) | deadline=마감임박순(endDate asc) | popular=인기순(viewCount desc)
+   */
+  sort?: ListChallengesSort;
 };

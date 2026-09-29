@@ -9,7 +9,14 @@ import { Tag, Row, Muted } from '@/components/common/Primitives';
 export function TeamCard({ team }: { team: Team }) {
   return (
     <Card data-component="team-card">
-      <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
+      {team.poster ? (
+        <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
+      ) : (
+        <PosterPlaceholder role="img" aria-label={`${team.challenge || team.name} 대표 이미지`}>
+          <PosterInitial>{(team.challenge || team.name).slice(0, 1)}</PosterInitial>
+          <PosterChallenge>{team.challenge || team.name}</PosterChallenge>
+        </PosterPlaceholder>
+      )}
       <div className="body">
         <Row style={{ justifyContent: 'space-between' }}>
           <h3>
@@ -60,6 +67,40 @@ const Card = styled.article({
     '.team-artwork': { display: 'none' },
     '.body': { padding: 14, gap: 10 },
   },
+});
+
+const PosterPlaceholder = styled.div({
+  width: '100%',
+  height: 135,
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  background: c.gray100,
+  [mobile]: { display: 'none' },
+});
+
+const PosterInitial = styled.span({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 44,
+  height: 44,
+  borderRadius: 12,
+  background: c.gray200,
+  color: c.gray500,
+  ...textStyle.h2,
+});
+
+const PosterChallenge = styled.span({
+  ...textStyle.caption,
+  color: c.gray500,
+  maxWidth: '100%',
+  padding: '0 16px',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 });
 
 const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({

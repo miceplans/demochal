@@ -5,7 +5,21 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, gte, gt, inArray, lt, ne, or } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  gt,
+  ilike,
+  inArray,
+  lt,
+  ne,
+  or,
+  type SQL,
+} from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -27,6 +41,23 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   published: ['closed'],
 };
 
+const CHALLENGE_SORTS = ['latest', 'deadline', 'popular'] as const;
+type ChallengeSort = (typeof CHALLENGE_SORTS)[number];
+
+export interface ListChallengesOptions {
+  cursor?: string;
+  limit: number;
+  q?: string;
+  category?: string;
+  includeClosed?: boolean;
+  sort?: string;
+}
+
+type ParsedCursor =
+  | { kind: 'latest'; createdAt: Date; id: string | null }
+  | { kind: 'deadline'; endDate: Date; id: string | null }
+  | { kind: 'popular'; viewCount: number; id: string | null };
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 // Exposure boost for challenges recruiting through the in-service (seMOchall)
@@ -42,21 +73,118 @@ export class ChallengesService {
     private readonly adminSettingsService: AdminSettingsService,
   ) {}
 
-  // Keyset pagination on createdAt. Good enough while volume is low; revisit
-  // with a compound (createdAt, id) cursor if createdAt collisions appear.
-  async list(cursor: string | undefined, limit: number) {
-    const where = cursor ? lt(challenges.createdAt, new Date(cursor)) : undefined;
+  /**
+   * 공개 챌린지 목록. 기본 where는 항상 draft를 제외한다(공개 리스트 유출 방지) —
+   * draft 목록이 필요한 관리자 경로는 admin 모듈에서 별도 처리한다.
+   * 정렬별 키셋 페이지네이션: 커서는 `${정렬컬럼값}|${id}` 복합 형태이고, latest는
+   * 구버전 단일 createdAt ISO 커서도 계속 받는다.
+   */
+  async list(options: ListChallengesOptions) {
+    const { cursor, limit, q, category, includeClosed = true, sort: requestedSort } = options;
+    const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
+
+    const conditions = [ne(challenges.status, 'draft')];
+    if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
+    if (category) conditions.push(eq(challenges.category, category));
+    if (q) {
+      conditions.push(or(ilike(challenges.title, `%${q}%`), ilike(challenges.category, `%${q}%`))!);
+    }
+    if (cursor) conditions.push(this.keysetCondition(this.parseCursor(sort, cursor)));
+
     const rows = await this.db
       .select()
       .from(challenges)
-      .where(where)
-      .orderBy(desc(challenges.createdAt))
+      .where(and(...conditions))
+      .orderBy(...this.orderBy(sort))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
     const items = rows.slice(0, limit);
-    const nextCursor = hasMore ? items[items.length - 1]!.createdAt.toISOString() : null;
+    const last = items[items.length - 1];
+    const nextCursor = hasMore && last ? this.encodeCursor(sort, last) : null;
     return { items, nextCursor };
+  }
+
+  private parseSort(sort: string): ChallengeSort {
+    if ((CHALLENGE_SORTS as readonly string[]).includes(sort)) return sort as ChallengeSort;
+    throw new BadRequestException(`sort must be one of: ${CHALLENGE_SORTS.join(', ')}`);
+  }
+
+  private orderBy(sort: ChallengeSort) {
+    // id를 항상 2차 정렬키로 둬 동일 정렬값 행 사이에서도 결정적이게 한다.
+    if (sort === 'deadline') return [asc(challenges.endDate), asc(challenges.id)];
+    if (sort === 'popular') return [desc(challenges.viewCount), desc(challenges.id)];
+    return [desc(challenges.createdAt), desc(challenges.id)];
+  }
+
+  private parseCursor(sort: ChallengeSort, cursor: string): ParsedCursor {
+    const separator = cursor.indexOf('|');
+    if (separator === -1) {
+      // 단일값 커서는 latest(createdAt ISO) 전용 레거시 형식이다.
+      if (sort !== 'latest') {
+        throw new BadRequestException(
+          `cursor for sort=${sort} must be a compound "value|id" cursor`,
+        );
+      }
+      const createdAt = new Date(cursor);
+      if (Number.isNaN(createdAt.getTime())) {
+        throw new BadRequestException('cursor must be a valid ISO 8601 timestamp or "value|id"');
+      }
+      return { kind: 'latest', createdAt, id: null };
+    }
+    const rawValue = cursor.slice(0, separator);
+    const id = cursor.slice(separator + 1);
+    if (!id) throw new BadRequestException('cursor id part must not be empty');
+    if (sort === 'popular') {
+      const viewCount = Number(rawValue);
+      if (!Number.isFinite(viewCount)) {
+        throw new BadRequestException('popular cursor value must be a number');
+      }
+      return { kind: 'popular', viewCount, id };
+    }
+    const date = new Date(rawValue);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException('cursor value part must be a valid ISO 8601 timestamp');
+    }
+    return sort === 'deadline'
+      ? { kind: 'deadline', endDate: date, id }
+      : { kind: 'latest', createdAt: date, id };
+  }
+
+  private keysetCondition(parsed: ParsedCursor) {
+    if (parsed.kind === 'popular') {
+      return parsed.id
+        ? (or(
+            lt(challenges.viewCount, parsed.viewCount),
+            and(eq(challenges.viewCount, parsed.viewCount), lt(challenges.id, parsed.id)),
+          ) as SQL)
+        : lt(challenges.viewCount, parsed.viewCount);
+    }
+    const column = parsed.kind === 'deadline' ? challenges.endDate : challenges.createdAt;
+    if (parsed.kind === 'deadline') {
+      // 마감 임박 순(오름차순): 커서보다 뒤에 오는 (endDate, id) 튜플만.
+      return parsed.id
+        ? (or(
+            gt(column, parsed.endDate),
+            and(eq(column, parsed.endDate), gt(challenges.id, parsed.id)),
+          ) as SQL)
+        : gt(column, parsed.endDate);
+    }
+    return parsed.id
+      ? (or(
+          lt(column, parsed.createdAt),
+          and(eq(column, parsed.createdAt), lt(challenges.id, parsed.id)),
+        ) as SQL)
+      : lt(column, parsed.createdAt);
+  }
+
+  private encodeCursor(
+    sort: ChallengeSort,
+    row: { id: string; createdAt: Date; endDate: Date; viewCount: number },
+  ) {
+    if (sort === 'deadline') return `${row.endDate.toISOString()}|${row.id}`;
+    if (sort === 'popular') return `${row.viewCount}|${row.id}`;
+    return `${row.createdAt.toISOString()}|${row.id}`;
   }
 
   private async getOrThrow(id: string) {

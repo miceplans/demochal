@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(22);
+    expect(journal.entries).toHaveLength(24);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -406,10 +406,11 @@ describe('0020_add_kakao_auth migration', () => {
   });
 });
 
-describe('0021_add_challenges_recruit_url migration', () => {
+describe('0024_add_challenges_recruit_url migration', () => {
   it('adds the external recruit link column without destructive DDL', () => {
-    const tag = journal.entries[21]?.tag;
-    expect(tag).toBe('0021_add_challenges_recruit_url');
+    // 0023은 #264(PR #272)의 application_form 마이그레이션 예약번호다.
+    const tag = journal.entries[23]?.tag;
+    expect(tag).toBe('0024_add_challenges_recruit_url');
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "recruit_url" varchar(2048)');

@@ -4,7 +4,7 @@ import type { Team } from '@/data/user-design';
 export type ApiTeam = generated.ListTeamsQueryResult['data'][number];
 
 // TODO: 챌린지 포스터(`server/docs/openapi.yaml` Challenge.posterFileId)는 planned 상태라 아직 내려오지 않는다.
-// 포스터 업로드/조회가 구현되면 챌린지 포스터 URL로 교체한다 — 그 전까지는 목 포스터로 커버를 채운다.
+// 포스터 업로드/조회가 구현되면 챌린지 포스터 URL로 교체한다 — 그 전까지는 빈 문자열을 남겨 TeamCard가 중성 플레이스홀더를 렌더하게 한다.
 // https://nextjs.org/docs/app/api-reference/components/image
 export const TEAM_COVER_FALLBACK = '/mock/mock-poster.png';
 
@@ -19,7 +19,7 @@ export function toTeamCard(team: ApiTeam): Team {
     id: team.id ?? '',
     name: team.title ?? '',
     challenge: team.challengeTitle ?? '',
-    poster: TEAM_COVER_FALLBACK,
+    poster: '',
     members: `${Math.max(filledRoles.length, 1)}/${teamCapacity(team)}명 참여중`,
     filledRoles,
     recruitingRoles: (team.openRoles ?? []).map((slot) => slot.role ?? '').filter(Boolean),

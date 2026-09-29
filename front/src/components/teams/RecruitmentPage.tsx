@@ -1,5 +1,6 @@
 'use client';
-import { useRouter } from 'next/navigation';
+import { Suspense, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { UserShell } from '@/components/common/UserShell';
@@ -52,15 +53,36 @@ export function StepLabel({
 }
 
 export function RecruitmentPage() {
+  // useSearchParams는 Suspense 경계가 필요해(정적 프리렌더) 폼을 안쪽 컴포넌트로 감싼다.
+  return (
+    <Suspense fallback={null}>
+      <RecruitmentForm />
+    </Suspense>
+  );
+}
+
+function RecruitmentForm() {
   const draft = useUserStore((s) => s.recruitment);
   const setDraft = useUserStore((s) => s.setRecruitment);
   const toast = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   // 역할 슬롯도 draft에 함께 저장해 페이지를 나갔다 와도 유지한다.
   const slots = draft.slots ?? [];
   const setSlots = (next: typeof slots) => setDraft({ ...draft, slots: next });
   const challengesQuery = generated.useListChallenges({ limit: 50 });
   const challengeOptions = challengesQuery.data?.data.items ?? [];
+  // draft.challenge에는 챌린지 id를 저장한다(레이블은 Dropdown이 옵션에서 찍는다).
+  const challengeSelectOptions = challengeOptions
+    .filter((x) => Boolean(x.id))
+    .map((x) => ({ value: x.id ?? '', label: x.title ?? '제목 없음' }));
+  // 챌린지 상세 → "이 챌린지 팀 구하기" 진입 시 ?challengeId=<uuid>로 미리 선택해준다.
+  useEffect(() => {
+    const preset = searchParams.get('challengeId');
+    if (!preset) return;
+    const current = useUserStore.getState().recruitment;
+    if (current.challenge !== preset) setDraft({ ...current, challenge: preset });
+  }, [searchParams, setDraft]);
   const createTeam = generated.useCreateTeam({
     mutation: {
       onSuccess: (result) => {
@@ -82,14 +104,14 @@ export function RecruitmentPage() {
       <FormContainer
         onSubmit={(e) => {
           e.preventDefault();
-          const challenge = challengeOptions.find((x) => x.title === draft.challenge.trim());
-          if (!challenge?.id) {
-            toast.error('챌린지를 찾을 수 없어요', '목록에서 챌린지를 선택해주세요');
+          const challengeId = draft.challenge;
+          if (!challengeOptions.some((x) => x.id === challengeId)) {
+            toast.error('챌린지를 선택해주세요', '목록에서 챌린지를 골라주세요');
             return;
           }
           createTeam.mutate({
             data: {
-              challengeId: challenge.id,
+              challengeId,
               introduction: draft.introduction.trim() || undefined,
               openRoles: slots.map(({ role, count }) => ({ role, count })),
               myRole: draft.role,
@@ -106,20 +128,14 @@ export function RecruitmentPage() {
           <StepLabel number={1} completed={!!draft.challenge}>
             챌린지 선택
           </StepLabel>
-          <Input
-            list="challenges"
+          <Dropdown
             aria-label="챌린지 선택"
-            placeholder="챌린지를 검색하세요"
-            required
+            placeholder="챌린지를 선택하세요"
             value={draft.challenge}
-            onChange={(e) => setDraft({ ...draft, challenge: e.target.value })}
-            style={{ color: draft.challenge ? c.gray900 : c.gray500 }}
+            onChange={(value) => setDraft({ ...draft, challenge: value })}
+            options={challengeSelectOptions}
+            disabled={challengesQuery.isPending}
           />
-          <datalist id="challenges">
-            {challengeOptions.map((x) => (
-              <option key={x.id} value={x.title} />
-            ))}
-          </datalist>
         </Stack>
         <Stack gap={10}>
           <StepLabel number={2} completed={!!draft.introduction}>
@@ -219,7 +235,11 @@ export function RecruitmentPage() {
             onChange={(e) => setDraft({ ...draft, etc: e.target.value })}
           />
         </Stack>
-        <Button type="submit" fullWidth disabled={!slots.length || createTeam.isPending}>
+        <Button
+          type="submit"
+          fullWidth
+          disabled={!slots.length || createTeam.isPending || challengesQuery.isPending}
+        >
           게시하기
         </Button>
       </FormContainer>

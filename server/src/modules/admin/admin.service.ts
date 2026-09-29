@@ -17,18 +17,15 @@ import {
   teams,
   users,
   verifications,
-  adminSettings,
   type reports as reportsTable,
 } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { ADMIN_SETTINGS_ID, DEFAULT_VALUES } from './admin-settings.service.js';
+import { AdminSettingsService } from './admin-settings.service.js';
 import { FilesService } from '../files/files.service.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import { AdsService } from '../ads/ads.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
-import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
-import type { CreateReportDto } from './dto/create-report.dto.js';
 import type { ResolveReportDto } from './dto/resolve-report.dto.js';
 import type { SuspendUserDto } from './dto/suspend-user.dto.js';
 import type { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
@@ -139,13 +136,6 @@ export function maskEmail(email: string): string {
   return `${email.charAt(0)}***${email.slice(at)}`;
 }
 
-/** '김수아' → '김*아', two-char names '김아' → '김*'. */
-export function maskReporterName(name: string): string {
-  if (name.length <= 1) return name;
-  if (name.length === 2) return `${name.charAt(0)}*`;
-  return `${name.charAt(0)}*${name.charAt(name.length - 1)}`;
-}
-
 /** '123-45-67890' → '123-45-*****' (keep the first two digit groups, trailing dash included). */
 export function maskBizNumber(registrationNumber: string): string {
   return `${registrationNumber.slice(0, 7)}*****`;
@@ -156,46 +146,6 @@ const formatMonthDay = (date: Date) =>
 
 const formatMonthDayShort = (date: Date) => `${date.getMonth() + 1}/${date.getDate()}`;
 
-// Settings metadata is static copy (Korean labels/descriptions from the
-// design spec); only the boolean values are persisted.
-const SETTINGS_GROUPS = [
-  {
-    title: '서비스 설정',
-    rows: [
-      {
-        key: 'bizAutoApprove',
-        label: '기관 가입 자동 승인',
-        description: '제출 서류 심사 없이 기관 가입 신청을 즉시 승인합니다.',
-      },
-      {
-        key: 'contestAutoPublish',
-        label: '공고 자동 게시',
-        description: '기관이 등록한 공고를 검수 없이 바로 게시합니다.',
-      },
-      {
-        key: 'maintenanceMode',
-        label: '점검 모드',
-        description: '접속자에게 점검 안내를 표시하고 서비스를 일시 중단합니다.',
-      },
-    ],
-  },
-  {
-    title: '알림 설정',
-    rows: [
-      {
-        key: 'reportAlert',
-        label: '신고 접수 알림',
-        description: '신고가 접수되면 관리자에게 즉시 알림을 볩니다.',
-      },
-      {
-        key: 'newBusinessAlert',
-        label: '신규 기관 가입 알림',
-        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 볩니다.',
-      },
-    ],
-  },
-];
-
 @Injectable()
 export class AdminService {
   constructor(
@@ -203,6 +153,7 @@ export class AdminService {
     private readonly notificationsService: NotificationsService,
     private readonly adsService: AdsService,
     private readonly filesService: FilesService,
+    private readonly adminSettingsService: AdminSettingsService,
   ) {}
 
   // ---------------------------------------------------------------- dashboard
@@ -214,7 +165,7 @@ export class AdminService {
     const [approvedBiz] = await this.db
       .select({ count: countRows })
       .from(businesses)
-      .where(eq(businesses.verificationStatus, 'approved'));
+      .where(eq(businesses.verificationStatus, 'verified'));
     const [publishedChallenges] = await this.db
       .select({ count: countRows })
       .from(challenges)
@@ -317,7 +268,7 @@ export class AdminService {
     const [approvedRow] = await this.db
       .select({ count: countRows })
       .from(businesses)
-      .where(eq(businesses.verificationStatus, 'approved'));
+      .where(eq(businesses.verificationStatus, 'verified'));
     const [rejectedRow] = await this.db
       .select({ count: countRows })
       .from(businesses)
@@ -374,9 +325,7 @@ export class AdminService {
       const nts =
         ocrDump.includes('폐업자') || ocrDump.includes('휴업자')
           ? 'closed'
-          : businessVerifications.some(
-                (row) => row.status === 'approved' || row.status === 'verified',
-              )
+          : businessVerifications.some((row) => row.status === 'verified')
             ? 'success'
             : businessVerifications.some((row) => row.status === 'rejected')
               ? 'failed'
@@ -384,6 +333,8 @@ export class AdminService {
       const appliedAt = latest?.createdAt ?? business.createdAt;
       return {
         id: business.id,
+        // 승인/거부 API는 인증 요청 id를 받는다 — 기관 id가 아니라 최신 요청을 넘긴다.
+        verificationId: latest?.id ?? null,
         org: business.name ?? '기관명 미등록',
         // Businesses registered before the type column existed have no value.
         type: business.type ?? '미지정',
@@ -401,7 +352,7 @@ export class AdminService {
   // ------------------------------------------------------------- verification
 
   async approveVerification(id: string) {
-    return this.setVerificationResult(id, 'approved', null);
+    return this.setVerificationResult(id, 'verified', null);
   }
 
   async rejectVerification(id: string, reason: string) {
@@ -410,7 +361,7 @@ export class AdminService {
 
   private async setVerificationResult(
     id: string,
-    status: 'approved' | 'rejected',
+    status: 'verified' | 'rejected',
     reason: string | null,
   ) {
     const [verification] = await this.db
@@ -655,8 +606,8 @@ export class AdminService {
   private toAdminUser(row: typeof users.$inferSelect, reportCount: number) {
     return {
       id: row.id,
-      name: row.name,
-      email: maskEmail(row.email),
+      name: row.name ?? '탈퇴한 사용자',
+      email: row.email ? maskEmail(row.email) : '탈퇴한 사용자',
       position: row.position ?? '',
       reports: reportCount,
       status: row.suspended ? ('suspended' as const) : ('active' as const),
@@ -952,11 +903,6 @@ export class AdminService {
   // ------------------------------------------------------------------ settings
 
   async getSettings(user: AuthenticatedUser) {
-    const [row] = await this.db
-      .select()
-      .from(adminSettings)
-      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
-      .limit(1);
     return {
       profile: {
         name: user.name,
@@ -966,63 +912,13 @@ export class AdminService {
         // https://datatracker.ietf.org/doc/html/rfc6238
         twoFactorEnabled: false,
       },
-      groups: SETTINGS_GROUPS,
-      values: { ...DEFAULT_VALUES, ...(row?.values ?? {}) },
+      ...(await this.adminSettingsService.get()),
     };
   }
 
-  async updateSettings(values: Record<string, boolean>, user: AuthenticatedUser) {
-    // The body is a free-form key→boolean map; drop anything that isn't a boolean.
-    const clean = Object.fromEntries(
-      Object.entries(values ?? {}).filter(([, value]) => typeof value === 'boolean'),
-    ) as Record<string, boolean>;
-
-    const [existing] = await this.db
-      .select()
-      .from(adminSettings)
-      .where(eq(adminSettings.id, ADMIN_SETTINGS_ID))
-      .limit(1);
-    if (existing) {
-      await this.db
-        .update(adminSettings)
-        .set({ values: { ...existing.values, ...clean }, updatedAt: new Date() })
-        .where(eq(adminSettings.id, ADMIN_SETTINGS_ID));
-    } else {
-      await this.db.insert(adminSettings).values({ id: ADMIN_SETTINGS_ID, values: clean });
-    }
+  async updateSettings(values: Record<string, unknown>, user: AuthenticatedUser) {
+    await this.adminSettingsService.update(values ?? {});
     return this.getSettings(user);
-  }
-
-  // -------------------------------------------------------- user-facing writes
-
-  async createCertificate(dto: CreateCertificateDto, user: AuthenticatedUser) {
-    const [row] = await this.db
-      .insert(certificates)
-      .values({
-        userId: user.id,
-        title: dto.title,
-        category: dto.category,
-        fileId: dto.fileId,
-        status: 'pending',
-      })
-      .returning();
-    return row;
-  }
-
-  async createReport(dto: CreateReportDto, user: AuthenticatedUser) {
-    const [row] = await this.db
-      .insert(reports)
-      .values({
-        content: dto.content,
-        targetType: dto.targetType,
-        org: dto.org,
-        summary: dto.summary,
-        detail: dto.detail,
-        reporterUserId: user.id,
-        reporterName: maskReporterName(user.name),
-      })
-      .returning();
-    return this.toReport(row!);
   }
 
   // ------------------------------------------------------------------ helpers

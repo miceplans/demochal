@@ -218,6 +218,240 @@ describe('ChallengesService.listRecommended', () => {
   });
 });
 
+describe('ChallengesService.list', () => {
+  type ListRow = {
+    id: string;
+    status: string;
+    createdAt: Date;
+    endDate: Date;
+    viewCount: number;
+  };
+
+  function row(
+    id: string,
+    overrides: Partial<Pick<ListRow, 'status' | 'createdAt' | 'endDate'>> & {
+      viewCount?: number;
+    } = {},
+  ): ListRow {
+    return {
+      id,
+      status: overrides.status ?? 'published',
+      createdAt: overrides.createdAt ?? new Date('2029-01-01T00:00:00Z'),
+      endDate: overrides.endDate ?? new Date('2030-01-01T00:00:00Z'),
+      viewCount: overrides.viewCount ?? 0,
+    };
+  }
+
+  function createListService(rows: unknown[]) {
+    const limit = vi.fn().mockResolvedValue(rows);
+    const orderBy = vi.fn().mockReturnValue({ limit });
+    const where = vi.fn().mockReturnValue({ orderBy, limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const db = { select: vi.fn().mockReturnValue({ from }) } as any;
+    return { service: new ChallengesService(db, {} as any), db, where, orderBy };
+  }
+
+  function whereValues(where: ReturnType<typeof createListService>['where']) {
+    return collectSqlValues(where.mock.calls[0]![0]);
+  }
+
+  // drizzle의 asc()/desc() 래퍼가 StringChunk(' asc'/' desc')를 포함하므로 청크 문자열을 모아 방향을 본다.
+  function directionOf(node: unknown): 'asc' | 'desc' | undefined {
+    const chunks: string[] = [];
+    const walk = (current: any, seen: Set<unknown>) => {
+      if (!current || typeof current !== 'object' || seen.has(current)) return;
+      seen.add(current);
+      if (
+        Array.isArray(current.value) &&
+        current.value.every((part: unknown) => typeof part === 'string')
+      ) {
+        chunks.push(...current.value);
+      }
+      for (const key of ['queryChunks', 'value'] as const) {
+        if (Array.isArray(current[key])) {
+          current[key].forEach((part: unknown) => walk(part, seen));
+        }
+      }
+    };
+    walk(node, new Set());
+    return chunks.some((chunk) => chunk.includes(' desc'))
+      ? 'desc'
+      : chunks.some((chunk) => chunk.includes(' asc'))
+        ? 'asc'
+        : undefined;
+  }
+
+  it('always excludes drafts from the public list', async () => {
+    const { service, where } = createListService([]);
+
+    await service.list({ limit: 20 });
+
+    const condition = where.mock.calls[0]![0];
+    expect(referencesColumn(condition, challenges.status)).toBe(true);
+    expect(whereValues(where)).toContain('draft');
+  });
+
+  it('adds a closed exclusion only when includeClosed is false', async () => {
+    const withClosed = createListService([]);
+    await withClosed.service.list({ limit: 20, includeClosed: true });
+    const withoutClosed = createListService([]);
+    await withoutClosed.service.list({ limit: 20, includeClosed: false });
+
+    expect(whereValues(withClosed.where).filter((value) => value === 'closed')).toHaveLength(0);
+    expect(whereValues(withoutClosed.where).filter((value) => value === 'closed')).toHaveLength(1);
+  });
+
+  it('filters by category exact match and searches title/category with ILIKE', async () => {
+    const { service, where } = createListService([]);
+
+    await service.list({ limit: 20, category: '디자인', q: '해커톤' });
+
+    const condition = where.mock.calls[0]![0];
+    const values = whereValues(where);
+    expect(referencesColumn(condition, challenges.category)).toBe(true);
+    expect(referencesColumn(condition, challenges.title)).toBe(true);
+    expect(values).toContain('디자인');
+    expect(values).toContain('%해커톤%');
+  });
+
+  it('orders by endDate ascending for the deadline sort', async () => {
+    const { service, orderBy } = createListService([]);
+
+    await service.list({ limit: 20, sort: 'deadline' });
+
+    const primary = orderBy.mock.calls[0]![0];
+    const tiebreak = orderBy.mock.calls[0]![1];
+    expect(referencesColumn(primary, challenges.endDate)).toBe(true);
+    expect(directionOf(primary)).toBe('asc');
+    expect(referencesColumn(tiebreak, challenges.id)).toBe(true);
+  });
+
+  it('orders by viewCount descending for the popular sort', async () => {
+    const { service, orderBy } = createListService([]);
+
+    await service.list({ limit: 20, sort: 'popular' });
+
+    const primary = orderBy.mock.calls[0]![0];
+    const tiebreak = orderBy.mock.calls[0]![1];
+    expect(referencesColumn(primary, challenges.viewCount)).toBe(true);
+    expect(directionOf(primary)).toBe('desc');
+    expect(referencesColumn(tiebreak, challenges.id)).toBe(true);
+  });
+
+  it('rejects an unknown sort value', async () => {
+    const { service, db } = createListService([]);
+
+    await expect(service.list({ limit: 20, sort: 'hot' })).rejects.toThrow('sort must be one of');
+    expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it('continues past rows sharing the same endDate via the compound cursor', async () => {
+    const shared = new Date('2030-01-01T00:00:00Z');
+    // 마감일이 같은 3건 중 1걸 이미 소비한 뒤(커서) 나머지 2걸 가져온다.
+    const same1 = row('00000000-0000-4000-8000-000000000002', { endDate: shared });
+    const after = row('00000000-0000-4000-8000-000000000003', {
+      endDate: new Date('2030-02-01T00:00:00Z'),
+    });
+    const { service, where } = createListService([same1, after]);
+
+    const result = await service.list({
+      limit: 20,
+      sort: 'deadline',
+      cursor: `${shared.toISOString()}|00000000-0000-4000-8000-000000000001`,
+    });
+
+    const condition = where.mock.calls[0]![0];
+    const values = whereValues(where);
+    expect(referencesColumn(condition, challenges.endDate)).toBe(true);
+    expect(referencesColumn(condition, challenges.id)).toBe(true);
+    expect(
+      values.some((value) => value instanceof Date && value.getTime() === shared.getTime()),
+    ).toBe(true);
+    expect(values).toContain('00000000-0000-4000-8000-000000000001');
+    expect(result.items.map((item: ListRow) => item.id)).toEqual([
+      '00000000-0000-4000-8000-000000000002',
+      '00000000-0000-4000-8000-000000000003',
+    ]);
+  });
+
+  it('continues past rows sharing the same viewCount via the compound cursor', async () => {
+    const sameA = row('00000000-0000-4000-8000-000000000005', { viewCount: 10 });
+    const lower = row('00000000-0000-4000-8000-000000000006', { viewCount: 9 });
+    const { service, where } = createListService([sameA, lower]);
+
+    await service.list({
+      limit: 20,
+      sort: 'popular',
+      cursor: '10|00000000-0000-4000-8000-000000000004',
+    });
+
+    const condition = where.mock.calls[0]![0];
+    expect(referencesColumn(condition, challenges.viewCount)).toBe(true);
+    expect(whereValues(where)).toContain(10);
+    expect(whereValues(where)).toContain('00000000-0000-4000-8000-000000000004');
+  });
+
+  it('keeps accepting the legacy bare-ISO cursor for the latest sort', async () => {
+    const { service, where } = createListService([]);
+
+    await service.list({ limit: 20, sort: 'latest', cursor: '2029-01-01T00:00:00.000Z' });
+
+    const condition = where.mock.calls[0]![0];
+    expect(referencesColumn(condition, challenges.createdAt)).toBe(true);
+    expect(
+      whereValues(where).some(
+        (value) =>
+          value instanceof Date && value.getTime() === Date.parse('2029-01-01T00:00:00.000Z'),
+      ),
+    ).toBe(true);
+  });
+
+  it('rejects a bare-ISO cursor for non-latest sorts and malformed cursors', async () => {
+    const { service } = createListService([]);
+
+    await expect(
+      service.list({ limit: 20, sort: 'deadline', cursor: '2030-01-01T00:00:00.000Z' }),
+    ).rejects.toThrow('compound');
+    await expect(service.list({ limit: 20, sort: 'latest', cursor: 'not-a-date' })).rejects.toThrow(
+      'cursor',
+    );
+    await expect(service.list({ limit: 20, sort: 'popular', cursor: 'abc|id-1' })).rejects.toThrow(
+      'number',
+    );
+  });
+
+  it('encodes the next cursor from the sort column value and id', async () => {
+    const items = [
+      row('00000000-0000-4000-8000-000000000009', {
+        createdAt: new Date('2029-05-01T00:00:00Z'),
+        endDate: new Date('2029-07-01T00:00:00Z'),
+        viewCount: 42,
+      }),
+    ];
+    const serviceWith = (rows: unknown[]) => createListService(rows).service;
+
+    const latest = await serviceWith([...items, row('extra')]).list({ limit: 1 });
+    expect(latest.nextCursor).toBe('2029-05-01T00:00:00.000Z|00000000-0000-4000-8000-000000000009');
+
+    const deadline = await serviceWith([...items, row('extra')]).list({
+      limit: 1,
+      sort: 'deadline',
+    });
+    expect(deadline.nextCursor).toBe(
+      '2029-07-01T00:00:00.000Z|00000000-0000-4000-8000-000000000009',
+    );
+
+    const popular = await serviceWith([...items, row('extra')]).list({
+      limit: 1,
+      sort: 'popular',
+    });
+    expect(popular.nextCursor).toBe('42|00000000-0000-4000-8000-000000000009');
+
+    const done = await serviceWith(items).list({ limit: 5 });
+    expect(done.nextCursor).toBeNull();
+  });
+});
+
 describe('ChallengesService.create', () => {
   function createCapturingService(valuesCalls: Record<string, unknown>[]) {
     const db = { select: vi.fn(), insert: vi.fn() } as any;

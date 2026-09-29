@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { Suspense, useState, type FormEvent } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
 import { Button, IconButton, Input } from '@/components/common/Primitives';
@@ -11,6 +11,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { adApi } from '@/lib/ad-api';
 import { requestTossPayment } from '@/lib/payments';
+import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 
 const Form = styled.form({
@@ -137,25 +138,51 @@ const DeleteButton = styled(IconButton)({
 });
 
 export function ApplicationPage() {
+  // useSearchParams는 Suspense 경계가 필요해(정적 프리렌더) 폼을 안쪽 컴포넌트로 감싼다.
+  return (
+    <Suspense fallback={null}>
+      <ApplicationForm />
+    </Suspense>
+  );
+}
+
+function ApplicationForm() {
   const draft = useUserStore((s) => s.applicationDraft);
   const save = useUserStore((s) => s.saveApplication);
   const toast = useToast();
   const router = useRouter();
-  const [role, setRole] = useState(draft?.role ?? '백엔드');
+  // /applications/new?challenge=<uuid> — 챌린지 상세의 "참가 신청하기" 링크로만 들어온다.
+  const challengeId = useSearchParams().get('challenge');
+  const challengeQuery = generated.useGetChallenge(challengeId ?? '', {
+    query: { enabled: Boolean(challengeId) },
+  });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  // 지원 역할 선택지 — 챌린지가 밀어낸 모집 역할(Challenge.roles)을 1순위로 쓴다(ApplyChallengeDto.role).
+  const challengeRoles = challenge?.roles?.length ? challenge.roles : undefined;
+  const roleOptions = (challengeRoles ?? roles).map((item) => ({ value: item, label: item }));
+  const fallbackRole = roleOptions[0]?.value ?? '백엔드';
+  const [pickedRole, setPickedRole] = useState(draft?.role ?? '백엔드');
   const [members, setMembers] = useState(draft?.members ?? [{ name: '', role: '백엔드' }]);
   const [submitting, setSubmitting] = useState(false);
   const membersComplete = members.length > 0 && members.every((member) => member.name.trim());
+  // 저장값이 현재 선택지에 없으면(다른 챌린지 임시저장 등) 첫 선택지로 보정해 보여주고 본다.
+  const role = roleOptions.some((option) => option.value === pickedRole)
+    ? pickedRole
+    : fallbackRole;
+  const normalizedMembers = members.map((member) =>
+    roleOptions.some((option) => option.value === member.role)
+      ? member
+      : { ...member, role: fallbackRole },
+  );
   const saveDraft = () => {
-    save({ role, members });
+    save({ role, members: normalizedMembers });
     toast.success('임시저장했어요');
   };
 
   // /applications/new?challenge=<uuid> 진입 시에만 실제 신청·결제 흐름으로 동작한다(챌린지 상세 등에서 링크).
-  // 제출 핸들러(사용자 이벤트)에서 직접 읽어 hydration 경계 없이 사용한다.
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    save({ role, members });
-    const challengeId = new URLSearchParams(window.location.search).get('challenge');
+    save({ role, members: normalizedMembers });
     if (!challengeId) {
       // 목업 카탈로그 화면에서는 진입 링크에 챌린지 UUID가 없다 — 이 경우 저장만 하고
       // 실제 신청·결제 흐름은 챌린지 신청 링크(/applications/new?challenge=<uuid>) 경로로만
@@ -209,7 +236,7 @@ export function ApplicationPage() {
     <UserShell title="지원서 작성" back="/contests/public-data" footer={false}>
       <Form onSubmit={handleSubmit}>
         <Content>
-          <FormTitle>2025 지역문제 해결 해커톤 신청서</FormTitle>
+          <FormTitle>{challenge?.title ? `${challenge.title} 신청서` : '챌린지 신청서'}</FormTitle>
           <Step>
             <StepHeading>
               <StepNumber $completed={Boolean(role)}>1</StepNumber>
@@ -219,8 +246,8 @@ export function ApplicationPage() {
               <Dropdown
                 aria-label="지원 역할"
                 value={role}
-                onChange={setRole}
-                options={roles.map((item) => ({ value: item, label: item }))}
+                onChange={setPickedRole}
+                options={roleOptions}
               />
             </FieldWidth>
           </Step>
@@ -230,7 +257,7 @@ export function ApplicationPage() {
               <StepText>팀원구성을 작성해주세요</StepText>
             </StepHeading>
             <MemberList>
-              {members.map((member, index) => (
+              {normalizedMembers.map((member, index) => (
                 <MemberRow key={index}>
                   <MemberRole>
                     <Dropdown
@@ -244,7 +271,7 @@ export function ApplicationPage() {
                           ),
                         )
                       }
-                      options={roles.map((item) => ({ value: item, label: item }))}
+                      options={roleOptions}
                     />
                   </MemberRole>
                   <MemberName
@@ -274,7 +301,7 @@ export function ApplicationPage() {
               ))}
               <AddMember
                 type="button"
-                onClick={() => setMembers([...members, { name: '', role: '백엔드' }])}
+                onClick={() => setMembers([...members, { name: '', role: fallbackRole }])}
               >
                 <span aria-hidden="true">+</span>팀원 추가
               </AddMember>

@@ -5,26 +5,23 @@ import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
-  Chip,
   DesktopOnly,
   MobileOnly,
   Select,
   Row,
-  Stack,
-  Wrap,
   Heading,
   Muted,
 } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
+import { contestHref } from './contest-links';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
-import { categories, desktopContests, contests, roles } from '@/data/user-design';
+import { categories, roles, type Contest } from '@/data/user-design';
 import { generated } from '@semochal/api-client';
 import { toTeamCard } from '@/components/teams/team-model';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { RangeSlider } from '@/components/ui/RangeSlider';
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
@@ -32,10 +29,20 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [challengeId, setChallengeId] = useState('');
   const [role, setRole] = useState('');
   const [region, setRegion] = useState('');
-  const challengesQuery = generated.useListChallenges(
-    { limit: 50 },
-    { query: { enabled: teamMode } },
-  );
+  const [sort, setSort] = useState('마감임박');
+  const [limit, setLimit] = useState(6);
+  const [includeClosed, setIncludeClosed] = useState(true);
+  // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
+  // 챌린지 목록(탐색)과 팀 모드의 챌린지 드롭다운 옵션을 한 쿼리로 공용한다 — teamMode와 무관하게 항상 조회.
+  // 팀 모드에서는 드롭다운 옵션 확보가 목적이라 고정 50건, 탐색 모드에서는 더보기 클릭 시 limit을 늘린다.
+  const challengesQuery = generated.useListChallenges({
+    limit: teamMode ? 50 : limit,
+    q: query || undefined,
+    category: category || undefined,
+    includeClosed,
+    sort: sort === '마감임박' ? 'deadline' : sort === '인기' ? 'popular' : 'latest',
+  });
   const challengeOptions = challengesQuery.data?.data.items ?? [];
   const teamsQuery = generated.useListTeams(
     {
@@ -47,28 +54,18 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     { query: { enabled: teamMode } },
   );
   const teamCards = (teamsQuery.data?.data ?? []).map(toTeamCard);
-  const [sort, setSort] = useState('마감임박');
-  const [limit, setLimit] = useState(6);
-  const [prize, setPrize] = useState<[number, number]>([3000, 8000]);
-  const [includeClosed, setIncludeClosed] = useState(true);
-  const visible = (category || query ? contests : desktopContests)
-    .filter(
-      (x) =>
-        (!category || x.category.includes(category.replace('/취업', ''))) &&
-        (!query || x.title.includes(query) || x.category.includes(query)),
-    )
-    .sort((a, b) =>
-      sort === '마감임박'
-        ? a.days - b.days
-        : sort === '인기'
-          ? (b.teams ?? 0) - (a.teams ?? 0)
-          : b.id.localeCompare(a.id),
-    );
-  const mobileVisible = contests.filter(
-    (x) =>
-      (!category || x.category.includes(category)) &&
-      (!query || x.title.includes(query) || x.category.includes(query)),
-  );
+  const contestCards: Contest[] = challengeOptions.map((challenge) => {
+    const end = challenge.endDate ? new Date(challenge.endDate).getTime() : NaN;
+    return {
+      id: challenge.id ?? '',
+      title: challenge.title ?? '챌린지',
+      category: challenge.category ?? '기타',
+      days: Number.isNaN(end) ? 0 : Math.max(0, Math.ceil((end - now) / 86_400_000)),
+      // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
+      teams: undefined,
+    };
+  });
+  const hasMoreChallenges = Boolean(challengesQuery.data?.data.nextCursor);
   return (
     <UserShell>
       <Layout>
@@ -126,153 +123,101 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   size="S"
                   value={category}
                   onChange={setCategory}
-                  options={categories.map((cat) => ({ value: cat, label: cat }))}
+                  options={[
+                    { value: '', label: '전체' },
+                    ...categories.map((cat) => ({ value: cat, label: cat })),
+                  ]}
                 />
               </div>
-              {[
-                [
-                  '대상',
-                  '어린이',
-                  '초등학생',
-                  '중학생',
-                  '고등학생',
-                  '대학생',
-                  '대학원생',
-                  '제한없음',
-                  '지역제한',
-                  '일반인',
-                  '기업',
-                ],
-                [
-                  '주최기관',
-                  '중앙정부/기관',
-                  '대기업',
-                  '외국계기업',
-                  '학교/재단/협회',
-                  '학회/비영리단체',
-                  '진흥원',
-                  '언론',
-                  '지방자치단체',
-                  '중소/벤처기업',
-                  '기타',
-                ],
-              ].map(([label, ...items]) => (
-                <div key={label}>
-                  <h3>{label}</h3>
-                  <CheckGrid>
-                    {items.map((x) => (
-                      <label key={x}>
-                        <input type="checkbox" defaultChecked={x === '기업' || x === '기타'} />
-                        {x}
-                      </label>
-                    ))}
-                  </CheckGrid>
-                </div>
-              ))}
-              <div>
-                <h3 style={{ marginBottom: 10 }}>상금</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <span style={{ ...textStyle.caption, color: c.gray700 }}>
-                    {prize[0].toLocaleString()}~{prize[1].toLocaleString()}천만원
-                  </span>
-                  <RangeSlider
-                    min={0}
-                    max={10000}
-                    step={100}
-                    value={prize}
-                    onChange={setPrize}
-                    minAriaLabel="최소 상금"
-                    maxAriaLabel="최대 상금"
-                  />
-                </div>
-              </div>
+              <IncludeClosed>
+                <input
+                  type="checkbox"
+                  checked={includeClosed}
+                  onChange={(e) => setIncludeClosed(e.target.checked)}
+                />
+                마감된 챌린지도 포함하기
+              </IncludeClosed>
             </>
           )}
         </Sidebar>
         <Results>
           <MobileFilters>
-            {teamMode
-              ? [
-                  {
-                    label: '전체 챌린지',
-                    value: challengeId,
-                    onChange: setChallengeId,
-                    options: challengeOptions.map((x) => ({
-                      value: x.id ?? '',
-                      label: x.title ?? '',
-                    })),
-                  },
-                  {
-                    label: '필요역할',
-                    value: role,
-                    onChange: setRole,
-                    options: roles.map((x) => ({ value: x, label: x })),
-                  },
-                  {
-                    label: '지역',
-                    value: region,
-                    onChange: setRegion,
-                    options: ['서울', '부산'].map((x) => ({ value: x, label: x })),
-                  },
-                ].map((filter) => (
-                  <Select
-                    key={filter.label}
-                    aria-label={filter.label}
-                    value={filter.value}
-                    onChange={(e) => filter.onChange(e.target.value)}
-                  >
-                    <option value="">{filter.label}</option>
-                    {filter.options.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </Select>
-                ))
-              : ['분야', '대상', '주최기관', '상금'].map((x, i) => (
-                  <Select
-                    key={x}
-                    aria-label={x}
-                    value={i === 0 ? category : undefined}
-                    onChange={(e) => {
-                      if (i === 0) setCategory(e.target.value);
-                    }}
-                  >
-                    <option value="">{x}</option>
-                    {(i === 0 ? categories : ['전체', '대학생', '일반인']).map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </Select>
-                ))}
-          </MobileFilters>
-          <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>
             {teamMode ? (
-              <>
-                <Button small>팀 찾기</Button>
-                <Link href="/teams/new">
-                  <Button as="span" small>
-                    ＋ 모집글 작성
-                  </Button>
-                </Link>
-              </>
+              [
+                {
+                  label: '전체 챌린지',
+                  value: challengeId,
+                  onChange: setChallengeId,
+                  options: challengeOptions.map((x) => ({
+                    value: x.id ?? '',
+                    label: x.title ?? '',
+                  })),
+                },
+                {
+                  label: '필요역할',
+                  value: role,
+                  onChange: setRole,
+                  options: roles.map((x) => ({ value: x, label: x })),
+                },
+                {
+                  label: '지역',
+                  value: region,
+                  onChange: setRegion,
+                  options: ['서울', '부산'].map((x) => ({ value: x, label: x })),
+                },
+              ].map((filter) => (
+                <Select
+                  key={filter.label}
+                  aria-label={filter.label}
+                  value={filter.value}
+                  onChange={(e) => filter.onChange(e.target.value)}
+                >
+                  <option value="">{filter.label}</option>
+                  {filter.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </Select>
+              ))
             ) : (
               <>
-                <Row>
-                  {['마감임박', '최신', '인기'].map((x) => (
-                    <Sort key={x} active={sort === x} onClick={() => setSort(x)}>
-                      {x}
-                    </Sort>
+                <Select
+                  aria-label="분야"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                >
+                  <option value="">분야</option>
+                  {categories.map((v) => (
+                    <option key={v}>{v}</option>
                   ))}
-                </Row>
-                <label style={{ fontSize: 12, color: c.gray700, display: 'flex', gap: 6 }}>
+                </Select>
+                <IncludeClosed>
                   <input
                     type="checkbox"
                     checked={includeClosed}
                     onChange={(e) => setIncludeClosed(e.target.checked)}
                   />
-                  마감된 챌린지도 포함하기
-                </label>
+                  마감된 챌린지 포함
+                </IncludeClosed>
               </>
+            )}
+          </MobileFilters>
+          <Row style={{ justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap' }}>
+            {teamMode ? (
+              <Link href="/teams/new" style={{ marginLeft: 'auto' }}>
+                <Button as="span" small>
+                  ＋ 모집글 작성
+                </Button>
+              </Link>
+            ) : (
+              <Row>
+                {['마감임박', '최신', '인기'].map((x) => (
+                  <Sort key={x} active={sort === x} onClick={() => setSort(x)}>
+                    {x}
+                  </Sort>
+                ))}
+              </Row>
             )}
           </Row>
           {teamMode ? (
@@ -290,20 +235,23 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             <>
               <DesktopOnly>
                 <ContestGrid>
-                  {visible.slice(0, limit).map((x) => (
-                    <ContestCard key={x.id} contest={x} />
+                  {contestCards.map((x) => (
+                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
                   ))}
                 </ContestGrid>
               </DesktopOnly>
               <MobileOnly>
                 <ContestGrid>
-                  {mobileVisible.slice(0, limit).map((x) => (
-                    <ContestCard key={x.id} contest={x} />
+                  {contestCards.map((x) => (
+                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
                   ))}
                 </ContestGrid>
               </MobileOnly>
-              {visible.length === 0 && <Muted>검색 결과가 없습니다.</Muted>}
-              {limit < visible.length && (
+              {challengesQuery.isPending && <Muted>불러오는 중…</Muted>}
+              {challengesQuery.isSuccess && contestCards.length === 0 && (
+                <Muted>검색 결과가 없습니다.</Muted>
+              )}
+              {hasMoreChallenges && (
                 <Row style={{ justifyContent: 'center', marginTop: 40 }}>
                   <Button small onClick={() => setLimit((v) => v + 6)}>
                     더보기
@@ -338,17 +286,13 @@ const Results = styled.div({
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
 });
-const CheckGrid = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 12,
-  '& label': {
-    ...textStyle.metaText,
-    color: c.gray700,
-    display: 'flex',
-    gap: 8,
-    alignItems: 'center',
-  },
+const IncludeClosed = styled.label({
+  ...textStyle.metaText,
+  color: c.gray700,
+  display: 'flex',
+  gap: 6,
+  alignItems: 'center',
+  cursor: 'pointer',
 });
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
   border: 0,
