@@ -17,7 +17,7 @@ vi.mock('@/components/common/Primitives', () => {
     Select: () => <select />,
     Row: Passthrough,
     Heading: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
-    Muted: ({ children }: { children: ReactNode }) => <p>{children}</p>,
+    EmptyState: () => <div data-testid="empty-state" />,
   };
 });
 
@@ -95,7 +95,7 @@ describe('ExplorePage loading skeletons', () => {
 
     const status = screen.getByRole('status', { name: '팀 모집글을 불러오는 중입니다' });
     expect(within(status).getAllByRole('article', { hidden: true })).toHaveLength(6);
-    expect(screen.queryByText('조건에 맞는 팀 모집글이 없어요.')).toBeNull();
+    expect(screen.queryByTestId('empty-state')).toBeNull();
   });
 
   it('shows contest-shaped skeleton cards while contest results are pending', () => {
@@ -105,24 +105,24 @@ describe('ExplorePage loading skeletons', () => {
 
     const status = screen.getByRole('status', { name: '공모전 목록을 불러오는 중입니다' });
     expect(within(status).getAllByRole('article', { hidden: true })).toHaveLength(12);
-    expect(screen.queryByText('불러오는 중…')).toBeNull();
+    expect(screen.queryByTestId('empty-state')).toBeNull();
   });
 
-  it('replaces team skeletons with the existing empty result state on success', () => {
+  it('replaces team skeletons with the empty state illustration on success', () => {
     setQueries({ teamsSuccess: true, teamItems: [] });
 
     render(<ExplorePage teamMode />);
 
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByText('조건에 맞는 팀 모집글이 없어요.')).not.toBeNull();
+    expect(screen.getByTestId('empty-state')).not.toBeNull();
   });
 
-  it('replaces contest skeletons with the existing empty result state on success', () => {
+  it('replaces contest skeletons with the empty state illustration on success', () => {
     setQueries({ challengesSuccess: true, challengeItems: [] });
 
     render(<ExplorePage />);
 
     expect(screen.queryByRole('status')).toBeNull();
-    expect(screen.getByText('검색 결과가 없습니다.')).not.toBeNull();
+    expect(screen.getByTestId('empty-state')).not.toBeNull();
   });
 });

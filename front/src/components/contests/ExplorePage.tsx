@@ -7,11 +7,11 @@ import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
   DesktopOnly,
+  EmptyState,
   MobileOnly,
   Select,
   Row,
   Heading,
-  Muted,
 } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
 import { contestHref } from './contest-links';
@@ -280,9 +280,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                       <TeamCard key={team.id} team={team} />
                     ))}
                   </TeamGrid>
-                  {teamsQuery.isSuccess && teamCards.length === 0 && (
-                    <Muted>조건에 맞는 팀 모집글이 없어요.</Muted>
-                  )}
+                  {teamsQuery.isSuccess && teamCards.length === 0 && <EmptyState />}
                 </>
               )}
             </>
@@ -313,9 +311,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                       ))}
                     </ContestGrid>
                   </MobileOnly>
-                  {challengesQuery.isSuccess && contestCards.length === 0 && (
-                    <Muted>검색 결과가 없습니다.</Muted>
-                  )}
+                  {challengesQuery.isSuccess && contestCards.length === 0 && <EmptyState />}
                 </>
               )}
               {hasMoreChallenges && (
