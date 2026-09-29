@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
@@ -11,6 +12,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, teamMembers, teams, users } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { CreateTeamDto } from './dto/create-team.dto.js';
+import type { InviteTeamDto } from './dto/invite-team.dto.js';
 import type { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
 
 export interface TeamListFilters {
@@ -230,6 +232,46 @@ export class TeamsService {
     return member;
   }
 
+  // 프로필의 '팀에 초대' — 팀장이 특정 사용자를 팀에 초대한다. 지원과 달리 방향이
+  // 리더→사용자이므로 member 행을 invited 상태로 만들고, 초대받는 사람이 수락/거절한다.
+  async invite(id: string, dto: InviteTeamDto, user: AuthenticatedUser) {
+    const [team] = await this.db.select().from(teams).where(eq(teams.id, id)).limit(1);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Only the team leader can invite members');
+    }
+    if (dto.userId === team.leaderUserId) {
+      throw new BadRequestException('The leader is already a member of this team');
+    }
+
+    const [target] = await this.db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, dto.userId))
+      .limit(1);
+    if (!target) throw new NotFoundException('User not found');
+
+    const [existing] = await this.db
+      .select({ id: teamMembers.id })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, id), eq(teamMembers.userId, dto.userId)))
+      .limit(1);
+    if (existing) throw new ConflictException('이미 지원하거나 초대된 멤버예요');
+
+    const [member] = await this.db
+      .insert(teamMembers)
+      .values({ teamId: id, userId: dto.userId, role: dto.role, status: 'invited' })
+      .returning();
+
+    await this.notificationsService.create(dto.userId, 'team_matching', {
+      teamId: id,
+      invitedUserId: dto.userId,
+      memberId: member!.id,
+      ...(dto.role ? { role: dto.role } : {}),
+    });
+    return member;
+  }
+
   async updateMember(
     teamId: string,
     memberId: string,
@@ -244,7 +286,10 @@ export class TeamsService {
       .where(and(eq(teamMembers.id, memberId), eq(teamMembers.teamId, teamId)))
       .limit(1);
     if (!member) throw new NotFoundException('Team member not found');
-    if (team.leaderUserId !== user.id && user.role !== 'admin') {
+    const isLeader = team.leaderUserId === user.id || user.role === 'admin';
+    // 초대받은 사람은 본인의 초대(invited)에 한해 직접 수락/거절할 수 있다.
+    const isInviteResponse = member.userId === user.id && member.status === 'invited';
+    if (!isLeader && !isInviteResponse) {
       throw new ForbiddenException('Only the team leader can decide join requests');
     }
     if (member.userId === team.leaderUserId) {
@@ -261,11 +306,21 @@ export class TeamsService {
       .where(eq(teamMembers.id, memberId))
       .returning();
 
-    await this.notificationsService.create(member.userId, 'team_matching', {
-      teamId,
-      status: dto.status,
-      ...(dto.status === 'accepted' && dto.chatLink ? { chatLink: dto.chatLink } : {}),
-    });
+    if (isInviteResponse) {
+      // 초대 수락 시에만 리더에게 새 멤버 유입을 알린다(거절은 지원자 관리 화면에서 확인).
+      if (dto.status === 'accepted') {
+        await this.notificationsService.create(team.leaderUserId, 'team_matching', {
+          teamId,
+          applicantUserId: member.userId,
+        });
+      }
+    } else {
+      await this.notificationsService.create(member.userId, 'team_matching', {
+        teamId,
+        status: dto.status,
+        ...(dto.status === 'accepted' && dto.chatLink ? { chatLink: dto.chatLink } : {}),
+      });
+    }
     return updated;
   }
 }

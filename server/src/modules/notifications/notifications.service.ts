@@ -52,13 +52,14 @@ export class NotificationsService {
   }
 
   // 알림 설정 화면(front user-design.ts notificationSettings)의 스위치 키 매핑.
-  // 지원 알림(applicantUserId)과 결과 알림(status) 모두 team_matching 타입이므로
-  // payload 필드로 구분한다.
+  // 지원 알림(applicantUserId), 결과 알림(status), 팀 초대(invitedUserId) 모두
+  // team_matching 타입이므로 payload 필드로 구분한다.
   private settingsKeyFor(
     type: string,
     payload: Record<string, unknown>,
-  ): 'applicant' | 'result' | undefined {
+  ): 'applicant' | 'result' | 'invite' | undefined {
     if (type !== 'team_matching') return undefined;
+    if (typeof payload.invitedUserId === 'string') return 'invite';
     if (typeof payload.applicantUserId === 'string') return 'applicant';
     if ('status' in payload) return 'result';
     return undefined;
