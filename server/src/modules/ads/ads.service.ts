@@ -86,10 +86,19 @@ export class AdsService implements OnModuleInit {
     }));
   }
 
-  async listMine(businessId: string, status?: string) {
+  async listMine(businessId: string, status?: string, opts?: { withinServingWindow?: boolean }) {
     if (!businessId) return [];
     const conditions = [eq(ads.businessId, businessId)];
     if (status) conditions.push(eq(ads.status, status));
+    if (opts?.withinServingWindow) {
+      // listPublic과 동일한 노출 기간 조건이다. 계약이 만료된 'active' 광고는
+      // 실제로 노출되지 않으므로 대시보드 진행중 광고 집계에서도 제외한다.
+      const now = new Date();
+      const todayStart = new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+      );
+      conditions.push(lte(ads.startDate, now), gte(ads.endDate, todayStart));
+    }
     const rows = await this.db
       .select()
       .from(ads)

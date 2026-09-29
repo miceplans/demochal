@@ -38,7 +38,9 @@ export class BizService {
       monthlyAdExposure,
       payments: history.items.slice(0, 3),
       paymentTotal: history.total,
-      activeAds: await this.adsService.listMine(business.id, 'active'),
+      activeAds: await this.adsService.listMine(business.id, 'active', {
+        withinServingWindow: true,
+      }),
     };
   }
 }
