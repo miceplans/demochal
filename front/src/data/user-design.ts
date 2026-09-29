@@ -127,7 +127,6 @@ export const skillCatalog = [
 // TODO: '선호 역할'(roles)/'참가 대상'(audience) 칩 그룹은 서버에 저장·조회하는 필드가
 // 없어(zustand 로컬 상태만 바뀌는 죽은 UI) 제거했다. users 스키마에 해당 값을 저장하는
 // API가 생기면 그룹을 되살리고 아래 useUserStore의 roles/audience도 함께 복원한다.
-// https://orm.drizzle.team/docs/indexes-constraints
 export const preferenceGroups = [
   {
     key: 'interests' as const,
@@ -147,7 +146,7 @@ export const preferenceGroups = [
 ];
 // TODO: 서버가 저장·반영하는 알림 설정은 applicant(새 지원자)/result(수락·거절)뿐이라
 // 나머지 토글은 제거했다. 서버가 아래 유형의 알림을 생성하고 설정을 확인해 끈 유형은
-// 저장하지 않도록 강제하면(SAVE 시 필터, https://orm.drizzle.team/docs/select) 되살린다.
+// 저장하지 않도록 강제하면되살린다.
 // - '팀 초대 알림'(invite): 팀 초대 알림 생성 로직 자체가 없음.
 // - 챌린지 알림 그룹 전체(deadline/challenge/award): 마감 임박·새 챌린지·새 수상작
 //   알림을 만드는 서버 로직이 없음.
