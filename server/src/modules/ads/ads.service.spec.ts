@@ -79,6 +79,36 @@ function collectSqlValues(node: any, values: unknown[] = []): unknown[] {
   return values;
 }
 
+// 조건 트리에서 column을 참조하는 최소 서브트리들을 찾는다 (보통 이항 비교 조건 노드 하나).
+function subtreesReferencing(node: any, column: unknown, seen = new Set<unknown>()): any[] {
+  if (!node || typeof node !== 'object' || seen.has(node)) return [];
+  seen.add(node);
+  if (Array.isArray(node)) return node.flatMap((chunk) => subtreesReferencing(chunk, column, seen));
+  if (!Array.isArray(node.queryChunks)) return [];
+  const inner = node.queryChunks.flatMap((chunk: any) => subtreesReferencing(chunk, column, seen));
+  if (inner.length > 0) return inner;
+  // 자식 서브트리에 없는데 자신의 청크가 column을 직접 품고 있으면 이 노드가 최소 서브트리다.
+  return node.queryChunks.includes(column) ? [node] : [];
+}
+
+// column 서브트리 안에서 연산자와 바인딩 값이 짝지어 있는지 확인한다. 열·연산자·값이
+// 서로 뒤바뀐 구현(예: gte(startDate, todayStart))도 걸러낼 수 있어야 하므로
+// 단순 참조 여부가 아니라 한 서브트리 안의 조합을 본다.
+function hasPairedPredicate(
+  condition: unknown,
+  column: unknown,
+  operator: string,
+  matchesValue: (value: unknown) => boolean,
+): boolean {
+  return subtreesReferencing(condition, column).some((subtree) => {
+    const parts = collectSqlValues(subtree);
+    return (
+      parts.some((part) => typeof part === 'string' && part.includes(operator)) &&
+      parts.some(matchesValue)
+    );
+  });
+}
+
 describe('AdsService.updateStatus', () => {
   it('rejects a non-owning business with 403', async () => {
     const { db, set, returning } = createDbStub(AD);
@@ -235,20 +265,44 @@ describe('AdsService.listMine', () => {
 
     expect(result.map((ad) => ad.id)).toEqual(['ad-live']);
     const condition = where.mock.calls[0]![0];
-    expect(referencesColumn(condition, ads.startDate)).toBe(true);
-    expect(referencesColumn(condition, ads.endDate)).toBe(true);
-    const values = collectSqlValues(condition);
-    expect(values.some((v) => typeof v === 'string' && v.includes('<='))).toBe(true);
-    expect(values.some((v) => typeof v === 'string' && v.includes('>='))).toBe(true);
-    const dates = values.filter((v): v is Date => v instanceof Date);
     const after = new Date();
-    expect(
-      dates.some((d) => d.getTime() >= before.getTime() && d.getTime() <= after.getTime()),
-    ).toBe(true);
     const expectedTodayStart = new Date(
       Date.UTC(before.getUTCFullYear(), before.getUTCMonth(), before.getUTCDate()),
     );
-    expect(dates).toContainEqual(expectedTodayStart);
+    // startDate <= now, endDate >= 오늘 0시(UTC) — 열·연산자·값이 뒤바뀐 구현은 통과하지 못한다.
+    expect(
+      hasPairedPredicate(
+        condition,
+        ads.startDate,
+        '<=',
+        (v) =>
+          v instanceof Date && v.getTime() >= before.getTime() && v.getTime() <= after.getTime(),
+      ),
+    ).toBe(true);
+    expect(
+      hasPairedPredicate(
+        condition,
+        ads.endDate,
+        '>=',
+        (v) => v instanceof Date && v.getTime() === expectedTodayStart.getTime(),
+      ),
+    ).toBe(true);
+  });
+
+  it('excludes a not-yet-started active ad when withinServingWindow is set', async () => {
+    const now = new Date();
+    const futureAd = {
+      ...AD,
+      id: 'ad-future',
+      startDate: new Date(now.getTime() + DAY_MS),
+      endDate: new Date(now.getTime() + 5 * DAY_MS),
+    };
+    const { db } = createListMineDbStub(simulateServingWindow([futureAd], now));
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const result = await service.listMine('biz-1', 'active', { withinServingWindow: true });
+
+    expect(result.map((ad) => ad.id)).toEqual([]);
   });
 
   it('keeps an active ad whose contract ends today when withinServingWindow is set', async () => {
