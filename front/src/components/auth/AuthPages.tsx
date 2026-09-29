@@ -97,7 +97,10 @@ const Choices = styled(Wrap)({
   gap: 8,
   '& button': { borderRadius: 999, padding: '8px 14px', fontSize: 12 },
   '& button[aria-pressed="true"]': { fontWeight: 600 },
-  [mobile]: { '& button': { padding: '8px 14px' } },
+  [mobile]: {
+    gap: 10,
+    '& button': { padding: '13px 18px', fontSize: textStyle.mCardTitle.fontSize },
+  },
 });
 const CheckGrid = styled.div({
   display: 'grid',
@@ -118,6 +121,7 @@ const CheckOption = styled.button({
   textAlign: 'left',
   ...textStyle.mBodyDetail,
   color: c.gray700,
+  [mobile]: { padding: '13px 0', gap: 12, ...textStyle.mListText },
 });
 const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
   display: 'flex',
@@ -129,7 +133,20 @@ const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
   borderRadius: 3,
   border: selected ? 0 : `0.5px solid ${c.gray100}`,
   background: selected ? c.primary : c.white,
+  [mobile]: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    border: selected ? 0 : `1px solid ${c.gray100}`,
+    '& img': { width: '14px !important', height: '14px !important' },
+  },
 }));
+const ActivityDropdown = styled.div({
+  [mobile]: {
+    '& button': { height: 52, fontSize: textStyle.mBodyText.fontSize },
+    '& li': { padding: '14px 20px', fontSize: textStyle.mCardTitle.fontSize },
+  },
+});
 const Next = styled.div({
   marginTop: 40,
   display: 'flex',
@@ -248,21 +265,23 @@ export function OnboardingPage({ step }: { step: string }) {
         </div>
         <h1 style={{ ...textStyle.h2, marginBottom: 20 }}>{titles[index]}</h1>
         {index === 0 ? (
-          <Dropdown
-            aria-label="현재 활동"
-            placeholder="활동을 선택하세요"
-            value={selected[0] ?? ''}
-            onChange={(x) => setSurvey(step, [x])}
-            options={[
-              '대학생',
-              '대학원생',
-              '직장인',
-              '취업준비생',
-              '프리랜서',
-              '일반인',
-              '청소년',
-            ].map((x) => ({ value: x, label: x }))}
-          />
+          <ActivityDropdown>
+            <Dropdown
+              aria-label="현재 활동"
+              placeholder="활동을 선택하세요"
+              value={selected[0] ?? ''}
+              onChange={(x) => setSurvey(step, [x])}
+              options={[
+                '대학생',
+                '대학원생',
+                '직장인',
+                '취업준비생',
+                '프리랜서',
+                '일반인',
+                '청소년',
+              ].map((x) => ({ value: x, label: x }))}
+            />
+          </ActivityDropdown>
         ) : index === 2 ? (
           <CheckGrid>
             {options.map((x) => (
