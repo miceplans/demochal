@@ -13,6 +13,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
+import { LoginForm } from '@/features/auth/components/LoginForm';
 const Login = styled.div({
   minHeight: 610,
   display: 'flex',
@@ -46,12 +47,28 @@ const SOCIAL_LOGIN_PATHS: Record<string, string> = {
   Google: '/auth/google',
   Naver: '/auth/social/naver',
 };
-export function LoginPage() {
+const LoginDivider = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  width: 276,
+  ...textStyle.label,
+  color: c.gray500,
+  '&::before, &::after': { content: '""', flex: 1, height: 1, background: c.gray200 },
+  [mobile]: { width: 'min(358px, calc(100vw - 32px))' },
+});
+const EmailLogin = styled.div({
+  width: 276,
+  [mobile]: { width: 'min(358px, calc(100vw - 32px))' },
+});
+export function LoginPage({ next = null }: { next?: string | null }) {
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
   const startSocialLogin = (provider: string) => {
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
     const path = SOCIAL_LOGIN_PATHS[provider];
-    if (path) window.location.assign(`${apiOrigin.replace(/\/$/, '')}${path}`);
+    if (!path) return;
+    const query = next ? `?next=${encodeURIComponent(next)}` : '';
+    window.location.assign(`${apiOrigin.replace(/\/$/, '')}${path}${query}`);
   };
 
   return (
@@ -60,6 +77,12 @@ export function LoginPage() {
         <Stack gap={4} style={{ alignItems: 'center' }}>
           <Logo dot />
           <p style={{ fontSize: 11 }}>세상의 모든 챌린지</p>
+        </Stack>
+        <Stack gap={16} style={{ alignItems: 'center' }}>
+          <EmailLogin>
+            <LoginForm next={next} />
+          </EmailLogin>
+          <LoginDivider>또는</LoginDivider>
         </Stack>
         <Stack gap={8}>
           {['Kakao', 'Google', 'Naver'].map((provider, i) => (

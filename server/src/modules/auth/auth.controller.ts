@@ -38,6 +38,7 @@ import { Public } from './public.decorator.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard.js';
 import { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
+import { LOGIN_NEXT_COOKIE_NAME, sanitizeNextPath } from './next-path.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
 const GOOGLE_STATE_COOKIE_OPTIONS = {
@@ -128,13 +129,14 @@ export class AuthController {
   }
 
   @Get('google')
-  googleLogin(@Res() response: Response) {
+  googleLogin(@Query('next') next: string | undefined, @Res() response: Response) {
     this.assertGoogleConfigured();
     const nonce = randomBytes(32).toString('base64url');
     const state = `${nonce}.${this.signGoogleState(nonce)}`;
     // Login can start through the Next.js `/api` proxy while the callback is
     // served directly by the API. The root path works for either route.
     response.cookie(GOOGLE_STATE_COOKIE_NAME, nonce, GOOGLE_STATE_COOKIE_OPTIONS);
+    this.rememberLoginNext(response, next);
 
     const authorizationUrl = new URL(GOOGLE_AUTHORIZATION_URL);
     authorizationUrl.search = new URLSearchParams({
@@ -203,9 +205,7 @@ export class AuthController {
         name: profile.name ?? '',
       });
       response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
-      response.redirect(
-        user.onboardingSurvey ? this.frontendUrl('/') : this.frontendUrl('/onboarding/activity'),
-      );
+      response.redirect(this.postLoginUrl(user, request, response));
     } catch (err) {
       console.error('[auth] google_login_failed:', err);
       response.redirect(this.frontendUrl('/login?error=google_login_failed'));
@@ -213,11 +213,12 @@ export class AuthController {
   }
 
   @Get('social/naver')
-  naverLogin(@Res() response: Response) {
+  naverLogin(@Query('next') next: string | undefined, @Res() response: Response) {
     this.assertNaverConfigured();
     const nonce = randomBytes(32).toString('base64url');
     const state = `${nonce}.${this.signNaverState(nonce)}`;
     response.cookie(NAVER_STATE_COOKIE_NAME, nonce, NAVER_STATE_COOKIE_OPTIONS);
+    this.rememberLoginNext(response, next);
 
     const authorizationUrl = new URL(NAVER_AUTHORIZATION_URL);
     authorizationUrl.search = new URLSearchParams({
@@ -278,9 +279,7 @@ export class AuthController {
         name: profile.name ?? '',
       });
       response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
-      response.redirect(
-        user.onboardingSurvey ? this.frontendUrl('/') : this.frontendUrl('/onboarding/activity'),
-      );
+      response.redirect(this.postLoginUrl(user, request, response));
     } catch (err) {
       console.error('[auth] naver_login_failed:', err);
       response.redirect(this.frontendUrl('/login?error=naver_login_failed'));
@@ -288,11 +287,12 @@ export class AuthController {
   }
 
   @Get('social/kakao')
-  kakaoLogin(@Res() response: Response) {
+  kakaoLogin(@Query('next') next: string | undefined, @Res() response: Response) {
     this.assertKakaoConfigured();
     const nonce = randomBytes(32).toString('base64url');
     const state = `${nonce}.${this.signKakaoState(nonce)}`;
     response.cookie(KAKAO_STATE_COOKIE_NAME, nonce, KAKAO_STATE_COOKIE_OPTIONS);
+    this.rememberLoginNext(response, next);
 
     // Consent items (nickname, account email) are configured in Kakao Developers,
     // so no `scope` is requested here.
@@ -371,9 +371,7 @@ export class AuthController {
         name: account.profile?.nickname ?? '',
       });
       response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
-      response.redirect(
-        user.onboardingSurvey ? this.frontendUrl('/') : this.frontendUrl('/onboarding/activity'),
-      );
+      response.redirect(this.postLoginUrl(user, request, response));
     } catch (err) {
       console.error('[auth] kakao_login_failed:', err);
       response.redirect(this.frontendUrl('/login?error=kakao_login_failed'));
@@ -474,6 +472,33 @@ export class AuthController {
       signature.length === expected.length &&
       timingSafeEqual(Buffer.from(signature), Buffer.from(expected))
     );
+  }
+
+  private rememberLoginNext(response: Response, next: string | undefined) {
+    const safeNext = sanitizeNextPath(next);
+    if (safeNext) {
+      response.cookie(LOGIN_NEXT_COOKIE_NAME, safeNext, GOOGLE_STATE_COOKIE_OPTIONS);
+    } else {
+      response.clearCookie(LOGIN_NEXT_COOKIE_NAME, { path: '/' });
+    }
+  }
+
+  /** Onboarding first; otherwise return to the page the user came from (`?next=`). */
+  private postLoginUrl(user: { onboardingSurvey?: unknown }, request: Request, response: Response) {
+    const raw = request.headers.cookie
+      ?.split(';')
+      .map((value) => value.trim())
+      .find((value) => value.startsWith(`${LOGIN_NEXT_COOKIE_NAME}=`))
+      ?.slice(LOGIN_NEXT_COOKIE_NAME.length + 1);
+    response.clearCookie(LOGIN_NEXT_COOKIE_NAME, { path: '/' });
+    if (!user.onboardingSurvey) return this.frontendUrl('/onboarding/activity');
+    let next: string | null = null;
+    try {
+      next = sanitizeNextPath(raw && decodeURIComponent(raw));
+    } catch {
+      next = null;
+    }
+    return this.frontendUrl(next ?? '/');
   }
 
   private frontendUrl(path: string) {
