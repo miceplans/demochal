@@ -1,35 +1,47 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import styled from '@emotion/styled';
 import type { Application } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
-import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/biz/BizShell';
+import { BizContent } from '@/components/biz/BizShell';
+import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
+import { ApplicationTable, EVALUATION_LABEL } from './ApplicationTable';
+
+const FILTER_OPTIONS: DropdownOption[] = [
+  { value: '', label: '전체' },
+  ...(['undecided', 'pass', 'fail'] as const).map((value) => ({
+    value,
+    label: EVALUATION_LABEL[value],
+  })),
+];
 
 export function BizApplicationsPage() {
   const [rows, setRows] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [statusFilter, setStatusFilter] = useState<Application['status'] | ''>('');
+  const [keyword, setKeyword] = useState('');
+  const [evaluation, setEvaluation] = useState('');
   const requestVersions = useRef(new Map<string, number>());
-  const listRequestId = useRef(0);
   useEffect(() => {
-    const requestId = ++listRequestId.current;
-    // Loading is an external API synchronization triggered by the filter change.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true);
-    setError(false);
+    let cancelled = false;
     void adApi.applications
-      .listManaged(statusFilter ? { status: statusFilter } : undefined)
+      .listManaged()
       .then((items) => {
-        if (listRequestId.current === requestId) setRows(items);
+        if (!cancelled) setRows(items);
       })
       .catch(() => {
-        if (listRequestId.current === requestId) setError(true);
+        if (!cancelled) setError(true);
       })
       .finally(() => {
-        if (listRequestId.current === requestId) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-  }, [statusFilter]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const update = (id: string, body: Parameters<typeof adApi.applications.update>[1]) => {
     const version = (requestVersions.current.get(id) ?? 0) + 1;
     requestVersions.current.set(id, version);
@@ -44,71 +56,79 @@ export function BizApplicationsPage() {
       )
       .catch(() => setError(true));
   };
+  const count = (predicate: (row: Application) => boolean) => rows.filter(predicate).length;
+  const stats = [
+    { label: '전체 응답 수', value: rows.length },
+    { label: '제출 완료 수', value: count((r) => r.status !== 'pending') },
+    { label: '검토 중', value: count((r) => r.status === 'reviewing') },
+    { label: '선정', value: count((r) => r.status === 'accepted') },
+    { label: '미선정', value: count((r) => r.status === 'rejected') },
+  ];
+  const filtered = useMemo(() => {
+    const term = keyword.trim().toLowerCase();
+    return rows.filter(
+      (row) =>
+        (!evaluation || row.evaluation === evaluation) &&
+        (!term ||
+          row.userId.toLowerCase().includes(term) ||
+          row.teammates.some((name) => name.toLowerCase().includes(term))),
+    );
+  }, [rows, keyword, evaluation]);
+
   return (
-    <BizContent>
-      <SectionTitle>지원서 관리</SectionTitle>
-      <label>
-        상태 필터{' '}
-        <select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value as Application['status'] | '')}
-        >
-          <option value="">전체</option>
-          <option value="pending">대기</option>
-          <option value="submitted">제출</option>
-          <option value="reviewing">검토중</option>
-          <option value="needs_revision">보완 요청</option>
-          <option value="accepted">합격</option>
-          <option value="rejected">불합격</option>
-        </select>
-      </label>
-      {loading && <p>지원서를 불러오는 중입니다.</p>}
-      {error && <p>지원서를 불러오지 못했습니다.</p>}
-      {!loading && !error && rows.length === 0 && <p>접수된 지원서가 없습니다.</p>}
-      {rows.length > 0 && (
-        <TableBox>
-          <THead>
-            <span>지원서</span>
-            <span>상태</span>
-            <span>평가</span>
-            <span>메모</span>
-          </THead>
-          {rows.map((row) => (
-            <TRow key={row.id}>
-              <span>{row.id}</span>
-              <select
-                value={row.status}
-                onChange={(event) =>
-                  update(row.id, {
-                    status: event.target.value as Exclude<Application['status'], 'pending'>,
-                  })
-                }
-              >
-                <option value="submitted">제출</option>
-                <option value="reviewing">검토중</option>
-                <option value="needs_revision">보완 요청</option>
-                <option value="accepted">합격</option>
-                <option value="rejected">불합격</option>
-              </select>
-              <select
-                value={row.evaluation}
-                onChange={(event) =>
-                  update(row.id, { evaluation: event.target.value as Application['evaluation'] })
-                }
-              >
-                <option value="undecided">미정</option>
-                <option value="pass">합격</option>
-                <option value="fail">불합격</option>
-              </select>
-              <input
-                defaultValue={row.managerMemo ?? ''}
-                onBlur={(event) => update(row.id, { managerMemo: event.target.value })}
-                aria-label={`${row.id} 담당자 메모`}
-              />
-            </TRow>
-          ))}
-        </TableBox>
-      )}
+    <BizContent style={{ gap: 48 }}>
+      <PageHeading>지원서 관리</PageHeading>
+      <Stats aria-label="지원 현황 요약">
+        {stats.map((stat) => (
+          <Stat key={stat.label}>
+            <StatLabel>{stat.label}</StatLabel>
+            <StatValue>{stat.value.toLocaleString()}</StatValue>
+          </Stat>
+        ))}
+      </Stats>
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
+        <SectionHeading>팀 지원현황</SectionHeading>
+        <Toolbar>
+          <Search
+            type="search"
+            value={keyword}
+            placeholder="신청자 또는 팀명 검색"
+            aria-label="신청자 또는 팀명 검색"
+            onChange={(event) => setKeyword(event.target.value)}
+          />
+          <div style={{ width: 140 }}>
+            <Dropdown
+              options={FILTER_OPTIONS}
+              value={evaluation}
+              placeholder="평가상태"
+              aria-label="평가상태 필터"
+              size="S"
+              onChange={setEvaluation}
+            />
+          </div>
+        </Toolbar>
+        {loading && <Message>지원서를 불러오는 중입니다.</Message>}
+        {error && <Message role="alert">지원서를 불러오거나 저장하지 못했습니다.</Message>}
+        {!loading && <ApplicationTable rows={filtered} onUpdate={update} />}
+      </section>
     </BizContent>
   );
 }
+
+const PageHeading = styled.h1({ margin: 0, fontSize: 40, fontWeight: 600, color: c.gray900 });
+const Stats = styled.div({ display: 'flex', gap: 24 });
+const Stat = styled.div({ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, padding: 16 });
+const StatLabel = styled.span({ ...textStyle.metaText, color: c.gray700 });
+const StatValue = styled.strong({ fontSize: 24, fontWeight: 700, color: c.gray900 });
+const SectionHeading = styled.h2({ margin: 0, ...textStyle.h1_2 });
+const Toolbar = styled.div({ display: 'flex', justifyContent: 'space-between', gap: 16 });
+const Search = styled.input({
+  width: 300,
+  height: 43,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 12,
+  padding: '0 16px',
+  ...textStyle.metaText,
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const Message = styled.p({ margin: 0, color: c.gray500 });
