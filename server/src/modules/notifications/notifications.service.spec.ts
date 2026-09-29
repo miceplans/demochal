@@ -149,6 +149,22 @@ describe('NotificationsService.create', () => {
       expect(outbox.enqueue).not.toHaveBeenCalled();
     });
 
+    it('skips insert and email when the invite_result setting is off', async () => {
+      const { db, tx } = createDbStub({ id: 'notification-1' }, { invite_result: false });
+      const outbox = { enqueue: vi.fn() };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'team_matching', {
+        teamId: 'team-1',
+        applicantUserId: 'user-2',
+        inviteAccepted: true,
+      });
+
+      expect(result).toBeNull();
+      expect(tx.insert).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
+    });
+
     it.each([
       ['the setting is on', { applicant: true }],
       ['no setting is configured', {}],
