@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Button as BaseButton } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import type { ElementType, ReactNode } from 'react';
 
 const ICON_SOURCES: Record<string, string> = {
@@ -129,27 +130,10 @@ export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   '&:hover': { background: selected ? c.primary : c.gray50 },
   '&:active': { transform: 'scale(0.93)' },
 }));
-export const Tag = styled.span<{ tone?: 'blue' | 'green' | 'red' | 'gray' }>(
-  ({ tone = 'gray' }) => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    ...textStyle.finePrint,
-    lineHeight: 1.25,
-    borderRadius: 4,
-    padding: '4px 8px',
-    background:
-      tone === 'blue'
-        ? c.lightBlue
-        : tone === 'green'
-          ? c.lightGreen
-          : tone === 'red'
-            ? c.lightRed
-            : c.gray100,
-    color:
-      tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
-  }),
-);
+export const Tag = styled(Badge)({
+  ...textStyle.finePrint,
+  lineHeight: 1.25,
+});
 export const DesktopOnly = styled.div({ [mobile]: { display: 'none !important' } });
 export const MobileOnly = styled.div({ display: 'none', [mobile]: { display: 'block' } });
 export const IconButton = styled.button({

@@ -9,6 +9,7 @@ import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { adApi, adError } from '@/lib/ad-api';
+import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -860,10 +861,7 @@ const PublishButton = styled.button({
 });
 
 function toDateInput(value: string | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return value ? toDateKey(new Date(value)) : '';
 }
 
 function isHttpUrl(value: string) {

@@ -10,6 +10,7 @@ import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
 import { requestTossBillingAuth } from '@/lib/payments';
+import { formatDateTimeDot as formatPaidAt } from '@/lib/date';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -17,6 +18,9 @@ import { adApi } from '@/lib/ad-api';
 
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const weekdayLabel = (date: string) => WEEKDAYS[new Date(date).getDay()] ?? date;
+const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
+  <span style={{ width: w, flexShrink: 0 }}>{children}</span>
+);
 
 export function BizBillingPage() {
   const toast = useToast();

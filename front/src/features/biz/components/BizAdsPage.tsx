@@ -18,6 +18,7 @@ import {
 } from '@/components/ads/AdPlacementPreview';
 import { ApiError, type Ad, type AdProduct, type Notification } from '@semochal/api-client';
 import { adApi, adError } from '@/lib/ad-api';
+import { toDateKey } from '@/lib/date';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
@@ -30,14 +31,6 @@ type SelectedAd = {
   period: string;
   product: AdProduct;
 };
-
-function pad2(value: number) {
-  return String(value).padStart(2, '0');
-}
-
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-}
 
 function formatSlash(dateKey: string) {
   const [, month, day] = dateKey.split('-');

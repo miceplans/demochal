@@ -8,6 +8,7 @@ import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
+import { Badge as BaseBadge } from '@/components/ui/Badge';
 
 const BizNavContext = createContext('');
 export function BizNavProvider({ base, children }: { base: string; children: ReactNode }) {
@@ -461,18 +462,4 @@ export const StatBox = styled.div({
 });
 export const StatValue = styled.strong({ fontSize: 28, fontWeight: 700 });
 export const Delta = styled.span({ ...textStyle.metaText, color: c.green });
-export const StatusTag = styled.span<{ tone: 'blue' | 'gray' | 'red' | 'green' }>(({ tone }) => ({
-  ...textStyle.label,
-  padding: '4px 8px',
-  borderRadius: 4,
-  background:
-    tone === 'blue'
-      ? c.lightBlue
-      : tone === 'green'
-        ? c.lightGreen
-        : tone === 'red'
-          ? c.lightRed
-          : c.gray100,
-  color:
-    tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
-}));
+export const StatusTag = styled(BaseBadge)(textStyle.label);

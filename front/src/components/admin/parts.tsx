@@ -5,6 +5,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { Badge as BaseBadge, type BadgeTone } from '@/components/ui/Badge';
 
 /* ---------- Table ---------- */
 
@@ -17,7 +18,7 @@ export type AdminColumn<T> = {
 
 /* ---------- Badge / Buttons ---------- */
 
-export type BadgeTone = 'blue' | 'green' | 'red' | 'gray';
+export type { BadgeTone };
 export function StatCard({
   label,
   value,
@@ -275,26 +276,11 @@ export const MoreLink = styled.a({
   cursor: 'pointer',
 });
 
-export const Badge = styled.span<{ tone: BadgeTone }>(({ tone }) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
+export const Badge = styled(BaseBadge)({
   justifyContent: 'center',
-  gap: 4,
-  padding: '4px 8px',
-  borderRadius: 4,
   whiteSpace: 'nowrap',
   ...textStyle.overline,
-  background:
-    tone === 'blue'
-      ? c.lightBlue
-      : tone === 'green'
-        ? c.lightGreen
-        : tone === 'red'
-          ? c.lightRed
-          : c.gray100,
-  color:
-    tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
-}));
+});
 
 export const AdminInlineNotice = styled.div({
   padding: '24px 0',
