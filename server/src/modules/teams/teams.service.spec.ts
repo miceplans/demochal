@@ -598,6 +598,7 @@ describe('TeamsService', () => {
     expect(notifications.create).toHaveBeenCalledWith(leader.id, 'team_matching', {
       teamId: 'team-1',
       applicantUserId: applicant.id,
+      inviteAccepted: true,
     });
   });
 

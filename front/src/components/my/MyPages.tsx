@@ -1067,6 +1067,8 @@ function describeNotification(type: string, payload: Record<string, unknown>) {
     // (NotificationsService.settingsKeyFor와 동일).
     if (typeof payload.invitedUserId === 'string') return '팀에 초대가 왔어요';
     if (typeof payload.applicantUserId === 'string') {
+      // 초대 수락은 팀장에게 가는 별도 알림 — 일반 지원과 문구를 구분한다.
+      if (payload.inviteAccepted === true) return '초대가 수락했어요';
       // 목록 payload로는 팀명을 조회할 수 없어 generic 문구를 쓴다.
       return '새 지원자가 팀에 지원했어요';
     }

@@ -307,11 +307,13 @@ export class TeamsService {
       .returning();
 
     if (isInviteResponse) {
-      // 초대 수락 시에만 리더에게 새 멤버 유입을 알린다(거절은 지원자 관리 화면에서 확인).
+      // 초대 수락 시에만 리더에게 알린다(거절은 지원자 관리 화면에서 확인).
+      // inviteAccepted 마커로 '새 지원자' 알림과 설정 키를 분리한다.
       if (dto.status === 'accepted') {
         await this.notificationsService.create(team.leaderUserId, 'team_matching', {
           teamId,
           applicantUserId: member.userId,
+          inviteAccepted: true,
         });
       }
     } else {

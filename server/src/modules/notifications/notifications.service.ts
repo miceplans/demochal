@@ -57,10 +57,12 @@ export class NotificationsService {
   private settingsKeyFor(
     type: string,
     payload: Record<string, unknown>,
-  ): 'applicant' | 'result' | 'invite' | undefined {
+  ): 'applicant' | 'result' | 'invite' | 'invite_result' | undefined {
     if (type !== 'team_matching') return undefined;
     if (typeof payload.invitedUserId === 'string') return 'invite';
-    if (typeof payload.applicantUserId === 'string') return 'applicant';
+    // 초대 수락 알림은 팀장에게 가는 별도 키 — '새 지원자'와 설정을 분리한다.
+    if (typeof payload.applicantUserId === 'string')
+      return payload.inviteAccepted === true ? 'invite_result' : 'applicant';
     if ('status' in payload) return 'result';
     return undefined;
   }
