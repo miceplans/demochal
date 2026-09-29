@@ -109,27 +109,27 @@ export function LoginPage({ next = null }: { next?: string | null }) {
   );
 }
 const Survey = styled.div({
-  width: 600,
+  width: 480,
   maxWidth: 'calc(100% - 32px)',
   margin: '0 auto',
-  padding: '80px 0',
-  minHeight: 676,
-  [mobile]: { padding: '44px 0 110px', minHeight: 'calc(100dvh - 64px)' },
+  padding: '56px 0',
+  minHeight: 560,
+  [mobile]: { padding: '32px 0 96px', minHeight: 'calc(100dvh - 64px)' },
 });
 const Choices = styled(Wrap)({
   gap: 8,
-  '& button': { borderRadius: 999, padding: '8px 14px', fontSize: 12 },
+  '& button': { borderRadius: 999, padding: '5px 10px', fontSize: 11 },
   '& button[aria-pressed="true"]': { fontWeight: 600 },
   [mobile]: {
-    gap: 10,
-    '& button': { padding: '13px 18px', fontSize: textStyle.mCardTitle.fontSize },
+    gap: 6,
+    '& button': { padding: '7px 12px', fontSize: 12 },
   },
 });
 const CheckGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  columnGap: 30,
-  rowGap: 16,
+  columnGap: 24,
+  rowGap: 12,
   width: '100%',
   [mobile]: { gridTemplateColumns: '1fr', rowGap: 12 },
 });
@@ -143,25 +143,26 @@ const CheckOption = styled.button({
   cursor: 'pointer',
   textAlign: 'left',
   ...textStyle.mBodyDetail,
+  fontSize: 12,
   color: c.gray700,
-  [mobile]: { padding: '13px 0', gap: 12, ...textStyle.mListText },
+  [mobile]: { padding: '8px 0', gap: 8, ...textStyle.mBodyDetail },
 });
 const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 16,
-  height: 16,
+  width: 14,
+  height: 14,
   flexShrink: 0,
   borderRadius: 3,
   border: selected ? 0 : `0.5px solid ${c.gray100}`,
   background: selected ? c.primary : c.white,
   [mobile]: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
     border: selected ? 0 : `1px solid ${c.gray100}`,
-    '& img': { width: '14px !important', height: '14px !important' },
+    '& img': { width: '11px !important', height: '11px !important' },
   },
 }));
 const ActivityDropdown = styled.div({
@@ -171,7 +172,7 @@ const ActivityDropdown = styled.div({
   },
 });
 const Next = styled.div({
-  marginTop: 40,
+  marginTop: 32,
   display: 'flex',
   justifyContent: 'flex-end',
   [mobile]: {
@@ -270,23 +271,23 @@ export function OnboardingPage({ step }: { step: string }) {
           aria-valuemax={4}
           aria-valuenow={index + 1}
           style={{
-            height: 6,
+            height: 4,
             background: c.lightBlue,
             borderRadius: 30,
-            marginTop: 16,
-            marginBottom: 64,
+            marginTop: 12,
+            marginBottom: 40,
           }}
         >
           <div
             style={{
-              height: 6,
+              height: 4,
               width: `${(index + 1) * 25}%`,
               background: c.primary,
               borderRadius: 30,
             }}
           />
         </div>
-        <h1 style={{ ...textStyle.h2, marginBottom: 20 }}>{titles[index]}</h1>
+        <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
         {index === 0 ? (
           <ActivityDropdown>
             <Dropdown
@@ -316,7 +317,7 @@ export function OnboardingPage({ step }: { step: string }) {
               >
                 <CheckBox selected={selected.includes(x)}>
                   {selected.includes(x) && (
-                    <Icon src="/assets/icons/check.svg" width={11} height={11} alt="" />
+                    <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
                   )}
                 </CheckBox>
                 {x}
