@@ -9,7 +9,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
-import { and, eq, ilike, isNull, or } from 'drizzle-orm';
+import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -61,13 +61,14 @@ export class AuthService {
 
   async register(dto: RegisterDto) {
     const { email, password, name, username } = dto;
+    const normalizedEmail = email.toLowerCase();
     const [existing] = await this.db
       .select({ id: users.id })
       .from(users)
       .where(
         username
-          ? or(eq(users.email, email), eq(users.username, username))
-          : eq(users.email, email),
+          ? or(eq(sql`lower(${users.email})`, normalizedEmail), eq(users.username, username))
+          : eq(sql`lower(${users.email})`, normalizedEmail),
       )
       .limit(1);
     // One message for both collisions so signup can't be used to tell which of an
@@ -82,7 +83,12 @@ export class AuthService {
     try {
       user = await this.db.transaction(async (tx) => {
         const emailVerifiedAt = dto.emailVerificationId
-          ? await this.contactVerifications.consume(tx, dto.emailVerificationId, 'email', email)
+          ? await this.contactVerifications.consume(
+              tx,
+              dto.emailVerificationId,
+              'email',
+              normalizedEmail,
+            )
           : null;
         // TODO: 발송 relay가 붙으면 기업 가입에서 휴대폰/이메일 인증을 필수로 전환한다.
         const phoneVerifiedAt =
@@ -97,7 +103,7 @@ export class AuthService {
         const [created] = await tx
           .insert(users)
           .values({
-            email,
+            email: normalizedEmail,
             name,
             passwordHash,
             username: username ?? null,
@@ -132,7 +138,7 @@ export class AuthService {
       .from(users)
       .where(
         identifier.includes('@')
-          ? eq(users.email, identifier)
+          ? eq(sql`lower(${users.email})`, identifier.toLowerCase())
           : eq(users.username, identifier.toLowerCase()),
       )
       .limit(1);
@@ -277,6 +283,7 @@ export class AuthService {
 
   /** Finds or creates the local account for a verified Google identity. */
   async loginWithGoogle(profile: { subject: string; email: string; name: string }) {
+    const normalizedEmail = profile.email.toLowerCase();
     const [byGoogleSubject] = await this.db
       .select()
       .from(users)
@@ -288,7 +295,7 @@ export class AuthService {
       const [byEmail] = await this.db
         .select()
         .from(users)
-        .where(eq(users.email, profile.email))
+        .where(eq(sql`lower(${users.email})`, normalizedEmail))
         .limit(1);
       if (byEmail) {
         // A verified Google email may be safely associated with the same local account.
@@ -302,15 +309,40 @@ export class AuthService {
           randomBytes(32).toString('base64url'),
           PASSWORD_HASH_ROUNDS,
         );
-        [user] = await this.db
-          .insert(users)
-          .values({
-            email: profile.email,
-            name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Google 사용자',
-            passwordHash,
-            googleSubject: profile.subject,
-          })
-          .returning();
+        try {
+          [user] = await this.db
+            .insert(users)
+            .values({
+              email: normalizedEmail,
+              name: profile.name.slice(0, 100) || profile.email.split('@')[0] || 'Google 사용자',
+              passwordHash,
+              googleSubject: profile.subject,
+            })
+            .returning();
+        } catch (err) {
+          // A concurrent callback for the same identity may have inserted first.
+          if (!isUniqueViolation(err)) throw err;
+          [user] = await this.db
+            .select()
+            .from(users)
+            .where(eq(users.googleSubject, profile.subject))
+            .limit(1);
+          if (!user) {
+            // The collision was on the email (e.g. a concurrent email signup): link that account.
+            const [raced] = await this.db
+              .select()
+              .from(users)
+              .where(eq(sql`lower(${users.email})`, normalizedEmail))
+              .limit(1);
+            if (raced) {
+              [user] = await this.db
+                .update(users)
+                .set({ googleSubject: profile.subject })
+                .where(eq(users.id, raced.id))
+                .returning();
+            }
+          }
+        }
       }
     }
     if (!user) throw new Error('Failed to create or link Google user');

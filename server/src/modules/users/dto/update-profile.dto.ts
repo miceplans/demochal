@@ -1,5 +1,12 @@
-import { Type } from 'class-transformer';
-import { IsArray, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import {
+  IsArray,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+  ValidateNested,
+} from 'class-validator';
 
 export class ExternalLinkDto {
   @IsString()
@@ -31,7 +38,9 @@ export class AwardRecordDto {
 
 export class UpdateProfileDto {
   @IsOptional()
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
   @IsString()
+  @MinLength(1)
   @MaxLength(100)
   name?: string;
 
