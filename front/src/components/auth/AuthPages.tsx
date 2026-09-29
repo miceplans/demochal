@@ -55,7 +55,7 @@ export function LoginPage() {
   };
 
   return (
-    <UserShell compact navigation={false} footer={false}>
+    <UserShell compact navigation={false} footer={false} hideMobileHeader>
       <Login>
         <Stack gap={4} style={{ alignItems: 'center' }}>
           <Logo dot />
@@ -206,7 +206,7 @@ export function OnboardingPage({ step }: { step: string }) {
     // 네트워크/서버 오류는 로그인 만료가 아니므로 설문 화면에 머물며 다시 확인할 수 있게 한다.
     // (오류 토스트는 전역 QueryCache가 띄운다.)
     return (
-      <UserShell compact navigation={false} footer={false}>
+      <UserShell compact navigation={false} footer={false} hideMobileHeader>
         <Survey>
           <Logo dot />
           <Stack gap={16} style={{ marginTop: 64, alignItems: 'flex-start' }}>
@@ -220,7 +220,7 @@ export function OnboardingPage({ step }: { step: string }) {
     );
   }
   return (
-    <UserShell compact navigation={false} footer={false}>
+    <UserShell compact navigation={false} footer={false} hideMobileHeader>
       <Survey>
         <Logo dot />
         <div
