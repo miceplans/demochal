@@ -16,8 +16,10 @@ import {
   ilike,
   inArray,
   lt,
+  lte,
   ne,
   or,
+  sql,
   type SQL,
 } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -48,10 +50,24 @@ export interface ListChallengesOptions {
   cursor?: string;
   limit: number;
   q?: string;
+  /** 콤마로 구분한 복수 값도 받는다(예: `IT/SW,디자인`) — 단일 값은 기존과 동일하게 정확 일치. */
   category?: string;
+  /** 콤마 구분 대상 목록 — 하나라도 겹치는 챌린지를 반환(배열 overlap). */
+  targets?: string;
+  /** 콤마 구분 주최기관 유형 목록 — 정확 일치(OR). */
+  organizerType?: string;
+  /** 총상금(만원) 하한/상한 — 상금이 없는(null) 챌린지는 범위 지정 시 제외된다. */
+  prizeMin?: number;
+  prizeMax?: number;
   includeClosed?: boolean;
   sort?: string;
 }
+
+const splitList = (value?: string) =>
+  (value ?? '')
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
 
 type ParsedCursor =
   | { kind: 'latest'; createdAt: Date; id: string | null }
@@ -80,12 +96,38 @@ export class ChallengesService {
    * 구버전 단일 createdAt ISO 커서도 계속 받는다.
    */
   async list(options: ListChallengesOptions) {
-    const { cursor, limit, q, category, includeClosed = true, sort: requestedSort } = options;
+    const {
+      cursor,
+      limit,
+      q,
+      category,
+      targets,
+      organizerType,
+      prizeMin,
+      prizeMax,
+      includeClosed = true,
+      sort: requestedSort,
+    } = options;
     const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
 
     const conditions = [ne(challenges.status, 'draft')];
     if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
-    if (category) conditions.push(eq(challenges.category, category));
+    const categoryList = splitList(category);
+    if (categoryList.length) conditions.push(inArray(challenges.category, categoryList));
+    const targetList = splitList(targets);
+    if (targetList.length) {
+      const targetArray = sql`ARRAY[${sql.join(
+        targetList.map((t) => sql`${t}`),
+        sql`, `,
+      )}]::text[]`;
+      conditions.push(sql`${challenges.targets} && ${targetArray}`);
+    }
+    const organizerTypeList = splitList(organizerType);
+    if (organizerTypeList.length) {
+      conditions.push(inArray(challenges.organizerType, organizerTypeList));
+    }
+    if (prizeMin !== undefined) conditions.push(gte(challenges.prizeAmount, prizeMin));
+    if (prizeMax !== undefined) conditions.push(lte(challenges.prizeAmount, prizeMax));
     if (q) {
       conditions.push(or(ilike(challenges.title, `%${q}%`), ilike(challenges.category, `%${q}%`))!);
     }
@@ -237,8 +279,10 @@ export class ChallengesService {
         startDate: new Date(dto.startDate),
         endDate: new Date(dto.endDate),
         category: dto.category,
+        targets: dto.targets,
+        organizerType: dto.organizerType,
+        prizeAmount: dto.prizeAmount,
         recruitMethod,
-        // seMOchall(내부 신청폼) 공고에는 잘못된 외부 링크가 남지 않도록 저장하지 않는다.
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
@@ -277,8 +321,6 @@ export class ChallengesService {
       throw new BadRequestException('endDate must not be before startDate');
     }
 
-    // recruitMethod는 수정할 수 없으므로, 기존 공고가 external일 때만 recruitUrl을
-    // 반영한다 — seMOchall 공고에 보내진 값은 조용히 무시한다.
     const patch = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.description !== undefined && { description: dto.description }),
@@ -289,6 +331,9 @@ export class ChallengesService {
       ...(dto.category !== undefined && { category: dto.category }),
       ...(dto.recruitUrl !== undefined &&
         current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),
+      ...(dto.targets !== undefined && { targets: dto.targets }),
+      ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
+      ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 

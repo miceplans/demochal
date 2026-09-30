@@ -1,4 +1,6 @@
 import {
+  ArrayUnique,
+  IsArray,
   IsDateString,
   IsIn,
   IsInt,
@@ -10,6 +12,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
+import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
 
 export class CreateChallengeDto {
   @IsUUID()
@@ -46,10 +49,25 @@ export class CreateChallengeDto {
   @IsIn(['seMOchall', 'external'])
   recruitMethod?: 'seMOchall' | 'external';
 
-  // recruitMethod가 external(기본값 포함)이면 필수 — 서비스 레벨에서 검사한다(recruitMethod
-  // 미지정 시 기본값으로 external이 적용되므로 DTO만으로는 상호 검증이 어렵다).
+  // recruitMethod가 external(기본값 포함)이면 필수 — 서비스 레벨에서 검사한다.
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   @MaxLength(2048)
   recruitUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsIn(CHALLENGE_TARGETS, { each: true })
+  targets?: string[];
+
+  @IsOptional()
+  @IsIn(CHALLENGE_ORGANIZER_TYPES)
+  organizerType?: string;
+
+  // 총상금(만원)
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  prizeAmount?: number;
 }

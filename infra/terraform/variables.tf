@@ -49,7 +49,7 @@ variable "worker_image" {
 }
 
 variable "frontend_origin" {
-  description = "HTTPS browser origin allowed to send credentialed requests to the API."
+  description = "HTTPS browser origin(s) allowed to call the API and PUT to the S3 upload bucket. Comma-separate multiple origins."
   type        = string
 }
 

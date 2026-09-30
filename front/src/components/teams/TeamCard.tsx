@@ -48,7 +48,7 @@ export function TeamCard({ team }: { team: Team }) {
 
 const Card = styled.article({
   background: c.white,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   overflow: 'hidden',
   minWidth: 0,
@@ -106,13 +106,13 @@ const PosterChallenge = styled.span({
 const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
   ...textStyle.mBadgeText,
   lineHeight: 'normal',
-  background: filled ? c.lightBlue : c.gray100,
-  color: filled ? c.primary : c.gray500,
-  border: filled ? 'none' : `1px solid ${c.gray100}`,
+  background: filled ? c.lightGreen : c.gray100,
+  color: filled ? c.green : c.gray500,
+  border: filled ? 'none' : `0.5px solid ${c.gray200}`,
   [mobile]: { padding: '4px 7px' },
 }));
 
-const Challenge = styled(Muted)({ color: c.gray700, [mobile]: textStyle.mSubText });
+const Challenge = styled(Muted)({ color: c.gray500, [mobile]: textStyle.mSubText });
 
 const Members = styled(Muted)({
   overflow: 'hidden',

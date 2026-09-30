@@ -16,8 +16,10 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ChallengeOrganizerType } from './challengeOrganizerType';
 import type { ChallengeRecruitMethod } from './challengeRecruitMethod';
 import type { ChallengeStatus } from './challengeStatus';
+import type { ChallengeTargetsItem } from './challengeTargetsItem';
 
 export interface Challenge {
   id?: string;
@@ -35,6 +37,21 @@ export interface Challenge {
   createdAt?: string;
   /** implemented — 생성 시 저장, 유사 챌린지 추천에 사용 */
   category?: string;
+  /**
+   * 참가 대상(복수). 탐색 필터용
+   * @nullable
+   */
+  targets?: ChallengeTargetsItem[] | null;
+  /**
+   * 주최기관 유형. 탐색 필터용
+   * @nullable
+   */
+  organizerType?: ChallengeOrganizerType;
+  /**
+   * 총상금(만원). 탐색 필터용
+   * @nullable
+   */
+  prizeAmount?: number | null;
   posterFileId?: string;
   organizer?: string;
   /** 지원 자격 */

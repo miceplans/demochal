@@ -4,7 +4,6 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  S3Client,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -18,6 +17,7 @@ import {
   type PresignedUploadRequest,
 } from './dto/presigned-upload-request.dto.js';
 import { buildPublicFileUrl } from './public-file-url.js';
+import { createS3Client } from './s3-client.js';
 
 const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/jpeg': 'jpg',
@@ -47,7 +47,7 @@ function startsWithAt(bytes: Uint8Array, offset: number, ...signature: number[])
 
 @Injectable()
 export class FilesService {
-  private readonly s3 = new S3Client({ region: env.awsRegion });
+  private readonly s3 = createS3Client();
 
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 

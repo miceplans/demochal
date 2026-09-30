@@ -105,13 +105,23 @@ process.on('unhandledRejection', (err) => {
   shutdown(1);
 });
 
+// Runs a one-shot step before the dev servers start; any failure aborts startup.
+function runOnce(name, cmd, args, next) {
+  run(name, cmd, args, (code, signal) => {
+    if (signal || code !== 0) {
+      console.error(`[${name}] failed (code ${code ?? 'null'}, signal ${signal ?? 'none'})`);
+      shutdown(code ?? 1);
+      return;
+    }
+    next();
+  });
+}
+
 // 1) one-shot build (replaces the old `predev` hook)
-run('api-client build', 'pnpm', ['--filter', '@semochal/api-client', 'build'], (code, signal) => {
-  if (signal || code !== 0) {
-    console.error(`[api-client build] failed (code ${code ?? 'null'}, signal ${signal ?? 'none'})`);
-    shutdown(code ?? 1);
-    return;
-  }
-  // 2) start dev servers
-  for (const task of TASKS) startTask(task);
+runOnce('api-client build', 'pnpm', ['--filter', '@semochal/api-client', 'build'], () => {
+  // 2) DB migrations — fail fast rather than serving against a stale local schema
+  runOnce('db migrate', 'pnpm', ['--filter', '@semochal/server', 'run', 'db:migrate'], () => {
+    // 3) start dev servers
+    for (const task of TASKS) startTask(task);
+  });
 });

@@ -156,9 +156,16 @@
       "breakpoints": true
     },
     {
+      "idx": 23,
+      "version": "7",
+      "when": 1790670000000,
+      "tag": "0023_challenge_filter_meta",
+      "breakpoints": true
+    },
+    {
       "idx": 24,
       "version": "7",
-      "when": 1790661000000,
+      "when": 1790671000000,
       "tag": "0024_add_challenges_recruit_url",
       "breakpoints": true
     }

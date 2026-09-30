@@ -11,12 +11,12 @@ import {
   OutlineButton,
   StatBox,
   StatValue,
-  TableBox,
-  THead,
-  TRow,
+  Delta,
   useBizHref,
 } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
+import { ApplicationTable, type ApplicationPatch } from './ApplicationTable';
 
 export function BizPostingManagePage() {
   const { id } = useParams<{ id: string }>();
@@ -53,15 +53,9 @@ export function BizPostingManagePage() {
     void load();
   }, [load]);
 
-  async function updateApplication(
-    application: Application,
-    field: 'status' | 'evaluation',
-    value: string,
-  ) {
+  async function updateApplication(application: Application, patch: ApplicationPatch) {
     try {
-      const updated = await adApi.applications.update(application.id, {
-        [field]: value,
-      } as Parameters<typeof adApi.applications.update>[1]);
+      const updated = await adApi.applications.update(application.id, patch);
       setApplications((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
     } catch (cause) {
       setError(adError(cause));
@@ -92,18 +86,32 @@ export function BizPostingManagePage() {
       </BizContent>
     );
 
+  const delta = (value?: number) => `${(value ?? 0) >= 0 ? '+' : ''}${value ?? 0}% 전주 대비`;
   return (
     <BizContent>
-      <TopRow>
-        <div>
-          <h1>{challenge.title}</h1>
-          <p>
-            {challenge.category || '카테고리 없음'} · {formatDate(challenge.startDate)} ~{' '}
-            {formatDate(challenge.endDate)}
-          </p>
-          <Status>{challenge.status}</Status>
-        </div>
-        <ActionStack>
+      <Top>
+        <Main>
+          <Thumb aria-hidden />
+          <Info>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <PostingTitle>{challenge.title}</PostingTitle>
+              <PostingOrg>{challenge.organizer ?? challenge.category ?? ''}</PostingOrg>
+            </div>
+            <Facts>
+              <Fact>
+                <strong>자격 / 대상</strong>
+                <span>{challenge.eligibility ?? '—'}</span>
+              </Fact>
+              <Fact>
+                <strong>접수기간</strong>
+                <span>
+                  {formatDate(challenge.startDate)} ~ {formatDate(challenge.endDate)}
+                </span>
+              </Fact>
+            </Facts>
+          </Info>
+        </Main>
+        <Side>
           <PrimaryButton onClick={() => router.push(hrefOf(`/postings/${challenge.id}/form`))}>
             신청폼 만들기
           </PrimaryButton>
@@ -111,72 +119,28 @@ export function BizPostingManagePage() {
             type="button"
             onClick={() => router.push(hrefOf(`/postings/${challenge.id}/edit`))}
           >
-            공고 수정
+            챌린지 편집하기
           </OutlineButton>
-        </ActionStack>
-      </TopRow>
+          <SideStat>
+            <StatLabel>클릭수</StatLabel>
+            <StatValue>{(stats?.clicks.value ?? 0).toLocaleString()}번</StatValue>
+            <Delta>{delta(stats?.clicks.deltaPercent)}</Delta>
+          </SideStat>
+          <SideStat>
+            <StatLabel>북마크</StatLabel>
+            <StatValue>{(stats?.bookmarks.value ?? 0).toLocaleString()}개</StatValue>
+            <Delta>{delta(stats?.bookmarks.deltaPercent)}</Delta>
+          </SideStat>
+        </Side>
+      </Top>
       {error && <Error role="alert">{error}</Error>}
-      <Stats>
-        <StatBox>
-          <span>클릭수</span>
-          <StatValue>{stats?.clicks.value ?? 0}</StatValue>
-        </StatBox>
-        <StatBox>
-          <span>북마크</span>
-          <StatValue>{stats?.bookmarks.value ?? 0}</StatValue>
-        </StatBox>
-        <StatBox>
-          <span>모집 인원</span>
-          <StatValue>{challenge.capacity}</StatValue>
-        </StatBox>
-      </Stats>
-      <TableBox>
-        <THead>
-          <span>지원자 ID</span>
-          <span>역할 · 상태 · 평가</span>
-        </THead>
-        {applications.length === 0 ? (
-          <Empty>아직 지원자가 없습니다.</Empty>
-        ) : (
-          applications.map((application) => (
-            <TRow key={application.id}>
-              <span>{application.userId}</span>
-              <Controls>
-                <span>{application.role || '역할 미지정'}</span>
-                <select
-                  value={application.status}
-                  onChange={(e) => void updateApplication(application, 'status', e.target.value)}
-                  aria-label="지원 상태"
-                >
-                  <option value="pending" disabled>
-                    pending
-                  </option>
-                  {['submitted', 'reviewing', 'needs_revision', 'accepted', 'rejected'].map(
-                    (value) => (
-                      <option key={value} value={value}>
-                        {value}
-                      </option>
-                    ),
-                  )}
-                </select>
-                <select
-                  value={application.evaluation}
-                  onChange={(e) =>
-                    void updateApplication(application, 'evaluation', e.target.value)
-                  }
-                  aria-label="평가 상태"
-                >
-                  {['undecided', 'pass', 'fail'].map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </Controls>
-            </TRow>
-          ))
-        )}
-      </TableBox>
+      <ApplicationTable
+        rows={applications}
+        onUpdate={(applicationId, patch) => {
+          const target = applications.find((row) => row.id === applicationId);
+          if (target) void updateApplication(target, patch);
+        }}
+      />
     </BizContent>
   );
 }
@@ -184,43 +148,39 @@ export function BizPostingManagePage() {
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(new Date(value));
 }
-const TopRow = styled.div({
+const Top = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
+const Main = styled.div({
+  flex: 1,
+  minWidth: 0,
   display: 'flex',
-  justifyContent: 'space-between',
+  flexDirection: 'column',
   gap: 24,
-  alignItems: 'flex-start',
-  marginBottom: 28,
-  '& h1': { margin: 0, fontSize: 28 },
-  '& p': { color: c.gray700 },
 });
-const ActionStack = styled.div({ display: 'flex', gap: 8, flexShrink: 0 });
-const Status = styled.span({
-  display: 'inline-block',
-  color: c.primary,
-  background: c.lightBlue,
-  borderRadius: 999,
-  padding: '5px 10px',
-  fontSize: 12,
-});
-const Stats = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(3, 1fr)',
-  gap: 12,
-  marginBottom: 28,
-});
-const Controls = styled.span({
+const Thumb = styled.div({ height: 247, borderRadius: 18, background: c.gray100 });
+const Info = styled.div({ display: 'flex', justifyContent: 'space-between', gap: 24 });
+const PostingTitle = styled.h1({ margin: 0, fontSize: 22, fontWeight: 700, color: c.gray900 });
+const PostingOrg = styled.span({ ...textStyle.body, color: c.gray700 });
+const Facts = styled.div({
   display: 'flex',
-  gap: 10,
-  alignItems: 'center',
-  '& select': {
-    minWidth: 120,
-    border: `1px solid ${c.gray300}`,
-    borderRadius: 6,
-    padding: '6px 8px',
-    background: c.white,
-  },
+  flexDirection: 'column',
+  gap: 8,
+  ...textStyle.finePrint,
 });
-const Empty = styled.p({ padding: 24, color: c.gray700, textAlign: 'center' });
+const Fact = styled.div({
+  display: 'flex',
+  gap: 9,
+  '& strong': { color: c.gray900, fontWeight: 600 },
+  '& span': { color: c.gray700 },
+});
+const Side = styled.div({
+  width: 269,
+  flexShrink: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+});
+const SideStat = styled(StatBox)({ height: 148, marginTop: 8, borderRadius: 12 });
+const StatLabel = styled.span({ ...textStyle.metaText, color: c.gray700 });
 const Message = styled.div({
   padding: 40,
   textAlign: 'center',

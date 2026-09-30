@@ -1,6 +1,7 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -25,7 +26,6 @@ function XIcon({ size = 16 }: { size?: number }) {
 }
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
-import { recentPosting } from '@/data/biz-design';
 
 type QuestionType = 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
 type Question = {
@@ -78,8 +78,8 @@ const TitleInput = styled.input({
   border: 0,
   outline: 'none',
   width: '100%',
-  fontSize: 32,
-  fontWeight: 700,
+  fontSize: 40,
+  fontWeight: 600,
   color: c.gray900,
   '&::placeholder': { color: c.gray300 },
 });
@@ -116,27 +116,29 @@ const QuestionCard = styled.div({
   gap: 20,
 });
 const QuestionHeader = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
-const NumberBadge = styled.span({
+const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   flexShrink: 0,
   width: 30,
   height: 30,
   borderRadius: '50%',
   border: `2px solid ${c.primary}`,
-  color: c.primary,
+  background: active ? c.primary : c.white,
+  color: active ? c.white : c.primary,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 700,
-  fontSize: 14,
-});
+  fontWeight: 600,
+  fontSize: 20,
+}));
 const QuestionTitleInput = styled.input({
   flex: 1,
   minWidth: 0,
   border: 0,
   outline: 'none',
-  ...textStyle.h2_2,
-  color: c.gray900,
-  '&::placeholder': { color: c.gray900 },
+  fontSize: 24,
+  fontWeight: 600,
+  color: c.gray500,
+  '&::placeholder': { color: c.gray500 },
 });
 
 const OptionsList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
@@ -221,6 +223,12 @@ const ToolButton = styled.button({
   '&:disabled': { opacity: 0.35, cursor: 'not-allowed' },
 });
 
+const formatMonthDay = (iso?: string) => {
+  if (!iso) return '';
+  const [, month, day] = iso.slice(0, 10).split('-');
+  return `${month}.${day}`;
+};
+
 let questionSeq = 1;
 const blankQuestion = (type: QuestionType = 'radio'): Question => ({
   id: `q-${questionSeq++}`,
@@ -235,9 +243,21 @@ export function BizApplicationFormPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
 
-  const [title, setTitle] = useState(`${recentPosting.title} 신청서`);
-  const [meta, setMeta] = useState(`${recentPosting.org} · 접수 ${recentPosting.period}`);
+  const { id } = useParams<{ id: string }>();
+  const challengeQuery = generated.useGetChallenge(id, { query: { enabled: Boolean(id) } });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const [titleDraft, setTitleDraft] = useState<string | null>(null);
+  const [metaDraft, setMetaDraft] = useState<string | null>(null);
+  const title = titleDraft ?? (challenge?.title ? `${challenge.title} 신청서` : '');
+  const setTitle = setTitleDraft;
+  const meta =
+    metaDraft ??
+    (challenge
+      ? `${challenge.organizer ?? ''} · 접수 ${formatMonthDay(challenge.startDate)} - ${formatMonthDay(challenge.endDate)}`
+      : '');
+  const setMeta = setMetaDraft;
   const [questions, setQuestions] = useState<Question[]>(() => [blankQuestion()]);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const addQuestion = (type: QuestionType) => {
     setQuestions((qs) => [...qs, blankQuestion(type)]);
@@ -288,8 +308,9 @@ export function BizApplicationFormPage() {
       toast.error('모든 질문의 내용을 입력해주세요');
       return;
     }
+    // TODO: 신청서(질문) 저장/게시 API가 생기면 questions를 서버에 저장한다 (현재 openapi에 엔드포인트 없음).
     toast.success('신청서가 게시되었습니다');
-    router.push(hrefOf(`/postings/${recentPosting.id}`));
+    router.push(hrefOf(`/postings/${id}`));
   };
 
   return (
@@ -326,9 +347,12 @@ export function BizApplicationFormPage() {
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
-                <NumberBadge aria-hidden>{qi + 1}</NumberBadge>
+                <NumberBadge aria-hidden active={q.id === activeId}>
+                  {qi + 1}
+                </NumberBadge>
                 <QuestionTitleInput
                   value={q.title}
+                  onFocus={() => setActiveId(q.id)}
                   onChange={(e) => updateQuestion(q.id, { title: e.target.value })}
                   placeholder="질문을 작성해주세요."
                   aria-label={`질문 ${qi + 1} 내용`}

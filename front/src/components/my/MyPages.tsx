@@ -1036,22 +1036,70 @@ export function TeamApplicantsPage() {
   );
 }
 
+const NotificationContent = styled(Content)({
+  width: 'min(720px, calc(100% - 48px))',
+  padding: '32px 0',
+  [mobile]: { width: '100%', padding: '24px 16px' },
+});
+const NotificationTitle = styled.h1({
+  margin: 0,
+  textAlign: 'center',
+  fontSize: 22,
+  fontWeight: 700,
+  color: c.gray900,
+});
+const NotificationTabs = styled.div({
+  display: 'flex',
+  borderBottom: `0.5px solid ${c.gray100}`,
+});
+const NotificationTabButton = styled.button({
+  flex: 1,
+  minWidth: 0,
+  height: 40,
+  border: 0,
+  borderBottom: '2px solid transparent',
+  background: 'transparent',
+  fontFamily: 'inherit',
+  fontSize: 15,
+  color: c.gray700,
+  cursor: 'pointer',
+  '&[aria-pressed="true"]': {
+    borderBottomColor: c.primary,
+    color: c.primary,
+    fontSize: 14,
+    fontWeight: 600,
+  },
+});
 const NotificationList = styled.div({
   display: 'flex',
   flexDirection: 'column',
-  gap: 0,
-  borderTop: `1px solid ${c.gray100}`,
 });
 const NotificationItem = styled.div({
-  padding: '18px 8px',
-  borderBottom: `1px solid ${c.gray100}`,
-  borderRadius: 6,
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '16px 0',
+  borderBottom: `0.5px solid ${c.gray100}`,
   cursor: 'pointer',
-  transition: 'background 0.15s ease',
+  '&:last-of-type': { borderBottom: 0 },
   '&:hover': { background: c.gray50 },
-  '&:active': { background: c.gray100 },
-  '&[data-unread] h2': { fontWeight: 700 },
-  '&:not([data-unread])': { opacity: 0.7 },
+  '&[data-unread] h2': { fontWeight: 600, color: c.gray900 },
+  '&:not([data-unread]) h2': { fontWeight: 400, color: c.gray500 },
+});
+const NotificationDot = styled.span({
+  flexShrink: 0,
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: c.lightBlue,
+  '[data-unread] > &': { background: c.primary },
+});
+const NotificationBody = styled.div({
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
 });
 // 서버는 team_matching(팀 지원·결과)과 verification.result(사업자 인증 결과) 알림만 생성한다.
 // 탭도 그 두 유형으로만 구성하고, 매핑되지 않은 유형은 '전체'에서만 보인다.
@@ -1128,24 +1176,22 @@ export function NotificationsPage() {
   };
   return (
     <UserShell title="알림">
-      <Content>
-        <Stack gap={20}>
-          <DesktopOnly>
-            <Title>알림</Title>
-          </DesktopOnly>
-          <Row style={{ justifyContent: 'space-between' }}>
-            <Row>
-              {notificationTabs.map((x) => (
-                <Chip
-                  key={x}
-                  selected={x === tab}
-                  aria-pressed={x === tab}
-                  onClick={() => setTab(x)}
-                >
-                  {x}
-                </Chip>
-              ))}
-            </Row>
+      <NotificationContent>
+        <Stack gap={24}>
+          <NotificationTitle>알림</NotificationTitle>
+          <NotificationTabs>
+            {notificationTabs.map((x) => (
+              <NotificationTabButton
+                key={x}
+                type="button"
+                aria-pressed={x === tab}
+                onClick={() => setTab(x)}
+              >
+                {x}
+              </NotificationTabButton>
+            ))}
+          </NotificationTabs>
+          <Row style={{ justifyContent: 'flex-end' }}>
             <Button
               small
               tone="plain"
@@ -1175,48 +1221,51 @@ export function NotificationsPage() {
                     if (e.key === 'Enter') openItem(item.id, item.readAt, teamId);
                   }}
                 >
-                  <Heading style={{ fontSize: 14 }}>
-                    {describeNotification(item.type ?? '', payload)}
-                  </Heading>
-                  {inviteMemberId && teamId && !inviteResponse && (
-                    <Row gap={8} style={{ marginTop: 8 }}>
-                      <Button
-                        small
-                        disabled={respondInvite.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          respondInvite.mutate({
-                            id: teamId,
-                            memberId: inviteMemberId,
-                            data: { status: 'accepted' },
-                          });
-                        }}
-                      >
-                        수락
-                      </Button>
-                      <Button
-                        small
-                        tone="plain"
-                        disabled={respondInvite.isPending}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          respondInvite.mutate({
-                            id: teamId,
-                            memberId: inviteMemberId,
-                            data: { status: 'rejected' },
-                          });
-                        }}
-                      >
-                        거절
-                      </Button>
-                    </Row>
-                  )}
-                  {inviteResponse && (
-                    <Muted style={{ marginTop: 8 }}>
-                      {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
-                    </Muted>
-                  )}
-                  <Muted>{timeAgo(item.createdAt, now)}</Muted>
+                  <NotificationDot aria-hidden />
+                  <NotificationBody>
+                    <Heading style={{ fontSize: 14 }}>
+                      {describeNotification(item.type ?? '', payload)}
+                    </Heading>
+                    {inviteMemberId && teamId && !inviteResponse && (
+                      <Row gap={8} style={{ marginTop: 8 }}>
+                        <Button
+                          small
+                          disabled={respondInvite.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            respondInvite.mutate({
+                              id: teamId,
+                              memberId: inviteMemberId,
+                              data: { status: 'accepted' },
+                            });
+                          }}
+                        >
+                          수락
+                        </Button>
+                        <Button
+                          small
+                          tone="plain"
+                          disabled={respondInvite.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            respondInvite.mutate({
+                              id: teamId,
+                              memberId: inviteMemberId,
+                              data: { status: 'rejected' },
+                            });
+                          }}
+                        >
+                          거절
+                        </Button>
+                      </Row>
+                    )}
+                    {inviteResponse && (
+                      <Muted style={{ marginTop: 8 }}>
+                        {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
+                      </Muted>
+                    )}
+                    <Muted style={{ fontSize: 12 }}>{timeAgo(item.createdAt, now)}</Muted>
+                  </NotificationBody>
                 </NotificationItem>
               );
             })}
@@ -1225,7 +1274,7 @@ export function NotificationsPage() {
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
           {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
-      </Content>
+      </NotificationContent>
     </UserShell>
   );
 }

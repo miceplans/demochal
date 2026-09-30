@@ -101,6 +101,8 @@ export interface Challenge {
   status: 'draft' | 'published' | 'closed';
   createdAt: string;
   category?: string | null;
+  organizer?: string;
+  eligibility?: string;
 }
 
 export interface StatWithDelta {
@@ -285,7 +287,8 @@ export interface PaymentHistoryItem {
   id: string;
   name: string;
   amount: number;
-  paidAt: string;
+  /** ISO date-time, or null when the payment has no approvedAt timestamp. */
+  paidAt: string | null;
   status: 'paid' | 'refunded' | 'failed';
 }
 

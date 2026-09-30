@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
-import { admin } from '@/data/biz-design';
+import { generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
 
 const BizNavContext = createContext('');
@@ -231,24 +231,33 @@ const LogoutIcon = styled.button({
 
 export const menu: [string, string][] = [
   ['/dashboard', '대시보드'],
-  ['/postings/new', '챌린지 만들기'],
   ['/postings', '공고 관리'],
-  ['/applications', '지원자 관리'],
   ['/ads', '광고 관리'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
-  ['/profile/edit', '기업 프로필'],
 ];
+
+// 메뉴에 없는 하위 화면이 어느 메뉴 아래에 속하는지 (Figma: 지원자 관리·공고 등록은 공고 관리, 리포트는 광고 관리)
+const menuAliases: Record<string, string[]> = {
+  '/postings': ['/applications'],
+  '/ads': ['/reports'],
+};
 
 export function isMenuActive(route: string, href: string) {
   if (href === '/dashboard') return route === '/' || route === '/dashboard';
-  return route === href || route.startsWith(`${href}/`);
+  return [href, ...(menuAliases[href] ?? [])].some(
+    (prefix) => route === prefix || route.startsWith(`${prefix}/`),
+  );
 }
 
 export function BizSidebar() {
   const route = routeOf(usePathname());
   const base = useBizBase();
   const router = useRouter();
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: business } = generated.useFindMyBusiness({ query: { retry: false } });
+  const accountName = (auth?.status === 200 ? auth.data.name : undefined) ?? '불러오는 중';
+  const businessName = (business?.status === 200 ? business.data.name : undefined) ?? '불러오는 중';
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
     '',
@@ -275,10 +284,10 @@ export function BizSidebar() {
       </SidebarTop>
       <ProfileRow>
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
-          <Avatar aria-hidden>{admin.name[0]}</Avatar>
+          <Avatar aria-hidden>{accountName[0]}</Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{admin.name}</strong>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{admin.company}</span>
+            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{accountName}</strong>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{businessName}</span>
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">

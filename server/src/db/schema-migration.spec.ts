@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(24);
+    expect(journal.entries).toHaveLength(25);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -415,8 +415,7 @@ describe('0020_add_kakao_auth migration', () => {
 
 describe('0024_add_challenges_recruit_url migration', () => {
   it('adds the external recruit link column without destructive DDL', () => {
-    // 0023은 #264(PR #272)의 application_form 마이그레이션 예약번호다.
-    const tag = journal.entries[23]?.tag;
+    const tag = journal.entries[24]?.tag;
     expect(tag).toBe('0024_add_challenges_recruit_url');
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
@@ -438,5 +437,17 @@ describe('ORM column coverage', () => {
         expect(chainSql, `${tableName}.${column.name}`).toContain(`"${column.name}"`);
       }
     }
+  });
+});
+
+describe('0023_challenge_filter_meta migration', () => {
+  it('adds the explore filter columns without destructive DDL', () => {
+    const tag = journal.entries[23]?.tag;
+    expect(tag).toBe('0023_challenge_filter_meta');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "targets" text[]');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "organizer_type" varchar(30)');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "prize_amount" integer');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

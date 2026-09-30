@@ -294,6 +294,12 @@ export function BizAdsPage() {
     if (range.to) setDatePickerOpen(false);
   };
 
+  const isEnded = (ad: Ad) =>
+    ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date());
+  const currentAd =
+    contracts.find((ad) => ad.status === 'active' && ad.imageUrl) ??
+    contracts.find((ad) => ad.imageUrl);
+
   if (screen === 'manage')
     return (
       <ManageBody>
@@ -322,10 +328,10 @@ export function BizAdsPage() {
               </PrimaryButton>
             </span>
           </HeaderRow>
-          <p>
-            기존 계약의 결제 금액과 기간은 단가가 변경되어도 유지됩니다. 새 계약에는 신청 시점의
-            최신 단가가 적용됩니다.
-          </p>
+          <CurrentBanner>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            {currentAd?.imageUrl ? <img src={currentAd.imageUrl} alt={currentAd.title} /> : null}
+          </CurrentBanner>
         </section>
         <ManageSection aria-labelledby="ad-management-title">
           <HeaderRow>
@@ -378,7 +384,7 @@ export function BizAdsPage() {
                     </small>
                   </span>
                   <span role="cell">{ad.paidAmount.toLocaleString()}원</span>
-                  <span role="cell" style={{ justifySelf: 'end', width: 80 }}>
+                  <StatusCell role="cell" ended={isEnded(ad)}>
                     {ad.status === 'preparing'
                       ? '결제 대기'
                       : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
@@ -388,7 +394,7 @@ export function BizAdsPage() {
                           : ad.startDate.slice(0, 10) > toDateKey(new Date())
                             ? '시작 대기'
                             : '진행중'}
-                  </span>
+                  </StatusCell>
                   <span role="cell" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
                     <button
                       type="button"
@@ -409,6 +415,10 @@ export function BizAdsPage() {
                 </TableRow>
               ))}
           </AdsTable>
+          <Footnote>
+            기존 계약의 결제 금액과 기간은 단가가 변경되어도 유지됩니다. 새 계약에는 신청 시점의
+            최신 단가가 적용됩니다.
+          </Footnote>
         </ManageSection>
       </ManageBody>
     );
@@ -668,6 +678,19 @@ const TableHead = styled(TableRow)({
   background: c.gray100,
   ...textStyle.h1,
 });
+const CurrentBanner = styled.div({
+  height: 236,
+  borderRadius: 12,
+  background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover' },
+});
+const StatusCell = styled.span<{ ended: boolean }>(({ ended }) => ({
+  justifySelf: 'end',
+  width: 80,
+  color: ended ? c.red : c.primary,
+}));
+const Footnote = styled.p({ margin: 0, ...textStyle.metaText, color: c.gray500 });
 const CheckoutBody = styled(BizContent)({ maxWidth: 680, gap: 24, paddingTop: 36 });
 const SuccessIcon = styled.div({
   width: 56,

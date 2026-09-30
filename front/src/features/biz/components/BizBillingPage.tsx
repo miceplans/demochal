@@ -1,26 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { BizContent, SectionTitle, TableBox, THead, TRow } from '@/components/biz/BizShell';
+import type { AdReport } from '@semochal/api-client';
+import { BizContent, SectionTitle } from '@/components/biz/BizShell';
+import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
 import { requestTossBillingAuth } from '@/lib/payments';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
+import { adApi } from '@/lib/ad-api';
 
-const Col = ({ w, children }: { w?: number; children: React.ReactNode }) => (
-  <span style={{ width: w, flexShrink: 0 }}>{children}</span>
-);
-
-function formatPaidAt(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const weekdayLabel = (date: string) => WEEKDAYS[new Date(date).getDay()] ?? date;
 
 export function BizBillingPage() {
   const toast = useToast();
@@ -29,6 +25,21 @@ export function BizBillingPage() {
   const historyQuery = generated.useListPaymentHistory();
   const cards = cardsQuery.data?.data ?? [];
   const history = historyQuery.data?.data;
+  const [ctrReport, setCtrReport] = useState<AdReport | null>(null);
+  // 가장 최근 광고의 일별 클릭률로 클릭률 차트를 그린다.
+  useEffect(() => {
+    let cancelled = false;
+    void adApi.ads
+      .listMine()
+      .then((ads) => (ads[0] ? adApi.ads.getReport(ads[0].id) : null))
+      .then((report) => {
+        if (!cancelled) setCtrReport(report);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // 토스 빌링 인증창 → 성공 시 /biz/billing/auth/success으로 authKey와 함께 리다이렉트.
   const handleRegister = async () => {
@@ -50,9 +61,9 @@ export function BizBillingPage() {
   };
 
   return (
-    <BizContent>
-      <Grid>
-        <SideColumn>
+    <BizContent style={{ gap: 40 }}>
+      <TopRow>
+        <Column>
           <SectionTitle>나의 결제수단</SectionTitle>
           {cardsQuery.isLoading && <StatusText>결제수단을 불러오는 중이에요.</StatusText>}
           {cardsQuery.isError && <StatusText>결제수단을 불러오지 못했어요.</StatusText>}
@@ -71,90 +82,98 @@ export function BizBillingPage() {
           <Button onClick={() => void handleRegister()} disabled={registering}>
             {registering ? '처리 중…' : '카드 등록'}
           </Button>
-        </SideColumn>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 32, flex: 1, minWidth: 0 }}>
-          <SectionHeader>
-            <SectionTitle>결제 내역</SectionTitle>
-            {history && <TotalText>총액 {won(history.total)}</TotalText>}
-          </SectionHeader>
-          <TableBox>
-            <THead>
-              <Col w={300}>결제 항목</Col>
-              <Col w={180}>일시</Col>
-              <Col w={120}>금액</Col>
-            </THead>
-            {historyQuery.isLoading && (
-              <TRow>
-                <Col>결제 내역을 불러오는 중이에요.</Col>
-              </TRow>
-            )}
-            {historyQuery.isError && (
-              <TRow>
-                <Col>결제 내역을 불러오지 못했어요.</Col>
-              </TRow>
-            )}
-            {history?.items.map((p) => (
-              <TRow key={p.id}>
-                <Col w={300}>
-                  <span
-                    style={{
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                      display: 'block',
-                    }}
-                  >
-                    {p.name}
-                  </span>
-                </Col>
-                <Col w={180}>
-                  <span style={{ fontSize: 13, color: c.gray500 }}>
-                    {p.paidAt ? formatPaidAt(p.paidAt) : '—'}
-                  </span>
-                </Col>
-                <Col w={120}>
-                  <strong style={{ color: p.amount > 0 ? c.green : c.gray900 }}>
-                    {won(p.amount)}
-                  </strong>
-                </Col>
-              </TRow>
-            ))}
-            {history && history.items.length === 0 && (
-              <TRow>
-                <Col>결제 내역이 없어요.</Col>
-              </TRow>
-            )}
-          </TableBox>
-        </div>
-      </Grid>
+        </Column>
+        <ChartColumn>
+          <ChartHeader>
+            <SectionTitle>광고 클릭률</SectionTitle>
+            {ctrReport && <CtrBadge>{ctrReport.totals.ctr}%</CtrBadge>}
+          </ChartHeader>
+          <ExposureChart
+            bars={(ctrReport?.daily ?? []).slice(-7).map((row) => ({
+              label: weekdayLabel(row.date),
+              value: row.ctr,
+            }))}
+            width={640}
+            height={160}
+            smooth={false}
+          />
+        </ChartColumn>
+      </TopRow>
+      <Column style={{ width: '100%' }}>
+        <SectionHeader>
+          <SectionTitle>결제 내역</SectionTitle>
+          {history && <TotalText>총액 {won(history.total)}</TotalText>}
+        </SectionHeader>
+        <PaymentList>
+          {historyQuery.isLoading && <Empty>결제 내역을 불러오는 중이에요.</Empty>}
+          {historyQuery.isError && <Empty>결제 내역을 불러오지 못했어요.</Empty>}
+          {history?.items.map((p) => (
+            <PaymentItem key={p.id}>
+              <Ellipsis>{p.name}</Ellipsis>
+              <span style={{ flexShrink: 0, color: p.amount > 0 ? c.green : c.red }}>
+                {won(p.amount)}
+              </span>
+            </PaymentItem>
+          ))}
+          {history && history.items.length === 0 && <Empty>결제 내역이 없어요.</Empty>}
+        </PaymentList>
+      </Column>
     </BizContent>
   );
 }
 
-const Grid = styled.div({ display: 'flex', gap: 32, alignItems: 'flex-start' });
-
-const SideColumn = styled.div({
+const TopRow = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 48 });
+const Column = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 32,
-  flexShrink: 0,
   alignItems: 'flex-start',
 });
-
+const ChartColumn = styled.div({
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+const ChartHeader = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+});
+const CtrBadge = styled.strong({ ...textStyle.h1_2, color: c.gray900 });
 const SectionHeader = styled.div({
+  width: '100%',
   display: 'flex',
   alignItems: 'baseline',
   justifyContent: 'space-between',
   gap: 16,
 });
-
-const TotalText = styled.span({
-  fontSize: 14,
-  color: c.gray500,
-});
-
-const StatusText = styled.p({
+const TotalText = styled.span({ fontSize: 13, color: c.gray500 });
+const StatusText = styled.p({ margin: 0, fontSize: 14, color: c.gray500 });
+const PaymentList = styled.ul({
+  width: '100%',
   margin: 0,
-  fontSize: 14,
-  color: c.gray500,
+  padding: 0,
+  listStyle: 'none',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 12,
+  overflow: 'hidden',
+  ...textStyle.bodyLarge,
 });
+const PaymentItem = styled.li({
+  height: 56,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+  padding: '0 16px',
+  background: c.white,
+  '& + &': { borderTop: `1px solid ${c.gray200}` },
+});
+const Ellipsis = styled.span({
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+const Empty = styled.li({ padding: 16, listStyle: 'none', color: c.gray500 });
