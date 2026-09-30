@@ -27,6 +27,39 @@ services:
       db:
         condition: service_healthy
 
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: s3
+    ports:
+      - '127.0.0.1:4566:4566'
+    healthcheck:
+      test: ['CMD-SHELL', 'awslocal s3 ls >/dev/null 2>&1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # One-shot: creates the dev buckets and browser-upload CORS on the LocalStack S3.
+  # Idempotent so `docker compose up` can re-run it after a restart.
+  s3-init:
+    image: amazon/aws-cli:2.15.30
+    depends_on:
+      localstack:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+      AWS_DEFAULT_REGION: ap-northeast-2
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        aws --endpoint-url http://localstack:4566 s3 mb s3://semochal-private-dev || true
+        aws --endpoint-url http://localstack:4566 s3 mb s3://semochal-public-dev || true
+        printf '%s\n' '{"CORSRules":[{"AllowedOrigins":["http://localhost:3000"],"AllowedMethods":["PUT","GET","HEAD"],"AllowedHeaders":["*"],"ExposeHeaders":["ETag"],"MaxAgeSeconds":300}]}' > /tmp/cors.json
+        aws --endpoint-url http://localstack:4566 s3api put-bucket-cors --bucket semochal-private-dev --cors-configuration file:///tmp/cors.json
+        aws --endpoint-url http://localstack:4566 s3api put-bucket-cors --bucket semochal-public-dev --cors-configuration file:///tmp/cors.json
+
   api:
     build:
       context: .

@@ -26,3 +26,24 @@ describe('env JWT_SECRET validation', () => {
     expect(env.oauthStateSecret.equals(Buffer.from(env.jwtSecret))).toBe(false);
   });
 });
+
+describe('env S3_ENDPOINT', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('is undefined when set to an empty value', async () => {
+    // Stub explicitly: env.ts itself dotenv-loads server/.env, which may define
+    // S3_ENDPOINT in a developer workspace, so an unstubbed import is not hermetic.
+    expect((await loadEnv({ S3_ENDPOINT: '' })).env.s3Endpoint).toBeUndefined();
+  });
+
+  it('exposes a valid endpoint override', async () => {
+    const { env } = await loadEnv({ S3_ENDPOINT: 'http://localhost:4566' });
+    expect(env.s3Endpoint).toBe('http://localhost:4566');
+  });
+
+  it('rejects a malformed endpoint at load time', async () => {
+    await expect(loadEnv({ S3_ENDPOINT: 'not a url' })).rejects.toThrow(
+      /Invalid environment configuration/,
+    );
+  });
+});
