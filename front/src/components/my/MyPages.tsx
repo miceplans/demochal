@@ -1147,13 +1147,15 @@ const NotificationBody = styled.div({
   flexDirection: 'column',
   gap: 4,
 });
-// 서버는 team_matching(팀 지원·결과)과 verification.result(사업자 인증 결과) 알림만 생성한다.
-// 탭도 그 두 유형으로만 구성하고, 매핑되지 않은 유형은 '전체'에서만 보인다.
-const notificationTabs = ['전체', '팀매칭', '인증·결과'] as const;
+// 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지) 알림을 생성한다.
+// 매핑되지 않은 유형은 '전체'에서만 보인다.
+const notificationTabs = ['전체', '팀매칭', '마감', '공고', '인증·결과'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
 const notificationCategory: Record<string, NotificationTab> = {
   team_matching: '팀매칭',
   'verification.result': '인증·결과',
+  deadline: '마감',
+  posting: '공고',
 };
 function describeNotification(type: string, payload: Record<string, unknown>) {
   if (type === 'team_matching') {
@@ -1175,6 +1177,16 @@ function describeNotification(type: string, payload: Record<string, unknown>) {
       return '사업자 인증이 승인됐어요';
     if (payload.status === 'rejected') return '사업자 인증이 반려됐어요';
     return '사업자 인증 결과가 도착했어요';
+  }
+  if (type === 'deadline') {
+    const daysLeft = typeof payload.daysLeft === 'number' ? payload.daysLeft : undefined;
+    const dday = daysLeft === undefined ? '' : daysLeft === 0 ? ' D-Day' : ` D-${daysLeft}`;
+    return `북마크한 챌린지 마감${dday}`;
+  }
+  if (type === 'posting') {
+    if (payload.kind === 'bookmark_open') return '북마크한 챌린지 참가접수가 시작되었어요';
+    if (payload.kind === 'interest_new') return '관심분야 새 챌린지가 등록되었어요';
+    return '새 공고가 등록되었어요';
   }
   return '새 알림이 있어요';
 }
@@ -1216,9 +1228,9 @@ export function NotificationsPage() {
   const all = notificationsQuery.data?.data ?? [];
   const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
   const hasUnread = all.some((x) => !x.readAt);
-  const openItem = (id?: string, readAt?: string | null, teamId?: string) => {
+  const openItem = (id?: string, readAt?: string | null, href?: string) => {
     if (id && !readAt) markRead.mutate({ id });
-    if (teamId) router.push(`/teams/${teamId}`);
+    if (href) router.push(href);
   };
   return (
     <UserShell title="알림">
@@ -1251,6 +1263,19 @@ export function NotificationsPage() {
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
               const teamId = typeof payload.teamId === 'string' ? payload.teamId : undefined;
+              const challengeId =
+                typeof payload.challengeId === 'string' ? payload.challengeId : undefined;
+              const href = teamId
+                ? `/teams/${teamId}`
+                : challengeId
+                  ? `/contests/${challengeId}`
+                  : undefined;
+              const meta = [
+                typeof payload.title === 'string' ? payload.title : '',
+                timeAgo(item.createdAt, now),
+              ]
+                .filter(Boolean)
+                .join(' · ');
               const inviteMemberId =
                 typeof payload.invitedUserId === 'string' && typeof payload.memberId === 'string'
                   ? payload.memberId
@@ -1262,9 +1287,9 @@ export function NotificationsPage() {
                   role="button"
                   tabIndex={0}
                   data-unread={!item.readAt || undefined}
-                  onClick={() => openItem(item.id, item.readAt, teamId)}
+                  onClick={() => openItem(item.id, item.readAt, href)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') openItem(item.id, item.readAt, teamId);
+                    if (e.key === 'Enter') openItem(item.id, item.readAt, href);
                   }}
                 >
                   <NotificationDot aria-hidden />
@@ -1310,7 +1335,7 @@ export function NotificationsPage() {
                         {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
                       </Muted>
                     )}
-                    <Muted style={{ fontSize: 12 }}>{timeAgo(item.createdAt, now)}</Muted>
+                    <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>
                 </NotificationItem>
               );

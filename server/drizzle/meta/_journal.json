@@ -168,6 +168,13 @@
       "when": 1790671000000,
       "tag": "0024_add_challenges_recruit_url",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1790680000000,
+      "tag": "0025_notification_dedupe_key",
+      "breakpoints": true
     }
   ]
 }

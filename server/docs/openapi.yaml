@@ -2697,7 +2697,11 @@ components:
       properties:
         id: { type: string, format: uuid }
         userId: { type: string, format: uuid }
-        type: { type: string, description: '알림 유형 (team_matching | deadline | posting 등)' }
+        type:
+          {
+            type: string,
+            description: '알림 유형 (team_matching | verification.result | deadline | posting)',
+          }
         payload: { type: object, additionalProperties: true }
         readAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
