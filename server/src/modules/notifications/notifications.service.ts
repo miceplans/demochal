@@ -27,7 +27,10 @@ export class NotificationsService {
    * outbox를 모두 생략하고 null을 반환한다. 매핑 키가 없는 타입(설정 화면에 스위치가
    * 없는 알림)은 항상 발송된다. 모든 호출부는 반환값을 쓰지 않으므로 null은 안전하다.
    */
-  // TODO: push/in-app socket channels are not implemented yet.
+  // 현재 채널: DB 인앱 알림(사이트 접속 시 조회) + 서비스 이메일(/notifications 딥링크만 포함, 상세는 사이트에서 확인).
+  // TODO: 웹 푸시는 미구현 — 구현 시 이메일과 동일하게 Outbox 이벤트로 발송한다.
+  //   https://developer.mozilla.org/en-US/docs/Web/API/Push_API
+  // TODO: 실시간 인앱 알림(소켓/SSE)은 채택하지 않음 — 필요하면 프론트 TanStack Query 폴링(refetchInterval)로 대체.
   async create(userId: string, type: string, payload: Record<string, unknown>) {
     const settingsKey = this.settingsKeyFor(type, payload);
     if (settingsKey) {
