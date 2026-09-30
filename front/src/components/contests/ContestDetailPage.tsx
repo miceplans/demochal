@@ -90,7 +90,9 @@ export function ContestDetailPage({
           ? [{ title: '상세 안내', body: challenge.description }]
           : [],
       }
-    : contestDetail;
+    : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
+      // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다(#278).
+      contestDetail;
   // 상단 요약 — 실제 챌린지는 가짜 상금 대신 서버 값(참가비·분야·정원)만 쓴다.
   const summaryRows: [string, string][] = challenge
     ? [

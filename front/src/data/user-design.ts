@@ -168,6 +168,9 @@ export const skillCatalog = [
   'Flutter',
   'Unity',
 ];
+// TODO: '선호 역할'(roles)/'참가 대상'(audience) 칩 그룹은 서버에 저장·조회하는 필드가
+// 없어(zustand 로컬 상태만 바뀌는 죽은 UI) 제거했다. users 스키마에 해당 값을 저장하는
+// API가 생기면 그룹을 되살리고 아래 useUserStore의 roles/audience도 함께 복원한다.
 export const preferenceGroups = [
   {
     key: 'interests' as const,
@@ -184,13 +187,13 @@ export const preferenceGroups = [
       '음악 · 공연',
     ],
   },
-  { key: 'roles' as const, title: '선호 역할', options: roles },
-  {
-    key: 'audience' as const,
-    title: '참가 대상',
-    options: ['대학생', '일반인', '직장인', '청소년'],
-  },
 ];
+// TODO: 서버가 저장·반영하는 알림 설정은 applicant(새 지원자)/result(수락·거절),
+// invite(팀 초대), invite_result(초대 수락/거절)뿐이라(#261, #291) 나머지 그룹은
+// 제거했다. 서버가 아래 유형의 알림을 생성하고 설정을 확인해 끈 유형은 저장하지
+// 않도록 하면 살린다.
+// - 챌린지 알림 그룹 전체(deadline/challenge/award): 마감 임박·새 챌린지·새 수상작
+//   알림을 만드는 서버 로직이 없음.
 export const notificationSettings = [
   {
     title: '팀매칭 알림',
@@ -199,14 +202,6 @@ export const notificationSettings = [
       ['result', '지원 수락/거절 알림', '내가 지원한 팀의 수락/거절 결과를 알려드려요'],
       ['invite', '팀 초대 알림', '다른 팀에서 나를 초대하면 알려드려요'],
       ['invite_result', '초대 수락/거절 알림', '내가 본 팀 초대의 수락/거절 결과를 알려드려요'],
-    ],
-  },
-  {
-    title: '챌린지 알림',
-    rows: [
-      ['deadline', '마감 임박 알림', '북마크한 챌린지 마감 D-7, D-3, D-1에 알려드려요'],
-      ['challenge', '관심분야 새 챌린지 알림', '관심분야에 새 챌린지가 등록되면 알려드려요'],
-      ['award', '새 수상작 알림', '관심분야에 새 수상작이 등록되면 알려드려요'],
     ],
   },
 ];
