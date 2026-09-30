@@ -9,7 +9,6 @@ import {
   DesktopOnly,
   EmptyState,
   MobileOnly,
-  Select,
   Row,
   Heading,
 } from '@/components/common/Primitives';
@@ -37,6 +36,8 @@ import { daysUntil } from '@/lib/date';
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
 const PRIZE_MIN = 0;
 const PRIZE_MAX = 10_000;
+
+const MOBILE_FILTER_MAX_WIDTH = 110;
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
@@ -200,40 +201,36 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   })),
                 },
               ].map((filter) => (
-                <Select
+                <Dropdown
                   key={filter.label}
                   aria-label={filter.label}
+                  variant="pill"
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={filter.value}
-                  onChange={(e) => filter.onChange(e.target.value)}
-                >
-                  <option value="">{filter.label}</option>
-                  {filter.options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={filter.onChange}
+                  options={[{ value: '', label: filter.label }, ...filter.options]}
+                />
               ))
             ) : (
               <>
-                <Select
+                <Dropdown
                   aria-label="분야"
+                  variant="pill"
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={selectedCategories[0] ?? ''}
-                  onChange={(e) => setSelectedCategories(e.target.value ? [e.target.value] : [])}
-                >
-                  <option value="">분야</option>
-                  {categories.map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </Select>
-                <IncludeClosed>
-                  <input
-                    type="checkbox"
-                    checked={includeClosed}
-                    onChange={(e) => setIncludeClosed(e.target.checked)}
-                  />
-                  마감된 챌린지 포함
-                </IncludeClosed>
+                  onChange={(value) => setSelectedCategories(value ? [value] : [])}
+                  options={[
+                    { value: '', label: '분야' },
+                    ...categories.map((v) => ({ value: v, label: v })),
+                  ]}
+                />
+                <Checkbox
+                  label="마감된 챌린지 포함"
+                  checked={includeClosed}
+                  onChange={setIncludeClosed}
+                />
               </>
             )}
           </MobileFilters>
@@ -419,14 +416,6 @@ const Results = styled.div<{ $team?: boolean }>(({ $team }) => ({
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
 }));
-const IncludeClosed = styled.label({
-  ...textStyle.metaText,
-  color: c.gray700,
-  display: 'flex',
-  gap: 6,
-  alignItems: 'center',
-  cursor: 'pointer',
-});
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
   border: 0,
   background: 'transparent',
@@ -440,13 +429,6 @@ const MobileFilters = styled.div({
     gap: 8,
     marginBottom: 20,
     flexWrap: 'wrap',
-    '& select': {
-      background: c.gray100,
-      fontSize: textStyle.mSubText.fontSize,
-      borderRadius: 24,
-      height: 34,
-      maxWidth: 110,
-    },
   },
 });
 
