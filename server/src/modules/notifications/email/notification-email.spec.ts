@@ -41,6 +41,17 @@ describe('renderNotificationEmail', () => {
     expect(email?.html).toContain('href="https://semochall.example/notifications"');
   });
 
+  it('renders a card layout with a CTA button and inline styles only', () => {
+    const email = renderNotificationEmail('verification.result', { status: 'verified' }, origin);
+    expect(email?.html).toContain('<table');
+    expect(email?.html).toMatch(
+      /<a href="https:\/\/semochall\.example\/notifications"[^>]*>알림 확인하기<\/a>/,
+    );
+    expect(email?.html).toContain('<h1');
+    expect(email?.html).not.toContain('<style');
+    expect(email?.text).toContain('사이트에 로그인해서 확인');
+  });
+
   it('returns null for types that are not emailed', () => {
     expect(renderNotificationEmail('report.resolved', {}, origin)).toBeNull();
     expect(renderNotificationEmail('team_matching', { teamId: 't' }, origin)).toBeNull();
