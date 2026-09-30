@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { challenges } from '../../db/schema.js';
 import { AdsService } from '../ads/ads.service.js';
@@ -21,10 +21,12 @@ export class BizService {
     const business = await this.businessesService.findByOwner(userId);
     if (!business) throw new ForbiddenException('Business account required');
 
+    // 대시보드는 실제 운영 중인 공고 기준이다: draft(미공개)·closed(종료) 공고는 제외하고
+    // 최신 published 공고를 "최근 공고"와 통계 소스로 쓴다. ("내 공고" 목록은 별개 동작.)
     const [recentPosting] = await this.db
       .select()
       .from(challenges)
-      .where(eq(challenges.businessId, business.id))
+      .where(and(eq(challenges.businessId, business.id), eq(challenges.status, 'published')))
       .orderBy(desc(challenges.createdAt))
       .limit(1);
 
