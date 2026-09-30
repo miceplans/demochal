@@ -2725,7 +2725,7 @@ components:
         region: { type: string }
     Application:
       type: object
-      required: [id, challengeId, userId, status, createdAt, evaluation]
+      required: [id, challengeId, userId, status, createdAt, evaluation, teammates]
       properties:
         id: { type: string, format: uuid }
         challengeId: { type: string, format: uuid }
@@ -3018,12 +3018,14 @@ components:
     MetricTotals:
       type: object
       description: 일별/시간별 테이블 상단 '합계' 행 — 서버에서 계산해 남긴다
+      required: [impressions, clicks, ctr]
       properties:
         impressions: { type: integer }
         clicks: { type: integer }
         ctr: { type: number, description: '합계 클릭률 (%) = clicks / impressions × 100' }
     HourlyMetric:
       type: object
+      required: [hour, label, impressions, clicks, ctr]
       properties:
         hour: { type: integer, description: 시간대 시작 시각 (0~23) }
         label: { type: string, description: '"화면 표기용 라벨 (예: ''9시~10시'')"' }

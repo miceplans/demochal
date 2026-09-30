@@ -50,7 +50,7 @@ export function BizProfilePage() {
     );
   const rows: [string, string | undefined][] = [
     ['성함', user?.name],
-    ['소속', business.name],
+    ['소속', business.name ?? undefined],
     ['이메일', user?.email],
     ['전화번호', business.phone ?? undefined],
     ['아이디', user?.email?.split('@')[0]],

@@ -29,7 +29,7 @@ export interface Application {
   /** 지원 역할 */
   role?: string;
   /** 팀원 구성 */
-  teammates?: string[];
+  teammates: string[];
   evaluation: ApplicationEvaluation;
   managerMemo?: string;
   /** listMyApplications 응답 전용 — 챌린지 제목 */
