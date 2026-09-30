@@ -92,15 +92,24 @@ const Chevron = styled.span<{ $open: boolean }>`
   transition: transform 0.18s ease;
 `;
 
+// 트리거 폭(모바일 알약은 최대 110px)보다 긴 라벨이 고정 높이를 밀어내지 않도록 한 줄로 자른다.
+const TriggerLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
 const Listbox = styled.ul`
   position: absolute;
   top: calc(100% + 9px);
   left: 0;
-  right: 0;
   z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  min-width: 100%;
+  max-width: calc(100vw - 32px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -129,13 +138,20 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   font-weight: ${textStyle.caption.fontWeight};
   line-height: normal;
   color: #111;
-  white-space: nowrap;
   cursor: pointer;
   transition: background 0.12s ease;
 
   &:hover {
     background: ${(p) => p.theme.colors.gray[100]};
   }
+`;
+
+// 긴 라벨은 열린 목록에서 우측으로 늘어나 전체를 보여주고, 화면 폭을 넘어갈 때만 말줄임한다.
+const OptionLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 export function Dropdown({
@@ -244,7 +260,7 @@ export function Dropdown({
         aria-label={ariaLabel}
         onClick={() => (open ? setOpen(false) : openListbox())}
       >
-        {selected ? selected.label : placeholder}
+        <TriggerLabel>{selected ? selected.label : placeholder}</TriggerLabel>
         <Chevron aria-hidden="true" $open={open} />
       </Trigger>
       {open && options.length > 0 ? (
@@ -261,7 +277,7 @@ export function Dropdown({
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => select(index)}
             >
-              {option.label}
+              <OptionLabel>{option.label}</OptionLabel>
             </Option>
           ))}
         </Listbox>
