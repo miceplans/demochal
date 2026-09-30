@@ -1,4 +1,6 @@
 // 유저 페이지 목업 데이터 — Figma "세모챌" 디자인 기반. 실제 데이터는 유저 API 연동 시 교체 (TODO).
+// 분류 값은 서버 DTO enum과 1:1 — api-client 공개 타입에서 파생해 폼/필터가 캐스트 없이 쓸 수 있다.
+import type { generated } from '@semochal/api-client';
 
 export type Contest = {
   id: string;
@@ -101,7 +103,7 @@ export const categories = [
   '영상/UCC',
   '해외',
 ];
-export const challengeTargets = [
+export const challengeTargets: NonNullable<generated.UpdateChallengeMutationBody['targets']> = [
   '어린이',
   '초등학생',
   '중학생',
@@ -113,18 +115,19 @@ export const challengeTargets = [
   '일반인',
   '기업',
 ];
-export const organizerTypes = [
-  '중앙정부/기관',
-  '대기업',
-  '외국계기업',
-  '학교/재단/협회',
-  '학회/비영리단체',
-  '진흥원',
-  '언론',
-  '지방자치단체',
-  '중소/벤처기업',
-  '기타',
-];
+export const organizerTypes: NonNullable<generated.UpdateChallengeMutationBody['organizerType']>[] =
+  [
+    '중앙정부/기관',
+    '대기업',
+    '외국계기업',
+    '학교/재단/협회',
+    '학회/비영리단체',
+    '진흥원',
+    '언론',
+    '지방자치단체',
+    '중소/벤처기업',
+    '기타',
+  ];
 export const roles = [
   '프론트엔드',
   '백엔드',

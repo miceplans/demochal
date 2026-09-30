@@ -111,6 +111,8 @@ export const challenges = pgTable('challenges', {
   organizerType: varchar('organizer_type', { length: 30 }),
   // 총상금(만원). null이면 상금 미정/없음.
   prizeAmount: integer('prize_amount'),
+  // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
+  posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),

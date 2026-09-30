@@ -54,4 +54,9 @@ export interface UpdateChallengeRequest {
    * @nullable
    */
   prizeAmount?: number | null;
+  /**
+   * null이면 포스터를 제거
+   * @nullable
+   */
+  posterFileId?: string | null;
 }

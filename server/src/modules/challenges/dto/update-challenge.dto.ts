@@ -8,6 +8,7 @@ import {
   IsPositive,
   IsUrl,
   IsString,
+  IsUUID,
   MaxLength,
   Min,
   ValidateIf,
@@ -73,4 +74,9 @@ export class UpdateChallengeDto {
   @IsInt()
   @Min(0)
   prizeAmount?: number | null;
+
+  // null이면 포스터를 제거한다.
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsUUID()
+  posterFileId?: string | null;
 }

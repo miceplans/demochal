@@ -37,6 +37,7 @@ import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
 import { interestsMatch } from './interest-matching.js';
+import { FilesService } from '../files/files.service.js';
 
 // draft -> published -> closed; no other transition is valid.
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -88,6 +89,7 @@ export class ChallengesService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly adminSettingsService: AdminSettingsService,
+    private readonly filesService: FilesService,
   ) {}
 
   /**
@@ -244,7 +246,9 @@ export class ChallengesService {
     const challenge = await this.getOrThrow(id);
     // Every detail fetch is a real "click" into the posting — see challengeViews' comment in schema.ts.
     await this.db.insert(challengeViews).values({ challengeId: id });
-    return challenge;
+    // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
+    const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+    return { ...challenge, posterUrl };
   }
 
   async stats(id: string) {
@@ -263,6 +267,7 @@ export class ChallengesService {
       .where(and(eq(businesses.id, dto.businessId), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
     if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const recruitMethod = dto.recruitMethod ?? 'external';
     if (recruitMethod === 'external' && !dto.recruitUrl) {
@@ -283,6 +288,7 @@ export class ChallengesService {
         targets: dto.targets,
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
+        posterFileId: dto.posterFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
@@ -315,6 +321,8 @@ export class ChallengesService {
       .where(ownership)
       .limit(1);
     if (!current) throw new NotFoundException('Challenge not found');
+    // null은 포스터 제거라 검증에서 제외 — 존재하고 public+ready인 파일만 참조할 수 있다.
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
@@ -335,6 +343,7 @@ export class ChallengesService {
       ...(dto.targets !== undefined && { targets: dto.targets }),
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
+      ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 

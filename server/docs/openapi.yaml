@@ -2490,8 +2490,14 @@ components:
             description: 주최기관 유형. 탐색 필터용,
           }
         prizeAmount: { type: integer, nullable: true, description: 총상금(만원). 탐색 필터용 }
-        # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
-        posterFileId: { type: string, format: uuid }
+        posterFileId:
+          { type: string, format: uuid, nullable: true, description: 챌린지 포스터 파일 ID }
+        posterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더,
+          }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
@@ -2526,7 +2532,7 @@ components:
         category:
           {
             type: string,
-            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
+            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 분류 필드.',
           }
         targets:
           {
@@ -2567,6 +2573,7 @@ components:
               ],
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
+        posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
         recruitUrl:
           {
@@ -2633,6 +2640,8 @@ components:
               ],
           }
         prizeAmount: { type: integer, nullable: true, minimum: 0, description: 총상금(만원) }
+        posterFileId:
+          { type: string, nullable: true, format: uuid, description: null이면 포스터를 제거 }
     Team:
       type: object
       properties:
@@ -2654,6 +2663,19 @@ components:
         status: { type: string, enum: [recruiting, closed] }
         createdAt: { type: string, format: date-time }
         challengeTitle: { type: string, description: 목록·상세 응답에 포함 }
+        challengePosterFileId:
+          {
+            type: string,
+            nullable: true,
+            format: uuid,
+            description: 목록·상세 응답의 챌린지 포스터 파일 ID,
+          }
+        challengePosterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 없으면 null — 클라이언트는 placeholder 유지,
+          }
         leaderName: { type: string, description: 목록·상세 응답에 포함 }
         businessName:
           { type: string, description: 'listManagedTeams 응답 전용 — 주최 기업(협회)명' }

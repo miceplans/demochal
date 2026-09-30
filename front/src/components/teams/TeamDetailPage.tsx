@@ -34,6 +34,7 @@ export function TeamDetailPage() {
     query: { enabled: !!team?.challengeId },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const posterUrl = challenge?.posterUrl ?? null;
   const bookmarkId = challenge?.id;
   const saved = bookmarks.some((item) => item.id === bookmarkId);
 
@@ -117,7 +118,11 @@ export function TeamDetailPage() {
       <Content>
         <Header>
           <Cover aria-hidden="true">
-            <span>{(team.challengeTitle || team.title || '팀').trim().slice(0, 1)}</span>
+            {posterUrl ? (
+              <img src={posterUrl} alt="" />
+            ) : (
+              <span>{(team.challengeTitle || team.title || '팀').trim().slice(0, 1)}</span>
+            )}
           </Cover>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="heading">
@@ -250,6 +255,8 @@ const Cover = styled.div({
   height: 222,
   borderRadius: 19,
   background: '#d8e4f0',
+  overflow: 'hidden',
+  img: { width: '100%', height: '100%', objectFit: 'cover' },
   span: { fontSize: 64, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
   [mobile]: { height: 180, borderRadius: 12, span: { fontSize: 44 } },
 });

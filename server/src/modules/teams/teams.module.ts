@@ -1,10 +1,11 @@
 import { Module } from '@nestjs/common';
 import { NotificationsModule } from '../notifications/notifications.module.js';
+import { FilesModule } from '../files/files.module.js';
 import { TeamsController } from './teams.controller.js';
 import { TeamsService } from './teams.service.js';
 
 @Module({
-  imports: [NotificationsModule],
+  imports: [NotificationsModule, FilesModule],
   controllers: [TeamsController],
   providers: [TeamsService],
   exports: [TeamsService],
