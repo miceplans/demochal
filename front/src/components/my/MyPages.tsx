@@ -34,6 +34,7 @@ import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { daysUntil } from '@/lib/date';
+import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -113,8 +114,22 @@ const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
   borderRadius: '50%',
   background: c.gray100,
   flexShrink: 0,
+  overflow: 'hidden',
   [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
 }));
+const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
+// 아바타 자체가 파일 선택 트리거다(프로필 링크와 겹치지 않게 Link 밖에 둔다).
+const AvatarPicker = styled.label<{ busy?: boolean }>(({ busy }) => ({
+  position: 'relative',
+  display: 'block',
+  flexShrink: 0,
+  borderRadius: '50%',
+  cursor: busy ? 'progress' : 'pointer',
+  opacity: busy ? 0.6 : 1,
+  '&:focus-within': { outline: '2px solid currentColor', outlineOffset: 2 },
+}));
+const PROFILE_IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
 
 const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -380,6 +395,7 @@ function ParticipationHistory() {
 }
 
 export function MyPage() {
+  const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -430,18 +446,80 @@ export function MyPage() {
       },
     },
   });
+  const requestUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  // 프로필 이미지는 다른 사용자에게 보이므로 public 버킷에 올린다(presign → S3 PUT → finalize → 프로필 저장).
+  const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const picked = input.files?.[0];
+    // 같은 파일을 다시 골라도 change가 발생하도록 비운다.
+    input.value = '';
+    if (!picked || avatarUploading) return;
+    if (!PROFILE_IMAGE_CONTENT_TYPES.includes(picked.type)) {
+      toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP 이미지만 올릴 수 있어요');
+      return;
+    }
+    if (picked.size === 0 || picked.size > PROFILE_IMAGE_MAX_BYTES) {
+      toast.error('파일 크기를 확인해주세요', '10MB 이하 이미지만 올릴 수 있어요');
+      return;
+    }
+    setAvatarUploading(true);
+    let previewUrl: string | undefined;
+    try {
+      const compressed = await compressToWebP(picked, PROFILE_IMAGE_PRESET);
+      previewUrl = compressed.previewUrl;
+      const presigned = await requestUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          contentType: 'image/webp',
+          fileName: compressed.file.name.replace(/[/\\]/g, '_'),
+          sizeBytes: compressed.file.size,
+        },
+      });
+      const { uploadUrl, fileId } = presigned.data;
+      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
+      const uploaded = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/webp' },
+        body: compressed.file,
+      });
+      if (!uploaded.ok) throw new Error('upload failed');
+      await finalizeUpload.mutateAsync({ id: fileId });
+      await updateProfile.mutateAsync({ data: { profileImageFileId: fileId } });
+      toast.success('프로필 이미지를 바꿨어요');
+    } catch (error) {
+      // API 단계 실패는 전역 MutationCache 토스트가 띄운다. 압축/S3 업로드 실패만 여기서 알린다.
+      if (!(error instanceof ApiError)) {
+        toast.error('이미지 업로드에 실패했어요', '잠시 후 다시 시도해주세요');
+      }
+    } finally {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setAvatarUploading(false);
+    }
+  };
   return (
     <MyShell title="MY">
       <Stack gap={28}>
-        <Link href="/profile">
-          <Row gap={24}>
-            <MyAvatar large />
+        <Row gap={24}>
+          <AvatarPicker busy={avatarUploading} aria-label="프로필 이미지 변경">
+            <MyAvatar large>
+              {meInfo?.profileImageUrl ? <AvatarImage src={meInfo.profileImageUrl} alt="" /> : null}
+            </MyAvatar>
+            <HiddenInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={pickAvatar}
+              disabled={avatarUploading}
+            />
+          </AvatarPicker>
+          <Link href="/profile">
             <Stack gap={8}>
               <h2 style={{ fontSize: 20 }}>{displayName}</h2>
               {profileMeta && <Muted>{profileMeta}</Muted>}
             </Stack>
-          </Row>
-        </Link>
+          </Link>
+        </Row>
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>

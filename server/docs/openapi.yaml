@@ -342,6 +342,14 @@ paths:
                 stacks: { type: array, items: { type: string } }
                 externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
                 awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
+                profileImageFileId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: |
+                    프로필 이미지 파일 id. `POST /files/presign`(bucket=public) → S3 PUT →
+                    `POST /files/{id}/finalize`로 준비한 본인 이미지만 허용한다(아니면 400).
+                    `null`이면 프로필 이미지를 삭제한다.
       responses:
         '200':
           description: 수정된 사용자 정보
@@ -2391,6 +2399,9 @@ components:
         emailVerifiedAt: { type: string, format: date-time, nullable: true }
         phoneVerifiedAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
+        profileImageFileId: { type: string, format: uuid, nullable: true }
+        profileImageUrl:
+          { type: string, nullable: true, description: 프로필 이미지 CDN URL. 없으면 null }
         # 아래는 planned 프로필 확장 (프론트 목업 기준)
         position: { type: string, description: 포지션 }
         region: { type: string }
