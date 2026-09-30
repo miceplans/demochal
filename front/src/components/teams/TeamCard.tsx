@@ -4,137 +4,108 @@ import styled from '@emotion/styled';
 import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Tag, Row, Muted } from '@/components/common/Primitives';
 
 export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
   return (
     <Card data-component="team-card">
-      {team.poster ? (
-        <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
-      ) : (
-        <PosterPlaceholder role="img" aria-label={`${team.challenge || team.name} 대표 이미지`}>
-          <PosterInitial>{(team.challenge || team.name).slice(0, 1)}</PosterInitial>
-          <PosterChallenge>{team.challenge || team.name}</PosterChallenge>
-        </PosterPlaceholder>
-      )}
-      <div className="body">
-        <Row style={{ justifyContent: 'space-between' }}>
+      <TopRow>
+        <Challenge>{team.challenge}</Challenge>
+        <NameRow>
           <h3>{displayOnly ? team.name : <Link href={`/teams/${team.id}`}>{team.name}</Link>}</h3>
-          <Challenge>{team.challenge}</Challenge>
-        </Row>
-        <Row gap={6}>
-          {team.filledRoles.map((role) => (
-            <RoleTag key={role} filled>
-              {role}
-            </RoleTag>
-          ))}
+          <Count>
+            ({team.joined}/{team.capacity})
+          </Count>
+        </NameRow>
+      </TopRow>
+      <BottomRow>
+        <RoleRow>
           {team.recruitingRoles.map((role) => (
-            <RoleTag key={role}>{role}</RoleTag>
+            <RoleChip key={role}>{role}</RoleChip>
           ))}
-        </Row>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Members>{team.members}</Members>
-          {!displayOnly && (
-            <Row gap={6} style={{ flexShrink: 0 }}>
-              <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
-              <Apply href={`/teams/${team.id}`}>지원하기</Apply>
-            </Row>
-          )}
-        </Row>
-      </div>
+          {team.filledRoles.map((role) => (
+            <FilledRole key={role} role="img" aria-label={`${role} 모집 완료`} title={role}>
+              <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
+            </FilledRole>
+          ))}
+        </RoleRow>
+        {!displayOnly && (
+          <Actions>
+            <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
+            <Apply href={`/teams/${team.id}`}>지원하기</Apply>
+          </Actions>
+        )}
+      </BottomRow>
     </Card>
   );
 }
 
 const Card = styled.article({
-  background: c.white,
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 12,
-  overflow: 'hidden',
-  minWidth: 0,
-  '.team-artwork': {
-    width: '100%',
-    height: 135,
-    objectFit: 'cover',
-    objectPosition: 'center top',
-    background: c.gray100,
-  },
-  '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
-  h3: textStyle.h2,
-  [mobile]: {
-    border: '1px solid #f0f1f3',
-    borderRadius: 14,
-    '.team-artwork': { display: 'none' },
-    '.body': { padding: 14, gap: 10 },
-  },
-});
-
-const PosterPlaceholder = styled.div({
-  width: '100%',
-  height: 135,
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  background: c.gray100,
-  [mobile]: { display: 'none' },
-});
-
-const PosterInitial = styled.span({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 44,
-  height: 44,
-  borderRadius: 12,
-  background: c.gray200,
-  color: c.gray500,
-  ...textStyle.h2,
-});
-
-const PosterChallenge = styled.span({
-  ...textStyle.caption,
-  color: c.gray500,
-  maxWidth: '100%',
-  padding: '0 16px',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-});
-
-const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
-  ...textStyle.mBadgeText,
-  lineHeight: 'normal',
-  background: filled ? c.lightGreen : c.gray100,
-  color: filled ? c.green : c.gray500,
-  border: filled ? 'none' : `0.5px solid ${c.gray200}`,
-  [mobile]: { padding: '4px 7px' },
-}));
-
-const Challenge = styled(Muted)({ color: c.gray500, [mobile]: textStyle.mSubText });
-
-const Members = styled(Muted)({
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
+  justifyContent: 'space-between',
+  gap: 24,
   minWidth: 0,
-  [mobile]: textStyle.mSubText,
+  padding: 14,
+  background: c.white,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 14,
+  h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
 });
+
+const TopRow = styled.div({ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 });
+
+const Challenge = styled.p({ ...textStyle.mSubText, color: c.gray500, margin: 0 });
+
+const NameRow = styled.div({ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 });
+
+const Count = styled.span({ ...textStyle.mNameLabel, color: c.gray900, flexShrink: 0 });
+
+const BottomRow = styled.div({
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 8,
+});
+
+const RoleRow = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 });
+
+const RoleChip = styled.span({
+  ...textStyle.mRoleText,
+  padding: '4px 7px',
+  borderRadius: 4,
+  background: c.gray100,
+  border: `1px solid ${c.gray100}`,
+  color: c.gray500,
+  whiteSpace: 'nowrap',
+});
+
+const FilledRole = styled.span({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 2,
+  borderRadius: 26,
+  background: c.green,
+});
+
+const Actions = styled.div({ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 });
 
 const Apply = styled(Link)({
-  color: c.primary,
-  ...textStyle.overline,
-  whiteSpace: 'nowrap',
-  border: `1px solid ${c.primary}`,
+  ...textStyle.mBadgeText,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 25,
+  padding: '6px 14px',
   borderRadius: 8,
-  padding: '6px 12px',
-  [mobile]: { padding: '6px 14px', fontWeight: 700 },
+  background: c.primary,
+  color: c.gray50,
+  whiteSpace: 'nowrap',
 });
 
 const Report = styled(Link)({
-  color: c.gray500,
   ...textStyle.overline,
+  color: c.gray500,
   whiteSpace: 'nowrap',
   padding: '6px 4px',
 });

@@ -30,6 +30,8 @@ export type Team = {
   challenge: string;
   poster: string;
   members: string;
+  joined: number;
+  capacity: number;
   filledRoles: string[];
   recruitingRoles: string[];
 };
@@ -40,6 +42,8 @@ export const teams: Team[] = [
     poster: mockChallengePoster,
     challenge: 'OO챌린지',
     members: '2/4명 참여중',
+    joined: 2,
+    capacity: 4,
     filledRoles: ['기획', '프론트엔드'],
     recruitingRoles: ['백엔드', '디자이너'],
   },
@@ -49,6 +53,8 @@ export const teams: Team[] = [
     poster: mockChallengePoster,
     challenge: 'AI 해커톤',
     members: '3/5명 참여중',
+    joined: 3,
+    capacity: 5,
     filledRoles: ['기획', '프론트엔드'],
     recruitingRoles: ['백엔드', '디자이너'],
   },
@@ -58,6 +64,8 @@ export const teams: Team[] = [
     poster: mockChallengePoster,
     challenge: '공공데이터 챌린지',
     members: '1/4명 참여중',
+    joined: 1,
+    capacity: 4,
     filledRoles: ['기획', '디자이너'],
     recruitingRoles: ['백엔드', '프론트엔드'],
   },
@@ -67,6 +75,8 @@ export const teams: Team[] = [
     poster: mockChallengePoster,
     challenge: '청년 창업 챌린지',
     members: '2/5명 참여중',
+    joined: 2,
+    capacity: 5,
     filledRoles: ['기획', '백엔드'],
     recruitingRoles: ['프론트엔드', '디자이너'],
   },

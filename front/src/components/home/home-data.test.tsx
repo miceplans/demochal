@@ -13,6 +13,8 @@ describe('getHomeFallbackData', () => {
       challenge: 'Fallback contest',
       poster: '',
       members: '1/2명 참여중',
+      joined: 1,
+      capacity: 2,
       filledRoles: [],
       recruitingRoles: ['기획'],
     },
