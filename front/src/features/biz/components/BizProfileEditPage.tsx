@@ -2,13 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { adApi } from '@/lib/ad-api';
-import {
-  BizContent,
-  SectionTitle,
-  FieldInput,
-  PrimaryButton,
-  useBizHref,
-} from '@/components/biz/BizShell';
+import styled from '@emotion/styled';
+import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
+import { colors as c } from '@/styles/design';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 
@@ -126,37 +123,20 @@ export function BizProfileEditPage() {
     }
   };
 
-  const renderImageField = (kind: ImageKind, label: string) => {
-    const uploaded = kind === 'banner' ? bannerImage : logoImage;
-    const previewUrl = uploaded?.previewUrl ?? existingImages[kind];
-    return (
-      <label style={{ display: 'grid', gap: 8 }}>
-        {label}
-        <input
-          type="file"
-          accept="image/*"
-          disabled={uploading !== null || state === 'saving'}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) void uploadImage(kind, file);
-          }}
-        />
-        {uploading === kind ? (
-          <span style={{ fontSize: 13 }}>이미지를 업로드하는 중입니다…</span>
-        ) : previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt={`${label} 미리보기`}
-            style={{ maxWidth: kind === 'banner' ? 320 : 120, borderRadius: 8, objectFit: 'cover' }}
-          />
-        ) : (
-          <span style={{ fontSize: 13 }}>등록된 이미지가 없습니다.</span>
-        )}
-      </label>
-    );
-  };
+  const fileInput = (kind: ImageKind) => (
+    <input
+      type="file"
+      accept="image/*"
+      hidden
+      aria-label={kind === 'banner' ? '배너 이미지 선택' : '로고 이미지 선택'}
+      disabled={uploading !== null || state === 'saving'}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (file) void uploadImage(kind, file);
+      }}
+    />
+  );
 
   if (state === 'loading')
     return (
@@ -171,38 +151,60 @@ export function BizProfileEditPage() {
       </BizContent>
     );
   return (
-    <BizContent>
-      <SectionTitle>기업 프로필 수정</SectionTitle>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-        style={{ display: 'grid', gap: 16, maxWidth: 520 }}
-      >
-        <label>
-          기업명
-          <FieldInput value={form.name} onChange={update('name')} required />
-        </label>
-        <label>
-          주소
-          <FieldInput value={form.address} onChange={update('address')} />
-        </label>
-        <label>
-          전화번호
-          <FieldInput value={form.phone} onChange={update('phone')} />
-        </label>
-        <label>
-          이메일
-          <FieldInput type="email" value={form.email} onChange={update('email')} />
-        </label>
-        {renderImageField('banner', '배너 이미지')}
-        {renderImageField('logo', '로고 이미지')}
-        {state === 'error' && <p>저장하지 못했습니다.</p>}
-        <PrimaryButton type="submit" disabled={state === 'saving' || uploading !== null}>
+    <BizContent style={{ gap: 32 }}>
+      <Actions>
+        <OutlineButton type="button" onClick={() => (window.location.href = hrefOf('/profile'))}>
+          취소
+        </OutlineButton>
+        <PrimaryButton
+          type="button"
+          disabled={state === 'saving' || uploading !== null}
+          onClick={() => void save()}
+        >
           {state === 'saving' ? '저장 중…' : '저장'}
         </PrimaryButton>
-      </form>
+      </Actions>
+      {/* TODO: Figma 하단 플로팅 툴바(링크·텍스트·파일·레이아웃·이미지)로 contentBlocks 편집 — 블록 에디터 미구현 */}
+      <BizOrgProfile
+        bannerUrl={bannerImage?.previewUrl ?? existingImages.banner}
+        logoUrl={logoImage?.previewUrl ?? existingImages.logo}
+        bannerInput={fileInput('banner')}
+        logoInput={fileInput('logo')}
+        name={
+          <InlineInput
+            aria-label="기업명"
+            value={form.name}
+            onChange={update('name')}
+            style={{ fontSize: 24, fontWeight: 600 }}
+          />
+        }
+        address={
+          <InlineInput aria-label="주소" value={form.address} onChange={update('address')} />
+        }
+        phone={<InlineInput aria-label="전화번호" value={form.phone} onChange={update('phone')} />}
+        email={
+          <InlineInput
+            aria-label="이메일"
+            type="email"
+            value={form.email}
+            onChange={update('email')}
+          />
+        }
+      />
+      {state === 'error' && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
 }
+
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
+const InlineInput = styled.input({
+  width: 360,
+  border: '1px solid transparent',
+  borderRadius: 6,
+  padding: '4px 6px',
+  background: 'transparent',
+  font: 'inherit',
+  color: 'inherit',
+  '&:hover': { background: c.gray50 },
+  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
+});
