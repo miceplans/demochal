@@ -178,9 +178,7 @@ describe('UpdateChallengeDto.applicationForm', () => {
 
   it('rejects an option longer than 500 characters', async () => {
     const dto = plainToInstance(UpdateChallengeDto, {
-      applicationForm: [
-        { ...question, type: 'dropdown', options: [`${'a'.repeat(501)}`] },
-      ],
+      applicationForm: [{ ...question, type: 'dropdown', options: [`${'a'.repeat(501)}`] }],
     });
 
     const errors = await validate(dto);

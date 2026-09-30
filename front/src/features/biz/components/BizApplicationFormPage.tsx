@@ -366,17 +366,8 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
       <Main>
         <TopBar>
           <TitleCol>
-            <TitleInput
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="신청서 제목을 입력해주세요"
-              aria-label="신청서 제목"
-            />
-            <MetaInput
-              value={meta}
-              onChange={(e) => setMeta(e.target.value)}
-              aria-label="신청서 안내문구"
-            />
+            <TitleInput value={title} readOnly aria-label="신청서 제목" />
+            <MetaInput value={meta} readOnly aria-label="신청서 안내문구" />
           </TitleCol>
           <PrimaryButton
             style={{ height: 37, flexShrink: 0 }}
