@@ -16,13 +16,13 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { Challenge } from './challenge';
 
-export interface DailyMetric {
-  date: string;
-  /** 노출수 */
-  impressions: number;
-  /** 클릭수 */
-  clicks: number;
-  /** 클릭률 (%) */
-  ctr: number;
-}
+export type ListMyChallenges200 = {
+  items: Challenge[];
+  /**
+   * 다음 페이지 커서 (없으면 null)
+   * @nullable
+   */
+  nextCursor: string | null;
+};

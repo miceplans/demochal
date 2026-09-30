@@ -16,13 +16,12 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ListManagedApplicationsStatus } from './listManagedApplicationsStatus';
 
-export interface DailyMetric {
-  date: string;
-  /** 노출수 */
-  impressions: number;
-  /** 클릭수 */
-  clicks: number;
-  /** 클릭률 (%) */
-  ctr: number;
-}
+export type ListManagedApplicationsParams = {
+  /**
+   * 특정 공고의 지원서만 조회
+   */
+  challengeId?: string;
+  status?: ListManagedApplicationsStatus;
+};

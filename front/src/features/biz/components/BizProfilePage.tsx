@@ -21,30 +21,22 @@ async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
 export function BizProfilePage() {
   const hrefOf = useBizHref();
   const authQuery = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const [business, setBusiness] = useState<Awaited<ReturnType<typeof adApi.businesses.me>> | null>(
-    null,
-  );
+  const businessQuery = generated.useFindMyBusiness();
+  const business = businessQuery.data?.status === 200 ? businessQuery.data.data : null;
   const [images, setImages] = useState<{ banner: string | null; logo: string | null }>({
     banner: null,
     logo: null,
   });
-  const [error, setError] = useState(false);
   useEffect(() => {
-    void adApi.businesses
-      .me()
-      .then(async (me) => {
-        setBusiness(me);
-        const [banner, logo] = await Promise.all([
-          resolveFileUrl(me.bannerImageFileId),
-          resolveFileUrl(me.logoImageFileId),
-        ]);
-        setImages({ banner, logo });
-      })
-      .catch(() => setError(true));
-  }, []);
+    if (!business) return;
+    void Promise.all([
+      resolveFileUrl(business.bannerImageFileId),
+      resolveFileUrl(business.logoImageFileId),
+    ]).then(([banner, logo]) => setImages({ banner, logo }));
+  }, [business]);
   const user = authQuery.data?.status === 200 ? authQuery.data.data : null;
 
-  if (error)
+  if (businessQuery.isError)
     return (
       <BizContent>
         <p>기업 정보를 불러오지 못했습니다.</p>
@@ -58,7 +50,7 @@ export function BizProfilePage() {
     );
   const rows: [string, string | undefined][] = [
     ['성함', user?.name],
-    ['소속', business.name],
+    ['소속', business.name ?? undefined],
     ['이메일', user?.email],
     ['전화번호', business.phone ?? undefined],
     ['아이디', user?.email?.split('@')[0]],

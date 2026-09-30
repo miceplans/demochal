@@ -21,22 +21,22 @@ import type { BusinessVerificationStatus } from './businessVerificationStatus';
 import type { ContentBlock } from './contentBlock';
 
 export interface Business {
-  id?: string;
+  id: string;
   ownerUserId?: string;
   /**
    * 기관명 (OCR/프로필 편집으로 채움)
    * @nullable
    */
-  name?: string | null;
+  name: string | null;
   /**
    * 사업자등록번호 (10자리, 학교/비영리 등은 null, 관리자 화면에서 마스킹 표시)
    * @nullable
    */
-  registrationNumber?: string | null;
+  registrationNumber: string | null;
   /** @nullable */
   type?: BusinessType;
-  verificationStatus?: BusinessVerificationStatus;
-  createdAt?: string;
+  verificationStatus: BusinessVerificationStatus;
+  createdAt: string;
   bannerImageFileId?: string;
   logoImageFileId?: string;
   address?: string;

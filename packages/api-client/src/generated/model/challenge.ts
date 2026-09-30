@@ -22,18 +22,18 @@ import type { ChallengeStatus } from './challengeStatus';
 import type { ChallengeTargetsItem } from './challengeTargetsItem';
 
 export interface Challenge {
-  id?: string;
+  id: string;
   businessId?: string;
-  title?: string;
+  title: string;
   description?: string;
   /** 참가비 (원) */
   price?: number;
   /** 모집 인원 */
-  capacity?: number;
-  startDate?: string;
-  endDate?: string;
+  capacity: number;
+  startDate: string;
+  endDate: string;
   /** 등록 시 draft */
-  status?: ChallengeStatus;
+  status: ChallengeStatus;
   createdAt?: string;
   /** implemented — 생성 시 저장, 유사 챌린지 추천에 사용 */
   category?: string;
@@ -59,7 +59,10 @@ export interface Challenge {
   hashtags?: string[];
   /** 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
   recruitMethod?: ChallengeRecruitMethod;
-  /** recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다. */
+  /**
+   * recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다.
+   * @maxLength 2048
+   */
   recruitUrl?: string;
   /** 문의 연락처 */
   contact?: string;

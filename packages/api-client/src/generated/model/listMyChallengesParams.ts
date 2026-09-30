@@ -17,12 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface DailyMetric {
-  date: string;
-  /** 노출수 */
-  impressions: number;
-  /** 클릭수 */
-  clicks: number;
-  /** 클릭률 (%) */
-  ctr: number;
-}
+export type ListMyChallengesParams = {
+  /**
+   * 이전 페이지의 nextCursor (ISO 8601)
+   */
+  cursor?: string;
+  limit?: number;
+};

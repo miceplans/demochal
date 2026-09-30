@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
-import { adApi, adError } from '@/lib/ad-api';
-import type { Application, Challenge, ChallengeStats } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import {
   BizContent,
   PrimaryButton,
@@ -22,43 +21,43 @@ export function BizPostingManagePage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const hrefOf = useBizHref();
-  const [challenge, setChallenge] = useState<Challenge | null>(null);
-  const [stats, setStats] = useState<ChallengeStats | null>(null);
-  const [applications, setApplications] = useState<Application[]>([]);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const load = useCallback(async () => {
-    if (!id) return;
-    setLoading(true);
-    setError('');
-    try {
-      const [nextChallenge, nextStats, nextApplications] = await Promise.all([
-        adApi.challenges.get(id),
-        adApi.challenges.getStats(id),
-        adApi.applications.listManaged({ challengeId: id }),
-      ]);
-      setChallenge(nextChallenge);
-      setStats(nextStats);
-      setApplications(nextApplications);
-    } catch (cause) {
-      setError(adError(cause));
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-  useEffect(() => {
-    // Loading is an external API synchronization triggered by the route.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  const challengeQuery = generated.useGetChallenge(id ?? '', { query: { enabled: !!id } });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const statsQuery = generated.useGetChallengeStats(id ?? '', { query: { enabled: !!id } });
+  const stats = statsQuery.data?.data;
+  const applicationsParams = { challengeId: id ?? '' };
+  const applicationsQuery = generated.useListManagedApplications(applicationsParams, {
+    query: { enabled: !!id },
+  });
+  const applications = applicationsQuery.data?.status === 200 ? applicationsQuery.data.data : [];
+  type ManagedApplication = (typeof applications)[number];
+  const updateApplicationMutation = generated.useUpdateApplication();
 
-  async function updateApplication(application: Application, patch: ApplicationPatch) {
+  const loading = challengeQuery.isPending || statsQuery.isPending || applicationsQuery.isPending;
+  const loadError =
+    challengeQuery.isError || statsQuery.isError || applicationsQuery.isError
+      ? '공고 정보를 불러오지 못했습니다.'
+      : '';
+  const retry = () => {
+    void challengeQuery.refetch();
+    void statsQuery.refetch();
+    void applicationsQuery.refetch();
+  };
+
+  async function updateApplication(application: ManagedApplication, patch: ApplicationPatch) {
+    if (!application.id) return;
     try {
-      const updated = await adApi.applications.update(application.id, patch);
-      setApplications((rows) => rows.map((row) => (row.id === updated.id ? updated : row)));
-    } catch (cause) {
-      setError(adError(cause));
+      await updateApplicationMutation.mutateAsync({
+        id: application.id,
+        data: patch as Parameters<typeof updateApplicationMutation.mutateAsync>[0]['data'],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: generated.getListManagedApplicationsQueryKey(applicationsParams),
+      });
+    } catch {
+      // 전역 MutationCache onError 토스트가 실패를 알린다.
     }
   }
 
@@ -68,12 +67,12 @@ export function BizPostingManagePage() {
         <Message>공고 정보를 불러오는 중입니다.</Message>
       </BizContent>
     );
-  if (error && !challenge)
+  if (loadError && !challenge)
     return (
       <BizContent>
         <Message>
-          {error}
-          <button type="button" onClick={() => void load()}>
+          {loadError}
+          <button type="button" onClick={retry}>
             다시 시도
           </button>
         </Message>
@@ -133,7 +132,7 @@ export function BizPostingManagePage() {
           </SideStat>
         </Side>
       </Top>
-      {error && <Error role="alert">{error}</Error>}
+      {loadError && <Error role="alert">{loadError}</Error>}
       <ApplicationTable
         rows={applications}
         onUpdate={(applicationId, patch) => {

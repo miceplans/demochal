@@ -19,13 +19,13 @@
 
 export interface HourlyMetric {
   /** 시간대 시작 시각 (0~23) */
-  hour?: number;
+  hour: number;
   /** "화면 표기용 라벨 (예: '9시~10시')" */
-  label?: string;
+  label: string;
   /** 노출수 */
-  impressions?: number;
+  impressions: number;
   /** 클릭수 */
-  clicks?: number;
+  clicks: number;
   /** 클릭률 (%) */
-  ctr?: number;
+  ctr: number;
 }

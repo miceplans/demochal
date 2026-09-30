@@ -17,12 +17,14 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export interface DailyMetric {
-  date: string;
-  /** 노출수 */
-  impressions: number;
-  /** 클릭수 */
-  clicks: number;
-  /** 클릭률 (%) */
-  ctr: number;
-}
+export type ListManagedApplicationsStatus =
+  (typeof ListManagedApplicationsStatus)[keyof typeof ListManagedApplicationsStatus];
+
+export const ListManagedApplicationsStatus = {
+  pending: 'pending',
+  submitted: 'submitted',
+  reviewing: 'reviewing',
+  needs_revision: 'needs_revision',
+  accepted: 'accepted',
+  rejected: 'rejected',
+} as const;
