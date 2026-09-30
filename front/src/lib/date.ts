@@ -4,10 +4,11 @@ function pad2(value: number) {
   return String(value).padStart(2, '0');
 }
 
-/** ISO date/datetime string -> "YYYY.MM.DD". Falsy input -> "-". */
+/** ISO date/datetime string -> "YYYY.MM.DD". Falsy input -> "-", unparsable input -> original string. */
 export function formatDateDot(value?: string): string {
   if (!value) return '-';
   const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
   return `${date.getFullYear()}.${pad2(date.getMonth() + 1)}.${pad2(date.getDate())}`;
 }
 
