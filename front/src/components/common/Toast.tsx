@@ -119,13 +119,14 @@ const Message = styled.p({
   fontSize: 12,
   fontWeight: 500,
   color: c.gray900,
+  // 긴 메시지가 카드 높이를 늘리며 줄바꿈되지 않도록 한 줄 말줄임으로 유지한다.
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
   [mobile]: {
     ...textStyle.mBadgeText,
     fontSize: 10,
     fontWeight: 500,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
   },
 });
 const Description = styled.p({
