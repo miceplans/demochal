@@ -86,6 +86,36 @@ describe('FilesService.resolvePublicUrl', () => {
   });
 });
 
+describe('FilesService.findById', () => {
+  it('lets anyone read a ready public file — its CloudFront URL is already public', async () => {
+    const { service } = createService([fileRow({ uploaderUserId: 'owner-1' } as any)]);
+
+    const file = await service.findById('file-1', 'visitor-1');
+
+    expect(file).toMatchObject({ id: 'file-1', url: 'https://cdn.test/uploads/file-1.webp' });
+  });
+
+  it('still restricts non-public files to the uploader', async () => {
+    const pending = createService([
+      fileRow({ uploadStatus: 'pending', uploaderUserId: 'owner-1' } as any),
+    ]);
+    await expect(pending.service.findById('file-1', 'visitor-1')).rejects.toThrow('File not found');
+    await expect(pending.service.findById('file-1', 'owner-1')).resolves.toMatchObject({
+      id: 'file-1',
+    });
+
+    const privateBucket = createService([
+      fileRow({ bucket: 'private', uploaderUserId: 'owner-1' } as any),
+    ]);
+    await expect(privateBucket.service.findById('file-1', 'visitor-1')).rejects.toThrow(
+      'File not found',
+    );
+
+    const missing = createService([]);
+    await expect(missing.service.findById('file-x', 'owner-1')).rejects.toThrow('File not found');
+  });
+});
+
 describe('FilesService.resolvePublicUrls', () => {
   it('returns an empty map without querying for no ids', async () => {
     const { service, db } = createService([]);

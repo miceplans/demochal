@@ -572,7 +572,10 @@ describe('ChallengesService.create', () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
 
-    await service.create({ ...baseDto, posterFileId: 'file-1' } as any, 'user-1');
+    await service.create(
+      { ...baseDto, recruitMethod: 'seMOchall', posterFileId: 'file-1' } as any,
+      'user-1',
+    );
 
     expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1' });
   });
@@ -599,7 +602,10 @@ describe('ChallengesService.create', () => {
     );
 
     await expect(
-      service.create({ ...baseDto, posterFileId: 'file-x' } as any, 'user-1'),
+      service.create(
+        { ...baseDto, recruitMethod: 'seMOchall', posterFileId: 'file-x' } as any,
+        'user-1',
+      ),
     ).rejects.toThrow(BadRequestException);
     expect(valuesCalls).toHaveLength(0);
     expect(files.assertReadyPublic).toHaveBeenCalledWith('file-x');

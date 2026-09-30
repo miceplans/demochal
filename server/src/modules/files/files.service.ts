@@ -149,7 +149,15 @@ export class FilesService {
   }
 
   async findById(id: string, userId: string) {
-    return this.withPublicUrl(await this.findOwnedFile(id, userId));
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file) throw new NotFoundException('File not found');
+    // 공개 버킷의 업로드 완료 파일은 어차피 CloudFront 공개 URL로 누구나 볼 수 있으므로
+    // (공고 포스터처럼) 업로더 본인만 조회할 수 있을 필요가 없다. 그 외 파일은 기존처럼 소유자만 조회한다.
+    const publiclyServed = file.bucket === 'public' && file.uploadStatus === 'ready';
+    if (!publiclyServed && file.uploaderUserId !== userId) {
+      throw new NotFoundException('File not found');
+    }
+    return this.withPublicUrl(file);
   }
 
   // Lets a trusted backend caller (e.g. the verifications worker) hand a

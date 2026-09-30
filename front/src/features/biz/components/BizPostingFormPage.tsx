@@ -40,6 +40,8 @@ export function BizPostingFormPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
+  const createChallenge = generated.useCreateChallenge();
+
   useEffect(() => {
     let active = true;
     adApi.businesses
@@ -60,8 +62,19 @@ export function BizPostingFormPage() {
       disabled={loading || !businessId}
       initialError={loadError}
       onSubmit={async (values) => {
-        const challenge = await adApi.challenges.create({ businessId, ...values });
-        router.push(hrefOf(`/postings/${challenge.id}`));
+        // 생성 스펙은 null을 받지 않으므로(nullable이 아닌 선택 필드), 수정용 폼 값의 null은 생략으로 바꿔 본다.
+        const response = await createChallenge.mutateAsync({
+          data: {
+            businessId,
+            ...values,
+            category: values.category ?? undefined,
+            targets: values.targets ?? undefined,
+            organizerType: values.organizerType ?? undefined,
+            prizeAmount: values.prizeAmount ?? undefined,
+            posterFileId: values.posterFileId ?? undefined,
+          },
+        });
+        router.push(hrefOf(`/postings/${response.data.id}`));
       }}
       showRecruitMethod
     />
@@ -271,7 +284,7 @@ function PostingForm({
 
   const toggleTopic = (topic: string) =>
     setTopics((s) => (s.includes(topic) ? s.filter((x) => x !== topic) : [...s, topic]));
-  const toggleTarget = (target: string) =>
+  const toggleTarget = (target: (typeof challengeTargets)[number]) =>
     setTargets((s) => (s.includes(target) ? s.filter((x) => x !== target) : [...s, target]));
   const runCommand = (command: EditorCommand) => {
     editorRef.current?.focus();
@@ -591,9 +604,7 @@ function PostingForm({
                 placeholder="선택 안 함"
                 size="L"
                 aria-label="주최기관"
-                onChange={(value) =>
-                  setOrganizerType(value as (typeof organizerTypes)[number])
-                }
+                onChange={(value) => setOrganizerType(value as (typeof organizerTypes)[number])}
               />
             </CategoryBlock>
             <FieldBlock>
