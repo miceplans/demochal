@@ -32,6 +32,15 @@ function createDbStub(initial?: { id: string; values: Record<string, unknown> })
 }
 
 describe('AdminSettingsService', () => {
+  it('Object.prototype 키(toString 등)는 설정 키로 저장하지 않는다', async () => {
+    const { db, insertCalls } = createDbStub();
+    const service = new AdminSettingsService(db);
+
+    await service.update(JSON.parse('{"toString":true,"constructor":true,"maintenanceMode":true}'));
+
+    expect(insertCalls[0]?.values).toEqual({ maintenanceMode: true });
+  });
+
   it('row가 없으면 DEFAULT_VALUES를 반환한다', async () => {
     const { db } = createDbStub();
     const service = new AdminSettingsService(db);

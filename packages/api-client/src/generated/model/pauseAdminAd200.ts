@@ -16,10 +16,9 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { PauseAdminAd200Status } from './pauseAdminAd200Status';
 
-export type GetAdminAnalyticsParams = {
-  /**
-   * 광고 uuid 또는 고정 광고 번호(ads.ad_number). 목록 순번이 아니다.
-   */
-  ad?: string;
+export type PauseAdminAd200 = {
+  id?: string;
+  status?: PauseAdminAd200Status;
 };

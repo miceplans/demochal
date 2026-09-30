@@ -29,6 +29,7 @@ function createDbStub(selectResult: unknown[] = []) {
   return { db, inserted };
 }
 
+const alerts = { notify: vi.fn().mockResolvedValue(undefined) };
 const reporter = { id: 'u-reporter', email: 'kim@example.com', name: '김수아', role: 'user' };
 const TARGET_ID = '11111111-1111-1111-1111-111111111111';
 
@@ -43,7 +44,7 @@ describe('maskReporterName', () => {
 describe('ReportsService.create', () => {
   it('stores the masked reporter name', async () => {
     const { db, inserted } = createDbStub();
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await service.create({ targetType: 'award', summary: '비방' }, reporter);
 
@@ -56,11 +57,24 @@ describe('ReportsService.create', () => {
     expect(db.select).not.toHaveBeenCalled();
   });
 
+  it('raises the reportAlert admin alert with ids only (no report content)', async () => {
+    alerts.notify.mockClear();
+    const { db } = createDbStub();
+    const service = new ReportsService(db, alerts as any);
+
+    await service.create({ targetType: 'award', summary: '비방' }, reporter);
+
+    expect(alerts.notify).toHaveBeenCalledWith('reportAlert', 'admin.report', {
+      reportId: 'r1',
+      targetType: undefined,
+    });
+  });
+
   it('derives content/org/reportedUserId from the team, ignoring client-sent org', async () => {
     const { db, inserted } = createDbStub([
       { title: 'AI 팀', org: '2026 AI 챌린지', leaderId: 'u-leader' },
     ]);
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await service.create(
       { targetType: 'team', targetId: TARGET_ID, summary: '스팸/도배', org: '클라이언트 값' },
@@ -79,7 +93,7 @@ describe('ReportsService.create', () => {
     const { db, inserted } = createDbStub([
       { title: '2026 AI 챌린지', org: '세모재단', ownerId: 'u-owner' },
     ]);
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await service.create(
       { targetType: 'challenge', targetId: TARGET_ID, summary: '기타' },
@@ -95,7 +109,7 @@ describe('ReportsService.create', () => {
 
   it('reports a user profile against that user', async () => {
     const { db, inserted } = createDbStub([{ name: '박민수', position: '디자이너' }]);
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await service.create({ targetType: 'user', targetId: TARGET_ID, summary: '비방' }, reporter);
 
@@ -108,7 +122,7 @@ describe('ReportsService.create', () => {
 
   it('labels a withdrawn user (erased name) as 탈퇴한 사용자', async () => {
     const { db, inserted } = createDbStub([{ name: null, position: null }]);
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await service.create({ targetType: 'user', targetId: TARGET_ID, summary: '비방' }, reporter);
 
@@ -117,7 +131,7 @@ describe('ReportsService.create', () => {
 
   it('rejects a missing target with 404 and inserts nothing', async () => {
     const { db } = createDbStub([]);
-    const service = new ReportsService(db);
+    const service = new ReportsService(db, alerts as any);
 
     await expect(
       service.create({ targetType: 'team', targetId: TARGET_ID, summary: '비방' }, reporter),
@@ -129,7 +143,7 @@ describe('ReportsService.create', () => {
     'rejects a missing targetId for targetType %s with 400 and inserts nothing',
     async (targetType) => {
       const { db } = createDbStub();
-      const service = new ReportsService(db);
+      const service = new ReportsService(db, alerts as any);
 
       await expect(
         service.create({ targetType, summary: '비방' }, reporter),

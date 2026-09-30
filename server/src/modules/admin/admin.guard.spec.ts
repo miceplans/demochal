@@ -54,6 +54,7 @@ describe('AdminRoleGuard', () => {
   it.each([
     ['an anonymous request', undefined],
     ['a non-admin user', { id: 'u1', email: 'member@semochal.kr', role: 'user' }],
+    ['a business user', { id: 'b1', email: 'biz@semochal.kr', role: 'business' }],
   ])('forbids %s', (_label, user) => {
     expect(() => guard.canActivate(httpContext({ user }))).toThrow(ForbiddenException);
   });

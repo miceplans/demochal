@@ -105,6 +105,7 @@ import type {
   Notification,
   OnboardingSurvey,
   Order,
+  PauseAdminAd200,
   PaymentCard,
   PresignedUploadRequest,
   PublicAd,
@@ -8620,7 +8621,7 @@ export const getUpdateAdUrl = (id: string) => {
 };
 
 /**
- * 관리자 광고 관리(`/admin/ad-pricing`)의 활동 메뉴(수정/납볍/중단)와 기업측 중단.
+ * 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
  * @summary 광고 상태 변경 (중단 등)
  */
 export const updateAd = async (
@@ -9545,7 +9546,7 @@ export const getApproveVerificationUrl = (id: string) => {
 };
 
 /**
- * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
+ * 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송. 이미 승인된 요청은 409.
  * @summary 기관 인증 승인
  */
 export const approveVerification = async (
@@ -9641,7 +9642,7 @@ export const getRejectVerificationUrl = (id: string) => {
 };
 
 /**
- * 거부 사유(`rejectionReason`) 기록 + 기업에 알림.
+ * 거부 사유(`rejectionReason`) 기록 + 기업에 알림. 이미 거부된 요청은 409.
  * @summary 기관 인증 거부
  */
 export const rejectVerification = async (
@@ -10149,6 +10150,97 @@ export function useListAdminAds<TData = Awaited<ReturnType<typeof listAdminAds>>
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type pauseAdminAdResponse200 = {
+  data: PauseAdminAd200;
+  status: 200;
+};
+
+export type pauseAdminAdResponseSuccess = pauseAdminAdResponse200 & {
+  headers: Headers;
+};
+export type pauseAdminAdResponse = pauseAdminAdResponseSuccess;
+
+export const getPauseAdminAdUrl = (id: string) => {
+  return `/admin/ads/${id}/pause`;
+};
+
+/**
+ * 진행중(active) 광고만 paused로 전환한다. 진행중이 아니면 400, 없으면 404.
+ * @summary 관리자 광고 중단
+ */
+export const pauseAdminAd = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<pauseAdminAdResponse> => {
+  return apiFetch<pauseAdminAdResponse>(getPauseAdminAdUrl(id), {
+    ...options,
+    method: 'POST',
+  });
+};
+
+export const getPauseAdminAdMutationKey = () => ['pauseAdminAd'] as const;
+
+export const getPauseAdminAdMutationOptions = <TError = unknown, TContext = unknown>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof pauseAdminAd>>,
+    TError,
+    PauseAdminAdMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof pauseAdminAd>>,
+  TError,
+  PauseAdminAdMutationVariables,
+  TContext
+> => {
+  const mutationKey = getPauseAdminAdMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof pauseAdminAd>>,
+    PauseAdminAdMutationVariables
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return pauseAdminAd(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PauseAdminAdMutationResult = NonNullable<Awaited<ReturnType<typeof pauseAdminAd>>>;
+
+export type PauseAdminAdMutationError = unknown;
+export type PauseAdminAdMutationVariables = { id: string };
+
+/**
+ * @summary 관리자 광고 중단
+ */
+export const usePauseAdminAd = <TError = unknown, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof pauseAdminAd>>,
+      TError,
+      PauseAdminAdMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof pauseAdminAd>>,
+  TError,
+  PauseAdminAdMutationVariables,
+  TContext
+> => {
+  return useMutation(getPauseAdminAdMutationOptions(options), queryClient);
+};
+
 export type getAdPricingResponse200 = {
   data: AdSlotPricing[];
   status: 200;
@@ -10535,7 +10627,7 @@ export const getSuspendUserUrl = (id: string) => {
 };
 
 /**
- * 상태 뱃지(활성·정지) 토글.
+ * 상태 뱃지(활성·정지) 토글. 관리자(admin) 계정은 자기 자신 포함 정지할 수 없다(403).
  * @summary 사용자 정지/해제
  */
 export const suspendUser = async (

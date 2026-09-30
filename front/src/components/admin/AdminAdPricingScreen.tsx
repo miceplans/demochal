@@ -536,8 +536,8 @@ export function AdminAdPricingScreen() {
                     />
                   </FilterRow>
                   <Section>
-                    <SectionHeading title="지영님에게 맞는 AI 추천" />
-                    <Rail aria-label="지영님에게 맞는 AI 추천 목록">
+                    <SectionHeading title="맞춤 AI 추천" />
+                    <Rail aria-label="맞춤 AI 추천 목록">
                       {desktopContests.slice(0, 6).map((contest) => (
                         <ContestCard key={contest.id} contest={contest} />
                       ))}

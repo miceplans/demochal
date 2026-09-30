@@ -150,6 +150,8 @@ export * from './notificationPayload';
 export * from './onboardingSurvey';
 export * from './order';
 export * from './orderStatus';
+export * from './pauseAdminAd200';
+export * from './pauseAdminAd200Status';
 export * from './paymentCard';
 export * from './paymentHistoryItem';
 export * from './paymentHistoryItemStatus';

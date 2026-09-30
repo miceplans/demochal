@@ -8,13 +8,17 @@ import {
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, users } from '../../db/schema.js';
+import { AdminAlertsService } from '../admin/admin-alerts.service.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
 
 @Injectable()
 export class BusinessesService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly adminAlerts: AdminAlertsService,
+  ) {}
 
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
     // One business per owner — findByOwner and the biz console assume it.
@@ -38,6 +42,10 @@ export class BusinessesService {
         .set({ role: 'business' })
         .where(and(eq(users.id, ownerUserId), eq(users.role, 'user')));
       return created;
+    });
+    // 기관명/사업자번호는 알림에 싣지 않는다(개인정보 최소화) — id만 전달한다.
+    await this.adminAlerts.notify('newBusinessAlert', 'admin.business', {
+      businessId: business!.id,
     });
     return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
   }

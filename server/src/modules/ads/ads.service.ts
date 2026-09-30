@@ -242,7 +242,8 @@ export class AdsService implements OnModuleInit {
   async updateStatus(id: string, dto: UpdateAdDto, user: AuthenticatedUser) {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
-    if (user.role !== 'admin' && (!business || business.id !== ad.businessId)) {
+    // 관리자 중단은 전용 엔드포인트(POST /admin/ads/:id/pause)가 담당한다.
+    if (!business || business.id !== ad.businessId) {
       throw new ForbiddenException('Only the owning business can change this ad');
     }
     // 결제 전 preparing 광고를 직접 active로 바꾸는 건 불가 — 활성화는 결제

@@ -201,16 +201,13 @@ describe('AdsService.updateStatus', () => {
     expect(updated).toEqual({ ...AD, status: 'paused' });
   });
 
-  it('lets an admin change any ad', async () => {
-    const { db, returning } = createDbStub(AD);
-    returning.mockResolvedValue([{ ...AD, status: 'ended' }]);
-    const businesses = createBusinessesStub(undefined);
-    const service = new AdsService(db, businesses as any);
+  it('no longer lets an admin bypass ownership on PATCH (admin pause has its own endpoint)', async () => {
+    const { db } = createDbStub(AD);
+    const service = new AdsService(db, createBusinessesStub(undefined) as any);
 
-    await expect(service.updateStatus('ad-1', { status: 'ended' }, ADMIN)).resolves.toEqual({
-      ...AD,
-      status: 'ended',
-    });
+    await expect(service.updateStatus('ad-1', { status: 'ended' }, ADMIN)).rejects.toThrow(
+      'Only the owning business',
+    );
   });
 
   it('throws 404 for unknown ads', async () => {

@@ -1677,7 +1677,7 @@ paths:
       summary: 광고 상태 변경 (중단 등)
       operationId: updateAd
       x-impl-status: implemented
-      description: 관리자 광고 관리(`/admin/ad-pricing`)의 활동 메뉴(수정/납볍/중단)와 기업측 중단.
+      description: 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
       parameters:
         - name: id
           in: path
@@ -1877,7 +1877,7 @@ paths:
       summary: 기관 인증 승인
       operationId: approveVerification
       x-impl-status: implemented
-      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송.
+      description: 심사 상세 패널의 승인 버튼. 승인 시 기업의 `verificationStatus=verified`로 갱신 + 알림 발송. 이미 승인된 요청은 409.
       parameters:
         - name: id
           in: path
@@ -1895,7 +1895,7 @@ paths:
       summary: 기관 인증 거부
       operationId: rejectVerification
       x-impl-status: implemented
-      description: 거부 사유(`rejectionReason`) 기록 + 기업에 알림.
+      description: 거부 사유(`rejectionReason`) 기록 + 기업에 알림. 이미 거부된 요청은 409.
       parameters:
         - name: id
           in: path
@@ -1993,6 +1993,28 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AdminAdEntry' } }
+  /admin/ads/{id}/pause:
+    post:
+      tags: [Admin]
+      summary: 관리자 광고 중단
+      operationId: pauseAdminAd
+      x-impl-status: implemented
+      description: 진행중(active) 광고만 paused로 전환한다. 진행중이 아니면 400, 없으면 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 중단된 광고
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [paused] }
   /admin/ad-pricing:
     get:
       tags: [Admin]
@@ -2028,7 +2050,8 @@ paths:
                 required: [slot, dailyPrice]
                 properties:
                   slot: { type: string, enum: [hero, gallery, team] }
-                  dailyPrice: { type: integer, description: 일일 광고비 (원) }
+                  dailyPrice:
+                    { type: integer, minimum: 1, maximum: 100000000, description: 일일 광고비 (원) }
       responses:
         '200':
           description: 저장된 단가
@@ -2069,7 +2092,7 @@ paths:
       summary: 사용자 정지/해제
       operationId: suspendUser
       x-impl-status: implemented
-      description: 상태 뱃지(활성·정지) 토글.
+      description: 상태 뱃지(활성·정지) 토글. 관리자(admin) 계정은 자기 자신 포함 정지할 수 없다(403).
       parameters:
         - name: id
           in: path
@@ -2199,12 +2222,6 @@ paths:
           schema:
             type: string
             description: '광고 uuid 또는 고정 광고 번호(ads.ad_number). 목록 순번이 아니다.'
-        - name: from
-          in: query
-          schema: { type: string, format: date }
-        - name: to
-          in: query
-          schema: { type: string, format: date }
       responses:
         '200':
           description: 분석 데이터

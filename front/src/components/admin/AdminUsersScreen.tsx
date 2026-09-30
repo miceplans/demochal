@@ -5,8 +5,6 @@ import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { maskEmail } from '@/lib/mask';
-import { MaskedText } from '@/components/ui/MaskedText';
 import { useToast } from '@/components/common/Toast';
 import type { UserRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
@@ -88,7 +86,7 @@ export function AdminUsersScreen() {
       key: 'email',
       header: '이메일',
       width: 200,
-      render: (row) => <MaskedText value={row.email} masked={maskEmail(row.email)} />,
+      // 서버가 이미 마스킹한 값이므로 그대로 표시한다.
     },
     { key: 'position', header: '포지션', width: 100 },
     { key: 'reports', header: '신고 누적', width: 80 },
@@ -150,6 +148,13 @@ export function AdminUsersScreen() {
       </FilterBar>
       {usersQuery.isPending ? (
         <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
+      ) : usersQuery.isError ? (
+        <AdminInlineNotice role="alert">
+          사용자 목록을 불러오지 못했어요.{' '}
+          <button type="button" onClick={() => void usersQuery.refetch()}>
+            다시 시도
+          </button>
+        </AdminInlineNotice>
       ) : (
         <AdminTable columns={columns} rows={rows} />
       )}
