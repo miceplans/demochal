@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
+import { keyframes } from '@emotion/react';
 import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
@@ -268,34 +269,54 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           </TopBar>
           {teamMode ? (
             <>
-              <TeamGrid>
-                {teamCards.map((team) => (
-                  <TeamCard key={team.id} team={team} />
-                ))}
-              </TeamGrid>
-              {teamsQuery.isSuccess && teamCards.length === 0 && (
-                <Muted>조건에 맞는 팀 모집글이 없어요.</Muted>
+              {teamsQuery.isPending ? (
+                <SkeletonStatus role="status" aria-label="팀 모집글을 불러오는 중입니다">
+                  <TeamSkeletonGrid />
+                </SkeletonStatus>
+              ) : (
+                <>
+                  <TeamGrid>
+                    {teamCards.map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </TeamGrid>
+                  {teamsQuery.isSuccess && teamCards.length === 0 && (
+                    <Muted>조건에 맞는 팀 모집글이 없어요.</Muted>
+                  )}
+                </>
               )}
             </>
           ) : (
             <>
-              <DesktopOnly>
-                <ContestGrid>
-                  {contestCards.map((x) => (
-                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
-                  ))}
-                </ContestGrid>
-              </DesktopOnly>
-              <MobileOnly>
-                <ContestGrid>
-                  {contestCards.map((x) => (
-                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
-                  ))}
-                </ContestGrid>
-              </MobileOnly>
-              {challengesQuery.isPending && <Muted>불러오는 중…</Muted>}
-              {challengesQuery.isSuccess && contestCards.length === 0 && (
-                <Muted>검색 결과가 없습니다.</Muted>
+              {challengesQuery.isPending ? (
+                <SkeletonStatus role="status" aria-label="공모전 목록을 불러오는 중입니다">
+                  <DesktopOnly>
+                    <ContestSkeletonGrid />
+                  </DesktopOnly>
+                  <MobileOnly>
+                    <ContestSkeletonGrid />
+                  </MobileOnly>
+                </SkeletonStatus>
+              ) : (
+                <>
+                  <DesktopOnly>
+                    <ContestGrid>
+                      {contestCards.map((x) => (
+                        <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
+                      ))}
+                    </ContestGrid>
+                  </DesktopOnly>
+                  <MobileOnly>
+                    <ContestGrid>
+                      {contestCards.map((x) => (
+                        <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
+                      ))}
+                    </ContestGrid>
+                  </MobileOnly>
+                  {challengesQuery.isSuccess && contestCards.length === 0 && (
+                    <Muted>검색 결과가 없습니다.</Muted>
+                  )}
+                </>
               )}
               {hasMoreChallenges && (
                 <Row style={{ justifyContent: 'center', marginTop: 40 }}>
@@ -311,6 +332,49 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     </UserShell>
   );
 }
+
+function TeamSkeletonGrid() {
+  return (
+    <TeamGrid aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <TeamSkeletonCard key={index} data-skeleton-card>
+          <Shimmer className="poster" />
+          <div className="body">
+            <Shimmer className="title" />
+            <div className="roles">
+              <Shimmer />
+              <Shimmer />
+            </div>
+            <div className="footer">
+              <Shimmer />
+              <Shimmer />
+            </div>
+          </div>
+        </TeamSkeletonCard>
+      ))}
+    </TeamGrid>
+  );
+}
+
+function ContestSkeletonGrid() {
+  return (
+    <ContestGrid aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <ContestSkeletonCard key={index} data-skeleton-card>
+          <Shimmer className="artwork" />
+          <div className="card-body">
+            <Shimmer className="title" />
+            <div className="meta">
+              <Shimmer />
+              <Shimmer />
+            </div>
+          </div>
+        </ContestSkeletonCard>
+      ))}
+    </ContestGrid>
+  );
+}
+
 const Layout = styled.div({
   display: 'grid',
   gridTemplateColumns: '260px minmax(0, 1fr)',
@@ -389,5 +453,55 @@ const MobileFilters = styled.div({
       height: 34,
       maxWidth: 110,
     },
+  },
+});
+
+const shimmer = keyframes({
+  '0%': { backgroundPosition: '100% 0' },
+  '100%': { backgroundPosition: '-100% 0' },
+});
+const Shimmer = styled.div({
+  height: 12,
+  borderRadius: 6,
+  background: `linear-gradient(90deg, ${c.gray100} 25%, ${c.gray50} 50%, ${c.gray100} 75%)`,
+  backgroundSize: '200% 100%',
+  animation: `${shimmer} 1.4s ease-in-out infinite`,
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+});
+const SkeletonStatus = styled.div({ width: '100%' });
+const TeamSkeletonCard = styled.article({
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 12,
+  overflow: 'hidden',
+  minWidth: 0,
+  '.poster': { height: 135, borderRadius: 0 },
+  '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
+  '.title': { width: '62%', height: 20 },
+  '.roles, .footer': { display: 'flex', justifyContent: 'space-between', gap: 8 },
+  '.roles > div': { width: 56 },
+  '.footer > div:first-of-type': { width: '38%' },
+  '.footer > div:last-of-type': { width: 76 },
+  [mobile]: {
+    border: '1px solid #f0f1f3',
+    borderRadius: 14,
+    '.poster': { display: 'none' },
+    '.body': { padding: 14, gap: 10 },
+  },
+});
+const ContestSkeletonCard = styled.article({
+  borderRadius: 12,
+  overflow: 'hidden',
+  minWidth: 0,
+  background: c.white,
+  '.artwork': { height: 188, borderRadius: '12px 12px 0 0' },
+  '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
+  '.title': { width: '76%', height: 20 },
+  '.meta': { display: 'flex', justifyContent: 'space-between', gap: 8 },
+  '.meta > div': { width: '36%' },
+  [mobile]: {
+    border: '1px solid #f0f1f3',
+    '.artwork': { height: 160 },
+    '.card-body': { padding: 12 },
   },
 });
