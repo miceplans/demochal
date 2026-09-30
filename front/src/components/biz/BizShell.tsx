@@ -254,11 +254,10 @@ export function BizSidebar() {
   const route = routeOf(usePathname());
   const base = useBizBase();
   const router = useRouter();
-  const authQuery = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const businessQuery = generated.useFindMyBusiness({ query: { retry: false } });
-  const userName = authQuery.data?.status === 200 ? (authQuery.data.data.name ?? '') : '';
-  const companyName =
-    businessQuery.data?.status === 200 ? (businessQuery.data.data.name ?? '') : '';
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { data: business } = generated.useFindMyBusiness({ query: { retry: false } });
+  const accountName = (auth?.status === 200 ? auth.data.name : undefined) ?? '불러오는 중';
+  const businessName = (business?.status === 200 ? business.data.name : undefined) ?? '불러오는 중';
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
     '',
@@ -285,10 +284,10 @@ export function BizSidebar() {
       </SidebarTop>
       <ProfileRow>
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
-          <Avatar aria-hidden>{userName[0]}</Avatar>
+          <Avatar aria-hidden>{accountName[0]}</Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{userName}</strong>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{companyName}</span>
+            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{accountName}</strong>
+            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{businessName}</span>
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
