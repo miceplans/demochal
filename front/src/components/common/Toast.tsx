@@ -116,9 +116,13 @@ const TextBox = styled.div({
 });
 const Message = styled.p({
   ...textStyle.subtitle,
+  fontSize: 12,
+  fontWeight: 500,
   color: c.gray900,
   [mobile]: {
     ...textStyle.mBadgeText,
+    fontSize: 10,
+    fontWeight: 500,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
