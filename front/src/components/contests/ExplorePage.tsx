@@ -32,6 +32,7 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
+import { daysUntil } from '@/lib/date';
 
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
 const PRIZE_MIN = 0;
@@ -79,17 +80,14 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     { query: { enabled: teamMode } },
   );
   const teamCards = (teamsQuery.data?.data ?? []).map(toTeamCard);
-  const contestCards: Contest[] = challengeOptions.map((challenge) => {
-    const end = challenge.endDate ? new Date(challenge.endDate).getTime() : NaN;
-    return {
-      id: challenge.id ?? '',
-      title: challenge.title ?? '챌린지',
-      category: challenge.category ?? '기타',
-      days: Number.isNaN(end) ? 0 : Math.max(0, Math.ceil((end - now) / 86_400_000)),
-      // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
-      teams: undefined,
-    };
-  });
+  const contestCards: Contest[] = challengeOptions.map((challenge) => ({
+    id: challenge.id ?? '',
+    title: challenge.title ?? '챌린지',
+    category: challenge.category ?? '기타',
+    days: daysUntil(challenge.endDate, now),
+    // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
+    teams: undefined,
+  }));
   const hasMoreChallenges = Boolean(challengesQuery.data?.data.nextCursor);
   return (
     <UserShell>

@@ -12,15 +12,8 @@ import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { formatDateDot as formatDate } from '@/lib/date';
 import { teamCapacity } from './team-model';
-
-function formatDate(iso?: string) {
-  if (!iso) return '-';
-  const date = new Date(iso);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
-    date.getDate(),
-  ).padStart(2, '0')}`;
-}
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();

@@ -33,6 +33,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
+import { daysUntil } from '@/lib/date';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -577,9 +578,7 @@ export function BookmarksPage() {
     id: challenge.id ?? '',
     title: challenge.title ?? '제목 없음',
     category: challenge.category ?? '기타',
-    days: challenge.endDate
-      ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))
-      : 0,
+    days: daysUntil(challenge.endDate, now),
   }));
   return (
     <MyShell title="북마크 챌린지">
