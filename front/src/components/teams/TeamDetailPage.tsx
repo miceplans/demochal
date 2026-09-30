@@ -14,7 +14,6 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
 import { teamCapacity } from './team-model';
-import { useFileUrl } from '@/lib/useFileUrl';
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -35,7 +34,7 @@ export function TeamDetailPage() {
     query: { enabled: !!team?.challengeId },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
-  const posterUrl = useFileUrl(challenge?.posterFileId);
+  const posterUrl = challenge?.posterUrl ?? null;
   const bookmarkId = challenge?.id;
   const saved = bookmarks.some((item) => item.id === bookmarkId);
 

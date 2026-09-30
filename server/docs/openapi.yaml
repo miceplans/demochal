@@ -2492,6 +2492,12 @@ components:
         prizeAmount: { type: integer, nullable: true, description: 총상금(만원). 탐색 필터용 }
         posterFileId:
           { type: string, format: uuid, nullable: true, description: 챌린지 포스터 파일 ID }
+        posterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더,
+          }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
@@ -2663,6 +2669,12 @@ components:
             nullable: true,
             format: uuid,
             description: 목록·상세 응답의 챌린지 포스터 파일 ID,
+          }
+        challengePosterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 없으면 null — 클라이언트는 placeholder 유지,
           }
         leaderName: { type: string, description: 목록·상세 응답에 포함 }
         businessName:

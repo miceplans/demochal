@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BadRequestException } from '@nestjs/common';
 import { challenges } from '../../db/schema.js';
 import { ChallengesService } from './challenges.service.js';
 
@@ -36,7 +37,19 @@ function createService(
     .mockReturnValueOnce(candidatesQuery)
     .mockReturnValueOnce(viewsQuery)
     .mockReturnValueOnce(bookmarksQuery);
-  return { service: new ChallengesService(db, {} as any), candidatesQuery };
+  return {
+    service: new ChallengesService(db, {} as any, createFilesStub() as any),
+    candidatesQuery,
+  };
+}
+
+// posterFileId 검증/포스터 URL 해결은 FilesService 책임 — 스텁으로 고정 동작을 돌려준다.
+function createFilesStub(overrides: Record<string, unknown> = {}) {
+  return {
+    assertReadyPublic: vi.fn().mockResolvedValue({ id: 'file-1' }),
+    resolvePublicUrl: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  };
 }
 
 function challenge(id: string, category: string | null, createdAt: string): ChallengeRow {
@@ -248,7 +261,12 @@ describe('ChallengesService.list', () => {
     const where = vi.fn().mockReturnValue({ orderBy, limit });
     const from = vi.fn().mockReturnValue({ where });
     const db = { select: vi.fn().mockReturnValue({ from }) } as any;
-    return { service: new ChallengesService(db, {} as any), db, where, orderBy };
+    return {
+      service: new ChallengesService(db, {} as any, createFilesStub() as any),
+      db,
+      where,
+      orderBy,
+    };
   }
 
   function whereValues(where: ReturnType<typeof createListService>['where']) {
@@ -486,7 +504,7 @@ describe('ChallengesService.create', () => {
       }),
     }));
     const adminSettings = { isEnabled: vi.fn().mockResolvedValue(false) };
-    return new ChallengesService(db, adminSettings as any);
+    return new ChallengesService(db, adminSettings as any, createFilesStub() as any);
   }
 
   const baseDto = {
@@ -558,6 +576,34 @@ describe('ChallengesService.create', () => {
 
     expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1' });
   });
+
+  it('validates the poster file and rejects create for a missing/pending/private file', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select.mockImplementation(() => queryChain([{ id: 'biz-1' }]));
+    db.insert.mockImplementation(() => ({
+      values: vi.fn().mockImplementation((captured) => {
+        valuesCalls.push(captured);
+        return { returning: vi.fn().mockResolvedValue([{ id: 'challenge-1' }]) };
+      }),
+    }));
+    const files = createFilesStub({
+      assertReadyPublic: vi
+        .fn()
+        .mockRejectedValue(new BadRequestException('A ready public file is required')),
+    });
+    const service = new ChallengesService(
+      db,
+      { isEnabled: vi.fn().mockResolvedValue(false) } as any,
+      files as any,
+    );
+
+    await expect(
+      service.create({ ...baseDto, posterFileId: 'file-x' } as any, 'user-1'),
+    ).rejects.toThrow(BadRequestException);
+    expect(valuesCalls).toHaveLength(0);
+    expect(files.assertReadyPublic).toHaveBeenCalledWith('file-x');
+  });
 });
 
 describe('ChallengesService.update', () => {
@@ -578,7 +624,12 @@ describe('ChallengesService.update', () => {
       select: vi.fn().mockReturnValue({ from }),
       update: vi.fn().mockReturnValue({ set }),
     } as any;
-    return { service: new ChallengesService(db, {} as any), db, set, where };
+    return {
+      service: new ChallengesService(db, {} as any, createFilesStub() as any),
+      db,
+      set,
+      where,
+    };
   }
 
   it('updates only the provided fields for the owning business', async () => {
@@ -604,6 +655,26 @@ describe('ChallengesService.update', () => {
     const cleared = createUpdateService([current]);
     await cleared.service.update('ch-1', { posterFileId: null }, owner);
     expect(cleared.set).toHaveBeenCalledWith({ posterFileId: null });
+  });
+
+  it('rejects update when posterFileId is not a ready public file', async () => {
+    const db = { select: vi.fn(), update: vi.fn() } as any;
+    const limit = vi.fn().mockResolvedValue([current]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    db.select.mockReturnValue({ from: vi.fn().mockReturnValue({ innerJoin }) });
+    db.update.mockReturnValue({ set: vi.fn() });
+    const files = createFilesStub({
+      assertReadyPublic: vi
+        .fn()
+        .mockRejectedValue(new BadRequestException('A ready public file is required')),
+    });
+    const service = new ChallengesService(db, {} as any, files as any);
+
+    await expect(service.update('ch-1', { posterFileId: 'file-x' }, owner)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('scopes the lookup to the owner unless the user is an admin', async () => {
@@ -638,5 +709,37 @@ describe('ChallengesService.update', () => {
     const { service, set } = createUpdateService([{ ...current, recruitMethod: 'seMOchall' }]);
     await service.update('ch-1', { title: 'new', recruitUrl: 'https://example.com/apply' }, owner);
     expect(set).toHaveBeenCalledWith({ title: 'new' });
+  });
+});
+
+describe('ChallengesService.findById', () => {
+  function createDetailService(rows: unknown[], files: ReturnType<typeof createFilesStub>) {
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select.mockImplementation(() => queryChain(rows));
+    db.insert.mockImplementation(() => ({ values: vi.fn().mockResolvedValue(undefined) }));
+    return new ChallengesService(db, {} as any, files as any);
+  }
+
+  it('attaches the resolved posterUrl next to the challenge row', async () => {
+    const files = createFilesStub({
+      resolvePublicUrl: vi.fn().mockResolvedValue('https://cdn.example.com/uploads/poster.webp'),
+    });
+    const service = createDetailService([{ id: 'ch-1', posterFileId: 'file-poster' }], files);
+
+    const result = await service.findById('ch-1');
+
+    expect(result).toMatchObject({
+      id: 'ch-1',
+      posterUrl: 'https://cdn.example.com/uploads/poster.webp',
+    });
+    expect(files.resolvePublicUrl).toHaveBeenCalledWith('file-poster');
+  });
+
+  it('falls back to a null posterUrl when the file is missing or not public-ready', async () => {
+    const service = createDetailService([{ id: 'ch-1', posterFileId: null }], createFilesStub());
+
+    const result = await service.findById('ch-1');
+
+    expect(result.posterUrl).toBeNull();
   });
 });

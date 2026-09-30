@@ -52,8 +52,16 @@ export interface Challenge {
    * @nullable
    */
   prizeAmount?: number | null;
-  /** 챌린지 포스터 파일 ID */
+  /**
+   * 챌린지 포스터 파일 ID
+   * @nullable
+   */
   posterFileId?: string | null;
+  /**
+   * 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더
+   * @nullable
+   */
+  posterUrl?: string | null;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;

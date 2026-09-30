@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import type { UpdateChallengeRequest } from '@semochal/api-client/src/generated/model/updateChallengeRequest';
 import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
@@ -15,7 +14,6 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
-import { useFileUrl } from '@/lib/useFileUrl';
 
 const ICON = '/assets/icons';
 
@@ -108,9 +106,9 @@ export function BizPostingEditPage() {
         startDate: toDateInput(challenge.startDate),
         endDate: toDateInput(challenge.endDate),
         category: challenge.category ?? '',
-        posterFileId: challenge.posterFileId ?? undefined,
+        posterUrl: challenge.posterUrl ?? null,
         targets: challenge.targets ?? [],
-        organizerType: challenge.organizerType ?? '',
+        organizerType: challenge.organizerType ?? null,
         prizeAmount:
           challenge.prizeAmount === undefined || challenge.prizeAmount === null
             ? ''
@@ -121,10 +119,7 @@ export function BizPostingEditPage() {
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
       onSubmit={async (values) => {
-        await updateChallenge.mutateAsync({
-          id,
-          data: values as UpdateChallengeRequest,
-        });
+        await updateChallenge.mutateAsync({ id, data: values });
         await queryClient.invalidateQueries({ queryKey: generated.getGetChallengeQueryKey(id) });
         toast.success('공고를 수정했습니다');
         router.push(hrefOf(`/postings/${id}`));
@@ -142,14 +137,16 @@ type PostingInput = {
   startDate: string;
   endDate: string;
   category: string;
-  posterFileId?: string;
-  targets: string[];
-  organizerType: (typeof organizerTypes)[number] | '' | null;
+  posterUrl?: string | null;
+  targets: NonNullable<generated.UpdateChallengeMutationBody['targets']>;
+  organizerType: (typeof organizerTypes)[number] | null;
   prizeAmount: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
 };
-type PostingValues = {
+// 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긬다.
+// 폼에서 항상 값이 있는 핵심 필드는 필수로 좁혀, 수기 create 클라이언트의 Pick<Challenge, ...> 계약에도 맞는다.
+type PostingValues = generated.UpdateChallengeMutationBody & {
   title: string;
   description: string;
   price: number;
@@ -157,10 +154,6 @@ type PostingValues = {
   startDate: string;
   endDate: string;
   category: string | null;
-  targets: string[];
-  organizerType: (typeof organizerTypes)[number] | null;
-  prizeAmount: number | null;
-  posterFileId?: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
 };
@@ -174,7 +167,7 @@ const EMPTY_POSTING: PostingInput = {
   endDate: '',
   category: '',
   targets: [],
-  organizerType: '',
+  organizerType: null,
   prizeAmount: '',
 };
 
@@ -248,7 +241,7 @@ function PostingForm({
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
   const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
   const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
-  const existingPosterUrl = useFileUrl(initial.posterFileId);
+  const existingPosterUrl = initial.posterUrl ?? null;
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const posterObjectUrl = useRef<string | null>(null);
   const [recruit, setRecruit] = useState<'semo' | 'external'>(

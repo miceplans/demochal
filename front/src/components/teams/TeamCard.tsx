@@ -4,11 +4,9 @@ import styled from '@emotion/styled';
 import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useFileUrl } from '@/lib/useFileUrl';
 
 export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
-  const posterUrl = useFileUrl(team.posterFileId);
-  const poster = posterUrl ?? team.poster;
+  const poster = team.poster;
   return (
     <Card data-component="team-card">
       {poster ? (

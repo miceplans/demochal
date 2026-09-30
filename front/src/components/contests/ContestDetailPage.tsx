@@ -27,7 +27,6 @@ import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 import { daysUntil, formatDateDot } from '@/lib/date';
-import { useFileUrl } from '@/lib/useFileUrl';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 
@@ -50,7 +49,7 @@ export function ContestDetailPage({
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
-  const posterUrl = useFileUrl(challenge?.posterFileId);
+  const posterUrl = challenge?.posterUrl ?? null;
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
