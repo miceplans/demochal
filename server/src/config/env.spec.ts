@@ -30,8 +30,9 @@ describe('env JWT_SECRET validation', () => {
 describe('env S3_ENDPOINT', () => {
   afterEach(() => vi.unstubAllEnvs());
 
-  it('is undefined when unset or empty', async () => {
-    expect((await loadEnv({})).env.s3Endpoint).toBeUndefined();
+  it('is undefined when set to an empty value', async () => {
+    // Stub explicitly: env.ts itself dotenv-loads server/.env, which may define
+    // S3_ENDPOINT in a developer workspace, so an unstubbed import is not hermetic.
     expect((await loadEnv({ S3_ENDPOINT: '' })).env.s3Endpoint).toBeUndefined();
   });
 
