@@ -78,7 +78,7 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 16,
-  width: 200,
+  minWidth: 200,
   maxWidth: 'calc(100vw - 32px)',
   padding: 10,
   borderRadius: 6,
@@ -98,6 +98,7 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
   [mobile]: {
     gap: 4,
     width: 'auto',
+    minWidth: 'auto',
     padding: 6,
     backgroundImage: 'none',
     backgroundColor: c.white,
