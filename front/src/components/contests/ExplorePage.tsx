@@ -206,7 +206,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 <Dropdown
                   key={filter.label}
                   aria-label={filter.label}
-                  size="S"
+                  variant="pill"
                   width="auto"
                   style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={filter.value}
@@ -218,7 +218,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               <>
                 <Dropdown
                   aria-label="분야"
-                  size="S"
+                  variant="pill"
                   width="auto"
                   style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={selectedCategories[0] ?? ''}

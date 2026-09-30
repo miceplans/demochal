@@ -10,6 +10,8 @@ export interface DropdownOption {
 }
 
 type DropdownSize = 'L' | 'S';
+// pill: 모바일 필터용 알약 스타일(회색 배경, 둥근 모서리, 작은 글자).
+type DropdownVariant = 'default' | 'pill';
 
 interface DropdownProps {
   options: DropdownOption[];
@@ -17,6 +19,7 @@ interface DropdownProps {
   defaultValue?: string;
   placeholder?: string;
   size?: DropdownSize;
+  variant?: DropdownVariant;
   width?: number | string;
   disabled?: boolean;
   onChange?: (value: string) => void;
@@ -29,7 +32,7 @@ const Wrapper = styled.div<{ $width: string }>`
   width: ${({ $width }) => $width};
 `;
 
-const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
+const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,6 +67,18 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  ${({ $pill, theme }) =>
+    $pill
+      ? `
+    height: 34px;
+    background: ${theme.colors.gray[100]};
+    border: 1px solid ${theme.colors.gray[100]};
+    border-radius: 24px;
+    font-size: ${textStyle.mSubText.fontSize}px;
+    color: ${theme.colors.gray[700]};
+  `
+      : ''}
 `;
 
 const Chevron = styled.span<{ $open: boolean }>`
@@ -129,6 +144,7 @@ export function Dropdown({
   defaultValue = '',
   placeholder = '요소를 선택하세요',
   size = 'L',
+  variant = 'default',
   width = '100%',
   disabled = false,
   onChange,
@@ -217,6 +233,7 @@ export function Dropdown({
       <Trigger
         type="button"
         $size={size}
+        $pill={variant === 'pill'}
         $hasValue={Boolean(selected)}
         disabled={disabled}
         role="combobox"
