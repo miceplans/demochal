@@ -36,7 +36,7 @@ import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './E
 const PRIZE_MIN = 0;
 const PRIZE_MAX = 10_000;
 
-const MOBILE_FILTER_WIDTH = 110;
+const MOBILE_FILTER_MAX_WIDTH = 110;
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
@@ -207,7 +207,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   key={filter.label}
                   aria-label={filter.label}
                   size="S"
-                  width={MOBILE_FILTER_WIDTH}
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={filter.value}
                   onChange={filter.onChange}
                   options={[{ value: '', label: filter.label }, ...filter.options]}
@@ -218,7 +219,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 <Dropdown
                   aria-label="분야"
                   size="S"
-                  width={MOBILE_FILTER_WIDTH}
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={selectedCategories[0] ?? ''}
                   onChange={(value) => setSelectedCategories(value ? [value] : [])}
                   options={[
