@@ -19,6 +19,8 @@ const envSchema = z
 
     S3_PUBLIC_BUCKET: z.string().default('semochal-public-dev'),
     S3_PRIVATE_BUCKET: z.string().default('semochal-private-dev'),
+    // Local S3-compatible endpoint (LocalStack). Empty keeps the default AWS endpoint.
+    S3_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
 
     SQS_VERIFICATIONS_QUEUE_URL: z.string().default(''),
 
@@ -95,6 +97,7 @@ export const env = {
 
   s3PublicBucket: raw.S3_PUBLIC_BUCKET,
   s3PrivateBucket: raw.S3_PRIVATE_BUCKET,
+  s3Endpoint: raw.S3_ENDPOINT || undefined,
 
   sqsVerificationsQueueUrl: raw.SQS_VERIFICATIONS_QUEUE_URL,
   sesFromEmail: raw.SES_FROM_EMAIL,
