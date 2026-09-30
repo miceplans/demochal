@@ -9,16 +9,22 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 import { ads, users } from './core.schema.js';
-export const notifications = pgTable('notifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  type: varchar('type', { length: 50 }).notNull(),
-  payload: jsonb('payload').notNull(),
-  readAt: timestamp('read_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    type: varchar('type', { length: 50 }).notNull(),
+    payload: jsonb('payload').notNull(),
+    readAt: timestamp('read_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    // 스케줄러가 만드는 알림(마감/공고)의 중복 방지 키. null이면 중복 제어 없음(팀매칭 등).
+    dedupeKey: varchar('dedupe_key', { length: 100 }),
+  },
+  (table) => [uniqueIndex('notifications_user_dedupe_key_idx').on(table.userId, table.dedupeKey)],
+);
 export const inquiries = pgTable('inquiries', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),

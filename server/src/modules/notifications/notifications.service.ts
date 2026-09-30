@@ -53,11 +53,14 @@ export class NotificationsService {
 
   // 알림 설정 화면(front user-design.ts notificationSettings)의 스위치 키 매핑.
   // 지원 알림(applicantUserId), 결과 알림(status), 팀 초대(invitedUserId) 모두
-  // team_matching 타입이므로 payload 필드로 구분한다.
+  // team_matching 타입이므로 payload 필드로 구분한다. 마감/공고 스캔 알림은 타입으로 매핑하고,
+  // 스캐너(ChallengeNotificationScanService.isOptedIn)와 동일한 키를 쓴다 — 함께 바꿔야 한다.
   private settingsKeyFor(
     type: string,
     payload: Record<string, unknown>,
-  ): 'applicant' | 'result' | 'invite' | 'invite_result' | undefined {
+  ): 'applicant' | 'result' | 'invite' | 'invite_result' | 'deadline' | 'challenge' | undefined {
+    if (type === 'deadline') return 'deadline';
+    if (type === 'posting') return 'challenge';
     if (type !== 'team_matching') return undefined;
     if (typeof payload.invitedUserId === 'string') return 'invite';
     // 초대 수락 알림은 팀장에게 가는 별도 키 — '새 지원자'와 설정을 분리한다.

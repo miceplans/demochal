@@ -198,12 +198,8 @@ export const preferenceGroups = [
     ],
   },
 ];
-// TODO: 서버가 저장·반영하는 알림 설정은 applicant(새 지원자)/result(수락·거절),
-// invite(팀 초대), invite_result(초대 수락/거절)뿐이라(#261, #291) 나머지 그룹은
-// 제거했다. 서버가 아래 유형의 알림을 생성하고 설정을 확인해 끈 유형은 저장하지
-// 않도록 하면 살린다.
-// - 챌린지 알림 그룹 전체(deadline/challenge/award): 마감 임박·새 챌린지·새 수상작
-//   알림을 만드는 서버 로직이 없음.
+// TODO: '새 수상작' 알림 스위치(award)는 서버에 수상작 알림 로직이 없어(#327 out of
+// scope) 아직 복원하지 않았다. 서버가 수상작 알림을 만들고 설정을 확인하면 살린다.
 export const notificationSettings = [
   {
     title: '팀매칭 알림',
@@ -212,6 +208,19 @@ export const notificationSettings = [
       ['result', '지원 수락/거절 알림', '내가 지원한 팀의 수락/거절 결과를 알려드려요'],
       ['invite', '팀 초대 알림', '다른 팀에서 나를 초대하면 알려드려요'],
       ['invite_result', '초대 수락/거절 알림', '내가 본 팀 초대의 수락/거절 결과를 알려드려요'],
+    ],
+  },
+  {
+    title: '챌린지 알림',
+    rows: [
+      // 스캐너(ChallengeNotificationScanService)가 deadline 타입을 1회 생성한다 — D-7
+      // 1회 정책(Issue #327)과 카피를 맞췄다.
+      ['deadline', '마감 임박 알림', '북마크한 챌린지 마감 7일 전에 알려드려요'],
+      [
+        'challenge',
+        '관심분야 새 챌린지 알림',
+        '관심분야 새 챌린지와 북마크 챌린지 접수 시작을 알려드려요',
+      ],
     ],
   },
 ];
