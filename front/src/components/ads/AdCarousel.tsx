@@ -252,7 +252,35 @@ export function AdCarousel({
   const [isInViewport, setIsInViewport] = useState(false);
   const seenImpressions = useRef(new Set<string>());
   const touchStart = useRef<{ x: number; y: number } | null>(null);
+  const animationFrames = useRef(new Set<number>());
   const itemCount = items.length;
+
+  const cancelAnimationFrames = useCallback(() => {
+    animationFrames.current.forEach((frame) => window.cancelAnimationFrame(frame));
+    animationFrames.current.clear();
+  }, []);
+
+  // 두 프레임을 나누어 애니메이션을 다시 켜야 레일 위치를 되돌리는 한 프레임이
+  // 화면에 보이지 않는다. 예약 ID를 보관해 route 전환이나 remount 때도 취소한다.
+  const scheduleAnimationEnable = useCallback(() => {
+    let secondFrame: number | undefined;
+    const firstFrame = window.requestAnimationFrame(() => {
+      animationFrames.current.delete(firstFrame);
+      secondFrame = window.requestAnimationFrame(() => {
+        animationFrames.current.delete(secondFrame!);
+        setShouldAnimate(true);
+      });
+      animationFrames.current.add(secondFrame);
+    });
+    animationFrames.current.add(firstFrame);
+  }, []);
+
+  useEffect(
+    () => () => {
+      cancelAnimationFrames();
+    },
+    [cancelAnimationFrames],
+  );
 
   useEffect(() => {
     const viewport = viewportRef.current;
@@ -305,15 +333,16 @@ export function AdCarousel({
       setShouldAnimate(false);
       setPad(nextPad);
       setRailIndex((prevIndex) => prevIndex + diff);
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => setShouldAnimate(true));
-      });
+      scheduleAnimationEnable();
     };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(viewport);
-    return () => observer.disconnect();
-  }, [getStep, itemCount]);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrames();
+    };
+  }, [cancelAnimationFrames, getStep, itemCount, scheduleAnimationEnable]);
 
   useEffect(() => {
     if (isPaused || itemCount < 2) return;
@@ -378,9 +407,7 @@ export function AdCarousel({
     setRailIndex(railIndex === pad - 1 ? railIndex + itemCount : railIndex - itemCount);
     // 복제한 광고로 이동한 뒤, 애니메이션 없이 실제 광고로 되돌립니다.
     // 두 프레임을 분리해야 브라우저가 되돌아가는 위치를 화면에 그리지 않습니다.
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setShouldAnimate(true));
-    });
+    scheduleAnimationEnable();
   };
 
   return (
