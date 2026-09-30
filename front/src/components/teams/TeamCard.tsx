@@ -6,7 +6,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Tag, Row, Muted } from '@/components/common/Primitives';
 
-export function TeamCard({ team }: { team: Team }) {
+export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
   return (
     <Card data-component="team-card">
       {team.poster ? (
@@ -19,9 +19,7 @@ export function TeamCard({ team }: { team: Team }) {
       )}
       <div className="body">
         <Row style={{ justifyContent: 'space-between' }}>
-          <h3>
-            <Link href={`/teams/${team.id}`}>{team.name}</Link>
-          </h3>
+          <h3>{displayOnly ? team.name : <Link href={`/teams/${team.id}`}>{team.name}</Link>}</h3>
           <Challenge>{team.challenge}</Challenge>
         </Row>
         <Row gap={6}>
@@ -36,10 +34,12 @@ export function TeamCard({ team }: { team: Team }) {
         </Row>
         <Row style={{ justifyContent: 'space-between' }}>
           <Members>{team.members}</Members>
-          <Row gap={6} style={{ flexShrink: 0 }}>
-            <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
-            <Apply href={`/teams/${team.id}`}>지원하기</Apply>
-          </Row>
+          {!displayOnly && (
+            <Row gap={6} style={{ flexShrink: 0 }}>
+              <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
+              <Apply href={`/teams/${team.id}`}>지원하기</Apply>
+            </Row>
+          )}
         </Row>
       </div>
     </Card>
