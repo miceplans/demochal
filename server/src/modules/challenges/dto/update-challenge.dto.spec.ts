@@ -22,7 +22,7 @@ describe('UpdateChallengeDto', () => {
   });
 
   it('rejects an invalid or non-http(s) recruitUrl', async () => {
-    for (const recruitUrl of ['not-a-url', 'ftp://example.com/file', '   ', 'example.com']) {
+    for (const recruitUrl of [null, 'not-a-url', 'ftp://example.com/file', '   ', 'example.com']) {
       const dto = Object.assign(new UpdateChallengeDto(), { recruitUrl });
 
       const errors = await validate(dto);

@@ -9,7 +9,7 @@ const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
 const journal = JSON.parse(
   readFileSync(resolve(drizzleDirectory, 'meta/_journal.json'), 'utf8'),
 ) as {
-  entries: Array<{ tag: string }>;
+  entries: Array<{ tag: string; when: number }>;
 };
 const baselineTag = journal.entries[0]?.tag;
 
@@ -143,6 +143,13 @@ describe('0004 platform extension migration', () => {
 });
 
 describe('migration chain coverage', () => {
+  it('gives the newest migration a timestamp after every existing migration', () => {
+    const newestMigration = journal.entries.at(-1);
+    const latestExistingWhen = Math.max(...journal.entries.slice(0, -1).map((entry) => entry.when));
+
+    expect(newestMigration?.when).toBeGreaterThan(latestExistingWhen);
+  });
+
   it('creates every table declared in the ORM schema across the whole chain', () => {
     const chainSql = journal.entries
       .map((entry) => readFileSync(resolve(drizzleDirectory, `${entry.tag}.sql`), 'utf8'))
