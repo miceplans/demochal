@@ -6,10 +6,17 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, inArray, ne } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, ne } from 'drizzle-orm';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, challenges, teamMembers, teams, users } from '../../db/schema.js';
+import {
+  applications,
+  businesses,
+  challenges,
+  teamMembers,
+  teams,
+  users,
+} from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { FilesService } from '../files/files.service.js';
 import type { CreateTeamDto } from './dto/create-team.dto.js';
@@ -24,6 +31,9 @@ export interface TeamListFilters {
   region?: string;
   q?: string;
 }
+
+/** 사람찾기 스카우트 제안은 팀당 이 횟수까지 보낼 수 있다(거절/취소돼도 차감). */
+export const SCOUT_LIMIT_PER_TEAM = 3;
 
 const splitList = (value?: string) =>
   (value ?? '')
@@ -294,9 +304,22 @@ export class TeamsService {
       .limit(1);
     if (existing) throw new ConflictException('이미 지원하거나 초대된 멤버예요');
 
+    // TODO: 동시 요청 시 한도를 넘을 수 있다 — 필요하면 팀 행 잠금(SELECT ... FOR UPDATE)으로 직렬화.
+    const { used } = await this.countScouts(id);
+    if (used >= SCOUT_LIMIT_PER_TEAM) {
+      throw new ConflictException('이 팀의 스카우트 횟수를 모두 사용했어요');
+    }
+
     const [member] = await this.db
       .insert(teamMembers)
-      .values({ teamId: id, userId: dto.userId, role: dto.role, status: 'invited' })
+      .values({
+        teamId: id,
+        userId: dto.userId,
+        role: dto.role,
+        status: 'invited',
+        scoutedAt: new Date(),
+        scoutMessage: dto.message?.trim() || null,
+      })
       .returning();
 
     await this.notificationsService.create(dto.userId, 'team_matching', {
@@ -306,6 +329,96 @@ export class TeamsService {
       ...(dto.role ? { role: dto.role } : {}),
     });
     return member;
+  }
+
+  private async countScouts(teamId: string) {
+    const [row] = await this.db
+      .select({ used: count() })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, teamId), isNotNull(teamMembers.scoutedAt)));
+    return { used: row?.used ?? 0 };
+  }
+
+  // 스카우트 제안 모달의 "남은 스카우트 n / 3". 팀장(또는 관리자)만 조회한다.
+  async getScoutQuota(teamId: string, user: AuthenticatedUser) {
+    const [team] = await this.db
+      .select({ id: teams.id, leaderUserId: teams.leaderUserId })
+      .from(teams)
+      .where(eq(teams.id, teamId))
+      .limit(1);
+    if (!team) throw new NotFoundException('Team not found');
+    if (team.leaderUserId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('Only the team leader can view scout quota');
+    }
+    const { used } = await this.countScouts(teamId);
+    return {
+      limit: SCOUT_LIMIT_PER_TEAM,
+      used,
+      remaining: Math.max(0, SCOUT_LIMIT_PER_TEAM - used),
+    };
+  }
+
+  // 제안 상세(`/offers/{memberId}`) — 받은 사람 본인, 보낸 팀장, 관리자만 볼 수 있다.
+  async getOffer(memberId: string, user: AuthenticatedUser) {
+    const [row] = await this.db
+      .select({
+        member: teamMembers,
+        team: teams,
+        challengeTitle: challenges.title,
+      })
+      .from(teamMembers)
+      .innerJoin(teams, eq(teamMembers.teamId, teams.id))
+      .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .where(eq(teamMembers.id, memberId))
+      .limit(1);
+    // 제안(초대)이 아닌 지원 행이거나 권한이 없으면 존재 여부를 숨기려 404로 통일한다.
+    if (!row || row.member.scoutedAt === null) throw new NotFoundException('Offer not found');
+    const { member, team, challengeTitle } = row;
+    const isRecipient = member.userId === user.id;
+    const isSender = team.leaderUserId === user.id;
+    if (!isRecipient && !isSender && user.role !== 'admin') {
+      throw new NotFoundException('Offer not found');
+    }
+
+    const [leader] = await this.db
+      .select({ id: users.id, name: users.name, badges: users.badges })
+      .from(users)
+      .where(eq(users.id, team.leaderUserId))
+      .limit(1);
+    const [challengeRow] = await this.db
+      .select({ total: count() })
+      .from(applications)
+      .where(eq(applications.userId, team.leaderUserId));
+    const [memberRow] = await this.db
+      .select({ accepted: count() })
+      .from(teamMembers)
+      .where(and(eq(teamMembers.teamId, team.id), eq(teamMembers.status, 'accepted')));
+
+    const capacity = 1 + team.openRoles.reduce((sum, slot) => sum + slot.count, 0);
+    return {
+      id: member.id,
+      teamId: team.id,
+      status: member.status,
+      role: member.role,
+      message: member.scoutMessage,
+      receivedAt: member.scoutedAt,
+      team: {
+        id: team.id,
+        title: team.title,
+        challengeTitle,
+        introduction: team.introduction,
+        status: team.status,
+        // 팀장 포함 인원 / 정원(팀장 + 모집 슬롯 합계).
+        memberCount: 1 + (memberRow?.accepted ?? 0),
+        capacity,
+      },
+      sender: {
+        id: leader?.id ?? team.leaderUserId,
+        name: leader?.name ?? null,
+        challengeCount: challengeRow?.total ?? 0,
+        badgeCount: leader?.badges.length ?? 0,
+      },
+    };
   }
 
   async updateMember(

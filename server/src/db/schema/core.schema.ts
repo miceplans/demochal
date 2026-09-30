@@ -166,6 +166,9 @@ export const teamMembers = pgTable('team_members', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
   chatLink: varchar('chat_link', { length: 500 }),
+  // 사람찾기 스카우트 제안(팀장→사용자)일 때만 채워진다. scoutedAt이 팀당 3회 제한의 집계 기준이다.
+  scoutedAt: timestamp('scouted_at'),
+  scoutMessage: varchar('scout_message', { length: 200 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const applications = pgTable('applications', {

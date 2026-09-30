@@ -38,6 +38,19 @@ export class TeamsController {
     return this.teamsService.create(dto, user);
   }
 
+  @Get('offers/:memberId')
+  getOffer(
+    @Param('memberId', ParseUUIDPipe) memberId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.teamsService.getOffer(memberId, user);
+  }
+
+  @Get(':id/scout-quota')
+  getScoutQuota(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.teamsService.getScoutQuota(id, user);
+  }
+
   @Public()
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {

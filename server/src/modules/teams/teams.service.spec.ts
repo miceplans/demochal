@@ -690,19 +690,26 @@ describe('TeamsService', () => {
     db.select
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: applicant.id }]))
-      .mockReturnValueOnce(selectChain([]));
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ used: 2 }]));
     const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([memberRow]) });
     db.insert = vi.fn().mockReturnValue({ values });
     const notifications = createNotificationsStub();
     const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
-    const result = await service.invite('team-1', { userId: applicant.id, role: '백엔드' }, leader);
+    const result = await service.invite(
+      'team-1',
+      { userId: applicant.id, role: '백엔드', message: ' 함께해요 ' },
+      leader,
+    );
 
     expect(values).toHaveBeenCalledWith({
       teamId: 'team-1',
       userId: applicant.id,
       role: '백엔드',
       status: 'invited',
+      scoutedAt: expect.any(Date),
+      scoutMessage: '함께해요',
     });
     expect(notifications.create).toHaveBeenCalledWith(applicant.id, 'team_matching', {
       teamId: 'team-1',
@@ -711,6 +718,102 @@ describe('TeamsService', () => {
       role: '백엔드',
     });
     expect(result).toEqual(memberRow);
+  });
+
+  it('invite throws 409 once the team used all 3 scouts', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: applicant.id }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ used: 3 }]));
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
+
+    await expect(service.invite('team-1', { userId: applicant.id }, leader)).rejects.toThrow(
+      ConflictException,
+    );
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('getScoutQuota reports remaining scouts to the leader only', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ used: 1 }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]));
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
+
+    await expect(service.getScoutQuota('team-1', leader)).resolves.toEqual({
+      limit: 3,
+      used: 1,
+      remaining: 2,
+    });
+    await expect(service.getScoutQuota('team-1', applicant)).rejects.toThrow(ForbiddenException);
+  });
+
+  describe('getOffer', () => {
+    const offerRow = {
+      member: {
+        id: 'member-9',
+        userId: applicant.id,
+        status: 'invited',
+        role: '기획',
+        scoutMessage: '안녕하세요',
+        scoutedAt: new Date('2026-07-01T00:00:00Z'),
+      },
+      team: {
+        id: 'team-1',
+        leaderUserId: leader.id,
+        title: '세모 세미나 기획팀',
+        introduction: null,
+        status: 'recruiting',
+        openRoles: [{ role: '기획', count: 2 }],
+      },
+      challengeTitle: '신산업 기획 아이디어 공모전',
+    };
+    const arrangeReads = (row: unknown[]) => {
+      const db = createDbStub();
+      db.select
+        .mockReturnValueOnce(selectChain(row))
+        .mockReturnValueOnce(selectChain([{ id: leader.id, name: '팀장', badges: ['a', 'b'] }]))
+        .mockReturnValueOnce(selectChain([{ total: 12 }]))
+        .mockReturnValueOnce(selectChain([{ accepted: 2 }]));
+      return new TeamsService(db, createNotificationsStub() as any, createFilesStub() as any);
+    };
+
+    it('returns the offer to the recipient with team and sender summary', async () => {
+      const result = await arrangeReads([offerRow]).getOffer('member-9', applicant);
+
+      expect(result).toMatchObject({
+        id: 'member-9',
+        status: 'invited',
+        message: '안녕하세요',
+        team: { title: '세모 세미나 기획팀', memberCount: 3, capacity: 3 },
+        sender: { name: '팀장', challengeCount: 12, badgeCount: 2 },
+      });
+    });
+
+    it('hides the offer from unrelated users and from plain applications', async () => {
+      const stranger = { ...applicant, id: 'user-stranger' };
+      await expect(arrangeReads([offerRow]).getOffer('member-9', stranger)).rejects.toThrow(
+        NotFoundException,
+      );
+      const application = { ...offerRow, member: { ...offerRow.member, scoutedAt: null } };
+      await expect(arrangeReads([application]).getOffer('member-9', applicant)).rejects.toThrow(
+        NotFoundException,
+      );
+      await expect(arrangeReads([]).getOffer('member-x', applicant)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 
   it('updateMember lets the invitee accept their own invite and notifies the leader', async () => {
