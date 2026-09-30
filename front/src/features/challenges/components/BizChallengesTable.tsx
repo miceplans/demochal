@@ -55,5 +55,5 @@ export function BizChallengesTable() {
 
   if (isPending) return <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>;
 
-  return <DataTable data={rows} columns={columns} emptyMessage="등록된 챌린지가 없습니다." />;
+  return <DataTable data={rows} columns={columns} />;
 }

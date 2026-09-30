@@ -167,6 +167,27 @@ export const IconButton = styled.button({
   '&:disabled': { cursor: 'not-allowed' },
 });
 export const EmptyArtwork = styled.div({ background: c.gray100, borderRadius: 12 });
+// 콘텐츠가 없을 때 보여주는 빈 상태 일러스트. 안내 문구 없이 이미지만 표시한다.
+export function EmptyState({ width = 280 }: { width?: number }) {
+  return (
+    <EmptyStateWrapper>
+      <img
+        src="/assets/empty-contents.png"
+        alt=""
+        width={800}
+        height={533}
+        style={{ width: '100%', maxWidth: width, height: 'auto', display: 'block' }}
+      />
+    </EmptyStateWrapper>
+  );
+}
+const EmptyStateWrapper = styled.div({
+  display: 'flex',
+  justifyContent: 'center',
+  width: '100%',
+  padding: '40px 0',
+  [mobile]: { padding: '24px 0' },
+});
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <Row style={{ justifyContent: 'space-between' }}>
