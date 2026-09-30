@@ -165,6 +165,50 @@ describe('NotificationsService.create', () => {
       expect(outbox.enqueue).not.toHaveBeenCalled();
     });
 
+    it('skips insert and email when the deadline setting is off', async () => {
+      const { db, tx } = createDbStub({ id: 'notification-1' }, { deadline: false });
+      const outbox = { enqueue: vi.fn() };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'deadline', { challengeId: 'challenge-1' });
+
+      expect(result).toBeNull();
+      expect(tx.insert).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
+    });
+
+    it('skips insert and email when the challenge setting is off', async () => {
+      const { db, tx } = createDbStub({ id: 'notification-1' }, { challenge: false });
+      const outbox = { enqueue: vi.fn() };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      const result = await service.create('user-1', 'posting', {
+        kind: 'interest_new',
+        challengeId: 'challenge-1',
+      });
+
+      expect(result).toBeNull();
+      expect(tx.insert).not.toHaveBeenCalled();
+      expect(outbox.enqueue).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['the setting is on', { deadline: true }],
+      ['no setting is configured', {}],
+    ])('still creates deadline/posting notifications when %s', async (_, settings) => {
+      const { db, values } = createDbStub({ id: 'notification-1' }, settings);
+      const outbox = { enqueue: vi.fn().mockResolvedValue(undefined) };
+      const service = new NotificationsService(db as any, outbox as any);
+
+      await expect(
+        service.create('user-1', 'deadline', { challengeId: 'challenge-1' }),
+      ).resolves.toEqual({ id: 'notification-1' });
+      await expect(
+        service.create('user-1', 'posting', { kind: 'interest_new', challengeId: 'challenge-1' }),
+      ).resolves.toEqual({ id: 'notification-1' });
+      expect(values).toHaveBeenCalledTimes(2);
+    });
+
     it.each([
       ['the setting is on', { applicant: true }],
       ['no setting is configured', {}],

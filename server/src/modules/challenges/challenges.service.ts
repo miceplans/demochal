@@ -36,6 +36,7 @@ import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
+import { interestsMatch } from './interest-matching.js';
 
 // draft -> published -> closed; no other transition is valid.
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -456,8 +457,8 @@ export class ChallengesService {
       items: candidates
         .map((challenge) => {
           const interestScore =
-            interests.filter((interest) => this.interestsMatch(interest, challenge.category))
-              .length * 100;
+            interests.filter((interest) => interestsMatch(interest, challenge.category)).length *
+            100;
           const popularityScore =
             Math.min(views.get(challenge.id) ?? 0, 50) +
             3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
@@ -481,32 +482,6 @@ export class ChallengesService {
     return Array.isArray(interests)
       ? interests.filter((interest): interest is string => typeof interest === 'string')
       : [];
-  }
-
-  private interestsMatch(interest: string, category: string | null): boolean {
-    if (!category) return false;
-    const interestTokens = this.normalizeInterestTokens(interest);
-    const categoryTokens = this.normalizeInterestTokens(category);
-    return interestTokens.some((interestToken) =>
-      categoryTokens.some((categoryToken) => this.tokensMatch(interestToken, categoryToken)),
-    );
-  }
-
-  // 2자 이하 영문/숫자 토큰(ai, it 등)은 부분 일치 시 mail/digital 같은 무관한 단어에
-  // 걸리므로 정확히 같을 때만 매칭한다. 한글 토큰(영상, 창업 등)은 부분 일치를 유지한다.
-  private tokensMatch(left: string, right: string): boolean {
-    if (left === right) return true;
-    const isShortAscii = (token: string) => /^[a-z0-9]{1,2}$/.test(token);
-    if (isShortAscii(left) || isShortAscii(right)) return false;
-    return left.includes(right) || right.includes(left);
-  }
-
-  private normalizeInterestTokens(value: string): string[] {
-    return value
-      .toLowerCase()
-      .replace(/[·/\-_\s()]/g, ' ')
-      .split(' ')
-      .filter(Boolean);
   }
 
   private async statWithDelta(
