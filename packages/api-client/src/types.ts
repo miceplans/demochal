@@ -101,6 +101,8 @@ export interface Challenge {
   status: 'draft' | 'published' | 'closed';
   createdAt: string;
   category?: string | null;
+  organizer?: string;
+  eligibility?: string;
 }
 
 export interface StatWithDelta {
