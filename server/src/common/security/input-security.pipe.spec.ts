@@ -47,14 +47,15 @@ describe('InputSecurityPipe', () => {
     expect(() => pipe.transform('1; DROP TABLE users--', queryMetadata('q'))).toThrow(
       BadRequestException,
     );
+    expect(() => pipe.transform("admin'--", queryMetadata('q'))).toThrow(BadRequestException);
   });
 
-  it('allows double hyphens used by valid URLs and opaque values', () => {
+  it('allows double hyphens only in a safe external recruit URL', () => {
     expect(pipe.transform('https://example.com/apply--2026', queryMetadata('recruitUrl'))).toBe(
       'https://example.com/apply--2026',
     );
-    expect(pipe.transform('opaque--token--value', queryMetadata('code'))).toBe(
-      'opaque--token--value',
+    expect(() => pipe.transform('opaque--token--value', queryMetadata('code'))).toThrow(
+      BadRequestException,
     );
   });
 
@@ -106,9 +107,9 @@ describe('SkipInputSecurityInterceptor', () => {
     const store: { skip?: boolean } = {};
     interceptor.intercept(executionContextFor('standard'), callHandlerObserving(store)).subscribe();
     expect(store.skip).toBeUndefined();
-    // Outside an opt-out, SQL syntax remains blocked while opaque tokens pass.
-    expect(pipe.transform('opaque--token--value', queryMetadata('code'))).toBe(
-      'opaque--token--value',
+    // Outside an opt-out, opaque tokens with SQL comments remain blocked.
+    expect(() => pipe.transform('opaque--token--value', queryMetadata('code'))).toThrow(
+      BadRequestException,
     );
   });
 });

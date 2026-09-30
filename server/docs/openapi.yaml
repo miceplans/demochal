@@ -2425,7 +2425,12 @@ components:
             default: external,
             description: 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상,
           }
-        recruitUrl: { type: string }
+        recruitUrl:
+          {
+            type: string,
+            maxLength: 2048,
+            description: 'recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다.',
+          }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
         applicationFormId:
