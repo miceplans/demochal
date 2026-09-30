@@ -263,6 +263,11 @@ export class ChallengesService {
       .limit(1);
     if (!business) throw new NotFoundException('Business not found or not owned by user');
 
+    const recruitMethod = dto.recruitMethod ?? 'external';
+    if (recruitMethod === 'external' && !dto.recruitUrl) {
+      throw new BadRequestException('recruitUrl is required when recruitMethod is external');
+    }
+
     const [challenge] = await this.db
       .insert(challenges)
       .values({
@@ -277,7 +282,8 @@ export class ChallengesService {
         targets: dto.targets,
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
-        recruitMethod: dto.recruitMethod ?? 'external',
+        recruitMethod,
+        recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
           : 'draft',
@@ -298,7 +304,11 @@ export class ChallengesService {
         ? eq(challenges.id, id)
         : and(eq(challenges.id, id), eq(businesses.ownerUserId, user.id));
     const [current] = await this.db
-      .select({ startDate: challenges.startDate, endDate: challenges.endDate })
+      .select({
+        startDate: challenges.startDate,
+        endDate: challenges.endDate,
+        recruitMethod: challenges.recruitMethod,
+      })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(ownership)
@@ -319,6 +329,8 @@ export class ChallengesService {
       ...(dto.startDate !== undefined && { startDate }),
       ...(dto.endDate !== undefined && { endDate }),
       ...(dto.category !== undefined && { category: dto.category }),
+      ...(dto.recruitUrl !== undefined &&
+        current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),
       ...(dto.targets !== undefined && { targets: dto.targets }),
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),

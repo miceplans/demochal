@@ -101,6 +101,8 @@ export const challenges = pgTable('challenges', {
   // Valid values: seMOchall | external. Challenges recruiting through the
   // in-service application form get an exposure boost in recommendations.
   recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
+  // recruitMethod === 'external'일 때만 의미 있는 외부 지원 링크. seMOchall 공고에는 남기지 않는다.
+  recruitUrl: varchar('recruit_url', { length: 2048 }),
   // 탐색 필터용 메타. 대상 유효값: 어린이 | 초등학생 | 중학생 | 고등학생 | 대학생 | 대학원생 |
   // 제한없음 | 지역제한 | 일반인 | 기업 (복수 선택).
   targets: text('targets').array(),

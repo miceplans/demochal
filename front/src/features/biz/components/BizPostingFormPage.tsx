@@ -103,6 +103,8 @@ export function BizPostingEditPage() {
         startDate: toDateInput(challenge.startDate),
         endDate: toDateInput(challenge.endDate),
         category: challenge.category ?? '',
+        recruitMethod: challenge.recruitMethod,
+        recruitUrl: challenge.recruitUrl ?? '',
       }}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
@@ -125,6 +127,8 @@ type PostingInput = {
   startDate: string;
   endDate: string;
   category: string;
+  recruitMethod?: 'seMOchall' | 'external';
+  recruitUrl?: string;
 };
 type PostingValues = {
   title: string;
@@ -135,6 +139,7 @@ type PostingValues = {
   endDate: string;
   category: string | null;
   recruitMethod?: 'seMOchall' | 'external';
+  recruitUrl?: string;
 };
 
 const EMPTY_POSTING: PostingInput = {
@@ -212,7 +217,10 @@ function PostingForm({
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
   const [category, setCategory] = useState(initial.category);
-  const [recruit, setRecruit] = useState<'semo' | 'external'>('semo');
+  const [recruit, setRecruit] = useState<'semo' | 'external'>(
+    initial.recruitMethod === 'external' ? 'external' : 'semo',
+  );
+  const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
   const [posterPreview, setPosterPreview] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
@@ -251,6 +259,12 @@ function PostingForm({
     if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
       return setError('모집 인원은 1명 이상으로 입력해 주세요.');
     if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
+    const trimmedRecruitUrl = recruitUrl.trim();
+    if (recruit === 'external') {
+      if (!trimmedRecruitUrl) return setError('외부 지원 링크 URL을 입력해 주세요.');
+      if (!isHttpUrl(trimmedRecruitUrl))
+        return setError('외부 지원 링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
+    }
     setSubmitting(true);
     try {
       await onSubmit({
@@ -264,6 +278,7 @@ function PostingForm({
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
+        ...(recruit === 'external' ? { recruitUrl: trimmedRecruitUrl } : {}),
       });
     } catch (cause) {
       setError(adError(cause));
@@ -501,9 +516,32 @@ function PostingForm({
                     <RadioIcon src={radioIcon(recruit === 'external')} alt="" />
                     외부 링크 추가
                   </RadioOption>
-                  <LinkInput aria-label="외부 링크" />
+                  {recruit === 'external' && (
+                    <LinkInput
+                      type="url"
+                      aria-label="외부 링크"
+                      value={recruitUrl}
+                      onChange={(event) => setRecruitUrl(event.target.value)}
+                      placeholder="https://example.com/apply"
+                      required
+                    />
+                  )}
                 </RoleRow>
               </RadioColumn>
+            </FieldBlock>
+          )}
+
+          {!showRecruitMethod && recruit === 'external' && (
+            <FieldBlock wide>
+              <FieldLabel>외부 지원 링크 URL</FieldLabel>
+              <LinkInput
+                type="url"
+                aria-label="외부 링크"
+                value={recruitUrl}
+                onChange={(event) => setRecruitUrl(event.target.value)}
+                placeholder="https://example.com/apply"
+                required
+              />
             </FieldBlock>
           )}
 
@@ -826,6 +864,15 @@ function toDateInput(value: string | undefined) {
   const date = new Date(value);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+function isHttpUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
 }
 
 function toLocalBoundary(value: string, endOfDay: boolean) {

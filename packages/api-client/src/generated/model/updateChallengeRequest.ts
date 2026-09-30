@@ -39,6 +39,11 @@ export interface UpdateChallengeRequest {
    * @nullable
    */
   category?: string | null;
+  /**
+   * 기존 공고의 recruitMethod가 external일 때만 반영된다. seMOchall 공고에 보낸 값은 무시한다.
+   * @maxLength 2048
+   */
+  recruitUrl?: string;
   /** @nullable */
   targets?: UpdateChallengeRequestTargetsItem[] | null;
   /** @nullable */

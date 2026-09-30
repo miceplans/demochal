@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsPositive,
+  IsUrl,
   IsString,
   MaxLength,
   Min,
@@ -48,6 +49,13 @@ export class UpdateChallengeDto {
   @IsString()
   @MaxLength(100)
   category?: string | null;
+
+  // Omission leaves the existing link untouched, but an explicit null must not
+  // erase an external posting's application link.
+  @ValidateIf((_, value) => value !== undefined)
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(2048)
+  recruitUrl?: string;
 
   // null이면 값을 비운다.
   @ValidateIf((_, value) => value !== null && value !== undefined)

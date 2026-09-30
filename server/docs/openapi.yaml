@@ -2442,7 +2442,12 @@ components:
             default: external,
             description: 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상,
           }
-        recruitUrl: { type: string }
+        recruitUrl:
+          {
+            type: string,
+            maxLength: 2048,
+            description: 'recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다.',
+          }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
         applicationFormId:
@@ -2503,6 +2508,12 @@ components:
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
+        recruitUrl:
+          {
+            type: string,
+            maxLength: 2048,
+            description: 'recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.',
+          }
     UpdateChallengeRequest:
       type: object
       description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
@@ -2515,6 +2526,12 @@ components:
         endDate: { type: string, format: date-time }
         category:
           { type: string, nullable: true, maxLength: 100, description: null이면 카테고리를 비운다 }
+        recruitUrl:
+          {
+            type: string,
+            maxLength: 2048,
+            description: '기존 공고의 recruitMethod가 external일 때만 반영된다. seMOchall 공고에 보낸 값은 무시한다.',
+          }
         targets:
           {
             type: array,

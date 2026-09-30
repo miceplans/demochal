@@ -503,11 +503,51 @@ describe('ChallengesService.create', () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
 
-    await service.create({ ...baseDto, recruitMethod: 'seMOchall' } as any, 'user-1');
-    await service.create(baseDto as any, 'user-1');
+    await service.create(
+      { ...baseDto, recruitMethod: 'seMOchall', recruitUrl: undefined } as any,
+      'user-1',
+    );
+    await service.create({ ...baseDto, recruitUrl: 'https://example.com/apply' } as any, 'user-1');
 
     expect(valuesCalls[0]).toMatchObject({ recruitMethod: 'seMOchall' });
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
+  });
+
+  it('persists recruitUrl for external recruitMethod and clears any url provided for seMOchall', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create(
+      { ...baseDto, recruitMethod: 'external', recruitUrl: 'https://example.com/apply' } as any,
+      'user-1',
+    );
+    await service.create(
+      {
+        ...baseDto,
+        recruitMethod: 'seMOchall',
+        recruitUrl: 'https://example.com/ignored',
+      } as any,
+      'user-1',
+    );
+
+    expect(valuesCalls[0]).toMatchObject({
+      recruitMethod: 'external',
+      recruitUrl: 'https://example.com/apply',
+    });
+    expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'seMOchall', recruitUrl: null });
+  });
+
+  it('rejects creating an external-recruit challenge (default included) without a recruitUrl', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await expect(
+      service.create({ ...baseDto, recruitMethod: 'external' } as any, 'user-1'),
+    ).rejects.toThrow('recruitUrl is required when recruitMethod is external');
+    await expect(service.create(baseDto as any, 'user-1')).rejects.toThrow(
+      'recruitUrl is required when recruitMethod is external',
+    );
+    expect(valuesCalls).toHaveLength(0);
   });
 });
 
@@ -567,5 +607,17 @@ describe('ChallengesService.update', () => {
   it('rejects an empty patch', async () => {
     const { service } = createUpdateService([current]);
     await expect(service.update('ch-1', {}, owner)).rejects.toThrow('No fields to update');
+  });
+
+  it('applies recruitUrl when the existing challenge recruits externally', async () => {
+    const { service, set } = createUpdateService([{ ...current, recruitMethod: 'external' }]);
+    await service.update('ch-1', { recruitUrl: 'https://example.com/apply' }, owner);
+    expect(set).toHaveBeenCalledWith({ recruitUrl: 'https://example.com/apply' });
+  });
+
+  it('ignores recruitUrl when the existing challenge recruits via seMOchall', async () => {
+    const { service, set } = createUpdateService([{ ...current, recruitMethod: 'seMOchall' }]);
+    await service.update('ch-1', { title: 'new', recruitUrl: 'https://example.com/apply' }, owner);
+    expect(set).toHaveBeenCalledWith({ title: 'new' });
   });
 });

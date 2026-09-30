@@ -40,4 +40,9 @@ export interface CreateChallengeRequest {
    */
   prizeAmount?: number;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
+  /**
+   * recruitMethod가 external(기본값 포함)이면 필수 — 외부 지원 링크 URL. seMOchall이면 저장되지 않는다.
+   * @maxLength 2048
+   */
+  recruitUrl?: string;
 }
