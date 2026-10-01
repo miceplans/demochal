@@ -125,6 +125,27 @@ describe('ApplicationsService.apply', () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['closed', { status: 'closed' }],
+    ['expired', { endDate: new Date(Date.now() - 60_000) }],
+  ])(
+    'still reuses the existing application and pending order after the challenge is %s',
+    async (_label, patch) => {
+      const db = createDbStub({
+        challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지', ...patch },
+        existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
+        latestOrder: { id: 'order-1', amount: 10000, status: 'pending' },
+      });
+      const service = new ApplicationsService(db);
+
+      const result = await service.apply(dto, 'user-1');
+
+      expect(result.id).toBe('app-1');
+      expect(result.order).toEqual({ id: 'order-1', amount: 10000, name: '유료 챌린지' });
+      expect(db.insert).not.toHaveBeenCalled();
+    },
+  );
+
   it('truncates the Toss orderName to the 100-character limit', async () => {
     const longTitle = '해'.repeat(150);
     const db = createDbStub({
