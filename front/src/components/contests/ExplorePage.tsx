@@ -53,6 +53,33 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [includeClosed, setIncludeClosed] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  // 접힌 필터 바에 나열할 선택 항목. 칩을 누르면 해당 필터만 해제된다.
+  const selectedFilters = [
+    ...selectedCategories.map((value) => ({
+      key: `category:${value}`,
+      label: value,
+      clear: () => setSelectedCategories((list) => toggleValue(list, value)),
+    })),
+    ...targets.map((value) => ({
+      key: `target:${value}`,
+      label: value,
+      clear: () => setTargets((list) => toggleValue(list, value)),
+    })),
+    ...organizers.map((value) => ({
+      key: `organizer:${value}`,
+      label: value,
+      clear: () => setOrganizers((list) => toggleValue(list, value)),
+    })),
+    ...(prize[0] > PRIZE_MIN || prize[1] < PRIZE_MAX
+      ? [
+          {
+            key: 'prize',
+            label: `${prize[0].toLocaleString()}~${prize[1].toLocaleString()}만원`,
+            clear: () => setPrize([PRIZE_MIN, PRIZE_MAX]),
+          },
+        ]
+      : []),
+  ];
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   // 챌린지 목록(탐색)과 팀 모드의 챌린지 드롭다운 옵션을 한 쿼리로 공용한다 — teamMode와 무관하게 항상 조회.
@@ -201,6 +228,17 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   필터
                   <img src="/assets/icons/figma-filter-button.svg" alt="" width={20} height={20} />
                 </FilterToggle>
+                {selectedFilters.map((filter) => (
+                  <FilterChip
+                    key={filter.key}
+                    type="button"
+                    aria-label={`${filter.label} 필터 해제`}
+                    onClick={filter.clear}
+                  >
+                    {filter.label}
+                    <span aria-hidden>×</span>
+                  </FilterChip>
+                ))}
               </FilterBar>
             </Collapsible>
           </FilterDock>
@@ -458,7 +496,24 @@ const CollapseGrid = styled.div<{ $open: boolean }>(({ $open }) => ({
 }));
 const MOTION = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 const FilterBar = styled.div({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: 8,
   padding: `24px ${CONTENT_INLINE} 0`,
+});
+const FilterChip = styled.button({
+  ...textStyle.mBadgeText,
+  lineHeight: 'normal',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: '4px 8px',
+  border: 0,
+  borderRadius: 4,
+  background: c.lightBlue,
+  color: c.primary,
+  cursor: 'pointer',
 });
 const FilterToggle = styled.button({
   ...textStyle.h3,
