@@ -47,9 +47,14 @@ describe('renderNotificationEmail', () => {
     expect(email?.html).toMatch(
       /<a href="https:\/\/semochall\.example\/notifications"[^>]*>알림 확인하기<\/a>/,
     );
-    expect(email?.html).toContain('<h1');
+    expect(email?.html).toContain('src="https://semochall.example/assets/SEMOBIZ.png"');
     expect(email?.html).not.toContain('<style');
     expect(email?.text).toContain('사이트에 로그인해서 확인');
+  });
+
+  it('uses the SEMO logo for non-business notifications', () => {
+    const email = renderNotificationEmail('team_matching', { status: 'accepted' }, origin);
+    expect(email?.html).toContain('src="https://semochall.example/assets/SEMO.png"');
   });
 
   it('returns null for types that are not emailed', () => {
