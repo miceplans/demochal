@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
@@ -41,6 +41,16 @@ const MOBILE_FILTER_MAX_WIDTH = 110;
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
+  // 필터 바가 실제로 화면 상단에 붙어 떠 있을 때만 그림자를 준다(sentinel이 화면 밖으로 나간 시점).
+  const dockSentinel = useRef<HTMLDivElement>(null);
+  const [floating, setFloating] = useState(false);
+  useEffect(() => {
+    const el = dockSentinel.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setFloating(!entry?.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [targets, setTargets] = useState<string[]>([]);
   const [organizers, setOrganizers] = useState<string[]>([]);
@@ -158,90 +168,103 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             </>
           </Sidebar>
         ) : (
-          <FilterDock $sticky={!filterOpen}>
-            <Collapsible open={filterOpen}>
-              <FilterPanel aria-label="필터">
-                <PanelInner>
-                  <PanelTitle type="button" aria-expanded onClick={() => setFilterOpen(false)}>
-                    필터
-                    <img src="/assets/icons/figma-filter-title.svg" alt="" width={20} height={20} />
-                  </PanelTitle>
-                  <PanelRow>
-                    <>
-                      <FilterGroup fit title="분야">
-                        <ChipFilter
-                          ariaLabel="분야"
-                          maxWidth={190}
-                          options={categories}
-                          selected={selectedCategories}
-                          onToggle={(value) =>
-                            setSelectedCategories((list) => toggleValue(list, value))
-                          }
-                        />
-                      </FilterGroup>
-                      <FilterGroup fit title="대상">
-                        <CheckFilter
-                          options={challengeTargets}
-                          selected={targets}
-                          onToggle={(value) => setTargets((list) => toggleValue(list, value))}
-                          rows={5}
-                          columnGap={51}
-                        />
-                      </FilterGroup>
-                      <FilterGroup fit title="주최기관">
-                        <CheckFilter
-                          options={organizerTypes}
-                          selected={organizers}
-                          onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
-                          rows={5}
-                          columnGap={7}
-                        />
-                      </FilterGroup>
-                      <FilterGroup fit title="상금">
-                        <PrizeLabel>
-                          {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
-                        </PrizeLabel>
-                        <PrizeSlider>
-                          <RangeSlider
-                            min={PRIZE_MIN}
-                            max={PRIZE_MAX}
-                            step={500}
-                            value={prize}
-                            onChange={setPrize}
-                            minAriaLabel="상금 최솟값"
-                            maxAriaLabel="상금 최댓값"
+          <>
+            <div ref={dockSentinel} aria-hidden style={{ height: 1, marginBottom: -1 }} />
+            <FilterDock $sticky={!filterOpen} $floating={floating && !filterOpen}>
+              <Collapsible open={filterOpen}>
+                <FilterPanel aria-label="필터">
+                  <PanelInner>
+                    <PanelTitle type="button" aria-expanded onClick={() => setFilterOpen(false)}>
+                      필터
+                      <img
+                        src="/assets/icons/figma-filter-title.svg"
+                        alt=""
+                        width={20}
+                        height={20}
+                      />
+                    </PanelTitle>
+                    <PanelRow>
+                      <>
+                        <FilterGroup fit title="분야">
+                          <ChipFilter
+                            ariaLabel="분야"
+                            maxWidth={190}
+                            options={categories}
+                            selected={selectedCategories}
+                            onToggle={(value) =>
+                              setSelectedCategories((list) => toggleValue(list, value))
+                            }
                           />
-                        </PrizeSlider>
-                      </FilterGroup>
-                    </>
-                  </PanelRow>
-                </PanelInner>
-              </FilterPanel>
-            </Collapsible>
-            <Collapsible open={!filterOpen}>
-              <FilterBar>
-                <FilterToggle
-                  type="button"
-                  aria-expanded={false}
-                  onClick={() => setFilterOpen(true)}
-                >
-                  필터
-                  <img src="/assets/icons/figma-filter-button.svg" alt="" width={20} height={20} />
-                </FilterToggle>
-                {selectedFilters.map((filter) => (
-                  <FilterChip
-                    key={filter.key}
+                        </FilterGroup>
+                        <FilterGroup fit title="대상">
+                          <CheckFilter
+                            options={challengeTargets}
+                            selected={targets}
+                            onToggle={(value) => setTargets((list) => toggleValue(list, value))}
+                            rows={5}
+                            columnGap={51}
+                          />
+                        </FilterGroup>
+                        <FilterGroup fit title="주최기관">
+                          <CheckFilter
+                            options={organizerTypes}
+                            selected={organizers}
+                            onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
+                            rows={5}
+                            columnGap={7}
+                          />
+                        </FilterGroup>
+                        <FilterGroup fit title="상금">
+                          <PrizeLabel>
+                            {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
+                          </PrizeLabel>
+                          <PrizeSlider>
+                            <RangeSlider
+                              min={PRIZE_MIN}
+                              max={PRIZE_MAX}
+                              step={500}
+                              value={prize}
+                              onChange={setPrize}
+                              minAriaLabel="상금 최솟값"
+                              maxAriaLabel="상금 최댓값"
+                            />
+                          </PrizeSlider>
+                        </FilterGroup>
+                      </>
+                    </PanelRow>
+                  </PanelInner>
+                </FilterPanel>
+              </Collapsible>
+              <Collapsible open={!filterOpen}>
+                <FilterBar>
+                  <FilterToggle
                     type="button"
-                    aria-label={`${filter.label} 필터 해제`}
-                    onClick={filter.clear}
+                    aria-expanded={false}
+                    onClick={() => setFilterOpen(true)}
                   >
-                    {filter.label}
-                    <span aria-hidden>×</span>
-                  </FilterChip>
-                ))}
-              </FilterBar>
-            </Collapsible>
-          </FilterDock>
+                    필터
+                    <img
+                      src="/assets/icons/figma-filter-button.svg"
+                      alt=""
+                      width={20}
+                      height={20}
+                    />
+                  </FilterToggle>
+                  {selectedFilters.map((filter) => (
+                    <FilterChip
+                      key={filter.key}
+                      type="button"
+                      aria-label={`${filter.label} 필터 해제`}
+                      onClick={filter.clear}
+                    >
+                      {filter.label}
+                      <span aria-hidden>×</span>
+                    </FilterChip>
+                  ))}
+                </FilterBar>
+              </Collapsible>
+            </FilterDock>
+          </>
         )}
         <Results $team={teamMode} $wide={filterOpen}>
           <MobileFilters>
@@ -468,10 +491,27 @@ const Layout = styled.div<{ $team: boolean }>(({ $team }) => ({
 }));
 // 접힌 필터 버튼은 스크롤해도 화면 상단에 붙어 있도록 Layout 바로 아래에서 sticky로 고정한다.
 // 펼친 패널(약 280px)까지 고정하면 목록을 가리므로 패널은 일반 흐름에 둔다.
-const FilterDock = styled.div<{ $sticky: boolean }>(({ $sticky }) => ({
-  ...($sticky ? { position: 'sticky', top: 0, zIndex: 10, background: c.white } : {}),
-  [mobile]: { display: 'none' },
-}));
+const FilterDock = styled.div<{ $sticky: boolean; $floating: boolean }>(
+  ({ $sticky, $floating }) => ({
+    ...($sticky
+      ? {
+          position: 'sticky',
+          top: 12,
+          zIndex: 10,
+          background: c.white,
+          // 접힌 바는 헤더 기준선(1200px)까지만 차지한다.
+          margin: `0 ${CONTENT_INLINE}`,
+          borderRadius: 12,
+        }
+      : {}),
+    // 화면 상단에 붙어 떠 있을 때만 목록 위로 뜬 그림자.
+    boxShadow: $floating ? '0 8px 24px rgba(0, 0, 0, 0.16), 0 3px 8px rgba(0, 0, 0, 0.1)' : 'none',
+    // 그림자가 좌우·위로 번지지 않고 아래쪽으로만 보이도록 잘라낸다.
+    clipPath: 'inset(0 0 -40px 0)',
+    transition: 'box-shadow 0.2s ease',
+    [mobile]: { display: 'none' },
+  }),
+);
 // 좌우 여백은 헤더(로고 시작 ~ 프로필 아이콘 끝, 1200px)와 같은 기준선을 쓴다.
 const CONTENT_INLINE = 'max(24px, calc((100% - 1200px) / 2))';
 // Figma RightContent 패딩: 접힘 상단 24 + 버튼 아래 간격 20, 펼침 32.
@@ -500,7 +540,7 @@ const FilterBar = styled.div({
   alignItems: 'center',
   gap: 8,
   // 고정(sticky)됐을 때 목록과 붙어 보이지 않도록 아래 여백 12. 본문 상단 8과 합쳐 기존 간격 20을 유지한다.
-  padding: `24px ${CONTENT_INLINE} 12px`,
+  padding: 12,
 });
 const FilterChip = styled.button({
   ...textStyle.mBadgeText,
