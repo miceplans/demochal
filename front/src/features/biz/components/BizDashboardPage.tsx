@@ -251,8 +251,7 @@ export function BizDashboardPage() {
           {card ? (
             <BizPaymentCard
               label="금액"
-              // paymentTotal은 잔액 차감 규약상 음수(순 과금액)다. 합계 표기는 절댓값으로 보여준다.
-              amount={`${Math.abs(data.paymentTotal ?? 0).toLocaleString()} ₩`}
+              amount={`${(data.paymentTotal ?? 0).toLocaleString()} ₩`}
               maskedNumber={card.maskedNumber}
               cardName={card.cardName}
             />
