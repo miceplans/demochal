@@ -18,6 +18,12 @@ export const AD_IMAGE_PRESETS = {
   gallery: { initialQuality: 0.8, maxSizeMB: 0.15, maxWidthOrHeight: 900 },
 } as const satisfies Record<string, AdImagePreset>;
 
+export const PROFILE_IMAGE_PRESET = {
+  initialQuality: 0.85,
+  maxSizeMB: 0.2,
+  maxWidthOrHeight: 512,
+} as const satisfies AdImagePreset;
+
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes}B`;
   if (bytes < 1024 ** 2) return `${Math.max(1, Math.round(bytes / 1024))}KB`;
