@@ -1,0 +1,46 @@
+name: Merged branch cleanup
+
+on:
+  schedule:
+    # Daily sweep. The minute stays off the hour to reduce GitHub schedule herd delays.
+    - cron: '37 3 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'List stale merged branches without deleting them'
+        type: boolean
+        default: false
+
+# Deleting git refs needs contents: write; the audit comment on merged PRs
+# needs issues: write. Nothing here deploys or touches repository settings.
+permissions:
+  contents: write
+  issues: write
+  pull-requests: read
+
+concurrency:
+  group: merged-branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete inactive merged PR branches
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Delete inactive merged PR branches
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RETENTION_HOURS: '24'
+          SCAN_WINDOW_DAYS: '30'
+          DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+        run: node scripts/merged-branch-cleanup.mjs
