@@ -244,6 +244,38 @@ paths:
                   user: { $ref: '#/components/schemas/User' }
         '401':
           description: 인증 실패 (이메일 없음 또는 비밀번호 불일치)
+  /auth/password:
+    patch:
+      tags: [Auth]
+      summary: 로그인 비밀번호 변경
+      operationId: changePassword
+      x-impl-status: implemented
+      description: |
+        로그인한 사용자의 현재 비밀번호를 확인한 뒤 새 비밀번호 해시로 교체한다.
+        현재 비밀번호가 없거나(소셜 전용 계정) 일치하지 않으면 변경하지 않는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword, confirmNewPassword]
+              properties:
+                currentPassword: { type: string, minLength: 8, maxLength: 128 }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+                confirmNewPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: 비밀번호 변경 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [changed]
+                properties:
+                  changed: { type: boolean, enum: [true] }
+        '400': { description: 소셜 전용 계정 또는 새 비밀번호 확인 불일치 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/me:
     get:
       tags: [Auth]
