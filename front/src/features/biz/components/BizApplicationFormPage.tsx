@@ -25,6 +25,21 @@ function XIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+function GripIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height={size}
+      viewBox="0 -960 960 960"
+      width={size}
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M360-175.39q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm-240-240q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm-240-240q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Z" />
+    </svg>
+  );
+}
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 
@@ -101,11 +116,17 @@ const QuestionBlock = styled.div({
 const DeleteQuestionButton = styled.button({
   position: 'absolute',
   left: 0,
-  top: 4,
+  top: 0,
+  width: 30,
+  height: 30,
   border: 0,
   background: 'none',
   padding: 0,
-  color: c.gray300,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray500,
+  cursor: 'pointer',
   '&:hover:not(:disabled)': { color: c.red },
   '&:disabled': { opacity: 0.3, cursor: 'not-allowed' },
 });
@@ -143,12 +164,37 @@ const QuestionTitleInput = styled.input({
 });
 
 const OptionsList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
-const OptionRow = styled.div({ display: 'flex', alignItems: 'center', gap: 10 });
+const OptionRow = styled.div<{ dragging?: boolean }>(({ dragging }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  opacity: dragging ? 0.4 : 1,
+}));
 const DragHandle = styled.span({
-  color: c.gray300,
   flexShrink: 0,
-  letterSpacing: -2,
-  fontSize: 14,
+  width: 24,
+  height: 24,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray300,
+  cursor: 'grab',
+  '&:hover': { color: c.gray500 },
+  '&:active': { cursor: 'grabbing' },
+});
+const DeleteOptionButton = styled.button({
+  flexShrink: 0,
+  width: 24,
+  height: 24,
+  border: 0,
+  background: 'none',
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray300,
+  '&:hover:not(:disabled)': { color: c.red },
+  '&:disabled': { opacity: 0.3, cursor: 'not-allowed' },
 });
 const AddOptionButton = styled.button({
   display: 'flex',
@@ -336,6 +382,21 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
       qs.map((q) => (q.id === id ? { ...q, options: q.options.filter((_, i) => i !== index) } : q)),
     );
   };
+  const reorderOption = (id: string, from: number, to: number) => {
+    if (from === to) return;
+    setQuestions((qs) =>
+      qs.map((q) => {
+        if (q.id !== id) return q;
+        const options = [...q.options];
+        const [moved] = options.splice(from, 1);
+        options.splice(to, 0, moved);
+        return { ...q, options };
+      }),
+    );
+  };
+
+  // 드래그 중인 옵션의 위치({questionId, index})를 추적해 순서 변경과 시각 피드백에 쓴다.
+  const [dragOption, setDragOption] = useState<{ questionId: string; index: number } | null>(null);
 
   const handlePublish = async () => {
     if (questions.some((q) => !q.title.trim())) {
@@ -386,7 +447,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
               onClick={() => removeQuestion(q.id)}
               aria-label={`질문 ${qi + 1} 삭제`}
             >
-              <XIcon size={20} />
+              <XIcon size={22} />
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
@@ -412,8 +473,33 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
               {isChoiceType(q.type) && (
                 <OptionsList>
                   {q.options.map((opt, oi) => (
-                    <OptionRow key={oi}>
-                      <DragHandle aria-hidden>⋮⋮</DragHandle>
+                    <OptionRow
+                      key={oi}
+                      dragging={dragOption?.questionId === q.id && dragOption.index === oi}
+                      onDragOver={(e) => {
+                        if (!dragOption || dragOption.questionId !== q.id) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (!dragOption || dragOption.questionId !== q.id) return;
+                        reorderOption(q.id, dragOption.index, oi);
+                        setDragOption(null);
+                      }}
+                    >
+                      <DragHandle
+                        title="드래그해 옵션 순서를 바꾸세요"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', String(oi));
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDragOption({ questionId: q.id, index: oi });
+                        }}
+                        onDragEnd={() => setDragOption(null)}
+                      >
+                        <GripIcon />
+                      </DragHandle>
                       <FieldInput
                         style={{ flex: 1 }}
                         value={opt}
@@ -421,15 +507,14 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
                         placeholder="옵션을 입력해주세요"
                         aria-label={`질문 ${qi + 1} 옵션 ${oi + 1}`}
                       />
-                      <DeleteQuestionButton
+                      <DeleteOptionButton
                         type="button"
-                        style={{ position: 'static' }}
                         disabled={q.options.length <= 1}
                         onClick={() => removeOption(q.id, oi)}
                         aria-label={`옵션 ${oi + 1} 삭제`}
                       >
                         <XIcon size={16} />
-                      </DeleteQuestionButton>
+                      </DeleteOptionButton>
                     </OptionRow>
                   ))}
                   <AddOptionButton type="button" onClick={() => addOption(q.id)}>
