@@ -52,7 +52,7 @@ function compose(
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLOR.pageBg};padding:32px 12px"><tr><td align="center">`,
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">`,
     `<tr><td align="center" style="padding:0 0 20px"><img src="${escapeHtml(origin + logo.path)}" alt="${logo.alt}" width="${logo.width}" style="display:block;border:0;height:auto;width:${logo.width}px"></td></tr>`,
-    `<tr><td style="background:${COLOR.boxBg};border-radius:16px;padding:24px 28px">`,
+    `<tr><td style="background:${COLOR.boxBg};border-radius:16px;padding:28px 28px">`,
     ...lines.map(
       (line, i) =>
         `<p style="margin:${i === 0 ? 0 : 6}px 0 0;font-size:18px;line-height:1.6;color:${COLOR.title}">${escapeHtml(line)}</p>`,
