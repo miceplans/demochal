@@ -434,13 +434,11 @@ const FilterDock = styled.div<{ $sticky: boolean }>(({ $sticky }) => ({
   ...($sticky ? { position: 'sticky', top: 0, zIndex: 10, background: c.white } : {}),
   [mobile]: { display: 'none' },
 }));
-// Figma RightContent: 상단 패딩 24, 필터 버튼(32) 아래 간격 20은 Results 상단 패딩이 맡는다.
+// 좌우 여백은 헤더(로고 시작 ~ 프로필 아이콘 끝, 1200px)와 같은 기준선을 쓴다.
+const CONTENT_INLINE = 'max(24px, calc((100% - 1200px) / 2))';
+// Figma RightContent 패딩: 접힘 상단 24 + 버튼 아래 간격 20, 펼침 32.
 const FilterBar = styled.div({
-  width: 1060,
-  maxWidth: '100%',
-  margin: '0 auto',
-  padding: '24px 0 0',
-  boxSizing: 'content-box',
+  padding: `24px ${CONTENT_INLINE} 0`,
 });
 const FilterToggle = styled.button({
   ...textStyle.h3,
@@ -457,7 +455,7 @@ const FilterToggle = styled.button({
 const FilterPanel = styled.section({
   background: c.gray50,
   borderBottom: `0.5px solid ${c.gray100}`,
-  padding: '24px 120px',
+  padding: `24px ${CONTENT_INLINE}`,
 });
 const PanelInner = styled.div({
   display: 'flex',
@@ -571,11 +569,14 @@ const CreateLink = styled(Link)({
   background: c.primary,
   color: c.white,
 });
-// Figma RightContent 패딩: 팀 탐색 24/32, 공모전 접힘 24(하단)·32(좌우), 펼침 32/120. 상단은 필터 영역과의 간격.
+// Figma RightContent 패딩: 팀 탐색 24/32, 공모전 접힘 20(상단)·24(하단), 펼침 32.
 const Results = styled.div<{ $team?: boolean; $wide?: boolean }>(({ $team, $wide }) => ({
   boxSizing: 'border-box',
-  padding: $team ? '24px 32px 100px' : $wide ? '32px 120px' : '20px 32px 24px',
-  ...(!$team && !$wide ? { width: '100%', maxWidth: 1124, margin: '0 auto' } : {}),
+  padding: $team
+    ? '24px 32px 100px'
+    : $wide
+      ? `32px ${CONTENT_INLINE}`
+      : `20px ${CONTENT_INLINE} 24px`,
   minWidth: 0,
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
