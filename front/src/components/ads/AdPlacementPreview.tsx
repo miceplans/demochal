@@ -106,7 +106,15 @@ export function AdPlacementPreview({
         interval={5000}
         paused={uploadPlacement === 'hero'}
       >
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+        {({
+          activeIndex,
+          goPrev,
+          goNext,
+          loopIndexes,
+          railIndex,
+          shouldAnimate,
+          handleTransitionEnd,
+        }) => (
           <HeroViewport>
             <HeroRail
               active={railIndex}
@@ -152,10 +160,18 @@ export function AdPlacementPreview({
                 );
               })}
             </HeroRail>
-            <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
-                <HeroDot key={index} active={activeIndex === index} />
-              ))}
+            <HeroPager>
+              <PagerArrow type="button" onClick={goPrev} aria-label="상단 광고 이전">
+                <ArrowIcon direction="prev" />
+              </PagerArrow>
+              <HeroDots aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <HeroDot key={index} active={activeIndex === index} />
+                ))}
+              </HeroDots>
+              <PagerArrow type="button" onClick={goNext} aria-label="상단 광고 다음">
+                <ArrowIcon direction="next" />
+              </PagerArrow>
             </HeroPager>
           </HeroViewport>
         )}
@@ -167,7 +183,15 @@ export function AdPlacementPreview({
         interval={5000}
         paused={uploadPlacement === 'gallery'}
       >
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+        {({
+          activeIndex,
+          goPrev,
+          goNext,
+          loopIndexes,
+          railIndex,
+          shouldAnimate,
+          handleTransitionEnd,
+        }) => (
           <GalleryViewport>
             <GalleryRail
               active={railIndex}
@@ -214,10 +238,18 @@ export function AdPlacementPreview({
                 );
               })}
             </GalleryRail>
-            <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
-                <HeroDot key={index} active={activeIndex === index} />
-              ))}
+            <HeroPager>
+              <PagerArrow type="button" onClick={goPrev} aria-label="중간 광고 이전">
+                <ArrowIcon direction="prev" />
+              </PagerArrow>
+              <HeroDots aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <HeroDot key={index} active={activeIndex === index} />
+                ))}
+              </HeroDots>
+              <PagerArrow type="button" onClick={goNext} aria-label="중간 광고 다음">
+                <ArrowIcon direction="next" />
+              </PagerArrow>
             </HeroPager>
           </GalleryViewport>
         )}
@@ -334,7 +366,42 @@ const HeroRail = styled('div', {
   transition: 'transform 420ms ease',
   '& > *': { flex: view === 'pc' ? '0 0 calc(100% - 160px)' : '0 0 100%' },
 }));
-const HeroPager = styled.div({ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 });
+const HeroPager = styled.div({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 10,
+  marginTop: 10,
+});
+const HeroDots = styled.div({ display: 'flex', alignItems: 'center', gap: 6 });
+const PagerArrow = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  padding: 0,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 99,
+  background: c.white,
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.primary, color: c.primary },
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 2 },
+});
+function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path
+        d={direction === 'prev' ? 'M7.5 2.5 4 6l3.5 3.5' : 'M4.5 2.5 8 6 4.5 9.5'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 const HeroDot = styled('span', { shouldForwardProp: (prop) => prop !== 'active' })<{
   active: boolean;
 }>(({ active }) => ({

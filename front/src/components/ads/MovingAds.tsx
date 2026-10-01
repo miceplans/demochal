@@ -6,6 +6,8 @@ export type MovingAdsState = {
   activeIndex: number;
   isPaused: boolean;
   goTo: (index: number) => void;
+  goPrev: () => void;
+  goNext: () => void;
   loopIndexes: number[];
   railIndex: number;
   shouldAnimate: boolean;
@@ -46,6 +48,19 @@ export function MovingAds({
     },
     [itemCount],
   );
+
+  // 복제본 위치(0, itemCount + 1)에서 되감기 전환이 끝나기 전에는 연속 클릭을 무시합니다.
+  const step = useCallback(
+    (direction: 1 | -1) => {
+      if (itemCount < 2 || railIndex < 1 || railIndex > itemCount) return;
+      setShouldAnimate(true);
+      setActiveIndex((index) => (index + direction + itemCount) % itemCount);
+      setRailIndex(railIndex + direction);
+    },
+    [itemCount, railIndex],
+  );
+  const goPrev = useCallback(() => step(-1), [step]);
+  const goNext = useCallback(() => step(1), [step]);
 
   useEffect(() => {
     if (isPaused || paused || itemCount < 2) return;
@@ -90,6 +105,8 @@ export function MovingAds({
         activeIndex,
         isPaused,
         goTo,
+        goPrev,
+        goNext,
         loopIndexes,
         railIndex,
         shouldAnimate,
