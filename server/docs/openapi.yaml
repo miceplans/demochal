@@ -487,6 +487,7 @@ paths:
       description: |
         상세 화면(`/contests/{id}`): 정보 탭(주최/자격/접수기간/D-day/포스터/상세/요약)과
         팀모집 탭(연결된 팀 모집글), 유사 챌린지 3개, 북마크/공유(클립보드) 포함.
+        `draft` 공고는 공개하지 않으며 존재 여부와 관계없이 404를 반환한다.
       parameters:
         - name: id
           in: path
@@ -541,6 +542,7 @@ paths:
         - `monthlyExposure`: 공고 노출수 영역차트 (SVG area chart) 겸 월별 바차트 — 라벨('7월') + 값 배열
         - **주의**: 카드 노출(임프레션) 전용 계측 비콘이 아직 없어 `exposure`는 현재 `clicks`(상세 진입)와
           동일한 신호를 재사용한다. 카드 노출과 클릭을 분리하려면 프론트에 별도 임프레션 비콘 호출이 필요하다.
+        `draft` 공고는 공개하지 않으며 404를 반환한다.
       parameters:
         - name: id
           in: path
@@ -1216,6 +1218,48 @@ paths:
                   nextCursor:
                     { type: string, nullable: true, description: 다음 페이지 커서 (없으면 null) }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /challenges/mine/{id}:
+    get:
+      tags: [Challenges]
+      summary: 내 기업 공고 상세 조회
+      operationId: getMyChallenge
+      x-impl-status: implemented
+      description: |
+        biz 콘솔의 공고 편집·신청폼 작성용 읽기 경로. 로그인한 기업 소유자만 자신의 draft를 포함한 공고를 조회할 수 있으며,
+        공개 조회수는 증가시키지 않는다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 소유 공고 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /challenges/mine/{id}/stats:
+    get:
+      tags: [Challenges]
+      summary: 내 기업 공고 통계 조회
+      operationId: getMyChallengeStats
+      x-impl-status: implemented
+      description: biz 콘솔에서 자신의 draft를 포함한 공고 통계를 조회한다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 소유 공고 통계
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ChallengeStats' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /businesses/me:
     get:
       tags: [Businesses]

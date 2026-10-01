@@ -46,6 +46,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 };
 
 const CHALLENGE_SORTS = ['latest', 'deadline', 'popular'] as const;
+const PUBLIC_CHALLENGE_STATUSES = ['published', 'closed'];
 type ChallengeSort = (typeof CHALLENGE_SORTS)[number];
 
 export interface ListChallengesOptions {
@@ -113,7 +114,7 @@ export class ChallengesService {
     } = options;
     const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
 
-    const conditions = [ne(challenges.status, 'draft')];
+    const conditions = [inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)];
     if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
     const categoryList = splitList(category);
     if (categoryList.length) conditions.push(inArray(challenges.category, categoryList));
@@ -242,8 +243,18 @@ export class ChallengesService {
     return challenge;
   }
 
+  private async getPublicOrThrow(id: string) {
+    const [challenge] = await this.db
+      .select()
+      .from(challenges)
+      .where(and(eq(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
+      .limit(1);
+    if (!challenge) throw new NotFoundException('Challenge not found');
+    return challenge;
+  }
+
   async findById(id: string) {
-    const challenge = await this.getOrThrow(id);
+    const challenge = await this.getPublicOrThrow(id);
     // Every detail fetch is a real "click" into the posting — see challengeViews' comment in schema.ts.
     await this.db.insert(challengeViews).values({ challengeId: id });
     // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
@@ -252,12 +263,49 @@ export class ChallengesService {
   }
 
   async stats(id: string) {
-    await this.getOrThrow(id);
+    await this.getPublicOrThrow(id);
     const [views] = await this.db
       .select({ count: count() })
       .from(challengeViews)
       .where(eq(challengeViews.challengeId, id));
     return { views: Number(views?.count ?? 0) };
+  }
+
+  /** Drafts are visible only to the business account that owns them. */
+  async findMineById(id: string, ownerUserId: string) {
+    const [row] = await this.db
+      .select({ challenge: challenges })
+      .from(challenges)
+      .innerJoin(businesses, eq(businesses.id, challenges.businessId))
+      .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
+      .limit(1);
+    if (!row) throw new NotFoundException('Challenge not found');
+    const posterUrl = await this.filesService.resolvePublicUrl(row.challenge.posterFileId);
+    return { ...row.challenge, posterUrl };
+  }
+
+  async getStatsForOwner(id: string, ownerUserId: string) {
+    await this.findMineById(id, ownerUserId);
+    return this.getStatsForExistingChallenge(id);
+  }
+
+  private async getStatsForExistingChallenge(id: string) {
+    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
+
+    const [clicks, bookmarkStats, applicantDistribution, monthlyExposure] = await Promise.all([
+      this.statWithDelta(challengeViews, eq(challengeViews.challengeId, id), sevenDaysAgo),
+      this.statWithDelta(bookmarks, eq(bookmarks.challengeId, id), sevenDaysAgo),
+      this.getApplicantDistribution(id),
+      this.getMonthlyViewCounts(id),
+    ]);
+
+    return {
+      clicks,
+      bookmarks: bookmarkStats,
+      exposure: clicks,
+      applicantDistribution,
+      monthlyExposure,
+    };
   }
 
   async create(dto: CreateChallengeDto, ownerUserId: string) {
@@ -379,35 +427,24 @@ export class ChallengesService {
   }
 
   async getStats(id: string) {
-    await this.getOrThrow(id);
-    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
-
-    const [clicks, bookmarkStats, applicantDistribution, monthlyExposure] = await Promise.all([
-      this.statWithDelta(challengeViews, eq(challengeViews.challengeId, id), sevenDaysAgo),
-      this.statWithDelta(bookmarks, eq(bookmarks.challengeId, id), sevenDaysAgo),
-      this.getApplicantDistribution(id),
-      this.getMonthlyViewCounts(id),
-    ]);
-
-    return {
-      clicks,
-      bookmarks: bookmarkStats,
-      // Card-impression tracking (as opposed to detail-page clicks) has no beacon yet,
-      // so "exposure" reuses the same click/view signal rather than a fabricated number.
-      exposure: clicks,
-      applicantDistribution,
-      monthlyExposure,
-    };
+    await this.getPublicOrThrow(id);
+    return this.getStatsForExistingChallenge(id);
   }
 
   async listSimilar(id: string) {
-    const challenge = await this.getOrThrow(id);
+    const challenge = await this.getPublicOrThrow(id);
 
     const byCategory = challenge.category
       ? await this.db
           .select()
           .from(challenges)
-          .where(and(eq(challenges.category, challenge.category), ne(challenges.id, id)))
+          .where(
+            and(
+              eq(challenges.category, challenge.category),
+              ne(challenges.id, id),
+              inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+            ),
+          )
           .orderBy(desc(challenges.createdAt))
           .limit(3)
       : [];
@@ -417,7 +454,7 @@ export class ChallengesService {
     const fallback = await this.db
       .select()
       .from(challenges)
-      .where(ne(challenges.id, id))
+      .where(and(ne(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
       .orderBy(desc(challenges.createdAt))
       .limit(3 + excludeIds.size);
 

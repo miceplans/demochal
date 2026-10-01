@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, exists, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, orders } from '../../db/schema.js';
@@ -19,11 +19,26 @@ export class ApplicationsService {
   async apply(dto: ApplyChallengeDto, userId: string) {
     return this.db.transaction(async (tx) => {
       const [challenge] = await tx
-        .select({ id: challenges.id, price: challenges.price, title: challenges.title })
+        .select({
+          id: challenges.id,
+          price: challenges.price,
+          title: challenges.title,
+          status: challenges.status,
+          startDate: challenges.startDate,
+          endDate: challenges.endDate,
+        })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
       if (!challenge) throw new NotFoundException('Challenge not found');
+      const now = new Date();
+      if (
+        challenge.status !== 'published' ||
+        challenge.startDate.getTime() > now.getTime() ||
+        challenge.endDate.getTime() < now.getTime()
+      ) {
+        throw new BadRequestException('Challenge is not accepting applications');
+      }
 
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its

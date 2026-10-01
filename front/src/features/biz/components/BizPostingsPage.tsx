@@ -29,10 +29,10 @@ export function BizPostingsPage() {
   const loading = challengesQuery.isPending;
   const error = challengesQuery.isError;
   const latest = items[0];
-  const statsQuery = generated.useGetChallengeStats(latest?.id ?? '', {
+  const statsQuery = generated.useGetMyChallengeStats(latest?.id ?? '', {
     query: { enabled: !!latest },
   });
-  const stats = statsQuery.data?.data;
+  const stats = statsQuery.data?.status === 200 ? statsQuery.data.data : undefined;
   const distribution = stats?.applicantDistribution ?? [];
   const primaryShare = distribution[0]?.value ?? 0;
   return (
