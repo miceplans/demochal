@@ -19,6 +19,7 @@ import { getHomeFallbackData } from '@/components/home/home-data';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
+import { daysUntil } from '@/lib/date';
 
 const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
@@ -291,12 +292,11 @@ function challengeToContest(
   },
   now: number,
 ): Contest {
-  const endDate = challenge.endDate ? new Date(challenge.endDate).getTime() : now;
   return {
     id: challenge.id ?? '',
     title: challenge.title ?? '챌린지',
     category: challenge.category ?? '기타',
-    days: Math.max(0, Math.ceil((endDate - now) / 86_400_000)),
+    days: daysUntil(challenge.endDate, now),
     // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
     teams: undefined,
   };

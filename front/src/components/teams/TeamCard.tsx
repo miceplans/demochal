@@ -4,54 +4,63 @@ import styled from '@emotion/styled';
 import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Tag, Row, Muted } from '@/components/common/Primitives';
 
 export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
+  const poster = team.poster;
   return (
     <Card data-component="team-card">
-      {team.poster ? (
-        <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
+      {poster ? (
+        <img className="team-artwork" src={poster} alt="" width={400} height={135} />
       ) : (
         <PosterPlaceholder role="img" aria-label={`${team.challenge || team.name} 대표 이미지`}>
           <PosterInitial>{(team.challenge || team.name).slice(0, 1)}</PosterInitial>
           <PosterChallenge>{team.challenge || team.name}</PosterChallenge>
         </PosterPlaceholder>
       )}
-      <div className="body">
-        <Row style={{ justifyContent: 'space-between' }}>
-          <h3>{displayOnly ? team.name : <Link href={`/teams/${team.id}`}>{team.name}</Link>}</h3>
+      <Body>
+        <TopRow>
           <Challenge>{team.challenge}</Challenge>
-        </Row>
-        <Row gap={6}>
-          {team.filledRoles.map((role) => (
-            <RoleTag key={role} filled>
-              {role}
-            </RoleTag>
-          ))}
-          {team.recruitingRoles.map((role) => (
-            <RoleTag key={role}>{role}</RoleTag>
-          ))}
-        </Row>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Members>{team.members}</Members>
+          <NameRow>
+            <h3>{displayOnly ? team.name : <Link href={`/teams/${team.id}`}>{team.name}</Link>}</h3>
+            <Count>
+              ({team.joined}/{team.capacity})
+            </Count>
+          </NameRow>
+        </TopRow>
+        <BottomRow>
+          <RoleRow>
+            {team.recruitingRoles.map((role) => (
+              <RoleChip key={role}>{role}</RoleChip>
+            ))}
+            {team.filledRoles.map((role) => (
+              <FilledRole key={role} role="img" aria-label={`${role} 모집 완료`} title={role}>
+                <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
+              </FilledRole>
+            ))}
+          </RoleRow>
           {!displayOnly && (
-            <Row gap={6} style={{ flexShrink: 0 }}>
+            <Actions>
               <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
               <Apply href={`/teams/${team.id}`}>지원하기</Apply>
-            </Row>
+            </Actions>
           )}
-        </Row>
-      </div>
+        </BottomRow>
+      </Body>
     </Card>
   );
 }
 
 const Card = styled.article({
-  background: c.white,
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 12,
-  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
   minWidth: 0,
+  background: c.white,
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 14,
+  overflow: 'hidden',
+  h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
   '.team-artwork': {
     width: '100%',
     height: 135,
@@ -59,14 +68,17 @@ const Card = styled.article({
     objectPosition: 'center top',
     background: c.gray100,
   },
-  '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
-  h3: textStyle.h2,
-  [mobile]: {
-    border: '1px solid #f0f1f3',
-    borderRadius: 14,
-    '.team-artwork': { display: 'none' },
-    '.body': { padding: 14, gap: 10 },
-  },
+  [mobile]: { '.team-artwork': { display: 'none' } },
+});
+
+const Body = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
+  flex: 1,
+  minWidth: 0,
+  padding: 14,
 });
 
 const PosterPlaceholder = styled.div({
@@ -103,38 +115,60 @@ const PosterChallenge = styled.span({
   whiteSpace: 'nowrap',
 });
 
-const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
-  ...textStyle.mBadgeText,
-  lineHeight: 'normal',
-  background: filled ? c.lightGreen : c.gray100,
-  color: filled ? c.green : c.gray500,
-  border: filled ? 'none' : `0.5px solid ${c.gray200}`,
-  [mobile]: { padding: '4px 7px' },
-}));
+const TopRow = styled.div({ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 });
 
-const Challenge = styled(Muted)({ color: c.gray500, [mobile]: textStyle.mSubText });
+const Challenge = styled.p({ ...textStyle.mSubText, color: c.gray500, margin: 0 });
 
-const Members = styled(Muted)({
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  minWidth: 0,
-  [mobile]: textStyle.mSubText,
+const NameRow = styled.div({ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 });
+
+const Count = styled.span({ ...textStyle.mNameLabel, color: c.gray900, flexShrink: 0 });
+
+const BottomRow = styled.div({
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 8,
 });
 
-const Apply = styled(Link)({
-  color: c.primary,
-  ...textStyle.overline,
+const RoleRow = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 });
+
+const RoleChip = styled.span({
+  ...textStyle.mRoleText,
+  padding: '4px 7px',
+  borderRadius: 4,
+  background: c.gray100,
+  border: `1px solid ${c.gray100}`,
+  color: c.gray500,
   whiteSpace: 'nowrap',
-  border: `1px solid ${c.primary}`,
+});
+
+const FilledRole = styled.span({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 2,
+  borderRadius: 26,
+  background: c.green,
+});
+
+const Actions = styled.div({ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 });
+
+const Apply = styled(Link)({
+  ...textStyle.mBadgeText,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 25,
+  padding: '6px 14px',
   borderRadius: 8,
-  padding: '6px 12px',
-  [mobile]: { padding: '6px 14px', fontWeight: 700 },
+  background: c.primary,
+  color: c.gray50,
+  whiteSpace: 'nowrap',
 });
 
 const Report = styled(Link)({
-  color: c.gray500,
   ...textStyle.overline,
+  color: c.gray500,
   whiteSpace: 'nowrap',
   padding: '6px 4px',
 });

@@ -10,6 +10,8 @@ export interface DropdownOption {
 }
 
 type DropdownSize = 'L' | 'S';
+// pill: 모바일 필터용 알약 스타일(회색 배경, 둥근 모서리, 작은 글자).
+type DropdownVariant = 'default' | 'pill';
 
 interface DropdownProps {
   options: DropdownOption[];
@@ -17,6 +19,7 @@ interface DropdownProps {
   defaultValue?: string;
   placeholder?: string;
   size?: DropdownSize;
+  variant?: DropdownVariant;
   width?: number | string;
   disabled?: boolean;
   onChange?: (value: string) => void;
@@ -29,7 +32,7 @@ const Wrapper = styled.div<{ $width: string }>`
   width: ${({ $width }) => $width};
 `;
 
-const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
+const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,6 +67,18 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  ${({ $pill, theme }) =>
+    $pill
+      ? `
+    height: 34px;
+    background: ${theme.colors.gray[100]};
+    border: 1px solid ${theme.colors.gray[100]};
+    border-radius: 24px;
+    font-size: ${textStyle.mSubText.fontSize}px;
+    color: ${theme.colors.gray[700]};
+  `
+      : ''}
 `;
 
 const Chevron = styled.span<{ $open: boolean }>`
@@ -77,15 +92,24 @@ const Chevron = styled.span<{ $open: boolean }>`
   transition: transform 0.18s ease;
 `;
 
+// 트리거 폭(모바일 알약은 최대 110px)보다 긴 라벨이 고정 높이를 밀어내지 않도록 한 줄로 자른다.
+const TriggerLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
 const Listbox = styled.ul`
   position: absolute;
   top: calc(100% + 9px);
   left: 0;
-  right: 0;
   z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: stretch;
+  min-width: 100%;
+  max-width: calc(100vw - 32px);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -114,7 +138,6 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   font-weight: ${textStyle.caption.fontWeight};
   line-height: normal;
   color: #111;
-  white-space: nowrap;
   cursor: pointer;
   transition: background 0.12s ease;
 
@@ -123,12 +146,21 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   }
 `;
 
+// 긴 라벨은 열린 목록에서 우측으로 늘어나 전체를 보여주고, 화면 폭을 넘어갈 때만 말줄임한다.
+const OptionLabel = styled.span`
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
 export function Dropdown({
   options,
   value,
   defaultValue = '',
   placeholder = '요소를 선택하세요',
   size = 'L',
+  variant = 'default',
   width = '100%',
   disabled = false,
   onChange,
@@ -217,6 +249,7 @@ export function Dropdown({
       <Trigger
         type="button"
         $size={size}
+        $pill={variant === 'pill'}
         $hasValue={Boolean(selected)}
         disabled={disabled}
         role="combobox"
@@ -227,7 +260,7 @@ export function Dropdown({
         aria-label={ariaLabel}
         onClick={() => (open ? setOpen(false) : openListbox())}
       >
-        {selected ? selected.label : placeholder}
+        <TriggerLabel>{selected ? selected.label : placeholder}</TriggerLabel>
         <Chevron aria-hidden="true" $open={open} />
       </Trigger>
       {open && options.length > 0 ? (
@@ -244,7 +277,7 @@ export function Dropdown({
               onMouseEnter={() => setActiveIndex(index)}
               onClick={() => select(index)}
             >
-              {option.label}
+              <OptionLabel>{option.label}</OptionLabel>
             </Option>
           ))}
         </Listbox>

@@ -78,7 +78,7 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 16,
-  width: 200,
+  minWidth: 200,
   maxWidth: 'calc(100vw - 32px)',
   padding: 10,
   borderRadius: 6,
@@ -98,6 +98,7 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
   [mobile]: {
     gap: 4,
     width: 'auto',
+    minWidth: 'auto',
     padding: 6,
     backgroundImage: 'none',
     backgroundColor: c.white,
@@ -115,13 +116,17 @@ const TextBox = styled.div({
   [mobile]: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 });
 const Message = styled.p({
-  ...textStyle.subtitle,
+  // Figma 텍스트 스타일에 12px/500 조합이 없고(12px 토큰은 400/600뿐) 시안이 12px/500을 요구하므로 값만 직접 둔다.
+  fontSize: 12,
+  fontWeight: 500,
+  lineHeight: 1.4,
   color: c.gray900,
+  // 긴 메시지가 카드 높이를 늘리며 줄바꿈되지 않도록 한 줄 말줄임으로 유지한다.
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
   [mobile]: {
-    ...textStyle.mBadgeText,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
+    ...textStyle.mMicroTag,
   },
 });
 const Description = styled.p({

@@ -12,6 +12,20 @@ function createNotificationsStub() {
   return { create: vi.fn().mockResolvedValue({ id: 'notification-1' }) };
 }
 
+// 파일 URL 해결은 FilesService 책임 — 팀 서비스 스펙에서는 고정 맵을 돌려주는 스텁으로 둔다.
+function createFilesStub(urls: Record<string, string | null> = {}) {
+  return {
+    resolvePublicUrl: vi.fn(async (id: string | null | undefined) =>
+      id ? (urls[id] ?? null) : null,
+    ),
+    resolvePublicUrls: vi.fn(async (ids: (string | null | undefined)[]) => {
+      return new Map(
+        ids.filter((id): id is string => Boolean(id)).map((id) => [id, urls[id] ?? null]),
+      );
+    }),
+  };
+}
+
 function selectChain(rows: unknown[]) {
   const limit = vi.fn().mockResolvedValue(rows);
   const orderBy = vi.fn().mockResolvedValue(rows);
@@ -102,7 +116,11 @@ describe('TeamsService', () => {
         { teamId: 'team-4', role: null },
       ]),
     );
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     const result = await service.list({
       challengeId: 'challenge-1',
@@ -120,6 +138,34 @@ describe('TeamsService', () => {
     expect(result[1]?.filledRoles).toEqual([]);
   });
 
+  it('list resolves challengePosterUrl through the files service', async () => {
+    const rows = [
+      {
+        team: { id: 'team-1', challengeId: 'challenge-1', region: '서울' },
+        challengeTitle: '2026 AI 챌린지',
+        challengePosterFileId: 'file-poster-1',
+        leaderName: 'Leader',
+      },
+      {
+        team: { id: 'team-2', challengeId: 'challenge-2', region: '서울' },
+        challengeTitle: '포스터 없는 챌린지',
+        challengePosterFileId: null,
+        leaderName: 'Leader',
+      },
+    ];
+    const db = createDbStub();
+    db.select.mockReturnValueOnce(selectChain(rows)).mockReturnValueOnce(selectChain([]));
+    const files = createFilesStub({
+      'file-poster-1': 'https://cdn.example.com/uploads/poster.webp',
+    });
+    const service = new TeamsService(db, createNotificationsStub() as any, files as any);
+
+    const result = await service.list({});
+
+    expect(result[0]?.challengePosterUrl).toBe('https://cdn.example.com/uploads/poster.webp');
+    expect(result[1]?.challengePosterUrl).toBeNull();
+  });
+
   it('list accepts comma-separated regions and roles (OR)', async () => {
     const rows = [
       { id: 'team-1', region: '서울', openRoles: [{ role: '개발', count: 1 }] },
@@ -133,7 +179,11 @@ describe('TeamsService', () => {
     }));
     const db = createDbStub();
     db.select.mockReturnValueOnce(selectChain(rows)).mockReturnValueOnce(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     const result = await service.list({ region: '서울,부산', role: '개발,디자인' });
 
@@ -143,7 +193,11 @@ describe('TeamsService', () => {
   it('list skips the member query when nothing matches', async () => {
     const db = createDbStub();
     db.select.mockReturnValueOnce(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.list({})).resolves.toEqual([]);
     expect(db.select).toHaveBeenCalledTimes(1);
@@ -152,7 +206,11 @@ describe('TeamsService', () => {
   it('create throws 404 when the challenge does not exist', async () => {
     const db = createDbStub();
     db.select.mockReturnValue(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.create(createDto as any, leader)).rejects.toThrow(NotFoundException);
   });
@@ -167,7 +225,11 @@ describe('TeamsService', () => {
       .fn()
       .mockReturnValueOnce({ values: teamValues })
       .mockReturnValueOnce({ values: memberValues });
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     const result = await service.create(createDto as any, leader);
 
@@ -199,7 +261,11 @@ describe('TeamsService', () => {
       .fn()
       .mockReturnValueOnce({ values: teamValues })
       .mockReturnValueOnce({ values: vi.fn().mockResolvedValue(undefined) });
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await service.create(
       {
@@ -231,6 +297,7 @@ describe('TeamsService', () => {
           {
             team: { id: 'team-1', title: 'AI 해커톤 팀' },
             challengeTitle: '2026 AI 챌린지',
+            challengePosterFileId: 'file-poster-1',
             leaderName: 'Leader',
           },
         ]),
@@ -240,11 +307,17 @@ describe('TeamsService', () => {
           { id: 'member-1', userId: leader.id, name: 'Leader', role: '기획', status: 'accepted' },
         ]),
       );
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub({ 'file-poster-1': 'https://cdn.example.com/uploads/poster.webp' }) as any,
+    );
 
     const result = await service.findById('team-1');
 
     expect(result.challengeTitle).toBe('2026 AI 챌린지');
+    expect(result.challengePosterFileId).toBe('file-poster-1');
+    expect(result.challengePosterUrl).toBe('https://cdn.example.com/uploads/poster.webp');
     expect(result.leaderName).toBe('Leader');
     expect(result.members).toHaveLength(1);
     expect(result.members[0]).toMatchObject({ userId: leader.id, status: 'accepted' });
@@ -253,7 +326,11 @@ describe('TeamsService', () => {
   it('join throws 404 for a missing team', async () => {
     const db = createDbStub();
     db.select.mockReturnValue(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.join('team-x', '개발', applicant.id)).rejects.toThrow(NotFoundException);
   });
@@ -264,7 +341,11 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: 'member-1' }]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.join('team-1', undefined, leader.id)).rejects.toThrow(BadRequestException);
     await expect(service.join('team-1', '개발', applicant.id)).rejects.toThrow(BadRequestException);
@@ -286,7 +367,7 @@ describe('TeamsService', () => {
     const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([memberRow]) });
     db.insert = vi.fn().mockReturnValue({ values });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     const result = await service.join('team-1', '개발', applicant.id);
 
@@ -316,7 +397,7 @@ describe('TeamsService', () => {
       set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }),
     });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     await expect(
       service.updateMember('team-1', 'member-1', { status: 'accepted' }, applicant),
@@ -338,7 +419,7 @@ describe('TeamsService', () => {
       set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }),
     });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     const result = await service.updateMember('team-1', 'member-1', { status: 'rejected' }, leader);
 
@@ -354,7 +435,11 @@ describe('TeamsService', () => {
     db.select
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(
       service.updateMember('team-1', 'member-x', { status: 'accepted' }, leader),
@@ -368,7 +453,11 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(
         selectChain([{ id: 'member-1', userId: leader.id, status: 'accepted' }]),
       );
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(
       service.updateMember('team-1', 'member-1', { status: 'rejected' }, leader),
@@ -390,7 +479,7 @@ describe('TeamsService', () => {
     });
     db.update = vi.fn().mockReturnValue({ set });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     await service.updateMember(
       'team-1',
@@ -430,7 +519,11 @@ describe('TeamsService', () => {
       }),
     });
     db.update = vi.fn().mockReturnValue({ set });
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await service.updateMember('team-1', 'member-1', { status: 'rejected' }, leader);
 
@@ -452,7 +545,11 @@ describe('TeamsService', () => {
     ];
     const db = createDbStub();
     db.select.mockReturnValueOnce(selectChain(rows));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     const result = await service.listMyApplications(applicant.id);
 
@@ -492,7 +589,11 @@ describe('TeamsService', () => {
           },
         ]),
       );
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     const result = await service.listManaged(leader.id);
 
@@ -509,7 +610,11 @@ describe('TeamsService', () => {
   it('listManaged skips the member query when I lead no teams', async () => {
     const db = createDbStub();
     db.select.mockReturnValueOnce(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.listManaged(leader.id)).resolves.toEqual([]);
     expect(db.select).toHaveBeenCalledTimes(1);
@@ -518,7 +623,11 @@ describe('TeamsService', () => {
   it('invite throws 403 for non-leaders', async () => {
     const db = createDbStub();
     db.select.mockReturnValue(selectChain([{ id: 'team-1', leaderUserId: leader.id }]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.invite('team-1', { userId: 'user-x' }, applicant)).rejects.toThrow(
       ForbiddenException,
@@ -533,7 +642,11 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([]))
       .mockReturnValueOnce(selectChain([]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.invite('team-1', { userId: leader.id }, leader)).rejects.toThrow(
       BadRequestException,
@@ -553,7 +666,11 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: applicant.id }]))
       .mockReturnValueOnce(selectChain([{ id: 'member-1' }]));
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(service.invite('team-1', { userId: applicant.id }, leader)).rejects.toThrow(
       ConflictException,
@@ -577,7 +694,7 @@ describe('TeamsService', () => {
     const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([memberRow]) });
     db.insert = vi.fn().mockReturnValue({ values });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     const result = await service.invite('team-1', { userId: applicant.id, role: '백엔드' }, leader);
 
@@ -610,7 +727,7 @@ describe('TeamsService', () => {
     });
     db.update = vi.fn().mockReturnValue({ set });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     await service.updateMember('team-1', 'member-9', { status: 'accepted' }, applicant);
 
@@ -636,7 +753,7 @@ describe('TeamsService', () => {
     });
     db.update = vi.fn().mockReturnValue({ set });
     const notifications = createNotificationsStub();
-    const service = new TeamsService(db, notifications as any);
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     await service.updateMember('team-1', 'member-9', { status: 'rejected' }, applicant);
 
@@ -650,7 +767,11 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(
         selectChain([{ id: 'member-1', userId: applicant.id, status: 'pending' }]),
       );
-    const service = new TeamsService(db, createNotificationsStub() as any);
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
 
     await expect(
       service.updateMember('team-1', 'member-1', { status: 'accepted' }, applicant),

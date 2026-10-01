@@ -9,8 +9,11 @@ import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { adApi, adError } from '@/lib/ad-api';
+import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { challengeTargets, organizerTypes } from '@/data/user-design';
+import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
 
 const ICON = '/assets/icons';
 
@@ -37,6 +40,8 @@ export function BizPostingFormPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
+  const createChallenge = generated.useCreateChallenge();
+
   useEffect(() => {
     let active = true;
     adApi.businesses
@@ -57,8 +62,19 @@ export function BizPostingFormPage() {
       disabled={loading || !businessId}
       initialError={loadError}
       onSubmit={async (values) => {
-        const challenge = await adApi.challenges.create({ businessId, ...values });
-        router.push(hrefOf(`/postings/${challenge.id}`));
+        // 생성 스펙은 null을 받지 않으므로(nullable이 아닌 선택 필드), 수정용 폼 값의 null은 생략으로 바꿔 본다.
+        const response = await createChallenge.mutateAsync({
+          data: {
+            businessId,
+            ...values,
+            category: values.category ?? undefined,
+            targets: values.targets ?? undefined,
+            organizerType: values.organizerType ?? undefined,
+            prizeAmount: values.prizeAmount ?? undefined,
+            posterFileId: values.posterFileId ?? undefined,
+          },
+        });
+        router.push(hrefOf(`/postings/${response.data.id}`));
       }}
       showRecruitMethod
     />
@@ -103,6 +119,13 @@ export function BizPostingEditPage() {
         startDate: toDateInput(challenge.startDate),
         endDate: toDateInput(challenge.endDate),
         category: challenge.category ?? '',
+        posterUrl: challenge.posterUrl ?? null,
+        targets: challenge.targets ?? [],
+        organizerType: challenge.organizerType ?? null,
+        prizeAmount:
+          challenge.prizeAmount === undefined || challenge.prizeAmount === null
+            ? ''
+            : String(challenge.prizeAmount),
         recruitMethod: challenge.recruitMethod,
         recruitUrl: challenge.recruitUrl ?? '',
       }}
@@ -127,10 +150,16 @@ type PostingInput = {
   startDate: string;
   endDate: string;
   category: string;
+  posterUrl?: string | null;
+  targets: NonNullable<generated.UpdateChallengeMutationBody['targets']>;
+  organizerType: (typeof organizerTypes)[number] | null;
+  prizeAmount: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
 };
-type PostingValues = {
+// 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긬다.
+// 폼에서 항상 값이 있는 핵심 필드는 필수로 좁혀, 수기 create 클라이언트의 Pick<Challenge, ...> 계약에도 맞는다.
+type PostingValues = generated.UpdateChallengeMutationBody & {
   title: string;
   description: string;
   price: number;
@@ -150,11 +179,15 @@ const EMPTY_POSTING: PostingInput = {
   startDate: '',
   endDate: '',
   category: '',
+  targets: [],
+  organizerType: null,
+  prizeAmount: '',
 };
 
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
+const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
-// TODO: 툴바 중 정렬/색상/텍스트 스타일/링크/이미지/인용/코드/구분선은 서식 저장 API(현재 description은 평문)가
+// TODO: 툴팁 중 정렬/색상/텍스트 스타일/링크/이미지/인용/코드/구분선은 서식 저장 API(현재 description은 평문)가
 // 생긴 뒤 연결한다. https://developer.mozilla.org/docs/Web/API/Document/execCommand
 const EDITOR_COMMANDS = {
   undo: 'undo',
@@ -217,11 +250,17 @@ function PostingForm({
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
   const [category, setCategory] = useState(initial.category);
+  const [targets, setTargets] = useState(initial.targets);
+  const [organizerType, setOrganizerType] = useState(initial.organizerType);
+  const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
+  const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
+  const existingPosterUrl = initial.posterUrl ?? null;
+  const [uploadingPoster, setUploadingPoster] = useState(false);
+  const posterObjectUrl = useRef<string | null>(null);
   const [recruit, setRecruit] = useState<'semo' | 'external'>(
     initial.recruitMethod === 'external' ? 'external' : 'semo',
   );
   const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
-  const [posterPreview, setPosterPreview] = useState('');
   const [topics, setTopics] = useState<string[]>([]);
   const [visibility, setVisibility] = useState<'public' | 'private'>('public');
   const [submitting, setSubmitting] = useState(false);
@@ -238,26 +277,64 @@ function PostingForm({
   }, [initial.description]);
   useEffect(
     () => () => {
-      if (posterPreview) URL.revokeObjectURL(posterPreview);
+      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
     },
-    [posterPreview],
+    [],
   );
 
   const toggleTopic = (topic: string) =>
     setTopics((s) => (s.includes(topic) ? s.filter((x) => x !== topic) : [...s, topic]));
+  const toggleTarget = (target: (typeof challengeTargets)[number]) =>
+    setTargets((s) => (s.includes(target) ? s.filter((x) => x !== target) : [...s, target]));
   const runCommand = (command: EditorCommand) => {
     editorRef.current?.focus();
     document.execCommand(EDITOR_COMMANDS[command]);
+  };
+
+  const uploadPoster = async (file: File) => {
+    if (uploadingPoster) return;
+    setUploadingPoster(true);
+    let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
+    try {
+      image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
+      const presigned = await adApi.files.requestUpload({
+        bucket: 'public',
+        contentType: image.file.type,
+        fileName: image.file.name,
+        sizeBytes: image.file.size,
+      });
+      const response = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
+      await adApi.files.finalizeUpload(presigned.fileId);
+      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
+      posterObjectUrl.current = image.previewUrl;
+      setPoster({ fileId: presigned.fileId, previewUrl: image.previewUrl });
+    } catch {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setUploadingPoster(false);
+    }
   };
 
   async function submit() {
     setError('');
     const description = (editorRef.current?.innerText ?? '').trim();
     const parsedCapacity = Number(capacity);
+    const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
     if (!title.trim() || !description || !startDate || !endDate)
       return setError('제목, 상세정보, 접수 기간을 입력해 주세요.');
     if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
       return setError('모집 인원은 1명 이상으로 입력해 주세요.');
+    if (
+      parsedPrizeAmount !== null &&
+      (!Number.isInteger(parsedPrizeAmount) || parsedPrizeAmount < 0)
+    )
+      return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
     if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
     if (recruit === 'external') {
@@ -275,6 +352,10 @@ function PostingForm({
         startDate: toLocalBoundary(startDate, false),
         endDate: toLocalBoundary(endDate, true),
         category: category || null,
+        targets,
+        organizerType: organizerType || null,
+        prizeAmount: parsedPrizeAmount,
+        ...(poster ? { posterFileId: poster.fileId } : {}),
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
@@ -297,18 +378,22 @@ function PostingForm({
           style={{ display: 'none' }}
           onChange={(event) => {
             const file = event.target.files?.[0];
-            // TODO: 포스터 업로드는 challenges에 posterFileId 컬럼/DTO가 생기면 presign 업로드로 연결한다.
-            if (file) setPosterPreview(URL.createObjectURL(file));
+            event.target.value = '';
+            if (file) void uploadPoster(file);
           }}
         />
-        {posterPreview ? (
-          <PosterPreview src={posterPreview} alt="포스터 미리보기" />
+        {poster?.previewUrl || existingPosterUrl ? (
+          <PosterPreview
+            src={poster?.previewUrl ?? existingPosterUrl ?? ''}
+            alt="포스터 미리보기"
+          />
         ) : (
           <>
             <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
             <UploadText>파일 찾기</UploadText>
           </>
         )}
+        {uploadingPoster && <UploadText>포스터를 업로드하는 중입니다…</UploadText>}
       </Uploader>
 
       <Body>
@@ -491,6 +576,50 @@ function PostingForm({
             </TopicBlock>
           </TwoCol>
 
+          <FieldBlock>
+            <FieldLabel>대상</FieldLabel>
+            <Chips role="group" aria-label="대상">
+              <ChipRow>
+                {challengeTargets.map((target) => (
+                  <Chip
+                    key={target}
+                    type="button"
+                    selected={targets.includes(target)}
+                    aria-pressed={targets.includes(target)}
+                    onClick={() => toggleTarget(target)}
+                  >
+                    {target}
+                  </Chip>
+                ))}
+              </ChipRow>
+            </Chips>
+          </FieldBlock>
+
+          <TwoCol>
+            <CategoryBlock>
+              <FieldLabel>주최기관</FieldLabel>
+              <Dropdown
+                options={organizerTypeOptions}
+                value={organizerType || undefined}
+                placeholder="선택 안 함"
+                size="L"
+                aria-label="주최기관"
+                onChange={(value) => setOrganizerType(value as (typeof organizerTypes)[number])}
+              />
+            </CategoryBlock>
+            <FieldBlock>
+              <FieldLabel>총상금(만원)</FieldLabel>
+              <LineInput
+                type="number"
+                min={0}
+                step={1}
+                value={prizeAmount}
+                onChange={(e) => setPrizeAmount(e.target.value)}
+                aria-label="총상금(만원)"
+              />
+            </FieldBlock>
+          </TwoCol>
+
           {showRecruitMethod && (
             <FieldBlock wide>
               <FieldLabel>모집방법</FieldLabel>
@@ -585,7 +714,7 @@ function PostingForm({
         </CancelButton>
         <PublishButton
           type="button"
-          disabled={disabled || submitting}
+          disabled={disabled || submitting || uploadingPoster}
           onClick={() => void submit()}
         >
           {submitting ? submittingLabel : submitLabel}
@@ -860,10 +989,7 @@ const PublishButton = styled.button({
 });
 
 function toDateInput(value: string | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+  return value ? toDateKey(new Date(value)) : '';
 }
 
 function isHttpUrl(value: string) {

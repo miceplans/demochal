@@ -33,6 +33,6 @@ export interface BizDashboard {
   /** 최근 결제 내역 (대시보드는 상위 3건) */
   payments?: PaymentHistoryItem[];
   /** 잔액 합계 (원) */
-  paymentTotal?: number;
-  activeAds?: Ad[];
+  paymentTotal: number;
+  activeAds: Ad[];
 }

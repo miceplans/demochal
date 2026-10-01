@@ -18,11 +18,11 @@
  */
 
 export interface DailyMetric {
-  date?: string;
+  date: string;
   /** 노출수 */
-  impressions?: number;
+  impressions: number;
   /** 클릭수 */
-  clicks?: number;
+  clicks: number;
   /** 클릭률 (%) */
-  ctr?: number;
+  ctr: number;
 }

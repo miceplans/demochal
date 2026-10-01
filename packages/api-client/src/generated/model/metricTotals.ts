@@ -21,8 +21,8 @@
  * 일별/시간별 테이블 상단 '합계' 행 — 서버에서 계산해 남긴다
  */
 export interface MetricTotals {
-  impressions?: number;
-  clicks?: number;
+  impressions: number;
+  clicks: number;
   /** 합계 클릭률 (%) = clicks / impressions × 100 */
-  ctr?: number;
+  ctr: number;
 }

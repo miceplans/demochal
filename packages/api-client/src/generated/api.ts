@@ -89,8 +89,11 @@ import type {
   ListAdminUsersParams,
   ListChallenges200,
   ListChallengesParams,
+  ListManagedApplicationsParams,
   ListMyAdsParams,
   ListMyBookmarksParams,
+  ListMyChallenges200,
+  ListMyChallengesParams,
   ListMyNotificationsParams,
   ListPaymentHistory200,
   ListPaymentHistoryParams,
@@ -4022,6 +4025,174 @@ export function useListMyApplications<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type listManagedApplicationsResponse200 = {
+  data: Application[];
+  status: 200;
+};
+
+export type listManagedApplicationsResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type listManagedApplicationsResponseSuccess = listManagedApplicationsResponse200 & {
+  headers: Headers;
+};
+export type listManagedApplicationsResponseError = listManagedApplicationsResponse401 & {
+  headers: Headers;
+};
+
+export type listManagedApplicationsResponse =
+  listManagedApplicationsResponseSuccess | listManagedApplicationsResponseError;
+
+export const getListManagedApplicationsUrl = (params?: ListManagedApplicationsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/applications/managed?${stringifiedParams}`
+    : `/applications/managed`;
+};
+
+/**
+ * 기업 지원서 관리(`/biz/applications`)와 공고별 지원자 관리(`/biz/postings/{id}`)의 목록.
+ * 로그인 계정이 소유한 기업의 공고에 접수된 지원서를 반환한다. 인증: JWT 쿠키(필수).
+ * @summary 내 기업이 관리하는 지원서 목록 조회
+ */
+export const listManagedApplications = async (
+  params?: ListManagedApplicationsParams,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listManagedApplicationsResponse> => {
+  return apiFetch<listManagedApplicationsResponse>(getListManagedApplicationsUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListManagedApplicationsQueryKey = (params?: ListManagedApplicationsParams) => {
+  return [`/applications/managed`, ...(params ? [params] : [])] as const;
+};
+
+export const getListManagedApplicationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listManagedApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListManagedApplicationsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listManagedApplications>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListManagedApplicationsQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listManagedApplications>>> = ({
+    signal,
+  }) => listManagedApplications(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listManagedApplications>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListManagedApplicationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listManagedApplications>>
+>;
+export type ListManagedApplicationsQueryError = UnauthorizedResponse;
+
+export function useListManagedApplications<
+  TData = Awaited<ReturnType<typeof listManagedApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  params: undefined | ListManagedApplicationsParams,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listManagedApplications>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedApplications>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedApplications>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListManagedApplications<
+  TData = Awaited<ReturnType<typeof listManagedApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListManagedApplicationsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listManagedApplications>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listManagedApplications>>,
+          TError,
+          Awaited<ReturnType<typeof listManagedApplications>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListManagedApplications<
+  TData = Awaited<ReturnType<typeof listManagedApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListManagedApplicationsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listManagedApplications>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업이 관리하는 지원서 목록 조회
+ */
+
+export function useListManagedApplications<
+  TData = Awaited<ReturnType<typeof listManagedApplications>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListManagedApplicationsParams,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof listManagedApplications>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListManagedApplicationsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getApplicationResponse200 = {
   data: Application;
   status: 200;
@@ -5738,6 +5909,334 @@ export const useRegisterBusiness = <TError = unknown, TContext = unknown>(
 > => {
   return useMutation(getRegisterBusinessMutationOptions(options), queryClient);
 };
+
+export type listMyChallengesResponse200 = {
+  data: ListMyChallenges200;
+  status: 200;
+};
+
+export type listMyChallengesResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type listMyChallengesResponseSuccess = listMyChallengesResponse200 & {
+  headers: Headers;
+};
+export type listMyChallengesResponseError = listMyChallengesResponse401 & {
+  headers: Headers;
+};
+
+export type listMyChallengesResponse =
+  listMyChallengesResponseSuccess | listMyChallengesResponseError;
+
+export const getListMyChallengesUrl = (params?: ListMyChallengesParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/businesses/me/challenges?${stringifiedParams}`
+    : `/businesses/me/challenges`;
+};
+
+/**
+ * 기업 공고 관리(`/biz/postings`)의 목록. 로그인 계정이 소유한 기업의 공고를 생성일 내림차순으로 반환한다.
+ * 인증: JWT 쿠키(필수).
+ * @summary 내 기업이 등록한 공고 목록 조회 (커서 페이지네이션)
+ */
+export const listMyChallenges = async (
+  params?: ListMyChallengesParams,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listMyChallengesResponse> => {
+  return apiFetch<listMyChallengesResponse>(getListMyChallengesUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListMyChallengesInfiniteQueryKey = (params?: ListMyChallengesParams) => {
+  return ['infinite', `/businesses/me/challenges`, ...(params ? [params] : [])] as const;
+};
+
+export const getListMyChallengesQueryKey = (params?: ListMyChallengesParams) => {
+  return [`/businesses/me/challenges`, ...(params ? [params] : [])] as const;
+};
+
+export const getListMyChallengesInfiniteQueryOptions = <
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    ListMyChallengesParams['cursor']
+  >,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listMyChallenges>>,
+        TError,
+        TData,
+        QueryKey,
+        ListMyChallengesParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyChallengesInfiniteQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    QueryKey,
+    ListMyChallengesParams['cursor']
+  > = ({ signal, pageParam }) =>
+    listMyChallenges(
+      { ...params, cursor: pageParam ?? params?.['cursor'] },
+      { signal, ...requestOptions },
+    );
+
+  return { queryKey, queryFn, ...queryOptions } as UseInfiniteQueryOptions<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    TError,
+    TData,
+    QueryKey,
+    ListMyChallengesParams['cursor']
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListMyChallengesInfiniteQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyChallenges>>
+>;
+export type ListMyChallengesInfiniteQueryError = UnauthorizedResponse;
+
+export function useListMyChallengesInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    ListMyChallengesParams['cursor']
+  >,
+  TError = UnauthorizedResponse,
+>(
+  params: undefined | ListMyChallengesParams,
+  options: {
+    query: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listMyChallenges>>,
+        TError,
+        TData,
+        QueryKey,
+        ListMyChallengesParams['cursor']
+      >
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyChallengesInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    ListMyChallengesParams['cursor']
+  >,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listMyChallenges>>,
+        TError,
+        TData,
+        QueryKey,
+        ListMyChallengesParams['cursor']
+      >
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          QueryKey
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyChallengesInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    ListMyChallengesParams['cursor']
+  >,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listMyChallenges>>,
+        TError,
+        TData,
+        QueryKey,
+        ListMyChallengesParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업이 등록한 공고 목록 조회 (커서 페이지네이션)
+ */
+
+export function useListMyChallengesInfinite<
+  TData = InfiniteData<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    ListMyChallengesParams['cursor']
+  >,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<
+      UseInfiniteQueryOptions<
+        Awaited<ReturnType<typeof listMyChallenges>>,
+        TError,
+        TData,
+        QueryKey,
+        ListMyChallengesParams['cursor']
+      >
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseInfiniteQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListMyChallengesInfiniteQueryOptions(params, options);
+
+  const query = useInfiniteQuery(queryOptions, queryClient) as UseInfiniteQueryResult<
+    TData,
+    TError
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export const getListMyChallengesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyChallenges>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChallenges>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyChallengesQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyChallenges>>> = ({ signal }) =>
+    listMyChallenges(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyChallenges>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListMyChallengesQueryResult = NonNullable<Awaited<ReturnType<typeof listMyChallenges>>>;
+export type ListMyChallengesQueryError = UnauthorizedResponse;
+
+export function useListMyChallenges<
+  TData = Awaited<ReturnType<typeof listMyChallenges>>,
+  TError = UnauthorizedResponse,
+>(
+  params: undefined | ListMyChallengesParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChallenges>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listMyChallenges>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyChallenges<
+  TData = Awaited<ReturnType<typeof listMyChallenges>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChallenges>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listMyChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof listMyChallenges>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListMyChallenges<
+  TData = Awaited<ReturnType<typeof listMyChallenges>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChallenges>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업이 등록한 공고 목록 조회 (커서 페이지네이션)
+ */
+
+export function useListMyChallenges<
+  TData = Awaited<ReturnType<typeof listMyChallenges>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListMyChallengesParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listMyChallenges>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListMyChallengesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
 
 export type findMyBusinessResponse200 = {
   data: Business;

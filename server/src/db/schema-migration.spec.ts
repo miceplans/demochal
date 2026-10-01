@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(25);
+    expect(journal.entries).toHaveLength(28);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -55,6 +55,17 @@ describe('baseline schema migration', () => {
     ]) {
       expect(sql).toContain(foreignKey);
     }
+  });
+});
+
+describe('0026_challenge_poster_file migration', () => {
+  it('adds an optional poster reference without destructive DDL', () => {
+    const tag = journal.entries[26]?.tag;
+    expect(tag).toBe('0026_challenge_poster_file');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "poster_file_id" uuid');
+    expect(sql).toContain('REFERENCES "files"("id") ON DELETE SET NULL');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 
@@ -420,6 +431,19 @@ describe('0024_add_challenges_recruit_url migration', () => {
 
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "recruit_url" varchar(2048)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0027_add_challenges_application_form migration', () => {
+  it('adds the biz application-form jsonb column without destructive DDL', () => {
+    const tag = journal.entries[27]?.tag;
+    expect(tag).toBe('0027_add_challenges_application_form');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "challenges" ADD COLUMN IF NOT EXISTS "application_form" jsonb',
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

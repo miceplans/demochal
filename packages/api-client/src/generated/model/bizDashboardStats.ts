@@ -19,7 +19,7 @@
 import type { StatWithDelta } from './statWithDelta';
 
 export type BizDashboardStats = {
-  clicks?: StatWithDelta;
-  bookmarks?: StatWithDelta;
+  clicks: StatWithDelta;
+  bookmarks: StatWithDelta;
   exposure?: StatWithDelta;
 };

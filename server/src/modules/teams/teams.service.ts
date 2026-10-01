@@ -11,6 +11,7 @@ import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, teamMembers, teams, users } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import { FilesService } from '../files/files.service.js';
 import type { CreateTeamDto } from './dto/create-team.dto.js';
 import type { InviteTeamDto } from './dto/invite-team.dto.js';
 import type { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
@@ -35,6 +36,7 @@ export class TeamsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly notificationsService: NotificationsService,
+    private readonly filesService: FilesService,
   ) {}
 
   // openRoles is jsonb, so the role filter scans slots in JS after one cheap
@@ -42,7 +44,12 @@ export class TeamsService {
   // loaded in one extra query so list cards can show filled roles and headcount.
   async list(filters: TeamListFilters) {
     const rows = await this.db
-      .select({ team: teams, challengeTitle: challenges.title, leaderName: users.name })
+      .select({
+        team: teams,
+        challengeTitle: challenges.title,
+        challengePosterFileId: challenges.posterFileId,
+        leaderName: users.name,
+      })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
       .innerJoin(users, eq(teams.leaderUserId, users.id))
@@ -82,9 +89,17 @@ export class TeamsService {
           eq(teamMembers.status, 'accepted'),
         ),
       );
-    return matched.map(({ team, challengeTitle, leaderName }) => ({
+    // 포스터 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      matched.map(({ challengePosterFileId }) => challengePosterFileId),
+    );
+    return matched.map(({ team, challengeTitle, challengePosterFileId, leaderName }) => ({
       ...team,
       challengeTitle,
+      challengePosterFileId,
+      challengePosterUrl: challengePosterFileId
+        ? (posterUrls.get(challengePosterFileId) ?? null)
+        : null,
       leaderName,
       filledRoles: accepted
         .filter((member) => member.teamId === team.id)
@@ -132,6 +147,7 @@ export class TeamsService {
       .select({
         team: teams,
         challengeTitle: challenges.title,
+        challengePosterFileId: challenges.posterFileId,
         leaderName: users.name,
       })
       .from(teams)
@@ -153,7 +169,14 @@ export class TeamsService {
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, id));
 
-    return { ...row.team, challengeTitle: row.challengeTitle, leaderName: row.leaderName, members };
+    return {
+      ...row.team,
+      challengeTitle: row.challengeTitle,
+      challengePosterFileId: row.challengePosterFileId,
+      challengePosterUrl: await this.filesService.resolvePublicUrl(row.challengePosterFileId),
+      leaderName: row.leaderName,
+      members,
+    };
   }
 
   // 마이페이지 지원현황의 "팀 지원현황" — 내가 지원한 팀(리더로 참여 중인 팀은 제외)과 그 결과.

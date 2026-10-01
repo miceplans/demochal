@@ -24,6 +24,9 @@ export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof Applicat
 
 export const ApplicationStatus = {
   pending: 'pending',
+  submitted: 'submitted',
+  reviewing: 'reviewing',
+  needs_revision: 'needs_revision',
   accepted: 'accepted',
   rejected: 'rejected',
 } as const;

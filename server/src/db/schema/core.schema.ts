@@ -13,6 +13,13 @@ import {
 } from 'drizzle-orm/pg-core';
 
 type OpenRole = { role: string; count: number };
+export type ApplicationFormQuestion = {
+  id: string;
+  title: string;
+  type: 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
+  options: string[];
+  required: boolean;
+};
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   // A withdrawn account retains only this FK anchor; personal fields are erased.
@@ -111,6 +118,12 @@ export const challenges = pgTable('challenges', {
   organizerType: varchar('organizer_type', { length: 30 }),
   // 총상금(만원). null이면 상금 미정/없음.
   prizeAmount: integer('prize_amount'),
+  // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
+  posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
+  // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 별도 테이블 대신
+  // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
+  // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
+  applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
