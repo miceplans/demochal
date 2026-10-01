@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { PersonCardModel } from './person';
 import { UserShell, Content } from '@/components/common/UserShell';
-import { Input, Muted, Stack } from '@/components/common/Primitives';
+import { Icon, Input, Muted, Stack } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -21,8 +21,23 @@ const Filters = styled.div({
   display: 'flex',
   flexWrap: 'wrap',
   gap: 12,
-  '& > .search': { width: 250 },
   [mobile]: { '& > .search': { width: '100%' } },
+});
+// 돋보기 아이콘 + 입력창을 한 테두리 안에 둔다(UserShell 검색창과 같은 구성).
+const SearchBox = styled.label({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  width: 250,
+  height: 40,
+  padding: '0 14px',
+  border: `1px solid ${c.gray100}`,
+  borderRadius: 8,
+  background: c.white,
+  '&:hover:not(:focus-within)': { borderColor: c.gray300 },
+  '&:focus-within': { borderColor: c.primary },
+  '& input': { border: 0, padding: 0, height: '100%', background: 'transparent' },
+  '& input:focus': { outline: 'none', boxShadow: 'none' },
 });
 const Grid = styled.div({
   display: 'grid',
@@ -81,13 +96,15 @@ export function PeoplePage() {
       <Content>
         <Stack gap={20}>
           <Filters>
-            <Input
-              className="search"
-              aria-label="닉네임으로 검색"
-              placeholder="닉네임으로 검색"
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-            />
+            <SearchBox className="search" role="search">
+              <Icon src="/assets/icons/search.png" size={16} alt="" />
+              <Input
+                aria-label="닉네임으로 검색"
+                placeholder="닉네임으로 검색"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+              />
+            </SearchBox>
             <Dropdown
               aria-label="정렬"
               width={171}
