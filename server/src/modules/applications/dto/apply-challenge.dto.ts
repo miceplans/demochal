@@ -1,4 +1,26 @@
-import { IsArray, IsObject, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsDefined,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  ValidateNested,
+} from 'class-validator';
+
+export class ApplicationAnswerDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  questionId!: string;
+
+  // The saved question determines the allowed value shape in ApplicationsService.
+  @IsDefined()
+  value!: string | string[];
+}
 
 export class ApplyChallengeDto {
   @IsUUID()
@@ -16,6 +38,8 @@ export class ApplyChallengeDto {
 
   @IsOptional()
   @IsArray()
-  @IsObject({ each: true })
-  formAnswers?: Record<string, unknown>[];
+  @ArrayMaxSize(100)
+  @ValidateNested({ each: true })
+  @Type(() => ApplicationAnswerDto)
+  formAnswers?: ApplicationAnswerDto[];
 }

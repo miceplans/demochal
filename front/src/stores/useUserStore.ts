@@ -16,7 +16,12 @@ type UserState = {
     /** 필요 역할 슬롯. 이전 버전 저장값에는 없을 수 있어 선택 필드로 둔다. */
     slots?: { id: number; role: string; count: number }[];
   };
-  applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
+  applicationDraft: {
+    role: string;
+    members: { name: string; role: string }[];
+    challengeId?: string;
+    answers?: Record<string, string | string[]>;
+  } | null;
   login: () => void;
   logout: () => void;
   setQuery: (value: string) => void;
@@ -36,7 +41,7 @@ export const useUserStore = create<UserState>()(
       recruitment: { challenge: '', introduction: '', role: '프론트엔드', preferred: '', etc: '' },
       applicationDraft: null,
       login: () => set({ isLoggedIn: true }),
-      logout: () => set({ isLoggedIn: false }),
+      logout: () => set({ isLoggedIn: false, applicationDraft: null }),
       setQuery: (query) => set({ query }),
       setSurvey: (step, values) => set((s) => ({ survey: { ...s.survey, [step]: values } })),
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),

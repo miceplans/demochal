@@ -1,7 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, exists, or } from 'drizzle-orm';
+import { and, desc, eq, exists, inArray, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { applications, businesses, challenges, orders } from '../../db/schema.js';
+import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
+import { validateFormAnswers, type FormAnswer } from './form-answers.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 
@@ -26,6 +27,7 @@ export class ApplicationsService {
           status: challenges.status,
           startDate: challenges.startDate,
           endDate: challenges.endDate,
+          applicationForm: challenges.applicationForm,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
@@ -57,6 +59,30 @@ export class ApplicationsService {
         throw new BadRequestException('Challenge is not accepting applications');
       }
 
+      const formAnswers = validateFormAnswers(challenge.applicationForm, dto.formAnswers);
+      const fileIds = [
+        ...new Set(
+          formAnswers
+            .filter((answer) => answer.type === 'file' && answer.value)
+            .map((answer) => answer.value as string),
+        ),
+      ];
+      if (fileIds.length) {
+        const ownedFiles = await tx
+          .select({ id: files.id })
+          .from(files)
+          .where(
+            and(
+              inArray(files.id, fileIds),
+              eq(files.uploaderUserId, userId),
+              eq(files.bucket, 'private'),
+              eq(files.uploadStatus, 'ready'),
+            ),
+          );
+        if (ownedFiles.length !== fileIds.length)
+          throw new BadRequestException('A ready private file owned by the applicant is required');
+      }
+
       const [application] = await tx
         .insert(applications)
         .values({
@@ -64,7 +90,7 @@ export class ApplicationsService {
           userId,
           role: dto.role,
           teammates: dto.teammates ?? [],
-          formAnswers: dto.formAnswers ?? [],
+          formAnswers,
         })
         .returning();
       if (!application) throw new Error('Failed to create application');
@@ -188,7 +214,40 @@ export class ApplicationsService {
     if (!row || (row.application.userId !== userId && row.businessOwnerId !== userId)) {
       throw new NotFoundException('Application not found');
     }
+    if (row.application.userId !== userId && row.price > 0) {
+      const [paid] = await this.db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(and(eq(orders.applicationId, id), eq(orders.status, 'paid')))
+        .limit(1);
+      if (!paid) throw new NotFoundException('Application not found');
+    }
     return row.application;
+  }
+
+  async findAttachment(id: string, fileId: string, userId: string) {
+    const application = await this.findById(id, userId);
+    const answers = application.formAnswers as FormAnswer[];
+    if (
+      !Array.isArray(answers) ||
+      !answers.some((answer) => answer.type === 'file' && answer.value === fileId)
+    ) {
+      throw new NotFoundException('File not found');
+    }
+    const [file] = await this.db
+      .select()
+      .from(files)
+      .where(
+        and(
+          eq(files.id, fileId),
+          eq(files.uploaderUserId, application.userId),
+          eq(files.bucket, 'private'),
+          eq(files.uploadStatus, 'ready'),
+        ),
+      )
+      .limit(1);
+    if (!file) throw new NotFoundException('File not found');
+    return file;
   }
 
   // Only the business that owns the challenge may review (status/evaluation/memo).
@@ -213,7 +272,11 @@ export class ApplicationsService {
 
   private async findWithBusinessOwner(id: string) {
     const [row] = await this.db
-      .select({ application: applications, businessOwnerId: businesses.ownerUserId })
+      .select({
+        application: applications,
+        businessOwnerId: businesses.ownerUserId,
+        price: challenges.price,
+      })
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
       .innerJoin(businesses, eq(challenges.businessId, businesses.id))

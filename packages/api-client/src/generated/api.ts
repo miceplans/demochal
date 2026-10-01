@@ -73,6 +73,7 @@ import type {
   GetAdminAnalytics200,
   GetAdminAnalyticsParams,
   GetAdminDashboardParams,
+  GetApplicationAttachment200,
   GetBillingCustomerKey200,
   GetInterests200,
   HandleTossWebhook200,
@@ -4663,6 +4664,177 @@ export function useListManagedApplications<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type getApplicationAttachmentResponse200 = {
+  data: GetApplicationAttachment200;
+  status: 200;
+};
+
+export type getApplicationAttachmentResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getApplicationAttachmentResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getApplicationAttachmentResponseSuccess = getApplicationAttachmentResponse200 & {
+  headers: Headers;
+};
+export type getApplicationAttachmentResponseError = (
+  getApplicationAttachmentResponse401 | getApplicationAttachmentResponse404
+) & {
+  headers: Headers;
+};
+
+export type getApplicationAttachmentResponse =
+  getApplicationAttachmentResponseSuccess | getApplicationAttachmentResponseError;
+
+export const getGetApplicationAttachmentUrl = (id: string, fileId: string) => {
+  return `/applications/${id}/files/${fileId}`;
+};
+
+/**
+ * 신청자 또는 해당 기업 소유자만 접근 가능. 유료 신청은 기업 조회 전에 결제 완료가 필요하다. private 파일에 대한 5분 유효 URL을 반환하며 응답은 캐시하지 않는다.
+ * @summary 지원서 첨부파일 다운로드 주소 조회
+ */
+export const getApplicationAttachment = async (
+  id: string,
+  fileId: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getApplicationAttachmentResponse> => {
+  return apiFetch<getApplicationAttachmentResponse>(getGetApplicationAttachmentUrl(id, fileId), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetApplicationAttachmentQueryKey = (id: string, fileId: string) => {
+  return [`/applications/${id}/files/${fileId}`] as const;
+};
+
+export const getGetApplicationAttachmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetApplicationAttachmentQueryKey(id, fileId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getApplicationAttachment>>> = ({
+    signal,
+  }) => getApplicationAttachment(id, fileId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined && fileId !== null && fileId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetApplicationAttachmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApplicationAttachment>>
+>;
+export type GetApplicationAttachmentQueryError = UnauthorizedResponse | NotFoundResponse;
+
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApplicationAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getApplicationAttachment>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApplicationAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getApplicationAttachment>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 지원서 첨부파일 다운로드 주소 조회
+ */
+
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetApplicationAttachmentQueryOptions(id, fileId, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getApplicationResponse200 = {
   data: Application;
   status: 200;
@@ -5550,7 +5722,10 @@ export const getListMyNotificationsUrl = (params?: ListMyNotificationsParams) =>
 
 /**
  * 알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
- * 푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+ * 인앱 실시간: `GET /notifications/stream`(SSE, 인증 쿠키)이 새 알림 커밋 시 `notification`
+ * 이벤트({ notificationId })를 보내고 25초마다 `ping`을 보낸다. 이벤트는 id만 담으므로
+ * 클라이언트는 이 목록 API를 다시 조회한다(스트림은 orval 생성 대상이 아니라 `EventSource`로 직접 구독).
+ * 이메일은 outbox로 발송한다. Web Push는 TODO.
  * @summary 내 알림 목록 조회
  */
 export const listMyNotifications = async (
