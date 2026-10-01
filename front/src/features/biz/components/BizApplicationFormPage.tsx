@@ -111,14 +111,14 @@ const QuestionBlock = styled.div({
   position: 'relative',
   display: 'flex',
   gap: 8,
-  paddingLeft: 32,
+  paddingLeft: 40,
 });
 const DeleteQuestionButton = styled.button({
   position: 'absolute',
   left: 0,
   top: 0,
-  width: 30,
-  height: 30,
+  width: 36,
+  height: 36,
   border: 0,
   background: 'none',
   padding: 0,
@@ -447,7 +447,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
               onClick={() => removeQuestion(q.id)}
               aria-label={`질문 ${qi + 1} 삭제`}
             >
-              <XIcon size={22} />
+              <XIcon size={24} />
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
