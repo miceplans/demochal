@@ -1,10 +1,15 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { users } from '../../db/schema.js';
 
-const { compare } = vi.hoisted(() => ({ compare: vi.fn() }));
+const { compare, hash } = vi.hoisted(() => ({
+  compare: vi.fn(),
+  hash: vi.fn().mockResolvedValue('$2b$10$dummy-hash'),
+}));
 vi.mock('bcryptjs', async (importOriginal) => ({
   ...(await importOriginal<typeof import('bcryptjs')>()),
   compare,
+  hash,
 }));
 
 const { AuthService } = await import('./auth.service.js');
@@ -122,6 +127,73 @@ describe('AuthService.register', () => {
     });
 
     expect(values).toHaveBeenCalledWith(expect.objectContaining({ email: 'member@semochal.kr' }));
+  });
+});
+
+describe('AuthService.changePassword', () => {
+  beforeEach(() => {
+    compare.mockReset();
+    hash.mockReset();
+  });
+
+  function serviceFor(user: Record<string, unknown> | undefined) {
+    const limit = vi.fn().mockResolvedValue(user ? [user] : []);
+    const where = vi.fn(() => ({ limit }));
+    const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) }));
+    const db = {
+      select: vi.fn(() => ({ from: () => ({ where }) })),
+      update: vi.fn(() => ({ set })),
+    };
+    return {
+      service: new AuthService(db as never, {} as never, {} as never, {} as never),
+      db,
+      set,
+    };
+  }
+
+  const dto = {
+    currentPassword: testPassword,
+    newPassword: ['new', 'password'].join('-'),
+    confirmNewPassword: ['new', 'password'].join('-'),
+  };
+
+  it('verifies the current password and persists only a bcrypt hash of the replacement', async () => {
+    compare.mockResolvedValue(true);
+    hash.mockResolvedValue('$2b$10$new-hash');
+    const { service, db, set } = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+
+    await expect(service.changePassword('u1', dto)).resolves.toBeUndefined();
+
+    expect(compare).toHaveBeenCalledWith(dto.currentPassword, '$2b$10$old-hash');
+    expect(hash).toHaveBeenCalledWith(dto.newPassword, 10);
+    expect(db.update).toHaveBeenCalledWith(users);
+    expect(set).toHaveBeenCalledWith({ passwordHash: '$2b$10$new-hash' });
+  });
+
+  it('does not update the password when the current password is wrong', async () => {
+    compare.mockResolvedValue(false);
+    const { service, db } = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+
+    await expect(service.changePassword('u1', dto)).rejects.toThrow(
+      new UnauthorizedException('Current password is incorrect'),
+    );
+    expect(db.update).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
+  });
+
+  it('rejects social-only accounts and mismatched confirmation without changing a hash', async () => {
+    const social = serviceFor({ id: 'u1', passwordHash: null });
+    await expect(social.service.changePassword('u1', dto)).rejects.toThrow(
+      'Account does not have a local password',
+    );
+    compare.mockResolvedValue(true);
+    const mismatch = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+    await expect(
+      mismatch.service.changePassword('u1', { ...dto, confirmNewPassword: 'different-password' }),
+    ).rejects.toThrow('New password confirmation does not match');
+    expect(social.db.update).not.toHaveBeenCalled();
+    expect(mismatch.db.update).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
   });
 });
 
