@@ -72,6 +72,10 @@ export function BizPostingFormPage() {
             organizerType: values.organizerType ?? undefined,
             prizeAmount: values.prizeAmount ?? undefined,
             posterFileId: values.posterFileId ?? undefined,
+            summary: values.summary ?? undefined,
+            hashtags: values.hashtags ?? undefined,
+            topics: values.topics ?? undefined,
+            inquiryContact: values.inquiryContact ?? undefined,
           },
         });
         router.push(hrefOf(`/postings/${response.data.id}`));
@@ -128,6 +132,11 @@ export function BizPostingEditPage() {
             : String(challenge.prizeAmount),
         recruitMethod: challenge.recruitMethod,
         recruitUrl: challenge.recruitUrl ?? '',
+        summary: challenge.summary ?? '',
+        hashtags: (challenge.hashtags ?? []).join(', '),
+        topics: challenge.topics ?? [],
+        inquiryContact: challenge.inquiryContact ?? '',
+        visibility: challenge.visibility === 'private' ? 'private' : 'public',
       }}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
@@ -156,6 +165,11 @@ type PostingInput = {
   prizeAmount: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
+  summary?: string;
+  hashtags?: string;
+  topics?: string[];
+  inquiryContact?: string;
+  visibility?: 'public' | 'private';
 };
 // 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긬다.
 // 폼에서 항상 값이 있는 핵심 필드는 필수로 좁혀, 수기 create 클라이언트의 Pick<Challenge, ...> 계약에도 맞는다.
@@ -169,6 +183,11 @@ type PostingValues = generated.UpdateChallengeMutationBody & {
   category: string | null;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
+  summary?: string | null;
+  hashtags?: string[] | null;
+  topics?: string[] | null;
+  inquiryContact?: string | null;
+  visibility?: 'public' | 'private';
 };
 
 const EMPTY_POSTING: PostingInput = {
@@ -261,8 +280,13 @@ function PostingForm({
     initial.recruitMethod === 'external' ? 'external' : 'semo',
   );
   const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
-  const [topics, setTopics] = useState<string[]>([]);
-  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [summary, setSummary] = useState(initial.summary ?? '');
+  const [hashtags, setHashtags] = useState(initial.hashtags ?? '');
+  const [topics, setTopics] = useState<string[]>(initial.topics ?? []);
+  const [inquiryContact, setInquiryContact] = useState(initial.inquiryContact ?? '');
+  const [visibility, setVisibility] = useState<'public' | 'private'>(
+    initial.visibility ?? 'public',
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const shownError = error || initialError;
@@ -337,6 +361,14 @@ function PostingForm({
       return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
     if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
+    const normalizedHashtags = [
+      ...new Set(
+        hashtags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      ),
+    ];
     if (recruit === 'external') {
       if (!trimmedRecruitUrl) return setError('외부 지원 링크 URL을 입력해 주세요.');
       if (!isHttpUrl(trimmedRecruitUrl))
@@ -360,6 +392,11 @@ function PostingForm({
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
         ...(recruit === 'external' ? { recruitUrl: trimmedRecruitUrl } : {}),
+        summary: summary.trim() || null,
+        hashtags: normalizedHashtags,
+        topics,
+        inquiryContact: inquiryContact.trim() || null,
+        visibility,
       });
     } catch (cause) {
       setError(adError(cause));
@@ -438,12 +475,21 @@ function PostingForm({
         <Fields>
           <FieldBlock>
             <FieldLabel>설명문구를 적어주세요.</FieldLabel>
-            {/* TODO: 설명문구·해시태그·문의연락처·공개 여부는 challenges 스키마/DTO에 컬럼이 생기면 저장한다. */}
-            <LineInput aria-label="설명문구" />
+            <LineInput
+              aria-label="설명문구"
+              value={summary}
+              maxLength={300}
+              onChange={(e) => setSummary(e.target.value)}
+            />
           </FieldBlock>
           <FieldBlock>
             <FieldLabel>해시태그를 적어주세요.</FieldLabel>
-            <LineInput aria-label="해시태그" />
+            <LineInput
+              aria-label="해시태그"
+              value={hashtags}
+              onChange={(e) => setHashtags(e.target.value)}
+              placeholder="#태그, #태그"
+            />
           </FieldBlock>
           <FieldBlock>
             <FieldLabel>상세정보를 적어주세요.</FieldLabel>
@@ -676,7 +722,12 @@ function PostingForm({
 
           <FieldBlock>
             <FieldLabel>문의연락처</FieldLabel>
-            <ContactInput aria-label="문의연락처" />
+            <ContactInput
+              aria-label="문의연락처"
+              value={inquiryContact}
+              maxLength={200}
+              onChange={(e) => setInquiryContact(e.target.value)}
+            />
           </FieldBlock>
 
           <FieldBlock wide>

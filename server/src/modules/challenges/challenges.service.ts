@@ -114,7 +114,10 @@ export class ChallengesService {
     } = options;
     const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
 
-    const conditions = [inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)];
+    const conditions = [
+      inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+      eq(challenges.visibility, 'public'),
+    ];
     if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
     const categoryList = splitList(category);
     if (categoryList.length) conditions.push(inArray(challenges.category, categoryList));
@@ -247,7 +250,13 @@ export class ChallengesService {
     const [challenge] = await this.db
       .select()
       .from(challenges)
-      .where(and(eq(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
+      .where(
+        and(
+          eq(challenges.id, id),
+          inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+          eq(challenges.visibility, 'public'),
+        ),
+      )
       .limit(1);
     if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     return challenge;
@@ -339,6 +348,11 @@ export class ChallengesService {
         posterFileId: dto.posterFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
+        summary: dto.summary,
+        hashtags: dto.hashtags ?? [],
+        topics: dto.topics ?? [],
+        inquiryContact: dto.inquiryContact,
+        visibility: dto.visibility ?? 'public',
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
           : 'draft',
@@ -393,6 +407,11 @@ export class ChallengesService {
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
       ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
       ...(dto.applicationForm !== undefined && { applicationForm: dto.applicationForm }),
+      ...(dto.summary !== undefined && { summary: dto.summary }),
+      ...(dto.hashtags !== undefined && { hashtags: dto.hashtags ?? [] }),
+      ...(dto.topics !== undefined && { topics: dto.topics ?? [] }),
+      ...(dto.inquiryContact !== undefined && { inquiryContact: dto.inquiryContact }),
+      ...(dto.visibility !== undefined && { visibility: dto.visibility }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('수정할 항목이 없습니다.');
 
@@ -445,6 +464,7 @@ export class ChallengesService {
               eq(challenges.category, challenge.category),
               ne(challenges.id, id),
               inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+              eq(challenges.visibility, 'public'),
             ),
           )
           .orderBy(desc(challenges.createdAt))
@@ -456,7 +476,13 @@ export class ChallengesService {
     const fallback = await this.db
       .select()
       .from(challenges)
-      .where(and(ne(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
+      .where(
+        and(
+          ne(challenges.id, id),
+          inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+          eq(challenges.visibility, 'public'),
+        ),
+      )
       .orderBy(desc(challenges.createdAt))
       .limit(3 + excludeIds.size);
 
@@ -480,7 +506,13 @@ export class ChallengesService {
     const candidates = await this.db
       .select()
       .from(challenges)
-      .where(and(eq(challenges.status, 'published'), gt(challenges.endDate, now)))
+      .where(
+        and(
+          eq(challenges.status, 'published'),
+          eq(challenges.visibility, 'public'),
+          gt(challenges.endDate, now),
+        ),
+      )
       .orderBy(desc(challenges.createdAt))
       .limit(200);
 

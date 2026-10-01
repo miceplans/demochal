@@ -11,6 +11,7 @@ function createDbStub(options: {
     price: number;
     title: string;
     status?: string;
+    visibility?: string;
     startDate?: Date;
     endDate?: Date;
   };
@@ -118,6 +119,16 @@ describe('ApplicationsService.apply', () => {
   ])('rejects a %s challenge before creating an application or order', async (_label, patch) => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: 'unavailable', ...patch },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects a private challenge before creating an application or order', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'private', visibility: 'private' },
     });
     const service = new ApplicationsService(db);
 

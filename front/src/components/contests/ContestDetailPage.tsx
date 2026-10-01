@@ -87,7 +87,13 @@ export function ContestDetailPage({
         deadline: formatDate(challenge.endDate) || '-',
         teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
         sections: challenge.description
-          ? [{ title: '상세 안내', body: challenge.description }]
+          ? [
+              ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
+              { title: '상세 안내', body: challenge.description },
+              ...(challenge.inquiryContact
+                ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
+                : []),
+            ]
           : [],
       }
     : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
@@ -106,6 +112,7 @@ export function ContestDetailPage({
               : '무료',
         ],
         ['분야', challenge.category ?? '-'],
+        ['주제', (challenge.topics ?? []).join(', ') || '-'],
         ['팀 구성', detail.teamSize],
       ]
     : [

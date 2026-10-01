@@ -26,6 +26,7 @@ export class ApplicationsService {
           status: challenges.status,
           startDate: challenges.startDate,
           endDate: challenges.endDate,
+          visibility: challenges.visibility,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
@@ -51,6 +52,7 @@ export class ApplicationsService {
       const now = new Date();
       if (
         challenge.status !== 'published' ||
+        challenge.visibility === 'private' ||
         challenge.startDate.getTime() > now.getTime() ||
         challenge.endDate.getTime() < now.getTime()
       ) {

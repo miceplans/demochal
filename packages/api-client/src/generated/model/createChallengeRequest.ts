@@ -22,6 +22,11 @@ import type { CreateChallengeRequestTargetsItem } from './createChallengeRequest
 
 export interface CreateChallengeRequest {
   businessId: string;
+  summary?: string;
+  hashtags?: string[];
+  topics?: string[];
+  inquiryContact?: string;
+  visibility?: 'public' | 'private';
   title: string;
   description: string;
   /** @minimum 1 */
