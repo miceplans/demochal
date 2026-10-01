@@ -8,7 +8,7 @@ import {
 } from './admin.test-helpers.js';
 
 describe('AdminService — businesses', () => {
-  const businessRow = {
+  const businessListRow = {
     id: 'b1',
     name: '세모재단',
     type: '비영리' as string | null,
@@ -20,7 +20,7 @@ describe('AdminService — businesses', () => {
 
   it('filters by businesses.type and returns the stored type', async () => {
     const { db, selectWhereCalls } = createDbStub({
-      select: [...statCounts, [businessRow], []],
+      select: [...statCounts, [businessListRow], []],
     });
     const { service } = createService(db);
 
@@ -34,7 +34,7 @@ describe('AdminService — businesses', () => {
 
   it("falls back to '미지정' when a business has no type", async () => {
     const { db } = createDbStub({
-      select: [...statCounts, [{ ...businessRow, type: null }], []],
+      select: [...statCounts, [{ ...businessListRow, type: null }], []],
     });
     const { service } = createService(db);
 
@@ -47,7 +47,7 @@ describe('AdminService — businesses', () => {
     const { db } = createDbStub({
       select: [
         ...statCounts,
-        [businessRow, { ...businessRow, id: 'b2' }],
+        [businessListRow, { ...businessListRow, id: 'b2' }],
         // desc(createdAt): v-new is the latest for b1; b2 has none.
         [
           { id: 'v-new', businessId: 'b1', status: 'pending', ocrResult: null },
@@ -80,7 +80,7 @@ describe('AdminService — businesses', () => {
     const { db } = createDbStub({
       select: [
         ...statCounts,
-        [{ ...businessRow, verificationStatus: 'verified' }],
+        [{ ...businessListRow, verificationStatus: 'verified' }],
         [{ id: 'v1', businessId: 'b1', status: 'verified', ocrResult: null }],
       ],
     });
