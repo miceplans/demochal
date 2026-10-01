@@ -508,7 +508,7 @@ const FilterChip = styled.button({
   display: 'inline-flex',
   alignItems: 'center',
   gap: 4,
-  padding: '4px 8px',
+  padding: '3px 8px',
   border: 0,
   borderRadius: 4,
   background: c.lightBlue,
