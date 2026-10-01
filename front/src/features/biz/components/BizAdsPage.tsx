@@ -16,11 +16,12 @@ import {
   type AdPlacement,
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
-import { ApiError, generated } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import { toDateKey } from '@/lib/date';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
+import { apiErrorMessage } from '@/lib/api-error';
 
 type Ad = Awaited<ReturnType<typeof generated.listMyAds>>['data'][number];
 type AdProduct = Awaited<ReturnType<typeof generated.listAdProducts>>['data'][number];
@@ -39,19 +40,12 @@ function formatSlash(dateKey: string) {
   return `${Number(month)}/${Number(day)}`;
 }
 
-// generated 클라이언트는 실패 시 ApiError(status, body)를 던진다 — 서버가 남긴 message가
-// 있으면 그대로 보여주고, 없으면 공통 안내 문구로 대체한다(기존 adError와 동일한 규칙).
+// 서버가 남긴 message가 있으면 그대로 보여주고, 없으면 네트워크 오류 구분 후 공통 안내 문구로 대체한다.
 function extractErrorMessage(error: unknown): string {
-  if (
-    error instanceof ApiError &&
-    error.body &&
-    typeof error.body === 'object' &&
-    'message' in error.body
-  ) {
-    const message = error.body.message;
-    if (typeof message === 'string') return message;
-  }
-  return '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.';
+  return apiErrorMessage(
+    error,
+    '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.',
+  );
 }
 
 export function BizAdsPage() {

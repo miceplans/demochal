@@ -4,8 +4,9 @@ import '@/lib/api'; // generated API 공통 설정(configureGeneratedApi) — �
 import { ThemeProvider } from '@emotion/react';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
-import { ApiError } from '@semochal/api-client';
+import { ApiError, getApiErrorMessage } from '@semochal/api-client';
 import { EmotionRegistry } from '@/lib/emotion-registry';
+import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
 import { ToastProvider, useToast } from '@/components/common/Toast';
 import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
 import { theme } from '@/styles/theme';
@@ -23,13 +24,15 @@ function QueryProvider({ children }: { children: ReactNode }) {
             if (error instanceof ApiError && error.status === 401) return;
             if (query.meta?.localErrorToast) return;
             if (query.meta?.silentError) return;
-            toast.error('서버 오류', '잠시 후 다시 시도해주세요');
+            toast.error('요청이 실패했어요', apiErrorDescription(error));
           },
         }),
         mutationCache: new MutationCache({
           // 호출부에서 직접 처리하는 상태 코드는 mutation `meta.handledErrorStatuses`로 지정해 제외한다
           // (예: 온보딩 설문 409 = 이미 완료).
+          // mutation 단위 onError가 있으면 그 화면이 이미 안내 중이므로 이중 토스트를 피한다
           onError: (error, _variables, _onMutateResult, mutation) => {
+            if (error instanceof ApiError && error.status === 401) return;
             const handled = mutation.meta?.handledErrorStatuses;
             if (
               error instanceof ApiError &&
@@ -37,7 +40,8 @@ function QueryProvider({ children }: { children: ReactNode }) {
               handled.includes(error.status)
             )
               return;
-            toast.error('서버 오류', '잠시 후 다시 시도해주세요');
+            if (mutation.options.onError) return;
+            toast.error('요청이 실패했어요', apiErrorDescription(error));
           },
         }),
         defaultOptions: {
@@ -51,6 +55,14 @@ function QueryProvider({ children }: { children: ReactNode }) {
   );
 
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+/** 서버가 알려준 원인이 있으면 그 메시지를, 없으면 네트워크 문제인지 구분해 안내한다. */
+function apiErrorDescription(error: unknown): string {
+  const serverMessage = getApiErrorMessage(error);
+  if (serverMessage) return serverMessage;
+  if (!(error instanceof ApiError) && error instanceof Error) return NETWORK_ERROR_MESSAGE;
+  return '잠시 후 다시 시도해주세요';
 }
 
 export function Providers({ children }: { children: ReactNode }) {

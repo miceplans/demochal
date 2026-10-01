@@ -117,7 +117,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, businesses as any);
 
     await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
-      'Only the owning business',
+      '해당 기업만',
     );
 
     expect(set).not.toHaveBeenCalled();
@@ -128,7 +128,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, createBusinessesStub(undefined) as any);
 
     await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
-      'Only the owning business',
+      '해당 기업만',
     );
   });
 
@@ -139,7 +139,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, businesses as any);
 
     await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
-      'Unpaid ads cannot be activated directly',
+      '결제 전 광고는 직접 활성화할 수 없습니다',
     );
 
     expect(set).not.toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
 
     await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
-      'Only ads with a paid order can be activated',
+      '결제가 완료된 광고만 활성화할 수 있습니다',
     );
 
     expect(forUpdate).toHaveBeenCalledWith('update');
@@ -183,7 +183,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, businesses as any);
 
     await expect(service.updateStatus('ad-1', { status: 'paused' }, OWNER)).rejects.toThrow(
-      'Only active ads can be paused',
+      '진행 중인 광고만 일시정지할 수 있습니다',
     );
 
     expect(set).not.toHaveBeenCalled();
@@ -206,7 +206,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, createBusinessesStub(undefined) as any);
 
     await expect(service.updateStatus('ad-1', { status: 'ended' }, ADMIN)).rejects.toThrow(
-      'Only the owning business',
+      '해당 기업만 광고를 변경할 수 있습니다.',
     );
   });
 
@@ -215,7 +215,7 @@ describe('AdsService.updateStatus', () => {
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
 
     await expect(service.updateStatus('missing', { status: 'paused' }, OWNER)).rejects.toThrow(
-      'Ad not found',
+      '광고를 찾을 수 없습니다',
     );
   });
 });
@@ -402,7 +402,7 @@ describe('AdsService.report', () => {
     const { db } = createDbStub(AD);
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-other' }) as any);
 
-    await expect(service.report('ad-1', {}, OWNER)).rejects.toThrow('Only the owning business');
+    await expect(service.report('ad-1', {}, OWNER)).rejects.toThrow('해당 기업만');
   });
 
   it('returns honest zeros: 7-day default range, 24 hourly slots, empty monthlyClicks', async () => {

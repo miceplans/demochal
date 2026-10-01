@@ -260,7 +260,7 @@ describe('BillingService', () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ billingKey: 'bk-x' }) });
 
     await expect(service.issueCard('biz-1', 'auth')).rejects.toThrow(
-      'Toss billing authorization response incomplete',
+      '카드 등록 응답이 올바르지 않습니다',
     );
   });
 

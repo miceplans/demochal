@@ -69,7 +69,7 @@ describe('VerificationsService.submit', () => {
 
     await expect(
       service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
-    ).rejects.toThrow('Business not found');
+    ).rejects.toThrow('기업 정보를 찾을 수 없습니다');
 
     expect(filesService.assertOwnedReadyPrivate).not.toHaveBeenCalled();
     expect(insert).not.toHaveBeenCalled();

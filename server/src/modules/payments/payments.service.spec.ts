@@ -468,7 +468,7 @@ describe('PaymentsService', () => {
 
       await expect(
         service.confirmPayment('user-1', { ...confirmDto, amount: 99999 }),
-      ).rejects.toThrow('does not match the order');
+      ).rejects.toThrow('결제 금액이 주문 금액과 일치하지 않습니다');
 
       expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
       expect(insertValues).not.toHaveBeenCalled();
@@ -506,7 +506,7 @@ describe('PaymentsService', () => {
       const service = new PaymentsService(db, orders as any);
 
       await expect(service.confirmPayment('user-1', confirmDto)).rejects.toThrow(
-        'confirmation failed',
+        '결제 승인에 실패했습니다',
       );
       expect(insertValues).not.toHaveBeenCalled();
     });

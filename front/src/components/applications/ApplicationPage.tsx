@@ -10,6 +10,7 @@ import { roles } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { adApi } from '@/lib/ad-api';
+import { apiErrorMessage } from '@/lib/api-error';
 import { requestTossPayment } from '@/lib/payments';
 import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
@@ -224,9 +225,9 @@ function ApplicationForm() {
         await cancelPendingOrder();
         toast.error('결제를 시작할 수 없어요', 'NEXT_PUBLIC_TOSS_CLIENT_KEY가 설정되지 않았어요');
       }
-    } catch {
+    } catch (error) {
       await cancelPendingOrder();
-      toast.error('신청에 실패했어요', '잠시 후 다시 시도해주세요');
+      toast.error('신청에 실패했어요', apiErrorMessage(error, '잠시 후 다시 시도해주세요'));
     } finally {
       setSubmitting(false);
     }

@@ -35,7 +35,7 @@ export class VerificationsService {
       .where(eq(businesses.id, dto.businessId))
       .limit(1);
     if (!business || business.ownerUserId !== userId) {
-      throw new NotFoundException('Business not found');
+      throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
     }
     await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
 
@@ -68,7 +68,7 @@ export class VerificationsService {
       .from(verifications)
       .where(eq(verifications.id, id))
       .limit(1);
-    if (!verification) throw new NotFoundException('Verification not found');
+    if (!verification) throw new NotFoundException('인증 요청을 찾을 수 없습니다.');
     return { ...verification, ...verificationStatusPresentation(verification.status) };
   }
 }

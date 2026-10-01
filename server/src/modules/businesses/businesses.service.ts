@@ -23,7 +23,7 @@ export class BusinessesService {
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
     // One business per owner — findByOwner and the biz console assume it.
     if (await this.findByOwner(ownerUserId)) {
-      throw new ConflictException('Business already registered for this user');
+      throw new ConflictException('이미 등록된 기업 정보가 있습니다.');
     }
     const business = await this.db.transaction(async (tx) => {
       const [created] = await tx
@@ -56,7 +56,7 @@ export class BusinessesService {
       .from(businesses)
       .where(eq(businesses.id, id))
       .limit(1);
-    if (!business) throw new NotFoundException('Business not found');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
@@ -73,7 +73,7 @@ export class BusinessesService {
 
   async findByOwnerOrThrow(ownerUserId: string) {
     const business = await this.findByOwner(ownerUserId);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 계정이 필요합니다.');
     return business;
   }
 
@@ -105,7 +105,7 @@ export class BusinessesService {
       })
       .where(and(eq(businesses.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .returning();
-    if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 }

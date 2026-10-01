@@ -385,9 +385,9 @@ export class AdminService {
         .where(eq(verifications.id, id))
         .for('update')
         .limit(1);
-      if (!verification) throw new NotFoundException('Verification not found');
+      if (!verification) throw new NotFoundException('인증 요청을 찾을 수 없습니다.');
       if (verification.status === status) {
-        throw new ConflictException(`Verification is already ${status}`);
+        throw new ConflictException(`이미 ${status} 상태의 인증 요청입니다.`);
       }
 
       const [row] = await tx
@@ -479,11 +479,11 @@ export class AdminService {
       .from(certificates)
       .where(eq(certificates.id, id))
       .limit(1);
-    if (!certificate) throw new NotFoundException('Certificate not found');
+    if (!certificate) throw new NotFoundException('인증서를 찾을 수 없습니다.');
 
     const status = dto.action === 'approve' ? 'verified' : 'rejected';
     if (certificate.status === status) {
-      throw new ConflictException(`Certificate is already ${status}`);
+      throw new ConflictException(`이미 ${status} 상태의 인증서입니다.`);
     }
     const [updated] = await this.db
       .update(certificates)
@@ -537,8 +537,8 @@ export class AdminService {
       .from(ads)
       .where(eq(ads.id, id))
       .limit(1);
-    if (!existing) throw new NotFoundException('Ad not found');
-    throw new BadRequestException('Only active ads can be paused');
+    if (!existing) throw new NotFoundException('광고를 찾을 수 없습니다.');
+    throw new BadRequestException('진행 중인 광고만 일시정지할 수 있습니다.');
   }
 
   async listAds(q?: string, status?: string) {
@@ -585,7 +585,7 @@ export class AdminService {
     const knownPlacements = new Set(products.map((product) => product.placement));
     for (const item of items) {
       if (!knownPlacements.has(item.slot)) {
-        throw new BadRequestException(`Unknown ad slot: ${item.slot}`);
+        throw new BadRequestException(`알 수 없는 광고 자리입니다: ${item.slot}`);
       }
     }
     for (const item of items) {
@@ -621,10 +621,10 @@ export class AdminService {
 
   async suspendUser(id: string, dto: SuspendUserDto) {
     const [target] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    if (!target) throw new NotFoundException('User not found');
+    if (!target) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     // 관리자(자기 자신 포함)를 정지하면 JwtAuthGuard가 즉시 차단해 콘솔이 복구 불가가 된다.
     if (dto.suspended && target.role === 'admin') {
-      throw new ForbiddenException('Admin accounts cannot be suspended');
+      throw new ForbiddenException('관리자 계정은 정지할 수 없습니다.');
     }
 
     const [user] = await this.db
@@ -636,7 +636,7 @@ export class AdminService {
       )
       .where(eq(users.id, id))
       .returning();
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
 
     const countByUser = await this.countReportsAgainst([user.id]);
     return this.toAdminUser(user, countByUser.get(user.id) ?? 0);
@@ -702,7 +702,7 @@ export class AdminService {
       })
       .where(eq(reports.id, id))
       .returning();
-    if (!updated) throw new NotFoundException('Report not found');
+    if (!updated) throw new NotFoundException('신고를 찾을 수 없습니다.');
     return this.toReport(updated);
   }
 
@@ -913,7 +913,7 @@ export class AdminService {
         : UUID_PATTERN.test(adParam)
           ? eq(ads.id, adParam)
           : null;
-    if (!condition) throw new NotFoundException('Ad not found');
+    if (!condition) throw new NotFoundException('광고를 찾을 수 없습니다.');
 
     const [row] = await this.db
       .select({ ad: ads, organization: businesses.name })
@@ -921,7 +921,7 @@ export class AdminService {
       .innerJoin(businesses, eq(ads.businessId, businesses.id))
       .where(condition)
       .limit(1);
-    if (!row) throw new NotFoundException('Ad not found');
+    if (!row) throw new NotFoundException('광고를 찾을 수 없습니다.');
 
     const report = await this.adsService.getReportForAdmin(row.ad.id);
     return {

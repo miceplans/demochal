@@ -9,6 +9,7 @@ import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/componen
 import { colors as c } from '@/styles/design';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import { apiErrorMessage } from '@/lib/api-error';
 
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
@@ -132,9 +133,12 @@ export function BizProfileEditPage() {
       });
       await queryClient.invalidateQueries({ queryKey: generated.getFindMyBusinessQueryKey() });
       window.location.href = hrefOf('/profile');
-    } catch {
+    } catch (error) {
       setSaveError(true);
-      toast.error('저장 실패', '기업 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요');
+      toast.error(
+        '저장 실패',
+        apiErrorMessage(error, '기업 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요'),
+      );
     }
   };
 
@@ -162,7 +166,9 @@ export function BizProfileEditPage() {
   if (!business || businessLoadError)
     return (
       <BizContent>
-        <p>기업 정보를 불러오지 못했습니다.</p>
+        <p role="alert">
+          {apiErrorMessage(businessQuery.error, '기업 정보를 불러오지 못했습니다.')}
+        </p>
       </BizContent>
     );
   return (

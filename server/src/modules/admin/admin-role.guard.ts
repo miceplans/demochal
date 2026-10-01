@@ -9,7 +9,7 @@ export class AdminRoleGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     if (request.user?.role !== 'admin') {
-      throw new ForbiddenException('Admin access required');
+      throw new ForbiddenException('관리자 권한이 필요합니다.');
     }
     return true;
   }

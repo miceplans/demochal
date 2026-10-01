@@ -6,6 +6,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Logo, PrimaryButton } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
+import { apiErrorMessage } from '@/lib/api-error';
 import { orgProfile } from '@/data/biz-design';
 
 const ICON = '/assets/icons';
@@ -69,8 +70,11 @@ export function BizOperationsPage() {
       setContent('');
       setStatus('문의가 접수되었습니다. 담당자가 확인 후 연락드리겠습니다.');
       toast.success('문의가 접수되었습니다', '담당자가 확인 후 연락드리겠습니다.');
-    } catch {
-      const message = '문의 접수에 실패했습니다. 잠시 후 다시 시도해주세요.';
+    } catch (error) {
+      const message = apiErrorMessage(
+        error,
+        '문의 접수에 실패했습니다. 잠시 후 다시 시도해주세요.',
+      );
       setStatus(message);
       toast.error('문의 접수 실패', message);
     } finally {

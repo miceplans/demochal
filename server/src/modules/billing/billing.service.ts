@@ -52,7 +52,10 @@ export class BillingService {
   // authKey 원본 대신 sha256 해시로 멱등 레코드를 찾는다 — 토스가 카드를 저장한 뒤 HTTP 응답이
   // 사라져 콜백이 같은 authKey로 재호출되어도 저장된 카드를 실패로 보고하거나 중복 등록하지 않는다.
   async issueCard(businessId: string, authKey: string) {
-    if (!env.tossSecretKey) throw new BadGatewayException('Toss billing is not configured');
+    if (!env.tossSecretKey)
+      throw new BadGatewayException(
+        '결제 서비스가 구성되지 않았습니다. 잠시 후 다시 시도해 주세요.',
+      );
 
     const authKeyHash = createHash('sha256').update(authKey).digest('hex');
     const [inserted] = await this.db
@@ -128,7 +131,7 @@ export class BillingService {
         (error as Error | undefined)?.stack,
       );
       await this.db.delete(billingAuthAttempts).where(eq(billingAuthAttempts.id, inserted.id));
-      throw new BadGatewayException('Toss billing authorization failed');
+      throw new BadGatewayException('카드 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
     if (!response.ok) {
       // 토스 진단 정보는 상태 코드와 에러 코드만 남긴다(요청 자격증명·카드 데이터 제외).
@@ -144,12 +147,12 @@ export class BillingService {
           providerCode ? `, code ${providerCode}` : ''
         }`,
       );
-      throw new BadGatewayException('Toss billing authorization failed');
+      throw new BadGatewayException('카드 등록에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
 
     const issued = (await response.json()) as { billingKey?: string; card?: { number?: string } };
     if (!issued.billingKey || !issued.card?.number) {
-      throw new BadGatewayException('Toss billing authorization response incomplete');
+      throw new BadGatewayException('카드 등록 응답이 올바르지 않습니다. 다시 시도해 주세요.');
     }
 
     const [card] = await this.db

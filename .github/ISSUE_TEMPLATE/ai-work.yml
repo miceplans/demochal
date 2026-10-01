@@ -5,53 +5,57 @@ labels: []
 body:
   - type: markdown
     attributes:
-      value: '분석을 완료한 뒤에만 작성하세요. 구현 가능한 작업에는 `ai-ready`, 사람 판단이 필요한 작업에는 `needs-human` label을 추가합니다.'
+      value: '분석을 완료한 뒤에만 작성하세요. 모든 내용은 한국어로, 핵심만 간략히 작성합니다. 구현 가능한 작업에는 `ai-ready`, 사람 판단이 필요한 작업에는 `needs-human` label을 추가합니다.'
+  - type: input
+    id: summary
+    attributes: { label: 한줄요약, description: '한 문장으로 작업 핵심 요약 (한국어)' }
+    validations: { required: true }
   - type: textarea
     id: goal
-    attributes: { label: Goal }
+    attributes: { label: 목표 }
     validations: { required: true }
   - type: textarea
     id: background
-    attributes: { label: Background / Problem }
+    attributes: { label: 배경 / 문제 }
     validations: { required: true }
   - type: textarea
     id: current-behavior
-    attributes: { label: Current Behavior }
+    attributes: { label: 현재 동작 }
     validations: { required: true }
   - type: textarea
     id: expected-behavior
-    attributes: { label: Expected Behavior }
+    attributes: { label: 기대 동작 }
     validations: { required: true }
   - type: textarea
     id: scope
-    attributes: { label: Implementation Scope }
+    attributes: { label: 구현 범위 }
     validations: { required: true }
   - type: textarea
     id: acceptance
-    attributes: { label: Acceptance Criteria, description: '검증 가능한 체크리스트로 작성' }
+    attributes: { label: 인수 조건, description: '검증 가능한 체크리스트로 작성' }
     validations: { required: true }
   - type: textarea
     id: files
-    attributes: { label: Relevant Files / 예상 영향 범위 }
+    attributes: { label: 관련 파일 / 예상 영향 범위 }
     validations: { required: true }
   - type: textarea
     id: tests
-    attributes: { label: Test Requirements }
+    attributes: { label: 테스트 요구사항 }
     validations: { required: true }
   - type: textarea
     id: out-of-scope
-    attributes: { label: Out of Scope }
+    attributes: { label: 범위 제외 }
     validations: { required: true }
   - type: textarea
     id: dependencies
-    attributes: { label: Dependencies, value: 'None' }
+    attributes: { label: 선행 작업, value: 'None' }
     validations: { required: true }
   - type: textarea
     id: risks
-    attributes: { label: Risk / Regression Points }
+    attributes: { label: 위험 / 회귀 지점 }
     validations: { required: true }
   - type: textarea
     id: conflict-surface
     attributes:
-      { label: Conflict Surface, description: '동시 작업과 충돌할 수 있는 파일·모듈. 없으면 None' }
+      { label: 충돌 가능 영역, description: '동시 작업과 충돌할 수 있는 파일·모듈. 없으면 None' }
     validations: { required: true }

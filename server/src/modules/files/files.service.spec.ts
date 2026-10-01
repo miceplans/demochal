@@ -99,7 +99,9 @@ describe('FilesService.findById', () => {
     const pending = createService([
       fileRow({ uploadStatus: 'pending', uploaderUserId: 'owner-1' } as any),
     ]);
-    await expect(pending.service.findById('file-1', 'visitor-1')).rejects.toThrow('File not found');
+    await expect(pending.service.findById('file-1', 'visitor-1')).rejects.toThrow(
+      '파일을 찾을 수 없습니다.',
+    );
     await expect(pending.service.findById('file-1', 'owner-1')).resolves.toMatchObject({
       id: 'file-1',
     });
@@ -108,11 +110,13 @@ describe('FilesService.findById', () => {
       fileRow({ bucket: 'private', uploaderUserId: 'owner-1' } as any),
     ]);
     await expect(privateBucket.service.findById('file-1', 'visitor-1')).rejects.toThrow(
-      'File not found',
+      '파일을 찾을 수 없습니다.',
     );
 
     const missing = createService([]);
-    await expect(missing.service.findById('file-x', 'owner-1')).rejects.toThrow('File not found');
+    await expect(missing.service.findById('file-x', 'owner-1')).rejects.toThrow(
+      '파일을 찾을 수 없습니다.',
+    );
   });
 });
 

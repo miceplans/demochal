@@ -10,14 +10,14 @@ export class OrdersService {
 
   async findById(id: string, userId: string) {
     const [order] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
-    if (!order || order.userId !== userId) throw new NotFoundException('Order not found');
+    if (!order || order.userId !== userId) throw new NotFoundException('주문을 찾을 수 없습니다.');
     return order;
   }
 
   /** Trusted server-side lookup (webhooks, internal jobs) — no ownership check. */
   async findByIdInternal(id: string) {
     const [order] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
-    if (!order) throw new NotFoundException('Order not found');
+    if (!order) throw new NotFoundException('주문을 찾을 수 없습니다.');
     return order;
   }
 
@@ -28,7 +28,7 @@ export class OrdersService {
   /** Caller-supplied transaction so the payment write can commit atomically with the order transition. */
   async settleOrderPaid(tx: DbTx, id: string) {
     const [existing] = await tx.select().from(orders).where(eq(orders.id, id)).for('update');
-    if (!existing) throw new NotFoundException('Order not found');
+    if (!existing) throw new NotFoundException('주문을 찾을 수 없습니다.');
     if (existing.status === 'paid') return existing;
     if (existing.status !== 'pending') throw new ConflictException('결제할 수 없는 주문입니다.');
     if (existing.adId) {
@@ -57,7 +57,7 @@ export class OrdersService {
   /** Caller-supplied transaction so the cancellation can commit atomically with a related write. */
   async cancelOrder(tx: DbTx, id: string, allowedFrom: string[] = ['pending', 'paid']) {
     const [existing] = await tx.select().from(orders).where(eq(orders.id, id)).for('update');
-    if (!existing) throw new NotFoundException('Order not found');
+    if (!existing) throw new NotFoundException('주문을 찾을 수 없습니다.');
     if (existing.status === 'canceled') return existing;
     if (!allowedFrom.includes(existing.status)) {
       throw new ConflictException('취소할 수 없는 주문입니다.');

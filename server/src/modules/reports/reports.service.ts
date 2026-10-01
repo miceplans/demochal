@@ -69,7 +69,7 @@ export class ReportsService {
         .innerJoin(businesses, eq(challenges.businessId, businesses.id))
         .where(eq(challenges.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       return { content: row.title, org: row.org, reportedUserId: row.ownerId };
     }
     if (targetType === 'team') {
@@ -79,7 +79,7 @@ export class ReportsService {
         .innerJoin(challenges, eq(teams.challengeId, challenges.id))
         .where(eq(teams.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       return { content: row.title, org: row.org, reportedUserId: row.leaderId };
     }
     if (targetType === 'user') {
@@ -88,7 +88,7 @@ export class ReportsService {
         .from(users)
         .where(eq(users.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       // 탈퇴 tombstone은 이름이 파기돼 null이다.
       return { content: row.name ?? '탈퇴한 사용자', org: row.position, reportedUserId: targetId };
     }

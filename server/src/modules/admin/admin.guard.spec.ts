@@ -58,7 +58,7 @@ describe('JwtAuthGuard', () => {
     const { guard, verifyAsync } = createGuard(createDbStub([]));
 
     await expect(guard.canActivate(httpContext({ headers: {} }))).rejects.toThrow(
-      new UnauthorizedException('Missing authentication cookie'),
+      new UnauthorizedException('로그인이 필요합니다.'),
     );
     expect(verifyAsync).not.toHaveBeenCalled();
   });
@@ -71,7 +71,7 @@ describe('JwtAuthGuard', () => {
 
     await expect(
       guard.canActivate(httpContext({ headers: cookieHeader('tampered.jwt') })),
-    ).rejects.toThrow(new UnauthorizedException('Invalid or expired token'));
+    ).rejects.toThrow(new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.'));
   });
 
   it('rejects a token whose payload is missing required claims', async () => {
