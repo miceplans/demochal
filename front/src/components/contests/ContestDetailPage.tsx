@@ -50,6 +50,8 @@ export function ContestDetailPage({
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
   const posterUrl = challenge?.posterUrl ?? null;
+  // 데모 상세(challengeId 없음)는 데모 포스터, 실제 챌린지는 서버 포스터(없으면 플레이스홀더).
+  const sidebarPoster = challengeId ? posterUrl : contestDetail.poster;
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
@@ -228,17 +230,6 @@ export function ContestDetailPage({
               </TeamGrid>
             ) : (
               <Stack gap={28}>
-                {!challengeId && (
-                  <DesktopOnly>
-                    <img
-                      src={contestDetail.poster}
-                      alt={`${detail.title} 포스터`}
-                      width={860}
-                      height={860}
-                      style={{ width: '100%', height: 'auto' }}
-                    />
-                  </DesktopOnly>
-                )}
                 <MobileOnly>{summaryBox}</MobileOnly>
                 {detail.sections.map(({ title, body }) => (
                   <section key={title}>
@@ -264,6 +255,15 @@ export function ContestDetailPage({
             )}
           </div>
           <Sidebar>
+            {!teamTab && (
+              <PosterFrame>
+                {sidebarPoster ? (
+                  <img src={sidebarPoster} alt={`${detail.title} 포스터`} />
+                ) : (
+                  <div role="img" aria-label={`${detail.title} 포스터 없음`} />
+                )}
+              </PosterFrame>
+            )}
             {!teamTab && !applyVisible && (
               <Link
                 href={external || applyHref}
@@ -379,6 +379,15 @@ const Sidebar = styled(DesktopOnly)({
   minWidth: 0,
   position: 'sticky',
   top: 24,
+});
+const PosterFrame = styled.div({
+  width: '100%',
+  aspectRatio: '320 / 404',
+  borderRadius: 19,
+  background: c.gray100,
+  overflow: 'hidden',
+  img: { display: 'block', width: '100%', height: '100%', objectFit: 'contain' },
+  div: { width: '100%', height: '100%' },
 });
 const Tabs = styled.nav({
   display: 'flex',
