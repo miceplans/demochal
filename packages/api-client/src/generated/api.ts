@@ -2121,6 +2121,7 @@ export const getGetChallengeUrl = (id: string) => {
 /**
  * 상세 화면(`/contests/{id}`): 정보 탭(주최/자격/접수기간/D-day/포스터/상세/요약)과
  * 팀모집 탭(연결된 팀 모집글), 유사 챌린지 3개, 북마크/공유(클립보드) 포함.
+ * `draft` 공고는 공개하지 않으며 존재 여부와 관계없이 404를 반환한다.
  * @summary 챌린지 상세 조회
  */
 export const getChallenge = async (
@@ -2402,6 +2403,7 @@ export const getGetChallengeStatsUrl = (id: string) => {
  * - `monthlyExposure`: 공고 노출수 영역차트 (SVG area chart) 겸 월별 바차트 — 라벨('7월') + 값 배열
  * - **주의**: 카드 노출(임프레션) 전용 계측 비콘이 아직 없어 `exposure`는 현재 `clicks`(상세 진입)와
  *   동일한 신호를 재사용한다. 카드 노출과 클릭을 분리하려면 프론트에 별도 임프레션 비콘 호출이 필요하다.
+ * `draft` 공고는 공개하지 않으며 404를 반환한다.
  * @summary 챌린지 통계 (클릭수·북마크·노출·지원자 분포·월별 노출 추이)
  */
 export const getChallengeStats = async (
@@ -6698,6 +6700,322 @@ export function useListMyChallenges<
   queryClient?: QueryClient,
 ): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
   const queryOptions = getListMyChallengesQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type getMyChallengeResponse200 = {
+  data: Challenge;
+  status: 200;
+};
+
+export type getMyChallengeResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getMyChallengeResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getMyChallengeResponseSuccess = getMyChallengeResponse200 & {
+  headers: Headers;
+};
+export type getMyChallengeResponseError = (
+  getMyChallengeResponse401 | getMyChallengeResponse404
+) & {
+  headers: Headers;
+};
+
+export type getMyChallengeResponse = getMyChallengeResponseSuccess | getMyChallengeResponseError;
+
+export const getGetMyChallengeUrl = (id: string) => {
+  return `/challenges/mine/${id}`;
+};
+
+/**
+ * biz 콘솔의 공고 편집·신청폼 작성용 읽기 경로. 로그인한 기업 소유자만 자신의 draft를 포함한 공고를 조회할 수 있으며,
+ * 공개 조회수는 증가시키지 않는다.
+ * @summary 내 기업 공고 상세 조회
+ */
+export const getMyChallenge = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getMyChallengeResponse> => {
+  return apiFetch<getMyChallengeResponse>(getGetMyChallengeUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetMyChallengeQueryKey = (id: string) => {
+  return [`/challenges/mine/${id}`] as const;
+};
+
+export const getGetMyChallengeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyChallenge>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyChallengeQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyChallenge>>> = ({ signal }) =>
+    getMyChallenge(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetMyChallengeQueryResult = NonNullable<Awaited<ReturnType<typeof getMyChallenge>>>;
+export type GetMyChallengeQueryError = UnauthorizedResponse | NotFoundResponse;
+
+export function useGetMyChallenge<
+  TData = Awaited<ReturnType<typeof getMyChallenge>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyChallenge>>,
+          TError,
+          Awaited<ReturnType<typeof getMyChallenge>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetMyChallenge<
+  TData = Awaited<ReturnType<typeof getMyChallenge>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyChallenge>>,
+          TError,
+          Awaited<ReturnType<typeof getMyChallenge>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetMyChallenge<
+  TData = Awaited<ReturnType<typeof getMyChallenge>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업 공고 상세 조회
+ */
+
+export function useGetMyChallenge<
+  TData = Awaited<ReturnType<typeof getMyChallenge>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getMyChallenge>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetMyChallengeQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type getMyChallengeStatsResponse200 = {
+  data: ChallengeStats;
+  status: 200;
+};
+
+export type getMyChallengeStatsResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getMyChallengeStatsResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getMyChallengeStatsResponseSuccess = getMyChallengeStatsResponse200 & {
+  headers: Headers;
+};
+export type getMyChallengeStatsResponseError = (
+  getMyChallengeStatsResponse401 | getMyChallengeStatsResponse404
+) & {
+  headers: Headers;
+};
+
+export type getMyChallengeStatsResponse =
+  getMyChallengeStatsResponseSuccess | getMyChallengeStatsResponseError;
+
+export const getGetMyChallengeStatsUrl = (id: string) => {
+  return `/challenges/mine/${id}/stats`;
+};
+
+/**
+ * biz 콘솔에서 자신의 draft를 포함한 공고 통계를 조회한다.
+ * @summary 내 기업 공고 통계 조회
+ */
+export const getMyChallengeStats = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getMyChallengeStatsResponse> => {
+  return apiFetch<getMyChallengeStatsResponse>(getGetMyChallengeStatsUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetMyChallengeStatsQueryKey = (id: string) => {
+  return [`/challenges/mine/${id}/stats`] as const;
+};
+
+export const getGetMyChallengeStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyChallengeStats>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyChallengeStatsQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyChallengeStats>>> = ({ signal }) =>
+    getMyChallengeStats(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetMyChallengeStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyChallengeStats>>
+>;
+export type GetMyChallengeStatsQueryError = UnauthorizedResponse | NotFoundResponse;
+
+export function useGetMyChallengeStats<
+  TData = Awaited<ReturnType<typeof getMyChallengeStats>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyChallengeStats>>,
+          TError,
+          Awaited<ReturnType<typeof getMyChallengeStats>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetMyChallengeStats<
+  TData = Awaited<ReturnType<typeof getMyChallengeStats>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMyChallengeStats>>,
+          TError,
+          Awaited<ReturnType<typeof getMyChallengeStats>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetMyChallengeStats<
+  TData = Awaited<ReturnType<typeof getMyChallengeStats>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 내 기업 공고 통계 조회
+ */
+
+export function useGetMyChallengeStats<
+  TData = Awaited<ReturnType<typeof getMyChallengeStats>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getMyChallengeStats>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetMyChallengeStatsQueryOptions(id, options);
 
   const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
     queryKey: DataTag<QueryKey, TData, TError>;

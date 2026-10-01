@@ -247,7 +247,7 @@ function formatPeriod(startDate?: string, endDate?: string) {
 
 export function BizApplicationFormPage() {
   const { id } = useParams<{ id: string }>();
-  const challengeQuery = generated.useGetChallenge(id, { query: { enabled: Boolean(id) } });
+  const challengeQuery = generated.useGetMyChallenge(id, { query: { enabled: Boolean(id) } });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
   if (challengeQuery.isPending) {
@@ -269,7 +269,7 @@ export function BizApplicationFormPage() {
 }
 
 type ChallengeDetail = Extract<
-  Awaited<ReturnType<typeof generated.getChallenge>>,
+  Awaited<ReturnType<typeof generated.getMyChallenge>>,
   { status: 200 }
 >['data'];
 
@@ -356,7 +356,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
       // 전역 MutationCache(providers.tsx)가 실패 토스트를 띄운다.
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: generated.getGetChallengeQueryKey(id) });
+    await queryClient.invalidateQueries({ queryKey: generated.getGetMyChallengeQueryKey(id) });
     toast.success('신청서가 게시되었습니다');
     router.push(hrefOf(`/postings/${id}`));
   };

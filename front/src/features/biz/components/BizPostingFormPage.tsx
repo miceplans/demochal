@@ -87,7 +87,7 @@ export function BizPostingEditPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const challengeQuery = generated.useGetChallenge(id, { query: { enabled: Boolean(id) } });
+  const challengeQuery = generated.useGetMyChallenge(id, { query: { enabled: Boolean(id) } });
   const updateChallenge = generated.useUpdateChallenge();
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
@@ -133,7 +133,7 @@ export function BizPostingEditPage() {
       submittingLabel="저장 중…"
       onSubmit={async (values) => {
         await updateChallenge.mutateAsync({ id, data: values });
-        await queryClient.invalidateQueries({ queryKey: generated.getGetChallengeQueryKey(id) });
+        await queryClient.invalidateQueries({ queryKey: generated.getGetMyChallengeQueryKey(id) });
         toast.success('공고를 수정했습니다');
         router.push(hrefOf(`/postings/${id}`));
       }}
