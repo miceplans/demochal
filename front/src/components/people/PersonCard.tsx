@@ -19,8 +19,8 @@ const Card = styled.div({
   border: `1px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
-  transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-  '&:hover, &:focus-within': { borderColor: c.gray300, boxShadow: '0 4px 12px rgb(0 0 0 / 6%)' },
+  transition: 'box-shadow 0.15s ease',
+  '&:hover, &:focus-within': { boxShadow: '0 4px 12px rgb(0 0 0 / 6%)' },
   '@media (hover: hover)': {
     '&:hover [data-card-info], &:focus-within [data-card-info]': {
       opacity: 0,
