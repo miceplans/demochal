@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import styled from '@emotion/styled';
 import type { PersonCardModel } from './person';
 import { Row, Tag, Wrap } from '@/components/common/Primitives';
@@ -51,7 +52,7 @@ const Actions = styled.div({
   visibility: 'hidden',
   '@media (hover: none)': { gridArea: 'auto', opacity: 1, visibility: 'visible' },
 });
-const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
+const actionStyle = (primary?: boolean) => ({
   ...(primary ? textStyle.subtitle : textStyle.overline),
   flex: 1,
   minWidth: 0,
@@ -64,7 +65,15 @@ const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
   cursor: 'pointer',
   '&:hover:not(:disabled)': { background: primary ? '#005ee0' : c.gray50 },
   '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
-}));
+});
+const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => actionStyle(primary));
+const ActionLink = styled(Link)({
+  ...actionStyle(),
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
+
 const Avatar = styled.span({
   flexShrink: 0,
   width: 59,
@@ -118,10 +127,7 @@ export function PersonCard({
           )}
         </Info>
         <Actions data-card-actions>
-          {/* TODO: 타인 공개 프로필 페이지가 생기면 연결한다(현재 /profile은 본인 전용). */}
-          <ActionButton type="button" disabled title="준비 중입니다">
-            프로필 보기
-          </ActionButton>
+          <ActionLink href={`/profile?id=${person.id}`}>프로필 보기</ActionLink>
           <ActionButton type="button" primary onClick={() => onSelect(person)}>
             스카우트
           </ActionButton>

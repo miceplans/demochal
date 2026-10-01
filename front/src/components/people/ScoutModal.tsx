@@ -36,7 +36,7 @@ export function ScoutModal({
   person,
   onClose,
 }: {
-  person: PersonCardModel | null;
+  person: Pick<PersonCardModel, 'id'> | null;
   onClose: () => void;
 }) {
   return (
@@ -46,7 +46,13 @@ export function ScoutModal({
   );
 }
 
-function ScoutForm({ person, onClose }: { person: PersonCardModel; onClose: () => void }) {
+function ScoutForm({
+  person,
+  onClose,
+}: {
+  person: Pick<PersonCardModel, 'id'>;
+  onClose: () => void;
+}) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const managed = generated.useListManagedTeams();
