@@ -13,6 +13,7 @@ export type ProfileUserData = {
   name?: string;
   position?: string;
   region?: string;
+  bio?: string | null;
   stacks?: string[];
   badges?: string[];
   externalLinks?: ProfileLink[];

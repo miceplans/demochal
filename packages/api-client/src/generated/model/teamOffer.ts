@@ -16,18 +16,20 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { TeamOfferSender } from './teamOfferSender';
+import type { TeamOfferStatus } from './teamOfferStatus';
+import type { TeamOfferTeam } from './teamOfferTeam';
 
-export interface InviteTeamRequest {
-  /** 초대할 사용자 id */
-  userId: string;
-  /**
-   * 초대 시 제안하는 역할
-   * @maxLength 100
-   */
-  role?: string;
-  /**
-   * 스카우트 제안 메시지
-   * @maxLength 200
-   */
-  message?: string;
+export interface TeamOffer {
+  /** 제안(team_members 행) id */
+  id?: string;
+  teamId?: string;
+  status?: TeamOfferStatus;
+  /** @nullable */
+  role?: string | null;
+  /** @nullable */
+  message?: string | null;
+  receivedAt?: string;
+  team?: TeamOfferTeam;
+  sender?: TeamOfferSender;
 }

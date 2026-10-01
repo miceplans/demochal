@@ -322,6 +322,9 @@ export function UserShell({
             <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
               팀 탐색
             </Link>
+            <Link href="/people" aria-current={path.startsWith('/people') ? 'page' : undefined}>
+              팀원 찾기
+            </Link>
           </Nav>
         )}
       </HeaderBox>
