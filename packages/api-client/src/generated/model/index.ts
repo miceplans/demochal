@@ -46,6 +46,8 @@ export * from './adSlotPricingSlot';
 export * from './adStatus';
 export * from './application';
 export * from './applicationEvaluation';
+export * from './applicationFormQuestion';
+export * from './applicationFormQuestionType';
 export * from './applicationStatus';
 export * from './applyChallenge201';
 export * from './applyChallenge201Order';
