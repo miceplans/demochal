@@ -30,8 +30,6 @@ import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RangeSlider } from '@/components/ui/RangeSlider';
-import { AdCarousel } from '@/components/ads/AdCarousel';
-import { fallbackAds, publicAdsQuery, toAdItems } from '@/components/ads/hero-ads';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
 import { daysUntil } from '@/lib/date';
 
@@ -55,8 +53,6 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [includeClosed, setIncludeClosed] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
-  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
-  const liveHeroAds = toAdItems(heroAdList);
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   // 챌린지 목록(탐색)과 팀 모드의 챌린지 드롭다운 옵션을 한 쿼리로 공용한다 — teamMode와 무관하게 항상 조회.
@@ -206,14 +202,6 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 </FilterToggle>
               </FilterBar>
             )}
-            <HeroSlot>
-              <AdCarousel
-                key={liveHeroAds ? 'hero-live' : 'hero-default'}
-                ariaLabel="탐색 상단 광고"
-                items={liveHeroAds ?? fallbackAds.hero}
-                variant="hero"
-              />
-            </HeroSlot>
           </DesktopOnly>
         )}
         <Results $team={teamMode} $wide={filterOpen}>
@@ -499,7 +487,6 @@ const PanelRow = styled.div({
   gap: 24,
 });
 const PrizeSlider = styled.div({ width: 220 });
-const HeroSlot = styled.div({ overflow: 'hidden', padding: '20px 0 0' });
 const SortEnd = styled.div({ display: 'flex', alignItems: 'center', gap: 16 });
 const ViewToggle = styled.div({
   display: 'flex',
