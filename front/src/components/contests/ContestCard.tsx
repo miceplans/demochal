@@ -27,38 +27,31 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   '.dday': { color: c.primary, ...textStyle.overline },
   h3: textStyle.h3,
-  // 탐색 목록 보기: 데스크톱에서 썸네일 + 본문을 가로로 배치한다.
+  // 탐색 목록 보기(Figma contestCard 1345:22813): 100px 썸네일 + 세로로 쌓은 본문(제목 / 태그·D-day / 북마크·팀 배지).
   ...(row
     ? {
         display: 'grid',
-        gridTemplateColumns: '200px minmax(0, 1fr)',
-        alignItems: 'stretch',
+        gridTemplateColumns: '100px minmax(0, 1fr)',
+        alignItems: 'start',
+        padding: 12,
+        borderRadius: 8,
         border: `0.5px solid ${c.gray100}`,
-        '> a:first-of-type': { display: 'flex' },
-        '.artwork': {
-          flex: 1,
-          height: 'auto',
-          minHeight: 120,
-          background: c.gray100,
-          borderRadius: '12px 0 0 12px',
-        },
+        '> a:first-of-type': { display: 'block' },
+        '.artwork': { width: 100, height: 101, background: c.gray100, borderRadius: 0 },
         '.card-body': {
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'center',
-          gap: 12,
-          padding: '16px 24px',
+          justifyContent: 'flex-start',
+          gap: 8,
+          padding: 14,
           minWidth: 0,
         },
-        // 목록 보기는 가로로 넓으므로 태그·D-day·북마크·팀 배지를 한 줄로 이어 붙인다.
-        '.meta': {
-          display: 'flex',
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 20,
-          minWidth: 0,
-        },
-        '.meta > div': { flex: '0 0 auto', gap: 12, justifyContent: 'flex-start !important' },
+        h3: textStyle.mCardTitle,
+        '.meta': { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 },
+        '.meta > div': { gap: 12, justifyContent: 'flex-start !important' },
+        '.meta > div:last-of-type': { gap: 20 },
+        '.tag': { padding: '3px 8px', ...textStyle.mTagText, lineHeight: 'normal' },
+        '.dday': textStyle.mCounterText,
       }
     : {}),
   [mobile]: {
@@ -132,7 +125,7 @@ export function ContestCard({
         ) : (
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>
-              <CategoryTag>{contest.category}</CategoryTag>
+              <CategoryTag className="tag">{contest.category}</CategoryTag>
               <span className="dday">D-{contest.days}</span>
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
