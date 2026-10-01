@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
+import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { StepProgressBar } from '@/components/ui/StepProgressBar';
@@ -49,15 +50,6 @@ interface ContactVerification {
   busy: boolean;
 }
 const emptyVerification: ContactVerification = { id: null, code: '', verified: false, busy: false };
-
-function apiErrorMessage(error: unknown, fallback: string) {
-  if (error instanceof ApiError && error.body && typeof error.body === 'object') {
-    const message = (error.body as { message?: unknown }).message;
-    if (typeof message === 'string') return message;
-    if (Array.isArray(message) && typeof message[0] === 'string') return message[0];
-  }
-  return fallback;
-}
 
 export function BizSignupFlow() {
   const router = useRouter();

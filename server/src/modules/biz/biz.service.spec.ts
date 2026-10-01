@@ -127,7 +127,7 @@ describe('BizService', () => {
       deps.adsService as any,
     );
 
-    await expect(service.dashboard(OWNER.id)).rejects.toThrow('Business account required');
+    await expect(service.dashboard(OWNER.id)).rejects.toThrow('기업 계정이 필요합니다');
   });
 
   it('selects the recent posting among published challenges only (no draft/closed)', async () => {

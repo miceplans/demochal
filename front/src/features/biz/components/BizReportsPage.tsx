@@ -8,6 +8,7 @@ import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizContent, FieldSelect, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { apiErrorMessage } from '@/lib/api-error';
 
 const formatMonthDay = (iso: string) => {
   const [, month, day] = iso.slice(0, 10).split('-');
@@ -93,7 +94,12 @@ export function BizReportsPage() {
   if (error)
     return (
       <BizContent>
-        <p>성과 리포트를 불러오지 못했습니다.</p>
+        <p role="alert">
+          {apiErrorMessage(
+            adsQuery.error ?? reportQuery.error,
+            '성과 리포트를 불러오지 못했습니다.',
+          )}
+        </p>
       </BizContent>
     );
   const ad = ads.find((item) => item.id === selectedId);

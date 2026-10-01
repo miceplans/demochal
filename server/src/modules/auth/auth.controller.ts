@@ -410,7 +410,7 @@ export class AuthController {
 
   private assertGoogleConfigured() {
     if (!env.googleClientId || !env.googleClientSecret) {
-      throw new ServiceUnavailableException('Google login is not configured');
+      throw new ServiceUnavailableException('구글 로그인이 현재 제공되지 않습니다.');
     }
   }
 
@@ -436,7 +436,7 @@ export class AuthController {
 
   private assertNaverConfigured() {
     if (!env.naverClientId || !env.naverClientSecret) {
-      throw new ServiceUnavailableException('Naver login is not configured');
+      throw new ServiceUnavailableException('네이버 로그인이 현재 제공되지 않습니다.');
     }
   }
 
@@ -462,7 +462,7 @@ export class AuthController {
 
   private assertKakaoConfigured() {
     if (!env.kakaoClientId) {
-      throw new ServiceUnavailableException('Kakao login is not configured');
+      throw new ServiceUnavailableException('카카오 로그인이 현재 제공되지 않습니다.');
     }
   }
 

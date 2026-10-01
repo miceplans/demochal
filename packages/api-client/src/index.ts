@@ -1,5 +1,6 @@
 export * from './types';
 export * from './http';
+export * from './api-error';
 export * from './client';
 export * from './mutator';
 // OpenAPI(orval) 생성 API — `generated.getChallenges()` 같은 식으로 사용.

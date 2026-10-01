@@ -20,14 +20,14 @@ export class UsersService {
 
   async findById(id: string) {
     const [user] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     return this.withProfileImageUrl(toPublicUser(user), user.profileImageFileId);
   }
 
   /** Profile fields visible to other users — excludes email and account-management fields. */
   async findPublicProfileById(id: string) {
     const [user] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     return this.withProfileImageUrl(toPublicProfile(user), user.profileImageFileId);
   }
 
@@ -48,7 +48,7 @@ export class UsersService {
       })
       .where(eq(users.id, userId))
       .returning();
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     return this.withProfileImageUrl(toPublicUser(user), user.profileImageFileId);
   }
 

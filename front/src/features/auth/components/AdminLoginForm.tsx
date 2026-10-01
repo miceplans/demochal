@@ -9,6 +9,7 @@ import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
 import { generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
+import { apiErrorMessage } from '@/lib/api-error';
 import { loginSchema, type LoginFormValues } from '../schema';
 
 const Form = styled.form`
@@ -41,8 +42,8 @@ export function AdminLoginForm() {
         return;
       }
       router.push('/admin');
-    } catch {
-      toast.error('이메일 또는 비밀번호를 확인해 주세요.');
+    } catch (error) {
+      toast.error(apiErrorMessage(error, '이메일 또는 비밀번호를 확인해 주세요.'));
     }
   };
 

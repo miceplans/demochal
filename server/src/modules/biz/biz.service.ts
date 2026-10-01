@@ -19,7 +19,7 @@ export class BizService {
 
   async dashboard(userId: string) {
     const business = await this.businessesService.findByOwner(userId);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 계정이 필요합니다.');
 
     // 대시보드는 실제 운영 중인 공고 기준이다: draft(미공개)·closed(종료) 공고는 제외하고
     // 최신 published 공고를 "최근 공고"와 통계 소스로 쓴다. ("내 공고" 목록은 별개 동작.)
