@@ -131,7 +131,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             </>
           </Sidebar>
         ) : (
-          <DesktopOnly>
+          <FilterDock $sticky={!filterOpen}>
             {filterOpen ? (
               <FilterPanel aria-label="필터">
                 <PanelInner>
@@ -202,7 +202,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 </FilterToggle>
               </FilterBar>
             )}
-          </DesktopOnly>
+          </FilterDock>
         )}
         <Results $team={teamMode} $wide={filterOpen}>
           <MobileFilters>
@@ -298,12 +298,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                         aria-pressed={view === 'grid'}
                         onClick={() => setView('grid')}
                       >
-                        <img
-                          src="/assets/icons/figma-view-grid.svg"
-                          alt=""
-                          width={26}
-                          height={26}
-                        />
+                        <GridIcon />
                       </ViewButton>
                       <ViewButton
                         type="button"
@@ -311,12 +306,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                         aria-pressed={view === 'list'}
                         onClick={() => setView('list')}
                       >
-                        <img
-                          src="/assets/icons/figma-view-list.svg"
-                          alt=""
-                          width={28}
-                          height={28}
-                        />
+                        <ListIcon />
                       </ViewButton>
                     </ViewToggle>
                   </SortEnd>
@@ -438,11 +428,19 @@ const Layout = styled.div<{ $team: boolean }>(({ $team }) => ({
   gridTemplateColumns: '260px minmax(0, 1fr)',
   [mobile]: { display: 'block' },
 }));
+// 접힌 필터 버튼은 스크롤해도 화면 상단에 붙어 있도록 Layout 바로 아래에서 sticky로 고정한다.
+// 펼친 패널(약 280px)까지 고정하면 목록을 가리므로 패널은 일반 흐름에 둔다.
+const FilterDock = styled.div<{ $sticky: boolean }>(({ $sticky }) => ({
+  ...($sticky ? { position: 'sticky', top: 0, zIndex: 10, background: c.white } : {}),
+  [mobile]: { display: 'none' },
+}));
+// Figma RightContent: 상단 패딩 24, 필터 버튼(32) 아래 간격 20은 Results 상단 패딩이 맡는다.
 const FilterBar = styled.div({
   width: 1060,
   maxWidth: '100%',
   margin: '0 auto',
   padding: '24px 0 0',
+  boxSizing: 'content-box',
 });
 const FilterToggle = styled.button({
   ...textStyle.h3,
@@ -459,11 +457,9 @@ const FilterToggle = styled.button({
 const FilterPanel = styled.section({
   background: c.gray50,
   borderBottom: `0.5px solid ${c.gray100}`,
-  padding: '24px 24px',
+  padding: '24px 120px',
 });
 const PanelInner = styled.div({
-  maxWidth: 1200,
-  margin: '0 auto',
   display: 'flex',
   flexDirection: 'column',
   gap: 24,
@@ -484,29 +480,57 @@ const PanelRow = styled.div({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
-  gap: 24,
+  gap: 40,
 });
 const PrizeSlider = styled.div({ width: 220 });
 const SortEnd = styled.div({ display: 'flex', alignItems: 'center', gap: 16 });
 const ViewToggle = styled.div({
   display: 'flex',
   alignItems: 'center',
-  gap: 4,
-  padding: 4,
-  borderRadius: 4,
+  gap: 2,
+  padding: 2,
+  borderRadius: 8,
+  border: `0.5px solid ${c.gray200}`,
   background: c.white,
 });
 const ViewButton = styled.button({
   display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 28,
+  height: 28,
   padding: 0,
   border: 0,
-  borderRadius: 4,
+  borderRadius: 6,
   background: 'transparent',
+  color: c.gray500,
   cursor: 'pointer',
-  '&[aria-pressed=true]': { background: c.gray200 },
+  '&:hover': { background: c.gray50 },
+  '&[aria-pressed=true]': { background: c.gray100, color: c.gray900 },
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 1 },
 });
+function GridIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1.2" />
+      <rect x="9" y="1.5" width="5.5" height="5.5" rx="1.2" />
+      <rect x="1.5" y="9" width="5.5" height="5.5" rx="1.2" />
+      <rect x="9" y="9" width="5.5" height="5.5" rx="1.2" />
+    </svg>
+  );
+}
+function ListIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+      <rect x="1.5" y="2" width="13" height="3" rx="1" />
+      <rect x="1.5" y="6.5" width="13" height="3" rx="1" />
+      <rect x="1.5" y="11" width="13" height="3" rx="1" />
+    </svg>
+  );
+}
 const ExploreGrid = styled(ContestGrid)<{ $list: boolean }>(({ $list }) => ({
   gridTemplateColumns: $list ? '1fr' : 'repeat(4, minmax(0, 1fr))',
+  gap: $list ? 12 : 16,
 }));
 const Sidebar = styled.aside({
   padding: '24px 20px',
@@ -547,9 +571,11 @@ const CreateLink = styled(Link)({
   background: c.primary,
   color: c.white,
 });
+// Figma RightContent 패딩: 팀 탐색 24/32, 공모전 접힘 24(하단)·32(좌우), 펼침 32/120. 상단은 필터 영역과의 간격.
 const Results = styled.div<{ $team?: boolean; $wide?: boolean }>(({ $team, $wide }) => ({
-  padding: $team ? '24px 32px 100px' : '24px 0 100px',
-  ...(!$team ? { width: $wide ? 1200 : 1060, maxWidth: '100%', margin: '0 auto' } : {}),
+  boxSizing: 'border-box',
+  padding: $team ? '24px 32px 100px' : $wide ? '32px 120px' : '20px 32px 24px',
+  ...(!$team && !$wide ? { width: '100%', maxWidth: 1124, margin: '0 auto' } : {}),
   minWidth: 0,
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },

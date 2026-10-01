@@ -31,9 +31,34 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   ...(row
     ? {
         display: 'grid',
-        gridTemplateColumns: '240px minmax(0, 1fr)',
-        '.artwork': { height: '100%', minHeight: 140, borderRadius: '12px 0 0 12px' },
-        '.card-body': { justifyContent: 'center' },
+        gridTemplateColumns: '200px minmax(0, 1fr)',
+        alignItems: 'stretch',
+        border: `0.5px solid ${c.gray100}`,
+        '> a:first-of-type': { display: 'flex' },
+        '.artwork': {
+          flex: 1,
+          height: 'auto',
+          minHeight: 120,
+          background: c.gray100,
+          borderRadius: '12px 0 0 12px',
+        },
+        '.card-body': {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 12,
+          padding: '16px 24px',
+          minWidth: 0,
+        },
+        // 목록 보기는 가로로 넓으므로 태그·D-day·북마크·팀 배지를 한 줄로 이어 붙인다.
+        '.meta': {
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 20,
+          minWidth: 0,
+        },
+        '.meta > div': { flex: '0 0 auto', gap: 12, justifyContent: 'flex-start !important' },
       }
     : {}),
   [mobile]: {
