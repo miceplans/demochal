@@ -35,12 +35,12 @@ export const SETTINGS_GROUPS = [
       {
         key: 'reportAlert',
         label: '신고 접수 알림',
-        description: '신고가 접수되면 관리자에게 즉시 알림을 볩니다.',
+        description: '신고가 접수되면 관리자에게 즉시 알림을 보냅니다.',
       },
       {
         key: 'newBusinessAlert',
         label: '신규 기관 가입 알림',
-        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 볩니다.',
+        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 보냅니다.',
       },
     ],
   },
