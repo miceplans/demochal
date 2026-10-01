@@ -31,7 +31,9 @@ export class BizService {
       .limit(1);
 
     // stats 소스는 GET /challenges/{id}/stats와 동일 (ChallengeStats 재사용).
-    const stats = recentPosting ? await this.challengesService.getStats(recentPosting.id) : null;
+    const stats = recentPosting
+      ? await this.challengesService.getStatsForOwner(recentPosting.id, userId)
+      : null;
     const history = await this.billingHistoryService.forBusiness(business.id, {});
     const monthlyAdExposure = await this.adsService.monthlyExposureForBusiness(business.id);
     return {

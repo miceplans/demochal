@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, exists, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, orders } from '../../db/schema.js';
@@ -19,12 +19,18 @@ export class ApplicationsService {
   async apply(dto: ApplyChallengeDto, userId: string) {
     return this.db.transaction(async (tx) => {
       const [challenge] = await tx
-        .select({ id: challenges.id, price: challenges.price, title: challenges.title })
+        .select({
+          id: challenges.id,
+          price: challenges.price,
+          title: challenges.title,
+          status: challenges.status,
+          startDate: challenges.startDate,
+          endDate: challenges.endDate,
+        })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
       if (!challenge) throw new NotFoundException('Challenge not found');
-
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its
       // payable pending order instead of duplicating rows.
@@ -38,6 +44,17 @@ export class ApplicationsService {
           ...existing,
           order: await this.orderForApplication(tx, existing.id, userId, challenge),
         };
+      }
+
+      // 모집 기간·상태 검사는 신규 신청에만 강제한다 — 위 멱등 재사용(재결제 포함)은
+      // 공고가 마감된 뒤에도 계속 동작해야 기존 신청자의 재시도가 좌초하지 않는다.
+      const now = new Date();
+      if (
+        challenge.status !== 'published' ||
+        challenge.startDate.getTime() > now.getTime() ||
+        challenge.endDate.getTime() < now.getTime()
+      ) {
+        throw new BadRequestException('Challenge is not accepting applications');
       }
 
       const [application] = await tx

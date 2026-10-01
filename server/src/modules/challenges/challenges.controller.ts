@@ -65,9 +65,21 @@ export class ChallengesController {
     return this.challengesService.findById(id);
   }
 
+  @Get('mine/:id')
+  @UseGuards(JwtAuthGuard)
+  findMine(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.challengesService.findMineById(id, user.id);
+  }
+
   @Get(':id/stats')
   getStats(@Param('id') id: string) {
     return this.challengesService.getStats(id);
+  }
+
+  @Get('mine/:id/stats')
+  @UseGuards(JwtAuthGuard)
+  getMineStats(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.challengesService.getStatsForOwner(id, user.id);
   }
 
   @Get(':id/similar')

@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { applications, challenges } from '../../db/schema.js';
 import { ApplicationsService } from './applications.service.js';
@@ -6,17 +6,30 @@ import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 
 /** Chainable drizzle stub matching apply(): select projections, insert().values().returning(), and transaction pass-through. */
 function createDbStub(options: {
-  challenge?: { id: string; price: number; title: string };
+  challenge?: {
+    id: string;
+    price: number;
+    title: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+  };
   existingApplication?: Record<string, unknown>;
   latestOrder?: Record<string, unknown>;
   application?: Record<string, unknown>;
   order?: Record<string, unknown>;
 }) {
+  const challenge = options.challenge && {
+    status: 'published',
+    startDate: new Date(Date.now() - 60_000),
+    endDate: new Date(Date.now() + 60_000),
+    ...options.challenge,
+  };
   const limit = vi.fn();
   const selectFrom = vi.fn((table: unknown) => ({
     where: vi.fn(() => {
       if (table === challenges) {
-        limit.mockResolvedValue(options.challenge ? [options.challenge] : []);
+        limit.mockResolvedValue(challenge ? [challenge] : []);
         return { limit };
       }
       if (table === applications) {
@@ -96,6 +109,42 @@ describe('ApplicationsService.apply', () => {
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(NotFoundException);
   });
+
+  it.each([
+    ['draft', { status: 'draft' }],
+    ['closed', { status: 'closed' }],
+    ['not yet open', { startDate: new Date(Date.now() + 60_000) }],
+    ['expired', { endDate: new Date(Date.now() - 60_000) }],
+  ])('rejects a %s challenge before creating an application or order', async (_label, patch) => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'unavailable', ...patch },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['closed', { status: 'closed' }],
+    ['expired', { endDate: new Date(Date.now() - 60_000) }],
+  ])(
+    'still reuses the existing application and pending order after the challenge is %s',
+    async (_label, patch) => {
+      const db = createDbStub({
+        challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지', ...patch },
+        existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
+        latestOrder: { id: 'order-1', amount: 10000, status: 'pending' },
+      });
+      const service = new ApplicationsService(db);
+
+      const result = await service.apply(dto, 'user-1');
+
+      expect(result.id).toBe('app-1');
+      expect(result.order).toEqual({ id: 'order-1', amount: 10000, name: '유료 챌린지' });
+      expect(db.insert).not.toHaveBeenCalled();
+    },
+  );
 
   it('truncates the Toss orderName to the 100-character limit', async () => {
     const longTitle = '해'.repeat(150);

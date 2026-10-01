@@ -23,10 +23,10 @@ export function BizPostingManagePage() {
   const hrefOf = useBizHref();
   const queryClient = useQueryClient();
 
-  const challengeQuery = generated.useGetChallenge(id ?? '', { query: { enabled: !!id } });
+  const challengeQuery = generated.useGetMyChallenge(id ?? '', { query: { enabled: !!id } });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
-  const statsQuery = generated.useGetChallengeStats(id ?? '', { query: { enabled: !!id } });
-  const stats = statsQuery.data?.data;
+  const statsQuery = generated.useGetMyChallengeStats(id ?? '', { query: { enabled: !!id } });
+  const stats = statsQuery.data?.status === 200 ? statsQuery.data.data : undefined;
   const applicationsParams = { challengeId: id ?? '' };
   const applicationsQuery = generated.useListManagedApplications(applicationsParams, {
     query: { enabled: !!id },

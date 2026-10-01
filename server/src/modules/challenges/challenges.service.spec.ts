@@ -306,7 +306,7 @@ describe('ChallengesService.list', () => {
 
     const condition = where.mock.calls[0]![0];
     expect(referencesColumn(condition, challenges.status)).toBe(true);
-    expect(whereValues(where)).toContain('draft');
+    expect(whereValues(where)).toEqual(expect.arrayContaining(['published', 'closed']));
   });
 
   it('adds a closed exclusion only when includeClosed is false', async () => {
@@ -315,8 +315,9 @@ describe('ChallengesService.list', () => {
     const withoutClosed = createListService([]);
     await withoutClosed.service.list({ limit: 20, includeClosed: false });
 
-    expect(whereValues(withClosed.where).filter((value) => value === 'closed')).toHaveLength(0);
-    expect(whereValues(withoutClosed.where).filter((value) => value === 'closed')).toHaveLength(1);
+    // 공개 상태 allowlist에 포함된 closed 1개에 더해, includeClosed=false일 때만 exclusion이 하나 추가된다.
+    expect(whereValues(withClosed.where).filter((value) => value === 'closed')).toHaveLength(1);
+    expect(whereValues(withoutClosed.where).filter((value) => value === 'closed')).toHaveLength(2);
   });
 
   it('filters by category exact match and searches title/category with ILIKE', async () => {
@@ -737,6 +738,62 @@ describe('ChallengesService.update', () => {
 });
 
 describe('ChallengesService.findById', () => {
+  it('does not expose a draft row or record a view when the public lookup finds nothing', async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const insert = vi.fn();
+    const db = { select: vi.fn().mockReturnValue({ from }), insert } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findById('draft-id')).rejects.toThrow('Challenge not found');
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toEqual(
+      expect.arrayContaining(['published', 'closed']),
+    );
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('returns a draft only through the owner-scoped lookup without recording a public view', async () => {
+    const challenge = { id: 'draft-id', status: 'draft', posterFileId: null };
+    const limit = vi.fn().mockResolvedValue([{ challenge }]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const insert = vi.fn();
+    const db = { select: vi.fn().mockReturnValue({ from }), insert } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findMineById('draft-id', 'owner-1')).resolves.toMatchObject(challenge);
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toContain('owner-1');
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-owner from draft detail and stats before aggregation', async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const db = { select: vi.fn().mockReturnValue({ from }) } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findMineById('draft-id', 'other-owner')).rejects.toThrow(
+      'Challenge not found',
+    );
+    await expect(service.getStatsForOwner('draft-id', 'other-owner')).rejects.toThrow(
+      'Challenge not found',
+    );
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toContain('other-owner');
+    expect(db.select).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects draft statistics before running aggregate queries', async () => {
+    const db = { select: vi.fn().mockReturnValue(queryChain([])) } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.getStats('draft-id')).rejects.toThrow('Challenge not found');
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
   it('returns applicationForm exactly as stored on the row (GET reflects a prior PATCH)', async () => {
     const applicationForm = [
       { id: 'q-1', title: '자기소개', type: 'short', options: [], required: true },
