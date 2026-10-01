@@ -9,7 +9,10 @@ function createDbStub(
 ) {
   const returning = vi.fn().mockResolvedValue(notification ? [notification] : []);
   const values = vi.fn().mockReturnValue({ returning });
-  const tx = { insert: vi.fn().mockReturnValue({ values }) };
+  const tx = {
+    insert: vi.fn().mockReturnValue({ values }),
+    execute: vi.fn().mockResolvedValue([]),
+  };
   const limit = vi
     .fn()
     .mockResolvedValue(settings === null ? [] : [{ notificationSettings: settings ?? {} }]);
@@ -51,6 +54,21 @@ describe('NotificationsService.create', () => {
     expect(outbox.enqueue).toHaveBeenCalledWith(tx, NOTIFICATION_EMAIL_EVENT, {
       notificationId: 'notification-1',
     });
+  });
+
+  it('publishes an id-only pg_notify in the same transaction', async () => {
+    const { db, tx } = createDbStub();
+    const outbox = { enqueue: vi.fn().mockResolvedValue(undefined) };
+    const service = new NotificationsService(db as any, outbox as any);
+
+    await service.create('user-1', 'verification.result', { status: 'verified', secret: 'x' });
+
+    expect(tx.execute).toHaveBeenCalledTimes(1);
+    const query = JSON.stringify(tx.execute.mock.calls[0]![0]);
+    expect(query).toContain('pg_notify');
+    expect(query).toContain('notification_created');
+    expect(query).toContain('notification-1');
+    expect(query).not.toContain('secret');
   });
 
   it('only carries the notification id in the email outbox payload (no address)', async () => {

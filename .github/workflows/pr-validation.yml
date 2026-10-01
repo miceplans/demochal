@@ -77,6 +77,8 @@ jobs:
       - run: pnpm --filter @semochal/server test:cov
       # api-client regression tests (orval envelope contract) — added in #91.
       - run: pnpm --filter @semochal/api-client test
+      # Standalone script tests — merged-branch-cleanup (added in #376).
+      - run: node --test scripts/merged-branch-cleanup.test.mjs
 
   build:
     runs-on: ubuntu-latest

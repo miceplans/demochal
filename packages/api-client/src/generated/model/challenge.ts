@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ApplicationFormQuestion } from './applicationFormQuestion';
 import type { ChallengeOrganizerType } from './challengeOrganizerType';
 import type { ChallengeRecruitMethod } from './challengeRecruitMethod';
 import type { ChallengeStatus } from './challengeStatus';
@@ -52,7 +53,16 @@ export interface Challenge {
    * @nullable
    */
   prizeAmount?: number | null;
-  posterFileId?: string;
+  /**
+   * 챌린지 포스터 파일 ID
+   * @nullable
+   */
+  posterFileId?: string | null;
+  /**
+   * 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더
+   * @nullable
+   */
+  posterUrl?: string | null;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;
@@ -68,6 +78,9 @@ export interface Challenge {
   contact?: string;
   /** 모집 역할 */
   roles?: string[];
-  /** 신청폼 (질문 유형 6가지 빌더) */
-  applicationFormId?: string;
+  /**
+   * implemented(#264) — biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 아직 저장한 신청서가 없으면 null
+   * @nullable
+   */
+  applicationForm?: ApplicationFormQuestion[] | null;
 }

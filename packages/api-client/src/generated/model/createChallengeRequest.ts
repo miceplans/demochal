@@ -30,7 +30,7 @@ export interface CreateChallengeRequest {
   capacity: number;
   startDate: string;
   endDate: string;
-  /** 유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현. */
+  /** 유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 분류 필드. */
   category?: string;
   targets?: CreateChallengeRequestTargetsItem[];
   organizerType?: CreateChallengeRequestOrganizerType;
@@ -39,6 +39,8 @@ export interface CreateChallengeRequest {
    * @minimum 0
    */
   prizeAmount?: number;
+  /** 챌린지 포스터 파일 ID */
+  posterFileId?: string;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
   /**
    * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.

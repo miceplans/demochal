@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsOptional,
+  IsUUID,
   IsString,
   MaxLength,
   MinLength,
@@ -73,4 +74,9 @@ export class UpdateProfileDto {
   @ValidateNested({ each: true })
   @Type(() => AwardRecordDto)
   awardHistory?: AwardRecordDto[];
+
+  // files.id (public 버킷에 finalize된 본인 이미지). null이면 프로필 이미지를 삭제한다.
+  @IsOptional()
+  @IsUUID()
+  profileImageFileId?: string | null;
 }

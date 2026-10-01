@@ -16,22 +16,18 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AwardRecord } from './awardRecord';
-import type { ExternalLink } from './externalLink';
 
-export type UpdateMyProfileBody = {
-  name?: string;
-  /** 포지션 (기획/디자인/개발 등) */
-  role?: string;
-  region?: string;
-  stacks?: string[];
-  externalLinks?: ExternalLink[];
-  awardHistory?: AwardRecord[];
-  /**
-   * 프로필 이미지 파일 id. `POST /files/presign`(bucket=public) → S3 PUT →
-   * `POST /files/{id}/finalize`로 준비한 본인 이미지만 허용한다(아니면 400).
-   * `null`이면 프로필 이미지를 삭제한다.
-   * @nullable
-   */
-  profileImageFileId?: string | null;
-};
+/**
+ * 질문 유형 6종
+ */
+export type ApplicationFormQuestionType =
+  (typeof ApplicationFormQuestionType)[keyof typeof ApplicationFormQuestionType];
+
+export const ApplicationFormQuestionType = {
+  dropdown: 'dropdown',
+  checkbox: 'checkbox',
+  radio: 'radio',
+  file: 'file',
+  short: 'short',
+  long: 'long',
+} as const;

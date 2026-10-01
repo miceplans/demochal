@@ -342,6 +342,14 @@ paths:
                 stacks: { type: array, items: { type: string } }
                 externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
                 awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
+                profileImageFileId:
+                  type: string
+                  format: uuid
+                  nullable: true
+                  description: |
+                    프로필 이미지 파일 id. `POST /files/presign`(bucket=public) → S3 PUT →
+                    `POST /files/{id}/finalize`로 준비한 본인 이미지만 허용한다(아니면 400).
+                    `null`이면 프로필 이미지를 삭제한다.
       responses:
         '200':
           description: 수정된 사용자 정보
@@ -1048,7 +1056,10 @@ paths:
       x-impl-status: implemented
       description: |
         알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
-        푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+        인앱 실시간: `GET /notifications/stream`(SSE, 인증 쿠키)이 새 알림 커밋 시 `notification`
+        이벤트({ notificationId })를 보내고 25초마다 `ping`을 보낸다. 이벤트는 id만 담으므로
+        클라이언트는 이 목록 API를 다시 조회한다(스트림은 orval 생성 대상이 아니라 `EventSource`로 직접 구독).
+        이메일은 outbox로 발송한다. Web Push는 TODO.
       parameters:
         - name: x-user-id
           in: header
@@ -2391,6 +2402,9 @@ components:
         emailVerifiedAt: { type: string, format: date-time, nullable: true }
         phoneVerifiedAt: { type: string, format: date-time, nullable: true }
         createdAt: { type: string, format: date-time }
+        profileImageFileId: { type: string, format: uuid, nullable: true }
+        profileImageUrl:
+          { type: string, nullable: true, description: 프로필 이미지 CDN URL. 없으면 null }
         # 아래는 planned 프로필 확장 (프론트 목업 기준)
         position: { type: string, description: 포지션 }
         region: { type: string }
@@ -2490,8 +2504,14 @@ components:
             description: 주최기관 유형. 탐색 필터용,
           }
         prizeAmount: { type: integer, nullable: true, description: 총상금(만원). 탐색 필터용 }
-        # planned 확장 (공고 등록 폼/상세 화면 목업 기준, category 제외)
-        posterFileId: { type: string, format: uuid }
+        posterFileId:
+          { type: string, format: uuid, nullable: true, description: 챌린지 포스터 파일 ID }
+        posterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더,
+          }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
@@ -2510,8 +2530,33 @@ components:
           }
         contact: { type: string, description: 문의 연락처 }
         roles: { type: array, items: { type: string }, description: 모집 역할 }
-        applicationFormId:
-          { type: string, format: uuid, description: 신청폼 (질문 유형 6가지 빌더) }
+        applicationForm:
+          {
+            type: array,
+            nullable: true,
+            items: { $ref: '#/components/schemas/ApplicationFormQuestion' },
+            description: 'implemented(#264) — biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 아직 저장한 신청서가 없으면 null',
+          }
+    ApplicationFormQuestion:
+      type: object
+      required: [id, title, type, required]
+      properties:
+        id: { type: string }
+        title: { type: string, maxLength: 500 }
+        type:
+          {
+            type: string,
+            enum: [dropdown, checkbox, radio, file, short, long],
+            description: 질문 유형 6종,
+          }
+        options:
+          {
+            type: array,
+            maxItems: 50,
+            items: { type: string, maxLength: 500 },
+            description: '선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)',
+          }
+        required: { type: boolean, description: 필수 질문 여부 }
     CreateChallengeRequest:
       type: object
       required: [businessId, title, description, price, capacity, startDate, endDate]
@@ -2526,7 +2571,7 @@ components:
         category:
           {
             type: string,
-            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 최소 분류 필드. Challenge의 다른 planned 확장 필드(포스터/자격요건 등)는 아직 미구현.',
+            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 분류 필드.',
           }
         targets:
           {
@@ -2567,6 +2612,7 @@ components:
               ],
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
+        posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
         recruitUrl:
           {
@@ -2633,6 +2679,15 @@ components:
               ],
           }
         prizeAmount: { type: integer, nullable: true, minimum: 0, description: 총상금(만원) }
+        posterFileId:
+          { type: string, nullable: true, format: uuid, description: null이면 포스터를 제거 }
+        applicationForm:
+          {
+            type: array,
+            maxItems: 100,
+            items: { $ref: '#/components/schemas/ApplicationFormQuestion' },
+            description: '신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.',
+          }
     Team:
       type: object
       properties:
@@ -2654,6 +2709,19 @@ components:
         status: { type: string, enum: [recruiting, closed] }
         createdAt: { type: string, format: date-time }
         challengeTitle: { type: string, description: 목록·상세 응답에 포함 }
+        challengePosterFileId:
+          {
+            type: string,
+            nullable: true,
+            format: uuid,
+            description: 목록·상세 응답의 챌린지 포스터 파일 ID,
+          }
+        challengePosterUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 없으면 null — 클라이언트는 placeholder 유지,
+          }
         leaderName: { type: string, description: 목록·상세 응답에 포함 }
         businessName:
           { type: string, description: 'listManagedTeams 응답 전용 — 주최 기업(협회)명' }

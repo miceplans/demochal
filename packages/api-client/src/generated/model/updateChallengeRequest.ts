@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ApplicationFormQuestion } from './applicationFormQuestion';
 import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
 import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
 
@@ -54,4 +55,14 @@ export interface UpdateChallengeRequest {
    * @nullable
    */
   prizeAmount?: number | null;
+  /**
+   * null이면 포스터를 제거
+   * @nullable
+   */
+  posterFileId?: string | null;
+  /**
+   * 신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.
+   * @maxItems 100
+   */
+  applicationForm?: ApplicationFormQuestion[];
 }

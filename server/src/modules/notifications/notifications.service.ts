@@ -1,8 +1,12 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { notifications, users } from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
+import {
+  NOTIFICATION_CREATED_CHANNEL,
+  type NotificationCreatedEvent,
+} from './notification-events.js';
 import {
   EMAIL_NOTIFICATION_TYPES,
   NOTIFICATION_EMAIL_EVENT,
@@ -23,14 +27,15 @@ export class NotificationsService {
    * does. Email is skipped entirely when SES/queue config is absent, so DB
    * notifications keep working in dev.
    *
+   * 인앱 실시간: 같은 트랜잭션에서 pg_notify를 발행해 커밋된 알림만 API 인스턴스의 SSE로
+   * 전달된다(NotificationsStreamService). 워커에서 생성한 알림도 동일하게 전달된다.
+   *
    * 수신자의 notificationSettings가 매핑 키를 명시적 false로 가지면 insert와 이메일
    * outbox를 모두 생략하고 null을 반환한다. 매핑 키가 없는 타입(설정 화면에 스위치가
    * 없는 알림)은 항상 발송된다. 모든 호출부는 반환값을 쓰지 않으므로 null은 안전하다.
    */
-  // 현재 채널: DB 인앱 알림(사이트 접속 시 조회) + 서비스 이메일(/notifications 딥링크만 포함, 상세는 사이트에서 확인).
-  // TODO: 웹 푸시는 미구현 — 구현 시 이메일과 동일하게 Outbox 이벤트로 발송한다.
-  //   https://developer.mozilla.org/en-US/docs/Web/API/Push_API
-  // TODO: 실시간 인앱 알림(소켓/SSE)은 채택하지 않음 — 필요하면 프론트 TanStack Query 폴링(refetchInterval)로 대체.
+  // TODO: Web Push (mobile/browser background push) is not implemented yet.
+  //   https://developer.mozilla.org/docs/Web/API/Push_API
   async create(userId: string, type: string, payload: Record<string, unknown>) {
     const settingsKey = this.settingsKeyFor(type, payload);
     if (settingsKey) {
@@ -46,6 +51,12 @@ export class NotificationsService {
         .insert(notifications)
         .values({ userId, type, payload })
         .returning();
+      if (notification) {
+        const event: NotificationCreatedEvent = { userId, notificationId: notification.id };
+        await tx.execute(
+          sql`select pg_notify(${NOTIFICATION_CREATED_CHANNEL}, ${JSON.stringify(event)})`,
+        );
+      }
       if (notification && EMAIL_NOTIFICATION_TYPES.has(type) && isEmailDeliveryConfigured()) {
         const emailPayload: NotificationEmailPayload = { notificationId: notification.id };
         await this.outboxService.enqueue(tx, NOTIFICATION_EMAIL_EVENT, emailPayload);
