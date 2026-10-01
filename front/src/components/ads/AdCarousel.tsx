@@ -323,7 +323,12 @@ export function AdCarousel({
       const visibleCount = Math.min(itemCount, Math.ceil(viewport.clientWidth / step) + 1);
       const nextPad = Math.max(1, visibleCount + 1);
       const prevPad = padRef.current;
-      if (prevPad === nextPad) return;
+      if (prevPad === nextPad) {
+        // 이펙트가 재실행되며 cleanup이 진행 중이던 재활성화 프레임을 취소했을 수
+        // 있으므로 다시 예약한다. shouldAnimate가 이미 true면 setState가 멱등하다.
+        scheduleAnimationEnable();
+        return;
+      }
       padRef.current = nextPad;
       // pad가 바뀌면 slides 배열에서 실제 광고가 시작하는 위치도 함께 밀리므로,
       // 같은 광고가 계속 보이도록 railIndex를 그 차이만큼 보정합니다. setState 업데이터
