@@ -28,24 +28,25 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
           </NameRow>
         </TopRow>
         <BottomRow>
-          <RoleRow>
-            {team.recruitingRoles.map((role, i) => (
-              <RoleChip key={`recruiting-${role}-${i}`}>{role}</RoleChip>
-            ))}
-            {team.filledRoles.map((role, i) => (
-              <FilledRole
-                key={`filled-${role}-${i}`}
-                role="img"
-                aria-label={`${role} 모집 완료`}
-                title={role}
-              >
-                <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
-              </FilledRole>
-            ))}
-          </RoleRow>
+          <RoleBox>
+            <RoleRow>
+              {team.recruitingRoles.map((role, i) => (
+                <RoleChip key={`recruiting-${role}-${i}`}>{role}</RoleChip>
+              ))}
+              {team.filledRoles.map((role, i) => (
+                <FilledRole
+                  key={`filled-${role}-${i}`}
+                  role="img"
+                  aria-label={`${role} 모집 완료`}
+                  title={role}
+                >
+                  <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
+                </FilledRole>
+              ))}
+            </RoleRow>
+          </RoleBox>
           {!displayOnly && (
             <Actions>
-              <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
               <Apply href={`/teams/${team.id}`}>지원하기</Apply>
             </Actions>
           )}
@@ -56,6 +57,7 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
 }
 
 const Card = styled.article({
+  position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -66,6 +68,8 @@ const Card = styled.article({
   borderRadius: 14,
   overflow: 'hidden',
   h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
+  // 제목 링크를 카드 전체로 확장(stretched link)
+  'h3 a::after': { content: '""', position: 'absolute', inset: 0 },
   '.team-artwork': {
     width: '100%',
     height: 135,
@@ -135,7 +139,30 @@ const BottomRow = styled.div({
   gap: 8,
 });
 
-const RoleRow = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 });
+// 한 줄에 다 들어가면 전부 보이고, 넘치면 잘라 둔 뒤 hover 시 카드 위로 펼쳐 모두 보여준다.
+const RoleBox = styled.div({ position: 'relative', flex: 1, minWidth: 0, height: 25 });
+
+const RoleRow = styled.div({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  display: 'flex',
+  flexWrap: 'nowrap',
+  alignItems: 'center',
+  gap: 6,
+  overflow: 'hidden',
+  'div:hover > &': {
+    flexWrap: 'wrap',
+    overflow: 'visible',
+    zIndex: 2,
+    margin: -6,
+    padding: 6,
+    width: 'calc(100% + 12px)',
+    background: c.white,
+    borderRadius: 8,
+  },
+});
 
 const RoleChip = styled.span({
   ...textStyle.mRoleText,
@@ -145,9 +172,11 @@ const RoleChip = styled.span({
   border: `1px solid ${c.gray100}`,
   color: c.gray500,
   whiteSpace: 'nowrap',
+  flexShrink: 0,
 });
 
 const FilledRole = styled.span({
+  flexShrink: 0,
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -159,6 +188,8 @@ const FilledRole = styled.span({
 const Actions = styled.div({ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 });
 
 const Apply = styled(Link)({
+  position: 'relative',
+  zIndex: 1,
   ...textStyle.mBadgeText,
   display: 'inline-flex',
   alignItems: 'center',
@@ -169,13 +200,6 @@ const Apply = styled(Link)({
   background: c.primary,
   color: c.gray50,
   whiteSpace: 'nowrap',
-});
-
-const Report = styled(Link)({
-  ...textStyle.overline,
-  color: c.gray500,
-  whiteSpace: 'nowrap',
-  padding: '6px 4px',
 });
 
 export const TeamGrid = styled.div({

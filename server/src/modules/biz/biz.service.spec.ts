@@ -168,4 +168,43 @@ describe('BizService', () => {
     expect(dashboard.stats).toBeNull();
     expect(deps.challengesService.getStatsForOwner).not.toHaveBeenCalled();
   });
+
+  it('selects the recent posting among published challenges only (no draft/closed)', async () => {
+    const { db, where } = createDbStub({ id: 'ch-pub' });
+    const deps = createDeps({ business: { id: 'biz-1' } });
+    const service = new BizService(
+      db,
+      deps.businessesService as any,
+      deps.challengesService as any,
+      deps.billingHistoryService as any,
+      deps.adsService as any,
+    );
+
+    await service.dashboard(OWNER.id);
+
+    const { sql, params } = new PgDialect().sqlToQuery(where.mock.calls[0]![0] as any);
+    expect(sql).toContain('"business_id"');
+    expect(sql).toContain('"status"');
+    expect(params).toEqual(['biz-1', 'published']);
+    expect(deps.challengesService.getStatsForOwner).toHaveBeenCalledWith('ch-pub', OWNER.id);
+  });
+
+  it('returns null recentPosting/stats when there is no published challenge (draft/closed only)', async () => {
+    // DB filter excludes non-published rows, so a business with only draft/closed gets none.
+    const { db } = createDbStub();
+    const deps = createDeps({ business: { id: 'biz-1' } });
+    const service = new BizService(
+      db,
+      deps.businessesService as any,
+      deps.challengesService as any,
+      deps.billingHistoryService as any,
+      deps.adsService as any,
+    );
+
+    const dashboard = await service.dashboard(OWNER.id);
+
+    expect(dashboard.recentPosting).toBeNull();
+    expect(dashboard.stats).toBeNull();
+    expect(deps.challengesService.getStatsForOwner).not.toHaveBeenCalled();
+  });
 });

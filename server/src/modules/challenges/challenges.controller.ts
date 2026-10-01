@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../auth/public.decorator.js';
 import { ChallengesService } from './challenges.service.js';
 import { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import { UpdateChallengeDto } from './dto/update-challenge.dto.js';
@@ -29,6 +30,7 @@ export class ChallengesController {
   constructor(private readonly challengesService: ChallengesService) {}
 
   @Get()
+  @Public()
   list(
     @Query('cursor') cursor?: string,
     @Query('limit') limit = '20',
@@ -61,6 +63,7 @@ export class ChallengesController {
   }
 
   @Get(':id')
+  @Public()
   findOne(@Param('id') id: string) {
     return this.challengesService.findById(id);
   }
@@ -72,6 +75,7 @@ export class ChallengesController {
   }
 
   @Get(':id/stats')
+  @Public()
   getStats(@Param('id') id: string) {
     return this.challengesService.getStats(id);
   }
@@ -83,6 +87,7 @@ export class ChallengesController {
   }
 
   @Get(':id/similar')
+  @Public()
   listSimilar(@Param('id') id: string) {
     return this.challengesService.listSimilar(id);
   }
