@@ -9,6 +9,7 @@ import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
 import { generated } from '@semochal/api-client';
+import { useNotificationStream } from '@/lib/useNotificationStream';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -245,6 +246,7 @@ export function UserShell({
   }, []);
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const isLoggedIn = auth?.status === 200;
+  useNotificationStream(isLoggedIn);
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
     ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],

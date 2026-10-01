@@ -10,7 +10,7 @@
 - `ai-ready` Issue만 자동 구현한다. 정책 결정, 모호한 요구사항, 위험한 변경은 `needs-human`으로 전환하고 구현하지 않는다.
 - 새 Issue는 먼저 `ai-triage`에서 type/size/risk와 구현 가능성을 분류한다. dependency가 열려 있거나 순환하면 worker를 시작하지 않는다.
 - Issue별 브랜치는 `<issue-type>/#<number>` 형식으로 만든다. `issue-type`은 Issue 제목의 Conventional Commit 접두사(`feat`, `fix`, `refactor`, `test`, `chore`, `security`)를 사용한다. `main`/`master`에 직접 push하거나 force push하지 않는다.
-- git worktree를 생성하지 않는다. 모든 작업은 이 저장소 디렉터리에서 브랜치를 전환하며 수행한다.
+- git worktree를 생성할 수 있다. 단, 작업 완료 후 반드시 `git worktree remove`와 `git worktree prune`으로 정리한다.
 - 구현자와 reviewer는 논리적으로 분리한다. reviewer는 원 Issue, acceptance criteria, diff, 바뀐 파일, 관련 코드와 검증 결과를 보고 `PASS` 또는 구조화한 `REQUEST_CHANGES`만 낸다.
 - 수정/review 재시도는 최대 3회다. 그 뒤에도 해결되지 않으면 `needs-human`으로 전환한다.
 - 구현 뒤에는 Issue criteria와 diff를 기준으로 happy path, edge case, 회귀, validation, 인증/인가, error handling test의 누락을 별도로 검사한다. 그 뒤 재현 가능한 Quality Gate(lint, format, typecheck, coverage test, build, secret/dependency scan)를 통과해야 독립 AI review로 넘어갈 수 있다.

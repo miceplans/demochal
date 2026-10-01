@@ -23,7 +23,7 @@
     "@tosspayments/tosspayments-sdk": "^2.8.1",
     "browser-image-compression": "^2.0.2",
     "locomotive-scroll": "5.0.1",
-    "next": "16.3.4",
+    "next": "16.3.6",
     "react": "19.2.8",
     "react-day-picker": "10.0.1",
     "react-dom": "19.2.8",

@@ -13,7 +13,10 @@ import { ApplicationsModule } from './modules/applications/applications.module.j
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FilesModule } from './modules/files/files.module.js';
-import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import {
+  NotificationsModule,
+  NotificationsStreamModule,
+} from './modules/notifications/notifications.module.js';
 import { AdsModule } from './modules/ads/ads.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
@@ -46,6 +49,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     PaymentsModule,
     FilesModule,
     NotificationsModule,
+    NotificationsStreamModule,
     AdsModule,
     CertificatesModule,
     ReportsModule,
