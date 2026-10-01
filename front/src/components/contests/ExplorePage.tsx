@@ -508,7 +508,9 @@ const FilterChip = styled.button({
   display: 'inline-flex',
   alignItems: 'center',
   gap: 4,
-  padding: '3px 8px',
+  // 파란 필터 버튼(패딩 6 + 아이콘 20)과 같은 높이 32.
+  height: 32,
+  padding: '0 8px',
   border: 0,
   borderRadius: 4,
   background: c.lightBlue,
