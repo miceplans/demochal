@@ -33,6 +33,8 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   position: varchar('position', { length: 100 }),
   region: varchar('region', { length: 100 }),
+  // 프로필 한 줄 소개(최대 100자). 비어 있으면 null.
+  bio: varchar('bio', { length: 100 }),
   stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
   badges: jsonb('badges').$type<string[]>().notNull().default([]),
   externalLinks: jsonb('external_links').notNull().default([]),

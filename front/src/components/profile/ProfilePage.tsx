@@ -105,7 +105,7 @@ function ProfilePageContent() {
                 </Stack>
               </Row>
               <Stack gap={16}>
-                {/* TODO: 한 줄 소개(bio)는 users 테이블에 컬럼이 없어 생략한다 — 컬럼·편집 UI가 생기면 여기에 표시. */}
+                {user.bio ? <Bio>{user.bio}</Bio> : null}
                 <Stack gap={12}>
                   <SectionLabel>외부 링크</SectionLabel>
                   {links.length === 0 ? (
@@ -240,6 +240,7 @@ const Avatar = styled.div({
 });
 const Name = styled.p({ ...textStyle.subtitle2, color: c.gray900, lineHeight: 'normal' });
 const Sub = styled.p({ ...textStyle.finePrint2, color: c.gray700, lineHeight: 'normal' });
+const Bio = styled.p({ ...textStyle.finePrint2, color: c.gray700, lineHeight: 'normal' });
 const SectionLabel = styled.p({ ...textStyle.subtitle, color: c.gray900 });
 const LinkRow = styled.a({
   display: 'flex',

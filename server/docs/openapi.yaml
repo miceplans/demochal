@@ -341,6 +341,7 @@ paths:
                 name: { type: string }
                 role: { type: string, description: 포지션 (기획/디자인/개발 등) }
                 region: { type: string }
+                bio: { type: string, maxLength: 100, description: 한 줄 소개 (빈 문자열이면 삭제) }
                 stacks: { type: array, items: { type: string } }
                 externalLinks: { type: array, items: { $ref: '#/components/schemas/ExternalLink' } }
                 awardHistory: { type: array, items: { $ref: '#/components/schemas/AwardRecord' } }
@@ -2478,6 +2479,7 @@ components:
         # 아래는 planned 프로필 확장 (프론트 목업 기준)
         position: { type: string, description: 포지션 }
         region: { type: string }
+        bio: { type: string, nullable: true, maxLength: 100, description: 프로필 한 줄 소개 }
         stacks: { type: array, items: { type: string } }
         badges:
           {
