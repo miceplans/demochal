@@ -322,6 +322,10 @@ export function UserShell({
             <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
               팀 탐색
             </Link>
+            {/* TODO: 팀원 찾기(사람찾기) 화면이 구현되면 라우트를 확정한다 — Figma 01 · 사람찾기 목록. */}
+            <Link href="/people" aria-current={path.startsWith('/people') ? 'page' : undefined}>
+              팀원 찾기
+            </Link>
           </Nav>
         )}
       </HeaderBox>

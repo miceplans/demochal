@@ -15,7 +15,7 @@ const TeamTag = styled(Tag)({
   lineHeight: 'normal',
   [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
 });
-const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
+const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',
   minWidth: 0,
@@ -27,6 +27,15 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   '.dday': { color: c.primary, ...textStyle.overline },
   h3: textStyle.h3,
+  // 탐색 목록 보기: 데스크톱에서 썸네일 + 본문을 가로로 배치한다.
+  ...(row
+    ? {
+        display: 'grid',
+        gridTemplateColumns: '240px minmax(0, 1fr)',
+        '.artwork': { height: '100%', minHeight: 140, borderRadius: '12px 0 0 12px' },
+        '.card-body': { justifyContent: 'center' },
+      }
+    : {}),
   [mobile]: {
     ...(horizontal
       ? {
@@ -56,11 +65,14 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
 export function ContestCard({
   contest,
   horizontal = false,
+  row = false,
   simple = false,
   href = '/contests/public-data',
 }: {
   contest: Contest;
   horizontal?: boolean;
+  /** 데스크톱 목록 보기(가로 카드). */
+  row?: boolean;
   simple?: boolean;
   href?: string;
 }) {
@@ -79,7 +91,7 @@ export function ContestCard({
     </IconButton>
   );
   return (
-    <Card horizontal={horizontal} data-component="contest-card">
+    <Card horizontal={horizontal} row={row} data-component="contest-card">
       <Link href={href} aria-label={`${contest.title} 상세`}>
         <div className="artwork" />
       </Link>

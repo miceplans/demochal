@@ -30,6 +30,8 @@ import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RangeSlider } from '@/components/ui/RangeSlider';
+import { AdCarousel } from '@/components/ads/AdCarousel';
+import { fallbackAds, publicAdsQuery, toAdItems } from '@/components/ads/hero-ads';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
 import { daysUntil } from '@/lib/date';
 
@@ -51,6 +53,10 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(6);
   const [includeClosed, setIncludeClosed] = useState(true);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
+  const liveHeroAds = toAdItems(heroAdList);
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   // 챌린지 목록(탐색)과 팀 모드의 챌린지 드롭다운 옵션을 한 쿼리로 공용한다 — teamMode와 무관하게 항상 조회.
@@ -92,10 +98,10 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const hasMoreChallenges = Boolean(challengesQuery.data?.data.nextCursor);
   return (
     <UserShell>
-      <Layout>
-        <Sidebar>
-          <Heading>필터</Heading>
-          {teamMode ? (
+      <Layout $team={teamMode}>
+        {teamMode ? (
+          <Sidebar>
+            <Heading>필터</Heading>
             <>
               <FilterGroup title="챌린지">
                 <Dropdown
@@ -127,52 +133,90 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 />
               </FilterGroup>
             </>
-          ) : (
-            <>
-              <FilterGroup title="분야">
-                <ChipFilter
-                  ariaLabel="분야"
-                  options={categories}
-                  selected={selectedCategories}
-                  onToggle={(value) => setSelectedCategories((list) => toggleValue(list, value))}
-                />
-              </FilterGroup>
-              <FilterGroup title="대상">
-                <CheckFilter
-                  options={challengeTargets}
-                  selected={targets}
-                  onToggle={(value) => setTargets((list) => toggleValue(list, value))}
-                  rows={5}
-                  columnGap={51}
-                />
-              </FilterGroup>
-              <FilterGroup title="주최기관">
-                <CheckFilter
-                  options={organizerTypes}
-                  selected={organizers}
-                  onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
-                  rows={5}
-                  columnGap={7}
-                />
-              </FilterGroup>
-              <FilterGroup title="상금">
-                <PrizeLabel>
-                  {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
-                </PrizeLabel>
-                <RangeSlider
-                  min={PRIZE_MIN}
-                  max={PRIZE_MAX}
-                  step={500}
-                  value={prize}
-                  onChange={setPrize}
-                  minAriaLabel="상금 최솟값"
-                  maxAriaLabel="상금 최댓값"
-                />
-              </FilterGroup>
-            </>
-          )}
-        </Sidebar>
-        <Results $team={teamMode}>
+          </Sidebar>
+        ) : (
+          <DesktopOnly>
+            {filterOpen ? (
+              <FilterPanel aria-label="필터">
+                <PanelInner>
+                  <PanelTitle type="button" aria-expanded onClick={() => setFilterOpen(false)}>
+                    필터
+                    <img src="/assets/icons/figma-filter-title.svg" alt="" width={20} height={20} />
+                  </PanelTitle>
+                  <PanelRow>
+                    <>
+                      <FilterGroup fit title="분야">
+                        <ChipFilter
+                          ariaLabel="분야"
+                          maxWidth={190}
+                          options={categories}
+                          selected={selectedCategories}
+                          onToggle={(value) =>
+                            setSelectedCategories((list) => toggleValue(list, value))
+                          }
+                        />
+                      </FilterGroup>
+                      <FilterGroup fit title="대상">
+                        <CheckFilter
+                          options={challengeTargets}
+                          selected={targets}
+                          onToggle={(value) => setTargets((list) => toggleValue(list, value))}
+                          rows={5}
+                          columnGap={51}
+                        />
+                      </FilterGroup>
+                      <FilterGroup fit title="주최기관">
+                        <CheckFilter
+                          options={organizerTypes}
+                          selected={organizers}
+                          onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
+                          rows={5}
+                          columnGap={7}
+                        />
+                      </FilterGroup>
+                      <FilterGroup fit title="상금">
+                        <PrizeLabel>
+                          {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
+                        </PrizeLabel>
+                        <PrizeSlider>
+                          <RangeSlider
+                            min={PRIZE_MIN}
+                            max={PRIZE_MAX}
+                            step={500}
+                            value={prize}
+                            onChange={setPrize}
+                            minAriaLabel="상금 최솟값"
+                            maxAriaLabel="상금 최댓값"
+                          />
+                        </PrizeSlider>
+                      </FilterGroup>
+                    </>
+                  </PanelRow>
+                </PanelInner>
+              </FilterPanel>
+            ) : (
+              <FilterBar>
+                <FilterToggle
+                  type="button"
+                  aria-expanded={false}
+                  onClick={() => setFilterOpen(true)}
+                >
+                  <img src="/assets/icons/figma-filter-button.svg" alt="" width={20} height={20} />
+                  필터
+                </FilterToggle>
+              </FilterBar>
+            )}
+            <HeroSlot>
+              <AdCarousel
+                key={liveHeroAds ? 'hero-live' : 'hero-default'}
+                ariaLabel="탐색 상단 광고"
+                items={liveHeroAds ?? fallbackAds.hero}
+                variant="hero"
+              />
+            </HeroSlot>
+          </DesktopOnly>
+        )}
+        <Results $team={teamMode} $wide={filterOpen}>
           <MobileFilters>
             {teamMode ? (
               [
@@ -253,11 +297,41 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   ))}
                 </Row>
                 <DesktopOnly>
-                  <Checkbox
-                    label="마감된 챌린지도 포함하기"
-                    checked={includeClosed}
-                    onChange={setIncludeClosed}
-                  />
+                  <SortEnd>
+                    <Checkbox
+                      label="마감된 챌린지도 포함하기"
+                      checked={includeClosed}
+                      onChange={setIncludeClosed}
+                    />
+                    <ViewToggle role="group" aria-label="보기 방식">
+                      <ViewButton
+                        type="button"
+                        aria-label="그리드로 보기"
+                        aria-pressed={view === 'grid'}
+                        onClick={() => setView('grid')}
+                      >
+                        <img
+                          src="/assets/icons/figma-view-grid.svg"
+                          alt=""
+                          width={26}
+                          height={26}
+                        />
+                      </ViewButton>
+                      <ViewButton
+                        type="button"
+                        aria-label="목록으로 보기"
+                        aria-pressed={view === 'list'}
+                        onClick={() => setView('list')}
+                      >
+                        <img
+                          src="/assets/icons/figma-view-list.svg"
+                          alt=""
+                          width={28}
+                          height={28}
+                        />
+                      </ViewButton>
+                    </ViewToggle>
+                  </SortEnd>
                 </DesktopOnly>
               </>
             )}
@@ -293,11 +367,16 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               ) : (
                 <>
                   <DesktopOnly>
-                    <ContestGrid>
+                    <ExploreGrid $list={view === 'list'}>
                       {contestCards.map((x) => (
-                        <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
+                        <ContestCard
+                          key={x.id}
+                          contest={x}
+                          href={contestHref(x.id)}
+                          row={view === 'list'}
+                        />
                       ))}
-                    </ContestGrid>
+                    </ExploreGrid>
                   </DesktopOnly>
                   <MobileOnly>
                     <ContestGrid>
@@ -366,11 +445,82 @@ function ContestSkeletonGrid() {
   );
 }
 
-const Layout = styled.div({
-  display: 'grid',
+const Layout = styled.div<{ $team: boolean }>(({ $team }) => ({
+  display: $team ? 'grid' : 'block',
   gridTemplateColumns: '260px minmax(0, 1fr)',
   [mobile]: { display: 'block' },
+}));
+const FilterBar = styled.div({
+  width: 1060,
+  maxWidth: '100%',
+  margin: '0 auto',
+  padding: '24px 0 0',
 });
+const FilterToggle = styled.button({
+  ...textStyle.h3,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 2,
+  padding: 6,
+  border: 0,
+  borderRadius: 20,
+  background: c.primary,
+  color: c.white,
+  cursor: 'pointer',
+});
+const FilterPanel = styled.section({
+  background: c.gray50,
+  borderBottom: `0.5px solid ${c.gray100}`,
+  padding: '24px 24px',
+});
+const PanelInner = styled.div({
+  maxWidth: 1200,
+  margin: '0 auto',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+});
+const PanelTitle = styled.button({
+  ...textStyle.h1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  alignSelf: 'flex-start',
+  gap: 4,
+  padding: 0,
+  border: 0,
+  background: 'transparent',
+  color: c.gray900,
+  cursor: 'pointer',
+});
+const PanelRow = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 24,
+});
+const PrizeSlider = styled.div({ width: 220 });
+const HeroSlot = styled.div({ overflow: 'hidden', padding: '20px 0 0' });
+const SortEnd = styled.div({ display: 'flex', alignItems: 'center', gap: 16 });
+const ViewToggle = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  padding: 4,
+  borderRadius: 4,
+  background: c.white,
+});
+const ViewButton = styled.button({
+  display: 'flex',
+  padding: 0,
+  border: 0,
+  borderRadius: 4,
+  background: 'transparent',
+  cursor: 'pointer',
+  '&[aria-pressed=true]': { background: c.gray200 },
+});
+const ExploreGrid = styled(ContestGrid)<{ $list: boolean }>(({ $list }) => ({
+  gridTemplateColumns: $list ? '1fr' : 'repeat(4, minmax(0, 1fr))',
+}));
 const Sidebar = styled.aside({
   padding: '24px 20px',
   background: c.gray50,
@@ -410,8 +560,9 @@ const CreateLink = styled(Link)({
   background: c.primary,
   color: c.white,
 });
-const Results = styled.div<{ $team?: boolean }>(({ $team }) => ({
-  padding: $team ? '24px 32px 100px' : '60px 32px 100px',
+const Results = styled.div<{ $team?: boolean; $wide?: boolean }>(({ $team, $wide }) => ({
+  padding: $team ? '24px 32px 100px' : '24px 0 100px',
+  ...(!$team ? { width: $wide ? 1200 : 1060, maxWidth: '100%', margin: '0 auto' } : {}),
   minWidth: 0,
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
