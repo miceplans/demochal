@@ -198,8 +198,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   aria-expanded={false}
                   onClick={() => setFilterOpen(true)}
                 >
-                  <img src="/assets/icons/figma-filter-button.svg" alt="" width={20} height={20} />
                   필터
+                  <img src="/assets/icons/figma-filter-button.svg" alt="" width={20} height={20} />
                 </FilterToggle>
               </FilterBar>
             </Collapsible>
