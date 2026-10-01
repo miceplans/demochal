@@ -30,7 +30,9 @@ const VALID_ORGANIZER_TYPES = new Set([
 describe('development challenge seed data', () => {
   it('provides at least six complete public challenge records with unique ids', () => {
     expect(MOCK_CHALLENGES.length).toBeGreaterThanOrEqual(6);
-    expect(new Set(MOCK_CHALLENGES.map((challenge) => challenge.id)).size).toBe(MOCK_CHALLENGES.length);
+    expect(new Set(MOCK_CHALLENGES.map((challenge) => challenge.id)).size).toBe(
+      MOCK_CHALLENGES.length,
+    );
     for (const challenge of MOCK_CHALLENGES) {
       expect(challenge.title).not.toHaveLength(0);
       expect(challenge.description).not.toHaveLength(0);

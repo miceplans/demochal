@@ -94,7 +94,9 @@ try {
     .where(inArray(challenges.id, seedIds));
   const seeded = verifyRow?.seeded ?? 0;
 
-  console.log(`Development seed complete: ${seeded}/${MOCK_CHALLENGES.length} published challenges present.`);
+  console.log(
+    `Development seed complete: ${seeded}/${MOCK_CHALLENGES.length} published challenges present.`,
+  );
   if (seeded !== MOCK_CHALLENGES.length) {
     throw new Error('Seed verification failed: some development challenges are missing.');
   }
