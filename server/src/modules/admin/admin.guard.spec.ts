@@ -4,19 +4,7 @@ import { AUTH_COOKIE_NAME } from '../auth/auth.cookie.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AdminController } from './admin.controller.js';
 import { AdminRoleGuard } from './admin-role.guard.js';
-
-/** Auto-chaining thenable stand-in for a drizzle select builder (see admin.service.spec.ts). */
-function chainable(resolved: unknown) {
-  const proxy: any = new Proxy(function () {}, {
-    get(_target, prop) {
-      if (prop === 'then') {
-        return (onFulfilled: (value: unknown) => unknown) => onFulfilled(resolved);
-      }
-      return () => proxy;
-    },
-  });
-  return proxy;
-}
+import { chainable } from './admin.test-helpers.js';
 
 function createDbStub(selectResult: unknown) {
   return { select: vi.fn(() => chainable(selectResult)) } as any;
