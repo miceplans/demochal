@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
@@ -12,6 +13,8 @@ import {
 
 export class TeamRoleSlotDto {
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
   role!: string;
 
   @IsInt()
@@ -51,6 +54,8 @@ export class CreateTeamDto {
   openRoles?: TeamRoleSlotDto[];
 
   @IsString()
+  @IsNotEmpty()
+  @MaxLength(20)
   myRole!: string;
 
   @IsOptional()
