@@ -500,7 +500,8 @@ const FilterBar = styled.div({
   flexWrap: 'wrap',
   alignItems: 'center',
   gap: 8,
-  padding: `24px ${CONTENT_INLINE} 0`,
+  // 고정(sticky)됐을 때 목록과 붙어 보이지 않도록 아래 여백 12. 본문 상단 8과 합쳐 기존 간격 20을 유지한다.
+  padding: `24px ${CONTENT_INLINE} 12px`,
 });
 const FilterChip = styled.button({
   ...textStyle.mBadgeText,
@@ -653,7 +654,7 @@ const Results = styled.div<{ $team?: boolean; $wide?: boolean }>(({ $team, $wide
     ? '24px 32px 100px'
     : $wide
       ? `32px ${CONTENT_INLINE}`
-      : `20px ${CONTENT_INLINE} 24px`,
+      : `8px ${CONTENT_INLINE} 24px`,
   minWidth: 0,
   minHeight: 900,
   transition: `padding ${MOTION}`,
