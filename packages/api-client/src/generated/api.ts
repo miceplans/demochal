@@ -57,6 +57,8 @@ import type {
   CertificateEntry,
   Challenge,
   ChallengeStats,
+  ChangePassword200,
+  ChangePasswordBody,
   CheckHealth200,
   CheckHealth503,
   ConfirmContactVerification200,
@@ -823,6 +825,138 @@ export const useLogin = <TError = void, TContext = unknown>(
   TContext
 > => {
   return useMutation(getLoginMutationOptions(options), queryClient);
+};
+
+export type changePasswordResponse200 = {
+  data: ChangePassword200;
+  status: 200;
+};
+
+export type changePasswordResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type changePasswordResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type changePasswordResponseSuccess = changePasswordResponse200 & {
+  headers: Headers;
+};
+export type changePasswordResponseError = (
+  changePasswordResponse400 | changePasswordResponse401
+) & {
+  headers: Headers;
+};
+
+export type changePasswordResponse = changePasswordResponseSuccess | changePasswordResponseError;
+
+export const getChangePasswordUrl = () => {
+  return `/auth/password`;
+};
+
+/**
+ * 로그인한 사용자의 현재 비밀번호를 확인한 뒤 새 비밀번호 해시로 교체한다.
+ * 현재 비밀번호가 없거나(소셜 전용 계정) 일치하지 않으면 변경하지 않는다.
+ * @summary 로그인 비밀번호 변경
+ */
+export const changePassword = async (
+  changePasswordBody: ChangePasswordBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<changePasswordResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<changePasswordResponse>(getChangePasswordUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changePasswordBody),
+  });
+};
+
+export const getChangePasswordMutationKey = () => ['changePassword'] as const;
+
+export const getChangePasswordMutationOptions = <
+  TError = void | UnauthorizedResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePassword>>,
+    TError,
+    ChangePasswordMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  ChangePasswordMutationVariables,
+  TContext
+> => {
+  const mutationKey = getChangePasswordMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changePassword>>,
+    ChangePasswordMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return changePassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>;
+export type ChangePasswordMutationBody = ChangePasswordBody;
+export type ChangePasswordMutationError = void | UnauthorizedResponse;
+export type ChangePasswordMutationVariables = { data: ChangePasswordBody };
+
+/**
+ * @summary 로그인 비밀번호 변경
+ */
+export const useChangePassword = <TError = void | UnauthorizedResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof changePassword>>,
+      TError,
+      ChangePasswordMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  ChangePasswordMutationVariables,
+  TContext
+> => {
+  return useMutation(getChangePasswordMutationOptions(options), queryClient);
 };
 
 export type getMyAuthInfoResponse200 = {
@@ -5550,7 +5684,10 @@ export const getListMyNotificationsUrl = (params?: ListMyNotificationsParams) =>
 
 /**
  * 알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
- * 푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+ * 인앱 실시간: `GET /notifications/stream`(SSE, 인증 쿠키)이 새 알림 커밋 시 `notification`
+ * 이벤트({ notificationId })를 보내고 25초마다 `ping`을 보낸다. 이벤트는 id만 담으므로
+ * 클라이언트는 이 목록 API를 다시 조회한다(스트림은 orval 생성 대상이 아니라 `EventSource`로 직접 구독).
+ * 이메일은 outbox로 발송한다. Web Push는 TODO.
  * @summary 내 알림 목록 조회
  */
 export const listMyNotifications = async (

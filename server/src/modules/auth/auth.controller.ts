@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Param,
   ParseUUIDPipe,
   Post,
@@ -34,10 +35,11 @@ import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
 import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../common/throttling/throttling.js';
-import { Public } from './public.decorator.js';
+import { Authenticated, Public } from './public.decorator.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard.js';
 import { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { LOGIN_NEXT_COOKIE_NAME, sanitizeNextPath } from './next-path.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
@@ -386,6 +388,7 @@ export class AuthController {
 
   @Post('withdraw')
   @HttpCode(204)
+  @Authenticated()
   @UseGuards(JwtAuthGuard)
   async withdraw(
     @Body() dto: WithdrawAccountDto,
@@ -394,6 +397,15 @@ export class AuthController {
   ) {
     await this.authService.withdraw(user.id, dto);
     response.clearCookie(AUTH_COOKIE_NAME, authCookieClearOptions);
+  }
+
+  @Patch('password')
+  @HttpCode(200)
+  @Authenticated()
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthenticatedUser) {
+    await this.authService.changePassword(user.id, dto);
+    return { changed: true };
   }
 
   private assertGoogleConfigured() {

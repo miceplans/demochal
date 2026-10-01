@@ -73,6 +73,8 @@ export * from './challenge';
 export * from './challengeOrganizerType';
 export * from './challengeRecruitMethod';
 export * from './challengeStats';
+export * from './changePassword200';
+export * from './changePasswordBody';
 export * from './challengeStatus';
 export * from './challengeTargetsItem';
 export * from './checkHealth200';

@@ -25,6 +25,7 @@ import { UsersService } from '../users/users.service.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
+import type { ChangePasswordDto } from './dto/change-password.dto.js';
 
 const PASSWORD_HASH_ROUNDS = 10;
 const DUPLICATE_ACCOUNT_MESSAGE = 'Email or username already registered';
@@ -279,6 +280,21 @@ export class AuthService {
         })
         .where(eq(users.id, userId));
     });
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    if (dto.newPassword !== dto.confirmNewPassword) {
+      throw new BadRequestException('New password confirmation does not match');
+    }
+    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!user || user.withdrawnAt || !user.passwordHash) {
+      throw new BadRequestException('Account does not have a local password');
+    }
+    if (!(await compare(dto.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('Current password is incorrect');
+    }
+    const passwordHash = await hash(dto.newPassword, PASSWORD_HASH_ROUNDS);
+    await this.db.update(users).set({ passwordHash }).where(eq(users.id, userId));
   }
 
   /** Finds or creates the local account for a verified Google identity. */
