@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
@@ -132,7 +132,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           </Sidebar>
         ) : (
           <FilterDock $sticky={!filterOpen}>
-            {filterOpen ? (
+            <Collapsible open={filterOpen}>
               <FilterPanel aria-label="필터">
                 <PanelInner>
                   <PanelTitle type="button" aria-expanded onClick={() => setFilterOpen(false)}>
@@ -190,7 +190,8 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   </PanelRow>
                 </PanelInner>
               </FilterPanel>
-            ) : (
+            </Collapsible>
+            <Collapsible open={!filterOpen}>
               <FilterBar>
                 <FilterToggle
                   type="button"
@@ -201,7 +202,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   필터
                 </FilterToggle>
               </FilterBar>
-            )}
+            </Collapsible>
           </FilterDock>
         )}
         <Results $team={teamMode} $wide={filterOpen}>
@@ -437,6 +438,25 @@ const FilterDock = styled.div<{ $sticky: boolean }>(({ $sticky }) => ({
 // 좌우 여백은 헤더(로고 시작 ~ 프로필 아이콘 끝, 1200px)와 같은 기준선을 쓴다.
 const CONTENT_INLINE = 'max(24px, calc((100% - 1200px) / 2))';
 // Figma RightContent 패딩: 접힘 상단 24 + 버튼 아래 간격 20, 펼침 32.
+// 패널/버튼 전환: 두 영역을 항상 렌더링하고 grid 행 높이(0fr↔1fr)로 부드럽게 열고 닫는다.
+// 닫힌 쪽은 visibility로 탭 포커스·스크린리더에서 제외한다.
+function Collapsible({ open, children }: { open: boolean; children: ReactNode }) {
+  return (
+    <CollapseGrid $open={open} aria-hidden={!open}>
+      <div className="clip">{children}</div>
+    </CollapseGrid>
+  );
+}
+const CollapseGrid = styled.div<{ $open: boolean }>(({ $open }) => ({
+  display: 'grid',
+  gridTemplateRows: $open ? '1fr' : '0fr',
+  opacity: $open ? 1 : 0,
+  visibility: $open ? 'visible' : 'hidden',
+  transition: `grid-template-rows ${MOTION}, opacity 0.2s ease, visibility 0.3s`,
+  '.clip': { minHeight: 0, overflow: 'hidden' },
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+}));
+const MOTION = '0.3s cubic-bezier(0.4, 0, 0.2, 1)';
 const FilterBar = styled.div({
   padding: `24px ${CONTENT_INLINE} 0`,
 });
@@ -579,6 +599,8 @@ const Results = styled.div<{ $team?: boolean; $wide?: boolean }>(({ $team, $wide
       : `20px ${CONTENT_INLINE} 24px`,
   minWidth: 0,
   minHeight: 900,
+  transition: `padding ${MOTION}`,
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
   [mobile]: { padding: '24px 16px', minHeight: 0 },
 }));
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
