@@ -29,23 +29,22 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
         </TopRow>
         <BottomRow>
           <RoleRow>
-            {team.recruitingRoles.map((role, i) => (
+            {team.recruitingRoles.slice(0, 1).map((role, i) => (
               <RoleChip key={`recruiting-${role}-${i}`}>{role}</RoleChip>
             ))}
-            {team.filledRoles.map((role, i) => (
+            {team.recruitingRoles.length > 1 && <More aria-hidden>…</More>}
+            {team.filledRoles.length > 0 && (
               <FilledRole
-                key={`filled-${role}-${i}`}
                 role="img"
-                aria-label={`${role} 모집 완료`}
-                title={role}
+                aria-label={`${team.filledRoles.join(', ')} 모집 완료`}
+                title={team.filledRoles.join(', ')}
               >
                 <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
               </FilledRole>
-            ))}
+            )}
           </RoleRow>
           {!displayOnly && (
             <Actions>
-              <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
               <Apply href={`/teams/${team.id}`}>지원하기</Apply>
             </Actions>
           )}
@@ -56,6 +55,7 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
 }
 
 const Card = styled.article({
+  position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
@@ -66,6 +66,8 @@ const Card = styled.article({
   borderRadius: 14,
   overflow: 'hidden',
   h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
+  // 제목 링크를 카드 전체로 확장(stretched link)
+  'h3 a::after': { content: '""', position: 'absolute', inset: 0 },
   '.team-artwork': {
     width: '100%',
     height: 135,
@@ -147,6 +149,8 @@ const RoleChip = styled.span({
   whiteSpace: 'nowrap',
 });
 
+const More = styled.span({ ...textStyle.mRoleText, color: c.gray500 });
+
 const FilledRole = styled.span({
   display: 'inline-flex',
   alignItems: 'center',
@@ -159,6 +163,8 @@ const FilledRole = styled.span({
 const Actions = styled.div({ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 });
 
 const Apply = styled(Link)({
+  position: 'relative',
+  zIndex: 1,
   ...textStyle.mBadgeText,
   display: 'inline-flex',
   alignItems: 'center',
@@ -169,13 +175,6 @@ const Apply = styled(Link)({
   background: c.primary,
   color: c.gray50,
   whiteSpace: 'nowrap',
-});
-
-const Report = styled(Link)({
-  ...textStyle.overline,
-  color: c.gray500,
-  whiteSpace: 'nowrap',
-  padding: '6px 4px',
 });
 
 export const TeamGrid = styled.div({

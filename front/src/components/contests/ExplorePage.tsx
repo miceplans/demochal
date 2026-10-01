@@ -308,7 +308,6 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           <TopBar>
             {teamMode ? (
               <>
-                <Toggle>팀 찾기</Toggle>
                 <CreateLink href="/teams/new">
                   <img src="/assets/icons/figma-create-plus.svg" alt="" width={14} height={14} />
                   모집글 작성
@@ -627,17 +626,8 @@ const TopBar = styled.div({
   gap: 12,
   marginBottom: 20,
 });
-const Toggle = styled.span({
-  ...textStyle.subtitle,
-  display: 'flex',
-  alignItems: 'center',
-  height: 36,
-  padding: '0 20px',
-  borderRadius: 8,
-  background: c.primary,
-  color: c.white,
-});
 const CreateLink = styled(Link)({
+  marginLeft: 'auto',
   ...textStyle.subtitle,
   display: 'flex',
   alignItems: 'center',
