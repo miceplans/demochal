@@ -1,4 +1,4 @@
-import { env } from '../../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 
 // Outbox event type relayed to SQS_EMAILS_QUEUE_URL by worker.ts.
 export const NOTIFICATION_EMAIL_EVENT = 'notification.email';

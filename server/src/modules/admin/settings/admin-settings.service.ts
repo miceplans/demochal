@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { adminSettings } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../../infra/db/drizzle.provider.js';
+import { adminSettings } from '../../../infra/db/schema.js';
 
 /** Admin API(AdminService)와 설정 소비자(isEnabled)가 반드시 같은 row를 보게 하는 키. */
 export const ADMIN_SETTINGS_ID = 'default';

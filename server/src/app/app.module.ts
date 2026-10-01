@@ -1,0 +1,68 @@
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { HealthModule } from '../common/health/health.module.js';
+import { DbModule } from '../infra/db/db.module.js';
+import { QueueModule } from '../infra/queue/queue.module.js';
+import { AuthModule } from '../modules/auth/auth.module.js';
+import { UsersModule } from '../modules/users/users.module.js';
+import { BusinessesModule } from '../modules/businesses/businesses.module.js';
+import { VerificationsModule } from '../modules/verifications/verifications.module.js';
+import { ChallengesModule } from '../modules/challenges/challenges.module.js';
+import { ApplicationsModule } from '../modules/applications/applications.module.js';
+import { OrdersModule } from '../modules/orders/orders.module.js';
+import { PaymentsModule } from '../modules/payments/payments.module.js';
+import { FilesModule } from '../modules/files/files.module.js';
+import { NotificationsModule } from '../modules/notifications/notifications.module.js';
+import { AdsModule } from '../modules/ads/ads.module.js';
+import { CertificatesModule } from '../modules/certificates/certificates.module.js';
+import { ReportsModule } from '../modules/reports/reports.module.js';
+import { AdminSettingsModule } from '../modules/admin/settings/admin-settings.module.js';
+import { AdminModule } from '../modules/admin/admin.module.js';
+import { DEFAULT_THROTTLE } from '../common/throttling/throttling.js';
+import { MaintenanceGuard } from '../common/maintenance/maintenance.guard.js';
+import { JwtAuthGuard } from '../modules/auth/guards/jwt-auth.guard.js';
+import { BillingModule } from '../modules/billing/billing.module.js';
+import { BizModule } from '../modules/biz/biz.module.js';
+import { TeamsModule } from '../modules/teams/teams.module.js';
+import { BookmarksModule } from '../modules/bookmarks/bookmarks.module.js';
+import { InterestsModule } from '../modules/interests/interests.module.js';
+import { OperationsModule } from '../modules/operations/operations.module.js';
+
+// Full module tree, served over HTTP by main.ts.
+@Module({
+  imports: [
+    ThrottlerModule.forRoot({ throttlers: [DEFAULT_THROTTLE] }),
+    DbModule,
+    QueueModule,
+    HealthModule,
+    AuthModule,
+    UsersModule,
+    BusinessesModule,
+    VerificationsModule,
+    ChallengesModule,
+    ApplicationsModule,
+    OrdersModule,
+    PaymentsModule,
+    FilesModule,
+    NotificationsModule,
+    AdsModule,
+    CertificatesModule,
+    ReportsModule,
+    AdminSettingsModule,
+    AdminModule,
+    BillingModule,
+    BizModule,
+    TeamsModule,
+    BookmarksModule,
+    InterestsModule,
+    OperationsModule,
+  ],
+  providers: [
+    // Runs first so floods are rejected before the per-request auth DB lookup.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useExisting: JwtAuthGuard },
+    { provide: APP_GUARD, useClass: MaintenanceGuard },
+  ],
+})
+export class AppModule {}

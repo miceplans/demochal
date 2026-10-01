@@ -1,8 +1,8 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { ads, orders } from '../../db/schema.js';
-import { adToday } from '../ads/ad-period.js';
+import { DRIZZLE, type Database, type DbTx } from '../../infra/db/drizzle.provider.js';
+import { ads, orders } from '../../infra/db/schema.js';
+import { adToday } from '../ads/utils/ad-period.js';
 
 @Injectable()
 export class OrdersService {

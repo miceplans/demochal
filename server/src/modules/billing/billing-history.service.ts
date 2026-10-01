@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { ads, applications, challenges, orders, payments } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { ads, applications, challenges, orders, payments } from '../../infra/db/schema.js';
 
 export interface PaymentHistoryRange {
   from?: string;

@@ -1,6 +1,6 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { env } from '../../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 import { SesEmailClient } from './ses-email.client.js';
 
 describe('SesEmailClient', () => {

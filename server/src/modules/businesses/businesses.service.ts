@@ -6,9 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, desc, eq, lt } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, challenges, users } from '../../db/schema.js';
-import { AdminAlertsService } from '../admin/admin-alerts.service.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { businesses, challenges, users } from '../../infra/db/schema.js';
+import { AdminAlertsService } from '../admin/alerts/admin-alerts.service.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';

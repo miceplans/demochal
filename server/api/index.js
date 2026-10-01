@@ -10,7 +10,7 @@
 // real (req, res) objects, and an Express app is itself a valid
 // `(req, res) => void` request listener — the same shape `http.createServer`
 // takes — so it can be called directly.
-import { createApp } from '../dist/app.factory.js';
+import { createApp } from '../dist/app/app.factory.js';
 
 let handlerPromise;
 

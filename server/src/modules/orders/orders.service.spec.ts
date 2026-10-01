@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
-import { ads } from '../../db/schema.js';
+import { ads } from '../../infra/db/schema.js';
 import { OrdersService } from './orders.service.js';
 
 /** Chainable drizzle stub for the select().from().where().for('update') / update().set().where().returning() shapes. */

@@ -1,5 +1,5 @@
 import { S3Client, type S3ClientConfig } from '@aws-sdk/client-s3';
-import { env } from '../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 
 // A custom endpoint (LocalStack in docker-compose) cannot serve the SDK's
 // default virtual-hosted bucket URLs, so it always implies path-style.

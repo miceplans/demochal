@@ -3,8 +3,8 @@ import { Logger } from '@nestjs/common';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Pool } from 'pg';
-import { resolveMigrationEnv } from './config/migration-env.js';
-import { createPoolOptions } from './db/pool-options.js';
+import { resolveMigrationEnv } from './infra/config/migration-env.js';
+import { createPoolOptions } from './infra/db/pool-options.js';
 
 // One-off migration entry point — `node dist/migrate.js`. Normally run by the
 // CI deploy (`.github/workflows/ci.yml`): after GitHub Environment `production`

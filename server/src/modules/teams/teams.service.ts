@@ -7,9 +7,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { and, desc, eq, inArray, ne } from 'drizzle-orm';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, challenges, teamMembers, teams, users } from '../../db/schema.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { businesses, challenges, teamMembers, teams, users } from '../../infra/db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { FilesService } from '../files/files.service.js';
 import type { CreateTeamDto } from './dto/create-team.dto.js';

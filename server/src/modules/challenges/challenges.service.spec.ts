@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { challenges, type ApplicationFormQuestion } from '../../db/schema.js';
+import { challenges, type ApplicationFormQuestion } from '../../infra/db/schema.js';
 import { ChallengesService } from './challenges.service.js';
 
 type ChallengeRow = {

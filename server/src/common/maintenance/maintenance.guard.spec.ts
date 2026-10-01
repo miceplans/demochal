@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ServiceUnavailableException, type ExecutionContext } from '@nestjs/common';
-import { AUTH_COOKIE_NAME } from '../../modules/auth/auth.cookie.js';
+import { AUTH_COOKIE_NAME } from '../../modules/auth/utils/auth.cookie.js';
 import { MaintenanceGuard } from './maintenance.guard.js';
 
 function contextFor(path: string, request: Record<string, unknown> = {}): ExecutionContext {

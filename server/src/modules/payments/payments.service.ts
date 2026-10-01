@@ -8,9 +8,9 @@ import {
 } from '@nestjs/common';
 import { and, eq, ne } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
-import { env } from '../../config/env.js';
-import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { payments } from '../../db/schema.js';
+import { env } from '../../infra/config/env.js';
+import { DRIZZLE, type Database, type DbTx } from '../../infra/db/drizzle.provider.js';
+import { payments } from '../../infra/db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 import type { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 

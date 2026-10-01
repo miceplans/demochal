@@ -22,7 +22,7 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
 import {
   applications,
   bookmarks,
@@ -31,12 +31,12 @@ import {
   challenges,
   orders,
   users,
-} from '../../db/schema.js';
+} from '../../infra/db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
-import { AdminSettingsService } from '../admin/admin-settings.service.js';
-import { interestsMatch } from './interest-matching.js';
+import { AdminSettingsService } from '../admin/settings/admin-settings.service.js';
+import { interestsMatch } from './utils/interest-matching.js';
 import { FilesService } from '../files/files.service.js';
 
 // draft -> published -> closed; no other transition is valid.

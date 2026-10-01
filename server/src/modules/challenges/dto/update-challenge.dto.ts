@@ -16,7 +16,7 @@ import {
   ValidateIf,
   ValidateNested,
 } from 'class-validator';
-import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
+import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../utils/challenge-filter-options.js';
 import { ApplicationFormQuestionDto } from './application-form-question.dto.js';
 
 /** 공고 부분 수정. businessId/status는 바꿀 수 없다(상태는 PATCH /challenges/:id/status). */

@@ -9,15 +9,15 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
-import { env } from '../../config/env.js';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { files } from '../../db/schema.js';
+import { env } from '../../infra/config/env.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { files } from '../../infra/db/schema.js';
 import {
   type AllowedUploadContentType,
   type PresignedUploadRequest,
 } from './dto/presigned-upload-request.dto.js';
-import { buildPublicFileUrl } from './public-file-url.js';
-import { createS3Client } from './s3-client.js';
+import { buildPublicFileUrl } from './utils/public-file-url.js';
+import { createS3Client } from './utils/s3-client.js';
 
 const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/jpeg': 'jpg',

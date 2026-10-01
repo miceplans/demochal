@@ -1,5 +1,5 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
-import type { AuthenticatedRequest } from '../auth/jwt-auth.guard.js';
+import type { AuthenticatedRequest } from '../../auth/guards/jwt-auth.guard.js';
 
 // JwtAuthGuard is registered globally, so this only checks the role it already put on the request.
 // Admin is the one surface where "logged in" isn't enough: unguarded, these endpoints can

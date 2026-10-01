@@ -1,13 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, files, verifications } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { businesses, files, verifications } from '../../infra/db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { FilesService } from '../files/files.service.js';
 import { ClovaOcrClient } from './clients/clova-ocr.client.js';
 import { NtsClient } from './clients/nts.client.js';
 import type { VerificationJobMessage } from './verifications.service.js';
-import { AdminSettingsService } from '../admin/admin-settings.service.js';
+import { AdminSettingsService } from '../admin/settings/admin-settings.service.js';
 
 // Consumed by worker.ts's SQS poll loop — never invoked over HTTP.
 @Injectable()

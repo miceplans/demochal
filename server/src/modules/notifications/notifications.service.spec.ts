@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { env } from '../../config/env.js';
+import { env } from '../../infra/config/env.js';
 import { NotificationsService } from './notifications.service.js';
 import { NOTIFICATION_EMAIL_EVENT } from './email/notification-email.js';
 

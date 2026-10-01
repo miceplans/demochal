@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import { TeamsService } from './teams.service.js';
 
 function createNotificationsStub() {

@@ -9,11 +9,11 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { and, asc, desc, eq, gt, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { adEventCounters, adProducts, ads, files, orders } from '../../infra/db/schema.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
-import { buildPublicFileUrl } from '../files/public-file-url.js';
+import { buildPublicFileUrl } from '../files/utils/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import type { UpdateAdDto } from './dto/update-ad.dto.js';

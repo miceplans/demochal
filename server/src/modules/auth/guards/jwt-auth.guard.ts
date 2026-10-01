@@ -10,10 +10,10 @@ import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import type { Request } from 'express';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
-import { getAuthToken } from './auth.cookie.js';
-import { IS_PUBLIC_KEY } from './public.decorator.js';
+import { DRIZZLE, type Database } from '../../../infra/db/drizzle.provider.js';
+import { users } from '../../../infra/db/schema.js';
+import { getAuthToken } from '../utils/auth.cookie.js';
+import { IS_PUBLIC_KEY } from '../decorators/public.decorator.js';
 
 export interface AuthenticatedUser {
   id: string;

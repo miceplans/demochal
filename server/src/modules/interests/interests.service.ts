@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { users } from '../../infra/db/schema.js';
 import type { SaveInterestsDto } from './dto/save-interests.dto.js';
 import type { SaveNotificationSettingsDto } from './dto/save-notification-settings.dto.js';
 

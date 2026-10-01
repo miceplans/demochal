@@ -1,8 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq, lt, sql } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../../db/drizzle.provider.js';
-import { emailSendStates, notifications, users } from '../../../db/schema.js';
-import { env } from '../../../config/env.js';
+import { DRIZZLE, type Database } from '../../../infra/db/drizzle.provider.js';
+import { emailSendStates, notifications, users } from '../../../infra/db/schema.js';
+import { env } from '../../../infra/config/env.js';
 import type { NotificationEmailJobMessage } from './notification-email.js';
 import { renderNotificationEmail } from './notification-email.templates.js';
 import { SesEmailClient } from './ses-email.client.js';

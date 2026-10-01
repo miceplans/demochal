@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { fetchJson } from '../../../common/http/fetch-json.js';
-import { env } from '../../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 
 export interface OcrResult {
   businessName?: string;

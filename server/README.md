@@ -1,35 +1,28 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 세모챌 서버 (NestJS)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+## 디렉터리 구조
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
-
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ pnpm install
 ```
+server/
+├─ src/
+│  ├─ main.ts / worker.ts / migrate.ts   # 진입점(API · SQS 워커 · 마이그레이션). dist 루트에 그대로 빌드됨
+│  ├─ app/                               # 앱 조립: app.module, worker.module, app.factory, app.configure
+│  ├─ infra/                             # 인프라 계층
+│  │  ├─ config/                         #   env(zod) 검증
+│  │  ├─ db/                             #   Drizzle provider, schema(core/features), pool 옵션
+│  │  ├─ queue/                          #   SQS 클라이언트
+│  │  └─ outbox/                         #   Outbox 서비스 / relay
+│  ├─ common/                            # 도메인 무관 공용 코드: health, http, maintenance, security, throttling
+│  └─ modules/<기능>/                    # 기능별 모듈 (controller · service · module · dto/ + 역할별 하위 폴더)
+│     └─ guards/ decorators/ utils/ clients/ settings/ alerts/ scan/ email/ …
+├─ drizzle/        # 마이그레이션 SQL (drizzle-kit 생성, CI 배포가 적용)
+├─ docs/           # openapi.yaml 등
+├─ api/            # Vercel 서버리스 진입점 (데모용)
+└─ certs/          # RDS CA 번들
+```
+
+규칙: 한 기능의 코드는 `modules/<기능>/` 안에서 끝낸다. 가드·데코레이터·순수 함수·외부 클라이언트는
+각각 `guards/`, `decorators/`, `utils/`, `clients/`로 모으고, spec은 대상 파일 옆에 둔다.
 
 ## Run with Docker (local)
 

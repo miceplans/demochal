@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { bookmarks, challenges } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { bookmarks, challenges } from '../../infra/db/schema.js';
 
 export type BookmarkSort = 'deadline' | 'latest' | 'popular';
 

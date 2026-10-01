@@ -3,7 +3,7 @@ import type { JwtService } from '@nestjs/jwt';
 import type { Reflector } from '@nestjs/core';
 import type { ExecutionContext } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import type { Database } from '../../db/drizzle.provider.js';
+import type { Database } from '../../../infra/db/drizzle.provider.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
 
 function context(request: object): ExecutionContext {

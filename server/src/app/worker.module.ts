@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { DEFAULT_THROTTLE } from './common/throttling/throttling.js';
-import { DbModule } from './db/db.module.js';
-import { QueueModule } from './queue/queue.module.js';
-import { OutboxModule } from './outbox/outbox.module.js';
-import { VerificationsModule } from './modules/verifications/verifications.module.js';
-import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { DEFAULT_THROTTLE } from '../common/throttling/throttling.js';
+import { DbModule } from '../infra/db/db.module.js';
+import { QueueModule } from '../infra/queue/queue.module.js';
+import { OutboxModule } from '../infra/outbox/outbox.module.js';
+import { VerificationsModule } from '../modules/verifications/verifications.module.js';
+import { NotificationsModule } from '../modules/notifications/notifications.module.js';
 
 // Subset of AppModule needed to process background jobs. Shares the same
 // VerificationsModule/NotificationsModule as the HTTP app — only the entry

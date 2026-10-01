@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { env } from '../../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 
 export interface OutgoingEmail {
   to: string;

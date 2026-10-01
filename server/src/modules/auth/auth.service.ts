@@ -10,7 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { compare, hash } from 'bcryptjs';
 import { randomBytes } from 'node:crypto';
 import { and, eq, ilike, isNull, or, sql } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
 import {
   applications,
   bookmarks,
@@ -20,7 +20,7 @@ import {
   teamMembers,
   teams,
   users,
-} from '../../db/schema.js';
+} from '../../infra/db/schema.js';
 import { UsersService } from '../users/users.service.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 import type { RegisterDto } from './dto/register.dto.js';

@@ -2,9 +2,9 @@ import { BadGatewayException, ConflictException, Inject, Injectable, Logger } fr
 import { createHash } from 'node:crypto';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
-import { env } from '../../config/env.js';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { billingAuthAttempts, paymentCards } from '../../db/schema.js';
+import { env } from '../../infra/config/env.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { billingAuthAttempts, paymentCards } from '../../infra/db/schema.js';
 import type { RegisterPaymentCardDto } from './dto/register-payment-card.dto.js';
 
 @Injectable()

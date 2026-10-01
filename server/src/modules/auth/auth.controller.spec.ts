@@ -3,7 +3,7 @@ import { createHmac } from 'node:crypto';
 import { Reflector } from '@nestjs/core';
 import type { Request, Response } from 'express';
 import { AuthController } from './auth.controller.js';
-import { AUTH_COOKIE_NAME, authCookieOptions } from './auth.cookie.js';
+import { AUTH_COOKIE_NAME, authCookieOptions } from './utils/auth.cookie.js';
 import type { AuthService } from './auth.service.js';
 import type { ContactVerificationsService } from './contact-verifications.service.js';
 import { SKIP_INPUT_SECURITY_KEY } from '../../common/security/skip-input-security.decorator.js';
@@ -152,7 +152,7 @@ describe('AuthController Google callback input-security opt-out', () => {
     vi.stubEnv('GOOGLE_CLIENT_ID', 'test-google-client-id');
     vi.stubEnv('GOOGLE_CLIENT_SECRET', 'test-google-client-secret');
     const { AuthController: FreshController } = await import('./auth.controller.js');
-    const { env } = await import('../../config/env.js');
+    const { env } = await import('../../infra/config/env.js');
     const { fetchJson: fetchJsonMock } = await import('../../common/http/fetch-json.js');
     const mockedFetchJson = vi.mocked(fetchJsonMock);
 
@@ -213,7 +213,7 @@ describe('AuthController Naver callback', () => {
     vi.stubEnv('NAVER_CLIENT_ID', 'test-naver-client-id');
     vi.stubEnv('NAVER_CLIENT_SECRET', 'test-naver-client-secret');
     const { AuthController: FreshController } = await import('./auth.controller.js');
-    const { env } = await import('../../config/env.js');
+    const { env } = await import('../../infra/config/env.js');
     const { fetchJson: fetchJsonMock } = await import('../../common/http/fetch-json.js');
     const mockedFetchJson = vi.mocked(fetchJsonMock);
     mockedFetchJson.mockReset();
@@ -287,7 +287,7 @@ describe('AuthController Kakao callback', () => {
     vi.resetModules();
     vi.stubEnv('KAKAO_CLIENT_ID', 'test-kakao-rest-api-key');
     const { AuthController: FreshController } = await import('./auth.controller.js');
-    const { env } = await import('../../config/env.js');
+    const { env } = await import('../../infra/config/env.js');
     const { fetchJson: fetchJsonMock } = await import('../../common/http/fetch-json.js');
     const mockedFetchJson = vi.mocked(fetchJsonMock);
     mockedFetchJson.mockReset();

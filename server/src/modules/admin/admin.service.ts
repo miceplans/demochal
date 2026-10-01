@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
 import {
   adProducts,
   ads,
@@ -25,11 +25,11 @@ import {
   users,
   verifications,
   type reports as reportsTable,
-} from '../../db/schema.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { AdminSettingsService } from './admin-settings.service.js';
+} from '../../infra/db/schema.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
+import { AdminSettingsService } from './settings/admin-settings.service.js';
 import { FilesService } from '../files/files.service.js';
-import { buildPublicFileUrl } from '../files/public-file-url.js';
+import { buildPublicFileUrl } from '../files/utils/public-file-url.js';
 import { AdsService } from '../ads/ads.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';

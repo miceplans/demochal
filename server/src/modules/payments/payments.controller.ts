@@ -1,7 +1,7 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { Public } from '../auth/public.decorator.js';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../auth/decorators/public.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 import { PaymentsService, type TossWebhookPayload } from './payments.service.js';
 

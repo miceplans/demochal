@@ -1,8 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, eq, gt, isNull, lte } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { bookmarks, challenges, notifications, users } from '../../db/schema.js';
-import { interestsMatch } from '../challenges/interest-matching.js';
+import { DRIZZLE, type Database } from '../../../infra/db/drizzle.provider.js';
+import { bookmarks, challenges, notifications, users } from '../../../infra/db/schema.js';
+import { interestsMatch } from '../../challenges/utils/interest-matching.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DEADLINE_WINDOW_DAYS = 7;

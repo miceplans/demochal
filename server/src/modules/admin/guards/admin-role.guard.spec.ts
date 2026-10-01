@@ -1,8 +1,8 @@
 import { ForbiddenException, UnauthorizedException, type ExecutionContext } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { AUTH_COOKIE_NAME } from '../auth/auth.cookie.js';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-import { AdminController } from './admin.controller.js';
+import { AUTH_COOKIE_NAME } from '../../auth/utils/auth.cookie.js';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
+import { AdminController } from '../admin.controller.js';
 import { AdminRoleGuard } from './admin-role.guard.js';
 
 /** Auto-chaining thenable stand-in for a drizzle select builder (see admin.service.spec.ts). */

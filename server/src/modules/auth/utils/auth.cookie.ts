@@ -1,5 +1,5 @@
 import type { CookieOptions, Request } from 'express';
-import { env } from '../../config/env.js';
+import { env } from '../../../infra/config/env.js';
 
 export const AUTH_COOKIE_NAME = 'semochal_access_token';
 export const AUTH_COOKIE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;

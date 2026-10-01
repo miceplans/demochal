@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
+import { IS_PUBLIC_KEY } from '../auth/decorators/public.decorator.js';
 import { OperationsController } from './operations.controller.js';
 import type { OperationsService } from './operations.service.js';
 

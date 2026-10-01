@@ -9,10 +9,10 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
-import { AdminRoleGuard } from './admin-role.guard.js';
+import { AdminRoleGuard } from './guards/admin-role.guard.js';
 import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';

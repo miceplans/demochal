@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { inquiries } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { inquiries } from '../../infra/db/schema.js';
 import type { SubmitOperationsInquiryDto } from './dto/submit-operations-inquiry.dto.js';
 
 @Injectable()

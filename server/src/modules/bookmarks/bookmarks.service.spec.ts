@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { asc, desc } from 'drizzle-orm';
-import { bookmarks, challenges } from '../../db/schema.js';
+import { bookmarks, challenges } from '../../infra/db/schema.js';
 import { BookmarksService } from './bookmarks.service.js';
 
 function listChain(rows: unknown[]) {

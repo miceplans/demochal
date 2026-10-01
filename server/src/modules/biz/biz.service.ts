@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { challenges } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { challenges } from '../../infra/db/schema.js';
 import { AdsService } from '../ads/ads.service.js';
 import { BillingHistoryService } from '../billing/billing-history.service.js';
 import { BusinessesService } from '../businesses/businesses.service.js';

@@ -1,5 +1,5 @@
-import { env } from '../../config/env.js';
-import type { files } from '../../db/schema.js';
+import { env } from '../../../infra/config/env.js';
+import type { files } from '../../../infra/db/schema.js';
 
 // Ready public files are served through CloudFront, never returned as a bare
 // object key — callers (frontend, other services) shouldn't need to know the

@@ -12,7 +12,7 @@ import {
   IsUUID,
   MaxLength,
 } from 'class-validator';
-import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
+import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../utils/challenge-filter-options.js';
 
 export class CreateChallengeDto {
   @IsUUID()

@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { Public } from '../auth/public.decorator.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { CreateTeamDto } from './dto/create-team.dto.js';
 import { InviteTeamDto } from './dto/invite-team.dto.js';
 import { JoinTeamDto } from './dto/join-team.dto.js';

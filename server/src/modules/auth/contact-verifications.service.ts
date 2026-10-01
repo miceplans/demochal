@@ -9,10 +9,10 @@ import {
 } from '@nestjs/common';
 import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
-import { env } from '../../config/env.js';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { contactVerifications } from '../../db/schema.js';
-import { OutboxService } from '../../outbox/outbox.service.js';
+import { env } from '../../infra/config/env.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { contactVerifications } from '../../infra/db/schema.js';
+import { OutboxService } from '../../infra/outbox/outbox.service.js';
 
 export type ContactChannel = 'email' | 'phone';
 

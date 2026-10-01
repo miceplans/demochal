@@ -21,7 +21,7 @@ vi.mock('drizzle-orm', async (importActual) => {
   };
 });
 
-import { businesses } from '../../db/schema.js';
+import { businesses } from '../../infra/db/schema.js';
 import { BusinessesService } from './businesses.service.js';
 
 /** update().set().where().returning() chain. */

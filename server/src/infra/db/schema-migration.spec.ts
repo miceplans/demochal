@@ -5,7 +5,7 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import { describe, expect, it } from 'vitest';
 import * as schema from './schema.js';
 
-const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
+const drizzleDirectory = resolve(import.meta.dirname, '../../../drizzle');
 const journal = JSON.parse(
   readFileSync(resolve(drizzleDirectory, 'meta/_journal.json'), 'utf8'),
 ) as {

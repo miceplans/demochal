@@ -1,6 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, HttpCode, Post, Query } from '@nestjs/common';
-import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';

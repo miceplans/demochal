@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { emailSendStates, notifications, users } from '../../../db/schema.js';
+import { emailSendStates, notifications, users } from '../../../infra/db/schema.js';
 import {
   EmailSendInFlightError,
   NotificationEmailProcessorService,

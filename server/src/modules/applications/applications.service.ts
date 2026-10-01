@@ -1,7 +1,7 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, exists, or } from 'drizzle-orm';
-import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { applications, businesses, challenges, orders } from '../../db/schema.js';
+import { DRIZZLE, type Database, type DbTx } from '../../infra/db/drizzle.provider.js';
+import { applications, businesses, challenges, orders } from '../../infra/db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 

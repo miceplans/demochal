@@ -22,7 +22,7 @@ import {
   authCookieClearOptions,
   authCookieOptions,
   getAuthToken,
-} from './auth.cookie.js';
+} from './utils/auth.cookie.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
 import {
@@ -32,13 +32,13 @@ import {
 import { ContactVerificationsService } from './contact-verifications.service.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
-import { env } from '../../config/env.js';
+import { env } from '../../infra/config/env.js';
 import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../common/throttling/throttling.js';
-import { Public } from './public.decorator.js';
-import { CurrentUser } from './current-user.decorator.js';
-import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard.js';
+import { Public } from './decorators/public.decorator.js';
+import { CurrentUser } from './decorators/current-user.decorator.js';
+import { JwtAuthGuard, type AuthenticatedUser } from './guards/jwt-auth.guard.js';
 import { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
-import { LOGIN_NEXT_COOKIE_NAME, sanitizeNextPath } from './next-path.js';
+import { LOGIN_NEXT_COOKIE_NAME, sanitizeNextPath } from './utils/next-path.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
 const GOOGLE_STATE_COOKIE_OPTIONS = {

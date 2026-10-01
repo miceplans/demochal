@@ -1,7 +1,7 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { users } from '../../infra/db/schema.js';
 import type { UpdateProfileDto } from './dto/update-profile.dto.js';
 import type { SaveOnboardingSurveyDto } from './dto/save-onboarding-survey.dto.js';
 

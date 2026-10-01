@@ -14,7 +14,7 @@ import {
   payments,
   reports,
   users,
-} from '../../db/schema.js';
+} from '../../infra/db/schema.js';
 import {
   AdminService,
   escapeLike,
@@ -23,7 +23,7 @@ import {
   niceMax,
   timeBuckets,
 } from './admin.service.js';
-import { DEFAULT_VALUES, SETTINGS_GROUPS } from './admin-settings.service.js';
+import { DEFAULT_VALUES, SETTINGS_GROUPS } from './settings/admin-settings.service.js';
 
 /**
  * Auto-chaining thenable stand-in for a drizzle query builder: every method

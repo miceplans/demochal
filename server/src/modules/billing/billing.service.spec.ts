@@ -1,6 +1,6 @@
 import { BadGatewayException, ConflictException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { billingAuthAttempts, paymentCards } from '../../db/schema.js';
+import { billingAuthAttempts, paymentCards } from '../../infra/db/schema.js';
 import { BillingService } from './billing.service.js';
 
 const fetchMock = vi.fn();

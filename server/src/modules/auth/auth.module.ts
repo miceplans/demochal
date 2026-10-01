@@ -1,12 +1,12 @@
 import { forwardRef, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
-import { env } from '../../config/env.js';
+import { env } from '../../infra/config/env.js';
 import { UsersModule } from '../users/users.module.js';
-import { OutboxModule } from '../../outbox/outbox.module.js';
+import { OutboxModule } from '../../infra/outbox/outbox.module.js';
 import { ContactVerificationsService } from './contact-verifications.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
-import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 @Module({
   imports: [

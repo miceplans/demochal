@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { env } from '../../config/env.js';
+import { env } from '../../infra/config/env.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 
 const hash = (code: string) => createHash('sha256').update(code).digest('hex');

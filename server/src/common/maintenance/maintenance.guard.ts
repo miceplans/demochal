@@ -8,11 +8,11 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { eq } from 'drizzle-orm';
 import type { Request } from 'express';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
-import { AdminSettingsService } from '../../modules/admin/admin-settings.service.js';
-import { getAuthToken } from '../../modules/auth/auth.cookie.js';
-import type { AuthenticatedRequest } from '../../modules/auth/jwt-auth.guard.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { users } from '../../infra/db/schema.js';
+import { AdminSettingsService } from '../../modules/admin/settings/admin-settings.service.js';
+import { getAuthToken } from '../../modules/auth/utils/auth.cookie.js';
+import type { AuthenticatedRequest } from '../../modules/auth/guards/jwt-auth.guard.js';
 
 // Authentication entry points must remain reachable while maintenance mode is
 // enabled. In particular, Google's redirect is a new browser request and

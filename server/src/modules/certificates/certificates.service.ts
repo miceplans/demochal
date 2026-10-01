@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { certificates } from '../../db/schema.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { certificates } from '../../infra/db/schema.js';
 import { FilesService } from '../files/files.service.js';
 import type { CreateCertificateDto } from './dto/create-certificate.dto.js';
 

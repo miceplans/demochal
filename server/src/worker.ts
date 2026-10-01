@@ -1,15 +1,15 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { WorkerModule } from './worker.module.js';
-import { env } from './config/env.js';
-import { SqsService } from './queue/sqs.service.js';
-import { OutboxRelayService } from './outbox/outbox-relay.service.js';
+import { WorkerModule } from './app/worker.module.js';
+import { env } from './infra/config/env.js';
+import { SqsService } from './infra/queue/sqs.service.js';
+import { OutboxRelayService } from './infra/outbox/outbox-relay.service.js';
 import { VerificationsProcessorService } from './modules/verifications/verifications.processor.js';
 import {
   VERIFICATION_SUBMITTED_EVENT,
   type VerificationJobMessage,
 } from './modules/verifications/verifications.service.js';
-import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
+import { ChallengeNotificationScanService } from './modules/notifications/scan/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
   NOTIFICATION_EMAIL_EVENT,

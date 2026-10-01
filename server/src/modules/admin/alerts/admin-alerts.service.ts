@@ -1,9 +1,9 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
-import { AdminSettingsService } from './admin-settings.service.js';
+import { DRIZZLE, type Database } from '../../../infra/db/drizzle.provider.js';
+import { users } from '../../../infra/db/schema.js';
+import { NotificationsService } from '../../notifications/notifications.service.js';
+import { AdminSettingsService } from '../settings/admin-settings.service.js';
 
 export type AdminAlertKey = 'reportAlert' | 'newBusinessAlert';
 

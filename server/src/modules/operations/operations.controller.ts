@@ -1,5 +1,5 @@
 import { Body, Controller, HttpCode, Post } from '@nestjs/common';
-import { Public } from '../auth/public.decorator.js';
+import { Public } from '../auth/decorators/public.decorator.js';
 import { SubmitOperationsInquiryDto } from './dto/submit-operations-inquiry.dto.js';
 import { OperationsService } from './operations.service.js';
 

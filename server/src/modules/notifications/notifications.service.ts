@@ -1,8 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, isNull } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { notifications, users } from '../../db/schema.js';
-import { OutboxService } from '../../outbox/outbox.service.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { notifications, users } from '../../infra/db/schema.js';
+import { OutboxService } from '../../infra/outbox/outbox.service.js';
 import {
   EMAIL_NOTIFICATION_TYPES,
   NOTIFICATION_EMAIL_EVENT,

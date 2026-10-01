@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ads } from '../../db/schema.js';
+import { ads } from '../../infra/db/schema.js';
 import { AdsService } from './ads.service.js';
 
-vi.mock('../files/public-file-url.js', () => ({
+vi.mock('../files/utils/public-file-url.js', () => ({
   buildPublicFileUrl: vi.fn((file: { id: string }) =>
     file.id === 'file-visible' ? 'https://cdn.example.com/ads/visible.png' : null,
   ),

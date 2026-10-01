@@ -1,8 +1,8 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, verifications } from '../../db/schema.js';
-import { OutboxService } from '../../outbox/outbox.service.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { businesses, verifications } from '../../infra/db/schema.js';
+import { OutboxService } from '../../infra/outbox/outbox.service.js';
 import { FilesService } from '../files/files.service.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
 

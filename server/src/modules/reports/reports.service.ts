@@ -1,9 +1,9 @@
 import { Inject, Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { businesses, challenges, reports, teams, users } from '../../db/schema.js';
-import { AdminAlertsService } from '../admin/admin-alerts.service.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { DRIZZLE, type Database } from '../../infra/db/drizzle.provider.js';
+import { businesses, challenges, reports, teams, users } from '../../infra/db/schema.js';
+import { AdminAlertsService } from '../admin/alerts/admin-alerts.service.js';
+import type { AuthenticatedUser } from '../auth/guards/jwt-auth.guard.js';
 import type { CreateReportDto } from './dto/create-report.dto.js';
 
 /** '김수아' → '김*아', two-char names '김아' → '김*'. */

@@ -1,6 +1,6 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { applications, challenges } from '../../db/schema.js';
+import { applications, challenges } from '../../infra/db/schema.js';
 import { ApplicationsService } from './applications.service.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 
