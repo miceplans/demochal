@@ -55,6 +55,8 @@ export const users = pgTable('users', {
   // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
   termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
   withdrawnAt: timestamp('withdrawn_at'),
+  // 프로필 이미지: files.id (public 버킷, ready 상태). null이면 기본 아바타.
+  profileImageFileId: uuid('profile_image_file_id'),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -21,7 +21,7 @@ import type { NotificationPayload } from './notificationPayload';
 export interface Notification {
   id: string;
   userId?: string;
-  /** 알림 유형 (team_matching | deadline | posting 등) */
+  /** 알림 유형 (team_matching | verification.result | deadline | posting) */
   type: string;
   payload: NotificationPayload;
   /** @nullable */

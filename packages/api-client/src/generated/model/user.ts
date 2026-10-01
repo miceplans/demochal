@@ -40,6 +40,13 @@ export interface User {
   /** @nullable */
   phoneVerifiedAt?: string | null;
   createdAt?: string;
+  /** @nullable */
+  profileImageFileId?: string | null;
+  /**
+   * 프로필 이미지 CDN URL. 없으면 null
+   * @nullable
+   */
+  profileImageUrl?: string | null;
   /** 포지션 */
   position?: string;
   region?: string;

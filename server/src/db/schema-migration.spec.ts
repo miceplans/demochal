@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(28);
+    expect(journal.entries).toHaveLength(29);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -472,6 +472,18 @@ describe('0023_challenge_filter_meta migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "targets" text[]');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "organizer_type" varchar(30)');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "prize_amount" integer');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0028_user_profile_image migration', () => {
+  it('adds the users.profile_image_file_id column without destructive DDL', () => {
+    const tag = journal.entries[28]?.tag;
+    expect(tag).toBe('0028_user_profile_image');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "profile_image_file_id" uuid',
+    );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
