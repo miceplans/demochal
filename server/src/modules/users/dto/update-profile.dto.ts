@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsOptional,
+  IsUUID,
   IsString,
   MaxLength,
   MinLength,
@@ -57,6 +58,13 @@ export class UpdateProfileDto {
   @MaxLength(100)
   region?: string;
 
+  // 한 줄 소개. 빈 문자열은 소개 삭제로 취급한다.
+  @IsOptional()
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsString()
+  @MaxLength(100)
+  bio?: string;
+
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -73,4 +81,9 @@ export class UpdateProfileDto {
   @ValidateNested({ each: true })
   @Type(() => AwardRecordDto)
   awardHistory?: AwardRecordDto[];
+
+  // files.id (public 버킷에 finalize된 본인 이미지). null이면 프로필 이미지를 삭제한다.
+  @IsOptional()
+  @IsUUID()
+  profileImageFileId?: string | null;
 }

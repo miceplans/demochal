@@ -25,4 +25,9 @@ export interface InviteTeamRequest {
    * @maxLength 100
    */
   role?: string;
+  /**
+   * 스카우트 제안 메시지
+   * @maxLength 200
+   */
+  message?: string;
 }

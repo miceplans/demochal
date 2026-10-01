@@ -97,6 +97,7 @@ import type {
   ListMyNotificationsParams,
   ListPaymentHistory200,
   ListPaymentHistoryParams,
+  ListPeopleParams,
   ListPublicAdsParams,
   ListRecommendedChallenges200,
   ListRecommendedChallengesParams,
@@ -110,6 +111,7 @@ import type {
   Order,
   PauseAdminAd200,
   PaymentCard,
+  PersonCard,
   PresignedUploadRequest,
   PublicAd,
   Register201,
@@ -126,6 +128,7 @@ import type {
   SaveInterestsBody,
   SaveNotificationSettings200,
   SaveNotificationSettingsBody,
+  ScoutQuota,
   SocialLogin200,
   SocialLoginBody,
   SubmitOperationsInquiry201,
@@ -134,6 +137,7 @@ import type {
   SuspendUserBody,
   Team,
   TeamMember,
+  TeamOffer,
   ToggleBookmark200,
   ToggleBookmarkBody,
   TossWebhookPayload,
@@ -3194,6 +3198,469 @@ export function useListManagedTeams<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type listPeopleResponse200 = {
+  data: PersonCard[];
+  status: 200;
+};
+
+export type listPeopleResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type listPeopleResponseSuccess = listPeopleResponse200 & {
+  headers: Headers;
+};
+export type listPeopleResponseError = listPeopleResponse401 & {
+  headers: Headers;
+};
+
+export type listPeopleResponse = listPeopleResponseSuccess | listPeopleResponseError;
+
+export const getListPeopleUrl = (params?: ListPeopleParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value));
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/people?${stringifiedParams}` : `/people`;
+};
+
+/**
+ * 사람찾기(`/people`): 탈퇴·정지 계정과 본인을 제외한 사용자 카드 목록. 로그인 필요.
+ * `q`는 닉네임(이름) 부분 일치, `position`/`region`/`stack`은 콤마 구분 OR 필터.
+ * `sort`는 `recent`(기본, 가입일 최신순 — 활동 로그가 없어 대체) 또는 `name`.
+ * 카드에는 깃허브/포트폴리오/출품이력 배지 여부(boolean)만 내려가고 링크 URL은 노출하지 않는다.
+ * @summary 사람찾기 목록 조회
+ */
+export const listPeople = async (
+  params?: ListPeopleParams,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<listPeopleResponse> => {
+  return apiFetch<listPeopleResponse>(getListPeopleUrl(params), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getListPeopleQueryKey = (params?: ListPeopleParams) => {
+  return [`/people`, ...(params ? [params] : [])] as const;
+};
+
+export const getListPeopleQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPeople>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListPeopleParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPeople>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPeopleQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPeople>>> = ({ signal }) =>
+    listPeople(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPeople>>,
+    TError,
+    TData
+  > & { queryKey: DataTag<QueryKey, TData, TError> };
+};
+
+export type ListPeopleQueryResult = NonNullable<Awaited<ReturnType<typeof listPeople>>>;
+export type ListPeopleQueryError = UnauthorizedResponse;
+
+export function useListPeople<
+  TData = Awaited<ReturnType<typeof listPeople>>,
+  TError = UnauthorizedResponse,
+>(
+  params: undefined | ListPeopleParams,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPeople>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPeople>>,
+          TError,
+          Awaited<ReturnType<typeof listPeople>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPeople<
+  TData = Awaited<ReturnType<typeof listPeople>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListPeopleParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPeople>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPeople>>,
+          TError,
+          Awaited<ReturnType<typeof listPeople>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useListPeople<
+  TData = Awaited<ReturnType<typeof listPeople>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListPeopleParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPeople>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 사람찾기 목록 조회
+ */
+
+export function useListPeople<
+  TData = Awaited<ReturnType<typeof listPeople>>,
+  TError = UnauthorizedResponse,
+>(
+  params?: ListPeopleParams,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof listPeople>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getListPeopleQueryOptions(params, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type getTeamOfferResponse200 = {
+  data: TeamOffer;
+  status: 200;
+};
+
+export type getTeamOfferResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getTeamOfferResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getTeamOfferResponseSuccess = getTeamOfferResponse200 & {
+  headers: Headers;
+};
+export type getTeamOfferResponseError = (getTeamOfferResponse401 | getTeamOfferResponse404) & {
+  headers: Headers;
+};
+
+export type getTeamOfferResponse = getTeamOfferResponseSuccess | getTeamOfferResponseError;
+
+export const getGetTeamOfferUrl = (memberId: string) => {
+  return `/teams/offers/${memberId}`;
+};
+
+/**
+ * 제안 상세(`/offers/{memberId}`). 받은 사람 본인, 보낸 팀장, 관리자만 조회할 수 있고
+ * 그 외 사용자·일반 지원 행은 404. 수락/거절은 `PATCH /teams/{id}/members/{memberId}`.
+ * @summary 스카우트 제안 상세 조회
+ */
+export const getTeamOffer = async (
+  memberId: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getTeamOfferResponse> => {
+  return apiFetch<getTeamOfferResponse>(getGetTeamOfferUrl(memberId), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetTeamOfferQueryKey = (memberId: string) => {
+  return [`/teams/offers/${memberId}`] as const;
+};
+
+export const getGetTeamOfferQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTeamOffer>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  memberId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTeamOfferQueryKey(memberId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTeamOffer>>> = ({ signal }) =>
+    getTeamOffer(memberId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: memberId !== null && memberId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetTeamOfferQueryResult = NonNullable<Awaited<ReturnType<typeof getTeamOffer>>>;
+export type GetTeamOfferQueryError = UnauthorizedResponse | NotFoundResponse;
+
+export function useGetTeamOffer<
+  TData = Awaited<ReturnType<typeof getTeamOffer>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  memberId: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeamOffer>>,
+          TError,
+          Awaited<ReturnType<typeof getTeamOffer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetTeamOffer<
+  TData = Awaited<ReturnType<typeof getTeamOffer>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  memberId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeamOffer>>,
+          TError,
+          Awaited<ReturnType<typeof getTeamOffer>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetTeamOffer<
+  TData = Awaited<ReturnType<typeof getTeamOffer>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  memberId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 스카우트 제안 상세 조회
+ */
+
+export function useGetTeamOffer<
+  TData = Awaited<ReturnType<typeof getTeamOffer>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  memberId: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamOffer>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetTeamOfferQueryOptions(memberId, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+export type getTeamScoutQuotaResponse200 = {
+  data: ScoutQuota;
+  status: 200;
+};
+
+export type getTeamScoutQuotaResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getTeamScoutQuotaResponse403 = {
+  data: void;
+  status: 403;
+};
+
+export type getTeamScoutQuotaResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getTeamScoutQuotaResponseSuccess = getTeamScoutQuotaResponse200 & {
+  headers: Headers;
+};
+export type getTeamScoutQuotaResponseError = (
+  getTeamScoutQuotaResponse401 | getTeamScoutQuotaResponse403 | getTeamScoutQuotaResponse404
+) & {
+  headers: Headers;
+};
+
+export type getTeamScoutQuotaResponse =
+  getTeamScoutQuotaResponseSuccess | getTeamScoutQuotaResponseError;
+
+export const getGetTeamScoutQuotaUrl = (id: string) => {
+  return `/teams/${id}/scout-quota`;
+};
+
+/**
+ * 스카우트 제안 모달의 "남은 스카우트 n / 3". 팀당 3회이며 팀장(또는 관리자)만 조회, 그 외 403.
+ * @summary 팀 스카우트 잔여 횟수 조회 (팀장)
+ */
+export const getTeamScoutQuota = async (
+  id: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getTeamScoutQuotaResponse> => {
+  return apiFetch<getTeamScoutQuotaResponse>(getGetTeamScoutQuotaUrl(id), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetTeamScoutQuotaQueryKey = (id: string) => {
+  return [`/teams/${id}/scout-quota`] as const;
+};
+
+export const getGetTeamScoutQuotaQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTeamScoutQuota>>,
+  TError = UnauthorizedResponse | void | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTeamScoutQuotaQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTeamScoutQuota>>> = ({ signal }) =>
+    getTeamScoutQuota(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetTeamScoutQuotaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTeamScoutQuota>>
+>;
+export type GetTeamScoutQuotaQueryError = UnauthorizedResponse | void | NotFoundResponse;
+
+export function useGetTeamScoutQuota<
+  TData = Awaited<ReturnType<typeof getTeamScoutQuota>>,
+  TError = UnauthorizedResponse | void | NotFoundResponse,
+>(
+  id: string,
+  options: {
+    query: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData>> &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeamScoutQuota>>,
+          TError,
+          Awaited<ReturnType<typeof getTeamScoutQuota>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetTeamScoutQuota<
+  TData = Awaited<ReturnType<typeof getTeamScoutQuota>>,
+  TError = UnauthorizedResponse | void | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData>> &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTeamScoutQuota>>,
+          TError,
+          Awaited<ReturnType<typeof getTeamScoutQuota>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetTeamScoutQuota<
+  TData = Awaited<ReturnType<typeof getTeamScoutQuota>>,
+  TError = UnauthorizedResponse | void | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 팀 스카우트 잔여 횟수 조회 (팀장)
+ */
+
+export function useGetTeamScoutQuota<
+  TData = Awaited<ReturnType<typeof getTeamScoutQuota>>,
+  TError = UnauthorizedResponse | void | NotFoundResponse,
+>(
+  id: string,
+  options?: {
+    query?: Partial<UseQueryOptions<Awaited<ReturnType<typeof getTeamScoutQuota>>, TError, TData>>;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetTeamScoutQuotaQueryOptions(id, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getTeamResponse200 = {
   data: Team;
   status: 200;
@@ -3520,6 +3987,7 @@ export const getInviteTeamUrl = (id: string) => {
  * `invited` 상태의 팀원 행이 생기고 피초대자에게 `team_matching` 초대 알림이 간다
  * (payload: invitedUserId·memberId·role). 수락/거절은 피초대자가
  * `PATCH /teams/{id}/members/{memberId}`로 직접 결정하며, 수락 시 팀장에게 새 멤버 알림.
+ * `message`(최대 200자)를 함께 보내면 제안 상세에 표시된다. 팀당 3회까지 보낼 수 있고 초과 시 409.
  * 팀장 본인이 아니면 403, 이미 지원/초대된 멤버면 409.
  * @summary 팀원 초대 (팀장)
  */
