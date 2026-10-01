@@ -11,10 +11,12 @@ type UserState = {
     challenge: string;
     introduction: string;
     role: string;
+    /** 내 역할을 '직접 입력'으로 적는 중인지 여부. */
+    roleCustom?: boolean;
     preferred?: string;
     etc?: string;
-    /** 필요 역할 슬롯. 이전 버전 저장값에는 없을 수 있어 선택 필드로 둔다. */
-    slots?: { id: number; role: string; count: number }[];
+    /** 필요 역할 슬롯. 이전 버전 저장값에는 없을 수 있어 선택 필드로 둔다. custom은 '직접 입력' 역할. */
+    slots?: { id: number; role: string; count: number; custom?: boolean }[];
   };
   applicationDraft: { role: string; members: { name: string; role: string }[] } | null;
   login: () => void;

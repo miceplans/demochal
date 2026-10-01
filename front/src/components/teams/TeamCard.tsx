@@ -29,11 +29,16 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
         </TopRow>
         <BottomRow>
           <RoleRow>
-            {team.recruitingRoles.map((role) => (
-              <RoleChip key={role}>{role}</RoleChip>
+            {team.recruitingRoles.map((role, i) => (
+              <RoleChip key={`recruiting-${role}-${i}`}>{role}</RoleChip>
             ))}
-            {team.filledRoles.map((role) => (
-              <FilledRole key={role} role="img" aria-label={`${role} 모집 완료`} title={role}>
+            {team.filledRoles.map((role, i) => (
+              <FilledRole
+                key={`filled-${role}-${i}`}
+                role="img"
+                aria-label={`${role} 모집 완료`}
+                title={role}
+              >
                 <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
               </FilledRole>
             ))}
