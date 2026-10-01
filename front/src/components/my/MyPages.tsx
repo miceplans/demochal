@@ -257,6 +257,63 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
+const BIO_MAX_LENGTH = 100;
+
+function BioEditModal({
+  open,
+  onClose,
+  initial,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initial: string;
+  onSave: (bio: string) => Promise<unknown>;
+}) {
+  const toast = useToast();
+  const [value, setValue] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await onSave(value.trim());
+      toast.success('한 줄 소개를 저장했어요');
+      onClose();
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal open={open} onClose={onClose} title="한 줄 소개" width={420}>
+      <form onSubmit={submit}>
+        <Stack gap={12}>
+          <Input
+            aria-label="한 줄 소개"
+            placeholder="나를 한 줄로 소개해보세요"
+            maxLength={BIO_MAX_LENGTH}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          <Muted style={{ textAlign: 'right' }}>
+            {value.length}/{BIO_MAX_LENGTH}
+          </Muted>
+          <Row style={{ justifyContent: 'flex-end' }}>
+            <Button type="button" small tone="plain" onClick={onClose}>
+              취소
+            </Button>
+            <Button type="submit" small disabled={saving}>
+              저장
+            </Button>
+          </Row>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
 function SkillAddModal({
   open,
   onClose,
@@ -398,6 +455,7 @@ export function MyPage() {
   const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
+  const [bioOpen, setBioOpen] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
@@ -520,6 +578,17 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
+        <Row gap={8}>
+          {meInfo?.bio ? <Muted>{meInfo.bio}</Muted> : <Muted>한 줄 소개를 남겨보세요.</Muted>}
+          <AddButton
+            aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
+            // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
+            disabled={me.data?.status !== 200}
+            onClick={() => setBioOpen(true)}
+          >
+            <Icon name="imgAddSlotIc" size={12} />
+          </AddButton>
+        </Row>
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
@@ -586,6 +655,14 @@ export function MyPage() {
         </MobileOnly>
       </Stack>
       <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
+      <BioEditModal
+        // 열 때마다 최신 소개로 입력값을 초기화한다.
+        key={`${bioOpen}-${meInfo?.bio ?? ''}`}
+        open={bioOpen}
+        onClose={() => setBioOpen(false)}
+        initial={meInfo?.bio ?? ''}
+        onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
+      />
       <SkillAddModal
         open={skillOpen}
         onClose={() => setSkillOpen(false)}

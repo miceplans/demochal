@@ -27,6 +27,7 @@ import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { BizModule } from './modules/biz/biz.module.js';
+import { PeopleModule } from './modules/people/people.module.js';
 import { TeamsModule } from './modules/teams/teams.module.js';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module.js';
 import { InterestsModule } from './modules/interests/interests.module.js';
@@ -58,6 +59,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     BillingModule,
     BizModule,
     TeamsModule,
+    PeopleModule,
     BookmarksModule,
     InterestsModule,
     OperationsModule,

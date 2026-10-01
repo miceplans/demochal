@@ -24,6 +24,11 @@ export type UpdateMyProfileBody = {
   /** 포지션 (기획/디자인/개발 등) */
   role?: string;
   region?: string;
+  /**
+   * 한 줄 소개 (빈 문자열이면 삭제)
+   * @maxLength 100
+   */
+  bio?: string;
   stacks?: string[];
   externalLinks?: ExternalLink[];
   awardHistory?: AwardRecord[];
