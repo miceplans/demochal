@@ -1,10 +1,8 @@
 import type { MetadataRoute } from 'next';
 
-import { SITE_ORIGIN } from '@/lib/biz';
+import { DEFAULT_SITE_ORIGIN, SITE_ORIGIN } from '@/lib/biz';
 
-const PRODUCTION_ORIGIN = 'https://www.semochall.com';
-
-const ORIGIN = SITE_ORIGIN || PRODUCTION_ORIGIN;
+const ORIGIN = SITE_ORIGIN || DEFAULT_SITE_ORIGIN;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
