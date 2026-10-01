@@ -147,7 +147,7 @@ describe('BizService', () => {
     expect(sql).toContain('"business_id"');
     expect(sql).toContain('"status"');
     expect(params).toEqual(['biz-1', 'published']);
-    expect(deps.challengesService.getStats).toHaveBeenCalledWith('ch-pub');
+    expect(deps.challengesService.getStatsForOwner).toHaveBeenCalledWith('ch-pub', OWNER.id);
   });
 
   it('returns null recentPosting/stats when there is no published challenge (draft/closed only)', async () => {
@@ -166,6 +166,6 @@ describe('BizService', () => {
 
     expect(dashboard.recentPosting).toBeNull();
     expect(dashboard.stats).toBeNull();
-    expect(deps.challengesService.getStats).not.toHaveBeenCalled();
+    expect(deps.challengesService.getStatsForOwner).not.toHaveBeenCalled();
   });
 });
