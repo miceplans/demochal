@@ -1048,7 +1048,10 @@ paths:
       x-impl-status: implemented
       description: |
         알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
-        푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+        인앱 실시간: `GET /notifications/stream`(SSE, 인증 쿠키)이 새 알림 커밋 시 `notification`
+        이벤트({ notificationId })를 보내고 25초마다 `ping`을 보낸다. 이벤트는 id만 담으므로
+        클라이언트는 이 목록 API를 다시 조회한다(스트림은 orval 생성 대상이 아니라 `EventSource`로 직접 구독).
+        이메일은 outbox로 발송한다. Web Push는 TODO.
       parameters:
         - name: x-user-id
           in: header
