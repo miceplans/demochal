@@ -6,6 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { TrafficRange } from '@/data/admin-design';
+import { formatDateTimeDot as formatBaseDate } from '@/lib/date';
 import { AdminSectionTitle, StatCard, StatRow } from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
@@ -43,7 +44,7 @@ export function AdminDashboardScreen() {
       </StatRow>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <AdminSectionTitle style={{ color: '#111827' }}>신고 로그</AdminSectionTitle>
-        <ReportLogTable />
+        <ReportLogTable reports={dashboard?.reports ?? []} />
       </section>
       {dashboard?.generatedAt && (
         <span style={{ ...textStyle.metaText, color: c.gray500 }}>
@@ -52,12 +53,6 @@ export function AdminDashboardScreen() {
       )}
     </>
   );
-}
-
-function formatBaseDate(iso: string) {
-  const date = new Date(iso);
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 const ChartsRow = styled.div({ display: 'flex', gap: 24, alignItems: 'stretch', flexWrap: 'wrap' });

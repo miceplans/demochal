@@ -7,7 +7,7 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -149,7 +149,15 @@ export class FilesService {
   }
 
   async findById(id: string, userId: string) {
-    return this.withPublicUrl(await this.findOwnedFile(id, userId));
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file) throw new NotFoundException('File not found');
+    // 공개 버킷의 업로드 완료 파일은 어차피 CloudFront 공개 URL로 누구나 볼 수 있으므로
+    // (공고 포스터처럼) 업로더 본인만 조회할 수 있을 필요가 없다. 그 외 파일은 기존처럼 소유자만 조회한다.
+    const publiclyServed = file.bucket === 'public' && file.uploadStatus === 'ready';
+    if (!publiclyServed && file.uploaderUserId !== userId) {
+      throw new NotFoundException('File not found');
+    }
+    return this.withPublicUrl(file);
   }
 
   // Lets a trusted backend caller (e.g. the verifications worker) hand a
@@ -166,6 +174,38 @@ export class FilesService {
       throw new BadRequestException('A verified private file is required');
     }
     return file;
+  }
+
+  // 누구나 열어보는 컨텐츠(공고 포스터 등)에서 파일을 참조하기 전 검증한다.
+  // 존재하지 않거나 pending/rejected/private 파일이면 FK 500·깨진 이미지를 막기 위해 400으로 거절한다.
+  async assertReadyPublic(id: string) {
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file || file.uploadStatus !== 'ready' || file.bucket !== 'public') {
+      throw new BadRequestException('A ready public file is required');
+    }
+    return file;
+  }
+
+  // public+ready 파일의 CDN URL을 돌려준다. 그 외 상태·비공개 파일은 null — 서버가 응답에
+  // URL을 실어 별도 권한 없이 렌더할 수 있게 하는 전용 경로다.
+  async resolvePublicUrl(id: string | null | undefined): Promise<string | null> {
+    if (!id) return null;
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    return file ? buildPublicFileUrl(file) : null;
+  }
+
+  // 목록 응답용 — id들의 공개 URL을 한 번의 쿼리로 묶어 resolve한다.
+  async resolvePublicUrls(ids: (string | null | undefined)[]): Promise<Map<string, string | null>> {
+    const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.db.select().from(files).where(inArray(files.id, unique));
+    const rowById = new Map(rows.map((file) => [file.id, file]));
+    return new Map(
+      unique.map((id) => {
+        const row = rowById.get(id);
+        return [id, row ? buildPublicFileUrl(row) : null];
+      }),
+    );
   }
 
   private async findOwnedFile(id: string, userId: string) {

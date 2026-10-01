@@ -405,6 +405,8 @@ const MyAside = styled.aside({
 });
 export function MyShell({ children, title }: { children: ReactNode; title: string }) {
   const path = usePathname();
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
   return (
     <UserShell compact title={title}>
       <MyGrid>
@@ -412,7 +414,7 @@ export function MyShell({ children, title }: { children: ReactNode; title: strin
           <Link href="/my">
             <Row>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gray100 }} />
-              황지영
+              {userName}
             </Row>
           </Link>
           {myMenu.map(([href, label]) => (

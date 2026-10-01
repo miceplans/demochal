@@ -4,6 +4,7 @@ import { NotificationsService } from './notifications.service.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { OutboxModule } from '../../outbox/outbox.module.js';
 import { NotificationEmailProcessorService } from './email/notification-email.processor.js';
+import { ChallengeNotificationScanService } from './challenge-notification-scan.service.js';
 import { SesEmailClient } from './email/ses-email.client.js';
 
 // Imported by both AppModule (HTTP + email outbox writes) and WorkerModule
@@ -11,7 +12,16 @@ import { SesEmailClient } from './email/ses-email.client.js';
 @Module({
   imports: [AuthModule, OutboxModule],
   controllers: [NotificationsController],
-  providers: [NotificationsService, NotificationEmailProcessorService, SesEmailClient],
-  exports: [NotificationsService, NotificationEmailProcessorService],
+  providers: [
+    NotificationsService,
+    NotificationEmailProcessorService,
+    ChallengeNotificationScanService,
+    SesEmailClient,
+  ],
+  exports: [
+    NotificationsService,
+    NotificationEmailProcessorService,
+    ChallengeNotificationScanService,
+  ],
 })
 export class NotificationsModule {}

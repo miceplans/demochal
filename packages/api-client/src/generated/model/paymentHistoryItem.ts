@@ -24,6 +24,7 @@ export interface PaymentHistoryItem {
   name: string;
   /** 부호 있는 금액 (원) — 결제는 음수, 충전·환불은 양수 */
   amount: number;
-  paidAt: string;
+  /** @nullable */
+  paidAt: string | null;
   status: PaymentHistoryItemStatus;
 }

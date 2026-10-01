@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { ReportRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
-import { AdminTable, Badge, type AdminColumn } from './parts';
+import { AdminInlineNotice, AdminTable, Badge, type AdminColumn } from './parts';
 
 type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
 
@@ -24,10 +25,11 @@ const reportStatusLabel: Record<string, ReportRow['status']> = {
   dismissed: '거부',
 };
 
-const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red'> = {
+const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red' | 'gray'> = {
   대기: 'blue',
   승인: 'green',
   거부: 'red',
+  '알 수 없음': 'gray',
 };
 
 const columns: AdminColumn<ReportRow>[] = [
@@ -141,26 +143,42 @@ function ReportDetailPanel({
   );
 }
 
-export function ReportLogTable({ params }: { params?: ReportFilters }) {
+type ReportItem = NonNullable<
+  Awaited<ReturnType<typeof generated.listAdminReports>>['data']
+>[number];
+
+/** `reports`를 넘기면(대시보드의 최근 신고) 전체 목록 API를 호출하지 않는다. */
+export function ReportLogTable({
+  params,
+  reports,
+}: {
+  params?: ReportFilters;
+  reports?: ReportItem[];
+}) {
   const [selected, setSelected] = useState<ReportRow | null>(null);
   const toast = useToast();
+  const queryClient = useQueryClient();
 
-  const reportsQuery = generated.useListAdminReports(params);
+  const reportsQuery = generated.useListAdminReports(params, {
+    query: { enabled: reports === undefined },
+  });
+  const source = reports ?? reportsQuery.data?.data;
 
   const rows = useMemo<ReportRow[]>(
     () =>
-      (reportsQuery.data?.data ?? []).map((report, index) => ({
+      (source ?? []).map((report, index) => ({
         id: report.id ?? String(index),
         content: report.content ?? '',
         type: targetTypeLabel[report.targetType ?? ''] ?? '',
         org: report.org ?? '',
         summary: report.summary ?? '',
-        status: reportStatusLabel[report.status ?? ''] ?? '대기',
+        // 예상 밖 상태를 '대기'로 위장하지 않는다(처리 버튼은 '대기'에서만 활성).
+        status: reportStatusLabel[report.status ?? ''] ?? '알 수 없음',
         reporter: report.reporter ?? '',
         reportedAt: report.reportedAt ?? '',
         detail: report.detail ?? '',
       })),
-    [reportsQuery.data],
+    [source],
   );
 
   const resolveMutation = generated.useResolveReport({
@@ -169,7 +187,8 @@ export function ReportLogTable({ params }: { params?: ReportFilters }) {
         toast.success(
           variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.',
         );
-        reportsQuery.refetch();
+        void queryClient.invalidateQueries({ queryKey: generated.getListAdminReportsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: generated.getGetAdminDashboardQueryKey() });
         setSelected(null);
       },
       onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
@@ -183,6 +202,14 @@ export function ReportLogTable({ params }: { params?: ReportFilters }) {
   return (
     <ReportWorkspace>
       <TableArea withPanel={Boolean(selected) || undefined}>
+        {reports === undefined && reportsQuery.isError ? (
+          <AdminInlineNotice role="alert">
+            신고 목록을 불러오지 못했어요.{' '}
+            <button type="button" onClick={() => void reportsQuery.refetch()}>
+              다시 시도
+            </button>
+          </AdminInlineNotice>
+        ) : null}
         <AdminTable
           columns={columns}
           rows={rows}

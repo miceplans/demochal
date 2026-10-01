@@ -31,7 +31,7 @@ const statusBadge: Record<BizRow['status'], 'blue' | 'green' | 'red'> = {
 };
 
 const columns: AdminColumn<BizReviewRow>[] = [
-  { key: 'org', header: '활동유형', width: 100 },
+  { key: 'org', header: '기관명', width: 100 },
   { key: 'type', header: '유형', width: 80 },
   {
     key: 'bizNumber',

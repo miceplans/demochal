@@ -10,20 +10,16 @@ import {
 } from '@tanstack/react-table';
 import { useState } from 'react';
 import styled from '@emotion/styled';
+import { EmptyState } from '@/components/common/Primitives';
 
 interface DataTableProps<TData> {
   data: TData[];
   columns: ColumnDef<TData, unknown>[];
-  emptyMessage?: string;
 }
 
 // Generic sortable data table for admin / business screens.
 // Columns are declared per page via TanStack Table's ColumnDef.
-export function DataTable<TData>({
-  data,
-  columns,
-  emptyMessage = '데이터가 없습니다.',
-}: DataTableProps<TData>) {
+export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
   const [sorting, setSorting] = useState<SortingState>([]);
 
   const table = useReactTable({
@@ -59,7 +55,9 @@ export function DataTable<TData>({
         <tbody>
           {table.getRowModel().rows.length === 0 ? (
             <EmptyRow>
-              <td colSpan={columns.length}>{emptyMessage}</td>
+              <td colSpan={columns.length}>
+                <EmptyState width={160} />
+              </td>
             </EmptyRow>
           ) : (
             table.getRowModel().rows.map((row) => (
@@ -110,8 +108,6 @@ const Td = styled.td`
 
 const EmptyRow = styled.tr`
   td {
-    text-align: center;
-    padding: 40px 14px;
-    color: ${(p) => p.theme.colors.gray[500]};
+    padding: 0 14px;
   }
 `;

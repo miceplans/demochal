@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ads,
@@ -10,7 +15,14 @@ import {
   reports,
   users,
 } from '../../db/schema.js';
-import { AdminService, maskBizNumber, maskEmail, niceMax, timeBuckets } from './admin.service.js';
+import {
+  AdminService,
+  escapeLike,
+  maskBizNumber,
+  maskEmail,
+  niceMax,
+  timeBuckets,
+} from './admin.service.js';
 import { DEFAULT_VALUES, SETTINGS_GROUPS } from './admin-settings.service.js';
 
 /**
@@ -59,6 +71,7 @@ function createDbStub(
         values: (args) => valuesCalls.push(args),
       }),
     ),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
   return { db, setCalls, valuesCalls, selectWhereCalls };
 }
@@ -204,7 +217,17 @@ describe('AdminService — verifications', () => {
     expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
       verificationId: 'v1',
       status: 'rejected',
+      reason: '서류 불일치',
     });
+  });
+
+  it('refuses a duplicate decision without updating or notifying again', async () => {
+    const { db } = createDbStub({ select: [[{ ...verificationRow, status: 'verified' }]] });
+    const { service, notifications } = createService(db);
+
+    await expect(service.approveVerification('v1')).rejects.toBeInstanceOf(ConflictException);
+    expect(db.update).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
   });
 
   it('throws NotFound for an unknown verification', async () => {
@@ -244,10 +267,10 @@ describe('AdminService — certificates', () => {
       fileId: 'f1',
       status: 'verified',
     });
-    expect(setCalls[1]).toEqual([{ badges: ['기존 뱃지', certificateRow.title] }]);
+    expect(setCalls[1]).toEqual([{ badges: expect.anything() }]);
   });
 
-  it('approve does not duplicate an existing badge', async () => {
+  it('approve appends the badge with one atomic conditional UPDATE (no read-modify-write)', async () => {
     const updated = { ...certificateRow, status: 'verified' };
     const owner = { id: 'u1', name: '김수아', badges: [certificateRow.title] };
     const { db, setCalls } = createDbStub({
@@ -258,8 +281,19 @@ describe('AdminService — certificates', () => {
 
     await service.verifyCertificate('c1', { action: 'approve' });
 
-    expect(db.update).toHaveBeenCalledTimes(1);
-    expect(setCalls).toHaveLength(1);
+    expect(db.update).toHaveBeenCalledTimes(2);
+    const sqlText = collectStrings((setCalls[1]![0] as { badges: unknown }).badges).join(' ');
+    expect(sqlText).toContain(certificateRow.title);
+  });
+
+  it('refuses to decide a certificate that already has that status (no duplicate badge)', async () => {
+    const { db } = createDbStub({ select: [[{ ...certificateRow, status: 'verified' }]] });
+    const { service } = createService(db);
+
+    await expect(service.verifyCertificate('c1', { action: 'approve' })).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('reject stores the rejection reason', async () => {
@@ -452,7 +486,7 @@ describe('AdminService — users', () => {
       suspendedReason: 'spam',
     };
     const { db, setCalls } = createDbStub({
-      select: [[{ reportedUserId: 'u1', count: 3 }]],
+      select: [[{ id: 'u1', role: 'user' }], [{ reportedUserId: 'u1', count: 3 }]],
       update: [[userRow]],
     });
     const { service } = createService(db);
@@ -487,7 +521,7 @@ describe('AdminService — users', () => {
       suspendedReason: null,
     };
     const { db, setCalls } = createDbStub({
-      select: [[]],
+      select: [[{ id: 'u1', role: 'admin' }], []],
       update: [[userRow]],
     });
     const { service } = createService(db);
@@ -506,8 +540,18 @@ describe('AdminService — users', () => {
     });
   });
 
-  it('suspend throws NotFound when no user row was updated', async () => {
-    const { db } = createDbStub({ update: [[]] });
+  it('refuses to suspend an admin account', async () => {
+    const { db } = createDbStub({ select: [[{ id: 'a1', role: 'admin' }]] });
+    const { service } = createService(db);
+
+    await expect(service.suspendUser('a1', { suspended: true })).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('suspend throws NotFound when the user does not exist', async () => {
+    const { db } = createDbStub({ select: [[]] });
     const { service } = createService(db);
 
     await expect(service.suspendUser('missing', { suspended: true })).rejects.toBeInstanceOf(
@@ -1144,5 +1188,36 @@ describe('AdminService — settings', () => {
     expect(settings.update).toHaveBeenCalledWith({ maintenanceMode: true });
     expect(result.values).toEqual(DEFAULT_VALUES);
     expect(db.insert).not.toHaveBeenCalled();
+  });
+});
+
+describe('escapeLike', () => {
+  it('escapes ilike wildcards and the escape character', () => {
+    expect(escapeLike('100%_a\\b')).toBe('100\\%\\_a\\\\b');
+    expect(escapeLike('plain')).toBe('plain');
+  });
+});
+
+describe('AdminService — ad pause', () => {
+  it('pauses an active ad with an atomic conditional update', async () => {
+    const { db, setCalls } = createDbStub({ update: [[{ id: 'ad1', status: 'paused' }]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('ad1')).resolves.toEqual({ id: 'ad1', status: 'paused' });
+    expect(setCalls[0]).toEqual([{ status: 'paused' }]);
+  });
+
+  it('refuses a non-active ad with 400', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[{ id: 'ad1' }]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('ad1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('throws 404 for an unknown ad', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[]] });
+    const { service } = createService(db);
+
+    await expect(service.pauseAd('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

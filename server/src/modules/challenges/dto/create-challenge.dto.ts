@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsPositive,
+  IsUrl,
   Min,
   IsString,
   IsUUID,
@@ -48,6 +49,12 @@ export class CreateChallengeDto {
   @IsIn(['seMOchall', 'external'])
   recruitMethod?: 'seMOchall' | 'external';
 
+  // recruitMethod가 external(기본값 포함)이면 필수 — 서비스 레벨에서 검사한다.
+  @IsOptional()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
+  @MaxLength(2048)
+  recruitUrl?: string;
+
   @IsOptional()
   @IsArray()
   @ArrayUnique()
@@ -63,4 +70,8 @@ export class CreateChallengeDto {
   @IsInt()
   @Min(0)
   prizeAmount?: number;
+
+  @IsOptional()
+  @IsUUID()
+  posterFileId?: string;
 }

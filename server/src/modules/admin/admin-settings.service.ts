@@ -46,7 +46,7 @@ export const SETTINGS_GROUPS = [
   },
 ];
 
-// TODO: reportAlert/newBusinessAlert는 저장만 되고 아직 알림 발송에 연결되지 않았다.
+// reportAlert/newBusinessAlert는 AdminAlertsService가 신고 접수/기관 등록 시 읽어 알림을 보낸다.
 export const DEFAULT_VALUES: Record<string, boolean> = {
   bizAutoApprove: false,
   contestAutoPublish: false,
@@ -60,7 +60,7 @@ function pickKnownBooleans(values: unknown): Record<string, boolean> {
   if (!values || typeof values !== 'object') return {};
   return Object.fromEntries(
     Object.entries(values).filter(
-      ([key, value]) => key in DEFAULT_VALUES && typeof value === 'boolean',
+      ([key, value]) => Object.hasOwn(DEFAULT_VALUES, key) && typeof value === 'boolean',
     ),
   ) as Record<string, boolean>;
 }

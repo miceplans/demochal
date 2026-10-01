@@ -180,7 +180,20 @@ export function AdminCertificatesScreen() {
               </Actions>
             </Item>
           ))}
-          {rows.length === 0 ? (
+          {certificatesQuery.isPending ? (
+            <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
+              불러오는 중...
+            </Item>
+          ) : certificatesQuery.isError ? (
+            <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
+              <span role="alert">
+                인증 요청을 불러오지 못했어요.{' '}
+                <button type="button" onClick={() => void certificatesQuery.refetch()}>
+                  다시 시도
+                </button>
+              </span>
+            </Item>
+          ) : rows.length === 0 ? (
             <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
               해당 상태의 인증 요청이 없습니다.
             </Item>

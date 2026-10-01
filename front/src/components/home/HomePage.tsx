@@ -9,11 +9,17 @@ import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel, type AdCarouselItem } from '@/components/ads/AdCarousel';
-import type { Contest } from '@/data/user-design';
+import {
+  contests as fallbackContests,
+  teams as fallbackTeams,
+  type Contest,
+} from '@/data/user-design';
 import { toTeamCard } from '@/components/teams/team-model';
+import { getHomeFallbackData } from '@/components/home/home-data';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
+import { daysUntil } from '@/lib/date';
 
 const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
@@ -85,13 +91,13 @@ export function HomePage() {
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? auth.data.name : undefined;
   const { data: teamList } = generated.useListTeams();
-  const teams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
+  const liveTeams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않고 섹션 전체를 숨긴다.
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 6 },
     { query: { enabled: auth?.status === 200 } },
   );
-  const recommendationContests = (recommended?.data.items ?? []).map((challenge) =>
+  const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
   );
   // 마감 임박순으로 최대 4개 — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외한다.
@@ -100,10 +106,18 @@ export function HomePage() {
     includeClosed: false,
     limit: 4,
   });
-  const deadlineContests = (deadlineList?.data.items ?? [])
+  const liveDeadlineContests = (deadlineList?.data.items ?? [])
     .filter((challenge) => Boolean(challenge.endDate))
     .slice(0, 4)
     .map((challenge) => challengeToContest(challenge, now));
+  const { recommendationContests, deadlineContests, teams, isFallbackTeamList } =
+    getHomeFallbackData({
+      recommendationContests: liveRecommendationContests,
+      deadlineContests: liveDeadlineContests,
+      teams: liveTeams,
+      fallbackContests: fallbackContests.slice(0, 4),
+      fallbackTeams: fallbackTeams.slice(0, 4),
+    });
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -250,14 +264,14 @@ export function HomePage() {
               <DesktopOnly>
                 <TeamRail>
                   {teams.map((team) => (
-                    <TeamCard key={team.id} team={team} />
+                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
                   ))}
                 </TeamRail>
               </DesktopOnly>
               <MobileOnly>
                 <TeamRail>
                   {teams.slice(0, 3).map((team) => (
-                    <TeamCard key={team.id} team={team} />
+                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
                   ))}
                 </TeamRail>
               </MobileOnly>
@@ -278,12 +292,11 @@ function challengeToContest(
   },
   now: number,
 ): Contest {
-  const endDate = challenge.endDate ? new Date(challenge.endDate).getTime() : now;
   return {
     id: challenge.id ?? '',
     title: challenge.title ?? '챌린지',
     category: challenge.category ?? '기타',
-    days: Math.max(0, Math.ceil((endDate - now) / 86_400_000)),
+    days: daysUntil(challenge.endDate, now),
     // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
     teams: undefined,
   };

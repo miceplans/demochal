@@ -9,13 +9,13 @@ const drizzleDirectory = resolve(import.meta.dirname, '../../drizzle');
 const journal = JSON.parse(
   readFileSync(resolve(drizzleDirectory, 'meta/_journal.json'), 'utf8'),
 ) as {
-  entries: Array<{ tag: string }>;
+  entries: Array<{ tag: string; when: number }>;
 };
 const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(24);
+    expect(journal.entries).toHaveLength(28);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -55,6 +55,17 @@ describe('baseline schema migration', () => {
     ]) {
       expect(sql).toContain(foreignKey);
     }
+  });
+});
+
+describe('0026_challenge_poster_file migration', () => {
+  it('adds an optional poster reference without destructive DDL', () => {
+    const tag = journal.entries[26]?.tag;
+    expect(tag).toBe('0026_challenge_poster_file');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "poster_file_id" uuid');
+    expect(sql).toContain('REFERENCES "files"("id") ON DELETE SET NULL');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 
@@ -143,6 +154,13 @@ describe('0004 platform extension migration', () => {
 });
 
 describe('migration chain coverage', () => {
+  it('gives the newest migration a timestamp after every existing migration', () => {
+    const newestMigration = journal.entries.at(-1);
+    const latestExistingWhen = Math.max(...journal.entries.slice(0, -1).map((entry) => entry.when));
+
+    expect(newestMigration?.when).toBeGreaterThan(latestExistingWhen);
+  });
+
   it('creates every table declared in the ORM schema across the whole chain', () => {
     const chainSql = journal.entries
       .map((entry) => readFileSync(resolve(drizzleDirectory, `${entry.tag}.sql`), 'utf8'))
@@ -401,6 +419,30 @@ describe('0020_add_kakao_auth migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "kakao_subject"');
     expect(sql).toContain(
       'CREATE UNIQUE INDEX IF NOT EXISTS "users_kakao_subject_unique" ON "users" ("kakao_subject")',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0024_add_challenges_recruit_url migration', () => {
+  it('adds the external recruit link column without destructive DDL', () => {
+    const tag = journal.entries[24]?.tag;
+    expect(tag).toBe('0024_add_challenges_recruit_url');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "recruit_url" varchar(2048)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0027_add_challenges_application_form migration', () => {
+  it('adds the biz application-form jsonb column without destructive DDL', () => {
+    const tag = journal.entries[27]?.tag;
+    expect(tag).toBe('0027_add_challenges_application_form');
+
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "challenges" ADD COLUMN IF NOT EXISTS "application_form" jsonb',
     );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });

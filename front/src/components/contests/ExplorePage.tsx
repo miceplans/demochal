@@ -2,15 +2,15 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
+import { keyframes } from '@emotion/react';
 import { UserShell } from '@/components/common/UserShell';
 import {
   Button,
   DesktopOnly,
+  EmptyState,
   MobileOnly,
-  Select,
   Row,
   Heading,
-  Muted,
 } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
 import { contestHref } from './contest-links';
@@ -31,10 +31,13 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
+import { daysUntil } from '@/lib/date';
 
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
 const PRIZE_MIN = 0;
 const PRIZE_MAX = 10_000;
+
+const MOBILE_FILTER_MAX_WIDTH = 110;
 
 export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const query = useUserStore((s) => s.query);
@@ -78,17 +81,14 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     { query: { enabled: teamMode } },
   );
   const teamCards = (teamsQuery.data?.data ?? []).map(toTeamCard);
-  const contestCards: Contest[] = challengeOptions.map((challenge) => {
-    const end = challenge.endDate ? new Date(challenge.endDate).getTime() : NaN;
-    return {
-      id: challenge.id ?? '',
-      title: challenge.title ?? '챌린지',
-      category: challenge.category ?? '기타',
-      days: Number.isNaN(end) ? 0 : Math.max(0, Math.ceil((end - now) / 86_400_000)),
-      // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
-      teams: undefined,
-    };
-  });
+  const contestCards: Contest[] = challengeOptions.map((challenge) => ({
+    id: challenge.id ?? '',
+    title: challenge.title ?? '챌린지',
+    category: challenge.category ?? '기타',
+    days: daysUntil(challenge.endDate, now),
+    // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
+    teams: undefined,
+  }));
   const hasMoreChallenges = Boolean(challengesQuery.data?.data.nextCursor);
   return (
     <UserShell>
@@ -201,40 +201,36 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                   })),
                 },
               ].map((filter) => (
-                <Select
+                <Dropdown
                   key={filter.label}
                   aria-label={filter.label}
+                  variant="pill"
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={filter.value}
-                  onChange={(e) => filter.onChange(e.target.value)}
-                >
-                  <option value="">{filter.label}</option>
-                  {filter.options.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
+                  onChange={filter.onChange}
+                  options={[{ value: '', label: filter.label }, ...filter.options]}
+                />
               ))
             ) : (
               <>
-                <Select
+                <Dropdown
                   aria-label="분야"
+                  variant="pill"
+                  width="auto"
+                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
                   value={selectedCategories[0] ?? ''}
-                  onChange={(e) => setSelectedCategories(e.target.value ? [e.target.value] : [])}
-                >
-                  <option value="">분야</option>
-                  {categories.map((v) => (
-                    <option key={v}>{v}</option>
-                  ))}
-                </Select>
-                <IncludeClosed>
-                  <input
-                    type="checkbox"
-                    checked={includeClosed}
-                    onChange={(e) => setIncludeClosed(e.target.checked)}
-                  />
-                  마감된 챌린지 포함
-                </IncludeClosed>
+                  onChange={(value) => setSelectedCategories(value ? [value] : [])}
+                  options={[
+                    { value: '', label: '분야' },
+                    ...categories.map((v) => ({ value: v, label: v })),
+                  ]}
+                />
+                <Checkbox
+                  label="마감된 챌린지 포함"
+                  checked={includeClosed}
+                  onChange={setIncludeClosed}
+                />
               </>
             )}
           </MobileFilters>
@@ -268,34 +264,50 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
           </TopBar>
           {teamMode ? (
             <>
-              <TeamGrid>
-                {teamCards.map((team) => (
-                  <TeamCard key={team.id} team={team} />
-                ))}
-              </TeamGrid>
-              {teamsQuery.isSuccess && teamCards.length === 0 && (
-                <Muted>조건에 맞는 팀 모집글이 없어요.</Muted>
+              {teamsQuery.isPending ? (
+                <SkeletonStatus role="status" aria-label="팀 모집글을 불러오는 중입니다">
+                  <TeamSkeletonGrid />
+                </SkeletonStatus>
+              ) : (
+                <>
+                  <TeamGrid>
+                    {teamCards.map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </TeamGrid>
+                  {teamsQuery.isSuccess && teamCards.length === 0 && <EmptyState />}
+                </>
               )}
             </>
           ) : (
             <>
-              <DesktopOnly>
-                <ContestGrid>
-                  {contestCards.map((x) => (
-                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
-                  ))}
-                </ContestGrid>
-              </DesktopOnly>
-              <MobileOnly>
-                <ContestGrid>
-                  {contestCards.map((x) => (
-                    <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
-                  ))}
-                </ContestGrid>
-              </MobileOnly>
-              {challengesQuery.isPending && <Muted>불러오는 중…</Muted>}
-              {challengesQuery.isSuccess && contestCards.length === 0 && (
-                <Muted>검색 결과가 없습니다.</Muted>
+              {challengesQuery.isPending ? (
+                <SkeletonStatus role="status" aria-label="공모전 목록을 불러오는 중입니다">
+                  <DesktopOnly>
+                    <ContestSkeletonGrid />
+                  </DesktopOnly>
+                  <MobileOnly>
+                    <ContestSkeletonGrid />
+                  </MobileOnly>
+                </SkeletonStatus>
+              ) : (
+                <>
+                  <DesktopOnly>
+                    <ContestGrid>
+                      {contestCards.map((x) => (
+                        <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
+                      ))}
+                    </ContestGrid>
+                  </DesktopOnly>
+                  <MobileOnly>
+                    <ContestGrid>
+                      {contestCards.map((x) => (
+                        <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
+                      ))}
+                    </ContestGrid>
+                  </MobileOnly>
+                  {challengesQuery.isSuccess && contestCards.length === 0 && <EmptyState />}
+                </>
               )}
               {hasMoreChallenges && (
                 <Row style={{ justifyContent: 'center', marginTop: 40 }}>
@@ -311,6 +323,49 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     </UserShell>
   );
 }
+
+function TeamSkeletonGrid() {
+  return (
+    <TeamGrid aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <TeamSkeletonCard key={index} data-skeleton-card>
+          <Shimmer className="poster" />
+          <div className="body">
+            <Shimmer className="title" />
+            <div className="roles">
+              <Shimmer />
+              <Shimmer />
+            </div>
+            <div className="footer">
+              <Shimmer />
+              <Shimmer />
+            </div>
+          </div>
+        </TeamSkeletonCard>
+      ))}
+    </TeamGrid>
+  );
+}
+
+function ContestSkeletonGrid() {
+  return (
+    <ContestGrid aria-hidden="true">
+      {Array.from({ length: 6 }, (_, index) => (
+        <ContestSkeletonCard key={index} data-skeleton-card>
+          <Shimmer className="artwork" />
+          <div className="card-body">
+            <Shimmer className="title" />
+            <div className="meta">
+              <Shimmer />
+              <Shimmer />
+            </div>
+          </div>
+        </ContestSkeletonCard>
+      ))}
+    </ContestGrid>
+  );
+}
+
 const Layout = styled.div({
   display: 'grid',
   gridTemplateColumns: '260px minmax(0, 1fr)',
@@ -361,14 +416,6 @@ const Results = styled.div<{ $team?: boolean }>(({ $team }) => ({
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
 }));
-const IncludeClosed = styled.label({
-  ...textStyle.metaText,
-  color: c.gray700,
-  display: 'flex',
-  gap: 6,
-  alignItems: 'center',
-  cursor: 'pointer',
-});
 const Sort = styled.button<{ active?: boolean }>(({ active }) => ({
   border: 0,
   background: 'transparent',
@@ -382,12 +429,55 @@ const MobileFilters = styled.div({
     gap: 8,
     marginBottom: 20,
     flexWrap: 'wrap',
-    '& select': {
-      background: c.gray100,
-      fontSize: textStyle.mSubText.fontSize,
-      borderRadius: 24,
-      height: 34,
-      maxWidth: 110,
-    },
+  },
+});
+
+const shimmer = keyframes({
+  '0%': { backgroundPosition: '100% 0' },
+  '100%': { backgroundPosition: '-100% 0' },
+});
+const Shimmer = styled.div({
+  height: 12,
+  borderRadius: 6,
+  background: `linear-gradient(90deg, ${c.gray100} 25%, ${c.gray50} 50%, ${c.gray100} 75%)`,
+  backgroundSize: '200% 100%',
+  animation: `${shimmer} 1.4s ease-in-out infinite`,
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+});
+const SkeletonStatus = styled.div({ width: '100%' });
+const TeamSkeletonCard = styled.article({
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 12,
+  overflow: 'hidden',
+  minWidth: 0,
+  '.poster': { height: 135, borderRadius: 0 },
+  '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
+  '.title': { width: '62%', height: 20 },
+  '.roles, .footer': { display: 'flex', justifyContent: 'space-between', gap: 8 },
+  '.roles > div': { width: 56 },
+  '.footer > div:first-of-type': { width: '38%' },
+  '.footer > div:last-of-type': { width: 76 },
+  [mobile]: {
+    border: '1px solid #f0f1f3',
+    borderRadius: 14,
+    '.poster': { display: 'none' },
+    '.body': { padding: 14, gap: 10 },
+  },
+});
+const ContestSkeletonCard = styled.article({
+  borderRadius: 12,
+  overflow: 'hidden',
+  minWidth: 0,
+  background: c.white,
+  '.artwork': { height: 188, borderRadius: '12px 12px 0 0' },
+  '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
+  '.title': { width: '76%', height: 20 },
+  '.meta': { display: 'flex', justifyContent: 'space-between', gap: 8 },
+  '.meta > div': { width: '36%' },
+  [mobile]: {
+    border: '1px solid #f0f1f3',
+    '.artwork': { height: 160 },
+    '.card-body': { padding: 12 },
   },
 });

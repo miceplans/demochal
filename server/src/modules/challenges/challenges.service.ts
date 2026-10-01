@@ -36,6 +36,8 @@ import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
+import { interestsMatch } from './interest-matching.js';
+import { FilesService } from '../files/files.service.js';
 
 // draft -> published -> closed; no other transition is valid.
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -87,6 +89,7 @@ export class ChallengesService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly adminSettingsService: AdminSettingsService,
+    private readonly filesService: FilesService,
   ) {}
 
   /**
@@ -243,7 +246,9 @@ export class ChallengesService {
     const challenge = await this.getOrThrow(id);
     // Every detail fetch is a real "click" into the posting — see challengeViews' comment in schema.ts.
     await this.db.insert(challengeViews).values({ challengeId: id });
-    return challenge;
+    // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
+    const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+    return { ...challenge, posterUrl };
   }
 
   async stats(id: string) {
@@ -262,6 +267,12 @@ export class ChallengesService {
       .where(and(eq(businesses.id, dto.businessId), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
     if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
+
+    const recruitMethod = dto.recruitMethod ?? 'external';
+    if (recruitMethod === 'external' && !dto.recruitUrl) {
+      throw new BadRequestException('recruitUrl is required when recruitMethod is external');
+    }
 
     const [challenge] = await this.db
       .insert(challenges)
@@ -277,7 +288,9 @@ export class ChallengesService {
         targets: dto.targets,
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
-        recruitMethod: dto.recruitMethod ?? 'external',
+        posterFileId: dto.posterFileId,
+        recruitMethod,
+        recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
           ? 'published'
           : 'draft',
@@ -298,12 +311,18 @@ export class ChallengesService {
         ? eq(challenges.id, id)
         : and(eq(challenges.id, id), eq(businesses.ownerUserId, user.id));
     const [current] = await this.db
-      .select({ startDate: challenges.startDate, endDate: challenges.endDate })
+      .select({
+        startDate: challenges.startDate,
+        endDate: challenges.endDate,
+        recruitMethod: challenges.recruitMethod,
+      })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(ownership)
       .limit(1);
     if (!current) throw new NotFoundException('Challenge not found');
+    // null은 포스터 제거라 검증에서 제외 — 존재하고 public+ready인 파일만 참조할 수 있다.
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
@@ -319,9 +338,13 @@ export class ChallengesService {
       ...(dto.startDate !== undefined && { startDate }),
       ...(dto.endDate !== undefined && { endDate }),
       ...(dto.category !== undefined && { category: dto.category }),
+      ...(dto.recruitUrl !== undefined &&
+        current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),
       ...(dto.targets !== undefined && { targets: dto.targets }),
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
+      ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
+      ...(dto.applicationForm !== undefined && { applicationForm: dto.applicationForm }),
     };
     if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
 
@@ -444,8 +467,8 @@ export class ChallengesService {
       items: candidates
         .map((challenge) => {
           const interestScore =
-            interests.filter((interest) => this.interestsMatch(interest, challenge.category))
-              .length * 100;
+            interests.filter((interest) => interestsMatch(interest, challenge.category)).length *
+            100;
           const popularityScore =
             Math.min(views.get(challenge.id) ?? 0, 50) +
             3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
@@ -469,32 +492,6 @@ export class ChallengesService {
     return Array.isArray(interests)
       ? interests.filter((interest): interest is string => typeof interest === 'string')
       : [];
-  }
-
-  private interestsMatch(interest: string, category: string | null): boolean {
-    if (!category) return false;
-    const interestTokens = this.normalizeInterestTokens(interest);
-    const categoryTokens = this.normalizeInterestTokens(category);
-    return interestTokens.some((interestToken) =>
-      categoryTokens.some((categoryToken) => this.tokensMatch(interestToken, categoryToken)),
-    );
-  }
-
-  // 2자 이하 영문/숫자 토큰(ai, it 등)은 부분 일치 시 mail/digital 같은 무관한 단어에
-  // 걸리므로 정확히 같을 때만 매칭한다. 한글 토큰(영상, 창업 등)은 부분 일치를 유지한다.
-  private tokensMatch(left: string, right: string): boolean {
-    if (left === right) return true;
-    const isShortAscii = (token: string) => /^[a-z0-9]{1,2}$/.test(token);
-    if (isShortAscii(left) || isShortAscii(right)) return false;
-    return left.includes(right) || right.includes(left);
-  }
-
-  private normalizeInterestTokens(value: string): string[] {
-    return value
-      .toLowerCase()
-      .replace(/[·/\-_\s()]/g, ' ')
-      .split(' ')
-      .filter(Boolean);
   }
 
   private async statWithDelta(

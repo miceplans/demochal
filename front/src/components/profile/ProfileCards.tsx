@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import styled from '@emotion/styled';
 import type { ReactNode } from 'react';
 import { Icon, Tag, Row, Stack, Muted, Wrap } from '@/components/common/Primitives';
@@ -108,8 +109,7 @@ export function SkillStack({ skills = [], trailing }: { skills?: string[]; trail
     </Wrap>
   );
 }
-
-const HistoryCard = styled.div({
+const historyCardStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 16,
@@ -118,7 +118,16 @@ const HistoryCard = styled.div({
   padding: 16,
   '& h3': { ...textStyle.mBlockTitle, marginBottom: 6 },
   [mobile]: { padding: 14 },
+} as const;
+
+// 지원현황 카드 — 실제 챌린지 상세로 연결된다(#278).
+export const HistoryCard = styled(Link)({
+  ...historyCardStyle,
+  '& .thumb': { width: 80, height: 60, background: c.gray100, borderRadius: 8, flexShrink: 0 },
+  [mobile]: { padding: 14, '& .thumb': { width: 64, height: 48 } },
 });
+// 수상 이력 카드 — 링크가 아니라 정적 카드다.
+const AwardCard = styled.div(historyCardStyle);
 
 export function History({
   awards = [],
@@ -130,7 +139,7 @@ export function History({
   return (
     <Stack gap={16}>
       {awards.slice(0, compact ? 2 : awards.length).map((award, index) => (
-        <HistoryCard key={`${award.title ?? '수상'}·${index}`}>
+        <AwardCard key={`${award.title ?? '수상'}·${index}`}>
           <div>
             <h3>{award.title ?? '수상 이력'}</h3>
             <Row gap={8}>
@@ -140,7 +149,7 @@ export function History({
               <Muted>{[award.organization, award.date].filter(Boolean).join(' · ')}</Muted>
             </Row>
           </div>
-        </HistoryCard>
+        </AwardCard>
       ))}
     </Stack>
   );

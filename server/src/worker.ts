@@ -9,12 +9,15 @@ import {
   VERIFICATION_SUBMITTED_EVENT,
   type VerificationJobMessage,
 } from './modules/verifications/verifications.service.js';
+import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
   NOTIFICATION_EMAIL_EVENT,
   isEmailDeliveryConfigured,
   parseNotificationEmailJob,
 } from './modules/notifications/email/notification-email.js';
+
+const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
 async function bootstrap() {
@@ -25,6 +28,9 @@ async function bootstrap() {
   const outboxRelayService = app.get(OutboxRelayService);
   const verificationsProcessor = app.get(VerificationsProcessorService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
+
+  const challengeNotificationScan = app.get(ChallengeNotificationScanService);
+  let lastChallengeScanAt = 0;
 
   let shuttingDown = false;
   process.on('SIGTERM', () => (shuttingDown = true));
@@ -37,6 +43,8 @@ async function bootstrap() {
   );
 
   while (!shuttingDown) {
+    await scanChallengeNotifications();
+
     if (!env.sqsVerificationsQueueUrl && !emailEnabled) {
       logger.warn('No worker queue is configured, idling');
       await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -62,6 +70,19 @@ async function bootstrap() {
       logger.error(`Receiving from the ${label} queue failed (${name}), backing off`);
       await new Promise((resolve) => setTimeout(resolve, 5000));
       return [];
+    }
+  }
+
+  // 마감/공고 알림은 큐 설정과 무관하게 주기적으로 DB를 스캔해 만든다(중복은 dedupeKey로 차단).
+  async function scanChallengeNotifications() {
+    if (Date.now() - lastChallengeScanAt < CHALLENGE_SCAN_INTERVAL_MS) return;
+    lastChallengeScanAt = Date.now();
+    try {
+      const { created } = await challengeNotificationScan.scan();
+      if (created > 0) logger.log(`Created ${created} challenge notifications`);
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      logger.error(`Challenge notification scan failed (${name})`);
     }
   }
 

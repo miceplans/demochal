@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     default: '세모챌',
     template: '%s | 세모챌',
   },
-  description: '나에게 맞는 챌린지를 발견하고 함께 도전할 팀을 만나보세요.',
+  description: '세모챌에서 세상의 모든 챌린지를 만나보세요!',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

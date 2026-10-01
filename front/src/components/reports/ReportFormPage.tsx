@@ -10,6 +10,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { formatDateDot as formatDate } from '@/lib/date';
 
 const REPORT_REASONS = ['비방', '스팸/도배', '사기 또는 허위 정보', '저작권 침해', '기타'];
 
@@ -20,14 +21,6 @@ function isReportType(value: string | null): value is ReportType {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function formatDate(iso?: string) {
-  if (!iso) return '-';
-  const date = new Date(iso);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
-    date.getDate(),
-  ).padStart(2, '0')}`;
-}
 
 type PreviewMeta = { label: string; value: string };
 type Preview = { title: string; org?: string; meta: PreviewMeta[] };
