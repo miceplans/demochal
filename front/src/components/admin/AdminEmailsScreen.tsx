@@ -12,19 +12,18 @@ import {
   AdminTable,
   AdminPageTitle,
   Badge,
+  ApproveButton,
   FilterBar,
+  RejectButton,
   SearchFilter,
+  SelectFilter,
+  StatCard,
+  StatRow,
+  FieldLabel as AdminFieldLabel,
 } from './parts';
 
 const statusLabel: Record<string, string> = { open: '미처리', pending: '처리중', resolved: '완료' };
 const statusValue: Record<string, string> = { 미처리: 'open', 처리중: 'pending', 완료: 'resolved' };
-const statusOptions = [
-  { value: '', label: '전체' },
-  { value: 'open', label: '미처리' },
-  { value: 'pending', label: '처리중' },
-  { value: 'resolved', label: '완료' },
-] as const;
-
 function formatTime(value?: string) {
   if (!value) return '-';
   const date = new Date(value);
@@ -100,65 +99,42 @@ export function AdminEmailsScreen() {
           <PageDescription>고객 문의를 확인하고 빠르게 답장하세요.</PageDescription>
         </PageHeading>
         <HeaderActions>
-          <GhostButton
-            type="button"
-            onClick={() => void Promise.all([list.refetch(), overview.refetch()])}
-          >
-            ↻ 새로고침
-          </GhostButton>
-          <ComposeButton type="button" onClick={() => router.push('/admin/emails/compose')}>
+          <ApproveButton type="button" onClick={() => router.push('/admin/emails/compose')}>
             + 새 메일
-          </ComposeButton>
+          </ApproveButton>
         </HeaderActions>
       </TitleRow>
-      <StatsGrid>
-        <StatBox>
-          <StatLabel>전체 메일</StatLabel>
-          <StatValue>{counts.total}</StatValue>
-          <StatHint>전체 고객 문의</StatHint>
-        </StatBox>
-        <StatBox accent="#2563EB">
-          <StatLabel>미처리</StatLabel>
-          <StatValue>{counts.open}</StatValue>
-          <StatHint>확인이 필요한 메일</StatHint>
-        </StatBox>
-        <StatBox accent="#D97706">
-          <StatLabel>처리중</StatLabel>
-          <StatValue>{counts.pending}</StatValue>
-          <StatHint>답변 진행 중</StatHint>
-        </StatBox>
-        <StatBox accent="#16A34A">
-          <StatLabel>완료</StatLabel>
-          <StatValue>{counts.resolved}</StatValue>
-          <StatHint>처리 완료된 메일</StatHint>
-        </StatBox>
-      </StatsGrid>
-      <FilterPanel>
-        <FilterBar>
-          <SearchFilter
-            placeholder="제목 또는 고객 이메일 검색"
-            label="제목 또는 고객 이메일 검색"
-            value={query}
-            onChange={setQuery}
-          />
-          <StatusTabs>
-            {statusOptions.map((option) => (
-              <StatusTab
-                key={option.value}
-                type="button"
-                active={statusValue[status] === option.value || (!status && option.value === '')}
-                onClick={() => setStatus(option.value ? statusLabel[option.value] : '')}
-              >
-                {option.label}
-                {option.value ? (
-                  <TabCount>{counts[option.value as 'open' | 'pending' | 'resolved']}</TabCount>
-                ) : null}
-              </StatusTab>
-            ))}
-          </StatusTabs>
-        </FilterBar>
+      <StatRow>
+        <StatCard label="전체 메일" value={String(counts.total)} meta="전체 고객 문의" />
+        <StatCard
+          label="미처리"
+          value={String(counts.open)}
+          meta="확인이 필요한 메일"
+          dot={c.primary}
+        />
+        <StatCard label="처리중" value={String(counts.pending)} meta="답변 진행 중" dot="#D97706" />
+        <StatCard
+          label="완료"
+          value={String(counts.resolved)}
+          meta="처리 완료된 메일"
+          dot={c.green}
+        />
+      </StatRow>
+      <FilterBar>
+        <SearchFilter
+          placeholder="제목 또는 고객 이메일 검색"
+          label="제목 또는 고객 이메일 검색"
+          value={query}
+          onChange={setQuery}
+        />
+        <SelectFilter
+          label="상태"
+          options={['미처리', '처리중', '완료']}
+          value={status}
+          onChange={setStatus}
+        />
         {query || status ? (
-          <ResetButton
+          <RejectButton
             type="button"
             onClick={() => {
               setQuery('');
@@ -166,26 +142,20 @@ export function AdminEmailsScreen() {
             }}
           >
             필터 초기화
-          </ResetButton>
+          </RejectButton>
         ) : null}
-      </FilterPanel>
+      </FilterBar>
       {list.isPending ? <AdminInlineNotice>메일을 불러오는 중이에요.</AdminInlineNotice> : null}
       {list.isError ? (
         <AdminInlineNotice role="alert">
           메일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      <TableCard>
-        <TableToolbar>
-          <strong>고객 문의</strong>
-          <TableMeta>{tableRows.length}개</TableMeta>
-        </TableToolbar>
-        <AdminTable
-          columns={columns}
-          rows={tableRows}
-          onRowClick={(row) => router.push(`/admin/emails/${row.id}`)}
-        />
-      </TableCard>
+      <AdminTable
+        columns={columns}
+        rows={tableRows}
+        onRowClick={(row) => router.push(`/admin/emails/${row.id}`)}
+      />
     </Screen>
   );
 }
@@ -196,20 +166,17 @@ export function AdminEmailComposeScreen() {
   return (
     <Screen>
       <TitleRow>
-        <AdminPageTitle>새 메일 작성</AdminPageTitle>
-        <BackButton type="button" onClick={() => router.push('/admin/emails')}>
-          메일함으로
-        </BackButton>
+        <PageHeadingWithBack>
+          <BackGlyph
+            type="button"
+            aria-label="메일함으로 돌아가기"
+            onClick={() => router.push('/admin/emails')}
+          >
+            ‹
+          </BackGlyph>
+          <AdminPageTitle>새 메일 작성</AdminPageTitle>
+        </PageHeadingWithBack>
       </TitleRow>
-      <ComposeIntro>
-        <ComposeIcon aria-hidden>✉</ComposeIcon>
-        <div>
-          <ComposeTitle>새 고객지원 메일</ComposeTitle>
-          <ComposeHint>
-            고객에게 보낼 메일을 작성하세요. 발신 주소는 help@semochall.com입니다.
-          </ComposeHint>
-        </div>
-      </ComposeIntro>
       <ComposePanel
         sending={compose.isPending}
         error={
@@ -241,10 +208,16 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
   return (
     <Screen>
       <TitleRow>
-        <AdminPageTitle>메일 보기</AdminPageTitle>
-        <BackButton type="button" onClick={() => router.push('/admin/emails')}>
-          메일함으로
-        </BackButton>
+        <PageHeadingWithBack>
+          <BackGlyph
+            type="button"
+            aria-label="메일함으로 돌아가기"
+            onClick={() => router.push('/admin/emails')}
+          >
+            ‹
+          </BackGlyph>
+          <AdminPageTitle>메일 보기</AdminPageTitle>
+        </PageHeadingWithBack>
       </TitleRow>
       <Detail>
         {detail.isPending ? <AdminInlineNotice>대화를 불러오는 중이에요.</AdminInlineNotice> : null}
@@ -257,7 +230,6 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
           <ThreadDetail
             thread={selected}
             sending={reply.isPending}
-            statusChanging={statusMutation.isPending}
             onStatusChange={(status) => statusMutation.mutate({ id, status })}
             copied={copied}
             onCopyEmail={() => {
@@ -316,7 +288,7 @@ function ComposePanel({
       }}
     >
       <Field>
-        <FieldLabel>받는 사람</FieldLabel>
+        <AdminFieldLabel>받는 사람</AdminFieldLabel>
         <ComposeInput
           id="compose-to"
           type="email"
@@ -327,7 +299,7 @@ function ComposePanel({
         />
       </Field>
       <Field>
-        <FieldLabel>제목</FieldLabel>
+        <AdminFieldLabel>제목</AdminFieldLabel>
         <ComposeInput
           id="compose-subject"
           required
@@ -347,12 +319,12 @@ function ComposePanel({
       <ComposeFooter>
         <CharacterCount>{text.length.toLocaleString()} / 100,000자</CharacterCount>
         {error ? <Error role="alert">{error}</Error> : null}
-        <ReplyButton
+        <ApproveButton
           type="submit"
           disabled={sending || !to.trim() || !subject.trim() || !text.trim()}
         >
           {sending ? '발송 중…' : '메일 보내기'}
-        </ReplyButton>
+        </ApproveButton>
       </ComposeFooter>
     </ComposeForm>
   );
@@ -381,7 +353,6 @@ function ThreadDetail({
   thread,
   sending,
   onReply,
-  statusChanging,
   onStatusChange,
   copied,
   onCopyEmail,
@@ -390,7 +361,6 @@ function ThreadDetail({
   thread: EmailThreadDetail;
   sending: boolean;
   onReply: (text: string) => Promise<boolean>;
-  statusChanging: boolean;
   onStatusChange: (status: 'open' | 'pending' | 'resolved') => void;
   copied: boolean;
   onCopyEmail: () => void;
@@ -410,21 +380,14 @@ function ThreadDetail({
             </CopyButton>
           </CustomerLine>
         </div>
-        <StatusActions aria-label="메일 상태 변경">
-          {statusOptions
-            .filter((option) => option.value)
-            .map((option) => (
-              <StatusAction
-                key={option.value}
-                type="button"
-                active={thread.status === option.value}
-                disabled={statusChanging}
-                onClick={() => onStatusChange(option.value as 'open' | 'pending' | 'resolved')}
-              >
-                {option.label}
-              </StatusAction>
-            ))}
-        </StatusActions>
+        <SelectFilter
+          label="상태"
+          options={['미처리', '처리중', '완료']}
+          value={statusLabel[thread.status ?? ''] ?? ''}
+          onChange={(value) =>
+            onStatusChange(statusValue[value] as 'open' | 'pending' | 'resolved')
+          }
+        />
       </ThreadHeader>
       <Timeline>
         {(thread.messages ?? []).map((message) => (
@@ -458,17 +421,19 @@ function ThreadDetail({
           maxLength={100000}
         />
         {error ? <Error role="alert">{error}</Error> : null}
-        <ReplyButton
-          type="button"
-          disabled={sending || !text.trim()}
-          onClick={() => {
-            void onReply(text).then((success) => {
-              if (success) setText('');
-            });
-          }}
-        >
-          {sending ? '발송 중…' : '답장 보내기'}
-        </ReplyButton>
+        <ReplyActions>
+          <ApproveButton
+            type="button"
+            disabled={sending || !text.trim()}
+            onClick={() => {
+              void onReply(text).then((success) => {
+                if (success) setText('');
+              });
+            }}
+          >
+            {sending ? '발송 중…' : '답장 보내기'}
+          </ApproveButton>
+        </ReplyActions>
       </ReplyBox>
     </>
   );
@@ -476,108 +441,18 @@ function ThreadDetail({
 
 const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 24, minHeight: 0 });
 const PageHeading = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 });
-const PageDescription = styled.p({ margin: 0, color: c.gray500, ...textStyle.body });
-const HeaderActions = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const GhostButton = styled.button({
-  height: 40,
-  padding: '0 14px',
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 7,
-  background: c.white,
-  color: c.gray700,
-  cursor: 'pointer',
-  ...textStyle.subtitle,
-  '&:hover': { background: c.gray50 },
-});
-const StatsGrid = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
-  gap: 12,
-  '@media (max-width: 760px)': { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' },
-});
-const StatBox = styled.div<{ accent?: string }>(({ accent = c.gray300 }) => ({
-  padding: '17px 18px',
-  border: `1px solid ${c.gray200}`,
-  borderTop: `3px solid ${accent}`,
-  borderRadius: 10,
-  background: c.white,
-  boxShadow: '0 2px 8px rgba(17,24,39,.03)',
-}));
-const StatLabel = styled.span({ display: 'block', color: c.gray500, ...textStyle.caption2 });
-const StatValue = styled.strong({
-  display: 'block',
-  marginTop: 6,
-  color: c.gray900,
-  fontSize: 26,
-  lineHeight: 1.1,
-});
-const StatHint = styled.span({ display: 'block', marginTop: 7, color: c.gray500, fontSize: 12 });
-const FilterPanel = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 16,
-  padding: 12,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 10,
-  background: '#FAFBFC',
-  '@media (max-width: 760px)': { alignItems: 'flex-start', flexDirection: 'column' },
-});
-const StatusTabs = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 3,
-  padding: 3,
-  borderRadius: 8,
-  background: c.gray100,
-});
-const StatusTab = styled.button<{ active?: boolean }>(({ active }) => ({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 7,
-  height: 34,
-  padding: '0 11px',
+const PageHeadingWithBack = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
+const BackGlyph = styled.button({
   border: 0,
-  borderRadius: 6,
-  background: active ? c.white : 'transparent',
-  color: active ? c.gray900 : c.gray500,
-  boxShadow: active ? '0 1px 3px rgba(17,24,39,.12)' : 'none',
-  cursor: 'pointer',
-  ...textStyle.caption2,
-}));
-const TabCount = styled.span({
-  minWidth: 18,
-  padding: '2px 5px',
-  borderRadius: 9,
-  background: c.gray200,
-  color: c.gray700,
-  fontSize: 11,
-  textAlign: 'center',
-});
-const ResetButton = styled.button({
-  border: 0,
+  padding: 0,
   background: 'transparent',
-  color: c.primary,
+  color: c.gray700,
   cursor: 'pointer',
-  ...textStyle.caption2,
+  fontSize: 28,
+  lineHeight: 1,
 });
-const TableCard = styled.div({
-  overflow: 'hidden',
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 10,
-  background: c.white,
-  boxShadow: '0 3px 12px rgba(17,24,39,.04)',
-});
-const TableToolbar = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  padding: '16px 18px',
-  borderBottom: `1px solid ${c.gray200}`,
-  color: c.gray900,
-  ...textStyle.subtitle,
-});
-const TableMeta = styled.span({ color: c.gray500, ...textStyle.caption2 });
+const PageDescription = styled.p({ margin: 0, color: c.gray500, ...textStyle.caption });
+const HeaderActions = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
 const MailCell = styled.div({ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220 });
 const MailIcon = styled.span({
   display: 'grid',
@@ -620,15 +495,6 @@ const TitleRow = styled.div({
   justifyContent: 'space-between',
   gap: 16,
 });
-const ComposeButton = styled.button({
-  border: 0,
-  borderRadius: 6,
-  padding: '10px 16px',
-  background: c.primary,
-  color: c.white,
-  cursor: 'pointer',
-  ...textStyle.subtitle,
-});
 const ComposeForm = styled.form({
   display: 'grid',
   gap: 10,
@@ -638,29 +504,7 @@ const ComposeForm = styled.form({
   borderRadius: 10,
   background: c.white,
 });
-const ComposeIntro = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 12,
-  maxWidth: 760,
-  padding: '18px 20px',
-  borderRadius: 10,
-  background: '#EFF6FF',
-});
-const ComposeIcon = styled.span({
-  display: 'grid',
-  placeItems: 'center',
-  width: 40,
-  height: 40,
-  borderRadius: 10,
-  background: c.white,
-  color: c.primary,
-  fontSize: 20,
-});
-const ComposeTitle = styled.strong({ display: 'block', color: c.gray900, ...textStyle.subtitle });
-const ComposeHint = styled.span({ display: 'block', marginTop: 4, color: c.gray500, fontSize: 13 });
 const Field = styled.label({ display: 'flex', flexDirection: 'column', gap: 7 });
-const FieldLabel = styled.span({ color: c.gray700, ...textStyle.caption2 });
 const ComposeInput = styled.input({
   padding: '10px 12px',
   border: `1px solid ${c.gray200}`,
@@ -706,7 +550,7 @@ const Eyebrow = styled.span({
   fontSize: 12,
   fontWeight: 700,
 });
-const ThreadTitle = styled.h2({ margin: 0, color: c.gray900, ...textStyle.h2_2 });
+const ThreadTitle = styled.h2({ margin: 0, color: c.gray900, ...textStyle.h3_2 });
 const CustomerLine = styled.div({
   display: 'flex',
   alignItems: 'center',
@@ -723,34 +567,6 @@ const CopyButton = styled.button({
   cursor: 'pointer',
   fontSize: 12,
 });
-const StatusActions = styled.div({
-  display: 'flex',
-  gap: 4,
-  padding: 3,
-  borderRadius: 8,
-  background: c.gray100,
-});
-const StatusAction = styled.button<{ active?: boolean }>(({ active }) => ({
-  height: 32,
-  padding: '0 9px',
-  border: 0,
-  borderRadius: 6,
-  background: active ? c.white : 'transparent',
-  color: active ? c.gray900 : c.gray500,
-  boxShadow: active ? '0 1px 3px rgba(17,24,39,.12)' : 'none',
-  cursor: 'pointer',
-  ...textStyle.caption2,
-  '&:disabled': { cursor: 'wait', opacity: 0.65 },
-}));
-const BackButton = styled.button({
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
-  padding: '9px 14px',
-  background: c.white,
-  color: c.gray900,
-  cursor: 'pointer',
-  ...textStyle.subtitle,
-});
 const Timeline = styled.div({ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 });
 const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
   alignSelf: outbound ? 'flex-end' : 'flex-start',
@@ -763,7 +579,7 @@ const MessageMeta = styled.div({ color: c.gray500, fontSize: 12, marginBottom: 8
 const MessageBody = styled.div({
   whiteSpace: 'pre-wrap',
   overflowWrap: 'anywhere',
-  ...textStyle.body,
+  ...textStyle.bodySmall,
 });
 const AttachmentList = styled.ul({
   margin: '12px 0 0',
@@ -772,14 +588,5 @@ const AttachmentList = styled.ul({
   fontSize: 12,
 });
 const ReplyBox = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 });
-const ReplyButton = styled.button({
-  alignSelf: 'flex-end',
-  border: 0,
-  borderRadius: 6,
-  padding: '9px 16px',
-  background: c.primary,
-  color: c.white,
-  ...textStyle.subtitle,
-  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
-});
+const ReplyActions = styled.div({ display: 'flex', justifyContent: 'flex-end' });
 const Error = styled.p({ margin: 0, color: '#B42318', ...textStyle.caption2 });

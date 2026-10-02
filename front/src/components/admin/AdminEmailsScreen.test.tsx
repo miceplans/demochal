@@ -58,6 +58,36 @@ vi.mock('./parts', () => ({
     <div {...props}>{children}</div>
   ),
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
+  ApproveButton: ({ children, ...props }: { children: ReactNode }) => (
+    <button {...props}>{children}</button>
+  ),
+  RejectButton: ({ children, ...props }: { children: ReactNode }) => (
+    <button {...props}>{children}</button>
+  ),
+  FieldLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  SelectFilter: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <select aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)}>
+      <option value="">{label}</option>
+      <option value="미처리">미처리</option>
+      <option value="처리중">처리중</option>
+      <option value="완료">완료</option>
+    </select>
+  ),
+  StatCard: ({ label, value }: { label: string; value: string }) => (
+    <div>
+      {label}
+      {value}
+    </div>
+  ),
+  StatRow: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   FilterBar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SearchFilter: ({
@@ -71,7 +101,6 @@ vi.mock('./parts', () => ({
   }) => (
     <input aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)} />
   ),
-  SelectFilter: () => null,
 }));
 
 describe('AdminEmailsScreen', () => {
@@ -144,7 +173,7 @@ describe('AdminEmailsScreen', () => {
     await user.type(textarea, '재시도할 답장');
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
-    await user.click(screen.getByRole('button', { name: '처리중' }));
+    await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), '처리중');
     expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', status: 'pending' });
   });
 
