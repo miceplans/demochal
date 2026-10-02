@@ -276,12 +276,22 @@ export function AdminCertificatesScreen() {
 const isPdf = (row: CertificateListRow) => row.fileContentType === 'application/pdf';
 
 function CertificateThumb({ row }: { row: CertificateListRow }) {
+  // presigned URL 만료·네트워크 실패를 기억한다. URL이 바뀌면 자동으로 초기화된다.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!row.fileUrl) return <ThumbPlaceholder>원본 없음</ThumbPlaceholder>;
   if (isPdf(row)) return <ThumbPlaceholder>PDF</ThumbPlaceholder>;
-  return <Thumb src={row.fileUrl} alt={`${row.user} 상장`} />;
+  if (failedUrl === row.fileUrl) return <ThumbPlaceholder>불러오기 실패</ThumbPlaceholder>;
+  return (
+    <Thumb
+      src={row.fileUrl}
+      alt={`${row.user} 상장`}
+      onError={() => setFailedUrl(row.fileUrl ?? null)}
+    />
+  );
 }
 
 function CertificateOriginal({ row }: { row: CertificateListRow }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!row.fileUrl) {
     return <PreviewPlaceholder>업로드가 완료되지 않아 원본을 볼 수 없어요.</PreviewPlaceholder>;
   }
@@ -294,7 +304,16 @@ function CertificateOriginal({ row }: { row: CertificateListRow }) {
       </PreviewPlaceholder>
     );
   }
-  return <PreviewImage src={row.fileUrl} alt={`${row.user} 상장 원본`} />;
+  if (failedUrl === row.fileUrl) {
+    return <PreviewPlaceholder>원본을 불러오지 못했어요.</PreviewPlaceholder>;
+  }
+  return (
+    <PreviewImage
+      src={row.fileUrl}
+      alt={`${row.user} 상장 원본`}
+      onError={() => setFailedUrl(row.fileUrl ?? null)}
+    />
+  );
 }
 
 const TabBar = styled.div({ display: 'flex', gap: 8 });

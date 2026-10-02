@@ -269,12 +269,6 @@ export const SectionHeader = styled.div({
   justifyContent: 'space-between',
   alignItems: 'center',
 });
-export const MoreLink = styled.a({
-  ...textStyle.caption,
-  color: c.gray500,
-  textDecoration: 'none',
-  cursor: 'pointer',
-});
 
 export const Badge = styled(BaseBadge)({
   justifyContent: 'center',
