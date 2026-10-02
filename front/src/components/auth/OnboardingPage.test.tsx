@@ -163,13 +163,15 @@ describe('OnboardingPage', () => {
     },
   );
 
-  it('applies a fade-slide entry animation to the step content', () => {
+  it('applies a horizontal slide-in animation to the step content like the home carousel', () => {
     renderOnboarding('interests');
 
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
       .join('\n');
     expect(styleText).toContain('semo-onboarding-step-in');
+    expect(styleText).toContain('translateX');
+    expect(styleText).toContain('.5s ease-in-out');
     expect(styleText).toContain('prefers-reduced-motion');
   });
 });

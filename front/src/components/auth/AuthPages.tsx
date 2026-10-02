@@ -177,10 +177,11 @@ const ProgressFill = styled.div({
   transition: 'width 300ms ease',
   '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
 });
+// 홈 화면 AdCarousel과 같은 수평 슬라이드 관례(0.5s ease-in-out)로 스텝 콘텐츠가 오른쪽에서 들어온다.
 const StepContent = styled.div({
-  animation: 'semo-onboarding-step-in .24s ease-out both',
+  animation: 'semo-onboarding-step-in .5s ease-in-out both',
   '@keyframes semo-onboarding-step-in': {
-    from: { opacity: 0, transform: 'translateY(12px)' },
+    from: { opacity: 0, transform: 'translateX(48px)' },
     to: { opacity: 1, transform: 'none' },
   },
   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
