@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Select } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -115,20 +115,16 @@ export function ApplicationQuestions({
                 />
               ))}
             {question.type === 'dropdown' && (
-              <Select
-                id={inputId}
+              <Dropdown
                 aria-label={question.title}
-                required={question.required}
+                placeholder="선택해 주세요"
+                options={(question.options ?? []).map((option) => ({
+                  value: option,
+                  label: option,
+                }))}
                 value={text}
-                onChange={(event) => onChange(question.id, event.target.value)}
-              >
-                <option value="">선택해 주세요</option>
-                {question.options?.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </Select>
+                onChange={(value) => onChange(question.id, value)}
+              />
             )}
             {(question.type === 'radio' || question.type === 'checkbox') &&
               question.options?.map((option) => (

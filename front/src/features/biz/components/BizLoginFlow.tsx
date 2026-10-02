@@ -1,6 +1,6 @@
 'use client';
 import { useState, type ChangeEvent, type ComponentProps, type ReactNode } from 'react';
-import { selectBase } from '@/components/common/Primitives';
+import { Dropdown } from '@/components/ui/Dropdown';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
@@ -346,21 +346,13 @@ export function BizSignupFlow() {
             )}
             {step === 2 && (
               <Form aria-label="기관 인증">
-                <SelectWrap>
-                  <Select
-                    aria-label="기관 유형"
-                    value={orgType}
-                    disabled={!!businessId}
-                    onChange={(e) => setOrgType(e.target.value as OrgType)}
-                  >
-                    {orgTypes.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                  <Chevron src="/assets/icons/biz-select-chevron.svg" alt="" aria-hidden />
-                </SelectWrap>
+                <Dropdown
+                  aria-label="기관 유형"
+                  options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
+                  value={orgType}
+                  disabled={!!businessId}
+                  onChange={(value) => setOrgType(value as OrgType)}
+                />
                 <FieldBox>
                   <FieldLabel>{uploadLabel}</FieldLabel>
                   <UploadBox>
@@ -564,22 +556,6 @@ const VerifyButton = styled(PrimaryButton)({
   width: 94,
   flexShrink: 0,
   ...textStyle.mFeatureTitle,
-});
-const SelectWrap = styled.div({ position: 'relative' });
-const Select = styled.select({
-  ...selectBase,
-  width: '100%',
-  height: 44,
-  padding: '0 46px 0 14px',
-  ...textStyle.mBodyText,
-});
-const Chevron = styled.img({
-  position: 'absolute',
-  top: 10,
-  right: 14,
-  width: 24,
-  height: 24,
-  pointerEvents: 'none',
 });
 const UploadBox = styled.label({
   position: 'relative',

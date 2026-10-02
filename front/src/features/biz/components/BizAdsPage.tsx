@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { selectBase } from '@/components/common/Primitives';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -19,6 +18,7 @@ import {
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
 import { generated } from '@semochal/api-client';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { toDateKey } from '@/lib/date';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
@@ -592,16 +592,15 @@ export function BizAdsPage() {
                   autoFocus
                 />
                 <PositionField>
-                  <PositionSelect
+                  <Dropdown
+                    options={[
+                      { value: 'hero', label: '홈 상단 배너 광고' },
+                      { value: 'gallery', label: '홈 중간 이미지 광고' },
+                    ]}
                     value={nameModalPlacement}
                     disabled
                     aria-label="광고 위치"
-                    title="업로드한 이미지에 맞춰 지정된 위치예요"
-                  >
-                    <option value="hero">홈 상단 배너 광고</option>
-                    <option value="gallery">홈 중간 이미지 광고</option>
-                  </PositionSelect>
-                  <PositionIcon src="/assets/icons/figma-chevron-down.svg" alt="" />
+                  />
                 </PositionField>
               </NameFields>
               <PopupActions>
@@ -823,20 +822,4 @@ const NameInput = styled.input({
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const PositionField = styled.div({ position: 'relative', display: 'flex' });
-const PositionSelect = styled.select({
-  ...selectBase,
-  width: '100%',
-  height: 44,
-  padding: '0 34px 0 14px',
-  ...textStyle.body,
-});
-const PositionIcon = styled.img({
-  position: 'absolute',
-  top: '50%',
-  right: 12,
-  width: 14,
-  height: 14,
-  transform: 'translateY(-50%)',
-  pointerEvents: 'none',
-});
 const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });

@@ -1,6 +1,5 @@
 'use client';
 import Link from 'next/link';
-import { Select } from '@/components/common/Primitives';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
@@ -422,7 +421,6 @@ export const FieldInput = styled.input({
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
-export const FieldSelect = Select;
 export const TableBox = styled.div({
   border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
