@@ -174,7 +174,7 @@ const ProgressFill = styled.div({
   height: 4,
   background: c.primary,
   borderRadius: 30,
-  transition: 'width 300ms ease',
+  transition: 'width 500ms ease-in-out',
   '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
 });
 // 홈 화면 AdCarousel과 같은 수평 슬라이드 관례(0.5s ease-in-out)로 스텝 콘텐츠가 오른쪽에서 들어온다.
@@ -192,10 +192,17 @@ export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
   const index = steps.indexOf(step);
   // 페이지 이동 없이 폭만 바뀌는 경우에도 transition이 보이도록 마운트 직후 현재 스텝 폭까지 채운다.
+  // effect가 첫 페인트보다 먼저 실행돼도 초기 폭이 한 프레임은 그려지게 이중 rAF를 쓴다.
   const [barWidth, setBarWidth] = useState(`${index * 25}%`);
   useEffect(() => {
-    const raf = requestAnimationFrame(() => setBarWidth(`${(index + 1) * 25}%`));
-    return () => cancelAnimationFrame(raf);
+    let next = 0;
+    const first = requestAnimationFrame(() => {
+      next = requestAnimationFrame(() => setBarWidth(`${(index + 1) * 25}%`));
+    });
+    return () => {
+      cancelAnimationFrame(first);
+      cancelAnimationFrame(next);
+    };
   }, [index]);
   const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
