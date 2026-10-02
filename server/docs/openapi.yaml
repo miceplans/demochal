@@ -2352,12 +2352,25 @@ paths:
         - name: position
           in: query
           schema: { type: string, description: '포지션 뱃지 (부분 일치, 예: 프론트엔드)' }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1, description: '페이지 번호 (1부터)' }
+        - name: pageSize
+          in: query
+          schema:
+            {
+              type: integer,
+              minimum: 1,
+              maximum: 50,
+              default: 30,
+              description: '페이지 크기 (최대 50)',
+            }
       responses:
         '200':
-          description: 사용자 목록
+          description: 사용자 목록 (최신 가입순, offset 페이지네이션)
           content:
             application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
   /admin/users/{id}/suspend:
     post:
       tags: [Admin]
@@ -3560,6 +3573,14 @@ components:
         dday: { type: string, description: "'D-7' 형태" }
         teams: { type: string, description: "'팀 모집 3건' 형태" }
         unread: { type: boolean }
+    AdminUserPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+        total: { type: integer, description: 필터에 해당하는 전체 사용자 수 }
+        page: { type: integer }
+        pageSize: { type: integer }
     AdminUserEntry:
       type: object
       description: 사용자 관리 테이블 행 (UserRow) — 이메일 마스킹, 신고 누적 포함

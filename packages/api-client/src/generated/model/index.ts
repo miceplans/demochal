@@ -36,6 +36,7 @@ export * from './adminStatCardList';
 export * from './adminTeamCard';
 export * from './adminUserEntry';
 export * from './adminUserEntryStatus';
+export * from './adminUserPage';
 export * from './adProduct';
 export * from './adProductPlacement';
 export * from './adProductReservedPeriodsItem';

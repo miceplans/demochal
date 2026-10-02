@@ -90,8 +90,17 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('joinedWithin') joinedWithin?: string,
     @Query('position') position?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.adminService.listUsers(q, status, joinedWithin, position);
+    return this.adminService.listUsers(
+      q,
+      status,
+      joinedWithin,
+      position,
+      page ? Number.parseInt(page, 10) : undefined,
+      pageSize ? Number.parseInt(pageSize, 10) : undefined,
+    );
   }
 
   @Post('users/:id/suspend')
