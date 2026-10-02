@@ -804,7 +804,7 @@ const RoleInput = styled.input({
   flex: 1,
   minWidth: 0,
   height: 32,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -836,7 +836,7 @@ const FieldLabel = styled.span({
 const LineInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -844,7 +844,7 @@ const LineInput = styled.input({
 
 /* ---------- 텍스트 에디터 ---------- */
 const EditorBox = styled.div({
-  border: '1px solid #e9ecef',
+  border: '0.5px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
   overflow: 'hidden',
@@ -862,7 +862,7 @@ const ToolGroup = styled.div({
   alignItems: 'center',
   gap: 2,
   padding: 2,
-  border: '1px solid #e9ecef',
+  border: '0.5px solid #e9ecef',
   borderRadius: 4,
 });
 const ToolButton = styled.button({
@@ -930,7 +930,7 @@ const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   padding: '8px 10px',
   borderRadius: 20,
-  border: selected ? '1px solid transparent' : `1px solid ${c.gray300}`,
+  border: selected ? '0.5px solid transparent' : `0.5px solid ${c.gray300}`,
   background: selected ? c.primary : c.white,
   color: selected ? c.white : c.gray700,
   fontSize: 12,
@@ -961,7 +961,7 @@ const LinkInput = styled.input({
   width: 470,
   maxWidth: '100%',
   height: 36,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -971,7 +971,7 @@ const LinkInput = styled.input({
 const ContactInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -987,7 +987,7 @@ const Actions = styled.div({
 const CancelButton = styled.button({
   width: 183,
   height: 37,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,

@@ -114,7 +114,7 @@ const Toolbar = styled.div({ display: 'flex', justifyContent: 'space-between', g
 const Search = styled.input({
   width: 300,
   height: 43,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   padding: '0 16px',
   ...textStyle.metaText,

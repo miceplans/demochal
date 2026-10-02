@@ -22,7 +22,7 @@ const Card = styled.section({
   flexDirection: 'column',
   gap: 20,
   padding: 28,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 16,
   background: c.white,
 });
@@ -51,7 +51,7 @@ const TeamBlock = styled.div({
 const SectionTitle = styled.h3({ ...textStyle.caption2, color: c.gray900 });
 const Box = styled.div({
   padding: 14,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 10,
   ...textStyle.caption,
   lineHeight: 1.7,
@@ -67,7 +67,7 @@ const CtaBar = styled.div({
   gap: 16,
   flexWrap: 'wrap',
   padding: '16px max(24px, calc((100% - 1200px) / 2))',
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
   background: c.white,
 });
 const Menu = styled.div({
@@ -76,7 +76,7 @@ const Menu = styled.div({
   top: 44,
   minWidth: 150,
   padding: 6,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 10,
   background: c.white,
   boxShadow: '0 6px 8px rgb(0 0 0 / 12%)',

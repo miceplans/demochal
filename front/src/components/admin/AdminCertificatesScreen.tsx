@@ -148,7 +148,7 @@ export function AdminCertificatesScreen() {
           </TabItem>
         ))}
       </TabBar>
-      <div style={{ border: `1px solid ${c.gray200}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ border: `0.5px solid ${c.gray200}`, borderRadius: 8, overflow: 'hidden' }}>
         <List>
           {rows.map((row) => (
             <Item key={row.id}>
@@ -255,7 +255,11 @@ export function AdminCertificatesScreen() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <ApproveButton
                 onClick={closeReject}
-                style={{ background: c.white, color: c.gray700, border: `1px solid ${c.gray300}` }}
+                style={{
+                  background: c.white,
+                  color: c.gray700,
+                  border: `0.5px solid ${c.gray300}`,
+                }}
               >
                 취소
               </ApproveButton>
@@ -321,7 +325,7 @@ const TabItem = styled.button<{ active?: boolean }>(({ active }) => ({
   width: 90,
   padding: '8px 10px',
   borderRadius: 6,
-  border: '1px solid',
+  border: '0.5px solid',
   borderColor: active ? c.gray200 : c.gray200,
   background: active ? '#F8FAFC' : c.white,
   ...textStyle.subtitle,
@@ -340,7 +344,7 @@ const Item = styled.li({
   alignItems: 'center',
   gap: 16,
   padding: '18px 16px',
-  borderTop: `1px solid ${c.gray200}`,
+  borderTop: `0.5px solid ${c.gray200}`,
   background: c.white,
 });
 const ThumbButton = styled.button({
@@ -355,7 +359,7 @@ const Thumb = styled.img({
   height: 79,
   objectFit: 'cover',
   borderRadius: 8,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
 });
 const MiniAvatar = styled.span({
   width: 32,
@@ -403,7 +407,7 @@ const Overlay = styled.div({
 });
 const Dialog = styled.div({
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   padding: 24,
   display: 'flex',
@@ -424,7 +428,7 @@ const ThumbPlaceholder = styled.span({
   width: 56,
   height: 79,
   borderRadius: 8,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   background: c.gray100,
   color: c.gray500,
   ...textStyle.finePrint,
@@ -449,7 +453,7 @@ const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const RejectTextarea = styled.textarea({
   resize: 'vertical',
   padding: '10px 12px',
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   color: c.gray900,
   ...textStyle.bodySmall,

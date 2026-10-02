@@ -44,7 +44,7 @@ export function AccountSettings() {
         <Button type="button" tone="plain" onClick={() => void logout()}>
           로그아웃
         </Button>
-        <hr style={{ width: '100%', border: 0, borderTop: '1px solid #eee' }} />
+        <hr style={{ width: '100%', border: 0, borderTop: '0.5px solid #eee' }} />
         <Stack gap={10}>
           <Title style={{ fontSize: 20 }}>회원 탈퇴</Title>
           <Muted>

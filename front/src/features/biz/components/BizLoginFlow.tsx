@@ -511,7 +511,7 @@ const CheckBox = styled.span({
   height: 16,
   flexShrink: 0,
   borderRadius: 3,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   background: c.white,
   transition: 'background 150ms ease, border-color 150ms ease, transform 120ms ease',
 });

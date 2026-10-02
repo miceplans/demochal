@@ -53,7 +53,7 @@ const MobileMenu = styled.nav({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const Participating = styled.div({
@@ -61,7 +61,7 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
-    border: `1px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
     transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
@@ -93,7 +93,7 @@ const UploadBox = styled.label({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const HiddenInput = styled.input({
@@ -868,7 +868,7 @@ export function InterestsPage() {
   );
 }
 const SettingsGroup = styled.section({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
   '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
@@ -878,7 +878,7 @@ const SettingsGroup = styled.section({
     gap: 16,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTop: `1px solid ${c.gray100}`,
+    borderTop: `0.5px solid ${c.gray100}`,
   },
   [mobile]: {
     border: 0,
@@ -938,11 +938,11 @@ export function NotificationSettingsPage() {
 const Table = styled.table({
   width: '100%',
   borderSpacing: 0,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   ...textStyle.bodySmall,
   '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
+  '& td, & th': { padding: '14px 16px', borderBottom: `0.5px solid ${c.gray100}` },
   '& th:first-child': { borderRadius: '11px 0 0 0' },
   '& th:last-child': { borderRadius: '0 11px 0 0' },
   '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
@@ -1278,7 +1278,7 @@ const NotificationTabButton = styled.button({
   minWidth: 0,
   height: 40,
   border: 0,
-  borderBottom: '2px solid transparent',
+  borderBottom: '0.5px solid transparent',
   background: 'transparent',
   fontFamily: 'inherit',
   fontSize: 15,

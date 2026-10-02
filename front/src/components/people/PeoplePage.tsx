@@ -32,7 +32,7 @@ const SearchBox = styled.label({
   width: 250,
   height: 40,
   padding: '0 14px',
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   background: c.white,
   '&:hover:not(:focus-within)': { borderColor: c.gray300 },

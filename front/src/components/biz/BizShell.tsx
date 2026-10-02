@@ -121,7 +121,7 @@ const HeaderSignup = styled(BizLink)({
   height: 37,
   borderRadius: 6,
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   color: c.gray900,
   ...textStyle.overline,
   fontSize: 12,
@@ -178,7 +178,7 @@ const SidebarBox = styled.aside({
   left: 0,
   bottom: 0,
   width: 220,
-  borderRight: `1px solid ${c.gray100}`,
+  borderRight: `0.5px solid ${c.gray100}`,
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',
@@ -398,7 +398,7 @@ export const PrimaryButton = styled.button({
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 });
 export const OutlineButton = styled.button({
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,
@@ -414,7 +414,7 @@ export const Field = styled.label({
 });
 export const FieldInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -423,7 +423,7 @@ export const FieldInput = styled.input({
 });
 export const FieldSelect = styled.select({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -431,7 +431,7 @@ export const FieldSelect = styled.select({
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const TableBox = styled.div({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
 });
@@ -450,14 +450,14 @@ export const TRow = styled.div({
   padding: '18px 16px',
   background: c.white,
   ...textStyle.h1,
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
 });
 export const StatBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
   padding: 20,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   minWidth: 0,
 });

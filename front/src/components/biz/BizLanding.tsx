@@ -48,7 +48,7 @@ const Consult = styled(BizLink)({
   height: 52,
   borderRadius: 6,
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   ...textStyle.overline,
   fontSize: 17,
 });
@@ -71,7 +71,7 @@ const Cards = styled.div({
 });
 const StoryCard = styled.div({ willChange: 'transform' });
 const Card = styled.div({
-  border: `1px solid ${c.gray500}`,
+  border: `0.5px solid ${c.gray500}`,
   borderRadius: 12,
   background: c.white,
   padding: 20,
