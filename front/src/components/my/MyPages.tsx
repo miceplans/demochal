@@ -62,7 +62,10 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
-    border: `1px solid ${c.gray100}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 22,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
     transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
@@ -397,19 +400,75 @@ function SkillAddModal({
 const LinkList = styled.div({
   display: 'flex',
   flexDirection: 'column',
-  gap: 10,
+  gap: 12,
   cursor: 'text',
-  borderRadius: 4,
 });
-const LinkItem = styled.span({
-  display: 'inline-flex',
+const LinkRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
+const linkBox = {
+  display: 'flex',
   alignItems: 'center',
-  gap: 8,
+  height: 40,
+  padding: '0 14px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
   minWidth: 0,
-  ...textStyle.finePrint2,
-  color: c.gray700,
+  ...textStyle.bodySmall,
+  fontSize: 15,
+  color: c.gray900,
+} as const;
+const LinkLabelBox = styled.span({
+  ...linkBox,
+  width: 101,
+  flexShrink: 0,
   '& span': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
 });
+const LinkUrlBox = styled.span({
+  ...linkBox,
+  gap: 8,
+  flex: 1,
+  '& span': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+});
+const LinkDeleteButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  flexShrink: 0,
+  border: 0,
+  background: 'transparent',
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { color: c.gray900 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const LinkAddButton = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  height: 40,
+  width: '100%',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: 'transparent',
+  color: c.gray500,
+  ...textStyle.caption,
+  cursor: 'pointer',
+  '&:hover': { background: c.gray50 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const BioText = styled.button<{ empty: boolean }>(({ empty }) => ({
+  border: 0,
+  padding: 0,
+  background: 'transparent',
+  textAlign: 'left',
+  cursor: 'pointer',
+  font: 'inherit',
+  fontSize: 15,
+  color: empty ? c.gray200 : c.gray900,
+  '&:disabled': { cursor: 'not-allowed' },
+}));
 
 const LINK_LABEL_MAX_LENGTH = 50;
 const LINK_URL_MAX_LENGTH = 500;
@@ -706,17 +765,19 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
-        <Row gap={8}>
-          {meInfo?.bio ? <Muted>{meInfo.bio}</Muted> : <Muted>한 줄 소개를 남겨보세요.</Muted>}
-          <AddButton
+        <Stack gap={12}>
+          <Heading>한 줄 소개</Heading>
+          <BioText
+            type="button"
+            empty={!meInfo?.bio}
             aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
             // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
             disabled={me.data?.status !== 200}
             onClick={() => setBioOpen(true)}
           >
-            <Icon name="imgAddSlotIc" size={12} />
-          </AddButton>
-        </Row>
+            {meInfo?.bio || '한 줄 소개를 입력해주세요'}
+          </BioText>
+        </Stack>
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
@@ -752,19 +813,39 @@ export function MyPage() {
             </AddButton>
           }
         />
-        <Heading>링크</Heading>
-        <LinkList onDoubleClick={startLinkEdit} title="더블클릭하여 수정">
-          {myLinks.length === 0 ? (
-            <Muted>링크를 남겨보세요.</Muted>
-          ) : (
-            myLinks.map((link) => (
-              <LinkItem key={link.url ?? link.label}>
-                <Icon name={linkIconName(link.url)} size={14} />
-                <span>{linkDisplayText(link)}</span>
-              </LinkItem>
-            ))
-          )}
-        </LinkList>
+        <Stack gap={12}>
+          <Heading>링크</Heading>
+          <LinkList onDoubleClick={startLinkEdit} title="더블클릭하여 수정">
+            {myLinks.length === 0 && <Muted>링크를 남겨보세요.</Muted>}
+            {myLinks.map((link, index) => (
+              <LinkRow key={link.url ?? link.label}>
+                <LinkLabelBox>
+                  <span>{link.label}</span>
+                </LinkLabelBox>
+                <LinkUrlBox>
+                  <Icon name={linkIconName(link.url)} size={14} />
+                  <span>{linkDisplayText(link)}</span>
+                </LinkUrlBox>
+                <LinkDeleteButton
+                  type="button"
+                  aria-label={`${link.label ?? '링크'} 삭제`}
+                  disabled={me.data?.status !== 200 || updateProfile.isPending}
+                  onClick={() =>
+                    updateProfile.mutate({
+                      data: { externalLinks: myLinks.filter((_, i) => i !== index) },
+                    })
+                  }
+                >
+                  <Icon name="imgS2Del" size={16} />
+                </LinkDeleteButton>
+              </LinkRow>
+            ))}
+          </LinkList>
+          <LinkAddButton type="button" disabled={me.data?.status !== 200} onClick={startLinkEdit}>
+            <Icon name="imgAddSlotIc" size={14} />
+            링크 추가
+          </LinkAddButton>
+        </Stack>
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
@@ -777,14 +858,16 @@ export function MyPage() {
             <Participating>
               {participatingItems.map((item) => (
                 <Link key={item.key} href={item.href}>
-                  <Heading>{item.title}</Heading>
-                  {item.sub && <Muted>{item.sub}</Muted>}
+                  <div>
+                    <Heading style={{ fontSize: 15 }}>{item.title}</Heading>
+                    {item.sub && <Muted>{item.sub}</Muted>}
+                  </div>
                   {item.role && (
-                    <Wrap style={{ margin: '20px 0' }}>
+                    <Wrap style={{ gap: 6 }}>
                       <Tag tone="blue">{item.role}</Tag>
                     </Wrap>
                   )}
-                  <Muted>{item.meta}</Muted>
+                  <Muted style={{ fontSize: 12 }}>{item.meta}</Muted>
                 </Link>
               ))}
             </Participating>
