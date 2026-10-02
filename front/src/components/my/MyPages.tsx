@@ -24,7 +24,7 @@ import {
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
-import { linkDisplayText, linkIconName, normalizeLinkUrl } from '@/components/profile/link-model';
+import { normalizeLinkUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -62,7 +62,10 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
-    border: `1px solid ${c.gray100}`,
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 22,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
     transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
@@ -260,58 +263,40 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 const BIO_MAX_LENGTH = 100;
 
-function BioEditModal({
-  open,
-  onClose,
+// 한 줄 소개 — 모달 없이 입력칸에서 바로 수정하고, 포커스를 벗어나거나 Enter를 누르면 저장한다.
+function InlineBio({
   initial,
   onSave,
 }: {
-  open: boolean;
-  onClose: () => void;
   initial: string;
   onSave: (bio: string) => Promise<unknown>;
 }) {
   const toast = useToast();
   const [value, setValue] = useState(initial);
-  const [saving, setSaving] = useState(false);
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    setSaving(true);
+  const [saved, setSaved] = useState(initial);
+  const commit = async () => {
+    const next = value.trim();
+    if (next === saved) return;
     try {
-      await onSave(value.trim());
-      toast.success('한 줄 소개를 저장했어요');
-      onClose();
+      await onSave(next);
+      setSaved(next);
+      setValue(next);
     } catch {
       toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
-    } finally {
-      setSaving(false);
     }
   };
   return (
-    <Modal open={open} onClose={onClose} title="한 줄 소개" width={420}>
-      <form onSubmit={submit}>
-        <Stack gap={12}>
-          <Input
-            aria-label="한 줄 소개"
-            placeholder="나를 한 줄로 소개해보세요"
-            maxLength={BIO_MAX_LENGTH}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <Muted style={{ textAlign: 'right' }}>
-            {value.length}/{BIO_MAX_LENGTH}
-          </Muted>
-          <Row style={{ justifyContent: 'flex-end' }}>
-            <Button type="button" small tone="plain" onClick={onClose}>
-              취소
-            </Button>
-            <Button type="submit" small disabled={saving}>
-              저장
-            </Button>
-          </Row>
-        </Stack>
-      </form>
-    </Modal>
+    <BioInput
+      aria-label="한 줄 소개"
+      placeholder="한 줄 소개를 입력해주세요"
+      maxLength={BIO_MAX_LENGTH}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => void commit()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur();
+      }}
+    />
   );
 }
 
@@ -394,21 +379,63 @@ function SkillAddModal({
   );
 }
 
-const LinkList = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 10,
-  cursor: 'text',
-  borderRadius: 4,
-});
-const LinkItem = styled.span({
+const LinkList = styled.div({ display: 'flex', flexDirection: 'column', gap: 12 });
+const LinkRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
+const linkInput = {
+  height: 40,
+  padding: '0 14px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  minWidth: 0,
+  font: 'inherit',
+  fontSize: 15,
+  color: c.gray900,
+  background: 'transparent',
+  '&::placeholder': { color: c.gray200 },
+  '&:focus': { outline: 'none', borderColor: c.gray500 },
+} as const;
+const LinkLabelInput = styled.input({ ...linkInput, width: 101, flexShrink: 0 });
+const LinkUrlInput = styled.input({ ...linkInput, flex: 1 });
+const LinkDeleteButton = styled.button({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: 8,
-  minWidth: 0,
-  ...textStyle.finePrint2,
-  color: c.gray700,
-  '& span': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  flexShrink: 0,
+  border: 0,
+  background: 'transparent',
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { color: c.gray900 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const LinkAddButton = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  height: 40,
+  width: '100%',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: 'transparent',
+  color: c.gray500,
+  ...textStyle.caption,
+  cursor: 'pointer',
+  '&:hover': { background: c.gray50 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const BioInput = styled.input({
+  border: 0,
+  padding: 0,
+  background: 'transparent',
+  font: 'inherit',
+  fontSize: 15,
+  color: c.gray900,
+  width: '100%',
+  '&::placeholder': { color: c.gray200 },
+  '&:focus': { outline: 'none' },
 });
 
 const LINK_LABEL_MAX_LENGTH = 50;
@@ -416,101 +443,92 @@ const LINK_URL_MAX_LENGTH = 500;
 
 type LinkDraft = { label: string; url: string };
 
-// 프로필 링크(externalLinks)를 행 단위로 편집하는 모달. 저장은 기존 updateProfile 경로를 쓴다.
-function LinkManageModal({
-  open,
-  onClose,
+// 프로필 링크(externalLinks)를 행 단위로 바로 편집한다. 이름·주소가 모두 유효한 행만 저장한다.
+function InlineLinks({
   initial,
   onSave,
 }: {
-  open: boolean;
-  onClose: () => void;
   initial: LinkDraft[];
   onSave: (links: LinkDraft[]) => Promise<unknown>;
 }) {
   const toast = useToast();
   const [rows, setRows] = useState<LinkDraft[]>(initial);
   const [saving, setSaving] = useState(false);
-  const addRow = () => setRows((r) => [...r, { label: '', url: '' }]);
-  const removeRow = (index: number) => setRows((r) => r.filter((_, i) => i !== index));
-  const updateRow = (index: number, patch: Partial<LinkDraft>) =>
-    setRows((r) => r.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  const submit = async (e: FormEvent) => {
-    e.preventDefault();
-    const links: LinkDraft[] = [];
-    for (const row of rows) {
+  const toSaved = (list: LinkDraft[]) => {
+    const out: LinkDraft[] = [];
+    for (const row of list) {
       const label = row.label.trim();
       const url = normalizeLinkUrl(row.url);
-      if (!label || !url) {
-        if (!label || !row.url.trim()) {
-          toast.error('링크를 확인해주세요', '링크 이름과 주소를 모두 입력해주세요');
-        } else {
-          toast.error('링크 주소를 확인해주세요', 'http:// 또는 https:// 주소만 저장할 수 있어요');
-        }
+      if (label && url) out.push({ label, url });
+    }
+    return out;
+  };
+  const [saved, setSaved] = useState(() => JSON.stringify(toSaved(initial)));
+  const persist = async (list: LinkDraft[], checkUrl: boolean) => {
+    if (checkUrl) {
+      const bad = list.find((r) => r.label.trim() && r.url.trim() && !normalizeLinkUrl(r.url));
+      if (bad) {
+        toast.error('링크 주소를 확인해주세요', 'http:// 또는 https:// 주소만 저장할 수 있어요');
         return;
       }
-      links.push({ label, url });
     }
+    const links = toSaved(list);
+    const next = JSON.stringify(links);
+    if (next === saved || saving) return;
     setSaving(true);
     try {
       await onSave(links);
-      toast.success('링크를 저장했어요');
-      onClose();
+      setSaved(next);
     } catch {
       toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
     } finally {
       setSaving(false);
     }
   };
+  const updateRow = (index: number, patch: Partial<LinkDraft>) =>
+    setRows((r) => r.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const removeRow = (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    setRows(next);
+    void persist(next, false);
+  };
   return (
-    <Modal open={open} onClose={onClose} title="링크 관리" width={480}>
-      <form onSubmit={submit}>
-        <Stack gap={12}>
-          <Stack gap={8}>
-            {rows.map((row, index) => (
-              <Row key={index} gap={8}>
-                <Input
-                  aria-label={`링크 이름 ${index + 1}`}
-                  placeholder="링크 이름 (예: GitHub)"
-                  maxLength={LINK_LABEL_MAX_LENGTH}
-                  value={row.label}
-                  disabled={saving}
-                  onChange={(e) => updateRow(index, { label: e.target.value })}
-                />
-                <Input
-                  aria-label={`링크 주소 ${index + 1}`}
-                  placeholder="https://example.com"
-                  maxLength={LINK_URL_MAX_LENGTH}
-                  value={row.url}
-                  disabled={saving}
-                  onChange={(e) => updateRow(index, { url: e.target.value })}
-                />
-                <Button
-                  type="button"
-                  small
-                  tone="plain"
-                  onClick={() => removeRow(index)}
-                  disabled={saving}
-                >
-                  삭제
-                </Button>
-              </Row>
-            ))}
-          </Stack>
-          <Button type="button" small tone="plain" onClick={addRow} disabled={saving}>
-            + 링크 추가
-          </Button>
-          <Row style={{ justifyContent: 'flex-end' }}>
-            <Button type="button" small tone="plain" onClick={onClose} disabled={saving}>
-              취소
-            </Button>
-            <Button type="submit" small disabled={saving}>
-              저장
-            </Button>
-          </Row>
-        </Stack>
-      </form>
-    </Modal>
+    <>
+      <LinkList>
+        {rows.map((row, index) => (
+          <LinkRow key={index}>
+            <LinkLabelInput
+              aria-label={`링크 이름 ${index + 1}`}
+              placeholder="이름"
+              maxLength={LINK_LABEL_MAX_LENGTH}
+              value={row.label}
+              onChange={(e) => updateRow(index, { label: e.target.value })}
+              onBlur={() => void persist(rows, true)}
+            />
+            <LinkUrlInput
+              aria-label={`링크 주소 ${index + 1}`}
+              placeholder="https://"
+              maxLength={LINK_URL_MAX_LENGTH}
+              value={row.url}
+              onChange={(e) => updateRow(index, { url: e.target.value })}
+              onBlur={() => void persist(rows, true)}
+            />
+            <LinkDeleteButton
+              type="button"
+              aria-label={`링크 ${index + 1} 삭제`}
+              disabled={saving}
+              onClick={() => removeRow(index)}
+            >
+              <Icon name="imgS2Del" size={16} />
+            </LinkDeleteButton>
+          </LinkRow>
+        ))}
+      </LinkList>
+      <LinkAddButton type="button" onClick={() => setRows((r) => [...r, { label: '', url: '' }])}>
+        <Icon name="imgAddSlotIc" size={14} />
+        링크 추가
+      </LinkAddButton>
+    </>
   );
 }
 
@@ -576,8 +594,6 @@ export function MyPage() {
   const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
-  const [linkOpen, setLinkOpen] = useState(false);
-  const [bioOpen, setBioOpen] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
@@ -587,11 +603,6 @@ export function MyPage() {
   const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
   const mySkills = meInfo?.stacks ?? [];
   const myLinks = meInfo?.externalLinks ?? [];
-  // 링크는 더블클릭으로 관리 모달을 연다. 서버 프로필을 받기 전에는 시작하지 않는다.
-  const startLinkEdit = () => {
-    if (me.data?.status !== 200) return;
-    setLinkOpen(true);
-  };
   const certificatesQuery = generated.useListMyCertificates();
   // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
   const certificates = (certificatesQuery.data?.data ?? [])
@@ -706,17 +717,17 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
-        <Row gap={8}>
-          {meInfo?.bio ? <Muted>{meInfo.bio}</Muted> : <Muted>한 줄 소개를 남겨보세요.</Muted>}
-          <AddButton
-            aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
-            // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
-            disabled={me.data?.status !== 200}
-            onClick={() => setBioOpen(true)}
-          >
-            <Icon name="imgAddSlotIc" size={12} />
-          </AddButton>
-        </Row>
+        <Stack gap={12}>
+          <Heading>한 줄 소개</Heading>
+          {me.data?.status === 200 ? (
+            <InlineBio
+              initial={meInfo?.bio ?? ''}
+              onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
+            />
+          ) : (
+            <Muted>불러오는 중이에요.</Muted>
+          )}
+        </Stack>
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
@@ -752,19 +763,17 @@ export function MyPage() {
             </AddButton>
           }
         />
-        <Heading>링크</Heading>
-        <LinkList onDoubleClick={startLinkEdit} title="더블클릭하여 수정">
-          {myLinks.length === 0 ? (
-            <Muted>링크를 남겨보세요.</Muted>
+        <Stack gap={12}>
+          <Heading>링크</Heading>
+          {me.data?.status === 200 ? (
+            <InlineLinks
+              initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
+              onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
+            />
           ) : (
-            myLinks.map((link) => (
-              <LinkItem key={link.url ?? link.label}>
-                <Icon name={linkIconName(link.url)} size={14} />
-                <span>{linkDisplayText(link)}</span>
-              </LinkItem>
-            ))
+            <Muted>불러오는 중이에요.</Muted>
           )}
-        </LinkList>
+        </Stack>
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
@@ -777,14 +786,16 @@ export function MyPage() {
             <Participating>
               {participatingItems.map((item) => (
                 <Link key={item.key} href={item.href}>
-                  <Heading>{item.title}</Heading>
-                  {item.sub && <Muted>{item.sub}</Muted>}
+                  <div>
+                    <Heading style={{ fontSize: 15 }}>{item.title}</Heading>
+                    {item.sub && <Muted>{item.sub}</Muted>}
+                  </div>
                   {item.role && (
-                    <Wrap style={{ margin: '20px 0' }}>
+                    <Wrap style={{ gap: 6 }}>
                       <Tag tone="blue">{item.role}</Tag>
                     </Wrap>
                   )}
-                  <Muted>{item.meta}</Muted>
+                  <Muted style={{ fontSize: 12 }}>{item.meta}</Muted>
                 </Link>
               ))}
             </Participating>
@@ -796,14 +807,6 @@ export function MyPage() {
         </MobileOnly>
       </Stack>
       <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
-      <BioEditModal
-        // 열 때마다 최신 소개로 입력값을 초기화한다.
-        key={`${bioOpen}-${meInfo?.bio ?? ''}`}
-        open={bioOpen}
-        onClose={() => setBioOpen(false)}
-        initial={meInfo?.bio ?? ''}
-        onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
-      />
       <SkillAddModal
         open={skillOpen}
         onClose={() => setSkillOpen(false)}
@@ -813,14 +816,6 @@ export function MyPage() {
             data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
           })
         }
-      />
-      <LinkManageModal
-        // 열 때마다 최신 링크 목록으로 행을 초기화한다.
-        key={`${linkOpen}-${JSON.stringify(myLinks)}`}
-        open={linkOpen}
-        onClose={() => setLinkOpen(false)}
-        initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
-        onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
       />
     </MyShell>
   );
