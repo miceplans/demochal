@@ -116,7 +116,7 @@ const QuestionBlock = styled.div({
 const DeleteQuestionButton = styled.button({
   position: 'absolute',
   left: 0,
-  top: 0,
+  top: 4,
   width: 36,
   height: 36,
   border: 0,
