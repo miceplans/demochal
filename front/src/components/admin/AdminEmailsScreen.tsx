@@ -459,7 +459,7 @@ const MailIcon = styled.span({
   placeItems: 'center',
   width: 32,
   height: 32,
-  borderRadius: 8,
+  borderRadius: 4,
   background: '#EFF6FF',
   color: c.primary,
   fontSize: 16,
@@ -501,21 +501,21 @@ const ComposeForm = styled.form({
   maxWidth: 760,
   padding: 24,
   border: `1px solid ${c.gray200}`,
-  borderRadius: 10,
+  borderRadius: 6,
   background: c.white,
 });
 const Field = styled.label({ display: 'flex', flexDirection: 'column', gap: 7 });
 const ComposeInput = styled.input({
   padding: '10px 12px',
   border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
+  borderRadius: 4,
   ...textStyle.body,
 });
 const ComposeTextarea = styled.textarea({
   minHeight: 140,
   padding: '10px 12px',
   border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
+  borderRadius: 4,
   resize: 'vertical',
   ...textStyle.body,
 });
@@ -529,7 +529,7 @@ const ComposeFooter = styled.div({
 const CharacterCount = styled.span({ color: c.gray500, fontSize: 12 });
 const Detail = styled.section({
   border: `1px solid ${c.gray200}`,
-  borderRadius: 10,
+  borderRadius: 6,
   padding: 24,
   minWidth: 0,
   overflow: 'auto',
@@ -572,7 +572,7 @@ const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
   alignSelf: outbound ? 'flex-end' : 'flex-start',
   width: 'min(90%, 640px)',
   padding: 14,
-  borderRadius: 10,
+  borderRadius: 6,
   background: outbound ? '#EFF6FF' : c.gray50,
 }));
 const MessageMeta = styled.div({ color: c.gray500, fontSize: 12, marginBottom: 8 });
