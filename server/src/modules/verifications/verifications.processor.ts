@@ -33,6 +33,12 @@ export class VerificationsProcessorService {
       this.logger.warn(`Verification ${message.verificationId} not found, skipping`);
       return;
     }
+    // SQS 재전달이나 관리자 수동 심사로 이미 확정된 요청은 다시 처리하지 않는다 —
+    // 그러지 않으면 관리자의 승인/거부 결정을 워커가 덮어쓰고 알림이 중복 발송된다.
+    if (verification.status === 'verified' || verification.status === 'rejected') {
+      this.logger.log(`Verification ${verification.id} already ${verification.status}, skipping`);
+      return;
+    }
 
     const [business] = await this.db
       .select()

@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -164,6 +164,10 @@ export function maskEmail(email: string): string {
 export function maskBizNumber(registrationNumber: string): string {
   return `${registrationNumber.slice(0, 7)}*****`;
 }
+
+/** ads의 노출 기간 기준(AdsService.listPublic과 동일): 종료일 당일까지 노출된다. */
+const utcDayStart = (now = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
 const formatMonthDay = (date: Date) =>
   `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -586,9 +590,20 @@ export class AdminService {
   }
 
   async listAds(q?: string, status?: string) {
+    // 'ended'로 전환하는 배치가 없어 계약이 끝난 광고도 DB에는 active로 남는다.
+    // 실제로 노출되지 않으므로 목록에서는 종료로 취급해 상태·필터를 일치시킨다.
+    const todayStart = utcDayStart();
     const conditions = [];
     if (q) conditions.push(or(ilike(ads.title, like(q)), ilike(businesses.name, like(q))));
-    if (status) conditions.push(eq(ads.status, status));
+    if (status === 'active') {
+      conditions.push(and(eq(ads.status, 'active'), gte(ads.endDate, todayStart)));
+    } else if (status === 'ended') {
+      conditions.push(
+        or(eq(ads.status, 'ended'), and(eq(ads.status, 'active'), lt(ads.endDate, todayStart))),
+      );
+    } else if (status) {
+      conditions.push(eq(ads.status, status));
+    }
     const rows = await this.db
       .select({ ad: ads, organization: businesses.name, productName: adProducts.name })
       .from(ads)
@@ -597,18 +612,32 @@ export class AdminService {
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(ads.createdAt));
 
-    return rows.map(({ ad, organization, productName }) => ({ ...ad, organization, productName }));
+    return rows.map(({ ad, organization, productName }) => ({
+      ...ad,
+      status: ad.status === 'active' && ad.endDate < todayStart ? 'ended' : ad.status,
+      organization,
+      productName,
+    }));
   }
 
   async getAdPricing() {
     const products = await this.db.select().from(adProducts).orderBy(asc(adProducts.createdAt));
+    const now = new Date();
     const result = [];
     for (const product of products) {
       const [current] = await this.db
         .select({ ad: ads, organization: businesses.name })
         .from(ads)
         .innerJoin(businesses, eq(ads.businessId, businesses.id))
-        .where(and(eq(ads.productId, product.id), eq(ads.status, 'active')))
+        .where(
+          and(
+            eq(ads.productId, product.id),
+            eq(ads.status, 'active'),
+            // 노출 기간이 끝났거나 아직 시작 전인 광고는 "현재 광고"가 아니다.
+            lte(ads.startDate, now),
+            gte(ads.endDate, utcDayStart(now)),
+          ),
+        )
         .orderBy(desc(ads.createdAt))
         .limit(1);
       result.push({
@@ -981,6 +1010,14 @@ export class AdminService {
     if (!row) throw new NotFoundException('광고를 찾을 수 없습니다.');
 
     const report = await this.adsService.getReportForAdmin(row.ad.id);
+    // 라벨은 "결제 완료 금액"이므로 예약가(paidAmount)가 아니라 실제 결제 순액을 쓴다.
+    const [spend] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+      })
+      .from(payments)
+      .innerJoin(orders, eq(payments.orderId, orders.id))
+      .where(and(eq(orders.adId, row.ad.id), inArray(payments.status, ['paid', 'done'])));
     return {
       adId: row.ad.id,
       adNumber: row.ad.adNumber,
@@ -1002,7 +1039,7 @@ export class AdminService {
         { label: 'CTR', value: `${report.totals.ctr}%`, meta: '최근 31일 계측값', dot: '#F59E0B' },
         {
           label: '집행 광고비',
-          value: String(row.ad.paidAmount),
+          value: String(spend?.total ?? 0),
           meta: '결제 완료 금액',
           dot: '#8B5CF6',
         },
