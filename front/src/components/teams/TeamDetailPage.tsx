@@ -228,7 +228,7 @@ export function TeamDetailPage() {
                   {accepted.length}/{capacity}명
                 </dd>
                 <dt>지역</dt>
-                <dd>{team.region || '무관'}</dd>
+                <dd>{team.region?.trim() || '지역 무관'}</dd>
               </dl>
             </Summary>
           </Sidebar>
