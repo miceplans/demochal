@@ -26,6 +26,7 @@ import { SupportEmailService } from './email/support-email.service.js';
     NotificationsService,
     NotificationEmailProcessorService,
     ChallengeNotificationScanService,
+    SesEmailClient,
     SupportEmailService,
   ],
 })

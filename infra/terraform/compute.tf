@@ -188,6 +188,10 @@ data "aws_iam_policy_document" "worker_task" {
     actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.emails.arn]
   }
+  statement {
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    resources = [aws_sqs_queue.inbound_emails.arn]
+  }
   dynamic "statement" {
     # Only once a sender is configured; limited to the verified sending
     # identity and the two approved From addresses. The API task has no SES access.
@@ -298,6 +302,7 @@ locals {
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
     { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url },
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
+    { name = "SQS_INBOUND_EMAILS_QUEUE_URL", value = aws_sqs_queue.inbound_emails.url },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]

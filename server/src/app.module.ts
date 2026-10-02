@@ -32,6 +32,7 @@ import { TeamsModule } from './modules/teams/teams.module.js';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module.js';
 import { InterestsModule } from './modules/interests/interests.module.js';
 import { OperationsModule } from './modules/operations/operations.module.js';
+import { EmailModule } from './modules/email/email.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -63,6 +64,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     BookmarksModule,
     InterestsModule,
     OperationsModule,
+    EmailModule,
   ],
   providers: [
     // Runs first so floods are rejected before the per-request auth DB lookup.

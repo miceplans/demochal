@@ -8,6 +8,7 @@ export const adminMenu: [string, string][] = [
   ['/users', '사용자 관리'],
   ['/contents', '콘텐츠 모니터링'],
   ['/reports', '신고 처리'],
+  ['/emails', '메일함'],
   ['/analytics', '리포트'],
   ['/settings', '설정'],
 ];

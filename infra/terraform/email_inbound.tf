@@ -82,6 +82,10 @@ data "aws_iam_policy_document" "email_processor" {
     actions   = ["logs:CreateLogStream", "logs:PutLogEvents"]
     resources = ["${aws_cloudwatch_log_group.email_processor[0].arn}:*"]
   }
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.inbound_emails[0].arn]
+  }
 }
 
 resource "aws_iam_role_policy" "email_processor" {
@@ -111,7 +115,8 @@ resource "aws_lambda_function" "email_processor" {
 
   environment {
     variables = {
-      INBOX_BUCKET = aws_s3_bucket.email_inbox[0].id
+      INBOX_BUCKET      = aws_s3_bucket.email_inbox[0].id
+      INBOUND_QUEUE_URL = aws_sqs_queue.inbound_emails[0].url
     }
   }
 
