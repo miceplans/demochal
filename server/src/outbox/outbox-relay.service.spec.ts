@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { OutboxRelayService } from './outbox-relay.service.js';
 
 function createDbStub(rows: Array<{ id: string; payload: unknown; attempts: number }>) {
-  const limit = vi.fn().mockResolvedValue(rows);
+  const forUpdate = vi.fn().mockResolvedValue(rows);
+  const limit = vi.fn().mockReturnValue({ for: forUpdate });
   const orderBy = vi.fn().mockReturnValue({ limit });
   const where = vi.fn().mockReturnValue({ orderBy });
   const from = vi.fn().mockReturnValue({ where });
@@ -12,8 +13,9 @@ function createDbStub(rows: Array<{ id: string; payload: unknown; attempts: numb
   const set = vi.fn().mockReturnValue({ where: updateWhere });
   const update = vi.fn().mockReturnValue({ set });
 
-  const db: any = { select, update };
-  return { db, set, updateWhere };
+  const tx = { select, update };
+  const db: any = { transaction: vi.fn((fn: (tx: unknown) => unknown) => fn(tx)) };
+  return { db, set, updateWhere, forUpdate };
 }
 
 describe('OutboxRelayService.relay', () => {
@@ -29,6 +31,15 @@ describe('OutboxRelayService.relay', () => {
       verificationId: 'verif-1',
     });
     expect(set).toHaveBeenCalledWith({ status: 'sent', sentAt: expect.any(Date) });
+  });
+
+  it('claims pending rows with FOR UPDATE SKIP LOCKED so replicas never share a row', async () => {
+    const { db, forUpdate } = createDbStub([]);
+    const service = new OutboxRelayService(db, { sendMessage: vi.fn() } as any);
+
+    await service.relay('verification.submitted', 'https://sqs.example/queue');
+
+    expect(forUpdate).toHaveBeenCalledWith('update', { skipLocked: true });
   });
 
   it('wraps the payload with the outbox event id when includeEventId is set', async () => {

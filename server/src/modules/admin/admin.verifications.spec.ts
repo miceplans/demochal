@@ -28,10 +28,13 @@ describe('AdminService — verifications', () => {
       expect.objectContaining({ status: 'verified', updatedAt: expect.any(Date) }),
     ]);
     expect(setCalls[1]).toEqual([{ verificationStatus: 'verified' }]);
-    expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
-      verificationId: 'v1',
-      status: 'verified',
-    });
+    // 알림은 상태 갱신과 같은 트랜잭션(tx)에서 생성된다.
+    expect(notifications.create).toHaveBeenCalledWith(
+      'owner-1',
+      'verification.result',
+      { verificationId: 'v1', status: 'verified' },
+      expect.anything(),
+    );
   });
 
   it('reject records the reason, rejects the business and notifies the owner', async () => {
@@ -57,11 +60,12 @@ describe('AdminService — verifications', () => {
       }),
     ]);
     expect(setCalls[1]).toEqual([{ verificationStatus: 'rejected' }]);
-    expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
-      verificationId: 'v1',
-      status: 'rejected',
-      reason: '서류 불일치',
-    });
+    expect(notifications.create).toHaveBeenCalledWith(
+      'owner-1',
+      'verification.result',
+      { verificationId: 'v1', status: 'rejected', reason: '서류 불일치' },
+      expect.anything(),
+    );
   });
 
   it('refuses a duplicate decision without updating or notifying again', async () => {
