@@ -148,7 +148,10 @@ export function AdPlacementPreview({
       view={view}
       aria-label={`${view === 'mobile' ? '모바일' : 'PC'} 사용자 홈 광고 미리보기`}
     >
+      {/* 슬라이드 수가 바뀌면(예: fallback 3개에서 노출 1개로 줄면) 레일 위치를 재시작해
+          복제본 범위 밖의 위치가 남지 않게 한다. 홈 AdCarousel의 key 관례와 같다. */}
       <MovingAds
+        key={heroItems.length}
         ariaLabel="홈 상단 광고"
         itemCount={heroItems.length}
         interval={5000}
@@ -176,7 +179,9 @@ export function AdPlacementPreview({
                 }
                 const ad = heroItems[item];
                 // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
-                const isClone = position === 0 || position === heroItems.length + 1;
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  heroItems.length > 1 && (position === 0 || position === heroItems.length + 1);
                 return (
                   <Slot
                     key={`${item}-${position}`}
@@ -218,6 +223,7 @@ export function AdPlacementPreview({
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
+        key={galleryItems.length}
         ariaLabel="홈 중간 이미지 광고"
         itemCount={galleryItems.length}
         interval={5000}
@@ -245,7 +251,10 @@ export function AdPlacementPreview({
                 }
                 const ad = galleryItems[item];
                 // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
-                const isClone = position === 0 || position === galleryItems.length + 1;
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  galleryItems.length > 1 &&
+                  (position === 0 || position === galleryItems.length + 1);
                 return (
                   <GallerySlot
                     key={`${item}-${position}`}

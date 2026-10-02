@@ -53,6 +53,66 @@ describe('AdPlacementPreview', () => {
     expect(heroImgs.length).toBe(4);
   });
 
+  it('노출 광고가 1개면 단일 슬롯이 그대로 보이고 페이저도 1개다', () => {
+    mocks.heroData = {
+      status: 200,
+      data: [
+        { id: 'h1', title: '히어로 단일 광고', imageUrl: 'https://cdn.example/hero-only.webp' },
+      ],
+    };
+
+    const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+
+    expect(screen.getByLabelText('상단 광고 1 / 1').children.length).toBe(1);
+    // 유일 슬롯이 복제 슬롯으로 오인되지 않아 alt가 비어 있지 않다.
+    const img = container.querySelector<HTMLImageElement>(
+      'img[src="https://cdn.example/hero-only.webp"]',
+    );
+    expect(img).not.toBeNull();
+    expect(img!.alt).toBe('히어로 단일 광고');
+  });
+
+  it('노출 1개 상태에서 업로드하면 업로드 이미지 1개만 보인다', () => {
+    mocks.heroData = {
+      status: 200,
+      data: [
+        { id: 'h1', title: '히어로 단일 광고', imageUrl: 'https://cdn.example/hero-only.webp' },
+      ],
+    };
+
+    const { container } = render(
+      <AdPlacementPreview
+        view="pc"
+        onSelect={() => {}}
+        uploadedImages={{ hero: 'blob:uploaded-hero' }}
+      />,
+    );
+
+    expect(screen.getByLabelText('상단 광고 1 / 1').children.length).toBe(1);
+    const uploaded = container.querySelector<HTMLImageElement>('img[src="blob:uploaded-hero"]');
+    expect(uploaded).not.toBeNull();
+    expect(uploaded!.alt).toBe('업로드한 홈 상단 광고 이미지');
+  });
+
+  it('조회 완료로 광고 수가 3에서 1로 줄어도 단일 슬롯이 보인다', () => {
+    const { container, rerender } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+
+    mocks.heroData = {
+      status: 200,
+      data: [
+        { id: 'h1', title: '히어로 단일 광고', imageUrl: 'https://cdn.example/hero-only.webp' },
+      ],
+    };
+    rerender(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+
+    expect(screen.getByLabelText('상단 광고 1 / 1').children.length).toBe(1);
+    const img = container.querySelector<HTMLImageElement>(
+      'img[src="https://cdn.example/hero-only.webp"]',
+    );
+    expect(img).not.toBeNull();
+    expect(img!.alt).toBe('히어로 단일 광고');
+  });
+
   it('노출 광고가 없으면 홈과 같은 기본 광고 3개를 보여준다', () => {
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
