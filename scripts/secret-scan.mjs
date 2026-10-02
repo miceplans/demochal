@@ -11,9 +11,12 @@ const base = baseFlag >= 0 ? process.argv[baseFlag + 1] : undefined;
 if (!base) throw new Error('usage: secret-scan.mjs --base <git-ref>');
 
 // Comparing against the base ref includes committed and uncommitted worker changes
-// locally, while the Actions checkout has the PR head checked out.
+// locally, while the Actions checkout has the PR head checked out. Large binary-ish
+// deletions (e.g. generated docs) can exceed Node's 1 MiB default buffer, so allow
+// a full-repository diff without ENOBUFS.
 const diff = execFileSync('git', ['diff', '--no-ext-diff', '--unified=0', base], {
   encoding: 'utf8',
+  maxBuffer: 1024 * 1024 * 512,
 });
 
 const rules = [

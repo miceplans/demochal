@@ -13,6 +13,7 @@ coverage/
 .turbo/
 .vercel/
 *.tsbuildinfo
+server/docs/openapi.html
 .aider*
 .vercel
 .env*
