@@ -119,6 +119,9 @@ const ChipButton = styled.button<{ $on: boolean }>(({ $on }) => ({
   background: $on ? c.primary : c.white,
   color: $on ? c.white : c.gray700,
   cursor: 'pointer',
+  // 선택 토글이 뚝 끊기지 않도록 Primitives Chip과 같은 전환을 적용한다.
+  transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+  '&:hover': { background: $on ? c.primary : c.gray50 },
 }));
 const CheckGrid = styled.div<{ $rows: number; $columnGap: number }>(({ $rows, $columnGap }) => ({
   display: 'grid',

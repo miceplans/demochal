@@ -383,11 +383,11 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                 </SkeletonStatus>
               ) : (
                 <>
-                  <TeamGrid>
+                  <TeamGridReveal>
                     {teamCards.map((team) => (
                       <TeamCard key={team.id} team={team} />
                     ))}
-                  </TeamGrid>
+                  </TeamGridReveal>
                   {teamsQuery.isSuccess && teamCards.length === 0 && <EmptyState />}
                 </>
               )}
@@ -406,7 +406,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               ) : (
                 <>
                   <DesktopOnly>
-                    <ExploreGrid $list={view === 'list'}>
+                    <ExploreGridReveal $list={view === 'list'}>
                       {contestCards.map((x) => (
                         <ContestCard
                           key={x.id}
@@ -415,14 +415,14 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
                           row={view === 'list'}
                         />
                       ))}
-                    </ExploreGrid>
+                    </ExploreGridReveal>
                   </DesktopOnly>
                   <MobileOnly>
-                    <ContestGrid>
+                    <ContestGridReveal>
                       {contestCards.map((x) => (
                         <ContestCard key={x.id} contest={x} href={contestHref(x.id)} />
                       ))}
-                    </ContestGrid>
+                    </ContestGridReveal>
                   </MobileOnly>
                   {challengesQuery.isSuccess && contestCards.length === 0 && <EmptyState />}
                 </>
@@ -647,6 +647,26 @@ const ExploreGrid = styled(ContestGrid)<{ $list: boolean }>(({ $list }) => ({
   gridTemplateColumns: $list ? '1fr' : 'repeat(4, minmax(0, 1fr))',
   gap: $list ? 12 : 16,
 }));
+
+// 필터 변경으로 목록이 다시 그려질 때 카드가 순차적으로 떠오른다(더보기로 이어 붙는 카드에도 적용).
+// 지연은 앞 6개만 계단식으로 주고 이후 카드는 상한(180ms)에 묶어 긴 목록이 늦어지지 않게 한다.
+const riseIn = keyframes`
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+`;
+const staggerIn = {
+  '& > *': { animation: `${riseIn} 0.28s ease both` },
+  '& > *:nth-child(2)': { animationDelay: '30ms' },
+  '& > *:nth-child(3)': { animationDelay: '60ms' },
+  '& > *:nth-child(4)': { animationDelay: '90ms' },
+  '& > *:nth-child(5)': { animationDelay: '120ms' },
+  '& > *:nth-child(6)': { animationDelay: '150ms' },
+  '& > *:nth-child(n+7)': { animationDelay: '180ms' },
+  '@media (prefers-reduced-motion: reduce)': { '& > *': { animation: 'none' } },
+};
+const TeamGridReveal = styled(TeamGrid)(staggerIn);
+const ExploreGridReveal = styled(ExploreGrid)<{ $list: boolean }>(staggerIn);
+const ContestGridReveal = styled(ContestGrid)(staggerIn);
 const Sidebar = styled.aside({
   padding: '24px 20px',
   background: c.gray50,

@@ -22,7 +22,10 @@ type ToastItem = {
   message: string;
   description?: string;
   action?: ToastAction;
+  exiting?: boolean;
 };
+// 퇴장 애니메이션 길이와 dismiss 실제 제거 지연을 맞춘다.
+const EXIT_ANIMATION_MS = 200;
 // 화면에서 자체 액션 토스트로 조회 실패를 알리는 쿼리는 전역 QueryCache 에러 토스트를 건너뛴다(중복 알림 방지).
 export const LOCAL_ERROR_TOAST_META = { localErrorToast: true } as const;
 export type ToastApi = Record<
@@ -74,7 +77,7 @@ const Viewport = styled.div({
     alignItems: 'center',
   },
 });
-const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
+const Card = styled.div<{ variant: ToastVariant; exiting?: boolean }>(({ variant, exiting }) => ({
   display: 'flex',
   alignItems: 'center',
   gap: 16,
@@ -95,6 +98,21 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
     from: { opacity: 0, transform: 'translateY(8px)' },
     to: { opacity: 1, transform: 'none' },
   },
+  '@keyframes semo-toast-out': {
+    from: { opacity: 1, transform: 'none' },
+    to: { opacity: 0, transform: 'translateY(-8px)' },
+  },
+  '@keyframes semo-toast-out-up': {
+    from: { opacity: 1, transform: 'none' },
+    to: { opacity: 0, transform: 'translateY(8px)' },
+  },
+  // 등장과 대칭되는 퇴장 애니메이션. 애니메이션 후 실제 DOM 제거는 provider가 담당한다.
+  ...(exiting
+    ? {
+        animation: 'semo-toast-out .2s ease-in forwards',
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+      }
+    : {}),
   [mobile]: {
     gap: 4,
     width: 'auto',
@@ -102,7 +120,7 @@ const Card = styled.div<{ variant: ToastVariant }>(({ variant }) => ({
     padding: 6,
     backgroundImage: 'none',
     backgroundColor: c.white,
-    animationName: 'semo-toast-in-up',
+    animationName: exiting ? 'semo-toast-out-up' : 'semo-toast-in-up',
   },
 }));
 const DesktopIcon = styled(Icon)({ [mobile]: { display: 'none' } });
@@ -152,7 +170,16 @@ const ActionButton = styled.button({
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
-  const dismiss = useCallback((id: number) => setToasts((ts) => ts.filter((t) => t.id !== id)), []);
+  // 먼저 exiting 플래그로 퇴장 애니메이션을 재생하고, 애니메이션 길이만큼 뒤에 DOM에서 제거한다.
+  // 제거 timeout은 dismiss 호출마다 예약되지만 filter가 멱등해 중복 호출은 무해하다.
+  const dismiss = useCallback((id: number) => {
+    setToasts((ts) => {
+      const target = ts.find((t) => t.id === id);
+      if (!target || target.exiting) return ts;
+      return ts.map((t) => (t.id === id ? { ...t, exiting: true } : t));
+    });
+    setTimeout(() => setToasts((ts) => ts.filter((t) => t.id !== id)), EXIT_ANIMATION_MS);
+  }, []);
   const show = useCallback(
     (variant: ToastVariant, message: string, description?: string, options?: ToastOptions) => {
       const id = ++idRef.current;
@@ -181,6 +208,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <Card
             key={t.id}
             variant={t.variant}
+            exiting={t.exiting}
             role={t.variant === 'error' ? 'alert' : 'status'}
             onClick={() => dismiss(t.id)}
           >
