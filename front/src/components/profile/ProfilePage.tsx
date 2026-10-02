@@ -10,12 +10,11 @@ import { ScoutModal } from '@/components/people/ScoutModal';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { ProfileAward, ProfileUserData } from './ProfileCards';
-
-const isGithubUrl = (url?: string) => (url ?? '').toLowerCase().includes('github.com');
+import { isGithubUrl, isSafeLinkUrl, linkDisplayText, linkIconName } from './link-model';
 
 // 사람 카드와 같은 규칙: 링크·수상 이력에서 인증 배지를 도출하고, 저장된 badges와 합쳐 중복을 없앤다.
 function verificationBadges(user: ProfileUserData) {
-  const links = user.externalLinks ?? [];
+  const links = (user.externalLinks ?? []).filter((link) => isSafeLinkUrl(link.url));
   const derived: { label: string; icon: string; tone: 'gray' | 'blue' | 'green' }[] = [];
   if (links.some((link) => isGithubUrl(link.url)))
     derived.push({ label: '깃허브 인증', icon: 'imgGithub', tone: 'gray' });
@@ -37,10 +36,6 @@ function verificationBadges(user: ProfileUserData) {
     .map((label) => ({ label, icon: 'imgCertificate', tone: 'gray' as const }));
   return [...derived, ...extra];
 }
-
-const linkIcon = (url?: string) => (isGithubUrl(url) ? 'imgLink1Icon' : 'imgLink2Icon');
-const linkText = (link: { label?: string; url?: string }) =>
-  (link.url ?? '').replace(/^https?:\/\//, '').replace(/\/$/, '') || (link.label ?? '');
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
@@ -85,7 +80,7 @@ function ProfilePageContent() {
     );
   }
 
-  const links = user.externalLinks ?? [];
+  const links = (user.externalLinks ?? []).filter((link) => isSafeLinkUrl(link.url));
   const stacks = user.stacks ?? [];
   const awards = user.awardHistory ?? [];
   const badges = verificationBadges(user);
@@ -118,8 +113,8 @@ function ProfilePageContent() {
                         target="_blank"
                         rel="noreferrer"
                       >
-                        <Icon name={linkIcon(link.url)} size={16} />
-                        <span>{linkText(link)}</span>
+                        <Icon name={linkIconName(link.url)} size={16} />
+                        <span>{linkDisplayText(link)}</span>
                       </LinkRow>
                     ))
                   )}

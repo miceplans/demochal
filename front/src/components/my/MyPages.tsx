@@ -24,6 +24,7 @@ import {
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
+import { linkDisplayText, linkIconName, normalizeLinkUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -393,6 +394,109 @@ function SkillAddModal({
   );
 }
 
+const LINK_LABEL_MAX_LENGTH = 50;
+const LINK_URL_MAX_LENGTH = 500;
+
+type LinkDraft = { label: string; url: string };
+
+// 프로필 링크(externalLinks)를 행 단위로 편집하는 모달. 저장은 기존 updateProfile 경로를 쓴다.
+function LinkManageModal({
+  open,
+  onClose,
+  initial,
+  onSave,
+}: {
+  open: boolean;
+  onClose: () => void;
+  initial: LinkDraft[];
+  onSave: (links: LinkDraft[]) => Promise<unknown>;
+}) {
+  const toast = useToast();
+  const [rows, setRows] = useState<LinkDraft[]>(initial);
+  const [saving, setSaving] = useState(false);
+  const addRow = () => setRows((r) => [...r, { label: '', url: '' }]);
+  const removeRow = (index: number) => setRows((r) => r.filter((_, i) => i !== index));
+  const updateRow = (index: number, patch: Partial<LinkDraft>) =>
+    setRows((r) => r.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    const links: LinkDraft[] = [];
+    for (const row of rows) {
+      const label = row.label.trim();
+      const url = normalizeLinkUrl(row.url);
+      if (!label || !url) {
+        if (!label || !row.url.trim()) {
+          toast.error('링크를 확인해주세요', '링크 이름과 주소를 모두 입력해주세요');
+        } else {
+          toast.error('링크 주소를 확인해주세요', 'http:// 또는 https:// 주소만 저장할 수 있어요');
+        }
+        return;
+      }
+      links.push({ label, url });
+    }
+    setSaving(true);
+    try {
+      await onSave(links);
+      toast.success('링크를 저장했어요');
+      onClose();
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Modal open={open} onClose={onClose} title="링크 관리" width={480}>
+      <form onSubmit={submit}>
+        <Stack gap={12}>
+          <Stack gap={8}>
+            {rows.map((row, index) => (
+              <Row key={index} gap={8}>
+                <Input
+                  aria-label={`링크 이름 ${index + 1}`}
+                  placeholder="링크 이름 (예: GitHub)"
+                  maxLength={LINK_LABEL_MAX_LENGTH}
+                  value={row.label}
+                  disabled={saving}
+                  onChange={(e) => updateRow(index, { label: e.target.value })}
+                />
+                <Input
+                  aria-label={`링크 주소 ${index + 1}`}
+                  placeholder="https://example.com"
+                  maxLength={LINK_URL_MAX_LENGTH}
+                  value={row.url}
+                  disabled={saving}
+                  onChange={(e) => updateRow(index, { url: e.target.value })}
+                />
+                <Button
+                  type="button"
+                  small
+                  tone="plain"
+                  onClick={() => removeRow(index)}
+                  disabled={saving}
+                >
+                  삭제
+                </Button>
+              </Row>
+            ))}
+          </Stack>
+          <Button type="button" small tone="plain" onClick={addRow} disabled={saving}>
+            + 링크 추가
+          </Button>
+          <Row style={{ justifyContent: 'flex-end' }}>
+            <Button type="button" small tone="plain" onClick={onClose} disabled={saving}>
+              취소
+            </Button>
+            <Button type="submit" small disabled={saving}>
+              저장
+            </Button>
+          </Row>
+        </Stack>
+      </form>
+    </Modal>
+  );
+}
+
 const formatParticipatingDay = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) : '';
 type ParticipatingItem = {
@@ -455,6 +559,7 @@ export function MyPage() {
   const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
+  const [linkOpen, setLinkOpen] = useState(false);
   const [bioOpen, setBioOpen] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
@@ -464,6 +569,7 @@ export function MyPage() {
     meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
   const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
   const mySkills = meInfo?.stacks ?? [];
+  const myLinks = meInfo?.externalLinks ?? [];
   const certificatesQuery = generated.useListMyCertificates();
   // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
   const certificates = (certificatesQuery.data?.data ?? [])
@@ -624,6 +730,26 @@ export function MyPage() {
             </AddButton>
           }
         />
+        <Heading>링크</Heading>
+        <Wrap style={{ alignItems: 'center' }}>
+          {myLinks.length === 0 ? (
+            <Muted>등록된 링크가 없어요.</Muted>
+          ) : (
+            myLinks.map((link) => (
+              <Muted key={link.url ?? link.label}>
+                <Icon name={linkIconName(link.url)} size={12} /> {linkDisplayText(link)}
+              </Muted>
+            ))
+          )}
+          <AddButton
+            aria-label={myLinks.length === 0 ? '링크 추가하기' : '링크 수정하기'}
+            // 서버 프로필을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
+            disabled={me.data?.status !== 200}
+            onClick={() => setLinkOpen(true)}
+          >
+            <Icon name="imgAddSlotIc" size={12} />
+          </AddButton>
+        </Wrap>
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
@@ -672,6 +798,14 @@ export function MyPage() {
             data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
           })
         }
+      />
+      <LinkManageModal
+        // 열 때마다 최신 링크 목록으로 행을 초기화한다.
+        key={`${linkOpen}-${JSON.stringify(myLinks)}`}
+        open={linkOpen}
+        onClose={() => setLinkOpen(false)}
+        initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
+        onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
       />
     </MyShell>
   );
