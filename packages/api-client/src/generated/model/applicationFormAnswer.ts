@@ -16,26 +16,11 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { ApplicationEvaluation } from './applicationEvaluation';
-import type { ApplicationFormAnswer } from './applicationFormAnswer';
-import type { ApplicationStatus } from './applicationStatus';
+import type { ApplicationAnswerInput } from './applicationAnswerInput';
+import type { ApplicationFormAnswerType } from './applicationFormAnswerType';
 
-export interface Application {
-  id: string;
-  challengeId: string;
-  userId: string;
-  /** 등록 시 pending */
-  status: ApplicationStatus;
-  createdAt: string;
-  /** 지원 역할 */
-  role?: string;
-  /** 팀원 구성 */
-  teammates: string[];
-  evaluation: ApplicationEvaluation;
-  managerMemo?: string;
-  formAnswers?: ApplicationFormAnswer[];
-  /** listMyApplications 응답 전용 — 챌린지 제목 */
-  challengeTitle?: string;
-  /** listMyApplications 응답 전용 — 주최 기업(협회)명 */
-  businessName?: string;
-}
+export type ApplicationFormAnswer = ApplicationAnswerInput & {
+  /** 서버에서 저장한 제출 당시 질문 제목 */
+  title: string;
+  type: ApplicationFormAnswerType;
+};

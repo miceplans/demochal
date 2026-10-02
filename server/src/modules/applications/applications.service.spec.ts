@@ -1,6 +1,7 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { applications, challenges } from '../../db/schema.js';
+import { applications, challenges, files, type ApplicationFormQuestion } from '../../db/schema.js';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { ApplicationsService } from './applications.service.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 
@@ -13,11 +14,13 @@ function createDbStub(options: {
     status?: string;
     startDate?: Date;
     endDate?: Date;
+    applicationForm?: ApplicationFormQuestion[];
   };
   existingApplication?: Record<string, unknown>;
   latestOrder?: Record<string, unknown>;
   application?: Record<string, unknown>;
   order?: Record<string, unknown>;
+  ownedFiles?: { id: string }[];
 }) {
   const challenge = options.challenge && {
     status: 'published',
@@ -27,7 +30,14 @@ function createDbStub(options: {
   };
   const limit = vi.fn();
   const selectFrom = vi.fn((table: unknown) => ({
-    where: vi.fn(() => {
+    where: vi.fn((condition: any) => {
+      if (table === files) {
+        const query = new PgDialect().sqlToQuery(condition);
+        expect(query.params).toContain('user-1');
+        expect(query.params).toContain('private');
+        expect(query.params).toContain('ready');
+        return Promise.resolve(options.ownedFiles ?? []);
+      }
       if (table === challenges) {
         limit.mockResolvedValue(challenge ? [challenge] : []);
         return { limit };
@@ -43,23 +53,27 @@ function createDbStub(options: {
   }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
+  const values = vi.fn();
   const insert = vi.fn((table: unknown) => ({
-    values: vi.fn(() => ({
-      returning: vi
-        .fn()
-        .mockResolvedValue(
-          table === applications
-            ? options.application
-              ? [options.application]
-              : []
-            : options.order
-              ? [options.order]
-              : [],
-        ),
-    })),
+    values: vi.fn((body: unknown) => {
+      values(body);
+      return {
+        returning: vi
+          .fn()
+          .mockResolvedValue(
+            table === applications
+              ? options.application
+                ? [options.application]
+                : []
+              : options.order
+                ? [options.order]
+                : [],
+          ),
+      };
+    }),
   }));
 
-  const db: any = { select, insert };
+  const db: any = { select, insert, values };
   db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
   return db;
 }
@@ -67,6 +81,71 @@ function createDbStub(options: {
 const dto: ApplyChallengeDto = { challengeId: 'challenge-1' };
 
 describe('ApplicationsService.apply', () => {
+  const fileId = '11111111-1111-4111-8111-111111111111';
+  const applicationForm: ApplicationFormQuestion[] = [
+    { id: 'q1', title: '지원 동기', type: 'short', options: [], required: true },
+    { id: 'q2', title: '자료', type: 'file', options: [], required: true },
+  ];
+  it('persists verified private attachments and server-derived question snapshots', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Form', applicationForm },
+      ownedFiles: [{ id: fileId }],
+      application: { id: 'app-1' },
+    });
+    await new ApplicationsService(db).apply(
+      {
+        ...dto,
+        formAnswers: [
+          { questionId: 'q1', value: '지원합니다' },
+          { questionId: 'q2', value: fileId },
+        ],
+      },
+      'user-1',
+    );
+    expect(db.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formAnswers: [
+          { questionId: 'q1', title: '지원 동기', type: 'short', value: '지원합니다' },
+          { questionId: 'q2', title: '자료', type: 'file', value: fileId },
+        ],
+      }),
+    );
+  });
+  it('rejects missing answers and unowned/non-ready/non-private attachments before creating an application or order', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 1000, title: 'Form', applicationForm },
+    });
+    const service = new ApplicationsService(db);
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    await expect(
+      service.apply(
+        {
+          ...dto,
+          formAnswers: [
+            { questionId: 'q1', value: '지원합니다' },
+            { questionId: 'q2', value: fileId },
+          ],
+        },
+        'user-1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+  it('keeps original answers on a retry even after the questionnaire changed', async () => {
+    const original = [
+      { questionId: 'old', title: 'Old question', type: 'short', value: 'Original' },
+    ];
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Form', applicationForm },
+      existingApplication: { id: 'app-1', formAnswers: original },
+    });
+    const result = await new ApplicationsService(db).apply(
+      { ...dto, formAnswers: [{ questionId: 'unknown', value: 'Replacement' }] },
+      'user-1',
+    );
+    expect(result.formAnswers).toEqual(original);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
   it('returns the pending order info for a paid challenge', async () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지' },

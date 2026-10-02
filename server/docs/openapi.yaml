@@ -917,6 +917,7 @@ paths:
                         type: object
                         nullable: true
                         description: 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+                        required: [id, amount, name]
                         properties:
                           id: { type: string, format: uuid }
                           amount: { type: integer }
@@ -969,6 +970,28 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Application' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /applications/{id}/files/{fileId}:
+    get:
+      tags: [Applications]
+      summary: 지원서 첨부파일 다운로드 주소 조회
+      operationId: getApplicationAttachment
+      x-impl-status: implemented
+      description: 신청자 또는 해당 기업 소유자만 접근 가능. 유료 신청은 기업 조회 전에 결제 완료가 필요하다. private 파일에 대한 5분 유효 URL을 반환하며 응답은 캐시하지 않는다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 일시적인 비공개 파일 다운로드 URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /applications/{id}:
     get:
       tags: [Applications]
@@ -3002,6 +3025,9 @@ components:
         teammates: { type: array, items: { type: string }, description: 팀원 구성 }
         evaluation: { type: string, enum: [undecided, pass, fail] }
         managerMemo: { type: string }
+        formAnswers:
+          type: array
+          items: { $ref: '#/components/schemas/ApplicationFormAnswer' }
         challengeTitle: { type: string, description: 'listMyApplications 응답 전용 — 챌린지 제목' }
         businessName:
           { type: string, description: 'listMyApplications 응답 전용 — 주최 기업(협회)명' }
@@ -3013,11 +3039,32 @@ components:
         role: { type: string }
         teammates: { type: array, items: { type: string } }
         formAnswers:
-          {
-            type: array,
-            items: { type: object, additionalProperties: true },
-            description: 신청폼 응답 (planned),
-          }
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ApplicationAnswerInput' }
+          description: 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID.
+    ApplicationAnswerInput:
+      type: object
+      required: [questionId, value]
+      properties:
+        questionId: { type: string, maxLength: 500 }
+        value:
+          oneOf:
+            - { type: string, maxLength: 10000 }
+            - {
+                type: array,
+                maxItems: 50,
+                uniqueItems: true,
+                items: { type: string, maxLength: 500 },
+              }
+    ApplicationFormAnswer:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationAnswerInput'
+        - type: object
+          required: [title, type]
+          properties:
+            title: { type: string, description: 서버에서 저장한 제출 당시 질문 제목 }
+            type: { type: string, enum: [dropdown, checkbox, radio, file, short, long] }
     Notification:
       type: object
       required: [id, type, payload, createdAt]
