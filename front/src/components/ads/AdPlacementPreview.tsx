@@ -151,7 +151,7 @@ export function AdPlacementPreview({
       {/* 슬라이드 수가 바뀌면(예: fallback 3개에서 노출 1개로 줄면) 레일 위치를 재시작해
           복제본 범위 밖의 위치가 남지 않게 한다. 홈 AdCarousel의 key 관례와 같다. */}
       <MovingAds
-        key={heroItems.length}
+        key={`hero-${heroItems.length}`}
         ariaLabel="홈 상단 광고"
         itemCount={heroItems.length}
         interval={5000}
@@ -223,7 +223,7 @@ export function AdPlacementPreview({
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
-        key={galleryItems.length}
+        key={`gallery-${galleryItems.length}`}
         ariaLabel="홈 중간 이미지 광고"
         itemCount={galleryItems.length}
         interval={5000}

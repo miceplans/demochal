@@ -113,6 +113,29 @@ describe('AdPlacementPreview', () => {
     expect(img!.alt).toBe('히어로 단일 광고');
   });
 
+  it('두 레일의 슬롯 수가 같아도 key 충돌 없이 렌더된다', () => {
+    const singleAd = [{ id: 'h1', title: '단일 광고', imageUrl: 'https://cdn.example/only.webp' }];
+    mocks.heroData = { status: 200, data: singleAd };
+    mocks.galleryData = { status: 200, data: singleAd };
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    const { rerender } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+    mocks.heroData = {
+      status: 200,
+      data: [
+        ...singleAd,
+        { id: 'h2', title: '두 번째 광고', imageUrl: 'https://cdn.example/second.webp' },
+      ],
+    };
+    rerender(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+
+    const keyConflicts = consoleError.mock.calls.filter((args) =>
+      String(args[0]).includes('same key'),
+    );
+    consoleError.mockRestore();
+    expect(keyConflicts.length).toBe(0);
+  });
+
   it('노출 광고가 없으면 홈과 같은 기본 광고 3개를 보여준다', () => {
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
