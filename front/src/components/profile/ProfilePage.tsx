@@ -1,6 +1,5 @@
 'use client';
 import { Suspense, useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -129,22 +128,14 @@ function ProfilePageContent() {
                 ))
               )}
             </Stack>
-            <Divider />
-            <Stack gap={8}>
-              {canInvite && (
+            {canInvite && (
+              <>
+                <Divider />
                 <Button onClick={() => setScoutOpen(true)} style={{ width: '100%' }}>
                   팀에 초대
                 </Button>
-              )}
-              <Link
-                href={`/reports/new?targetType=user&targetId=${userId}`}
-                style={{ alignSelf: 'center' }}
-              >
-                <Button as="span" small tone="plain">
-                  신고
-                </Button>
-              </Link>
-            </Stack>
+              </>
+            )}
           </ProfileCard>
           <Stack gap={28}>
             <Section>
