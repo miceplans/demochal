@@ -256,119 +256,121 @@ export function BizSignupFlow() {
               <StepProgressBar steps={stepLabels} currentStep={step} aria-label="가입 단계" />
             </ProgressWrap>
           </Header>
-          {step === 0 && (
-            <CheckList aria-label="약관 동의">
-              {agreements.map(({ value, label }) => (
-                <CheckRow key={value}>
-                  <HiddenInput
-                    type="checkbox"
-                    checked={agreed.includes(value)}
-                    onChange={() => toggle(value)}
+          <StepBody key={step}>
+            {step === 0 && (
+              <CheckList aria-label="약관 동의">
+                {agreements.map(({ value, label }) => (
+                  <CheckRow key={value}>
+                    <HiddenInput
+                      type="checkbox"
+                      checked={agreed.includes(value)}
+                      onChange={() => toggle(value)}
+                    />
+                    <CheckBox aria-hidden>
+                      <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
+                    </CheckBox>
+                    {label}
+                  </CheckRow>
+                ))}
+              </CheckList>
+            )}
+            {step === 1 && (
+              <Form aria-label="계정 정보">
+                <FormField label="성함을 입력해주세요">
+                  <TextInput
+                    name="name"
+                    autoComplete="name"
+                    value={account.name}
+                    onChange={setField('name')}
                   />
-                  <CheckBox aria-hidden>
-                    <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
-                  </CheckBox>
-                  {label}
-                </CheckRow>
-              ))}
-            </CheckList>
-          )}
-          {step === 1 && (
-            <Form aria-label="계정 정보">
-              <FormField label="성함을 입력해주세요">
-                <TextInput
-                  name="name"
-                  autoComplete="name"
-                  value={account.name}
-                  onChange={setField('name')}
-                />
-              </FormField>
-              <FormField label="이메일을 입력해주세요">
-                <ContactInput
-                  channel="email"
-                  type="email"
-                  autoComplete="email"
-                  placeholder="이메일을 입력해주세요"
-                  value={account.email}
-                  onChange={setField('email')}
-                  state={verification.email}
-                  onRequest={() => void requestVerification('email')}
-                  onCodeChange={(code) => patchVerification('email', { code })}
-                  onConfirm={() => void confirmVerification('email')}
-                />
-              </FormField>
-              <FormField label="전화번호를 입력해주세요">
-                <ContactInput
-                  channel="phone"
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  placeholder="전화번호 인증하기"
-                  value={account.phone}
-                  onChange={setField('phone')}
-                  state={verification.phone}
-                  onRequest={() => void requestVerification('phone')}
-                  onCodeChange={(code) => patchVerification('phone', { code })}
-                  onConfirm={() => void confirmVerification('phone')}
-                />
-              </FormField>
-              <FormField label="아이디를 입력해주세요">
-                <TextInput
-                  name="username"
-                  autoComplete="username"
-                  placeholder="아이디입력"
-                  value={account.username}
-                  onChange={setField('username')}
-                />
-              </FormField>
-              <FormField label="비밀번호를 입력해주세요">
-                <TextInput
-                  type="password"
-                  name="password"
-                  autoComplete="new-password"
-                  placeholder="비밀번호를 입력해주세요"
-                  value={account.password}
-                  onChange={setField('password')}
-                />
-                <TextInput
-                  type="password"
-                  name="passwordConfirm"
-                  autoComplete="new-password"
-                  placeholder="비밀번호를 입력해주세요"
-                  aria-label="비밀번호 확인"
-                  value={account.passwordConfirm}
-                  onChange={setField('passwordConfirm')}
-                />
-              </FormField>
-            </Form>
-          )}
-          {step === 2 && (
-            <Form aria-label="기관 인증">
-              <SelectWrap>
-                <Select
-                  aria-label="기관 유형"
-                  value={orgType}
-                  disabled={!!businessId}
-                  onChange={(e) => setOrgType(e.target.value as OrgType)}
-                >
-                  {orgTypes.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-                <Chevron src="/assets/icons/biz-select-chevron.svg" alt="" aria-hidden />
-              </SelectWrap>
-              <FieldBox>
-                <FieldLabel>{uploadLabel}</FieldLabel>
-                <UploadBox>
-                  <HiddenInput type="file" accept={UPLOAD_TYPES.join(',')} onChange={pickDoc} />
-                  <UploadIcon src="/assets/icons/biz-upload-cloud.svg" alt="" aria-hidden />
-                  <UploadText>{docFile?.name ?? '파일 찾기'}</UploadText>
-                </UploadBox>
-              </FieldBox>
-            </Form>
-          )}
+                </FormField>
+                <FormField label="이메일을 입력해주세요">
+                  <ContactInput
+                    channel="email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="이메일을 입력해주세요"
+                    value={account.email}
+                    onChange={setField('email')}
+                    state={verification.email}
+                    onRequest={() => void requestVerification('email')}
+                    onCodeChange={(code) => patchVerification('email', { code })}
+                    onConfirm={() => void confirmVerification('email')}
+                  />
+                </FormField>
+                <FormField label="전화번호를 입력해주세요">
+                  <ContactInput
+                    channel="phone"
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    placeholder="전화번호 인증하기"
+                    value={account.phone}
+                    onChange={setField('phone')}
+                    state={verification.phone}
+                    onRequest={() => void requestVerification('phone')}
+                    onCodeChange={(code) => patchVerification('phone', { code })}
+                    onConfirm={() => void confirmVerification('phone')}
+                  />
+                </FormField>
+                <FormField label="아이디를 입력해주세요">
+                  <TextInput
+                    name="username"
+                    autoComplete="username"
+                    placeholder="아이디입력"
+                    value={account.username}
+                    onChange={setField('username')}
+                  />
+                </FormField>
+                <FormField label="비밀번호를 입력해주세요">
+                  <TextInput
+                    type="password"
+                    name="password"
+                    autoComplete="new-password"
+                    placeholder="비밀번호를 입력해주세요"
+                    value={account.password}
+                    onChange={setField('password')}
+                  />
+                  <TextInput
+                    type="password"
+                    name="passwordConfirm"
+                    autoComplete="new-password"
+                    placeholder="비밀번호를 입력해주세요"
+                    aria-label="비밀번호 확인"
+                    value={account.passwordConfirm}
+                    onChange={setField('passwordConfirm')}
+                  />
+                </FormField>
+              </Form>
+            )}
+            {step === 2 && (
+              <Form aria-label="기관 인증">
+                <SelectWrap>
+                  <Select
+                    aria-label="기관 유형"
+                    value={orgType}
+                    disabled={!!businessId}
+                    onChange={(e) => setOrgType(e.target.value as OrgType)}
+                  >
+                    {orgTypes.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <Chevron src="/assets/icons/biz-select-chevron.svg" alt="" aria-hidden />
+                </SelectWrap>
+                <FieldBox>
+                  <FieldLabel>{uploadLabel}</FieldLabel>
+                  <UploadBox>
+                    <HiddenInput type="file" accept={UPLOAD_TYPES.join(',')} onChange={pickDoc} />
+                    <UploadIcon src="/assets/icons/biz-upload-cloud.svg" alt="" aria-hidden />
+                    <UploadText>{docFile?.name ?? '파일 찾기'}</UploadText>
+                  </UploadBox>
+                </FieldBox>
+              </Form>
+            )}
+          </StepBody>
         </Content>
         <Actions single={step === 0 || (step === 2 && registered)}>
           {step > 0 && !(step === 2 && registered) && (
@@ -485,6 +487,15 @@ const Header = styled.div({
   gap: 32,
 });
 const ProgressWrap = styled.div({ width: '100%' });
+// BIZ 랜딩(BizLanding)의 리빌 관례와 동일한 모션으로 스텝 콘텐츠가 아래에서 올라온다.
+const StepBody = styled.div({
+  animation: 'semo-biz-step-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both',
+  '@keyframes semo-biz-step-in': {
+    from: { opacity: 0, transform: 'translateY(28px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+});
 const CheckList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const HiddenInput = styled.input({
   position: 'absolute',
