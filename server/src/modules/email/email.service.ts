@@ -163,8 +163,9 @@ export class EmailService {
     try {
       return await this.ses.sendSupportEmail(email);
     } catch (error) {
-      // 수신자 주소·본문은 로그에 남기지 않는다.
-      this.logger.error(`지원 메일 발송 실패: ${error instanceof Error ? error.message : error}`);
+      // SES 오류 메시지는 수신자 주소를 그대로 담을 수 있어 오류 이름만 남긴다.
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      this.logger.error(`지원 메일 발송 실패: ${name}`);
       throw new ServiceUnavailableException('메일을 발송하지 못했습니다.');
     }
   }
