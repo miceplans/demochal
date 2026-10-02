@@ -51,13 +51,13 @@ export const BizBrand = styled(Link)({
   gap: 6,
   whiteSpace: 'nowrap',
 });
-export function Logo({ size = 24 }: { size?: number }) {
+export function Logo({ size = 24, mono = false }: { size?: number; mono?: boolean }) {
   const hrefOf = useBizHref();
   return (
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/assets/SEMOBIZ.png"
+        src={mono ? '/assets/SEMOBIZ-mono.png' : '/assets/SEMOBIZ.png'}
         alt="SEMO.BIZ"
         style={{ height: size, width: 'auto', display: 'block' }}
       />
@@ -306,32 +306,33 @@ export function BizSidebar() {
 
 const FooterBox = styled.footer({
   background: `linear-gradient(180deg, ${c.white} 0%, #e7f2ff 100%)`,
-  padding: '50px 60px',
+  padding: '32px 60px',
   display: 'flex',
   flexDirection: 'column',
-  gap: 148,
+  gap: 24,
+  ...textStyle.body,
+  lineHeight: 'normal',
 });
-export function BizFooter({ logoSize = 24 }: { logoSize?: number }) {
+export function BizFooter({ logoSize = 31 }: { logoSize?: number }) {
   const hrefOf = useBizHref();
   return (
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Logo size={logoSize} />
-        <nav style={{ display: 'flex', gap: 12, ...textStyle.body }}>
+        <Logo size={logoSize} mono />
+        <nav style={{ display: 'flex', gap: 12, color: c.gray900 }}>
           <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
           <Link href={hrefOf('/terms')}>이용약관</Link>
           <Link href={hrefOf('/advertising')}>광고 운영정책</Link>
         </nav>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div style={{ lineHeight: 1.65, maxWidth: 329 }}>
-          대표 유철한
-          <br />
-          사업자등록번호 617-81-98126
-          <br />
-          부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
-          <br />
-          051-783-1170 / mice@miceplans.com
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 329, color: c.gray900 }}
+        >
+          <span>대표 유철한</span>
+          <span>사업자등록번호 617-81-98126</span>
+          <span>부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호</span>
+          <span>051-783-1170 / mice@miceplans.com</span>
         </div>
         <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
       </div>
