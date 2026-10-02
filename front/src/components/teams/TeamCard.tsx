@@ -20,7 +20,6 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
       <Body>
         <TopRow>
           <Challenge>{team.challenge}</Challenge>
-          <Region>{team.region?.trim() || '지역 무관'}</Region>
           <NameRow>
             <h3>{team.name}</h3>
             <Count>
@@ -136,15 +135,6 @@ const PosterChallenge = styled.span({
 const TopRow = styled.div({ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 });
 
 const Challenge = styled.p({ ...textStyle.mSubText, color: c.gray500, margin: 0 });
-
-const Region = styled.p({
-  ...textStyle.caption,
-  color: c.gray700,
-  margin: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-});
 
 const NameRow = styled.div({ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 });
 

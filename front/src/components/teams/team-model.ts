@@ -18,7 +18,6 @@ export function toTeamCard(team: ApiTeam): Team {
     id: team.id ?? '',
     name: team.title ?? '',
     challenge: team.challengeTitle ?? '',
-    region: team.region,
     // 서버가 내린 공개 URL이 없으면 빈 문자열 — TeamCard가 중성 플레이스홀더를 렌더한다.
     poster: team.challengePosterUrl ?? '',
     members: `${joined}/${capacity}명 참여중`,
