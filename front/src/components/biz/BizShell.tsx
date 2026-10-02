@@ -51,13 +51,13 @@ export const BizBrand = styled(Link)({
   gap: 6,
   whiteSpace: 'nowrap',
 });
-export function Logo({ size = 24 }: { size?: number }) {
+export function Logo({ size = 24, mono = false }: { size?: number; mono?: boolean }) {
   const hrefOf = useBizHref();
   return (
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/assets/SEMOBIZ.png"
+        src={mono ? '/assets/SEMOBIZ-mono.png' : '/assets/SEMOBIZ.png'}
         alt="SEMO.BIZ"
         style={{ height: size, width: 'auto', display: 'block' }}
       />
@@ -318,7 +318,7 @@ export function BizFooter({ logoSize = 24 }: { logoSize?: number }) {
   return (
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Logo size={logoSize} />
+        <Logo size={logoSize} mono />
         <nav style={{ display: 'flex', gap: 12, color: c.gray900 }}>
           <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
           <Link href={hrefOf('/terms')}>이용약관</Link>
