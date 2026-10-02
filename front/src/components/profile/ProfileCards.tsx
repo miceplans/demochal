@@ -79,7 +79,7 @@ const Avatar = styled.div<{ large?: boolean }>(({ large }) => ({
   borderRadius: '50%',
   background: c.gray100,
   flexShrink: 0,
-  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
 }));
 
 export function Identity({ user, large = false }: { user?: ProfileUserData; large?: boolean }) {

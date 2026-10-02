@@ -5,6 +5,9 @@ declare module '@emotion/react' {
     colors: {
       semo: string;
       semoDark: string;
+      semoHover: string;
+      paleBlue: string;
+      surface: string;
       lightBlue: string;
       lightGreen: string;
       green: string;
@@ -38,6 +41,9 @@ export const theme = {
   colors: {
     semo: '#006fff',
     semoDark: '#0056c2',
+    semoHover: '#005ee0',
+    paleBlue: '#eaf3ff',
+    surface: '#f8f8f8',
     lightBlue: '#cfe4ff',
     lightGreen: '#f0fdf4',
     green: '#22c55e',

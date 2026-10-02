@@ -250,7 +250,7 @@ const PasswordField = styled.label({
     font: 'inherit',
   },
 });
-const PasswordHint = styled.p({ margin: 0, color: '#d92d20', ...textStyle.caption });
+const PasswordHint = styled.p({ margin: 0, color: c.red, ...textStyle.caption });
 const PasswordActions = styled.div({
   display: 'flex',
   justifyContent: 'flex-end',

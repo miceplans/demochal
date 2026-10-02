@@ -41,7 +41,7 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: 
   padding: 0 14px;
   height: ${({ $size }) => ($size === 'L' ? '44px' : '36px')};
   background: ${(p) => p.theme.colors.background};
-  border: 0.5px solid #e0e0e0;
+  border: 1px solid ${(p) => p.theme.colors.gray[200]};
   border-radius: 8px;
   font-family: inherit;
   font-size: ${textStyle.body.fontSize}px;

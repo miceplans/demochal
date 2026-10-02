@@ -75,7 +75,7 @@ const Participating = styled.div({
 });
 const UploadBox = styled.label({
   border: `2px dashed ${c.gray100}`,
-  background: '#f8f8f8',
+  background: c.surface,
   borderRadius: 12,
   padding: 8,
   display: 'flex',
@@ -115,7 +115,7 @@ const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
   background: c.gray100,
   flexShrink: 0,
   overflow: 'hidden',
-  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
 }));
 const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
 // 아바타 자체가 파일 선택 트리거다(프로필 링크와 겹치지 않게 Link 밖에 둔다).
