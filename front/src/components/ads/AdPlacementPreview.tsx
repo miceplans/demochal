@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { MovingAds } from './MovingAds';
 import { AdImageUploader } from './AdImageUploader';
+import { buildPreviewAds, fallbackAds } from './fallback-ads';
 
 export type AdPreviewView = 'mobile' | 'pc';
 export type AdPlacement = 'hero' | 'gallery';
@@ -28,6 +30,23 @@ const artwork = {
   pc: { width: 1200, background: '/assets/pc-screen.png' },
   mobile: { width: 358, background: '/assets/mobile-screen.png' },
 } as const;
+
+// 게재 중인 광고가 없거나 조회에 실패하면 fallbackAds(홈과 공유) 기본 광고 세트를
+// 보여준다. 홈(HomePage)과 같은 silentError 관례를 쓴다.
+const publicAdsQuery = { query: { meta: { silentError: true } } };
+
+type PreviewAd = {
+  src: string;
+  alt: string;
+  type?: 'image' | 'video';
+};
+
+function toPreviewAds(
+  response: Awaited<ReturnType<typeof generated.listPublicAds>> | undefined,
+): PreviewAd[] | undefined {
+  if (response?.status !== 200 || response.data.length === 0) return undefined;
+  return response.data.map((ad) => ({ src: ad.imageUrl, alt: ad.title }));
+}
 
 // fallbackPrice는 서버 기본 상품(server/src/modules/ads/ads.service.ts DEFAULT_PRODUCTS)의
 // dailyPrice와 맞춘다. 상품 조회 전이나 실패 시에만 쓰인다.
@@ -69,6 +88,35 @@ export function AdPlacementPreview({
   const priceOf = (placement: AdPlacement) =>
     price ?? dailyPrices?.[placement] ?? adInfo[placement].fallbackPrice;
   const isPricingPreview = !onSelect;
+  // 실제 홈 노출 목록과 같은 광고 수·소재로 미리보기를 구성한다. 업로드한 이미지는
+  // 첫 슬롯 하나만 교체해 한 장을 올려도 나머지 슬롯이 기존 광고 그대로 보인다.
+  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
+  const { data: galleryAdList } = generated.useListPublicAds(
+    { placement: 'gallery' },
+    publicAdsQuery,
+  );
+  const heroItems = useMemo(
+    () =>
+      buildPreviewAds(
+        toPreviewAds(heroAdList),
+        fallbackAds.hero,
+        uploadedImages.hero
+          ? { src: uploadedImages.hero, alt: '업로드한 홈 상단 광고 이미지' }
+          : undefined,
+      ),
+    [heroAdList, uploadedImages.hero],
+  );
+  const galleryItems = useMemo(
+    () =>
+      buildPreviewAds(
+        toPreviewAds(galleryAdList),
+        fallbackAds.gallery,
+        uploadedImages.gallery
+          ? { src: uploadedImages.gallery, alt: '업로드한 홈 중간 광고 이미지' }
+          : undefined,
+      ),
+    [galleryAdList, uploadedImages.gallery],
+  );
   const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
     const canvas = canvasRef.current?.getBoundingClientRect();
     const target = event.currentTarget.getBoundingClientRect();
@@ -102,7 +150,7 @@ export function AdPlacementPreview({
     >
       <MovingAds
         ariaLabel="홈 상단 광고"
-        itemCount={5}
+        itemCount={heroItems.length}
         interval={5000}
         paused={uploadPlacement === 'hero'}
       >
@@ -126,7 +174,9 @@ export function AdPlacementPreview({
                     </HeroSlotFrame>
                   );
                 }
-                const uploaded = uploadedImages.hero;
+                const ad = heroItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                const isClone = position === 0 || position === heroItems.length + 1;
                 return (
                   <Slot
                     key={`${item}-${position}`}
@@ -138,22 +188,28 @@ export function AdPlacementPreview({
                     onClick={() => handleSlotClick('hero')}
                     aria-label="홈 상단 광고 선택"
                   >
-                    <img
-                      src={uploaded ?? '/assets/figma-ads/home-hero.png'}
-                      alt={
-                        uploaded
-                          ? '업로드한 홈 상단 광고 이미지'
-                          : position === 1
-                            ? '홈 상단 광고 예시'
-                            : ''
-                      }
-                    />
+                    {ad.type === 'video' ? (
+                      <video
+                        src={ad.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        aria-label={isClone ? undefined : ad.alt}
+                        aria-hidden={isClone || undefined}
+                      />
+                    ) : (
+                      <img src={ad.src} alt={isClone ? '' : ad.alt} />
+                    )}
                   </Slot>
                 );
               })}
             </HeroRail>
-            <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
+            <HeroPager
+              aria-label={`상단 광고 ${activeIndex + 1} / ${heroItems.length}`}
+              aria-live="polite"
+            >
+              {Array.from({ length: heroItems.length }, (_, index) => (
                 <HeroDot key={index} active={activeIndex === index} />
               ))}
             </HeroPager>
@@ -163,7 +219,7 @@ export function AdPlacementPreview({
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
         ariaLabel="홈 중간 이미지 광고"
-        itemCount={5}
+        itemCount={galleryItems.length}
         interval={5000}
         paused={uploadPlacement === 'gallery'}
       >
@@ -187,7 +243,9 @@ export function AdPlacementPreview({
                     </GallerySlotFrame>
                   );
                 }
-                const uploaded = uploadedImages.gallery;
+                const ad = galleryItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                const isClone = position === 0 || position === galleryItems.length + 1;
                 return (
                   <GallerySlot
                     key={`${item}-${position}`}
@@ -200,22 +258,28 @@ export function AdPlacementPreview({
                     onClick={() => handleSlotClick('gallery')}
                     aria-label="홈 중간 이미지 광고 선택"
                   >
-                    <img
-                      src={uploaded ?? '/assets/figma-ads/home-gallery.png'}
-                      alt={
-                        uploaded
-                          ? '업로드한 홈 중간 광고 이미지'
-                          : position === 1
-                            ? '홈 중간 광고 예시'
-                            : ''
-                      }
-                    />
+                    {ad.type === 'video' ? (
+                      <video
+                        src={ad.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        aria-label={isClone ? undefined : ad.alt}
+                        aria-hidden={isClone || undefined}
+                      />
+                    ) : (
+                      <img src={ad.src} alt={isClone ? '' : ad.alt} />
+                    )}
                   </GallerySlot>
                 );
               })}
             </GalleryRail>
-            <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
+            <HeroPager
+              aria-label={`중간 광고 ${activeIndex + 1} / ${galleryItems.length}`}
+              aria-live="polite"
+            >
+              {Array.from({ length: galleryItems.length }, (_, index) => (
                 <HeroDot key={index} active={activeIndex === index} />
               ))}
             </HeroPager>
@@ -296,7 +360,7 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   cursor: 'pointer',
   transition: 'transform 180ms ease',
   transformOrigin: 'center',
-  '& img': {
+  '& img, & video': {
     display: 'block',
     width: '100%',
     height: '100%',
@@ -379,7 +443,7 @@ const GallerySlot = styled('button', {
   cursor: 'pointer',
   transition: 'transform 180ms ease',
   transformOrigin: 'center',
-  '& img': {
+  '& img, & video': {
     display: 'block',
     width: '100%',
     aspectRatio: '298 / 190',
