@@ -94,14 +94,12 @@ describe('MyPage 링크 섹션', () => {
   it('등록된 링크를 프로필 표시 규칙으로 보여준다', () => {
     renderMyPage();
     expect(screen.getByText('github.com/kim')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '링크 수정하기' })).toBeTruthy();
   });
 
-  it('링크가 없으면 안내 문구와 추가 버튼을 보여준다', () => {
+  it('링크가 없으면 안내 문구를 보여준다', () => {
     mocks.me.externalLinks = [];
     renderMyPage();
-    expect(screen.getByText('등록된 링크가 없어요.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '링크 추가하기' })).toBeTruthy();
+    expect(screen.getByText('링크를 남겨보세요.')).toBeTruthy();
   });
 
   it('링크를 추가해 저장하면 스킴을 붙여 externalLinks로 저장한다', async () => {
@@ -110,7 +108,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 추가하기' }));
+    await user.dblClick(screen.getByText('링크를 남겨보세요.'));
     expect(screen.getByLabelText('링크 관리')).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: '+ 링크 추가' }));
@@ -132,7 +130,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 수정하기' }));
+    await user.dblClick(screen.getByText('github.com/kim'));
     expect((screen.getByLabelText('링크 이름 1') as HTMLInputElement).value).toBe('GitHub');
     expect((screen.getByLabelText('링크 주소 1') as HTMLInputElement).value).toBe(
       'https://github.com/kim',
@@ -159,7 +157,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 수정하기' }));
+    await user.dblClick(screen.getByText('github.com/kim'));
     const urlInput = screen.getByLabelText('링크 주소 1');
     await user.clear(urlInput);
     await user.type(urlInput, 'javascript:alert(1)');
@@ -176,7 +174,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 수정하기' }));
+    await user.dblClick(screen.getByText('github.com/kim'));
     await user.click(screen.getByRole('button', { name: '+ 링크 추가' }));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -192,7 +190,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 수정하기' }));
+    await user.dblClick(screen.getByText('github.com/kim'));
     await user.click(screen.getByRole('button', { name: '삭제' }));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
@@ -207,9 +205,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    const button = screen.getByRole('button', { name: '링크 추가하기' });
-    expect((button as HTMLButtonElement).disabled).toBe(true);
-    await user.click(button);
+    await user.dblClick(screen.getByText('링크를 남겨보세요.'));
     expect(screen.queryByLabelText('링크 관리')).toBeNull();
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
@@ -219,7 +215,7 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.click(screen.getByRole('button', { name: '링크 수정하기' }));
+    await user.dblClick(screen.getByText('github.com/kim'));
     await user.click(screen.getByRole('button', { name: '저장' }));
 
     await waitFor(() =>

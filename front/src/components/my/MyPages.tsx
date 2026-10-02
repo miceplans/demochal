@@ -394,6 +394,23 @@ function SkillAddModal({
   );
 }
 
+const LinkList = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  cursor: 'text',
+  borderRadius: 4,
+});
+const LinkItem = styled.span({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 8,
+  minWidth: 0,
+  ...textStyle.finePrint2,
+  color: c.gray700,
+  '& span': { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+});
+
 const LINK_LABEL_MAX_LENGTH = 50;
 const LINK_URL_MAX_LENGTH = 500;
 
@@ -570,6 +587,11 @@ export function MyPage() {
   const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
   const mySkills = meInfo?.stacks ?? [];
   const myLinks = meInfo?.externalLinks ?? [];
+  // 링크는 더블클릭으로 관리 모달을 연다. 서버 프로필을 받기 전에는 시작하지 않는다.
+  const startLinkEdit = () => {
+    if (me.data?.status !== 200) return;
+    setLinkOpen(true);
+  };
   const certificatesQuery = generated.useListMyCertificates();
   // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
   const certificates = (certificatesQuery.data?.data ?? [])
@@ -731,25 +753,18 @@ export function MyPage() {
           }
         />
         <Heading>링크</Heading>
-        <Wrap style={{ alignItems: 'center' }}>
+        <LinkList onDoubleClick={startLinkEdit} title="더블클릭하여 수정">
           {myLinks.length === 0 ? (
-            <Muted>등록된 링크가 없어요.</Muted>
+            <Muted>링크를 남겨보세요.</Muted>
           ) : (
             myLinks.map((link) => (
-              <Muted key={link.url ?? link.label}>
-                <Icon name={linkIconName(link.url)} size={12} /> {linkDisplayText(link)}
-              </Muted>
+              <LinkItem key={link.url ?? link.label}>
+                <Icon name={linkIconName(link.url)} size={14} />
+                <span>{linkDisplayText(link)}</span>
+              </LinkItem>
             ))
           )}
-          <AddButton
-            aria-label={myLinks.length === 0 ? '링크 추가하기' : '링크 수정하기'}
-            // 서버 프로필을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
-            disabled={me.data?.status !== 200}
-            onClick={() => setLinkOpen(true)}
-          >
-            <Icon name="imgAddSlotIc" size={12} />
-          </AddButton>
-        </Wrap>
+        </LinkList>
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
