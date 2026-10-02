@@ -203,7 +203,7 @@ const Field = styled.fieldset({
   color: c.gray900,
   ...textStyle.body,
   '& legend': { padding: '0 8px', ...textStyle.bodyStrong },
-  '& input:not([type=radio]):not([type=checkbox]), & textarea, & select': {
+  '& input:not([type=radio]):not([type=checkbox]), & textarea': {
     boxSizing: 'border-box',
     maxWidth: '100%',
     padding: 12,
