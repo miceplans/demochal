@@ -30,6 +30,7 @@ type AdsScreen = 'manage' | 'products' | 'complete';
 type SelectedAd = {
   placement: AdPlacement;
   name: string;
+  landingUrl?: string;
   price: number;
   period: string;
   product: AdProduct;
@@ -120,7 +121,7 @@ export function BizAdsPage() {
       dailyPrices[product.placement] = product.dailyPrice;
     }
   }
-  const openPayment = async (placement: AdPlacement) => {
+  const openPayment = async (placement: AdPlacement, meta?: { name: string; link: string }) => {
     try {
       // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
       const { data: products } = await generated.listAdProducts();
@@ -138,7 +139,10 @@ export function BizAdsPage() {
       }
       setSelectedAd({
         placement,
-        name: adTitles[placement]?.trim() || product.name,
+        // 모달에서 방금 입력한 이름/링크를 우선 쓴다. 바로 전 setState가 아직
+        // 반영되지 않았을 때 state를 읽으면 입력값이 무시되기 때문이다.
+        name: meta?.name || adTitles[placement]?.trim() || product.name,
+        landingUrl: meta?.link || adLinks[placement] || undefined,
         price: product.dailyPrice,
         period: start,
         product,
@@ -234,7 +238,7 @@ export function BizAdsPage() {
           title: selectedAd.name,
           imageFileId: uploadedFileIds[selectedAd.placement],
           // 빈 문자열은 전송하지 않는다(서버 @IsUrl 검증 대상이 된다).
-          landingUrl: adLinks[selectedAd.placement] || undefined,
+          landingUrl: selectedAd.landingUrl,
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
@@ -621,7 +625,7 @@ export function BizAdsPage() {
                     setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
                     setAdLinks((current) => ({ ...current, [placement]: link }));
                     setNameModalPlacement(null);
-                    void openPayment(placement);
+                    void openPayment(placement, { name: adName.trim(), link });
                   }}
                 >
                   등록하기
