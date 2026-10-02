@@ -33,7 +33,7 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
   ...textStyle.label,
   background: provider === 'Kakao' ? '#fee500' : provider === 'Naver' ? '#06be34' : c.white,
   color: provider === 'Naver' ? c.white : c.gray900,
-  border: provider === 'Google' ? `1px solid ${c.gray200}` : 0,
+  border: provider === 'Google' ? `0.5px solid ${c.gray200}` : 0,
   [mobile]: {
     width: 'min(358px, calc(100vw - 32px))',
     height: 48,
@@ -140,7 +140,7 @@ const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
     width: 18,
     height: 18,
     borderRadius: 4,
-    border: selected ? 0 : `1px solid ${c.gray100}`,
+    border: selected ? 0 : `0.5px solid ${c.gray100}`,
     '& img': { width: '11px !important', height: '11px !important' },
   },
 }));

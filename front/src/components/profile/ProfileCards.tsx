@@ -114,7 +114,7 @@ const historyCardStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 16,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   padding: 16,
   '& h3': { ...textStyle.mBlockTitle, marginBottom: 6 },

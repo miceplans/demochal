@@ -40,7 +40,7 @@ export function StepLabel({
           placeItems: 'center',
           borderRadius: '50%',
           background: completed ? c.primary : c.white,
-          border: `1px solid ${c.primary}`,
+          border: `0.5px solid ${c.primary}`,
           color: completed ? c.white : c.primary,
           fontSize: 12,
         }}

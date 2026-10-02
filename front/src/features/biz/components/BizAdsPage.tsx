@@ -654,7 +654,7 @@ const HeaderRow = styled.div({
 const ManageSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
 const AdsTable = styled.div({
   overflow: 'hidden',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
 });
 const TableRow = styled.div({
@@ -663,7 +663,7 @@ const TableRow = styled.div({
   alignItems: 'center',
   minHeight: 56,
   padding: '0 16px',
-  borderTop: `1px solid ${c.gray200}`,
+  borderTop: `0.5px solid ${c.gray200}`,
   ...textStyle.body,
 });
 const TableHead = styled(TableRow)({
@@ -746,7 +746,7 @@ const CalendarPopover = styled.div({
   padding: 14,
   borderRadius: 10,
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
 });
 const CalendarDayPicker = styled(DayPicker)({
@@ -775,7 +775,7 @@ const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'se
   secondary?: boolean;
 }>(({ secondary }) => ({
   height: 37,
-  border: secondary ? `1px solid ${c.gray200}` : 0,
+  border: secondary ? `0.5px solid ${c.gray200}` : 0,
   borderRadius: 6,
   background: secondary ? c.white : c.primary,
   color: secondary ? c.gray900 : c.white,
@@ -809,7 +809,7 @@ const NameInput = styled.input({
   width: '100%',
   height: 44,
   padding: '0 14px',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
   color: c.gray900,
@@ -822,7 +822,7 @@ const PositionSelect = styled.select({
   width: '100%',
   height: 44,
   padding: '0 34px 0 14px',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
   color: c.gray900,

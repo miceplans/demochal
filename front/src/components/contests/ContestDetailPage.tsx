@@ -392,10 +392,10 @@ const PosterFrame = styled.div({
 const Tabs = styled.nav({
   display: 'flex',
   gap: 24,
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   marginBottom: 20,
   '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
-  '& a[aria-current=page]': { color: c.primary, borderBottom: `2px solid ${c.primary}` },
+  '& a[aria-current=page]': { color: c.primary, borderBottom: `0.5px solid ${c.primary}` },
 });
 const Summary = styled.div({
   background: c.gray50,

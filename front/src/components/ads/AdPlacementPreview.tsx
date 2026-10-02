@@ -290,7 +290,7 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   height: 'clamp(150px, 21vw, 252px)',
   padding: 8,
   overflow: 'hidden',
-  border: `4px dashed ${active ? c.primary : '#7db2ff'}`,
+  border: `0.5px dashed ${active ? c.primary : '#7db2ff'}`,
   borderRadius: 20,
   background: c.white,
   cursor: 'pointer',
@@ -316,7 +316,7 @@ const HeroSlotFrame = styled('div', { shouldForwardProp: (prop) => prop !== 'vie
   height: view === 'mobile' ? 150 : 'clamp(150px, 21vw, 252px)',
   padding: 8,
   overflow: 'hidden',
-  border: `4px dashed ${c.primary}`,
+  border: `0.5px dashed ${c.primary}`,
   borderRadius: 20,
   background: c.white,
 }));
@@ -373,7 +373,7 @@ const GallerySlot = styled('button', {
   flex: `0 0 ${view === 'mobile' ? 122 : 314}px`,
   padding: view === 'mobile' ? 3 : 8,
   overflow: 'hidden',
-  border: `4px dashed ${active ? c.primary : '#32a6f9'}`,
+  border: `0.5px dashed ${active ? c.primary : '#32a6f9'}`,
   borderRadius: 20,
   background: c.white,
   cursor: 'pointer',
@@ -397,7 +397,7 @@ const GallerySlotFrame = styled('div', { shouldForwardProp: (prop) => prop !== '
   flex: `0 0 ${view === 'mobile' ? 122 : 314}px`,
   padding: view === 'mobile' ? 3 : 8,
   overflow: 'hidden',
-  border: `4px dashed ${c.primary}`,
+  border: `0.5px dashed ${c.primary}`,
   borderRadius: 20,
   background: c.white,
 }));
@@ -412,7 +412,7 @@ const TooltipCard = styled('div', {
   maxWidth: 'calc(100% - 24px)',
   transform: 'translateX(-50%)',
   padding: '14px 16px',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 10,
   background: c.white,
   boxShadow: '0 10px 26px rgba(27, 33, 44, .16)',
@@ -453,7 +453,7 @@ const PaymentButton = styled('button', { shouldForwardProp: (prop) => prop !== '
   primary?: boolean;
 }>(({ primary }) => ({
   height: 26,
-  border: primary ? 0 : `1px solid ${c.gray200}`,
+  border: primary ? 0 : `0.5px solid ${c.gray200}`,
   borderRadius: 4,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray900,

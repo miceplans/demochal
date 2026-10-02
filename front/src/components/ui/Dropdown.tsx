@@ -73,7 +73,7 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: 
       ? `
     height: 34px;
     background: ${theme.colors.gray[100]};
-    border: 1px solid ${theme.colors.gray[100]};
+    border: 0.5px solid ${theme.colors.gray[100]};
     border-radius: 24px;
     font-size: ${textStyle.mSubText.fontSize}px;
     color: ${theme.colors.gray[700]};
@@ -85,8 +85,8 @@ const Chevron = styled.span<{ $open: boolean }>`
   width: 8px;
   height: 8px;
   flex-shrink: 0;
-  border-right: 1.5px solid currentColor;
-  border-bottom: 1.5px solid currentColor;
+  border-right: 0.5px solid currentColor;
+  border-bottom: 0.5px solid currentColor;
   transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')})
     translateY(${(p) => (p.$open ? '2px' : '-2px')});
   transition: transform 0.18s ease;

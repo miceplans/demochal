@@ -211,7 +211,7 @@ export function BizProfilePage() {
 
 const Heading = styled.h1({ margin: 0, ...textStyle.h1_2, color: c.gray900 });
 const List = styled.div({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
 });
@@ -223,7 +223,7 @@ const Row = styled.div({
   padding: '18px 16px',
   ...textStyle.bodyLarge,
   color: c.gray900,
-  '& + &': { borderTop: `1px solid ${c.gray100}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray100}` },
 });
 const Label = styled.span({ width: 80, flexShrink: 0 });
 const ResetButton = styled.button({
@@ -245,7 +245,7 @@ const PasswordField = styled.label({
   '& input': {
     height: 42,
     padding: '0 12px',
-    border: `1px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 6,
     font: 'inherit',
   },

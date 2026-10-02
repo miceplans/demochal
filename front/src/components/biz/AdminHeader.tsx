@@ -55,6 +55,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
 const HeaderBox = styled.header({
   background: c.white,
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   padding: '14px max(24px, calc((100% - 1200px) / 2))',
 });

@@ -105,7 +105,7 @@ const AddMember = styled.button({
   alignItems: 'center',
   justifyContent: 'center',
   gap: 6,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 10,
   background: c.white,
   color: c.gray500,

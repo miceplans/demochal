@@ -58,7 +58,7 @@ export const Button = styled(BaseButton, {
 })<{ tone?: 'primary' | 'outline' | 'plain'; small?: boolean; as?: ElementType }>(
   ({ tone = 'primary', small }) => ({
     borderRadius: 8,
-    border: `1px solid ${tone === 'plain' ? c.gray100 : c.primary}`,
+    border: `0.5px solid ${tone === 'plain' ? c.gray100 : c.primary}`,
     padding: small ? '6px 12px' : '12px 24px',
     background: tone === 'primary' ? c.primary : c.white,
     color: tone === 'primary' ? c.white : tone === 'outline' ? c.primary : c.gray700,
@@ -72,7 +72,7 @@ export const Input = styled.input({
   width: '100%',
   minWidth: 0,
   height: 44,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -84,7 +84,7 @@ export const Input = styled.input({
 export const Select = styled.select({
   minWidth: 0,
   height: 40,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -111,14 +111,14 @@ export const Title = styled.h1(textStyle.h1_2);
 export const Heading = styled.h2({ ...textStyle.title, lineHeight: 1.4 });
 export const SectionHeading = styled.h2(textStyle.h2_2);
 export const Panel = styled.section({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   background: c.white,
   padding: 24,
   [mobile]: { padding: 16 },
 });
 export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
-  border: `1px solid ${selected ? c.primary : c.gray100}`,
+  border: `0.5px solid ${selected ? c.primary : c.gray100}`,
   borderRadius: 24,
   background: selected ? c.primary : c.white,
   color: selected ? c.white : c.gray700,

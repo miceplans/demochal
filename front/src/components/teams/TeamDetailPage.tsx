@@ -348,9 +348,9 @@ const Roster = styled.table({
   '& th': { ...textStyle.h1, height: 48, background: c.gray100 },
   '& th:first-of-type': { borderTopLeftRadius: 12 },
   '& th:last-of-type': { borderTopRightRadius: 12 },
-  '& td': { height: 56, borderBottom: `1px solid ${c.gray100}` },
-  '& td:first-of-type': { borderLeft: `1px solid ${c.gray100}` },
-  '& td:last-of-type': { borderRight: `1px solid ${c.gray100}` },
+  '& td': { height: 56, borderBottom: `0.5px solid ${c.gray100}` },
+  '& td:first-of-type': { borderLeft: `0.5px solid ${c.gray100}` },
+  '& td:last-of-type': { borderRight: `0.5px solid ${c.gray100}` },
   '& tr:last-of-type td:first-of-type': { borderBottomLeftRadius: 12 },
   '& tr:last-of-type td:last-of-type': { borderBottomRightRadius: 12 },
   [mobile]: {
