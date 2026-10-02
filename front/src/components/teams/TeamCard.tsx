@@ -20,7 +20,7 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
       <Body>
         <TopRow>
           <Challenge>{team.challenge}</Challenge>
-          <Region>지역 · {team.region?.trim() || '무관'}</Region>
+          <Region>{team.region?.trim() || '지역 무관'}</Region>
           <NameRow>
             <h3>{team.name}</h3>
             <Count>
