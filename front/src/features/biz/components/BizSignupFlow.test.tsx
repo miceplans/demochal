@@ -63,6 +63,36 @@ describe('BizSignupFlow', () => {
     expect(screen.getByRole('link', { name: '로그인' }).getAttribute('href')).toBe('/biz/login');
   });
 
+  it('applies the BIZ landing reveal animation when entering the next step', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
+    await user.click(agreementBoxes[0]);
+    await user.click(agreementBoxes[1]);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByText('성함을 입력해주세요')).not.toBeNull();
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    expect(styleText).toContain('semo-biz-step-in');
+    expect(styleText).toContain('cubic-bezier(0.22, 1, 0.36, 1)');
+    expect(styleText).toContain('prefers-reduced-motion');
+  });
+
+  it('injects micro-interaction styles for checkboxes, action buttons, and the upload box', () => {
+    renderSignup();
+
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    // 체크 아이콘 스케일 팝 시작값/버튼 눌림 스케일/박스 테두리 전환 선언
+    expect(styleText).toContain('scale(0.4)');
+    expect(styleText).toContain('scale(0.96)');
+    expect(styleText).toContain('border-color 150ms ease');
+  });
+
   it('redirects a duplicate signup to the Biz login page', async () => {
     mocks.register.mockRejectedValue(new mocks.MockApiError(409));
     const user = userEvent.setup();
