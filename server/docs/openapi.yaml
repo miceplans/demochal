@@ -494,7 +494,7 @@ paths:
             schema: { $ref: '#/components/schemas/CreateChallengeRequest' }
       responses:
         '201':
-          description: 등록된 챌린지 (status=draft)
+          description: 등록된 챌린지 (status 미지정 시 `contestAutoPublish`에 따라 draft/published)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Challenge' }
@@ -570,6 +570,38 @@ paths:
               schema: { $ref: '#/components/schemas/Challenge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /challenges/{id}/status:
+    patch:
+      tags: [Challenges]
+      summary: 챌린지 상태 변경 (기업)
+      operationId: updateChallengeStatus
+      x-impl-status: implemented
+      description: |
+        소유 기업만 호출할 수 있다. 허용 전이는 draft → published, published → closed 뿐이며
+        그 외는 409. 권한이 없거나 존재하지 않으면 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [published, closed] }
+      responses:
+        '200':
+          description: 변경된 챌린지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 허용되지 않는 상태 전이 }
   /challenges/{id}/stats:
     get:
       tags: [Challenges]
@@ -2784,6 +2816,12 @@ components:
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
+        status:
+          {
+            type: string,
+            enum: [draft, published],
+            description: '공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다.',
+          }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
         recruitUrl:
           {

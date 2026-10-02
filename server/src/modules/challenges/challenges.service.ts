@@ -339,9 +339,11 @@ export class ChallengesService {
         posterFileId: dto.posterFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
-        status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
-          ? 'published'
-          : 'draft',
+        status:
+          dto.status ??
+          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
+            ? 'published'
+            : 'draft'),
       })
       .returning();
     return challenge;

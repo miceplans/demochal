@@ -49,6 +49,11 @@ export class CreateChallengeDto {
   @IsIn(['seMOchall', 'external'])
   recruitMethod?: 'seMOchall' | 'external';
 
+  // 공개(published)/비공개(draft). 생략하면 `contestAutoPublish` 설정을 따른다.
+  @IsOptional()
+  @IsIn(['draft', 'published'])
+  status?: 'draft' | 'published';
+
   // recruitMethod가 external(기본값 포함)이면 필수 — 서비스 레벨에서 검사한다.
   @IsOptional()
   @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
