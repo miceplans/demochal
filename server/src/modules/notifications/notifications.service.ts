@@ -1,6 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
-import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
+import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { notifications, users } from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
 import {
@@ -36,7 +36,14 @@ export class NotificationsService {
    */
   // TODO: Web Push (mobile/browser background push) is not implemented yet.
   //   https://developer.mozilla.org/docs/Web/API/Push_API
-  async create(userId: string, type: string, payload: Record<string, unknown>) {
+  async create(
+    userId: string,
+    type: string,
+    payload: Record<string, unknown>,
+    // Pass the caller's transaction to make the notification commit atomically
+    // with the caller's own writes (runs as a savepoint inside it).
+    executor: Database | DbTx = this.db,
+  ) {
     const settingsKey = this.settingsKeyFor(type, payload);
     if (settingsKey) {
       const [user] = await this.db
@@ -46,7 +53,7 @@ export class NotificationsService {
         .limit(1);
       if (user && user.notificationSettings[settingsKey] === false) return null;
     }
-    return this.db.transaction(async (tx) => {
+    return executor.transaction(async (tx) => {
       const [notification] = await tx
         .insert(notifications)
         .values({ userId, type, payload })

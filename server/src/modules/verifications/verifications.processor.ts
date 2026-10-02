@@ -138,29 +138,43 @@ export class VerificationsProcessorService {
     ocrResult?: unknown,
     rejectionReason?: string | null,
   ) {
-    await this.db
-      .update(verifications)
-      .set({
-        status,
-        ocrResult: ocrResult ?? null,
-        rejectionReason: rejectionReason ?? null,
-        updatedAt: new Date(),
-      })
-      .where(eq(verifications.id, verification.id));
-    if (!business) return;
-    await this.db
-      .update(businesses)
-      .set({ verificationStatus: status })
-      .where(eq(businesses.id, business.id));
+    // The verification/business status write and its result notification commit
+    // together — a failure after the status flip would otherwise make the SQS
+    // retry (or an admin) see a decided verification with no notification.
+    await this.db.transaction(async (tx) => {
+      await tx
+        .update(verifications)
+        .set({
+          status,
+          ocrResult: ocrResult ?? null,
+          rejectionReason: rejectionReason ?? null,
+          updatedAt: new Date(),
+        })
+        .where(eq(verifications.id, verification.id));
+      if (!business) return;
+      await tx
+        .update(businesses)
+        .set({ verificationStatus: status })
+        .where(eq(businesses.id, business.id));
+      await this.notificationsService.create(
+        business.ownerUserId,
+        'verification.result',
+        this.resultPayload(verification.id, status),
+        tx,
+      );
+    });
+  }
+
+  private resultPayload(verificationId: string, status: 'verified' | 'rejected') {
     const approved = status === 'verified';
-    await this.notificationsService.create(business.ownerUserId, 'verification.result', {
-      verificationId: verification.id,
+    return {
+      verificationId,
       status,
       displayStatus: approved ? '승인' : '가승인',
       detailStatus: approved ? '승인' : '실패',
       message: approved
         ? '사업자 인증이 완료되어 승인되었습니다.'
         : '사업자 인증에 실패했습니다. 상세 상태를 확인해 주세요.',
-    });
+    };
   }
 }

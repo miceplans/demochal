@@ -21,9 +21,9 @@ export class OutboxRelayService {
    * retry, up to MAX_ATTEMPTS, after which it's marked `failed` (needs manual
    * requeue — no DLQ for the outbox table itself yet).
    *
-   * Assumes a single relay caller at a time (worker.ts runs one poll loop);
-   * running multiple worker replicas can double-send a row, which is safe
-   * here since SQS delivery is already at-least-once.
+   * Safe to run from several worker replicas: pending rows are claimed with
+   * `FOR UPDATE SKIP LOCKED`. A crash between the SQS send and the commit can
+   * still double-send a row, which consumers tolerate (SQS is at-least-once).
    *
    * `includeEventId` wraps the row payload in an `{ eventId, payload }`
    * envelope so the consumer can key idempotent side effects (e.g. SES
@@ -36,31 +36,36 @@ export class OutboxRelayService {
     batchSize = 10,
     options?: { includeEventId?: boolean },
   ): Promise<void> {
-    const rows = await this.db
-      .select()
-      .from(outboxEvents)
-      .where(and(eq(outboxEvents.eventType, eventType), eq(outboxEvents.status, 'pending')))
-      .orderBy(asc(outboxEvents.createdAt))
-      .limit(batchSize);
+    // Rows are claimed with FOR UPDATE SKIP LOCKED inside one transaction, so
+    // concurrent relay callers (multiple worker replicas) never pick the same row.
+    await this.db.transaction(async (tx) => {
+      const rows = await tx
+        .select()
+        .from(outboxEvents)
+        .where(and(eq(outboxEvents.eventType, eventType), eq(outboxEvents.status, 'pending')))
+        .orderBy(asc(outboxEvents.createdAt))
+        .limit(batchSize)
+        .for('update', { skipLocked: true });
 
-    for (const row of rows) {
-      try {
-        const body = options?.includeEventId
-          ? { eventId: row.id, payload: row.payload }
-          : row.payload;
-        await this.sqsService.sendMessage(queueUrl, body);
-        await this.db
-          .update(outboxEvents)
-          .set({ status: 'sent', sentAt: new Date() })
-          .where(eq(outboxEvents.id, row.id));
-      } catch (error) {
-        const attempts = row.attempts + 1;
-        this.logger.error(`Failed to relay outbox event ${row.id} (attempt ${attempts})`, error);
-        await this.db
-          .update(outboxEvents)
-          .set({ attempts, status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending' })
-          .where(eq(outboxEvents.id, row.id));
+      for (const row of rows) {
+        try {
+          const body = options?.includeEventId
+            ? { eventId: row.id, payload: row.payload }
+            : row.payload;
+          await this.sqsService.sendMessage(queueUrl, body);
+          await tx
+            .update(outboxEvents)
+            .set({ status: 'sent', sentAt: new Date() })
+            .where(eq(outboxEvents.id, row.id));
+        } catch (error) {
+          const attempts = row.attempts + 1;
+          this.logger.error(`Failed to relay outbox event ${row.id} (attempt ${attempts})`, error);
+          await tx
+            .update(outboxEvents)
+            .set({ attempts, status: attempts >= MAX_ATTEMPTS ? 'failed' : 'pending' })
+            .where(eq(outboxEvents.id, row.id));
+        }
       }
-    }
+    });
   }
 }
