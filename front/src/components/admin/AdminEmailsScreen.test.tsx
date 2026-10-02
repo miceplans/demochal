@@ -13,17 +13,19 @@ const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   send: vi.fn(),
   create: vi.fn(),
+  updateStatus: vi.fn(),
   push: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
 vi.mock('@semochal/api-client', () => ({
-  adminEmailApi: {
+  generated: {
     useListAdminEmails: mocks.list,
     useGetAdminEmail: mocks.detail,
     useSendAdminEmailReply: mocks.send,
     useCreateAdminEmail: mocks.create,
+    useUpdateAdminEmailStatus: mocks.updateStatus,
   },
 }));
 
@@ -56,6 +58,36 @@ vi.mock('./parts', () => ({
     <div {...props}>{children}</div>
   ),
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
+  ApproveButton: ({ children, ...props }: { children: ReactNode }) => (
+    <button {...props}>{children}</button>
+  ),
+  RejectButton: ({ children, ...props }: { children: ReactNode }) => (
+    <button {...props}>{children}</button>
+  ),
+  FieldLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+  SelectFilter: ({
+    label,
+    value,
+    onChange,
+  }: {
+    label: string;
+    value?: string;
+    onChange?: (value: string) => void;
+  }) => (
+    <select aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)}>
+      <option value="">{label}</option>
+      <option value="미처리">미처리</option>
+      <option value="처리중">처리중</option>
+      <option value="완료">완료</option>
+    </select>
+  ),
+  StatCard: ({ label, value }: { label: string; value: string }) => (
+    <div>
+      {label}
+      {value}
+    </div>
+  ),
+  StatRow: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   FilterBar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SearchFilter: ({
@@ -69,7 +101,6 @@ vi.mock('./parts', () => ({
   }) => (
     <input aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)} />
   ),
-  SelectFilter: () => null,
 }));
 
 describe('AdminEmailsScreen', () => {
@@ -101,6 +132,7 @@ describe('AdminEmailsScreen', () => {
           id: 'thread-1',
           subject: '문의',
           customerEmail: 'customer@example.com',
+          status: 'open',
           messages: [
             {
               id: 'message-1',
@@ -119,6 +151,7 @@ describe('AdminEmailsScreen', () => {
     });
     mocks.send.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.send });
     mocks.create.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.create });
+    mocks.updateStatus.mockReturnValue({ isPending: false, mutate: mocks.updateStatus });
   });
 
   it('renders a thread table and opens the mail view page when selected', async () => {
@@ -140,6 +173,8 @@ describe('AdminEmailsScreen', () => {
     await user.type(textarea, '재시도할 답장');
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
+    await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), '처리중');
+    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', data: { status: 'pending' } });
   });
 
   it('renders a separate compose page and sends a new email', async () => {
@@ -151,14 +186,16 @@ describe('AdminEmailsScreen', () => {
     });
     render(<AdminEmailComposeScreen />);
     expect(screen.getByRole('heading', { name: '새 메일 작성' })).toBeTruthy();
-    await user.type(screen.getByPlaceholderText('받는 사람 이메일'), 'customer@example.com');
-    await user.type(screen.getByPlaceholderText('제목'), '새 문의 답변');
+    await user.type(screen.getByPlaceholderText('customer@example.com'), 'customer@example.com');
+    await user.type(screen.getByPlaceholderText('문의 답변을 입력하세요'), '새 문의 답변');
     await user.type(screen.getByPlaceholderText('메일 내용을 입력하세요.'), '안녕하세요.');
     await user.click(screen.getByRole('button', { name: '메일 보내기' }));
     expect(mocks.create.mock.results[0]?.value.mutateAsync).toHaveBeenCalledWith({
-      to: 'customer@example.com',
-      subject: '새 문의 답변',
-      text: '안녕하세요.',
+      data: {
+        to: 'customer@example.com',
+        subject: '새 문의 답변',
+        text: '안녕하세요.',
+      },
     });
   });
 });

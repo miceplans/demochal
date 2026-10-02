@@ -20,10 +20,10 @@ import type { ListAdminReportsStatus } from './listAdminReportsStatus';
 import type { ListAdminReportsTargetType } from './listAdminReportsTargetType';
 
 export type ListAdminReportsParams = {
-  q?: string;
-  status?: ListAdminReportsStatus;
-  /**
-   * 신고 대상 유형
-   */
-  targetType?: ListAdminReportsTargetType;
+q?: string;
+status?: ListAdminReportsStatus;
+/**
+ * 신고 대상 유형
+ */
+targetType?: ListAdminReportsTargetType;
 };

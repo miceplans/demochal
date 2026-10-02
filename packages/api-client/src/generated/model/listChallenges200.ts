@@ -21,8 +21,8 @@ import type { Challenge } from './challenge';
 export type ListChallenges200 = {
   items?: Challenge[];
   /**
-   * 다음 페이지 커서 (없으면 null)
-   * @nullable
-   */
+     * 다음 페이지 커서 (없으면 null)
+     * @nullable
+     */
   nextCursor?: string | null;
 };

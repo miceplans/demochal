@@ -16,35 +16,20 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AdStatus } from './adStatus';
 
-export interface Ad {
-  id: string;
-  businessId: string;
-  productId: string;
-  /** 광고명 (연결된 챌린지명) */
-  title: string;
-  imageFileId?: string;
+export interface CreateAdminEmail {
+  /** @maxLength 998 */
+  to: string;
   /**
-     * imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음)
-     * @nullable
+     * @minLength 1
+     * @maxLength 998
      */
-  imageUrl?: string | null;
-  landingUrl?: string;
-  startDate: string;
-  endDate: string;
-  /** 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용 */
-  status: AdStatus;
+  subject: string;
   /**
-     * 누적 노출수 (준비중이면 null)
-     * @nullable
+     * @minLength 1
+     * @maxLength 100000
      */
-  impressions?: number | null;
-  /**
-     * 누적 북마크수 (준비중이면 null)
-     * @nullable
-     */
-  bookmarks?: number | null;
-  /** 결제 금액 (원) */
-  paidAmount: number;
+  text: string;
+  /** @maxLength 100000 */
+  html?: string;
 }
