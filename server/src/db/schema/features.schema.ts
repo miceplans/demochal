@@ -1,5 +1,6 @@
 import {
   integer,
+  index,
   jsonb,
   pgTable,
   text,
@@ -67,6 +68,69 @@ export const adminSettings = pgTable('admin_settings', {
   values: jsonb('values').$type<Record<string, unknown>>().notNull().default({}),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+// Support mailbox foundation. Bodies and original MIME remain separate so the
+// inbound processor can persist metadata first and the admin inbox can later
+// choose whether to render the sanitized text/html body or fetch the MIME.
+export const emailThreads = pgTable(
+  'email_threads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    subject: varchar('subject', { length: 998 }),
+    status: varchar('status', { length: 20 }).notNull().default('open'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [index('email_threads_updated_at_idx').on(table.updatedAt)],
+);
+
+export const emailMessages = pgTable(
+  'email_messages',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    threadId: uuid('thread_id')
+      .notNull()
+      .references(() => emailThreads.id),
+    direction: varchar('direction', { length: 10 }).notNull(), // INBOUND | OUTBOUND
+    messageId: varchar('message_id', { length: 998 }),
+    sesMessageId: varchar('ses_message_id', { length: 256 }),
+    inReplyTo: varchar('in_reply_to', { length: 998 }),
+    references: text('references'),
+    fromAddress: varchar('from_address', { length: 998 }).notNull(),
+    toAddresses: jsonb('to_addresses').$type<string[]>().notNull().default([]),
+    ccAddresses: jsonb('cc_addresses').$type<string[]>().notNull().default([]),
+    subject: varchar('subject', { length: 998 }),
+    textBody: text('text_body'),
+    htmlBody: text('html_body'),
+    s3ObjectKey: text('s3_object_key'),
+    deliveryStatus: varchar('delivery_status', { length: 20 }).notNull().default('SENT'),
+    sentAt: timestamp('sent_at'),
+    receivedAt: timestamp('received_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex('email_messages_message_id_unique').on(table.messageId),
+    uniqueIndex('email_messages_ses_message_id_unique').on(table.sesMessageId),
+    index('email_messages_thread_created_at_idx').on(table.threadId, table.createdAt),
+    index('email_messages_in_reply_to_idx').on(table.inReplyTo),
+  ],
+);
+
+export const emailAttachments = pgTable(
+  'email_attachments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    messageId: uuid('message_id')
+      .notNull()
+      .references(() => emailMessages.id),
+    filename: varchar('filename', { length: 255 }),
+    contentType: varchar('content_type', { length: 255 }).notNull(),
+    sizeBytes: integer('size_bytes'),
+    contentId: varchar('content_id', { length: 998 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('email_attachments_message_id_idx').on(table.messageId)],
+);
 
 // 광고 이벤트는 개인정보 없이 광고별 서울 시간 기준 시간 버킷 카운터로만 저장한다.
 // 동일 버킷의 노출/클릭을 한 행에 upsert해 원본 이벤트가 무한히 쌓이지 않도록 한다.

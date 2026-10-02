@@ -6,6 +6,12 @@ output "public_bucket_name" { value = aws_s3_bucket.public.id }
 output "verifications_queue_url" { value = aws_sqs_queue.verifications.url }
 output "emails_queue_url" { value = aws_sqs_queue.emails.url }
 output "ses_identity_arn" { value = local.ses_enabled ? aws_sesv2_email_identity.service[0].arn : null }
+output "email_inbox_bucket_name" {
+  value = local.email_inbound_enabled ? aws_s3_bucket.email_inbox[0].id : null
+}
+output "email_processor_lambda_name" {
+  value = local.email_inbound_enabled ? aws_lambda_function.email_processor[0].function_name : null
+}
 output "app_secret_arn" { value = aws_secretsmanager_secret.app.arn }
 output "api_ecr_repository_url" { value = aws_ecr_repository.api.repository_url }
 output "api_ecr_repository_arn" { value = aws_ecr_repository.api.arn }
