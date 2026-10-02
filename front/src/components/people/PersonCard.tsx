@@ -11,6 +11,7 @@ import { textStyle } from '@/styles/typography';
 // hover/포커스 시 하단의 배지·스택 칩이 '프로필 보기 / 스카우트' 버튼으로 교체된다(Figma 1291:10836).
 // 두 레이어를 같은 grid 셀에 겹쳐 카드 높이가 흔들리지 않게 하고, hover 없는 기기에서는 세로로 모두 노출한다.
 const Card = styled.div({
+  position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -34,6 +35,8 @@ const Card = styled.div({
     },
   },
 });
+// 카드 전체를 덮는 링크 — 카드 어디를 눌러도 프로필로 이동하고, 액션 버튼은 그 위(z-index)에서 따로 동작한다.
+const CardLink = styled(Link)({ position: 'absolute', inset: 0, borderRadius: 8 });
 const Top = styled.div({
   display: 'flex',
   flexDirection: 'column',
@@ -63,6 +66,8 @@ const Actions = styled.div({
   display: 'flex',
   gap: 4,
   width: '100%',
+  position: 'relative',
+  zIndex: 1,
   opacity: 0,
   visibility: 'hidden',
   '@media (hover: none)': { gridArea: 'auto', opacity: 1, visibility: 'visible' },
@@ -149,6 +154,10 @@ export function PersonCard({
   if (person.hasAwards) badges.push({ label: '출품이력', tone: 'green' });
   return (
     <Card>
+      <CardLink
+        href={`/profile?id=${person.id}`}
+        aria-label={`${person.name ?? '이름 없음'} 프로필 보기`}
+      />
       <Top>
         <Avatar aria-hidden />
         <Name>{person.name ?? '이름 없음'}</Name>
