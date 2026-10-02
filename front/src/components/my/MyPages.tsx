@@ -136,6 +136,14 @@ const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'app
 const CERTIFICATE_MAX_BYTES = 10 * 1024 * 1024;
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
 
+const EndRow = styled(Row)<{ $mt?: number }>(({ $mt }) => ({
+  justifyContent: 'flex-end',
+  marginTop: $mt,
+}));
+const HeadingSpaced = styled(Heading)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const TitleSpaced = styled(Title)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const MutedSpaced = styled(Muted)<{ $mt: number }>(({ $mt }) => ({ marginTop: $mt }));
+
 function CertificateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -243,14 +251,14 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
               required
             />
           </UploadBox>
-          <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+          <EndRow $mt={4}>
             <Button type="button" small tone="plain" onClick={close} disabled={submitting}>
               취소
             </Button>
             <Button type="submit" small disabled={!badge || !file || submitting}>
               {submitting ? '요청 중…' : '인증 요청'}
             </Button>
-          </Row>
+          </EndRow>
         </Stack>
       </form>
     </Modal>
@@ -362,7 +370,7 @@ function SkillAddModal({
         ))}
         {options.length === 0 && <Muted>검색 결과가 없어요.</Muted>}
       </SkillGrid>
-      <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+      <EndRow $mt={4}>
         <Button type="button" small tone="plain" onClick={close}>
           취소
         </Button>
@@ -385,7 +393,7 @@ function SkillAddModal({
         >
           추가하기{picked.length > 0 ? ` (${picked.length})` : ''}
         </Button>
-      </Row>
+      </EndRow>
     </Modal>
   );
 }
@@ -618,7 +626,7 @@ export function MyPage() {
           </Row>
         )}
         <DesktopOnly>
-          <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+          <HeadingSpaced $mb={12}>내 뱃지</HeadingSpaced>
         </DesktopOnly>
         <Badges
           extra={certificates}
@@ -653,7 +661,7 @@ export function MyPage() {
           }
         />
         <DesktopOnly>
-          <Heading style={{ marginBottom: 24 }}>참여중</Heading>
+          <HeadingSpaced $mb={24}>참여중</HeadingSpaced>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
             <Muted>불러오는 중이에요.</Muted>
           ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
@@ -678,7 +686,7 @@ export function MyPage() {
           )}
         </DesktopOnly>
         <MobileOnly>
-          <Heading style={{ marginBottom: 12 }}>참가 이력</Heading>
+          <HeadingSpaced $mb={12}>참가 이력</HeadingSpaced>
           <ParticipationHistory />
         </MobileOnly>
       </Stack>
@@ -973,7 +981,7 @@ export function ApplicationsPage() {
     <MyShell title="지원현황">
       <Stack gap={40}>
         <section>
-          <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
+          <TitleSpaced $mb={20}>챌린지 지원 현황</TitleSpaced>
           {challengeQuery.isPending ? (
             <Muted>불러오는 중이에요.</Muted>
           ) : challengeQuery.isError ? (
@@ -1015,7 +1023,7 @@ export function ApplicationsPage() {
           )}
         </section>
         <section>
-          <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
+          <TitleSpaced $mb={20}>팀 지원현황</TitleSpaced>
           {teamQuery.isPending ? (
             <Muted>불러오는 중이에요.</Muted>
           ) : teamQuery.isError ? (
@@ -1167,9 +1175,9 @@ export function TeamApplicantsPage() {
             <section key={team.id}>
               <div>
                 <Title>{team.title}</Title>
-                <Muted style={{ marginTop: 8 }}>
+                <MutedSpaced $mt={8}>
                   {team.challengeTitle ?? '챌린지'} · {team.businessName ?? '-'}
-                </Muted>
+                </MutedSpaced>
               </div>
               <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
                 <Heading>팀 지원현황</Heading>
@@ -1178,7 +1186,7 @@ export function TeamApplicantsPage() {
                 </Button>
               </Row>
               {(team.members ?? []).length === 0 ? (
-                <Muted style={{ marginTop: 16 }}>아직 지원자가 없어요.</Muted>
+                <MutedSpaced $mt={16}>아직 지원자가 없어요.</MutedSpaced>
               ) : (
                 <Table>
                   <thead>
@@ -1243,14 +1251,14 @@ export function TeamApplicantsPage() {
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
-          <Row style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+          <EndRow $mt={16}>
             <Button type="button" small tone="plain" onClick={closeSendModal}>
               취소
             </Button>
             <Button type="submit" small disabled={updateMember.isPending}>
               확인
             </Button>
-          </Row>
+          </EndRow>
         </form>
       </Modal>
     </MyShell>
@@ -1424,7 +1432,7 @@ export function NotificationsPage() {
               </NotificationTabButton>
             ))}
           </NotificationTabs>
-          <Row style={{ justifyContent: 'flex-end' }}>
+          <EndRow>
             <Button
               small
               tone="plain"
@@ -1433,7 +1441,7 @@ export function NotificationsPage() {
             >
               모두 읽음
             </Button>
-          </Row>
+          </EndRow>
           <NotificationList>
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
@@ -1506,9 +1514,9 @@ export function NotificationsPage() {
                       </Row>
                     )}
                     {inviteResponse && (
-                      <Muted style={{ marginTop: 8 }}>
+                      <MutedSpaced $mt={8}>
                         {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
-                      </Muted>
+                      </MutedSpaced>
                     )}
                     <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>
