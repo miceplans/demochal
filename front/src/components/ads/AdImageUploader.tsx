@@ -78,7 +78,7 @@ const DropZone = styled('label', {
   minHeight: 0,
   padding: 8,
   borderRadius: 11,
-  background: dragOver ? '#eaf3ff' : '#f8f8f8',
+  background: dragOver ? c.paleBlue : c.surface,
   cursor: 'pointer',
   textAlign: 'center',
   transition: 'background 120ms ease',

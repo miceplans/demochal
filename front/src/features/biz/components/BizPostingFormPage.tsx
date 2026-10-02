@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -61,7 +62,7 @@ export function BizPostingFormPage() {
       submittingLabel="게시 중…"
       disabled={loading || !businessId}
       initialError={loadError}
-      onSubmit={async (values) => {
+      onSubmit={async (values, visibility) => {
         // 생성 스펙은 null을 받지 않으므로(nullable이 아닌 선택 필드), 수정용 폼 값의 null은 생략으로 바꿔 본다.
         const response = await createChallenge.mutateAsync({
           data: {
@@ -72,6 +73,7 @@ export function BizPostingFormPage() {
             organizerType: values.organizerType ?? undefined,
             prizeAmount: values.prizeAmount ?? undefined,
             posterFileId: values.posterFileId ?? undefined,
+            status: visibility === 'public' ? 'published' : 'draft',
           },
         });
         router.push(hrefOf(`/postings/${response.data.id}`));
@@ -89,12 +91,13 @@ export function BizPostingEditPage() {
   const queryClient = useQueryClient();
   const challengeQuery = generated.useGetMyChallenge(id, { query: { enabled: Boolean(id) } });
   const updateChallenge = generated.useUpdateChallenge();
+  const updateChallengeStatus = generated.useUpdateChallengeStatus();
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
   if (challengeQuery.isPending)
     return (
       <BizContent>
-        <Message>공고 정보를 불러오는 중입니다.</Message>
+        <LoadingState label="공고 정보를 불러오는 중입니다." />
       </BizContent>
     );
   if (!challenge)
@@ -128,11 +131,16 @@ export function BizPostingEditPage() {
             : String(challenge.prizeAmount),
         recruitMethod: challenge.recruitMethod,
         recruitUrl: challenge.recruitUrl ?? '',
+        status: challenge.status,
       }}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
-      onSubmit={async (values) => {
+      onSubmit={async (values, visibility) => {
         await updateChallenge.mutateAsync({ id, data: values });
+        // 상태 전이는 draft → published만 가능하다(폼도 게시된 공고의 비공개 전환을 막는다).
+        if (challenge.status === 'draft' && visibility === 'public') {
+          await updateChallengeStatus.mutateAsync({ id, data: { status: 'published' } });
+        }
         await queryClient.invalidateQueries({ queryKey: generated.getGetMyChallengeQueryKey(id) });
         toast.success('공고를 수정했습니다');
         router.push(hrefOf(`/postings/${id}`));
@@ -156,6 +164,8 @@ type PostingInput = {
   prizeAmount: string;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
+  /** 수정 시 현재 공고 상태 — 공개 라디오 초기값과 비공개 전환 가능 여부를 결정한다. 신규는 생략. */
+  status?: 'draft' | 'published' | 'closed';
 };
 // 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긬다.
 // 폼에서 항상 값이 있는 핵심 필드는 필수로 좁혀, 수기 create 클라이언트의 Pick<Challenge, ...> 계약에도 맞는다.
@@ -241,7 +251,7 @@ function PostingForm({
   disabled?: boolean;
   initialError?: string;
   showRecruitMethod?: boolean;
-  onSubmit: (values: PostingValues) => Promise<void>;
+  onSubmit: (values: PostingValues, visibility: 'public' | 'private') => Promise<void>;
 }) {
   const router = useRouter();
   const editorRef = useRef<HTMLDivElement>(null);
@@ -262,7 +272,11 @@ function PostingForm({
   );
   const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
   const [topics, setTopics] = useState<string[]>([]);
-  const [visibility, setVisibility] = useState<'public' | 'private'>('public');
+  const [visibility, setVisibility] = useState<'public' | 'private'>(
+    initial.status === 'draft' ? 'private' : 'public',
+  );
+  // 게시된/마감된 공고는 상태 전이 규칙상 draft로 되돌릴 수 없다.
+  const canMakePrivate = initial.status === undefined || initial.status === 'draft';
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const shownError = error || initialError;
@@ -344,23 +358,26 @@ function PostingForm({
     }
     setSubmitting(true);
     try {
-      await onSubmit({
-        title: title.trim(),
-        description,
-        price: initial.price,
-        capacity: parsedCapacity,
-        startDate: toLocalBoundary(startDate, false),
-        endDate: toLocalBoundary(endDate, true),
-        category: category || null,
-        targets,
-        organizerType: organizerType || null,
-        prizeAmount: parsedPrizeAmount,
-        ...(poster ? { posterFileId: poster.fileId } : {}),
-        ...(showRecruitMethod
-          ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
-          : {}),
-        ...(recruit === 'external' ? { recruitUrl: trimmedRecruitUrl } : {}),
-      });
+      await onSubmit(
+        {
+          title: title.trim(),
+          description,
+          price: initial.price,
+          capacity: parsedCapacity,
+          startDate: toLocalBoundary(startDate, false),
+          endDate: toLocalBoundary(endDate, true),
+          category: category || null,
+          targets,
+          organizerType: organizerType || null,
+          prizeAmount: parsedPrizeAmount,
+          ...(poster ? { posterFileId: poster.fileId } : {}),
+          ...(showRecruitMethod
+            ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
+            : {}),
+          ...(recruit === 'external' ? { recruitUrl: trimmedRecruitUrl } : {}),
+        },
+        visibility,
+      );
     } catch (cause) {
       setError(adError(cause));
     } finally {
@@ -438,7 +455,7 @@ function PostingForm({
         <Fields>
           <FieldBlock>
             <FieldLabel>설명문구를 적어주세요.</FieldLabel>
-            {/* TODO: 설명문구·해시태그·문의연락처·공개 여부는 challenges 스키마/DTO에 컬럼이 생기면 저장한다. */}
+            {/* TODO: 설명문구·해시태그·문의연락처는 challenges 스키마/DTO에 컬럼이 생기면 저장한다. */}
             <LineInput aria-label="설명문구" />
           </FieldBlock>
           <FieldBlock>
@@ -697,6 +714,7 @@ function PostingForm({
                   type="radio"
                   name="visibility"
                   checked={visibility === 'private'}
+                  disabled={!canMakePrivate}
                   onChange={() => setVisibility('private')}
                 />
                 <RadioIcon src={radioIcon(visibility === 'private')} alt="" />
@@ -756,7 +774,7 @@ const Uploader = styled.label({
   gap: 4,
   height: 282,
   padding: 8,
-  background: '#f8f8f8',
+  background: c.surface,
   border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
   cursor: 'pointer',
@@ -787,7 +805,7 @@ const RoleInput = styled.input({
   flex: 1,
   minWidth: 0,
   height: 32,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -819,7 +837,7 @@ const FieldLabel = styled.span({
 const LineInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -827,7 +845,7 @@ const LineInput = styled.input({
 
 /* ---------- 텍스트 에디터 ---------- */
 const EditorBox = styled.div({
-  border: '1px solid #e9ecef',
+  border: '0.5px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
   overflow: 'hidden',
@@ -845,7 +863,7 @@ const ToolGroup = styled.div({
   alignItems: 'center',
   gap: 2,
   padding: 2,
-  border: '1px solid #e9ecef',
+  border: '0.5px solid #e9ecef',
   borderRadius: 4,
 });
 const ToolButton = styled.button({
@@ -913,7 +931,7 @@ const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   padding: '8px 10px',
   borderRadius: 20,
-  border: selected ? '1px solid transparent' : `1px solid ${c.gray300}`,
+  border: selected ? '0.5px solid transparent' : `0.5px solid ${c.gray300}`,
   background: selected ? c.primary : c.white,
   color: selected ? c.white : c.gray700,
   fontSize: 12,
@@ -944,7 +962,7 @@ const LinkInput = styled.input({
   width: 470,
   maxWidth: '100%',
   height: 36,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -954,7 +972,7 @@ const LinkInput = styled.input({
 const ContactInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -970,7 +988,7 @@ const Actions = styled.div({
 const CancelButton = styled.button({
   width: 183,
   height: 37,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,
@@ -985,7 +1003,7 @@ const PublishButton = styled.button({
   background: c.primary,
   color: c.white,
   ...textStyle.subtitle,
-  '&:hover': { background: '#005ee0' },
+  '&:hover': { background: c.primaryHover },
 });
 
 function toDateInput(value: string | undefined) {

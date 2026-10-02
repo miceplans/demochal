@@ -77,7 +77,7 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
 const TableWrapper = styled.div`
   width: 100%;
   overflow-x: auto;
-  border: 1px solid ${(p) => p.theme.colors.gray[200]};
+  border: 0.5px solid ${(p) => p.theme.colors.gray[200]};
   border-radius: 10px;
   background: ${(p) => p.theme.colors.background};
 `;
@@ -96,12 +96,12 @@ const Th = styled.th<{ sortable?: boolean }>`
   font-weight: 600;
   white-space: nowrap;
   cursor: ${(p) => (p.sortable ? 'pointer' : 'default')};
-  border-bottom: 1px solid ${(p) => p.theme.colors.gray[200]};
+  border-bottom: 0.5px solid ${(p) => p.theme.colors.gray[200]};
 `;
 
 const Td = styled.td`
   padding: 12px 14px;
-  border-bottom: 1px solid ${(p) => p.theme.colors.gray[100]};
+  border-bottom: 0.5px solid ${(p) => p.theme.colors.gray[100]};
   color: ${(p) => p.theme.colors.gray[900]};
   white-space: nowrap;
 `;

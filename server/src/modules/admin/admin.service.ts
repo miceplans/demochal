@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -70,6 +70,8 @@ export function escapeLike(value: string): string {
 const like = (value: string) => `%${escapeLike(value)}%`;
 
 const DAY_MS = 86_400_000;
+const DEFAULT_USERS_PAGE_SIZE = 30;
+const MAX_USERS_PAGE_SIZE = 50;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type BucketUnit = 'day' | 'month';
@@ -82,20 +84,28 @@ interface TimeBuckets {
 
 const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
+/** 관리자 집계 버킷의 기준 시간대. 저장은 UTC, 일/월 경계는 KST(UTC+9, DST 없음)로 자른다. */
+const BUCKET_TIME_ZONE = 'Asia/Seoul';
+const BUCKET_OFFSET_MS = 9 * 3_600_000;
+
 /**
- * Consecutive UTC day/month buckets ending at `now` (inclusive). Keys match
+ * Consecutive KST day/month buckets ending at `now` (inclusive). Keys match
  * {@link bucketKey}'s `YYYY-MM-DD` output so SQL group-by rows can be joined back.
  */
 export function timeBuckets(unit: BucketUnit, count: number, now = new Date()): TimeBuckets {
+  // KST 벽시계 시각을 UTC 필드로 옮겨 계산한 뒤, since만 실제 순간(UTC)으로 되돌린다.
+  const kstNow = new Date(now.getTime() + BUCKET_OFFSET_MS);
   const starts = Array.from({ length: count }, (_, i) => {
     const offset = count - 1 - i;
     return unit === 'day'
-      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset))
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      ? new Date(
+          Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - offset),
+        )
+      : new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - offset, 1));
   });
   return {
     unit,
-    since: starts[0]!,
+    since: new Date(starts[0]!.getTime() - BUCKET_OFFSET_MS),
     keys: starts.map(toDateKey),
     labels: starts.map((date) =>
       unit === 'day'
@@ -111,9 +121,12 @@ const RANGE_BUCKETS: Record<string, [BucketUnit, number]> = {
   '1year': ['month', 12],
 };
 
-/** `YYYY-MM-DD` of the day/month a timestamp falls in (timestamps are stored as UTC). */
+/**
+ * `YYYY-MM-DD` of the KST day/month a timestamp falls in. 컬럼은 tz 없는 `timestamp`(UTC 저장)이라
+ * UTC로 해석한 뒤 KST로 변환해 DB 세션 TZ와 무관하게 버킷 경계가 고정된다.
+ */
 function bucketKey(unit: BucketUnit, column: PgColumn) {
-  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column}), 'YYYY-MM-DD')`;
+  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column} AT TIME ZONE 'UTC' AT TIME ZONE ${sql.raw(`'${BUCKET_TIME_ZONE}'`)}), 'YYYY-MM-DD')`;
 }
 
 /** Smallest 1/2/5×10ⁿ ≥ max (at least 10) so the chart's five even ticks stay round. */
@@ -153,6 +166,10 @@ export function maskEmail(email: string): string {
 export function maskBizNumber(registrationNumber: string): string {
   return `${registrationNumber.slice(0, 7)}*****`;
 }
+
+/** ads의 노출 기간 기준(AdsService.listPublic과 동일): 종료일 당일까지 노출된다. */
+const utcDayStart = (now = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
 const formatMonthDay = (date: Date) =>
   `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -385,8 +402,8 @@ export class AdminService {
     status: 'verified' | 'rejected',
     reason: string | null,
   ) {
-    // 조회·상태 전이·기관 상태 갱신을 한 트랜잭션에서 처리하고(행 잠금), 알림은 커밋 후 발송한다.
-    const { updated, ownerUserId } = await this.db.transaction(async (tx) => {
+    // 조회·상태 전이·기관 상태 갱신·결과 알림을 한 트랜잭션에서 처리한다(행 잠금).
+    const updated = await this.db.transaction(async (tx) => {
       const [verification] = await tx
         .select()
         .from(verifications)
@@ -425,16 +442,16 @@ export class AdminService {
             ),
           );
       }
-      return { updated: row, ownerUserId: business?.ownerUserId };
+      if (business?.ownerUserId) {
+        await this.notificationsService.create(
+          business.ownerUserId,
+          'verification.result',
+          { verificationId: id, status, ...(reason ? { reason } : {}) },
+          tx,
+        );
+      }
+      return row;
     });
-
-    if (ownerUserId) {
-      await this.notificationsService.create(ownerUserId, 'verification.result', {
-        verificationId: id,
-        status,
-        ...(reason ? { reason } : {}),
-      });
-    }
 
     return updated;
   }
@@ -575,9 +592,20 @@ export class AdminService {
   }
 
   async listAds(q?: string, status?: string) {
+    // 'ended'로 전환하는 배치가 없어 계약이 끝난 광고도 DB에는 active로 남는다.
+    // 실제로 노출되지 않으므로 목록에서는 종료로 취급해 상태·필터를 일치시킨다.
+    const todayStart = utcDayStart();
     const conditions = [];
     if (q) conditions.push(or(ilike(ads.title, like(q)), ilike(businesses.name, like(q))));
-    if (status) conditions.push(eq(ads.status, status));
+    if (status === 'active') {
+      conditions.push(and(eq(ads.status, 'active'), gte(ads.endDate, todayStart)));
+    } else if (status === 'ended') {
+      conditions.push(
+        or(eq(ads.status, 'ended'), and(eq(ads.status, 'active'), lt(ads.endDate, todayStart))),
+      );
+    } else if (status) {
+      conditions.push(eq(ads.status, status));
+    }
     const rows = await this.db
       .select({ ad: ads, organization: businesses.name, productName: adProducts.name })
       .from(ads)
@@ -586,18 +614,32 @@ export class AdminService {
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(ads.createdAt));
 
-    return rows.map(({ ad, organization, productName }) => ({ ...ad, organization, productName }));
+    return rows.map(({ ad, organization, productName }) => ({
+      ...ad,
+      status: ad.status === 'active' && ad.endDate < todayStart ? 'ended' : ad.status,
+      organization,
+      productName,
+    }));
   }
 
   async getAdPricing() {
     const products = await this.db.select().from(adProducts).orderBy(asc(adProducts.createdAt));
+    const now = new Date();
     const result = [];
     for (const product of products) {
       const [current] = await this.db
         .select({ ad: ads, organization: businesses.name })
         .from(ads)
         .innerJoin(businesses, eq(ads.businessId, businesses.id))
-        .where(and(eq(ads.productId, product.id), eq(ads.status, 'active')))
+        .where(
+          and(
+            eq(ads.productId, product.id),
+            eq(ads.status, 'active'),
+            // 노출 기간이 끝났거나 아직 시작 전인 광고는 "현재 광고"가 아니다.
+            lte(ads.startDate, now),
+            gte(ads.endDate, utcDayStart(now)),
+          ),
+        )
         .orderBy(desc(ads.createdAt))
         .limit(1);
       result.push({
@@ -638,7 +680,19 @@ export class AdminService {
 
   // --------------------------------------------------------------------- users
 
-  async listUsers(q?: string, status?: string, joinedWithin?: string, position?: string) {
+  async listUsers(
+    q?: string,
+    status?: string,
+    joinedWithin?: string,
+    position?: string,
+    pageParam?: number,
+    pageSizeParam?: number,
+  ) {
+    const page = Math.max(1, Math.trunc(pageParam ?? 1) || 1);
+    const pageSize = Math.min(
+      MAX_USERS_PAGE_SIZE,
+      Math.max(1, Math.trunc(pageSizeParam ?? DEFAULT_USERS_PAGE_SIZE) || DEFAULT_USERS_PAGE_SIZE),
+    );
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, like(q)), ilike(users.email, like(q))));
     if (status) conditions.push(eq(users.suspended, status === 'suspended'));
@@ -648,14 +702,26 @@ export class AdminService {
     }
     // users.position is free text ("프론트엔드 개발자" etc.), so match the badge as a substring.
     if (position) conditions.push(ilike(users.position, like(position)));
-    const rows = await this.db
-      .select()
-      .from(users)
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(users.createdAt));
+    const where = conditions.length ? and(...conditions) : undefined;
+    // id를 보조 정렬키로 둬 createdAt이 같은 행도 페이지 사이에서 중복·누락되지 않게 한다.
+    const [rows, [totalRow]] = await Promise.all([
+      this.db
+        .select()
+        .from(users)
+        .where(where)
+        .orderBy(desc(users.createdAt), desc(users.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      this.db.select({ count: countRows }).from(users).where(where),
+    ]);
 
     const countByUser = await this.countReportsAgainst(rows.map((row) => row.id));
-    return rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0));
+    return {
+      items: rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0)),
+      total: totalRow?.count ?? 0,
+      page,
+      pageSize,
+    };
   }
 
   async suspendUser(id: string, dto: SuspendUserDto) {
@@ -970,6 +1036,14 @@ export class AdminService {
     if (!row) throw new NotFoundException('광고를 찾을 수 없습니다.');
 
     const report = await this.adsService.getReportForAdmin(row.ad.id);
+    // 라벨은 "결제 완료 금액"이므로 예약가(paidAmount)가 아니라 실제 결제 순액을 쓴다.
+    const [spend] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+      })
+      .from(payments)
+      .innerJoin(orders, eq(payments.orderId, orders.id))
+      .where(and(eq(orders.adId, row.ad.id), inArray(payments.status, ['paid', 'done'])));
     return {
       adId: row.ad.id,
       adNumber: row.ad.adNumber,
@@ -991,7 +1065,7 @@ export class AdminService {
         { label: 'CTR', value: `${report.totals.ctr}%`, meta: '최근 31일 계측값', dot: '#F59E0B' },
         {
           label: '집행 광고비',
-          value: String(row.ad.paidAmount),
+          value: String(spend?.total ?? 0),
           meta: '결제 완료 금액',
           dot: '#8B5CF6',
         },

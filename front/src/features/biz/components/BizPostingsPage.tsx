@@ -1,6 +1,7 @@
 'use client';
 
 import { generated } from '@semochal/api-client';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { siteHref } from '@/lib/biz';
 import { colors as c } from '@/styles/design';
@@ -43,7 +44,7 @@ export function BizPostingsPage() {
   const primaryShare = distribution[0]?.value ?? 0;
   return (
     <BizContent>
-      {loading && <Message>공고를 불러오는 중입니다.</Message>}
+      {loading && <LoadingState label="공고를 불러오는 중입니다." />}
       {error && <Message role="alert">{error}</Message>}
       {!loading && !error && !latest && (
         <>
@@ -189,7 +190,7 @@ const EditLink = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  border: `1px solid ${c.gray500}`,
+  border: `0.5px solid ${c.gray500}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,

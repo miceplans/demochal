@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
@@ -82,7 +83,7 @@ export function BizProfilePage() {
   if (!business)
     return (
       <BizContent>
-        <p>기업 정보를 불러오는 중입니다.</p>
+        <LoadingState label="기업 정보를 불러오는 중입니다." />
       </BizContent>
     );
   const rows: [string, string | undefined][] = [
@@ -211,7 +212,7 @@ export function BizProfilePage() {
 
 const Heading = styled.h1({ margin: 0, ...textStyle.h1_2, color: c.gray900 });
 const List = styled.div({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
 });
@@ -223,7 +224,7 @@ const Row = styled.div({
   padding: '18px 16px',
   ...textStyle.bodyLarge,
   color: c.gray900,
-  '& + &': { borderTop: `1px solid ${c.gray100}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray100}` },
 });
 const Label = styled.span({ width: 80, flexShrink: 0 });
 const ResetButton = styled.button({
@@ -245,12 +246,12 @@ const PasswordField = styled.label({
   '& input': {
     height: 42,
     padding: '0 12px',
-    border: `1px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 6,
     font: 'inherit',
   },
 });
-const PasswordHint = styled.p({ margin: 0, color: '#d92d20', ...textStyle.caption });
+const PasswordHint = styled.p({ margin: 0, color: c.red, ...textStyle.caption });
 const PasswordActions = styled.div({
   display: 'flex',
   justifyContent: 'flex-end',

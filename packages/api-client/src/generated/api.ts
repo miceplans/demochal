@@ -47,6 +47,7 @@ import type {
   AdminDashboard,
   AdminSettings,
   AdminUserEntry,
+  AdminUserPage,
   Application,
   ApplyChallenge201,
   ApplyChallengeRequest,
@@ -151,6 +152,7 @@ import type {
   UpdateApplicationBody,
   UpdateBusinessBody,
   UpdateChallengeRequest,
+  UpdateChallengeStatusBody,
   UpdateMyProfileBody,
   UpdateTeamMemberRequest,
   User,
@@ -2513,6 +2515,155 @@ export const useUpdateChallenge = <
   TContext
 > => {
   return useMutation(getUpdateChallengeMutationOptions(options), queryClient);
+};
+
+export type updateChallengeStatusResponse200 = {
+  data: Challenge;
+  status: 200;
+};
+
+export type updateChallengeStatusResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateChallengeStatusResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type updateChallengeStatusResponse409 = {
+  data: void;
+  status: 409;
+};
+
+export type updateChallengeStatusResponseSuccess = updateChallengeStatusResponse200 & {
+  headers: Headers;
+};
+export type updateChallengeStatusResponseError = (
+  | updateChallengeStatusResponse401
+  | updateChallengeStatusResponse404
+  | updateChallengeStatusResponse409
+) & {
+  headers: Headers;
+};
+
+export type updateChallengeStatusResponse =
+  updateChallengeStatusResponseSuccess | updateChallengeStatusResponseError;
+
+export const getUpdateChallengeStatusUrl = (id: string) => {
+  return `/challenges/${id}/status`;
+};
+
+/**
+ * 소유 기업만 호출할 수 있다. 허용 전이는 draft → published, published → closed 뿐이며
+ * 그 외는 409. 권한이 없거나 존재하지 않으면 404.
+ * @summary 챌린지 상태 변경 (기업)
+ */
+export const updateChallengeStatus = async (
+  id: string,
+  updateChallengeStatusBody: UpdateChallengeStatusBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<updateChallengeStatusResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<updateChallengeStatusResponse>(getUpdateChallengeStatusUrl(id), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateChallengeStatusBody),
+  });
+};
+
+export const getUpdateChallengeStatusMutationKey = () => ['updateChallengeStatus'] as const;
+
+export const getUpdateChallengeStatusMutationOptions = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChallengeStatus>>,
+    TError,
+    UpdateChallengeStatusMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChallengeStatus>>,
+  TError,
+  UpdateChallengeStatusMutationVariables,
+  TContext
+> => {
+  const mutationKey = getUpdateChallengeStatusMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChallengeStatus>>,
+    UpdateChallengeStatusMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChallengeStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChallengeStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChallengeStatus>>
+>;
+export type UpdateChallengeStatusMutationBody = UpdateChallengeStatusBody;
+export type UpdateChallengeStatusMutationError = UnauthorizedResponse | NotFoundResponse | void;
+export type UpdateChallengeStatusMutationVariables = {
+  id: string;
+  data: UpdateChallengeStatusBody;
+};
+
+/**
+ * @summary 챌린지 상태 변경 (기업)
+ */
+export const useUpdateChallengeStatus = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateChallengeStatus>>,
+      TError,
+      UpdateChallengeStatusMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateChallengeStatus>>,
+  TError,
+  UpdateChallengeStatusMutationVariables,
+  TContext
+> => {
+  return useMutation(getUpdateChallengeStatusMutationOptions(options), queryClient);
 };
 
 export type getChallengeStatsResponse200 = {
@@ -12064,7 +12215,7 @@ export const useUpdateAdPricing = <TError = unknown, TContext = unknown>(
 };
 
 export type listAdminUsersResponse200 = {
-  data: AdminUserEntry[];
+  data: AdminUserPage;
   status: 200;
 };
 

@@ -46,7 +46,7 @@ const Row = styled.div({
   padding: '0 16px',
   gap: 16,
   ...textStyle.body,
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
 });
 const HeadRow = styled(Row)({
   minHeight: 48,
@@ -64,7 +64,7 @@ const Cell = styled.span<{ w?: number }>(({ w }) => ({
 }));
 const MemoInput = styled.input({
   width: '100%',
-  border: '1px solid transparent',
+  border: '0.5px solid transparent',
   borderRadius: 6,
   padding: '6px 8px',
   background: 'transparent',

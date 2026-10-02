@@ -47,7 +47,11 @@ ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP
 1. tfvars에 `ses_domain = "semochall.com"`을 넣고 apply합니다. SES 도메인 identity(Easy DKIM, RSA 2048)와 `hosted_zone_id` zone의 레코드(DKIM CNAME 3개, `mail.<domain>` MX·SPF, `_dmarc` TXT `p=none`)가 생성됩니다. `ses_domain`은 해당 zone 안의 도메인이어야 합니다.
 2. DKIM 검증 완료를 확인합니다(보통 수 분~72시간): `aws sesv2 get-email-identity --email-identity semochall.com --query '{dkim:DkimAttributes.Status,mailFrom:MailFromAttributes.MailFromDomainStatus}'`가 `SUCCESS`여야 합니다.
 3. SES production access를 요청합니다. Terraform 리소스가 없어 계정 소유자가 콘솔(SES → Account dashboard → Request production access)에서 진행합니다. 서비스성 알림만 보내고 bounce/complaint는 계정 단위 suppression list(`BOUNCE`, `COMPLAINT`)로 처리한다고 적습니다. https://docs.aws.amazon.com/ses/latest/dg/request-production-access.html
-4. 승인 후 `ses_from_email = "no-reply@semochall.com"`을 넣고 apply합니다. 워커 task role에 이 identity, 이 From 주소로 제한된 `ses:SendEmail`이 붙고 워커 task definition에 `SES_FROM_EMAIL`이 들어갑니다. ECS 서비스는 `task_definition`을 무시하므로 다음 `main` 배포(또는 승인된 수동 배포)가 새 revision을 사용합니다.
+4. 승인 후 `ses_from_email = "noreply@semochall.com"`, `ses_support_from_email = "help@semochall.com"`을 넣고 apply합니다. 워커 task role은 이 identity와 두 From 주소로 제한된 `ses:SendEmail`을 가지며, `SES_FROM_EMAIL`은 자동 메일용 `noreply@`, `SES_SUPPORT_FROM_EMAIL`은 고객지원용 `help@`로 주입됩니다. ECS 서비스는 `task_definition`을 무시하므로 다음 `main` 배포(또는 승인된 수동 배포)가 새 revision을 사용합니다.
+
+### 고객지원 수신 메일
+
+`help@semochall.com`은 `email_inbound.tf`가 관리하는 SES Receipt Rule의 유일한 recipient입니다. SES는 원본 MIME을 `${local.name_prefix}-email-inbox-*` private S3 bucket의 `inbound/` prefix에 저장한 뒤 processor Lambda를 비동기로 호출합니다. `noreply@semochall.com`은 receipt rule에 포함하지 않습니다. apex MX가 이미 `inbound-smtp.ap-northeast-2.amazonaws.com`을 가리키는 경우 Terraform은 해당 MX를 다시 관리하거나 교체하지 않습니다.
 
 DMARC는 `p=none`으로 시작합니다. 전달 상태를 확인한 뒤 `ses_dmarc_policy`를 `quarantine`/`reject`로 올립니다.
 

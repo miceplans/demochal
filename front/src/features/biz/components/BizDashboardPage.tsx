@@ -1,6 +1,7 @@
 'use client';
 
 import styled from '@emotion/styled';
+import { LoadingState } from '@/components/common/LoadingState';
 import { generated } from '@semochal/api-client';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { ExposureChart } from '@/components/biz/ExposureChart';
@@ -84,7 +85,7 @@ const PaymentList = styled.ul({
   margin: 0,
   padding: 0,
   listStyle: 'none',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   overflow: 'hidden',
   ...textStyle.bodyLarge,
@@ -97,7 +98,7 @@ const PaymentItem = styled.li({
   gap: 16,
   padding: '0 16px',
   background: c.white,
-  '& + &': { borderTop: `1px solid ${c.gray200}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray200}` },
 });
 const Ellipsis = styled.span({
   overflow: 'hidden',
@@ -192,7 +193,7 @@ export function BizDashboardPage() {
   if (!data)
     return (
       <BizContent>
-        <p>대시보드를 불러오는 중입니다.</p>
+        <LoadingState label="대시보드를 불러오는 중입니다." />
       </BizContent>
     );
 

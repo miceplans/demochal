@@ -7,8 +7,8 @@ import { textStyle } from '@/styles/typography';
 
 export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
   const poster = team.poster;
-  return (
-    <Card data-component="team-card">
+  const content = (
+    <>
       {poster ? (
         <img className="team-artwork" src={poster} alt="" width={400} height={135} />
       ) : (
@@ -21,7 +21,7 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
         <TopRow>
           <Challenge>{team.challenge}</Challenge>
           <NameRow>
-            <h3>{displayOnly ? team.name : <Link href={`/teams/${team.id}`}>{team.name}</Link>}</h3>
+            <h3>{team.name}</h3>
             <Count>
               ({team.joined}/{team.capacity})
             </Count>
@@ -45,31 +45,35 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
               ))}
             </RoleRow>
           </RoleBox>
-          {!displayOnly && (
-            <Actions>
-              <Apply href={`/teams/${team.id}`}>지원하기</Apply>
-            </Actions>
-          )}
+          {!displayOnly && <Apply>지원하기</Apply>}
         </BottomRow>
       </Body>
+    </>
+  );
+  return (
+    <Card data-component="team-card">
+      {displayOnly ? (
+        content
+      ) : (
+        <CardLink href={`/teams/${team.id}`} aria-label={`${team.name} 상세 보기`}>
+          {content}
+        </CardLink>
+      )}
     </Card>
   );
 }
 
 const Card = styled.article({
-  position: 'relative',
   display: 'flex',
   flexDirection: 'column',
   justifyContent: 'space-between',
   gap: 24,
   minWidth: 0,
   background: c.white,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 14,
   overflow: 'hidden',
   h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
-  // 제목 링크를 카드 전체로 확장(stretched link)
-  'h3 a::after': { content: '""', position: 'absolute', inset: 0 },
   '.team-artwork': {
     width: '100%',
     height: 135,
@@ -78,6 +82,17 @@ const Card = styled.article({
     background: c.gray100,
   },
   [mobile]: { '.team-artwork': { display: 'none' } },
+});
+
+const CardLink = styled(Link)({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
+  flex: 1,
+  minWidth: 0,
+  borderRadius: 'inherit',
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: -2 },
 });
 
 const Body = styled.div({
@@ -169,7 +184,7 @@ const RoleChip = styled.span({
   padding: '4px 7px',
   borderRadius: 4,
   background: c.gray100,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   color: c.gray500,
   whiteSpace: 'nowrap',
   flexShrink: 0,
@@ -185,11 +200,7 @@ const FilledRole = styled.span({
   background: c.green,
 });
 
-const Actions = styled.div({ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 });
-
-const Apply = styled(Link)({
-  position: 'relative',
-  zIndex: 1,
+const Apply = styled.span({
   ...textStyle.mBadgeText,
   display: 'inline-flex',
   alignItems: 'center',
@@ -200,6 +211,7 @@ const Apply = styled(Link)({
   background: c.primary,
   color: c.gray50,
   whiteSpace: 'nowrap',
+  flexShrink: 0,
 });
 
 export const TeamGrid = styled.div({

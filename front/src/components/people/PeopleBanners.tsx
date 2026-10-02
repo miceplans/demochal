@@ -60,7 +60,7 @@ const UseButton = styled(Link)({
   fontWeight: 600,
   lineHeight: 'normal',
   textDecoration: 'none',
-  '&:hover': { background: '#005ee0' },
+  '&:hover': { background: c.primaryHover },
   [mobile]: { left: 20, bottom: 16 },
 });
 

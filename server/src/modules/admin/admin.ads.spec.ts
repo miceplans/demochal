@@ -68,7 +68,13 @@ describe('AdminService — ad pricing', () => {
 });
 
 describe('AdminService — ads list', () => {
-  const adRow = { id: 'ad-1', title: '2026 AI 챌린지 광고', status: 'active', paidAmount: 300000 };
+  const adRow = {
+    id: 'ad-1',
+    title: '2026 AI 챌린지 광고',
+    status: 'active',
+    paidAmount: 300000,
+    endDate: new Date('2999-01-01'),
+  };
 
   it('joins the organization name and product name onto each ad row', async () => {
     const { db } = createDbStub({
@@ -91,6 +97,29 @@ describe('AdminService — ads list', () => {
     expect(collectStrings(where)).toContain('%부산%');
     expect(referencesColumn(where, ads.title)).toBe(true);
     expect(referencesColumn(where, businesses.name)).toBe(true);
+  });
+
+  it('shows an active ad whose contract has ended as 종료(ended)', async () => {
+    const expired = { ...adRow, endDate: new Date('2020-01-01') };
+    const { db } = createDbStub({
+      select: [[{ ad: expired, organization: '부산광역시', productName: '홈 배너' }]],
+    });
+    const { service } = createService(db);
+
+    const [row] = await service.listAds();
+
+    expect(row?.status).toBe('ended');
+  });
+
+  it('active filter excludes expired contracts; ended filter includes them', async () => {
+    const { db, selectWhereCalls } = createDbStub({ select: [[], []] });
+    const { service } = createService(db);
+
+    await service.listAds(undefined, 'active');
+    await service.listAds(undefined, 'ended');
+
+    expect(referencesColumn(selectWhereCalls[0], ads.endDate)).toBe(true);
+    expect(referencesColumn(selectWhereCalls[1], ads.endDate)).toBe(true);
   });
 
   it('filters by the exact status value', async () => {

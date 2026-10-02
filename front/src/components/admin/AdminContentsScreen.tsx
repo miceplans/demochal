@@ -29,7 +29,7 @@ const CardGrid = styled.div({
 const TeamCard = styled.article({
   position: 'relative',
   flex: '0 0 calc((100% - 48px) / 4)',
-  border: '1px solid #E0E0E0',
+  border: '0.5px solid #E0E0E0',
   borderRadius: 12,
   background: c.gray100,
   overflow: 'hidden',
@@ -74,7 +74,7 @@ const RoleBadge = styled.span<{ active?: boolean }>(({ active }) => ({
 const ContestCard = styled.article({
   position: 'relative',
   flex: '0 0 calc((100% - 48px) / 4)',
-  border: '1px solid #E0E0E0',
+  border: '0.5px solid #E0E0E0',
   borderRadius: 12,
   background: c.gray100,
   overflow: 'hidden',

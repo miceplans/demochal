@@ -1,6 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -64,7 +65,7 @@ export function BizPostingManagePage() {
   if (loading)
     return (
       <BizContent>
-        <Message>공고 정보를 불러오는 중입니다.</Message>
+        <LoadingState label="공고 정보를 불러오는 중입니다." />
       </BizContent>
     );
   if (loadError && !challenge)

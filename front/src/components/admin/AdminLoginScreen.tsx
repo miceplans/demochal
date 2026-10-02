@@ -40,7 +40,7 @@ const Panel = styled.div({
   gap: 24,
   padding: '40px 32px',
   borderRadius: 12,
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   background: c.white,
 });
 

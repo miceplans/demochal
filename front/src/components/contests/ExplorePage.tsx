@@ -734,7 +734,7 @@ const TeamSkeletonCard = styled.article({
   '.footer > div:first-of-type': { width: '38%' },
   '.footer > div:last-of-type': { width: 76 },
   [mobile]: {
-    border: '1px solid #f0f1f3',
+    border: '0.5px solid #f0f1f3',
     borderRadius: 14,
     '.poster': { display: 'none' },
     '.body': { padding: 14, gap: 10 },
@@ -751,7 +751,7 @@ const ContestSkeletonCard = styled.article({
   '.meta': { display: 'flex', justifyContent: 'space-between', gap: 8 },
   '.meta > div': { width: '36%' },
   [mobile]: {
-    border: '1px solid #f0f1f3',
+    border: '0.5px solid #f0f1f3',
     '.artwork': { height: 160 },
     '.card-body': { padding: 12 },
   },

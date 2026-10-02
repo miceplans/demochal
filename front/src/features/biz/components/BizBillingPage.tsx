@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { AdReport } from '@semochal/api-client';
@@ -69,7 +70,7 @@ export function BizBillingPage() {
       <TopRow>
         <Column>
           <SectionTitle>나의 결제수단</SectionTitle>
-          {cardsQuery.isLoading && <StatusText>결제수단을 불러오는 중이에요.</StatusText>}
+          {cardsQuery.isLoading && <LoadingState label="결제수단을 불러오는 중이에요." />}
           {cardsQuery.isError && <StatusText>결제수단을 불러오지 못했어요.</StatusText>}
           {cards.map((card) => (
             <BizPaymentCard
@@ -109,7 +110,7 @@ export function BizBillingPage() {
           {history && <TotalText>총액 {won(history.total)}</TotalText>}
         </SectionHeader>
         <PaymentList>
-          {historyQuery.isLoading && <Empty>결제 내역을 불러오는 중이에요.</Empty>}
+          {historyQuery.isLoading && <LoadingState label="결제 내역을 불러오는 중이에요." />}
           {historyQuery.isError && <Empty>결제 내역을 불러오지 못했어요.</Empty>}
           {history?.items.map((p) => (
             <PaymentItem key={p.id}>
@@ -160,7 +161,7 @@ const PaymentList = styled.ul({
   margin: 0,
   padding: 0,
   listStyle: 'none',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   overflow: 'hidden',
   ...textStyle.bodyLarge,
@@ -173,7 +174,7 @@ const PaymentItem = styled.li({
   gap: 16,
   padding: '0 16px',
   background: c.white,
-  '& + &': { borderTop: `1px solid ${c.gray200}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray200}` },
 });
 const Ellipsis = styled.span({
   overflow: 'hidden',

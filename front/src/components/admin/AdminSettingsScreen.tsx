@@ -99,7 +99,7 @@ export function AdminSettingsScreen() {
 }
 
 const Card = styled.section({
-  border: '1px solid #DFE2E7',
+  border: '0.5px solid #DFE2E7',
   borderRadius: 16,
   background: c.white,
   overflow: 'hidden',
@@ -116,7 +116,7 @@ const ProfileRow = styled.div({
   justifyContent: 'space-between',
   gap: 24,
   padding: '16px 20px',
-  borderTop: '1px solid #DFE2E7',
+  borderTop: '0.5px solid #DFE2E7',
   ...textStyle.body,
   color: c.gray900,
 });
@@ -127,7 +127,7 @@ const SettingRow = styled.div({
   justifyContent: 'space-between',
   gap: 24,
   padding: '16px 20px',
-  borderTop: '1px solid #DFE2E7',
+  borderTop: '0.5px solid #DFE2E7',
 });
 const SettingText = styled.div({ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 });
 const SettingLabel = styled.span({ ...textStyle.body, color: c.gray900 });

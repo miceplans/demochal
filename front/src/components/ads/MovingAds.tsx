@@ -35,7 +35,9 @@ export function MovingAds({
 }: MovingAdsProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   // 첫·마지막 광고를 복제해 끝에서도 한 방향으로 자연스럽게 이어지게 합니다.
-  const [railIndex, setRailIndex] = useState(1);
+  // 항목이 1개뿐이면 복제본이 없으므로 레일 위치도 0(유일한 슬롯)에서 시작합니다.
+  // 슬라이드 수가 바뀌면 호출부에서 key를 바꿔 다시 마운트시켜 이 위치를 재시작합니다.
+  const [railIndex, setRailIndex] = useState(() => (itemCount > 1 ? 1 : 0));
   const [shouldAnimate, setShouldAnimate] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
 
@@ -44,7 +46,7 @@ export function MovingAds({
       const nextIndex = ((index % itemCount) + itemCount) % itemCount;
       setShouldAnimate(true);
       setActiveIndex(nextIndex);
-      setRailIndex(nextIndex + 1);
+      setRailIndex(itemCount > 1 ? nextIndex + 1 : 0);
     },
     [itemCount],
   );
@@ -77,6 +79,8 @@ export function MovingAds({
     (event: TransitionEvent<HTMLElement>) => {
       // 카드 hover 등 내부 요소의 transitionend가 버블링되어 레일 위치를 건드리지 않도록 막습니다.
       if (event.target !== event.currentTarget || event.propertyName !== 'transform') return;
+      // 항목이 1개뿐이면 복제 경계가 없으므로 레일을 되감지 않습니다.
+      if (itemCount < 2) return;
       if (railIndex !== 0 && railIndex !== itemCount + 1) return;
 
       setShouldAnimate(false);

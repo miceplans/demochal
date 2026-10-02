@@ -61,6 +61,21 @@ resource "aws_sqs_queue" "emails" {
   })
 }
 
+resource "aws_sqs_queue" "inbound_emails_dlq" {
+  name                      = "${local.name_prefix}-inbound-emails-dlq"
+  message_retention_seconds = 1209600
+}
+
+resource "aws_sqs_queue" "inbound_emails" {
+  name                       = "${local.name_prefix}-inbound-emails"
+  visibility_timeout_seconds = 120
+  receive_wait_time_seconds  = 20
+  redrive_policy = jsonencode({
+    deadLetterTargetArn = aws_sqs_queue.inbound_emails_dlq.arn
+    maxReceiveCount     = 5
+  })
+}
+
 resource "aws_s3_bucket" "private" {
   bucket_prefix = "${local.name_prefix}-private-"
 }
