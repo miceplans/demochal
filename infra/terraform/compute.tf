@@ -156,6 +156,20 @@ data "aws_iam_policy_document" "api_task" {
   }
   # No SQS access: the API only writes outbox rows in the request transaction;
   # the worker's OutboxRelayService is the sole SQS sender.
+  dynamic "statement" {
+    # Admin support mailbox (POST /admin/emails, /admin/emails/:id/replies) sends
+    # via SES from the API; limited to the support From address only.
+    for_each = local.ses_enabled && var.ses_support_from_email != "" ? [1] : []
+    content {
+      actions   = ["ses:SendEmail"]
+      resources = [aws_sesv2_email_identity.service[0].arn]
+      condition {
+        test     = "StringEquals"
+        variable = "ses:FromAddress"
+        values   = [var.ses_support_from_email]
+      }
+    }
+  }
 }
 
 resource "aws_iam_role_policy" "api_task" {
@@ -194,7 +208,7 @@ data "aws_iam_policy_document" "worker_task" {
   }
   dynamic "statement" {
     # Only once a sender is configured; limited to the verified sending
-    # identity and the two approved From addresses. The API task has no SES access.
+    # identity and the two approved From addresses. The API task may send only from the support address.
     for_each = local.ses_enabled && length([for address in [var.ses_from_email, var.ses_support_from_email] : address if address != ""]) > 0 ? [1] : []
     content {
       actions   = ["ses:SendEmail"]
@@ -303,12 +317,12 @@ locals {
     { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url },
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "SQS_INBOUND_EMAILS_QUEUE_URL", value = aws_sqs_queue.inbound_emails.url },
+    # The API sends admin support mail (POST /admin/emails) directly, so it needs the sender too.
+    { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
-  worker_environment = concat(local.common_environment, [
-    { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
-  ])
+  worker_environment = local.common_environment
   # The migration task only needs DB credentials, not the full application
   # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).
   migrate_secrets = [for s in local.app_secrets : s if s.name == "DATABASE_URL"]

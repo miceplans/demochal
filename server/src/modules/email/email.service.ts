@@ -1,4 +1,11 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -16,6 +23,8 @@ const statuses = ['open', 'pending', 'resolved'] as const;
 
 @Injectable()
 export class EmailService {
+  private readonly logger = new Logger(EmailService.name);
+
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly ses: SesEmailClient,
@@ -150,6 +159,16 @@ export class EmailService {
     });
   }
 
+  private async sendSupport(email: Parameters<SesEmailClient['sendSupportEmail']>[0]) {
+    try {
+      return await this.ses.sendSupportEmail(email);
+    } catch (error) {
+      // 수신자 주소·본문은 로그에 남기지 않는다.
+      this.logger.error(`지원 메일 발송 실패: ${error instanceof Error ? error.message : error}`);
+      throw new ServiceUnavailableException('메일을 발송하지 못했습니다.');
+    }
+  }
+
   async sendReply(threadId: string, text: string, html: string) {
     const thread = await this.getThread(threadId);
     const lastInbound = [...thread.messages]
@@ -162,7 +181,7 @@ export class EmailService {
     const subject = thread.subject?.startsWith('Re:')
       ? thread.subject
       : `Re: ${thread.subject ?? '(제목 없음)'}`;
-    await this.ses.sendSupportEmail({
+    await this.sendSupport({
       to: lastInbound.fromAddress,
       subject,
       text,
@@ -207,7 +226,7 @@ export class EmailService {
       html ||
       `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`;
 
-    await this.ses.sendSupportEmail({
+    await this.sendSupport({
       to: cleanTo,
       subject: cleanSubject,
       text,
