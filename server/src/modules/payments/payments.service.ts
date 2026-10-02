@@ -124,7 +124,7 @@ export class PaymentsService {
         return this.ordersService.settleOrderPaid(tx, order.id);
       });
     } catch (error) {
-      await this.compensateIfUnsettleable(error, order.id, tossPayment.paymentKey);
+      await this.compensateIfUnsettleable(error, order.id, tossPayment);
       throw error;
     }
   }
@@ -139,19 +139,54 @@ export class PaymentsService {
   private async compensateIfUnsettleable(
     error: unknown,
     orderId: string,
-    paymentKey: string,
-  ): Promise<void> {
-    if (!(error instanceof ConflictException)) return;
+    tossPayment: TossPayment,
+  ): Promise<'skipped' | 'refunded' | 'failed'> {
+    if (!(error instanceof ConflictException)) return 'skipped';
     try {
-      await this.cancelWithToss(orderId, paymentKey, '주문을 확정할 수 없어 자동 취소되었습니다.');
-      this.logger.warn(`Canceled Toss payment for unsettleable order ${orderId}`);
+      await this.cancelWithToss(
+        orderId,
+        tossPayment.paymentKey,
+        '주문을 확정할 수 없어 자동 취소되었습니다.',
+      );
     } catch (cancelError) {
-      // TODO: alert operators and add a retry/reconciliation job for charged-but-unsettled
-      // orders when the compensating cancel also fails.
-      // https://docs.tosspayments.com/reference#결제-취소
       this.logger.error(
         `Compensating Toss cancel failed for order ${orderId} — manual refund required`,
         (cancelError as Error | undefined)?.stack,
+      );
+      // Leave a local trail of the charged-but-unrefunded payment so a
+      // reconciliation job (TODO) / operators can find it; DONE redelivery retries the cancel.
+      // TODO: alert operators and add a reconciliation job over 'refund_pending' payments.
+      // https://docs.tosspayments.com/reference#결제-취소
+      await this.recordLocally(orderId, tossPayment, 'refund_pending');
+      return 'failed';
+    }
+    this.logger.warn(`Canceled Toss payment for unsettleable order ${orderId}`);
+    // Don't wait for Toss's CANCELED webhook: record the cancellation and close the
+    // order now, so a redelivered DONE sees a settled state instead of looping.
+    await this.recordLocally(orderId, tossPayment, 'canceled');
+    return 'refunded';
+  }
+
+  private async recordLocally(
+    orderId: string,
+    tossPayment: TossPayment,
+    status: 'canceled' | 'refund_pending',
+  ): Promise<void> {
+    try {
+      await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId,
+          provider: 'toss',
+          providerPaymentKey: tossPayment.paymentKey,
+          amount: tossPayment.totalAmount,
+          status,
+        });
+        if (status === 'canceled') await this.ordersService.cancelOrder(tx, orderId);
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to record ${status} payment for order ${orderId}`,
+        (error as Error | undefined)?.stack,
       );
     }
   }
@@ -240,6 +275,17 @@ export class PaymentsService {
       this.getTossPayment(paymentKey),
     ]);
 
+    // A DONE redelivered after we refunded the payment ourselves (see
+    // compensateIfUnsettleable): Toss now reports CANCELED, which is settled — ack.
+    if (
+      tossPayment.status === 'CANCELED' &&
+      tossPayment.orderId === order.id &&
+      tossPayment.totalAmount === order.amount &&
+      order.status === 'canceled'
+    ) {
+      return;
+    }
+
     if (
       tossPayment.status !== 'DONE' ||
       tossPayment.orderId !== order.id ||
@@ -278,7 +324,10 @@ export class PaymentsService {
         await this.ordersService.settleOrderPaid(tx, order.id);
       });
     } catch (error) {
-      await this.compensateIfUnsettleable(error, order.id, tossPayment.paymentKey);
+      // Refunded and converged locally → ack. Otherwise rethrow so Toss redelivers
+      // the DONE webhook, which drives the refund retry.
+      const outcome = await this.compensateIfUnsettleable(error, order.id, tossPayment);
+      if (outcome === 'refunded') return;
       throw error;
     }
   }

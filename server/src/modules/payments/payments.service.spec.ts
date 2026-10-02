@@ -257,12 +257,43 @@ describe('PaymentsService', () => {
     orders.settleOrderPaid.mockRejectedValue(new ConflictException('종료된 광고'));
     const service = new PaymentsService(db, orders as any);
 
-    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('종료된 광고');
+    // Refunded + recorded locally → acked, so Toss does not redeliver forever.
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
 
     const [url, init] = fetchMock.mock.calls[1]!;
     expect(url).toBe('https://api.tosspayments.com/v1/payments/pay-key-1/cancel');
     expect(init.method).toBe('POST');
     expect(init.headers['Idempotency-Key']).toBe('cancel:order-1');
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+  });
+
+  it('records refund_pending and rethrows when the compensating cancel fails', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(tossResponse('DONE'))
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.settleOrderPaid.mockRejectedValue(new ConflictException('종료된 광고'));
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('종료된 광고');
+
+    expect(insertValues).toHaveBeenLastCalledWith(
+      expect.objectContaining({ orderId: 'order-1', status: 'refund_pending' }),
+    );
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
+  });
+
+  it('acks a DONE redelivery once the payment was refunded and the order canceled', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(tossResponse('CANCELED'));
+    const { db, transaction } = createDbStub();
+    const orders = createOrdersStub('canceled');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+    expect(transaction).not.toHaveBeenCalled();
   });
 
   it('does not refund on a transient settlement failure (a later webhook can settle it)', async () => {
