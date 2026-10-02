@@ -155,7 +155,7 @@ export function ReportLogTable({
   params?: ReportFilters;
   reports?: ReportItem[];
 }) {
-  const [selected, setSelected] = useState<ReportRow | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const toast = useToast();
   const queryClient = useQueryClient();
 
@@ -180,6 +180,8 @@ export function ReportLogTable({
       })),
     [source],
   );
+  // 필터로 결과에서 빠진 행이 패널에 남지 않도록 현재 rows에서 derive 한다.
+  const selected = rows.find((row) => row.id === selectedId) ?? null;
 
   const resolveMutation = generated.useResolveReport({
     mutation: {
@@ -189,15 +191,15 @@ export function ReportLogTable({
         );
         void queryClient.invalidateQueries({ queryKey: generated.getListAdminReportsQueryKey() });
         void queryClient.invalidateQueries({ queryKey: generated.getGetAdminDashboardQueryKey() });
-        setSelected(null);
+        setSelectedId(null);
       },
       onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
     },
   });
 
   const selectReport = (row: ReportRow) =>
-    setSelected((current) => (current?.id === row.id ? null : row));
-  const closePanel = () => setSelected(null);
+    setSelectedId((current) => (current === row.id ? null : row.id));
+  const closePanel = () => setSelectedId(null);
 
   return (
     <ReportWorkspace>
