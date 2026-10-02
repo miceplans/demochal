@@ -13,8 +13,9 @@ data "aws_route53_zone" "ses" {
 }
 
 resource "aws_sesv2_email_identity" "service" {
-  count          = local.ses_enabled ? 1 : 0
-  email_identity = var.ses_domain
+  count                  = local.ses_enabled ? 1 : 0
+  email_identity         = var.ses_domain
+  configuration_set_name = var.ses_configuration_set_name
 
   # Easy DKIM: SES generates the key pair and publishes three selector tokens.
   # https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dkim-easy.html

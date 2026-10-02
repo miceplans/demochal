@@ -28,7 +28,7 @@ describe('NotificationsService.create', () => {
   const original = { from: env.sesFromEmail, queue: env.sqsEmailsQueueUrl };
 
   beforeEach(() => {
-    env.sesFromEmail = 'no-reply@semochall.com';
+    env.sesFromEmail = 'noreply@semochall.com';
     env.sqsEmailsQueueUrl = 'https://sqs.example/emails';
   });
 

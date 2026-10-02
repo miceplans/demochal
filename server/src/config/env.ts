@@ -27,6 +27,7 @@ const envSchema = z
     // Service email delivery (SES). Empty in local dev — the email worker
     // no-ops and DB notifications keep working without either value.
     SES_FROM_EMAIL: z.string().default(''),
+    SES_SUPPORT_FROM_EMAIL: z.string().default(''),
     SQS_EMAILS_QUEUE_URL: z.string().default(''),
 
     TOSS_SECRET_KEY: z.string().default(''),
@@ -101,6 +102,7 @@ export const env = {
 
   sqsVerificationsQueueUrl: raw.SQS_VERIFICATIONS_QUEUE_URL,
   sesFromEmail: raw.SES_FROM_EMAIL,
+  sesSupportFromEmail: raw.SES_SUPPORT_FROM_EMAIL,
   sqsEmailsQueueUrl: raw.SQS_EMAILS_QUEUE_URL,
 
   tossSecretKey: raw.TOSS_SECRET_KEY,
