@@ -2,6 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
+import { ThemeProvider } from '@emotion/react';
+import { theme } from '@/styles/theme';
 import { BizSignupFlow } from './BizLoginFlow';
 
 const mocks = vi.hoisted(() => {
@@ -46,7 +48,11 @@ vi.mock('@semochal/api-client', () => ({
 }));
 
 function renderSignup() {
-  return render(<BizSignupFlow />);
+  return render(
+    <ThemeProvider theme={theme}>
+      <BizSignupFlow />
+    </ThemeProvider>,
+  );
 }
 
 describe('BizSignupFlow', () => {

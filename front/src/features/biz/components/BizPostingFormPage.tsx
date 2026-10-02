@@ -808,6 +808,11 @@ const RoleInput = styled.input({
   border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
+  background: c.white,
+  color: c.gray900,
+  fontFamily: 'inherit',
+  colorScheme: 'light',
+  '&::-webkit-calendar-picker-indicator': { cursor: 'pointer' },
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const AddRoleButton = styled.button({
