@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -142,5 +142,34 @@ describe('OnboardingPage', () => {
     });
     expect(mocks.celebrate).toHaveBeenCalled();
     expect(mocks.replace).toHaveBeenCalledWith('/');
+  });
+
+  it.each([
+    ['activity', '0%', '25%', '1'],
+    ['interests', '25%', '50%', '2'],
+    ['purpose', '50%', '75%', '3'],
+    ['challenge', '75%', '100%', '4'],
+  ])(
+    'animates the progress bar for the %s step from %s to %s',
+    async (step, initialWidth, currentWidth, valueNow) => {
+      renderOnboarding(step);
+
+      const progress = screen.getByRole('progressbar');
+      expect(progress.getAttribute('aria-valuenow')).toBe(valueNow);
+      const fill = progress.firstElementChild as HTMLElement;
+      expect(fill.style.width).toBe(initialWidth);
+
+      await waitFor(() => expect(fill.style.width).toBe(currentWidth));
+    },
+  );
+
+  it('applies a fade-slide entry animation to the step content', () => {
+    renderOnboarding('interests');
+
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    expect(styleText).toContain('semo-onboarding-step-in');
+    expect(styleText).toContain('prefers-reduced-motion');
   });
 });

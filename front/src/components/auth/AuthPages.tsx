@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { UserShell, Logo } from '@/components/common/UserShell';
 import { Button, Icon, Stack, Chip, Wrap } from '@/components/common/Primitives';
@@ -163,11 +163,39 @@ const Next = styled.div({
     '& button': { width: '100%', height: 52, borderRadius: 14 },
   },
 });
+const ProgressTrack = styled.div({
+  height: 4,
+  background: c.lightBlue,
+  borderRadius: 30,
+  marginTop: 12,
+  marginBottom: 40,
+});
+const ProgressFill = styled.div({
+  height: 4,
+  background: c.primary,
+  borderRadius: 30,
+  transition: 'width 300ms ease',
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+});
+const StepContent = styled.div({
+  animation: 'semo-onboarding-step-in .24s ease-out both',
+  '@keyframes semo-onboarding-step-in': {
+    from: { opacity: 0, transform: 'translateY(12px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+});
 const steps = ['activity', 'interests', 'purpose', 'challenge'];
 const EMPTY_SURVEY_SELECTION: readonly string[] = [];
 export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
   const index = steps.indexOf(step);
+  // 페이지 이동 없이 폭만 바뀌는 경우에도 transition이 보이도록 마운트 직후 현재 스텝 폭까지 채운다.
+  const [barWidth, setBarWidth] = useState(`${index * 25}%`);
+  useEffect(() => {
+    const raf = requestAnimationFrame(() => setBarWidth(`${(index + 1) * 25}%`));
+    return () => cancelAnimationFrame(raf);
+  }, [index]);
   const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
@@ -243,80 +271,68 @@ export function OnboardingPage({ step }: { step: string }) {
     <UserShell compact navigation={false} footer={false} hideMobileHeader>
       <Survey>
         <Logo dot />
-        <div
+        <ProgressTrack
           role="progressbar"
           aria-label="관심 설문 진행"
           aria-valuemin={0}
           aria-valuemax={4}
           aria-valuenow={index + 1}
-          style={{
-            height: 4,
-            background: c.lightBlue,
-            borderRadius: 30,
-            marginTop: 12,
-            marginBottom: 40,
-          }}
         >
-          <div
-            style={{
-              height: 4,
-              width: `${(index + 1) * 25}%`,
-              background: c.primary,
-              borderRadius: 30,
-            }}
-          />
-        </div>
-        <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
-        {index === 0 ? (
-          <ActivityDropdown>
-            <Dropdown
-              aria-label="현재 활동"
-              placeholder="활동을 선택하세요"
-              value={selected[0] ?? ''}
-              onChange={(x) => setSurvey(step, [x])}
-              options={[
-                '대학생',
-                '대학원생',
-                '직장인',
-                '취업준비생',
-                '프리랜서',
-                '일반인',
-                '청소년',
-              ].map((x) => ({ value: x, label: x }))}
-            />
-          </ActivityDropdown>
-        ) : index === 2 ? (
-          <CheckGrid>
-            {options.map((x) => (
-              <CheckOption
-                key={x}
-                type="button"
-                aria-pressed={selected.includes(x)}
-                onClick={() => toggle(x)}
-              >
-                <CheckBox selected={selected.includes(x)}>
-                  {selected.includes(x) && (
-                    <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
-                  )}
-                </CheckBox>
-                {x}
-              </CheckOption>
-            ))}
-          </CheckGrid>
-        ) : (
-          <Choices>
-            {options.map((x) => (
-              <Chip
-                key={x}
-                selected={selected.includes(x)}
-                aria-pressed={selected.includes(x)}
-                onClick={() => toggle(x)}
-              >
-                {x}
-              </Chip>
-            ))}
-          </Choices>
-        )}
+          <ProgressFill style={{ width: barWidth }} />
+        </ProgressTrack>
+        <StepContent key={step}>
+          <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
+          {index === 0 ? (
+            <ActivityDropdown>
+              <Dropdown
+                aria-label="현재 활동"
+                placeholder="활동을 선택하세요"
+                value={selected[0] ?? ''}
+                onChange={(x) => setSurvey(step, [x])}
+                options={[
+                  '대학생',
+                  '대학원생',
+                  '직장인',
+                  '취업준비생',
+                  '프리랜서',
+                  '일반인',
+                  '청소년',
+                ].map((x) => ({ value: x, label: x }))}
+              />
+            </ActivityDropdown>
+          ) : index === 2 ? (
+            <CheckGrid>
+              {options.map((x) => (
+                <CheckOption
+                  key={x}
+                  type="button"
+                  aria-pressed={selected.includes(x)}
+                  onClick={() => toggle(x)}
+                >
+                  <CheckBox selected={selected.includes(x)}>
+                    {selected.includes(x) && (
+                      <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
+                    )}
+                  </CheckBox>
+                  {x}
+                </CheckOption>
+              ))}
+            </CheckGrid>
+          ) : (
+            <Choices>
+              {options.map((x) => (
+                <Chip
+                  key={x}
+                  selected={selected.includes(x)}
+                  aria-pressed={selected.includes(x)}
+                  onClick={() => toggle(x)}
+                >
+                  {x}
+                </Chip>
+              ))}
+            </Choices>
+          )}
+        </StepContent>
         <Next>
           <Button
             disabled={!selected.length || saveSurvey.isPending}
