@@ -1324,7 +1324,7 @@ const NotificationBody = styled.div({
 });
 // 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지) 알림을 생성한다.
 // 매핑되지 않은 유형은 '전체'에서만 보인다.
-const notificationTabs = ['전체', '팀매칭', '마감', '공고', '인증·결과'] as const;
+const notificationTabs = ['전체', '팀매칭', '공고'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
 const notificationCategory: Record<string, NotificationTab> = {
   team_matching: '팀매칭',
@@ -1518,7 +1518,6 @@ export function NotificationsPage() {
           </NotificationList>
           {notificationsQuery.isPending && <Muted>알림을 불러오는 중이에요.</Muted>}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
-          {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
       </NotificationContent>
     </UserShell>
