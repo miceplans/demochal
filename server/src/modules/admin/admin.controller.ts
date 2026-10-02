@@ -18,7 +18,7 @@ import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
-import { SendReplyDto } from '../email/dto/send-reply.dto.js';
+import { SendNewEmailDto, SendReplyDto } from '../email/dto/send-reply.dto.js';
 import { EmailService } from '../email/email.service.js';
 
 @UseGuards(AdminRoleGuard)
@@ -32,6 +32,11 @@ export class AdminController {
   @Get('emails')
   listEmails(@Query('q') q?: string, @Query('status') status?: string) {
     return this.emailService.listThreads({ q, status });
+  }
+
+  @Post('emails')
+  sendNewEmail(@Body() dto: SendNewEmailDto) {
+    return this.emailService.sendNewEmail(dto.to, dto.subject, dto.text, dto.html);
   }
 
   @Get('emails/:id')

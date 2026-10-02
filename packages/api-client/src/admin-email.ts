@@ -6,6 +6,7 @@ import { apiFetch } from './mutator';
 
 export type AdminEmailListParams = { q?: string; status?: 'open' | 'pending' | 'resolved' };
 export type AdminEmailReply = { text: string; html?: string };
+export type AdminEmailCompose = { to: string; subject: string; text: string; html?: string };
 type Response<T> = { data: T; status: number; headers: Headers };
 
 const queryString = (params?: AdminEmailListParams) => {
@@ -18,6 +19,13 @@ const queryString = (params?: AdminEmailListParams) => {
 
 export function listAdminEmails(params?: AdminEmailListParams) {
   return apiFetch<Response<AdminEmailThread[]>>(`/admin/emails${queryString(params)}`);
+}
+
+export function createAdminEmail(body: AdminEmailCompose) {
+  return apiFetch<Response<AdminEmailMessage>>('/admin/emails', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export function getAdminEmail(id: string) {
@@ -50,6 +58,16 @@ export function useSendAdminEmailReply() {
       sendAdminEmailReply(id, data),
     onSuccess: (_result, variables) => {
       void queryClient.invalidateQueries({ queryKey: ['admin-email', variables.id] });
+      void queryClient.invalidateQueries({ queryKey: ['admin-emails'] });
+    },
+  });
+}
+
+export function useCreateAdminEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AdminEmailCompose) => createAdminEmail(data),
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['admin-emails'] });
     },
   });

@@ -34,10 +34,12 @@ export class EmailService {
     return threads
       .filter((thread) => !query?.status || thread.status === query.status)
       .map((thread) => {
-        const latest = messages.find((message) => message.threadId === thread.id);
+        const threadMessages = messages.filter((message) => message.threadId === thread.id);
+        const latest = threadMessages[0];
+        const inbound = threadMessages.find((message) => message.direction === 'INBOUND');
         return {
           ...thread,
-          customerEmail: latest?.fromAddress ?? '',
+          customerEmail: inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '',
           lastMessage: latest?.textBody ?? latest?.htmlBody ?? '',
           lastMessageAt: latest?.sentAt ?? latest?.receivedAt ?? thread.updatedAt,
         };
@@ -194,5 +196,48 @@ export class EmailService {
       .set({ updatedAt: sentAt })
       .where(eq(emailThreads.id, threadId));
     return message;
+  }
+
+  async sendNewEmail(to: string, subject: string, text: string, html: string) {
+    const cleanTo = safeHeader(to);
+    const cleanSubject = safeHeader(subject);
+    const messageId = `<${randomUUID()}@semochall.com>`;
+    const sentAt = new Date();
+    const safeHtml =
+      html ||
+      `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`;
+
+    await this.ses.sendSupportEmail({
+      to: cleanTo,
+      subject: cleanSubject,
+      text,
+      html: safeHtml,
+      messageId,
+    });
+
+    return this.db.transaction(async (tx) => {
+      const [thread] = await tx
+        .insert(emailThreads)
+        .values({ subject: cleanSubject, status: 'pending', createdAt: sentAt, updatedAt: sentAt })
+        .returning();
+      if (!thread) throw new NotFoundException('메일 thread를 생성할 수 없습니다.');
+      const [message] = await tx
+        .insert(emailMessages)
+        .values({
+          threadId: thread.id,
+          direction: 'OUTBOUND',
+          messageId: normalizeMessageId(messageId),
+          fromAddress: SUPPORT_EMAIL,
+          toAddresses: [cleanTo],
+          subject: cleanSubject,
+          textBody: text,
+          htmlBody: html || null,
+          deliveryStatus: 'SENT',
+          sentAt,
+        })
+        .returning();
+      if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
+      return message;
+    });
   }
 }

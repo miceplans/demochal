@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MaxLength } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class SendReplyDto {
   @IsString()
@@ -9,4 +9,16 @@ export class SendReplyDto {
   @IsString()
   @MaxLength(100_000)
   html = '';
+}
+
+export class SendNewEmailDto extends SendReplyDto {
+  @IsEmail()
+  @IsNotEmpty()
+  @MaxLength(998)
+  to!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(998)
+  subject!: string;
 }

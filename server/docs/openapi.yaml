@@ -2106,6 +2106,24 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/AdminEmailThread' } }
         '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      summary: 새 고객지원 메일 발송
+      operationId: createAdminEmail
+      x-impl-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAdminEmail' }
+      responses:
+        '201':
+          description: 발송 성공 후 저장된 outbound 메시지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailMessage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /admin/emails/{id}:
     get:
       tags: [Admin]
@@ -2710,6 +2728,14 @@ components:
       type: object
       required: [text]
       properties:
+        text: { type: string, minLength: 1, maxLength: 100000 }
+        html: { type: string, maxLength: 100000 }
+    CreateAdminEmail:
+      type: object
+      required: [to, subject, text]
+      properties:
+        to: { type: string, format: email, maxLength: 998 }
+        subject: { type: string, minLength: 1, maxLength: 998 }
         text: { type: string, minLength: 1, maxLength: 100000 }
         html: { type: string, maxLength: 100000 }
     User:
