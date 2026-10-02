@@ -210,7 +210,7 @@ const AddOptionButton = styled.button({
 
 const PreviewInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.gray50,
@@ -218,7 +218,7 @@ const PreviewInput = styled.input({
 });
 const PreviewTextarea = styled.textarea({
   minHeight: 72,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: 14,
   background: c.gray50,
@@ -230,7 +230,7 @@ const PreviewUpload = styled.div({
   alignItems: 'center',
   justifyContent: 'center',
   height: 56,
-  border: `1px dashed ${c.gray200}`,
+  border: `0.5px dashed ${c.gray200}`,
   borderRadius: 8,
   color: c.gray500,
   ...textStyle.finePrint,
