@@ -1,83 +1,102 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { env } from '../../../config/env.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { emailMessages } from '../../../db/schema.js';
 import { SupportEmailService } from './support-email.service.js';
 
-describe('SupportEmailService', () => {
-  const originalFrom = env.sesSupportFromEmail;
-  let insertValues: ReturnType<typeof vi.fn>;
-  let db: { insert: ReturnType<typeof vi.fn> };
+const claim = vi.hoisted(() => ({
+  claimEmailSend: vi.fn(),
+  markEmailSent: vi.fn(),
+  releaseEmailSendClaim: vi.fn(),
+}));
+vi.mock('./email-send-claim.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./email-send-claim.js')>()),
+  ...claim,
+}));
+
+const job = { eventId: 'evt-1', payload: { emailMessageId: 'msg-row-1' } };
+const row = {
+  id: 'msg-row-1',
+  deliveryStatus: 'QUEUED',
+  toAddresses: ['customer@example.com'],
+  messageId: 'out-1@semochall.com',
+  inReplyTo: 'customer-1@example.com',
+  references: 'root@example.com customer-1@example.com',
+  subject: 'Re: 문의',
+  textBody: '답변 <b>',
+  htmlBody: null,
+};
+
+describe('SupportEmailService.process', () => {
+  let rows: unknown[];
+  let updateSet: ReturnType<typeof vi.fn>;
+  let db: Record<string, ReturnType<typeof vi.fn>>;
   let ses: { isConfigured: ReturnType<typeof vi.fn>; sendSupportEmail: ReturnType<typeof vi.fn> };
 
   beforeEach(() => {
-    env.sesSupportFromEmail = 'help@semochall.com';
-    insertValues = vi.fn().mockResolvedValue(undefined);
-    db = { insert: vi.fn(() => ({ values: insertValues })) };
+    vi.clearAllMocks();
+    rows = [row];
+    updateSet = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+    db = {
+      select: vi.fn(() => ({
+        from: () => ({ where: () => ({ limit: () => Promise.resolve(rows) }) }),
+      })),
+      update: vi.fn(() => ({ set: updateSet })),
+    };
     ses = {
       isConfigured: vi.fn(() => true),
       sendSupportEmail: vi.fn().mockResolvedValue({ sesMessageId: 'ses-1' }),
     };
+    claim.claimEmailSend.mockResolvedValue('claimed');
+    claim.releaseEmailSendClaim.mockResolvedValue(true);
   });
 
-  it('sends a threaded reply and records the accepted outbound message', async () => {
-    const result = await new SupportEmailService(db as never, ses as never).sendSupportEmail({
-      threadId: 'thread-1',
-      to: 'customer@example.com',
-      subject: 'Re: 문의',
-      text: '답변',
-      html: '<p>답변</p>',
-      inReplyTo: '<customer-1@example.com>',
-      references: '<customer-1@example.com>',
-    });
+  const service = () => new SupportEmailService(db as never, ses as never);
 
-    expect(result).toMatchObject({ sesMessageId: 'ses-1' });
+  it('sends the stored message with threading headers and marks it SENT', async () => {
+    await expect(service().process(job)).resolves.toBe('sent');
+
     expect(ses.sendSupportEmail).toHaveBeenCalledWith({
       to: 'customer@example.com',
       subject: 'Re: 문의',
-      text: '답변',
-      html: '<p>답변</p>',
-      messageId: expect.stringMatching(/^<.+@semochall\.com>$/),
+      text: '답변 <b>',
+      html: '<pre>답변 &lt;b&gt;</pre>',
+      messageId: '<out-1@semochall.com>',
       inReplyTo: '<customer-1@example.com>',
-      references: '<customer-1@example.com>',
+      references: '<root@example.com> <customer-1@example.com>',
     });
-    expect(db.insert).toHaveBeenCalledWith(emailMessages);
-    expect(insertValues).toHaveBeenCalledWith(
-      expect.objectContaining({
-        threadId: 'thread-1',
-        direction: 'OUTBOUND',
-        fromAddress: 'help@semochall.com',
-        sesMessageId: 'ses-1',
-        inReplyTo: '<customer-1@example.com>',
-        references: '<customer-1@example.com>',
-        deliveryStatus: 'SENT',
-      }),
+    expect(db.update).toHaveBeenCalledWith(emailMessages);
+    expect(updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({ deliveryStatus: 'SENT', sesMessageId: 'ses-1' }),
     );
+    expect(claim.markEmailSent).toHaveBeenCalledWith(db, 'evt-1');
   });
 
-  it('does not call SES when support sending is not configured', async () => {
-    env.sesSupportFromEmail = '';
-    const service = new SupportEmailService(
-      db as never,
-      {
-        ...ses,
-        isConfigured: vi.fn(() => false),
-      } as never,
-    );
-
-    await expect(
-      service.sendSupportEmail({
-        threadId: 'thread-1',
-        to: 'customer@example.com',
-        subject: 's',
-        text: 't',
-        html: 'h',
-      }),
-    ).rejects.toThrow('Support email sender is not configured');
+  it('throws without calling SES when the support sender is not configured', async () => {
+    ses.isConfigured.mockReturnValue(false);
+    await expect(service().process(job)).rejects.toThrow('not configured');
     expect(ses.sendSupportEmail).not.toHaveBeenCalled();
-    expect(db.insert).not.toHaveBeenCalled();
   });
 
-  afterEach(() => {
-    env.sesSupportFromEmail = originalFrom;
+  it('acks a missing message row and an already SENT message without sending', async () => {
+    rows = [];
+    await expect(service().process(job)).resolves.toBe('message_missing');
+    rows = [{ ...row, deliveryStatus: 'SENT' }];
+    await expect(service().process(job)).resolves.toBe('already_sent');
+    expect(ses.sendSupportEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not send when another delivery already sent or holds the claim', async () => {
+    claim.claimEmailSend.mockResolvedValueOnce('sent');
+    await expect(service().process(job)).resolves.toBe('already_sent');
+    claim.claimEmailSend.mockResolvedValueOnce('in_flight');
+    await expect(service().process(job)).rejects.toMatchObject({ name: 'EmailSendInFlightError' });
+    expect(ses.sendSupportEmail).not.toHaveBeenCalled();
+  });
+
+  it('releases the claim and rethrows when SES fails, leaving the row QUEUED', async () => {
+    ses.sendSupportEmail.mockRejectedValue(new Error('rejected customer@example.com'));
+    await expect(service().process(job)).rejects.toThrow();
+    expect(claim.releaseEmailSendClaim).toHaveBeenCalledWith(db, 'evt-1');
+    expect(db.update).not.toHaveBeenCalled();
+    expect(claim.markEmailSent).not.toHaveBeenCalled();
   });
 });

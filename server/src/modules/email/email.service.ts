@@ -1,16 +1,13 @@
-import {
-  BadRequestException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { emailAttachments, emailMessages, emailThreads } from '../../db/schema.js';
-import { SesEmailClient } from '../notifications/email/ses-email.client.js';
+import { OutboxService } from '../../outbox/outbox.service.js';
+import {
+  SUPPORT_EMAIL_EVENT,
+  type SupportEmailPayload,
+} from '../notifications/email/support-email.js';
 import {
   normalizeMessageId,
   resolveThreadId,
@@ -23,11 +20,9 @@ const statuses = ['open', 'pending', 'resolved'] as const;
 
 @Injectable()
 export class EmailService {
-  private readonly logger = new Logger(EmailService.name);
-
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
-    private readonly ses: SesEmailClient,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async listThreads(query?: { q?: string; status?: string }) {
@@ -159,15 +154,27 @@ export class EmailService {
     });
   }
 
-  private async sendSupport(email: Parameters<SesEmailClient['sendSupportEmail']>[0]) {
-    try {
-      return await this.ses.sendSupportEmail(email);
-    } catch (error) {
-      // SES 오류 메시지는 수신자 주소를 그대로 담을 수 있어 오류 이름만 남긴다.
-      const name = error instanceof Error ? error.name : 'UnknownError';
-      this.logger.error(`지원 메일 발송 실패: ${name}`);
-      throw new ServiceUnavailableException('메일을 발송하지 못했습니다.');
-    }
+  /**
+   * Outbox 패턴: 발송은 API가 아니라 worker가 한다. 여기서는 아웃바운드 메시지 행(QUEUED)과
+   * outbox 이벤트를 한 트랜잭션으로 기록하므로, 둘은 함께 커밋되거나 함께 롤백된다.
+   */
+  private async queueOutbound(
+    tx: Database,
+    values: Omit<typeof emailMessages.$inferInsert, 'direction' | 'fromAddress' | 'deliveryStatus'>,
+  ) {
+    const [message] = await tx
+      .insert(emailMessages)
+      .values({
+        ...values,
+        direction: 'OUTBOUND',
+        fromAddress: SUPPORT_EMAIL,
+        deliveryStatus: 'QUEUED',
+      })
+      .returning();
+    if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
+    const payload: SupportEmailPayload = { emailMessageId: message.id };
+    await this.outboxService.enqueue(tx, SUPPORT_EMAIL_EVENT, payload);
+    return message;
   }
 
   async sendReply(threadId: string, text: string, html: string) {
@@ -177,87 +184,56 @@ export class EmailService {
       .find((message) => message.direction === 'inbound');
     if (!lastInbound || !lastInbound.messageId)
       throw new BadRequestException('답장할 inbound 메일이 없습니다.');
-    const messageId = `<${randomUUID()}@semochall.com>`;
+    const messageId = normalizeMessageId(`${randomUUID()}@semochall.com`);
     const references = [...new Set([...lastInbound.references, lastInbound.messageId])];
     const subject = thread.subject?.startsWith('Re:')
       ? thread.subject
       : `Re: ${thread.subject ?? '(제목 없음)'}`;
-    await this.sendSupport({
-      to: lastInbound.fromAddress,
-      subject,
-      text,
-      html:
-        html ||
-        `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`,
-      messageId,
-      inReplyTo: `<${lastInbound.messageId}>`,
-      references: references.map((value) => `<${value.replace(/^<|>$/g, '')}>`).join(' '),
-    });
-    const sentAt = new Date();
-    const [message] = await this.db
-      .insert(emailMessages)
-      .values({
+    const queuedAt = new Date();
+    return this.db.transaction(async (tx) => {
+      const message = await this.queueOutbound(tx, {
         threadId,
-        direction: 'OUTBOUND',
         messageId,
         inReplyTo: lastInbound.messageId,
         references: references.join(' '),
-        fromAddress: SUPPORT_EMAIL,
         toAddresses: [lastInbound.fromAddress],
         subject,
         textBody: text,
         htmlBody: html || null,
-        deliveryStatus: 'SENT',
-        sentAt,
-      })
-      .returning();
-    await this.db
-      .update(emailThreads)
-      .set({ updatedAt: sentAt })
-      .where(eq(emailThreads.id, threadId));
-    return message;
+      });
+      await tx
+        .update(emailThreads)
+        .set({ updatedAt: queuedAt })
+        .where(eq(emailThreads.id, threadId));
+      return message;
+    });
   }
 
   async sendNewEmail(to: string, subject: string, text: string, html: string) {
     const cleanTo = safeHeader(to);
     const cleanSubject = safeHeader(subject);
-    const messageId = `<${randomUUID()}@semochall.com>`;
-    const sentAt = new Date();
-    const safeHtml =
-      html ||
-      `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`;
-
-    await this.sendSupport({
-      to: cleanTo,
-      subject: cleanSubject,
-      text,
-      html: safeHtml,
-      messageId,
-    });
+    const messageId = normalizeMessageId(`${randomUUID()}@semochall.com`);
+    const queuedAt = new Date();
 
     return this.db.transaction(async (tx) => {
       const [thread] = await tx
         .insert(emailThreads)
-        .values({ subject: cleanSubject, status: 'pending', createdAt: sentAt, updatedAt: sentAt })
-        .returning();
-      if (!thread) throw new NotFoundException('메일 thread를 생성할 수 없습니다.');
-      const [message] = await tx
-        .insert(emailMessages)
         .values({
-          threadId: thread.id,
-          direction: 'OUTBOUND',
-          messageId: normalizeMessageId(messageId),
-          fromAddress: SUPPORT_EMAIL,
-          toAddresses: [cleanTo],
           subject: cleanSubject,
-          textBody: text,
-          htmlBody: html || null,
-          deliveryStatus: 'SENT',
-          sentAt,
+          status: 'pending',
+          createdAt: queuedAt,
+          updatedAt: queuedAt,
         })
         .returning();
-      if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
-      return message;
+      if (!thread) throw new NotFoundException('메일 thread를 생성할 수 없습니다.');
+      return this.queueOutbound(tx, {
+        threadId: thread.id,
+        messageId,
+        toAddresses: [cleanTo],
+        subject: cleanSubject,
+        textBody: text,
+        htmlBody: html || null,
+      });
     });
   }
 }

@@ -16,6 +16,12 @@ import {
   isEmailDeliveryConfigured,
   parseNotificationEmailJob,
 } from './modules/notifications/email/notification-email.js';
+import { SupportEmailService } from './modules/notifications/email/support-email.service.js';
+import {
+  SUPPORT_EMAIL_EVENT,
+  isSupportEmailDeliveryConfigured,
+  parseSupportEmailJob,
+} from './modules/notifications/email/support-email.js';
 import { EmailService } from './modules/email/email.service.js';
 
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
@@ -29,6 +35,7 @@ async function bootstrap() {
   const outboxRelayService = app.get(OutboxRelayService);
   const verificationsProcessor = app.get(VerificationsProcessorService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
+  const supportEmailService = app.get(SupportEmailService);
   const emailService = app.get(EmailService);
 
   const challengeNotificationScan = app.get(ChallengeNotificationScanService);
@@ -38,10 +45,12 @@ async function bootstrap() {
   process.on('SIGTERM', () => (shuttingDown = true));
   process.on('SIGINT', () => (shuttingDown = true));
 
-  const emailEnabled = isEmailDeliveryConfigured();
+  const notificationEmailEnabled = isEmailDeliveryConfigured();
+  const supportEmailEnabled = isSupportEmailDeliveryConfigured();
+  const emailEnabled = notificationEmailEnabled || supportEmailEnabled;
   logger.log(
     `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
-      `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
+      `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SES_SUPPORT_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
       `inbound queue: ${env.sqsInboundEmailsQueueUrl ? 'on' : 'off'})`,
   );
 
@@ -115,23 +124,35 @@ async function bootstrap() {
   }
 
   async function pollEmails(queueUrl: string) {
-    try {
-      // The envelope carries the outbox event id, the email idempotency key.
-      await outboxRelayService.relay(NOTIFICATION_EMAIL_EVENT, queueUrl, 10, {
-        includeEventId: true,
-      });
-    } catch (error) {
-      logger.error('Email outbox relay pass failed', error);
+    // The envelope carries the outbox event id, the email idempotency key. Each
+    // event type is relayed only when its sender is configured, so enabling one
+    // sender never flushes (or drops) the other's backlog.
+    for (const [enabled, eventType] of [
+      [notificationEmailEnabled, NOTIFICATION_EMAIL_EVENT],
+      [supportEmailEnabled, SUPPORT_EMAIL_EVENT],
+    ] as const) {
+      if (!enabled) continue;
+      try {
+        await outboxRelayService.relay(eventType, queueUrl, 10, { includeEventId: true });
+      } catch (error) {
+        logger.error(`Email outbox relay pass failed (${eventType})`, error);
+      }
     }
 
     const messages = await receive(queueUrl, 'email');
     for (const message of messages) {
       try {
-        const job = parseNotificationEmailJob(JSON.parse(message.Body ?? '{}'));
-        // A malformed body can never succeed; throwing lets it reach the DLQ
-        // after maxReceiveCount instead of silently dropping it.
-        if (!job) throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
-        await notificationEmailProcessor.process(job);
+        const body: unknown = JSON.parse(message.Body ?? '{}');
+        const supportJob = parseSupportEmailJob(body);
+        if (supportJob) {
+          await supportEmailService.process(supportJob);
+        } else {
+          const job = parseNotificationEmailJob(body);
+          // A malformed body can never succeed; throwing lets it reach the DLQ
+          // after maxReceiveCount instead of silently dropping it.
+          if (!job) throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
+          await notificationEmailProcessor.process(job);
+        }
         if (message.ReceiptHandle) {
           await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
         }

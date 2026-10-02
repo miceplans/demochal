@@ -205,6 +205,7 @@ type EmailMessage = {
   textBody?: string | null;
   sentAt?: string | null;
   receivedAt?: string | null;
+  createdAt?: string | null;
   references?: string[];
   attachments?: { filename?: string | null; contentType?: string; sizeBytes?: number | null }[];
 };
@@ -236,7 +237,9 @@ function ThreadDetail({
           <Message key={message.id} outbound={message.direction === 'outbound'}>
             <MessageMeta>
               {message.direction === 'outbound' ? '관리자' : message.fromAddress} ·{' '}
-              {new Date(message.sentAt ?? message.receivedAt ?? '').toLocaleString('ko-KR')}
+              {new Date(
+                message.sentAt ?? message.receivedAt ?? message.createdAt ?? '',
+              ).toLocaleString('ko-KR')}
             </MessageMeta>
             <MessageBody>
               {message.textBody || '(HTML 본문은 안전을 위해 텍스트 fallback으로 표시됩니다.)'}
