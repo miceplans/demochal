@@ -47,6 +47,7 @@ import type {
   AdminDashboard,
   AdminSettings,
   AdminUserEntry,
+  AdminUserPage,
   Application,
   ApplyChallenge201,
   ApplyChallengeRequest,
@@ -12064,7 +12065,7 @@ export const useUpdateAdPricing = <TError = unknown, TContext = unknown>(
 };
 
 export type listAdminUsersResponse200 = {
-  data: AdminUserEntry[];
+  data: AdminUserPage;
   status: 200;
 };
 

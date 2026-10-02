@@ -16,29 +16,12 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { ListAdminUsersJoinedWithin } from './listAdminUsersJoinedWithin';
-import type { ListAdminUsersStatus } from './listAdminUsersStatus';
+import type { AdminUserEntry } from './adminUserEntry';
 
-export type ListAdminUsersParams = {
-  q?: string;
-  status?: ListAdminUsersStatus;
-  /**
-   * 가입일 범위 (생략 시 전체)
-   */
-  joinedWithin?: ListAdminUsersJoinedWithin;
-  /**
-   * 포지션 뱃지 (부분 일치, 예: 프론트엔드)
-   */
-  position?: string;
-  /**
-   * 페이지 번호 (1부터)
-   * @minimum 1
-   */
-  page?: number;
-  /**
-   * 페이지 크기 (최대 50)
-   * @minimum 1
-   * @maximum 50
-   */
-  pageSize?: number;
-};
+export interface AdminUserPage {
+  items: AdminUserEntry[];
+  /** 필터에 해당하는 전체 사용자 수 */
+  total: number;
+  page: number;
+  pageSize: number;
+}

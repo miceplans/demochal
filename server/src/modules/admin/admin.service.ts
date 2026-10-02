@@ -70,6 +70,8 @@ export function escapeLike(value: string): string {
 const like = (value: string) => `%${escapeLike(value)}%`;
 
 const DAY_MS = 86_400_000;
+const DEFAULT_USERS_PAGE_SIZE = 30;
+const MAX_USERS_PAGE_SIZE = 50;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type BucketUnit = 'day' | 'month';
@@ -638,7 +640,19 @@ export class AdminService {
 
   // --------------------------------------------------------------------- users
 
-  async listUsers(q?: string, status?: string, joinedWithin?: string, position?: string) {
+  async listUsers(
+    q?: string,
+    status?: string,
+    joinedWithin?: string,
+    position?: string,
+    pageParam?: number,
+    pageSizeParam?: number,
+  ) {
+    const page = Math.max(1, Math.trunc(pageParam ?? 1) || 1);
+    const pageSize = Math.min(
+      MAX_USERS_PAGE_SIZE,
+      Math.max(1, Math.trunc(pageSizeParam ?? DEFAULT_USERS_PAGE_SIZE) || DEFAULT_USERS_PAGE_SIZE),
+    );
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, like(q)), ilike(users.email, like(q))));
     if (status) conditions.push(eq(users.suspended, status === 'suspended'));
@@ -648,14 +662,26 @@ export class AdminService {
     }
     // users.position is free text ("프론트엔드 개발자" etc.), so match the badge as a substring.
     if (position) conditions.push(ilike(users.position, like(position)));
-    const rows = await this.db
-      .select()
-      .from(users)
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(users.createdAt));
+    const where = conditions.length ? and(...conditions) : undefined;
+    // id를 보조 정렬키로 둬 createdAt이 같은 행도 페이지 사이에서 중복·누락되지 않게 한다.
+    const [rows, [totalRow]] = await Promise.all([
+      this.db
+        .select()
+        .from(users)
+        .where(where)
+        .orderBy(desc(users.createdAt), desc(users.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      this.db.select({ count: countRows }).from(users).where(where),
+    ]);
 
     const countByUser = await this.countReportsAgainst(rows.map((row) => row.id));
-    return rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0));
+    return {
+      items: rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0)),
+      total: totalRow?.count ?? 0,
+      page,
+      pageSize,
+    };
   }
 
   async suspendUser(id: string, dto: SuspendUserDto) {
