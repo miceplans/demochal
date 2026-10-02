@@ -43,6 +43,19 @@ describe('AdminService — ad pricing', () => {
     expect(result.map((row) => row.currentAdId)).toEqual([null, null, null]);
   });
 
+  it('PUT rejects a duplicate slot with 400 before updating anything', async () => {
+    const { db, setCalls } = createDbStub({ select: [products] });
+    const { service } = createService(db);
+
+    await expect(
+      service.updateAdPricing([
+        { slot: 'hero', dailyPrice: 1 },
+        { slot: 'hero', dailyPrice: 2 },
+      ]),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(setCalls).toHaveLength(0);
+  });
+
   it('PUT rejects an unknown slot with 400', async () => {
     const { db, setCalls } = createDbStub({ select: [products] });
     const { service } = createService(db);

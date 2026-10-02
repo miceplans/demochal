@@ -292,7 +292,15 @@ export class AdminService {
       .where(eq(businesses.verificationStatus, 'pending'));
 
     const conditions = [];
-    if (q) conditions.push(ilike(businesses.name, like(q)));
+    // 검색창이 "기관명/담당자"이므로 기관 소유자(담당자) 이름도 함께 매칭한다.
+    if (q) {
+      conditions.push(
+        or(
+          ilike(businesses.name, like(q)),
+          sql`${businesses.ownerUserId} in (select ${users.id} from ${users} where ${users.name} ilike ${like(q)})`,
+        ),
+      );
+    }
     if (status) conditions.push(eq(businesses.verificationStatus, status));
     if (type) conditions.push(eq(businesses.type, type));
     const rows = await this.db
@@ -409,7 +417,13 @@ export class AdminService {
         await tx
           .update(businesses)
           .set({ verificationStatus: status })
-          .where(eq(businesses.id, business.id));
+          .where(
+            and(
+              eq(businesses.id, business.id),
+              // 더 최근 인증 요청이 있으면 이 처리가 기관의 현재 상태를 덮어쓰지 않는다.
+              sql`not exists (select 1 from ${verifications} where ${verifications.businessId} = ${business.id} and ${verifications.createdAt} > ${verification.createdAt})`,
+            ),
+          );
       }
       return { updated: row, ownerUserId: business?.ownerUserId };
     });
@@ -485,32 +499,51 @@ export class AdminService {
     if (certificate.status === status) {
       throw new ConflictException(`이미 ${status} 상태의 인증서입니다.`);
     }
-    const [updated] = await this.db
-      .update(certificates)
-      .set({
-        status,
-        rejectionReason: dto.action === 'reject' ? (reason ?? null) : null,
-      })
-      .where(eq(certificates.id, id))
-      .returning();
-
-    const [owner] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, certificate.userId))
-      .limit(1);
-
-    if (dto.action === 'approve' && owner) {
-      // read-modify-write 대신 단일 UPDATE로 원자적으로 중복 없이 추가한다.
-      await this.db
-        .update(users)
+    // 상태 전이와 뱃지 부여/회수는 한 트랜잭션으로 처리해 서로 어긋나지 않게 한다.
+    const { updated, owner } = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(certificates)
         .set({
-          badges: sql`case when ${users.badges} @> jsonb_build_array(${certificate.title}::text)
+          status,
+          rejectionReason: dto.action === 'reject' ? (reason ?? null) : null,
+        })
+        .where(eq(certificates.id, id))
+        .returning();
+
+      const [certificateOwner] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, certificate.userId))
+        .limit(1);
+
+      if (dto.action === 'approve' && certificateOwner) {
+        // read-modify-write 대신 단일 UPDATE로 원자적으로 중복 없이 추가한다.
+        await tx
+          .update(users)
+          .set({
+            badges: sql`case when ${users.badges} @> jsonb_build_array(${certificate.title}::text)
             then ${users.badges}
             else ${users.badges} || jsonb_build_array(${certificate.title}::text) end`,
-        })
-        .where(eq(users.id, owner.id));
-    }
+          })
+          .where(eq(users.id, certificateOwner.id));
+      } else if (dto.action === 'reject' && certificate.status === 'verified' && certificateOwner) {
+        // 승인했던 인증서를 거부로 뒤집으면 그 인증서로 받은 뱃지를 회수한다
+        // (같은 제목의 다른 인증 완료 인증서가 있으면 유지).
+        await tx
+          .update(users)
+          .set({
+            badges: sql`case when exists (
+              select 1 from ${certificates}
+              where ${certificates.userId} = ${certificateOwner.id}
+                and ${certificates.title} = ${certificate.title}
+                and ${certificates.status} = 'verified'
+                and ${certificates.id} <> ${id}
+            ) then ${users.badges} else ${users.badges} - ${certificate.title}::text end`,
+          })
+          .where(eq(users.id, certificateOwner.id));
+      }
+      return { updated: row, owner: certificateOwner };
+    });
 
     return {
       id: updated!.id,
@@ -588,12 +621,18 @@ export class AdminService {
         throw new BadRequestException(`알 수 없는 광고 자리입니다: ${item.slot}`);
       }
     }
-    for (const item of items) {
-      await this.db
-        .update(adProducts)
-        .set({ dailyPrice: item.dailyPrice })
-        .where(eq(adProducts.placement, item.slot));
+    if (new Set(items.map((item) => item.slot)).size !== items.length) {
+      throw new BadRequestException('Duplicate ad slot');
     }
+    // 일부 슬롯만 반영되지 않도록 한 트랜잭션으로 갱신한다.
+    await this.db.transaction(async (tx) => {
+      for (const item of items) {
+        await tx
+          .update(adProducts)
+          .set({ dailyPrice: item.dailyPrice })
+          .where(eq(adProducts.placement, item.slot));
+      }
+    });
     return this.getAdPricing();
   }
 
@@ -693,6 +732,7 @@ export class AdminService {
   }
 
   async resolveReport(id: string, dto: ResolveReportDto) {
+    // 대기(open) 신고만 처리할 수 있다 — 이미 처리된 신고의 상태/처리일을 덮어쓰지 않는다.
     const [updated] = await this.db
       .update(reports)
       .set({
@@ -700,10 +740,16 @@ export class AdminService {
         note: dto.note ?? null,
         resolvedAt: new Date(),
       })
-      .where(eq(reports.id, id))
+      .where(and(eq(reports.id, id), eq(reports.status, 'open')))
       .returning();
-    if (!updated) throw new NotFoundException('신고를 찾을 수 없습니다.');
-    return this.toReport(updated);
+    if (updated) return this.toReport(updated);
+    const [existing] = await this.db
+      .select({ id: reports.id })
+      .from(reports)
+      .where(eq(reports.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Report not found');
+    throw new ConflictException('Report is already processed');
   }
 
   // ------------------------------------------------------------------ contents
