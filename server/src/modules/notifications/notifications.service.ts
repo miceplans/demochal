@@ -46,7 +46,7 @@ export class NotificationsService {
   ) {
     const settingsKey = this.settingsKeyFor(type, payload);
     if (settingsKey) {
-      const [user] = await this.db
+      const [user] = await executor
         .select({ notificationSettings: users.notificationSettings })
         .from(users)
         .where(eq(users.id, userId))
