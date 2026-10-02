@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type VerifyCertificateBodyAction =
-  (typeof VerifyCertificateBodyAction)[keyof typeof VerifyCertificateBodyAction];
+export type VerifyCertificateBodyAction = typeof VerifyCertificateBodyAction[keyof typeof VerifyCertificateBodyAction];
+
 
 export const VerifyCertificateBodyAction = {
   approve: 'approve',

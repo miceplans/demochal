@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateAdBodyStatus = (typeof UpdateAdBodyStatus)[keyof typeof UpdateAdBodyStatus];
+export type UpdateAdBodyStatus = typeof UpdateAdBodyStatus[keyof typeof UpdateAdBodyStatus];
+
 
 export const UpdateAdBodyStatus = {
   active: 'active',

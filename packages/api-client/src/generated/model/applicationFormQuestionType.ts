@@ -20,8 +20,8 @@
 /**
  * 질문 유형 6종
  */
-export type ApplicationFormQuestionType =
-  (typeof ApplicationFormQuestionType)[keyof typeof ApplicationFormQuestionType];
+export type ApplicationFormQuestionType = typeof ApplicationFormQuestionType[keyof typeof ApplicationFormQuestionType];
+
 
 export const ApplicationFormQuestionType = {
   dropdown: 'dropdown',

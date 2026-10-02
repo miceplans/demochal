@@ -20,8 +20,8 @@
 /**
  * 미인증/인증/거부
  */
-export type CertificateEntryStatus =
-  (typeof CertificateEntryStatus)[keyof typeof CertificateEntryStatus];
+export type CertificateEntryStatus = typeof CertificateEntryStatus[keyof typeof CertificateEntryStatus];
+
 
 export const CertificateEntryStatus = {
   pending: 'pending',

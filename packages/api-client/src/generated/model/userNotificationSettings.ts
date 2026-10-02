@@ -20,4 +20,4 @@
 /**
  * 알림 설정(키별 on/off). 저장되지 않은 키는 기본 on으로 본다.
  */
-export type UserNotificationSettings = { [key: string]: boolean };
+export type UserNotificationSettings = {[key: string]: boolean};

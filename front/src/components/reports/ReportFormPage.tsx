@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -139,7 +140,7 @@ function ReportFormContent() {
       <Form>
         <Title>신고하기</Title>
         {targetPending ? (
-          <Muted>신고 대상을 불러오는 중이에요…</Muted>
+          <LoadingState label="신고 대상을 불러오는 중이에요…" />
         ) : !preview ? (
           <Muted>신고 대상을 찾을 수 없어요. 대상 링크를 다시 확인해주세요.</Muted>
         ) : (
