@@ -74,7 +74,7 @@ const Participating = styled.div({
   [mobile]: { gridTemplateColumns: '1fr' },
 });
 const UploadBox = styled.label({
-  border: `0.5px dashed ${c.gray100}`,
+  border: `2px dashed ${c.gray100}`,
   background: '#f8f8f8',
   borderRadius: 12,
   padding: 8,

@@ -595,7 +595,7 @@ const UploadBox = styled.label({
   alignItems: 'center',
   justifyContent: 'center',
   gap: 4,
-  border: `0.5px dashed ${c.lightBlue}`,
+  border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
   background: '#f8f8f8',
   cursor: 'pointer',

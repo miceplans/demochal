@@ -774,7 +774,7 @@ const Uploader = styled.label({
   height: 282,
   padding: 8,
   background: '#f8f8f8',
-  border: `0.5px dashed ${c.lightBlue}`,
+  border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
   cursor: 'pointer',
 });
