@@ -34,6 +34,20 @@ describe('CreateChallengeDto', () => {
     }
   });
 
+  it('accepts only draft/published as status and allows omitting it', async () => {
+    for (const status of ['draft', 'published', undefined]) {
+      const dto = Object.assign(
+        new CreateChallengeDto(),
+        status === undefined ? base : { ...base, status },
+      );
+      expect(await validate(dto)).toEqual([]);
+    }
+    for (const status of ['closed', 'public', '']) {
+      const dto = Object.assign(new CreateChallengeDto(), { ...base, status });
+      expect((await validate(dto)).map((error) => error.property)).toEqual(['status']);
+    }
+  });
+
   it('accepts a valid http(s) recruitUrl or omitting it entirely', async () => {
     for (const recruitUrl of [
       'https://example.com/apply',
