@@ -1,6 +1,6 @@
 'use client';
 import styled from '@emotion/styled';
-import { colors as c } from '@/styles/design';
+import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 /** Figma 탐색 필터 사이드바(FilterSidebar) 구성 요소 — 그룹 제목 + 칩/체크박스. */
@@ -126,6 +126,13 @@ const CheckGrid = styled.div<{ $rows: number; $columnGap: number }>(({ $rows, $c
   gridTemplateRows: `repeat(${$rows}, auto)`,
   gridAutoColumns: 'max-content',
   gap: `10px ${$columnGap}px`,
+  [mobile]: {
+    gridAutoFlow: 'row',
+    gridTemplateRows: 'none',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridAutoColumns: 'auto',
+    columnGap: 12,
+  },
 }));
 const CheckRow = styled.label({
   ...textStyle.caption,
