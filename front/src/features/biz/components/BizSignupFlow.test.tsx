@@ -81,6 +81,18 @@ describe('BizSignupFlow', () => {
     expect(styleText).toContain('prefers-reduced-motion');
   });
 
+  it('injects micro-interaction styles for checkboxes, action buttons, and the upload box', () => {
+    renderSignup();
+
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    // 체크 아이콘 스케일 팝 시작값/버튼 눌림 스케일/박스 테두리 전환 선언
+    expect(styleText).toContain('scale(0.4)');
+    expect(styleText).toContain('scale(0.96)');
+    expect(styleText).toContain('border-color 150ms ease');
+  });
+
   it('redirects a duplicate signup to the Biz login page', async () => {
     mocks.register.mockRejectedValue(new mocks.MockApiError(409));
     const user = userEvent.setup();

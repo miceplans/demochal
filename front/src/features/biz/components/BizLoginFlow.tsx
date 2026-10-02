@@ -487,9 +487,9 @@ const Header = styled.div({
   gap: 32,
 });
 const ProgressWrap = styled.div({ width: '100%' });
-// BIZ 랜딩(BizLanding)의 리빌 관례와 동일한 모션으로 스텝 콘텐츠가 아래에서 올라온다.
+// BIZ 랜딩(BizLanding)의 리빌과 동일한 베지어로, 인터랙티브 전환에 맞춰 400ms 만에 스텝 콘텐츠가 아래에서 올라온다.
 const StepBody = styled.div({
-  animation: 'semo-biz-step-in 620ms cubic-bezier(0.22, 1, 0.36, 1) both',
+  animation: 'semo-biz-step-in 400ms cubic-bezier(0.22, 1, 0.36, 1) both',
   '@keyframes semo-biz-step-in': {
     from: { opacity: 0, transform: 'translateY(28px)' },
     to: { opacity: 1, transform: 'none' },
@@ -513,6 +513,7 @@ const CheckBox = styled.span({
   borderRadius: 3,
   border: `1px solid ${c.gray200}`,
   background: c.white,
+  transition: 'background 150ms ease, border-color 150ms ease, transform 120ms ease',
 });
 const CheckIcon = styled.img({
   position: 'absolute',
@@ -521,6 +522,8 @@ const CheckIcon = styled.img({
   width: 16,
   height: 16,
   opacity: 0,
+  transform: 'scale(0.4)',
+  transition: 'opacity 140ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1)',
 });
 const CheckRow = styled.label({
   position: 'relative',
@@ -532,8 +535,11 @@ const CheckRow = styled.label({
   color: c.gray700,
   cursor: 'pointer',
   'input:checked + span': { background: c.primary, borderColor: c.primary },
-  'input:checked + span img': { opacity: 1 },
+  'input:checked + span img': { opacity: 1, transform: 'scale(1)' },
   'input:focus-visible + span': { boxShadow: s.focus },
+  '&:hover > span': { borderColor: c.gray300 },
+  '&:hover > input:checked + span': { borderColor: c.primary },
+  '&:active > span': { transform: 'scale(0.9)' },
 });
 const Form = styled.div({ display: 'flex', flexDirection: 'column', gap: 32 });
 const FieldBox = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
@@ -593,6 +599,8 @@ const UploadBox = styled.label({
   borderRadius: 20,
   background: '#f8f8f8',
   cursor: 'pointer',
+  transition: 'border-color 150ms ease, background 150ms ease',
+  '&:hover': { borderColor: c.primary },
   '&:focus-within': { boxShadow: s.focus },
 });
 const UploadIcon = styled.img({ width: 57.3223, height: 36 });
@@ -614,11 +622,15 @@ const ActionPrimary = styled(PrimaryButton)({
   width: 94,
   height: 37,
   ...textStyle.mFeatureTitle,
+  transition: 'transform 100ms ease',
+  '&:active:not(:disabled)': { transform: 'scale(0.96)' },
 });
 const ActionOutline = styled(OutlineButton)({
   width: 94,
   height: 37,
   ...textStyle.mCounterText,
+  transition: 'transform 100ms ease',
+  '&:active:not(:disabled)': { transform: 'scale(0.96)' },
 });
 const ExistingAccount = styled.p({
   margin: 0,
