@@ -43,6 +43,8 @@ export function ContestDetailPage({
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
   const saved = bookmarks.some((item) => item.id === bookmarkId);
   const [applyVisible, setApplyVisible] = useState(true);
+  // 상단 Intro가 화면에서 사라졌는지 — 사이드바 포스터 표시 여부를 결정한다.
+  const [introInView, setIntroInView] = useState(true);
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   const challengeQuery = generated.useGetChallenge(challengeId ?? '', {
@@ -115,6 +117,7 @@ export function ContestDetailPage({
       ];
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
   const ready = !challengeId || Boolean(challenge);
   useEffect(() => {
@@ -122,6 +125,15 @@ export function ContestDetailPage({
     const el = applyRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) => setApplyVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [teamTab, ready]);
+  // Intro가 화면에서 사라지면 사이드바에 포스터를 띄운다(상단 커버와의 중복을 피하기 위해).
+  useEffect(() => {
+    if (teamTab || !ready) return;
+    const el = introRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setIntroInView(entry.isIntersecting));
     observer.observe(el);
     return () => observer.disconnect();
   }, [teamTab, ready]);
@@ -172,7 +184,7 @@ export function ContestDetailPage({
   return (
     <UserShell title="챌린지 상세" back="/explore">
       <Content>
-        <Intro>
+        <Intro ref={introRef}>
           <div className="cover" aria-hidden="true">
             {posterUrl ? <img src={posterUrl} alt="" /> : <span>{detail.title.slice(0, 1)}</span>}
           </div>
@@ -255,7 +267,7 @@ export function ContestDetailPage({
             )}
           </div>
           <Sidebar>
-            {!teamTab && (
+            {!teamTab && !introInView && (
               <PosterFrame>
                 {sidebarPoster ? (
                   <img src={sidebarPoster} alt={`${detail.title} 포스터`} />
