@@ -87,6 +87,16 @@ export class EmailService {
     };
   }
 
+  async updateThreadStatus(id: string, status: (typeof statuses)[number]) {
+    const [thread] = await this.db
+      .update(emailThreads)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(emailThreads.id, id))
+      .returning();
+    if (!thread) throw new NotFoundException('메일 thread를 찾을 수 없습니다.');
+    return thread;
+  }
+
   async ingestInbound(email: InboundEmail) {
     const messageId = normalizeMessageId(email.messageId);
     if (!messageId || !email.from || !email.to)

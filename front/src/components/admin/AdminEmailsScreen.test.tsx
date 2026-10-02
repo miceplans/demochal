@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   detail: vi.fn(),
   send: vi.fn(),
   create: vi.fn(),
+  updateStatus: vi.fn(),
   push: vi.fn(),
 }));
 
@@ -24,6 +25,7 @@ vi.mock('@semochal/api-client', () => ({
     useGetAdminEmail: mocks.detail,
     useSendAdminEmailReply: mocks.send,
     useCreateAdminEmail: mocks.create,
+    useUpdateAdminEmailStatus: mocks.updateStatus,
   },
 }));
 
@@ -101,6 +103,7 @@ describe('AdminEmailsScreen', () => {
           id: 'thread-1',
           subject: '문의',
           customerEmail: 'customer@example.com',
+          status: 'open',
           messages: [
             {
               id: 'message-1',
@@ -119,6 +122,7 @@ describe('AdminEmailsScreen', () => {
     });
     mocks.send.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.send });
     mocks.create.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.create });
+    mocks.updateStatus.mockReturnValue({ isPending: false, mutate: mocks.updateStatus });
   });
 
   it('renders a thread table and opens the mail view page when selected', async () => {
@@ -140,6 +144,8 @@ describe('AdminEmailsScreen', () => {
     await user.type(textarea, '재시도할 답장');
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
+    await user.click(screen.getByRole('button', { name: '처리중' }));
+    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', status: 'pending' });
   });
 
   it('renders a separate compose page and sends a new email', async () => {
@@ -151,8 +157,8 @@ describe('AdminEmailsScreen', () => {
     });
     render(<AdminEmailComposeScreen />);
     expect(screen.getByRole('heading', { name: '새 메일 작성' })).toBeTruthy();
-    await user.type(screen.getByPlaceholderText('받는 사람 이메일'), 'customer@example.com');
-    await user.type(screen.getByPlaceholderText('제목'), '새 문의 답변');
+    await user.type(screen.getByPlaceholderText('customer@example.com'), 'customer@example.com');
+    await user.type(screen.getByPlaceholderText('문의 답변을 입력하세요'), '새 문의 답변');
     await user.type(screen.getByPlaceholderText('메일 내용을 입력하세요.'), '안녕하세요.');
     await user.click(screen.getByRole('button', { name: '메일 보내기' }));
     expect(mocks.create.mock.results[0]?.value.mutateAsync).toHaveBeenCalledWith({
