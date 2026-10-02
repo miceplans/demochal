@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
 vi.mock('@semochal/api-client', () => ({
-  adminEmailApi: {
+  generated: {
     useListAdminEmails: mocks.list,
     useGetAdminEmail: mocks.detail,
     useSendAdminEmailReply: mocks.send,
@@ -174,7 +174,7 @@ describe('AdminEmailsScreen', () => {
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
     await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), '처리중');
-    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', status: 'pending' });
+    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', data: { status: 'pending' } });
   });
 
   it('renders a separate compose page and sends a new email', async () => {
@@ -191,9 +191,11 @@ describe('AdminEmailsScreen', () => {
     await user.type(screen.getByPlaceholderText('메일 내용을 입력하세요.'), '안녕하세요.');
     await user.click(screen.getByRole('button', { name: '메일 보내기' }));
     expect(mocks.create.mock.results[0]?.value.mutateAsync).toHaveBeenCalledWith({
-      to: 'customer@example.com',
-      subject: '새 문의 답변',
-      text: '안녕하세요.',
+      data: {
+        to: 'customer@example.com',
+        subject: '새 문의 답변',
+        text: '안녕하세요.',
+      },
     });
   });
 });

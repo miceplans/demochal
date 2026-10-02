@@ -19,10 +19,10 @@
 import type { ListAdminBusinessesStatus } from './listAdminBusinessesStatus';
 
 export type ListAdminBusinessesParams = {
-  q?: string;
-  /**
-   * 기관 유형 (비영리/학교/협회/기업)
-   */
-  type?: string;
-  status?: ListAdminBusinessesStatus;
+q?: string;
+/**
+ * 기관 유형 (비영리/학교/협회/기업)
+ */
+type?: string;
+status?: ListAdminBusinessesStatus;
 };

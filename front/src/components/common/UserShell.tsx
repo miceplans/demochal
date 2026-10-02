@@ -33,7 +33,7 @@ export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: bool
 }
 const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
   background: c.white,
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   padding: compact
     ? '12px max(24px, calc((100% - 1200px) / 2))'
     : '8px max(24px, calc((100% - 1200px) / 2))',
@@ -42,7 +42,7 @@ const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
 const Search = styled.form({
   display: 'flex',
   alignItems: 'center',
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   gap: 8,
   padding: '0 16px',
@@ -115,7 +115,7 @@ const MobileHeader = styled.header({
     flexDirection: 'column',
     gap: 16,
     padding: '16px',
-    borderBottom: `1px solid ${c.gray100}`,
+    borderBottom: `0.5px solid ${c.gray100}`,
   },
 });
 const MobileTitleBar = styled.div({
@@ -392,7 +392,7 @@ const MyGrid = styled.div({
   [mobile]: { display: 'block', minHeight: 0 },
 });
 const MyAside = styled.aside({
-  borderRight: `1px solid ${c.gray100}`,
+  borderRight: `0.5px solid ${c.gray100}`,
   padding: '40px 0',
   '& a': {
     display: 'block',

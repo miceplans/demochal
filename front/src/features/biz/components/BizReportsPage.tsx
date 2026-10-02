@@ -192,5 +192,5 @@ const Row = styled.div<{ head?: boolean }>(({ head }) => ({
   padding: '0 16px',
   background: head ? c.gray100 : c.white,
   ...(head ? textStyle.h3 : textStyle.body),
-  '& + &': { borderTop: `1px solid ${c.gray100}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray100}` },
 }));

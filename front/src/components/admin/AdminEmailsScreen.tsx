@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
-import { adminEmailApi } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
@@ -44,8 +44,8 @@ export function AdminEmailsScreen() {
     q: query || undefined,
     status: statusValue[status] as 'open' | 'pending' | 'resolved' | undefined,
   };
-  const list = adminEmailApi.useListAdminEmails(params);
-  const overview = adminEmailApi.useListAdminEmails();
+  const list = generated.useListAdminEmails(params);
+  const overview = generated.useListAdminEmails();
   const rows = list.data?.status === 200 ? list.data.data : [];
   const overviewRows = overview.data?.status === 200 ? overview.data.data : [];
   const counts = useMemo(
@@ -162,7 +162,7 @@ export function AdminEmailsScreen() {
 
 export function AdminEmailComposeScreen() {
   const router = useRouter();
-  const compose = adminEmailApi.useCreateAdminEmail();
+  const compose = generated.useCreateAdminEmail();
   return (
     <Screen>
       <TitleRow>
@@ -186,7 +186,7 @@ export function AdminEmailComposeScreen() {
         }
         onSend={async (data) => {
           try {
-            await compose.mutateAsync(data);
+            await compose.mutateAsync({ data });
             router.push('/admin/emails');
             return true;
           } catch {
@@ -200,9 +200,9 @@ export function AdminEmailComposeScreen() {
 
 export function AdminEmailThreadScreen({ id }: { id: string }) {
   const router = useRouter();
-  const detail = adminEmailApi.useGetAdminEmail(id, { enabled: true });
-  const reply = adminEmailApi.useSendAdminEmailReply();
-  const statusMutation = adminEmailApi.useUpdateAdminEmailStatus();
+  const detail = generated.useGetAdminEmail(id, { query: { enabled: true } });
+  const reply = generated.useSendAdminEmailReply();
+  const statusMutation = generated.useUpdateAdminEmailStatus();
   const selected = detail.data?.status === 200 ? detail.data.data : undefined;
   const [copied, setCopied] = useState(false);
   return (
@@ -230,7 +230,7 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
           <ThreadDetail
             thread={selected}
             sending={reply.isPending}
-            onStatusChange={(status) => statusMutation.mutate({ id, status })}
+            onStatusChange={(status) => statusMutation.mutate({ id, data: { status } })}
             copied={copied}
             onCopyEmail={() => {
               if (!selected.customerEmail) return;

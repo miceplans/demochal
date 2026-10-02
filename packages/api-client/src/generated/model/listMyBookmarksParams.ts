@@ -19,5 +19,5 @@
 import type { ListMyBookmarksSort } from './listMyBookmarksSort';
 
 export type ListMyBookmarksParams = {
-  sort?: ListMyBookmarksSort;
+sort?: ListMyBookmarksSort;
 };

@@ -166,7 +166,7 @@ const StatBox = styled.div({
   flexDirection: 'column',
   gap: 8,
   padding: 18,
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 16,
   minWidth: 0,
   flex: 1,
@@ -200,7 +200,7 @@ const SearchBox = styled.label({
   width: 360,
   height: 42,
   padding: '0 14px',
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 10,
   background: c.white,
   '&:focus-within': { borderColor: c.primary },
@@ -217,7 +217,7 @@ const SearchInput = styled.input({
 const SearchGlyph = styled.span({ display: 'inline-flex', color: c.gray500 });
 
 const TableBox = styled.div({
-  border: '1px solid #DFE2E7',
+  border: '0.5px solid #DFE2E7',
   borderRadius: 8,
   overflow: 'hidden',
   background: c.white,
@@ -241,7 +241,7 @@ const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boo
     height: 56,
     padding: '0 16px',
     background: selected ? '#EFF6FF' : c.white,
-    borderTop: '1px solid #DFE2E7',
+    borderTop: '0.5px solid #DFE2E7',
     borderRadius: last ? '0 0 8px 8px' : undefined,
     ...textStyle.bodyLarge,
     color: c.gray900,
@@ -291,7 +291,7 @@ export const ApproveButton = styled.button({
   '&:hover': { background: '#0056c2' },
 });
 export const RejectButton = styled.button({
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,

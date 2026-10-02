@@ -13,10 +13,14 @@ import { ChallengeNotificationScanService } from './modules/notifications/challe
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
   NOTIFICATION_EMAIL_EVENT,
-  isEmailDeliveryConfigured,
   parseNotificationEmailJob,
 } from './modules/notifications/email/notification-email.js';
 import { EmailService } from './modules/email/email.service.js';
+import { SupportEmailProcessorService } from './modules/notifications/email/support-email.processor.js';
+import {
+  SUPPORT_EMAIL_EVENT,
+  parseSupportEmailJob,
+} from './modules/notifications/email/support-email.js';
 
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -30,6 +34,7 @@ async function bootstrap() {
   const verificationsProcessor = app.get(VerificationsProcessorService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
   const emailService = app.get(EmailService);
+  const supportEmailProcessor = app.get(SupportEmailProcessorService);
 
   const challengeNotificationScan = app.get(ChallengeNotificationScanService);
   let lastChallengeScanAt = 0;
@@ -38,7 +43,9 @@ async function bootstrap() {
   process.on('SIGTERM', () => (shuttingDown = true));
   process.on('SIGINT', () => (shuttingDown = true));
 
-  const emailEnabled = isEmailDeliveryConfigured();
+  const emailEnabled = Boolean(
+    env.sqsEmailsQueueUrl && (env.sesFromEmail || env.sesSupportFromEmail),
+  );
   logger.log(
     `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
       `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
@@ -123,15 +130,23 @@ async function bootstrap() {
     } catch (error) {
       logger.error('Email outbox relay pass failed', error);
     }
+    try {
+      await outboxRelayService.relay(SUPPORT_EMAIL_EVENT, queueUrl, 10, { includeEventId: true });
+    } catch (error) {
+      logger.error('Support email outbox relay pass failed', error);
+    }
 
     const messages = await receive(queueUrl, 'email');
     for (const message of messages) {
       try {
-        const job = parseNotificationEmailJob(JSON.parse(message.Body ?? '{}'));
+        const body = JSON.parse(message.Body ?? '{}');
+        const job = parseNotificationEmailJob(body);
+        const supportJob = parseSupportEmailJob(body);
         // A malformed body can never succeed; throwing lets it reach the DLQ
         // after maxReceiveCount instead of silently dropping it.
-        if (!job) throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
-        await notificationEmailProcessor.process(job);
+        if (job) await notificationEmailProcessor.process(job);
+        else if (supportJob) await supportEmailProcessor.process(supportJob);
+        else throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
         if (message.ReceiptHandle) {
           await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
         }

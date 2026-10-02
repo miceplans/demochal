@@ -25,10 +25,10 @@ export interface ApplicationFormQuestion {
   /** 질문 유형 6종 */
   type: ApplicationFormQuestionType;
   /**
-   * 선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)
-   * @maxItems 50
-   * @items.maxLength 500
-   */
+     * 선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)
+     * @maxItems 50
+     * @items.maxLength 500
+     */
   options?: string[];
   /** 필수 질문 여부 */
   required: boolean;

@@ -189,7 +189,7 @@ const EditLink = styled(BizLink)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  border: `1px solid ${c.gray500}`,
+  border: `0.5px solid ${c.gray500}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,

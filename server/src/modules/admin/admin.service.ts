@@ -402,8 +402,8 @@ export class AdminService {
     status: 'verified' | 'rejected',
     reason: string | null,
   ) {
-    // 조회·상태 전이·기관 상태 갱신을 한 트랜잭션에서 처리하고(행 잠금), 알림은 커밋 후 발송한다.
-    const { updated, ownerUserId } = await this.db.transaction(async (tx) => {
+    // 조회·상태 전이·기관 상태 갱신·결과 알림을 한 트랜잭션에서 처리한다(행 잠금).
+    const updated = await this.db.transaction(async (tx) => {
       const [verification] = await tx
         .select()
         .from(verifications)
@@ -442,16 +442,16 @@ export class AdminService {
             ),
           );
       }
-      return { updated: row, ownerUserId: business?.ownerUserId };
+      if (business?.ownerUserId) {
+        await this.notificationsService.create(
+          business.ownerUserId,
+          'verification.result',
+          { verificationId: id, status, ...(reason ? { reason } : {}) },
+          tx,
+        );
+      }
+      return row;
     });
-
-    if (ownerUserId) {
-      await this.notificationsService.create(ownerUserId, 'verification.result', {
-        verificationId: id,
-        status,
-        ...(reason ? { reason } : {}),
-      });
-    }
 
     return updated;
   }

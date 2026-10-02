@@ -121,7 +121,7 @@ const HeaderSignup = styled(BizLink)({
   height: 37,
   borderRadius: 6,
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   color: c.gray900,
   ...textStyle.overline,
   fontSize: 12,
@@ -178,7 +178,7 @@ const SidebarBox = styled.aside({
   left: 0,
   bottom: 0,
   width: 220,
-  borderRight: `1px solid ${c.gray100}`,
+  borderRight: `0.5px solid ${c.gray100}`,
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',
@@ -196,7 +196,7 @@ const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })
   borderRadius: 6,
   textAlign: 'left',
   ...textStyle.subtitle,
-  color: '#111111',
+  color: c.gray900,
   background: active
     ? 'linear-gradient(90deg, rgba(11, 110, 255, 0.1) 0%, rgba(255, 255, 255, 0.1) 100%)'
     : 'transparent',
@@ -213,7 +213,7 @@ const Avatar = styled.span({
   width: 34,
   height: 34,
   borderRadius: '50%',
-  background: '#EFF6FF',
+  background: c.paleBlue,
   color: c.primary,
   display: 'flex',
   alignItems: 'center',
@@ -223,7 +223,7 @@ const Avatar = styled.span({
 });
 const LogoutIcon = styled.button({
   display: 'inline-flex',
-  color: '#6B7280',
+  color: c.gray500,
   background: 'none',
   border: 0,
   padding: 0,
@@ -287,8 +287,8 @@ export function BizSidebar() {
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
           <Avatar aria-hidden>{accountName[0]}</Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{accountName}</strong>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{businessName}</span>
+            <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{accountName}</strong>
+            <span style={{ fontSize: 11, fontWeight: 500, color: c.gray500 }}>{businessName}</span>
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
@@ -394,11 +394,11 @@ export const PrimaryButton = styled.button({
   color: c.white,
   ...textStyle.subtitle,
   padding: '10px 12px',
-  '&:hover:not(:disabled)': { background: '#005ee0' },
+  '&:hover:not(:disabled)': { background: c.primaryHover },
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 });
 export const OutlineButton = styled.button({
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,
@@ -414,7 +414,7 @@ export const Field = styled.label({
 });
 export const FieldInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -423,7 +423,7 @@ export const FieldInput = styled.input({
 });
 export const FieldSelect = styled.select({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -431,7 +431,7 @@ export const FieldSelect = styled.select({
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const TableBox = styled.div({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
 });
@@ -450,14 +450,14 @@ export const TRow = styled.div({
   padding: '18px 16px',
   background: c.white,
   ...textStyle.h1,
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
 });
 export const StatBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
   padding: 20,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   minWidth: 0,
 });

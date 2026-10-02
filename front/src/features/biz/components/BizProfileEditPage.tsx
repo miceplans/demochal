@@ -220,7 +220,7 @@ export function BizProfileEditPage() {
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
 const InlineInput = styled.input({
   width: 360,
-  border: '1px solid transparent',
+  border: '0.5px solid transparent',
   borderRadius: 6,
   padding: '4px 6px',
   background: 'transparent',

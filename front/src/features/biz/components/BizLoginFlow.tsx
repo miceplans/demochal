@@ -511,7 +511,7 @@ const CheckBox = styled.span({
   height: 16,
   flexShrink: 0,
   borderRadius: 3,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   background: c.white,
   transition: 'background 150ms ease, border-color 150ms ease, transform 120ms ease',
 });
@@ -597,7 +597,7 @@ const UploadBox = styled.label({
   gap: 4,
   border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
-  background: '#f8f8f8',
+  background: c.surface,
   cursor: 'pointer',
   transition: 'border-color 150ms ease, background 150ms ease',
   '&:hover': { borderColor: c.primary },
