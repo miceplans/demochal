@@ -60,7 +60,7 @@ const StepNumber = styled.span<{ $completed: boolean }>(({ $completed }) => ({
   height: 30,
   placeItems: 'center',
   flexShrink: 0,
-  border: `${$completed ? 0 : 1.25}px solid ${c.primary}`,
+  border: `${$completed ? 0 : 0.5}px solid ${c.primary}`,
   borderRadius: '50%',
   background: $completed ? c.primary : c.white,
   color: $completed ? c.white : c.primary,
