@@ -6,7 +6,9 @@ import { adminEmailApi } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
+  type AdminColumn,
   AdminInlineNotice,
+  AdminTable,
   AdminPageTitle,
   Badge,
   FilterBar,
@@ -29,11 +31,37 @@ export function AdminEmailsScreen() {
   const rows = list.data?.status === 200 ? list.data.data : [];
   const detail = adminEmailApi.useGetAdminEmail(selectedId ?? '', { enabled: Boolean(selectedId) });
   const reply = adminEmailApi.useSendAdminEmailReply();
+  const compose = adminEmailApi.useCreateAdminEmail();
+  const [composeOpen, setComposeOpen] = useState(false);
   const selected = detail.data?.status === 200 ? detail.data.data : undefined;
+  const tableRows = rows.filter((row): row is typeof row & { id: string } => Boolean(row.id));
+  const columns: AdminColumn<(typeof tableRows)[number]>[] = [
+    { key: 'subject', header: '제목', render: (row) => row.subject || '(제목 없음)' },
+    { key: 'customerEmail', header: '고객 이메일', render: (row) => row.customerEmail || '-' },
+    { key: 'lastMessage', header: '마지막 메시지', render: (row) => row.lastMessage || '-' },
+    {
+      key: 'lastMessageAt',
+      header: '최근 시각',
+      render: (row) =>
+        row.lastMessageAt ? new Date(row.lastMessageAt).toLocaleString('ko-KR') : '-',
+    },
+    {
+      key: 'status',
+      header: '상태',
+      render: (row) => (
+        <Badge>{row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}</Badge>
+      ),
+    },
+  ];
 
   return (
     <Screen>
-      <AdminPageTitle>메일함</AdminPageTitle>
+      <TitleRow>
+        <AdminPageTitle>메일함</AdminPageTitle>
+        <ComposeButton type="button" onClick={() => setComposeOpen((open) => !open)}>
+          {composeOpen ? '작성 닫기' : '새 메일 작성'}
+        </ComposeButton>
+      </TitleRow>
       <FilterBar>
         <SearchFilter
           placeholder="제목/고객 이메일 검색"
@@ -54,30 +82,32 @@ export function AdminEmailsScreen() {
           메일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      {!list.isPending && !list.isError && rows.length === 0 ? (
-        <AdminInlineNotice>표시할 메일이 없어요.</AdminInlineNotice>
+      {composeOpen ? (
+        <ComposePanel
+          sending={compose.isPending}
+          error={
+            compose.isError
+              ? '메일 발송에 실패했어요. 입력한 내용으로 다시 시도해 주세요.'
+              : undefined
+          }
+          onSend={async (data) => {
+            try {
+              await compose.mutateAsync(data);
+              setComposeOpen(false);
+              return true;
+            } catch {
+              return false;
+            }
+          }}
+        />
       ) : null}
+      <AdminTable
+        columns={columns}
+        rows={tableRows}
+        selectedRowId={selectedId}
+        onRowClick={(row) => setSelectedId(row.id)}
+      />
       <Content>
-        <ThreadList aria-label="메일 thread 목록">
-          {rows.map((row) => (
-            <ThreadRow
-              key={row.id}
-              selected={row.id === selectedId}
-              onClick={() => setSelectedId(row.id)}
-              type="button"
-            >
-              <RowTop>
-                <strong>{row.subject || '(제목 없음)'}</strong>
-                <Badge>{row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}</Badge>
-              </RowTop>
-              <small>{row.customerEmail}</small>
-              <Preview>{row.lastMessage || '(본문 없음)'}</Preview>
-              <Time>
-                {row.lastMessageAt ? new Date(row.lastMessageAt).toLocaleString('ko-KR') : ''}
-              </Time>
-            </ThreadRow>
-          ))}
-        </ThreadList>
         <Detail>
           {!selectedId ? (
             <AdminInlineNotice>메일을 선택하면 대화 내용이 보여요.</AdminInlineNotice>
@@ -107,6 +137,63 @@ export function AdminEmailsScreen() {
         </Detail>
       </Content>
     </Screen>
+  );
+}
+
+function ComposePanel({
+  sending,
+  error,
+  onSend,
+}: {
+  sending: boolean;
+  error?: string;
+  onSend: (data: { to: string; subject: string; text: string }) => Promise<boolean>;
+}) {
+  const [to, setTo] = useState('');
+  const [subject, setSubject] = useState('');
+  const [text, setText] = useState('');
+  return (
+    <ComposeForm
+      aria-label="새 메일 작성"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSend({ to, subject, text }).then((success) => {
+          if (success) {
+            setTo('');
+            setSubject('');
+            setText('');
+          }
+        });
+      }}
+    >
+      <ComposeInput
+        type="email"
+        required
+        placeholder="받는 사람 이메일"
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+      />
+      <ComposeInput
+        required
+        placeholder="제목"
+        value={subject}
+        onChange={(e) => setSubject(e.target.value)}
+      />
+      <ComposeTextarea
+        required
+        placeholder="메일 내용을 입력하세요."
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        maxLength={100000}
+      />
+      {error ? <Error role="alert">{error}</Error> : null}
+      <ReplyButton
+        type="submit"
+        disabled={sending || !to.trim() || !subject.trim() || !text.trim()}
+      >
+        {sending ? '발송 중…' : '메일 보내기'}
+      </ReplyButton>
+    </ComposeForm>
   );
 }
 
@@ -193,45 +280,49 @@ function ThreadDetail({
 }
 
 const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 24, minHeight: 0 });
+const TitleRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+});
+const ComposeButton = styled.button({
+  border: 0,
+  borderRadius: 6,
+  padding: '10px 16px',
+  background: c.primary,
+  color: c.white,
+  cursor: 'pointer',
+  ...textStyle.subtitle,
+});
+const ComposeForm = styled.form({
+  display: 'grid',
+  gap: 10,
+  padding: 18,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 10,
+  background: c.white,
+});
+const ComposeInput = styled.input({
+  padding: '10px 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  ...textStyle.body,
+});
+const ComposeTextarea = styled.textarea({
+  minHeight: 140,
+  padding: '10px 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  resize: 'vertical',
+  ...textStyle.body,
+});
 const Content = styled.div({
   display: 'grid',
-  gridTemplateColumns: 'minmax(280px, 360px) minmax(0, 1fr)',
+  gridTemplateColumns: 'minmax(0, 1fr)',
   gap: 20,
   minHeight: 560,
 });
-const ThreadList = styled.div({
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 10,
-  overflow: 'auto',
-  background: c.white,
-});
-const ThreadRow = styled.button<{ selected?: boolean }>(({ selected }) => ({
-  display: 'block',
-  width: '100%',
-  padding: 16,
-  textAlign: 'left',
-  border: 0,
-  borderBottom: `1px solid ${c.gray200}`,
-  background: selected ? '#EFF6FF' : c.white,
-  cursor: 'pointer',
-  '&:hover': { background: '#F8FAFC' },
-}));
-const RowTop = styled.div({
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 10,
-  alignItems: 'center',
-  ...textStyle.subtitle,
-});
-const Preview = styled.p({
-  margin: '8px 0 4px',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  color: c.gray500,
-  ...textStyle.caption2,
-});
-const Time = styled.span({ color: c.gray500, fontSize: 11 });
 const Detail = styled.section({
   border: `1px solid ${c.gray200}`,
   borderRadius: 10,
