@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { colors as c } from '@/styles/design';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { MyShell } from '@/components/common/UserShell';
@@ -66,7 +67,7 @@ export function AccountSettings() {
             />{' '}
             안내를 확인했고 회원 탈퇴에 동의합니다.
           </label>
-          {error && <Muted style={{ color: '#d92d20' }}>{error}</Muted>}
+          {error && <Muted style={{ color: c.red }}>{error}</Muted>}
           <Button
             type="button"
             tone="outline"

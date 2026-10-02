@@ -79,7 +79,7 @@ const DropZone = styled('label', {
   padding: 8,
   border: `2px dashed ${dragOver ? c.primary : '#dfedff'}`,
   borderRadius: 11,
-  background: dragOver ? '#eaf3ff' : '#f8f8f8',
+  background: dragOver ? c.paleBlue : c.surface,
   cursor: 'pointer',
   textAlign: 'center',
   transition: 'border-color 120ms ease, background 120ms ease',

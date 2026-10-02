@@ -773,7 +773,7 @@ const Uploader = styled.label({
   gap: 4,
   height: 282,
   padding: 8,
-  background: '#f8f8f8',
+  background: c.surface,
   border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
   cursor: 'pointer',
@@ -1002,7 +1002,7 @@ const PublishButton = styled.button({
   background: c.primary,
   color: c.white,
   ...textStyle.subtitle,
-  '&:hover': { background: '#005ee0' },
+  '&:hover': { background: c.primaryHover },
 });
 
 function toDateInput(value: string | undefined) {
