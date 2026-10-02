@@ -14,11 +14,18 @@ import {
 describe('AdminService — time buckets', () => {
   const now = new Date('2026-09-23T10:00:00Z');
 
+  it('rolls the day over at KST midnight, not UTC midnight', () => {
+    // 2026-09-23 16:00 UTC = 2026-09-24 01:00 KST
+    const buckets = timeBuckets('day', 2, new Date('2026-09-23T16:00:00Z'));
+    expect(buckets.keys).toEqual(['2026-09-23', '2026-09-24']);
+    expect(buckets.since.toISOString()).toBe('2026-09-22T15:00:00.000Z');
+  });
+
   it('builds consecutive day buckets ending today', () => {
     const buckets = timeBuckets('day', 3, now);
     expect(buckets.keys).toEqual(['2026-09-21', '2026-09-22', '2026-09-23']);
     expect(buckets.labels).toEqual(['9/21', '9/22', '9/23']);
-    expect(buckets.since.toISOString()).toBe('2026-09-21T00:00:00.000Z');
+    expect(buckets.since.toISOString()).toBe('2026-09-20T15:00:00.000Z');
   });
 
   it('builds month buckets across a year boundary', () => {

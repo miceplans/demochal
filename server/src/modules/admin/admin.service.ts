@@ -82,20 +82,28 @@ interface TimeBuckets {
 
 const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
+/** 관리자 집계 버킷의 기준 시간대. 저장은 UTC, 일/월 경계는 KST(UTC+9, DST 없음)로 자른다. */
+const BUCKET_TIME_ZONE = 'Asia/Seoul';
+const BUCKET_OFFSET_MS = 9 * 3_600_000;
+
 /**
- * Consecutive UTC day/month buckets ending at `now` (inclusive). Keys match
+ * Consecutive KST day/month buckets ending at `now` (inclusive). Keys match
  * {@link bucketKey}'s `YYYY-MM-DD` output so SQL group-by rows can be joined back.
  */
 export function timeBuckets(unit: BucketUnit, count: number, now = new Date()): TimeBuckets {
+  // KST 벽시계 시각을 UTC 필드로 옮겨 계산한 뒤, since만 실제 순간(UTC)으로 되돌린다.
+  const kstNow = new Date(now.getTime() + BUCKET_OFFSET_MS);
   const starts = Array.from({ length: count }, (_, i) => {
     const offset = count - 1 - i;
     return unit === 'day'
-      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset))
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      ? new Date(
+          Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - offset),
+        )
+      : new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - offset, 1));
   });
   return {
     unit,
-    since: starts[0]!,
+    since: new Date(starts[0]!.getTime() - BUCKET_OFFSET_MS),
     keys: starts.map(toDateKey),
     labels: starts.map((date) =>
       unit === 'day'
@@ -111,9 +119,12 @@ const RANGE_BUCKETS: Record<string, [BucketUnit, number]> = {
   '1year': ['month', 12],
 };
 
-/** `YYYY-MM-DD` of the day/month a timestamp falls in (timestamps are stored as UTC). */
+/**
+ * `YYYY-MM-DD` of the KST day/month a timestamp falls in. 컬럼은 tz 없는 `timestamp`(UTC 저장)이라
+ * UTC로 해석한 뒤 KST로 변환해 DB 세션 TZ와 무관하게 버킷 경계가 고정된다.
+ */
 function bucketKey(unit: BucketUnit, column: PgColumn) {
-  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column}), 'YYYY-MM-DD')`;
+  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column} AT TIME ZONE 'UTC' AT TIME ZONE ${sql.raw(`'${BUCKET_TIME_ZONE}'`)}), 'YYYY-MM-DD')`;
 }
 
 /** Smallest 1/2/5×10ⁿ ≥ max (at least 10) so the chart's five even ticks stay round. */
