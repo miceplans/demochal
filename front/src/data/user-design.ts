@@ -30,6 +30,7 @@ export type Team = {
   id: string;
   name: string;
   challenge: string;
+  region?: string;
   poster: string;
   members: string;
   joined: number;
