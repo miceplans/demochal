@@ -5,7 +5,7 @@ import { colors as c } from '@/styles/design';
 const Dialog = styled.dialog<{ width: number }>(({ width }) => ({
   margin: 'auto',
   padding: 24,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   width,
   maxWidth: 'calc(100vw - 32px)',

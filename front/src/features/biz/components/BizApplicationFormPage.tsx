@@ -143,7 +143,7 @@ const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   width: 30,
   height: 30,
   borderRadius: '50%',
-  border: `2px solid ${c.primary}`,
+  border: `0.5px solid ${c.primary}`,
   background: active ? c.primary : c.white,
   color: active ? c.white : c.primary,
   display: 'flex',

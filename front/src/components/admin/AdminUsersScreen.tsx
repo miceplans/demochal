@@ -239,7 +239,7 @@ const RowButton = styled('button', { shouldForwardProp: (prop) => prop !== 'dang
 }>(({ danger }) => ({
   height: 32,
   padding: '0 12px',
-  border: `1px solid ${danger ? c.red : c.gray300}`,
+  border: `0.5px solid ${danger ? c.red : c.gray300}`,
   borderRadius: 6,
   background: c.white,
   color: danger ? c.red : c.gray700,
@@ -283,7 +283,7 @@ const ReasonTextarea = styled.textarea({
   marginTop: 8,
   resize: 'vertical',
   padding: '10px 12px',
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   color: c.gray900,
   ...textStyle.bodySmall,

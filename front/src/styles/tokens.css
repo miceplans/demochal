@@ -2,6 +2,10 @@
 :root {
   --font-family-ui: 'Pretendard';
   --color-semo: #006fff;
+  --color-semo-dark: #0056c2;
+  --color-semo-hover: #005ee0;
+  --color-pale-blue: #eaf3ff;
+  --color-surface: #f8f8f8;
   --color-light-blue: #cfe4ff;
   --color-light-green: #f0fdf4;
   --color-green: #22c55e;

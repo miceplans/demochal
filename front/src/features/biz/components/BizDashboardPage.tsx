@@ -84,7 +84,7 @@ const PaymentList = styled.ul({
   margin: 0,
   padding: 0,
   listStyle: 'none',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   overflow: 'hidden',
   ...textStyle.bodyLarge,
@@ -97,7 +97,7 @@ const PaymentItem = styled.li({
   gap: 16,
   padding: '0 16px',
   background: c.white,
-  '& + &': { borderTop: `1px solid ${c.gray200}` },
+  '& + &': { borderTop: `0.5px solid ${c.gray200}` },
 });
 const Ellipsis = styled.span({
   overflow: 'hidden',

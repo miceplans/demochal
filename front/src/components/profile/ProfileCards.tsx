@@ -79,7 +79,7 @@ const Avatar = styled.div<{ large?: boolean }>(({ large }) => ({
   borderRadius: '50%',
   background: c.gray100,
   flexShrink: 0,
-  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
 }));
 
 export function Identity({ user, large = false }: { user?: ProfileUserData; large?: boolean }) {
@@ -114,7 +114,7 @@ const historyCardStyle = {
   display: 'flex',
   alignItems: 'center',
   gap: 16,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   padding: 16,
   '& h3': { ...textStyle.mBlockTitle, marginBottom: 6 },

@@ -212,7 +212,7 @@ const SidebarBox = styled.aside({
   width: 220,
   minWidth: 220,
   background: c.white,
-  borderRight: '1px solid #E5E7EB',
+  borderRight: '0.5px solid #E5E7EB',
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',
