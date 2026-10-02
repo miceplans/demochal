@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestOrganizerType = typeof CreateChallengeRequestOrganizerType[keyof typeof CreateChallengeRequestOrganizerType];
-
+export type CreateChallengeRequestOrganizerType =
+  (typeof CreateChallengeRequestOrganizerType)[keyof typeof CreateChallengeRequestOrganizerType];
 
 export const CreateChallengeRequestOrganizerType = {
   '중앙정부/기관': '중앙정부/기관',

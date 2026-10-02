@@ -20,8 +20,7 @@
 /**
  * 사용자 | 기업 | 관리자
  */
-export type UserRole = typeof UserRole[keyof typeof UserRole];
-
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
 
 export const UserRole = {
   user: 'user',

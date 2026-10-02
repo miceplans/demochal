@@ -20,25 +20,25 @@ import type { ListAdminUsersJoinedWithin } from './listAdminUsersJoinedWithin';
 import type { ListAdminUsersStatus } from './listAdminUsersStatus';
 
 export type ListAdminUsersParams = {
-q?: string;
-status?: ListAdminUsersStatus;
-/**
- * 가입일 범위 (생략 시 전체)
- */
-joinedWithin?: ListAdminUsersJoinedWithin;
-/**
- * 포지션 뱃지 (부분 일치, 예: 프론트엔드)
- */
-position?: string;
-/**
- * 페이지 번호 (1부터)
- * @minimum 1
- */
-page?: number;
-/**
- * 페이지 크기 (최대 50)
- * @minimum 1
- * @maximum 50
- */
-pageSize?: number;
+  q?: string;
+  status?: ListAdminUsersStatus;
+  /**
+   * 가입일 범위 (생략 시 전체)
+   */
+  joinedWithin?: ListAdminUsersJoinedWithin;
+  /**
+   * 포지션 뱃지 (부분 일치, 예: 프론트엔드)
+   */
+  position?: string;
+  /**
+   * 페이지 번호 (1부터)
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * 페이지 크기 (최대 50)
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
 };

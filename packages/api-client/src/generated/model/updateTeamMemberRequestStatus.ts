@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateTeamMemberRequestStatus = typeof UpdateTeamMemberRequestStatus[keyof typeof UpdateTeamMemberRequestStatus];
-
+export type UpdateTeamMemberRequestStatus =
+  (typeof UpdateTeamMemberRequestStatus)[keyof typeof UpdateTeamMemberRequestStatus];
 
 export const UpdateTeamMemberRequestStatus = {
   accepted: 'accepted',

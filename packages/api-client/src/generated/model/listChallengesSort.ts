@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListChallengesSort = typeof ListChallengesSort[keyof typeof ListChallengesSort];
-
+export type ListChallengesSort = (typeof ListChallengesSort)[keyof typeof ListChallengesSort];
 
 export const ListChallengesSort = {
   latest: 'latest',

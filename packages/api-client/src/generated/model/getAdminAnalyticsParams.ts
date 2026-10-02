@@ -18,8 +18,8 @@
  */
 
 export type GetAdminAnalyticsParams = {
-/**
- * 광고 uuid 또는 고정 광고 번호(ads.ad_number). 목록 순번이 아니다.
- */
-ad?: string;
+  /**
+   * 광고 uuid 또는 고정 광고 번호(ads.ad_number). 목록 순번이 아니다.
+   */
+  ad?: string;
 };

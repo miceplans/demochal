@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type TeamOfferStatus = typeof TeamOfferStatus[keyof typeof TeamOfferStatus];
-
+export type TeamOfferStatus = (typeof TeamOfferStatus)[keyof typeof TeamOfferStatus];
 
 export const TeamOfferStatus = {
   invited: 'invited',

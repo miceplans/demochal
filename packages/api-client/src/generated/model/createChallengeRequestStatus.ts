@@ -20,8 +20,8 @@
 /**
  * 공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다.
  */
-export type CreateChallengeRequestStatus = typeof CreateChallengeRequestStatus[keyof typeof CreateChallengeRequestStatus];
-
+export type CreateChallengeRequestStatus =
+  (typeof CreateChallengeRequestStatus)[keyof typeof CreateChallengeRequestStatus];
 
 export const CreateChallengeRequestStatus = {
   draft: 'draft',

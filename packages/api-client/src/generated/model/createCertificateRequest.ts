@@ -20,9 +20,9 @@ import type { CreateCertificateRequestCategory } from './createCertificateReques
 
 export interface CreateCertificateRequest {
   /**
-     * 인증 제목(뱃지 이름)
-     * @maxLength 200
-     */
+   * 인증 제목(뱃지 이름)
+   * @maxLength 200
+   */
   award: string;
   category: CreateCertificateRequestCategory;
   /** finalize까지 끝난 private 파일 */

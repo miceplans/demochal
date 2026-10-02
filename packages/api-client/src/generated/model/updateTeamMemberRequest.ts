@@ -21,8 +21,8 @@ import type { UpdateTeamMemberRequestStatus } from './updateTeamMemberRequestSta
 export interface UpdateTeamMemberRequest {
   status: UpdateTeamMemberRequestStatus;
   /**
-     * 합격자에게 전송할 채팅방 링크
-     * @maxLength 500
-     */
+   * 합격자에게 전송할 채팅방 링크
+   * @maxLength 500
+   */
   chatLink?: string;
 }

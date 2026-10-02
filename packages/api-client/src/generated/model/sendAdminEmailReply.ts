@@ -19,9 +19,9 @@
 
 export interface SendAdminEmailReply {
   /**
-     * @minLength 1
-     * @maxLength 100000
-     */
+   * @minLength 1
+   * @maxLength 100000
+   */
   text: string;
   /** @maxLength 100000 */
   html?: string;

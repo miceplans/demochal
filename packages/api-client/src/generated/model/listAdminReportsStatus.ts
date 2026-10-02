@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminReportsStatus = typeof ListAdminReportsStatus[keyof typeof ListAdminReportsStatus];
-
+export type ListAdminReportsStatus =
+  (typeof ListAdminReportsStatus)[keyof typeof ListAdminReportsStatus];
 
 export const ListAdminReportsStatus = {
   open: 'open',

@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestRecruitMethod = typeof CreateChallengeRequestRecruitMethod[keyof typeof CreateChallengeRequestRecruitMethod];
-
+export type CreateChallengeRequestRecruitMethod =
+  (typeof CreateChallengeRequestRecruitMethod)[keyof typeof CreateChallengeRequestRecruitMethod];
 
 export const CreateChallengeRequestRecruitMethod = {
   seMOchall: 'seMOchall',

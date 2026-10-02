@@ -20,9 +20,9 @@
 export type CreateAdBody = {
   productId: string;
   /**
-     * 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청.
-     * @minimum 0
-     */
+   * 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청.
+   * @minimum 0
+   */
   expectedDailyPrice?: number;
   imageFileId?: string;
   landingUrl?: string;

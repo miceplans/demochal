@@ -21,8 +21,8 @@ import type { ApplyChallenge201Order } from './applyChallenge201Order';
 
 export type ApplyChallenge201 = Application & {
   /**
-     * 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
-     * @nullable
-     */
+   * 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+   * @nullable
+   */
   order?: ApplyChallenge201Order;
 };

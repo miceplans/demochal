@@ -21,9 +21,9 @@ import type { UpdateAdPricingBodyItemSlot } from './updateAdPricingBodyItemSlot'
 export type UpdateAdPricingBodyItem = {
   slot: UpdateAdPricingBodyItemSlot;
   /**
-     * 일일 광고비 (원)
-     * @minimum 1
-     * @maximum 100000000
-     */
+   * 일일 광고비 (원)
+   * @minimum 1
+   * @maximum 100000000
+   */
   dailyPrice: number;
 };

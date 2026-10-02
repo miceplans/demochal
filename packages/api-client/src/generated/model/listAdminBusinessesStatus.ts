@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminBusinessesStatus = typeof ListAdminBusinessesStatus[keyof typeof ListAdminBusinessesStatus];
-
+export type ListAdminBusinessesStatus =
+  (typeof ListAdminBusinessesStatus)[keyof typeof ListAdminBusinessesStatus];
 
 export const ListAdminBusinessesStatus = {
   pending: 'pending',

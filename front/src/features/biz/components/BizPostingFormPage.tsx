@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -97,7 +96,7 @@ export function BizPostingEditPage() {
   if (challengeQuery.isPending)
     return (
       <BizContent>
-        <LoadingState label="공고 정보를 불러오는 중입니다." />
+        <Message>공고 정보를 불러오는 중입니다.</Message>
       </BizContent>
     );
   if (!challenge)

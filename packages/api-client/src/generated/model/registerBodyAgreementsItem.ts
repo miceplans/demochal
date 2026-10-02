@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type RegisterBodyAgreementsItem = typeof RegisterBodyAgreementsItem[keyof typeof RegisterBodyAgreementsItem];
-
+export type RegisterBodyAgreementsItem =
+  (typeof RegisterBodyAgreementsItem)[keyof typeof RegisterBodyAgreementsItem];
 
 export const RegisterBodyAgreementsItem = {
   privacy: 'privacy',

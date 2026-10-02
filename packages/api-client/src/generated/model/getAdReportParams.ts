@@ -18,6 +18,6 @@
  */
 
 export type GetAdReportParams = {
-from?: string;
-to?: string;
+  from?: string;
+  to?: string;
 };

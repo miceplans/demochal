@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type PauseAdminAd200Status = typeof PauseAdminAd200Status[keyof typeof PauseAdminAd200Status];
-
+export type PauseAdminAd200Status =
+  (typeof PauseAdminAd200Status)[keyof typeof PauseAdminAd200Status];
 
 export const PauseAdminAd200Status = {
   paused: 'paused',

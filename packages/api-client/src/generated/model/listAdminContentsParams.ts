@@ -18,14 +18,14 @@
  */
 
 export type ListAdminContentsParams = {
-/**
- * @minimum 1
- * @maximum 50
- */
-teamsLimit?: number;
-/**
- * @minimum 1
- * @maximum 50
- */
-contestsLimit?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  teamsLimit?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  contestsLimit?: number;
 };

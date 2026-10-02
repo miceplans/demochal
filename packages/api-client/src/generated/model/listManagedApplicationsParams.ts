@@ -19,9 +19,9 @@
 import type { ListManagedApplicationsStatus } from './listManagedApplicationsStatus';
 
 export type ListManagedApplicationsParams = {
-/**
- * 특정 공고의 지원서만 조회
- */
-challengeId?: string;
-status?: ListManagedApplicationsStatus;
+  /**
+   * 특정 공고의 지원서만 조회
+   */
+  challengeId?: string;
+  status?: ListManagedApplicationsStatus;
 };

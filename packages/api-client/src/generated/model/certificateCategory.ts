@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CertificateCategory = typeof CertificateCategory[keyof typeof CertificateCategory];
-
+export type CertificateCategory = (typeof CertificateCategory)[keyof typeof CertificateCategory];
 
 export const CertificateCategory = {
   award: 'award',

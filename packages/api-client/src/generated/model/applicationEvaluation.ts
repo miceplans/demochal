@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ApplicationEvaluation = typeof ApplicationEvaluation[keyof typeof ApplicationEvaluation];
-
+export type ApplicationEvaluation =
+  (typeof ApplicationEvaluation)[keyof typeof ApplicationEvaluation];
 
 export const ApplicationEvaluation = {
   undecided: 'undecided',

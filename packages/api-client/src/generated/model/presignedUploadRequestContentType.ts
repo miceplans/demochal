@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type PresignedUploadRequestContentType = typeof PresignedUploadRequestContentType[keyof typeof PresignedUploadRequestContentType];
-
+export type PresignedUploadRequestContentType =
+  (typeof PresignedUploadRequestContentType)[keyof typeof PresignedUploadRequestContentType];
 
 export const PresignedUploadRequestContentType = {
   'image/jpeg': 'image/jpeg',

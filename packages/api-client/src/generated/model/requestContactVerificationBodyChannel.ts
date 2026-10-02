@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type RequestContactVerificationBodyChannel = typeof RequestContactVerificationBodyChannel[keyof typeof RequestContactVerificationBodyChannel];
-
+export type RequestContactVerificationBodyChannel =
+  (typeof RequestContactVerificationBodyChannel)[keyof typeof RequestContactVerificationBodyChannel];
 
 export const RequestContactVerificationBodyChannel = {
   email: 'email',

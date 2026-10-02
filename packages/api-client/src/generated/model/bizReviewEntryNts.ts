@@ -20,8 +20,7 @@
 /**
  * NTS OCR 검증 결과 — 성공/실패/폐업·폐점/인식불가 (실패 계열은 빨간색 표기)
  */
-export type BizReviewEntryNts = typeof BizReviewEntryNts[keyof typeof BizReviewEntryNts];
-
+export type BizReviewEntryNts = (typeof BizReviewEntryNts)[keyof typeof BizReviewEntryNts];
 
 export const BizReviewEntryNts = {
   success: 'success',

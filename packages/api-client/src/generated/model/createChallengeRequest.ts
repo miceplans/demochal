@@ -36,9 +36,9 @@ export interface CreateChallengeRequest {
   targets?: CreateChallengeRequestTargetsItem[];
   organizerType?: CreateChallengeRequestOrganizerType;
   /**
-     * 총상금(만원)
-     * @minimum 0
-     */
+   * 총상금(만원)
+   * @minimum 0
+   */
   prizeAmount?: number;
   /** 챌린지 포스터 파일 ID */
   posterFileId?: string;
@@ -46,8 +46,8 @@ export interface CreateChallengeRequest {
   status?: CreateChallengeRequestStatus;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
   /**
-     * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.
-     * @maxLength 2048
-     */
+   * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.
+   * @maxLength 2048
+   */
   recruitUrl?: string;
 }

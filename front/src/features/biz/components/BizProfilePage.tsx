@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
@@ -83,7 +82,7 @@ export function BizProfilePage() {
   if (!business)
     return (
       <BizContent>
-        <LoadingState label="기업 정보를 불러오는 중입니다." />
+        <p>기업 정보를 불러오는 중입니다.</p>
       </BizContent>
     );
   const rows: [string, string | undefined][] = [

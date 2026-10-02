@@ -1,7 +1,6 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -97,7 +96,7 @@ export function BizApplicationsPage() {
             />
           </div>
         </Toolbar>
-        {loading && <LoadingState label="지원서를 불러오는 중입니다." />}
+        {loading && <Message>지원서를 불러오는 중입니다.</Message>}
         {error && <Message role="alert">{error}</Message>}
         {!loading && <ApplicationTable rows={filtered} onUpdate={update} />}
       </section>

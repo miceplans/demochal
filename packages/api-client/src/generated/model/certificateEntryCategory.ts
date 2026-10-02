@@ -20,8 +20,8 @@
 /**
  * 수상 실적 | 출품 이력
  */
-export type CertificateEntryCategory = typeof CertificateEntryCategory[keyof typeof CertificateEntryCategory];
-
+export type CertificateEntryCategory =
+  (typeof CertificateEntryCategory)[keyof typeof CertificateEntryCategory];
 
 export const CertificateEntryCategory = {
   award: 'award',

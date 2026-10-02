@@ -20,8 +20,8 @@
 /**
  * 기관 유형
  */
-export type RegisterBusinessRequestType = typeof RegisterBusinessRequestType[keyof typeof RegisterBusinessRequestType];
-
+export type RegisterBusinessRequestType =
+  (typeof RegisterBusinessRequestType)[keyof typeof RegisterBusinessRequestType];
 
 export const RegisterBusinessRequestType = {
   기업: '기업',

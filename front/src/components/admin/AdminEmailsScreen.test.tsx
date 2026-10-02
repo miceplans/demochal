@@ -2,30 +2,21 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import {
-  AdminEmailComposeScreen,
-  AdminEmailThreadScreen,
-  AdminEmailsScreen,
-} from './AdminEmailsScreen';
+import { AdminEmailsScreen } from './AdminEmailsScreen';
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   detail: vi.fn(),
   send: vi.fn(),
   create: vi.fn(),
-  updateStatus: vi.fn(),
-  push: vi.fn(),
 }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
-
 vi.mock('@semochal/api-client', () => ({
-  generated: {
+  adminEmailApi: {
     useListAdminEmails: mocks.list,
     useGetAdminEmail: mocks.detail,
     useSendAdminEmailReply: mocks.send,
     useCreateAdminEmail: mocks.create,
-    useUpdateAdminEmailStatus: mocks.updateStatus,
   },
 }));
 
@@ -58,36 +49,6 @@ vi.mock('./parts', () => ({
     <div {...props}>{children}</div>
   ),
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
-  ApproveButton: ({ children, ...props }: { children: ReactNode }) => (
-    <button {...props}>{children}</button>
-  ),
-  RejectButton: ({ children, ...props }: { children: ReactNode }) => (
-    <button {...props}>{children}</button>
-  ),
-  FieldLabel: ({ children }: { children: ReactNode }) => <span>{children}</span>,
-  SelectFilter: ({
-    label,
-    value,
-    onChange,
-  }: {
-    label: string;
-    value?: string;
-    onChange?: (value: string) => void;
-  }) => (
-    <select aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)}>
-      <option value="">{label}</option>
-      <option value="미처리">미처리</option>
-      <option value="처리중">처리중</option>
-      <option value="완료">완료</option>
-    </select>
-  ),
-  StatCard: ({ label, value }: { label: string; value: string }) => (
-    <div>
-      {label}
-      {value}
-    </div>
-  ),
-  StatRow: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Badge: ({ children }: { children: ReactNode }) => <span>{children}</span>,
   FilterBar: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   SearchFilter: ({
@@ -101,6 +62,7 @@ vi.mock('./parts', () => ({
   }) => (
     <input aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)} />
   ),
+  SelectFilter: () => null,
 }));
 
 describe('AdminEmailsScreen', () => {
@@ -132,7 +94,6 @@ describe('AdminEmailsScreen', () => {
           id: 'thread-1',
           subject: '문의',
           customerEmail: 'customer@example.com',
-          status: 'open',
           messages: [
             {
               id: 'message-1',
@@ -151,51 +112,45 @@ describe('AdminEmailsScreen', () => {
     });
     mocks.send.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.send });
     mocks.create.mockReturnValue({ isPending: false, isError: false, mutateAsync: mocks.create });
-    mocks.updateStatus.mockReturnValue({ isPending: false, mutate: mocks.updateStatus });
   });
 
-  it('renders a thread table and opens the mail view page when selected', async () => {
+  it('renders a thread and its inbound timeline after selection', async () => {
     const user = userEvent.setup();
     render(<AdminEmailsScreen />);
     await user.click(screen.getByRole('button', { name: /문의/ }));
-    expect(mocks.push).toHaveBeenCalledWith('/admin/emails/thread-1');
+    expect(screen.getAllByText('도와주세요').length).toBeGreaterThan(1);
+    expect(screen.getAllByText('customer@example.com').length).toBeGreaterThan(1);
   });
 
-  it('keeps the reply draft on the mail view page when sending fails', async () => {
+  it('keeps the draft when reply sending fails so it can be retried', async () => {
     mocks.send.mockReturnValue({
       isPending: false,
       isError: true,
       mutateAsync: vi.fn().mockRejectedValue(new Error('SES failed')),
     });
     const user = userEvent.setup();
-    render(<AdminEmailThreadScreen id="thread-1" />);
+    render(<AdminEmailsScreen />);
+    await user.click(screen.getByRole('button', { name: /문의/ }));
     const textarea = screen.getByPlaceholderText('답장 내용을 입력하세요.');
     await user.type(textarea, '재시도할 답장');
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
-    await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), '처리중');
-    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', data: { status: 'pending' } });
   });
 
-  it('renders a separate compose page and sends a new email', async () => {
+  it('renders the mailbox as a table and lets an admin compose a new email', async () => {
     const user = userEvent.setup();
-    mocks.create.mockReturnValue({
-      isPending: false,
-      isError: false,
-      mutateAsync: vi.fn().mockResolvedValue({ status: 201 }),
-    });
-    render(<AdminEmailComposeScreen />);
-    expect(screen.getByRole('heading', { name: '새 메일 작성' })).toBeTruthy();
-    await user.type(screen.getByPlaceholderText('customer@example.com'), 'customer@example.com');
-    await user.type(screen.getByPlaceholderText('문의 답변을 입력하세요'), '새 문의 답변');
+    render(<AdminEmailsScreen />);
+    expect(screen.getByRole('table')).toBeTruthy();
+    expect(screen.queryByText('표시할 메일이 없어요.')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '새 메일 작성' }));
+    await user.type(screen.getByPlaceholderText('받는 사람 이메일'), 'customer@example.com');
+    await user.type(screen.getByPlaceholderText('제목'), '새 문의 답변');
     await user.type(screen.getByPlaceholderText('메일 내용을 입력하세요.'), '안녕하세요.');
     await user.click(screen.getByRole('button', { name: '메일 보내기' }));
-    expect(mocks.create.mock.results[0]?.value.mutateAsync).toHaveBeenCalledWith({
-      data: {
-        to: 'customer@example.com',
-        subject: '새 문의 답변',
-        text: '안녕하세요.',
-      },
+    expect(mocks.create).toHaveBeenCalledWith({
+      to: 'customer@example.com',
+      subject: '새 문의 답변',
+      text: '안녕하세요.',
     });
   });
 });

@@ -19,18 +19,18 @@
 
 export type ChangePasswordBody = {
   /**
-     * @minLength 8
-     * @maxLength 128
-     */
+   * @minLength 8
+   * @maxLength 128
+   */
   currentPassword: string;
   /**
-     * @minLength 8
-     * @maxLength 128
-     */
+   * @minLength 8
+   * @maxLength 128
+   */
   newPassword: string;
   /**
-     * @minLength 8
-     * @maxLength 128
-     */
+   * @minLength 8
+   * @maxLength 128
+   */
   confirmNewPassword: string;
 };

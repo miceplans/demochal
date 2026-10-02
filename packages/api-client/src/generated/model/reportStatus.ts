@@ -20,8 +20,7 @@
 /**
  * 처리 상태 — 대기/승인(조치 완료)/거부(기각)
  */
-export type ReportStatus = typeof ReportStatus[keyof typeof ReportStatus];
-
+export type ReportStatus = (typeof ReportStatus)[keyof typeof ReportStatus];
 
 export const ReportStatus = {
   open: 'open',

@@ -20,8 +20,7 @@
 /**
  * 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용
  */
-export type AdStatus = typeof AdStatus[keyof typeof AdStatus];
-
+export type AdStatus = (typeof AdStatus)[keyof typeof AdStatus];
 
 export const AdStatus = {
   active: 'active',

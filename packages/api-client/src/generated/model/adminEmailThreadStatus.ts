@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type AdminEmailThreadStatus = typeof AdminEmailThreadStatus[keyof typeof AdminEmailThreadStatus];
-
+export type AdminEmailThreadStatus =
+  (typeof AdminEmailThreadStatus)[keyof typeof AdminEmailThreadStatus];
 
 export const AdminEmailThreadStatus = {
   open: 'open',

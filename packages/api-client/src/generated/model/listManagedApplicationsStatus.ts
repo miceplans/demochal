@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListManagedApplicationsStatus = typeof ListManagedApplicationsStatus[keyof typeof ListManagedApplicationsStatus];
-
+export type ListManagedApplicationsStatus =
+  (typeof ListManagedApplicationsStatus)[keyof typeof ListManagedApplicationsStatus];
 
 export const ListManagedApplicationsStatus = {
   pending: 'pending',

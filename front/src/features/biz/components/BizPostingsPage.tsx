@@ -1,7 +1,6 @@
 'use client';
 
 import { generated } from '@semochal/api-client';
-import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { siteHref } from '@/lib/biz';
 import { colors as c } from '@/styles/design';
@@ -44,7 +43,7 @@ export function BizPostingsPage() {
   const primaryShare = distribution[0]?.value ?? 0;
   return (
     <BizContent>
-      {loading && <LoadingState label="공고를 불러오는 중입니다." />}
+      {loading && <Message>공고를 불러오는 중입니다.</Message>}
       {error && <Message role="alert">{error}</Message>}
       {!loading && !error && !latest && (
         <>

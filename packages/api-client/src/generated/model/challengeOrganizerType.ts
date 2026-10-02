@@ -21,8 +21,8 @@
  * 주최기관 유형. 탐색 필터용
  * @nullable
  */
-export type ChallengeOrganizerType = typeof ChallengeOrganizerType[keyof typeof ChallengeOrganizerType] | null;
-
+export type ChallengeOrganizerType =
+  (typeof ChallengeOrganizerType)[keyof typeof ChallengeOrganizerType] | null;
 
 export const ChallengeOrganizerType = {
   '중앙정부/기관': '중앙정부/기관',

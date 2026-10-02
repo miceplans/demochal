@@ -20,8 +20,9 @@
 /**
  * @nullable
  */
-export type UpdateChallengeRequestOrganizerType = typeof UpdateChallengeRequestOrganizerType[keyof typeof UpdateChallengeRequestOrganizerType] | null;
-
+export type UpdateChallengeRequestOrganizerType =
+  | (typeof UpdateChallengeRequestOrganizerType)[keyof typeof UpdateChallengeRequestOrganizerType]
+  | null;
 
 export const UpdateChallengeRequestOrganizerType = {
   '중앙정부/기관': '중앙정부/기관',

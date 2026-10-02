@@ -27,17 +27,17 @@ export interface CreateReportRequest {
   /** 신고 대상 id — challenge/team/user는 필수(접수 시 대상 존재 검증, 없으면 400). award는 생략 가능 */
   targetId?: string;
   /**
-     * 신고 사유 (예: 비방)
-     * @maxLength 200
-     */
+   * 신고 사유 (예: 비방)
+   * @maxLength 200
+   */
   summary: string;
   /** 자세한 신고 내용 */
   detail?: string;
   /** 피신고자 id (targetType=user일 때 사용) */
   reportedUserId?: string;
   /**
-     * 신고 대상의 소속(기관명 등)
-     * @maxLength 200
-     */
+   * 신고 대상의 소속(기관명 등)
+   * @maxLength 200
+   */
   org?: string;
 }

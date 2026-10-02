@@ -20,8 +20,7 @@
 /**
  * @nullable
  */
-export type BusinessType = typeof BusinessType[keyof typeof BusinessType] | null;
-
+export type BusinessType = (typeof BusinessType)[keyof typeof BusinessType] | null;
 
 export const BusinessType = {
   기업: '기업',

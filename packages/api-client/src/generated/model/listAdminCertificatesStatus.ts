@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminCertificatesStatus = typeof ListAdminCertificatesStatus[keyof typeof ListAdminCertificatesStatus];
-
+export type ListAdminCertificatesStatus =
+  (typeof ListAdminCertificatesStatus)[keyof typeof ListAdminCertificatesStatus];
 
 export const ListAdminCertificatesStatus = {
   pending: 'pending',

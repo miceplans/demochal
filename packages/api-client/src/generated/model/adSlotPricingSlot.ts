@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type AdSlotPricingSlot = typeof AdSlotPricingSlot[keyof typeof AdSlotPricingSlot];
-
+export type AdSlotPricingSlot = (typeof AdSlotPricingSlot)[keyof typeof AdSlotPricingSlot];
 
 export const AdSlotPricingSlot = {
   hero: 'hero',

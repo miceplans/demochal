@@ -2168,31 +2168,6 @@ paths:
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
-  /admin/emails/{id}/status:
-    patch:
-      tags: [Admin]
-      summary: 고객지원 메일 thread 상태 변경
-      operationId: updateAdminEmailStatus
-      x-impl-status: implemented
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/UpdateAdminEmailStatus' }
-      responses:
-        '200':
-          description: 상태 변경된 thread
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/AdminEmailThread' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
   /admin/dashboard:
     get:
       tags: [Admin]
@@ -2763,11 +2738,6 @@ components:
         subject: { type: string, minLength: 1, maxLength: 998 }
         text: { type: string, minLength: 1, maxLength: 100000 }
         html: { type: string, maxLength: 100000 }
-    UpdateAdminEmailStatus:
-      type: object
-      required: [status]
-      properties:
-        status: { type: string, enum: [open, pending, resolved] }
     User:
       type: object
       properties:

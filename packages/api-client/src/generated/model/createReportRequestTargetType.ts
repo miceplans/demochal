@@ -20,8 +20,8 @@
 /**
  * 신고 대상 종류 — 공모전/팀 모집글/수상작/사용자 프로필
  */
-export type CreateReportRequestTargetType = typeof CreateReportRequestTargetType[keyof typeof CreateReportRequestTargetType];
-
+export type CreateReportRequestTargetType =
+  (typeof CreateReportRequestTargetType)[keyof typeof CreateReportRequestTargetType];
 
 export const CreateReportRequestTargetType = {
   challenge: 'challenge',

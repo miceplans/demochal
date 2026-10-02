@@ -24,14 +24,14 @@ export interface Business {
   id: string;
   ownerUserId?: string;
   /**
-     * 기관명 (OCR/프로필 편집으로 채움)
-     * @nullable
-     */
+   * 기관명 (OCR/프로필 편집으로 채움)
+   * @nullable
+   */
   name: string | null;
   /**
-     * 사업자등록번호 (10자리, 학교/비영리 등은 null, 관리자 화면에서 마스킹 표시)
-     * @nullable
-     */
+   * 사업자등록번호 (10자리, 학교/비영리 등은 null, 관리자 화면에서 마스킹 표시)
+   * @nullable
+   */
   registrationNumber: string | null;
   /** @nullable */
   type?: BusinessType;

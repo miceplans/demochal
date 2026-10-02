@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ChallengeTargetsItem = typeof ChallengeTargetsItem[keyof typeof ChallengeTargetsItem];
-
+export type ChallengeTargetsItem = (typeof ChallengeTargetsItem)[keyof typeof ChallengeTargetsItem];
 
 export const ChallengeTargetsItem = {
   어린이: '어린이',

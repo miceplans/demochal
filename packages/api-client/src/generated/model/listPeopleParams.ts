@@ -19,9 +19,9 @@
 import type { ListPeopleSort } from './listPeopleSort';
 
 export type ListPeopleParams = {
-q?: string;
-sort?: ListPeopleSort;
-position?: string;
-region?: string;
-stack?: string;
+  q?: string;
+  sort?: ListPeopleSort;
+  position?: string;
+  region?: string;
+  stack?: string;
 };

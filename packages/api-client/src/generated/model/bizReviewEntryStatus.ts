@@ -20,8 +20,7 @@
 /**
  * 심사 상태 — 대기(파랑)/승인(초록)/거부(빨강) 뱃지
  */
-export type BizReviewEntryStatus = typeof BizReviewEntryStatus[keyof typeof BizReviewEntryStatus];
-
+export type BizReviewEntryStatus = (typeof BizReviewEntryStatus)[keyof typeof BizReviewEntryStatus];
 
 export const BizReviewEntryStatus = {
   pending: 'pending',

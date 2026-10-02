@@ -20,4 +20,4 @@
 /**
  * 현재 설정 값 (키 → on/off)
  */
-export type AdminSettingsValues = {[key: string]: boolean};
+export type AdminSettingsValues = { [key: string]: boolean };

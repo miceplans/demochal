@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminEmailsStatus = typeof ListAdminEmailsStatus[keyof typeof ListAdminEmailsStatus];
-
+export type ListAdminEmailsStatus =
+  (typeof ListAdminEmailsStatus)[keyof typeof ListAdminEmailsStatus];
 
 export const ListAdminEmailsStatus = {
   open: 'open',

@@ -17,8 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type TeamStatus = typeof TeamStatus[keyof typeof TeamStatus];
-
+export type TeamStatus = (typeof TeamStatus)[keyof typeof TeamStatus];
 
 export const TeamStatus = {
   recruiting: 'recruiting',

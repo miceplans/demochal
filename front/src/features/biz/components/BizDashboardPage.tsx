@@ -1,7 +1,6 @@
 'use client';
 
 import styled from '@emotion/styled';
-import { LoadingState } from '@/components/common/LoadingState';
 import { generated } from '@semochal/api-client';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { ExposureChart } from '@/components/biz/ExposureChart';
@@ -193,7 +192,7 @@ export function BizDashboardPage() {
   if (!data)
     return (
       <BizContent>
-        <LoadingState label="대시보드를 불러오는 중입니다." />
+        <p>대시보드를 불러오는 중입니다.</p>
       </BizContent>
     );
 

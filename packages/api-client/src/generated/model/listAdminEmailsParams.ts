@@ -19,9 +19,9 @@
 import type { ListAdminEmailsStatus } from './listAdminEmailsStatus';
 
 export type ListAdminEmailsParams = {
-/**
- * @maxLength 200
- */
-q?: string;
-status?: ListAdminEmailsStatus;
+  /**
+   * @maxLength 200
+   */
+  q?: string;
+  status?: ListAdminEmailsStatus;
 };

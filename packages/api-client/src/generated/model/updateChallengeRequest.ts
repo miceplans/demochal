@@ -35,34 +35,34 @@ export interface UpdateChallengeRequest {
   startDate?: string;
   endDate?: string;
   /**
-     * null이면 카테고리를 비운다
-     * @maxLength 100
-     * @nullable
-     */
+   * null이면 카테고리를 비운다
+   * @maxLength 100
+   * @nullable
+   */
   category?: string | null;
   /**
-     * 기존 공고의 recruitMethod가 external일 때만 반영된다. seMOchall 공고에 보낸 값은 무시한다.
-     * @maxLength 2048
-     */
+   * 기존 공고의 recruitMethod가 external일 때만 반영된다. seMOchall 공고에 보낸 값은 무시한다.
+   * @maxLength 2048
+   */
   recruitUrl?: string;
   /** @nullable */
   targets?: UpdateChallengeRequestTargetsItem[] | null;
   /** @nullable */
   organizerType?: UpdateChallengeRequestOrganizerType;
   /**
-     * 총상금(만원)
-     * @minimum 0
-     * @nullable
-     */
+   * 총상금(만원)
+   * @minimum 0
+   * @nullable
+   */
   prizeAmount?: number | null;
   /**
-     * null이면 포스터를 제거
-     * @nullable
-     */
+   * null이면 포스터를 제거
+   * @nullable
+   */
   posterFileId?: string | null;
   /**
-     * 신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.
-     * @maxItems 100
-     */
+   * 신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.
+   * @maxItems 100
+   */
   applicationForm?: ApplicationFormQuestion[];
 }

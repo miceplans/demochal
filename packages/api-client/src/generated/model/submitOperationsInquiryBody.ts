@@ -19,19 +19,19 @@
 
 export type SubmitOperationsInquiryBody = {
   /**
-     * @minLength 1
-     * @maxLength 100
-     */
+   * @minLength 1
+   * @maxLength 100
+   */
   name: string;
   /**
-     * 전화번호 또는 이메일
-     * @minLength 1
-     * @maxLength 200
-     */
+   * 전화번호 또는 이메일
+   * @minLength 1
+   * @maxLength 200
+   */
   contact: string;
   /**
-     * @minLength 1
-     * @maxLength 4000
-     */
+   * @minLength 1
+   * @maxLength 4000
+   */
   content: string;
 };

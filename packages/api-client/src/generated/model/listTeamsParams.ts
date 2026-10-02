@@ -18,14 +18,14 @@
  */
 
 export type ListTeamsParams = {
-challengeId?: string;
-/**
- * 필요 역할 (기획/디자인/개발 등). 콤마로 구분해 복수 역할(OR)을 줄 수 있다
- */
-role?: string;
-/**
- * 지역. 콤마로 구분해 복수 지역(OR)을 줄 수 있다
- */
-region?: string;
-q?: string;
+  challengeId?: string;
+  /**
+   * 필요 역할 (기획/디자인/개발 등). 콤마로 구분해 복수 역할(OR)을 줄 수 있다
+   */
+  role?: string;
+  /**
+   * 지역. 콤마로 구분해 복수 지역(OR)을 줄 수 있다
+   */
+  region?: string;
+  q?: string;
 };
