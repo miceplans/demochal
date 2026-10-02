@@ -18,11 +18,31 @@ import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
+import { SendReplyDto } from '../email/dto/send-reply.dto.js';
+import { EmailService } from '../email/email.service.js';
 
 @UseGuards(AdminRoleGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly emailService: EmailService,
+  ) {}
+
+  @Get('emails')
+  listEmails(@Query('q') q?: string, @Query('status') status?: string) {
+    return this.emailService.listThreads({ q, status });
+  }
+
+  @Get('emails/:id')
+  getEmail(@Param('id') id: string) {
+    return this.emailService.getThread(id);
+  }
+
+  @Post('emails/:id/replies')
+  sendEmailReply(@Param('id') id: string, @Body() dto: SendReplyDto) {
+    return this.emailService.sendReply(id, dto.text, dto.html);
+  }
 
   @Get('dashboard')
   getDashboard(@Query('range') range?: string) {

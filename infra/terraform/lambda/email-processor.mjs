@@ -126,7 +126,12 @@ async function bodyToBuffer(body) {
   return Buffer.concat(chunks);
 }
 
-export function createHandler({ getObject, logger = console, bucket = process.env.INBOX_BUCKET }) {
+export function createHandler({
+  getObject,
+  publish,
+  logger = console,
+  bucket = process.env.INBOX_BUCKET,
+}) {
   return async function handle(event) {
     const records = eventRecords(event);
     for (const record of records) {
@@ -141,6 +146,23 @@ export function createHandler({ getObject, logger = console, bucket = process.en
       try {
         const object = await getObject({ Bucket: bucket, Key: objectKey });
         const parsed = parseMimeMessage((await bodyToBuffer(object.Body)).toString('utf8'));
+        const payload = {
+          messageId: parsed.messageId,
+          from: parsed.from,
+          to: parsed.to,
+          subject: parsed.subject || '(제목 없음)',
+          inReplyTo: parsed.inReplyTo || undefined,
+          references: parsed.references ? (parsed.references.match(/<[^>]+>/g) ?? []) : [],
+          text: parsed.textBody,
+          html: parsed.htmlBody || undefined,
+          sentAt: parsed.date ? new Date(parsed.date).toISOString() : new Date().toISOString(),
+          attachments: parsed.attachments.map(({ filename, contentType, size }) => ({
+            filename: filename || 'attachment',
+            contentType,
+            size,
+          })),
+        };
+        if (publish) await publish(payload);
         logger.info(
           JSON.stringify({
             event: 'email_processed',
@@ -170,8 +192,17 @@ export function createHandler({ getObject, logger = console, bucket = process.en
 
 export async function handler(event) {
   const { S3Client, GetObjectCommand } = await import('@aws-sdk/client-s3');
+  const { SQSClient, SendMessageCommand } = await import('@aws-sdk/client-sqs');
   const s3 = new S3Client({});
+  const sqs = new SQSClient({});
   return createHandler({
     getObject: ({ Bucket, Key }) => s3.send(new GetObjectCommand({ Bucket, Key })),
+    publish: (payload) =>
+      sqs.send(
+        new SendMessageCommand({
+          QueueUrl: process.env.INBOUND_QUEUE_URL,
+          MessageBody: JSON.stringify(payload),
+        }),
+      ),
   })(event);
 }
