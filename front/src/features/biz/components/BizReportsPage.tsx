@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -88,7 +89,7 @@ export function BizReportsPage() {
   if (loading)
     return (
       <BizContent>
-        <p>리포트를 불러오는 중입니다.</p>
+        <LoadingState label="리포트를 불러오는 중입니다." />
       </BizContent>
     );
   if (error)

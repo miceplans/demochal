@@ -1,5 +1,6 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -297,7 +298,7 @@ export function BizApplicationFormPage() {
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
   if (challengeQuery.isPending) {
-    return <Message>공고 정보를 불러오는 중입니다.</Message>;
+    return <LoadingState label="공고 정보를 불러오는 중입니다." />;
   }
   if (!challenge) {
     return (

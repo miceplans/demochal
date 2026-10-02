@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
@@ -441,7 +442,7 @@ function ParticipationHistory() {
           </div>
         </HistoryCard>
       ))}
-      {isPending && <Muted>참가 이력을 불러오는 중이에요.</Muted>}
+      {isPending && <LoadingState label="참가 이력을 불러오는 중이에요." />}
       {isError && <Muted>참가 이력을 불러오지 못했어요. 새로고침해주세요.</Muted>}
       {!isPending && !isError && items.length === 0 && <Muted>아직 참가 이력이 없어요.</Muted>}
     </Stack>
@@ -655,7 +656,7 @@ export function MyPage() {
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
             <Muted>참여 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : participatingItems.length === 0 ? (
@@ -706,7 +707,7 @@ export function MyTeamsPage() {
           <Title>내 팀</Title>
         </DesktopOnly>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 목록을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -787,7 +788,7 @@ export function BookmarksPage() {
             <ContestCard key={x.id} contest={x} />
           ))}
         </BookmarkGrid>
-        {isPending && <Muted>북마크를 불러오는 중이에요.</Muted>}
+        {isPending && <LoadingState label="북마크를 불러오는 중이에요." />}
         {isError && <Muted>북마크를 불러오지 못했어요.</Muted>}
         {!isPending && !isError && data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
       </Stack>
@@ -975,7 +976,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
           {challengeQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : challengeQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : challengeApps.length === 0 ? (
@@ -1017,7 +1018,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
           {teamQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : teamQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : teamApps.length === 0 ? (
@@ -1157,7 +1158,7 @@ export function TeamApplicantsPage() {
     <MyShell title="팀 지원현황">
       <Stack gap={40}>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 지원 현황을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -1516,7 +1517,7 @@ export function NotificationsPage() {
               );
             })}
           </NotificationList>
-          {notificationsQuery.isPending && <Muted>알림을 불러오는 중이에요.</Muted>}
+          {notificationsQuery.isPending && <LoadingState label="알림을 불러오는 중이에요." />}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
           {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
