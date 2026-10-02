@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { adApi } from '@/lib/ad-api';
@@ -82,7 +83,7 @@ export function BizProfilePage() {
   if (!business)
     return (
       <BizContent>
-        <p>기업 정보를 불러오는 중입니다.</p>
+        <LoadingState label="기업 정보를 불러오는 중입니다." />
       </BizContent>
     );
   const rows: [string, string | undefined][] = [
@@ -250,7 +251,7 @@ const PasswordField = styled.label({
     font: 'inherit',
   },
 });
-const PasswordHint = styled.p({ margin: 0, color: '#d92d20', ...textStyle.caption });
+const PasswordHint = styled.p({ margin: 0, color: c.red, ...textStyle.caption });
 const PasswordActions = styled.div({
   display: 'flex',
   justifyContent: 'flex-end',

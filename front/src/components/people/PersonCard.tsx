@@ -63,7 +63,7 @@ const actionStyle = (primary?: boolean) => ({
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray900,
   cursor: 'pointer',
-  '&:hover:not(:disabled)': { background: primary ? '#005ee0' : c.gray50 },
+  '&:hover:not(:disabled)': { background: primary ? c.primaryHover : c.gray50 },
   '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
 });
 const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => actionStyle(primary));

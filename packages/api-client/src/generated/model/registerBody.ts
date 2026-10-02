@@ -24,14 +24,14 @@ export type RegisterBody = {
   password: string;
   name: string;
   /**
-   * 로그인 아이디 (이메일 대신 로그인 가능)
-   * @pattern ^[a-z0-9_]{4,20}$
-   */
+     * 로그인 아이디 (이메일 대신 로그인 가능)
+     * @pattern ^[a-z0-9_]{4,20}$
+     */
   username?: string;
   /**
-   * 휴대폰 번호
-   * @maxLength 30
-   */
+     * 휴대폰 번호
+     * @maxLength 30
+     */
   phone?: string;
   /** 확인 완료된 이메일 인증 ID (`/auth/contact-verifications`) */
   emailVerificationId?: string;

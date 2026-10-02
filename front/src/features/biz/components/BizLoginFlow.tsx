@@ -592,7 +592,7 @@ const UploadBox = styled.label({
   gap: 4,
   border: `2px dashed ${c.lightBlue}`,
   borderRadius: 20,
-  background: '#f8f8f8',
+  background: c.surface,
   cursor: 'pointer',
   transition: 'border-color 150ms ease, background 150ms ease',
   '&:hover': { borderColor: c.primary },

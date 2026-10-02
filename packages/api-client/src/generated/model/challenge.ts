@@ -39,29 +39,29 @@ export interface Challenge {
   /** implemented — 생성 시 저장, 유사 챌린지 추천에 사용 */
   category?: string;
   /**
-   * 참가 대상(복수). 탐색 필터용
-   * @nullable
-   */
+     * 참가 대상(복수). 탐색 필터용
+     * @nullable
+     */
   targets?: ChallengeTargetsItem[] | null;
   /**
-   * 주최기관 유형. 탐색 필터용
-   * @nullable
-   */
+     * 주최기관 유형. 탐색 필터용
+     * @nullable
+     */
   organizerType?: ChallengeOrganizerType;
   /**
-   * 총상금(만원). 탐색 필터용
-   * @nullable
-   */
+     * 총상금(만원). 탐색 필터용
+     * @nullable
+     */
   prizeAmount?: number | null;
   /**
-   * 챌린지 포스터 파일 ID
-   * @nullable
-   */
+     * 챌린지 포스터 파일 ID
+     * @nullable
+     */
   posterFileId?: string | null;
   /**
-   * 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더
-   * @nullable
-   */
+     * 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더
+     * @nullable
+     */
   posterUrl?: string | null;
   organizer?: string;
   /** 지원 자격 */
@@ -70,17 +70,17 @@ export interface Challenge {
   /** 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
   recruitMethod?: ChallengeRecruitMethod;
   /**
-   * recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다.
-   * @maxLength 2048
-   */
+     * recruitMethod가 external일 때 저장되는 외부 지원 링크 URL. seMOchall 공고에서는 비어 있다.
+     * @maxLength 2048
+     */
   recruitUrl?: string;
   /** 문의 연락처 */
   contact?: string;
   /** 모집 역할 */
   roles?: string[];
   /**
-   * implemented(#264) — biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 아직 저장한 신청서가 없으면 null
-   * @nullable
-   */
+     * implemented(#264) — biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 아직 저장한 신청서가 없으면 null
+     * @nullable
+     */
   applicationForm?: ApplicationFormQuestion[] | null;
 }

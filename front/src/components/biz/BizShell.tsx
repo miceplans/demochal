@@ -197,7 +197,7 @@ const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })
   borderRadius: 6,
   textAlign: 'left',
   ...textStyle.subtitle,
-  color: '#111111',
+  color: c.gray900,
   background: active
     ? 'linear-gradient(90deg, rgba(11, 110, 255, 0.1) 0%, rgba(255, 255, 255, 0.1) 100%)'
     : 'transparent',
@@ -214,7 +214,7 @@ const Avatar = styled.span({
   width: 34,
   height: 34,
   borderRadius: '50%',
-  background: '#EFF6FF',
+  background: c.paleBlue,
   color: c.primary,
   display: 'flex',
   alignItems: 'center',
@@ -224,7 +224,7 @@ const Avatar = styled.span({
 });
 const LogoutIcon = styled.button({
   display: 'inline-flex',
-  color: '#6B7280',
+  color: c.gray500,
   background: 'none',
   border: 0,
   padding: 0,
@@ -288,8 +288,8 @@ export function BizSidebar() {
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
           <Avatar aria-hidden>{accountName[0]}</Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{accountName}</strong>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{businessName}</span>
+            <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{accountName}</strong>
+            <span style={{ fontSize: 11, fontWeight: 500, color: c.gray500 }}>{businessName}</span>
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
@@ -395,7 +395,7 @@ export const PrimaryButton = styled.button({
   color: c.white,
   ...textStyle.subtitle,
   padding: '10px 12px',
-  '&:hover:not(:disabled)': { background: '#005ee0' },
+  '&:hover:not(:disabled)': { background: c.primaryHover },
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 });
 export const OutlineButton = styled.button({
