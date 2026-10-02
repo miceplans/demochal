@@ -95,7 +95,7 @@ const OpsGrid = styled.div({
 });
 const OpsTile = styled.div({
   height: 176,
-  background: '#f8f8f8',
+  background: c.surface,
   borderRadius: 6,
   position: 'relative',
   ...textStyle.display,

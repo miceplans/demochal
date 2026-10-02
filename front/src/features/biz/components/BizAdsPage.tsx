@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -349,7 +350,9 @@ export function BizAdsPage() {
             </TableHead>
             {contractsLoading && (
               <TableRow role="row">
-                <span>광고 목록을 불러오는 중이에요.</span>
+                <FullSpan>
+                  <LoadingState compact label="광고 목록을 불러오는 중이에요." />
+                </FullSpan>
               </TableRow>
             )}
             {!contractsLoading && contractsError && (
@@ -666,6 +669,7 @@ const TableRow = styled.div({
   borderTop: `0.5px solid ${c.gray200}`,
   ...textStyle.body,
 });
+const FullSpan = styled.div({ gridColumn: '1 / -1' });
 const TableHead = styled(TableRow)({
   minHeight: 48,
   borderTop: 0,

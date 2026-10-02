@@ -1,9 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { emailAttachments, emailMessages, emailThreads } from '../../db/schema.js';
-import { SesEmailClient } from '../notifications/email/ses-email.client.js';
+import { OutboxService } from '../../outbox/outbox.service.js';
+import { SUPPORT_EMAIL_EVENT } from '../notifications/email/support-email.js';
 import {
   normalizeMessageId,
   resolveThreadId,
@@ -18,25 +19,34 @@ const statuses = ['open', 'pending', 'resolved'] as const;
 export class EmailService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
-    private readonly ses: SesEmailClient,
+    private readonly outboxService: OutboxService,
   ) {}
 
   async listThreads(query?: { q?: string; status?: string }) {
     if (query?.status && !statuses.includes(query.status as (typeof statuses)[number])) {
       throw new BadRequestException('유효하지 않은 메일 상태입니다.');
     }
-    const threads = await this.db.select().from(emailThreads).orderBy(desc(emailThreads.updatedAt));
-    const messages = await this.db
+    const threads = await this.db
       .select()
+      .from(emailThreads)
+      .where(query?.status ? eq(emailThreads.status, query.status) : undefined)
+      .orderBy(desc(emailThreads.updatedAt));
+    const latestMessages = await this.db
+      .selectDistinctOn([emailMessages.threadId])
       .from(emailMessages)
-      .orderBy(desc(emailMessages.createdAt));
+      .orderBy(emailMessages.threadId, desc(emailMessages.createdAt));
+    const inboundMessages = await this.db
+      .selectDistinctOn([emailMessages.threadId])
+      .from(emailMessages)
+      .where(eq(emailMessages.direction, 'INBOUND'))
+      .orderBy(emailMessages.threadId, desc(emailMessages.createdAt));
+    const latestByThread = new Map(latestMessages.map((message) => [message.threadId, message]));
+    const inboundByThread = new Map(inboundMessages.map((message) => [message.threadId, message]));
     const q = query?.q?.trim().toLocaleLowerCase('ko-KR');
     return threads
-      .filter((thread) => !query?.status || thread.status === query.status)
       .map((thread) => {
-        const threadMessages = messages.filter((message) => message.threadId === thread.id);
-        const latest = threadMessages[0];
-        const inbound = threadMessages.find((message) => message.direction === 'INBOUND');
+        const latest = latestByThread.get(thread.id);
+        const inbound = inboundByThread.get(thread.id);
         return {
           ...thread,
           customerEmail: inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '',
@@ -65,16 +75,10 @@ export class EmailService {
       .where(eq(emailMessages.threadId, id))
       .orderBy(emailMessages.createdAt);
     const allAttachments = messages.length
-      ? (
-          await Promise.all(
-            messages.map((message) =>
-              this.db
-                .select()
-                .from(emailAttachments)
-                .where(eq(emailAttachments.messageId, message.id)),
-            ),
-          )
-        ).flat()
+      ? await this.db
+          .select()
+          .from(emailAttachments)
+          .where(inArray(emailAttachments.messageId, messages.map((message) => message.id)))
       : [];
     return {
       ...thread,
@@ -85,6 +89,16 @@ export class EmailService {
         attachments: allAttachments.filter((attachment) => attachment.messageId === message.id),
       })),
     };
+  }
+
+  async updateThreadStatus(id: string, status: (typeof statuses)[number]) {
+    const [thread] = await this.db
+      .update(emailThreads)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(emailThreads.id, id))
+      .returning();
+    if (!thread) throw new NotFoundException('메일 thread를 찾을 수 없습니다.');
+    return thread;
   }
 
   async ingestInbound(email: InboundEmail) {
@@ -101,8 +115,7 @@ export class EmailService {
       .filter(Boolean)
       .map((value) => normalizeMessageId(value!));
     const existingMessages = await this.db.select().from(emailMessages);
-    const threads = await this.db.select().from(emailThreads);
-    const threadId = resolveThreadId(email, existingMessages, threads);
+    const threadId = resolveThreadId(email, existingMessages);
     const sentAt = new Date(email.sentAt);
     if (Number.isNaN(sentAt.getTime()))
       throw new BadRequestException('sentAt이 올바른 날짜가 아닙니다.');
@@ -162,40 +175,30 @@ export class EmailService {
     const subject = thread.subject?.startsWith('Re:')
       ? thread.subject
       : `Re: ${thread.subject ?? '(제목 없음)'}`;
-    await this.ses.sendSupportEmail({
-      to: lastInbound.fromAddress,
-      subject,
-      text,
-      html:
-        html ||
-        `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`,
-      messageId,
-      inReplyTo: `<${lastInbound.messageId}>`,
-      references: references.map((value) => `<${value.replace(/^<|>$/g, '')}>`).join(' '),
-    });
     const sentAt = new Date();
-    const [message] = await this.db
-      .insert(emailMessages)
-      .values({
-        threadId,
-        direction: 'OUTBOUND',
-        messageId,
-        inReplyTo: lastInbound.messageId,
-        references: references.join(' '),
-        fromAddress: SUPPORT_EMAIL,
-        toAddresses: [lastInbound.fromAddress],
-        subject,
-        textBody: text,
-        htmlBody: html || null,
-        deliveryStatus: 'SENT',
-        sentAt,
-      })
-      .returning();
-    await this.db
-      .update(emailThreads)
-      .set({ updatedAt: sentAt })
-      .where(eq(emailThreads.id, threadId));
-    return message;
+    return this.db.transaction(async (tx) => {
+      const [message] = await tx
+        .insert(emailMessages)
+        .values({
+          threadId,
+          direction: 'OUTBOUND',
+          messageId,
+          inReplyTo: lastInbound.messageId,
+          references: references.join(' '),
+          fromAddress: SUPPORT_EMAIL,
+          toAddresses: [lastInbound.fromAddress],
+          subject,
+          textBody: text,
+          htmlBody: html || null,
+          deliveryStatus: 'QUEUED',
+          sentAt,
+        })
+        .returning();
+      if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
+      await tx.update(emailThreads).set({ updatedAt: sentAt }).where(eq(emailThreads.id, threadId));
+      await this.outboxService.enqueue(tx, SUPPORT_EMAIL_EVENT, { messageId: message.id });
+      return this.serializeMessage(message);
+    });
   }
 
   async sendNewEmail(to: string, subject: string, text: string, html: string) {
@@ -203,18 +206,6 @@ export class EmailService {
     const cleanSubject = safeHeader(subject);
     const messageId = `<${randomUUID()}@semochall.com>`;
     const sentAt = new Date();
-    const safeHtml =
-      html ||
-      `<pre>${text.replace(/[&<>]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[char]!)}</pre>`;
-
-    await this.ses.sendSupportEmail({
-      to: cleanTo,
-      subject: cleanSubject,
-      text,
-      html: safeHtml,
-      messageId,
-    });
-
     return this.db.transaction(async (tx) => {
       const [thread] = await tx
         .insert(emailThreads)
@@ -232,12 +223,30 @@ export class EmailService {
           subject: cleanSubject,
           textBody: text,
           htmlBody: html || null,
-          deliveryStatus: 'SENT',
+          deliveryStatus: 'QUEUED',
           sentAt,
         })
         .returning();
       if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
-      return message;
+      await this.outboxService.enqueue(tx, SUPPORT_EMAIL_EVENT, { messageId: message.id });
+      return this.serializeMessage(message);
     });
+  }
+
+  private serializeMessage(message: typeof emailMessages.$inferSelect) {
+    return {
+      id: message.id,
+      direction: message.direction.toLowerCase(),
+      messageId: message.messageId,
+      fromAddress: message.fromAddress,
+      toAddresses: message.toAddresses,
+      subject: message.subject,
+      textBody: message.textBody,
+      htmlBody: message.htmlBody,
+      sentAt: message.sentAt,
+      receivedAt: message.receivedAt,
+      references: message.references?.split(/\s+/).filter(Boolean) ?? [],
+      attachments: [],
+    };
   }
 }

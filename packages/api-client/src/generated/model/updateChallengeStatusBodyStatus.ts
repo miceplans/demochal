@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateChallengeStatusBodyStatus =
-  (typeof UpdateChallengeStatusBodyStatus)[keyof typeof UpdateChallengeStatusBodyStatus];
+export type UpdateChallengeStatusBodyStatus = typeof UpdateChallengeStatusBodyStatus[keyof typeof UpdateChallengeStatusBodyStatus];
+
 
 export const UpdateChallengeStatusBodyStatus = {
   published: 'published',

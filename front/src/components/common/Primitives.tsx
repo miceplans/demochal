@@ -65,7 +65,7 @@ export const Button = styled(BaseButton, {
     fontSize: small ? textStyle.overline.fontSize : textStyle.buttonLabel.fontSize,
     fontWeight: 600,
     minHeight: small ? 28 : 44,
-    '&:hover:not(:disabled)': { background: tone === 'primary' ? '#005ee0' : c.gray50 },
+    '&:hover:not(:disabled)': { background: tone === 'primary' ? c.primaryHover : c.gray50 },
   }),
 );
 export const Input = styled.input({
