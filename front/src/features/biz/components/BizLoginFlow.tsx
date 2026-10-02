@@ -1,5 +1,6 @@
 'use client';
 import { useState, type ChangeEvent, type ComponentProps, type ReactNode } from 'react';
+import { selectBase } from '@/components/common/Primitives';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
@@ -566,17 +567,11 @@ const VerifyButton = styled(PrimaryButton)({
 });
 const SelectWrap = styled.div({ position: 'relative' });
 const Select = styled.select({
+  ...selectBase,
   width: '100%',
   height: 44,
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
   padding: '0 46px 0 14px',
-  background: c.white,
-  appearance: 'none',
   ...textStyle.mBodyText,
-  color: c.gray900,
-  cursor: 'pointer',
-  '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 const Chevron = styled.img({
   position: 'absolute',

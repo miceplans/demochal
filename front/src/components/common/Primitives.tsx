@@ -81,17 +81,29 @@ export const Input = styled.input({
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
-export const Select = styled.select({
+/** 모든 select가 공유하는 기본 룩(네이티브 화살표 제거). 화살표는 사용처에서 붙인다. */
+export const selectBase = {
   minWidth: 0,
-  height: 40,
-  border: `0.5px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
-  padding: '0 14px',
   background: c.white,
-  color: c.gray700,
+  color: c.gray900,
+  appearance: 'none' as const,
+  cursor: 'pointer',
   transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
   '&:hover:not(:focus)': { borderColor: c.gray300 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
+};
+const SELECT_CHEVRON =
+  "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5 11 1.5' stroke='%23858a99' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E\")";
+export const Select = styled.select({
+  ...selectBase,
+  height: 40,
+  padding: '0 36px 0 14px',
+  backgroundImage: SELECT_CHEVRON,
+  backgroundRepeat: 'no-repeat',
+  backgroundPosition: 'right 14px center',
 });
 export const Row = styled.div<{ gap?: number }>(({ gap = 12 }) => ({
   display: 'flex',

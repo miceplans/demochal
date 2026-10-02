@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { selectBase } from '@/components/common/Primitives';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -819,18 +820,11 @@ const NameInput = styled.input({
 });
 const PositionField = styled.div({ position: 'relative', display: 'flex' });
 const PositionSelect = styled.select({
+  ...selectBase,
   width: '100%',
   height: 44,
   padding: '0 34px 0 14px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  background: c.white,
-  color: c.gray900,
-  cursor: 'pointer',
   ...textStyle.body,
-  appearance: 'none',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
 });
 const PositionIcon = styled.img({
   position: 'absolute',

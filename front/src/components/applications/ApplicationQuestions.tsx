@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { Select } from '@/components/common/Primitives';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -114,7 +115,7 @@ export function ApplicationQuestions({
                 />
               ))}
             {question.type === 'dropdown' && (
-              <select
+              <Select
                 id={inputId}
                 aria-label={question.title}
                 required={question.required}
@@ -127,7 +128,7 @@ export function ApplicationQuestions({
                     {option}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
             {(question.type === 'radio' || question.type === 'checkbox') &&
               question.options?.map((option) => (
