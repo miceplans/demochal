@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import styled from '@emotion/styled';
 import { UserShell, Logo } from '@/components/common/UserShell';
 import { Button, Icon, Stack, Chip, Wrap } from '@/components/common/Primitives';
@@ -170,13 +170,22 @@ const ProgressTrack = styled.div({
   marginTop: 12,
   marginBottom: 40,
 });
-const ProgressFill = styled.div({
+// 마운트 시 이전 스텝 폭에서 현재 스텝 폭으로 채워진다. 인증 확인 전까지 화면이 비어 있어
+// JS 타이밍(rAF) 기반 전환은 요소가 그려지기 전에 끝나 버리므로 순수 CSS 마운트 애니메이션을 쓴다.
+const ProgressFill = styled('div', {
+  shouldForwardProp: (prop) => prop !== '$from' && prop !== '$to',
+})<{ $from: number; $to: number }>(({ $from, $to }) => ({
   height: 4,
   background: c.primary,
   borderRadius: 30,
-  transition: 'width 500ms ease-in-out',
-  '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
-});
+  width: `${$to}%`,
+  animation: 'semo-onboarding-bar-fill .5s ease-in-out both',
+  '@keyframes semo-onboarding-bar-fill': {
+    from: { width: `${$from}%` },
+    to: { width: `${$to}%` },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+}));
 // 홈 화면 AdCarousel과 같은 수평 슬라이드 관례(0.5s ease-in-out)로 스텝 콘텐츠가 오른쪽에서 들어온다.
 const StepContent = styled.div({
   animation: 'semo-onboarding-step-in .5s ease-in-out both',
@@ -191,19 +200,6 @@ const EMPTY_SURVEY_SELECTION: readonly string[] = [];
 export function OnboardingPage({ step }: { step: string }) {
   const router = useRouter();
   const index = steps.indexOf(step);
-  // 페이지 이동 없이 폭만 바뀌는 경우에도 transition이 보이도록 마운트 직후 현재 스텝 폭까지 채운다.
-  // effect가 첫 페인트보다 먼저 실행돼도 초기 폭이 한 프레임은 그려지게 이중 rAF를 쓴다.
-  const [barWidth, setBarWidth] = useState(`${index * 25}%`);
-  useEffect(() => {
-    let next = 0;
-    const first = requestAnimationFrame(() => {
-      next = requestAnimationFrame(() => setBarWidth(`${(index + 1) * 25}%`));
-    });
-    return () => {
-      cancelAnimationFrame(first);
-      cancelAnimationFrame(next);
-    };
-  }, [index]);
   const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
@@ -286,7 +282,7 @@ export function OnboardingPage({ step }: { step: string }) {
           aria-valuemax={4}
           aria-valuenow={index + 1}
         >
-          <ProgressFill style={{ width: barWidth }} />
+          <ProgressFill $from={index * 25} $to={(index + 1) * 25} />
         </ProgressTrack>
         <StepContent key={step}>
           <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>

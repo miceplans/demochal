@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -145,21 +145,29 @@ describe('OnboardingPage', () => {
   });
 
   it.each([
-    ['activity', '0%', '25%', '1'],
-    ['interests', '25%', '50%', '2'],
-    ['purpose', '50%', '75%', '3'],
-    ['challenge', '75%', '100%', '4'],
+    ['activity', 0, 25, '1'],
+    ['interests', 25, 50, '2'],
+    ['purpose', 50, 75, '3'],
+    ['challenge', 75, 100, '4'],
   ])(
-    'animates the progress bar for the %s step from %s to %s',
-    async (step, initialWidth, currentWidth, valueNow) => {
+    'renders the %s step progress bar filled to %s%% with a fill animation from %s%%',
+    (step, fromWidth, toWidth, valueNow) => {
       renderOnboarding(step);
 
       const progress = screen.getByRole('progressbar');
       expect(progress.getAttribute('aria-valuenow')).toBe(valueNow);
       const fill = progress.firstElementChild as HTMLElement;
-      expect(fill.style.width).toBe(initialWidth);
+      expect(fill.className).not.toBe('');
 
-      await waitFor(() => expect(fill.style.width).toBe(currentWidth));
+      const styleText = Array.from(document.querySelectorAll('style'))
+        .map((s) => s.textContent ?? '')
+        .join('\n');
+      // 마운트 시 이전 스텝 폭(from)에서 현재 스텝 폭(to)으로 채우는 keyframes와
+      // 애니메이션 비활성화 선언이 주입된다.
+      expect(styleText).toContain('semo-onboarding-bar-fill');
+      expect(styleText).toContain(`width:${fromWidth}%`);
+      expect(styleText).toContain(`width:${toWidth}%`);
+      expect(styleText).toContain('prefers-reduced-motion');
     },
   );
 
