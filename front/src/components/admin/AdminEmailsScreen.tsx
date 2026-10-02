@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { adminEmailApi } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -20,20 +21,15 @@ const statusLabel: Record<string, string> = { open: '미처리', pending: '처�
 const statusValue: Record<string, string> = { 미처리: 'open', 처리중: 'pending', 완료: 'resolved' };
 
 export function AdminEmailsScreen() {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
-  const [selectedId, setSelectedId] = useState<string>();
   const params = {
     q: query || undefined,
     status: statusValue[status] as 'open' | 'pending' | 'resolved' | undefined,
   };
   const list = adminEmailApi.useListAdminEmails(params);
   const rows = list.data?.status === 200 ? list.data.data : [];
-  const detail = adminEmailApi.useGetAdminEmail(selectedId ?? '', { enabled: Boolean(selectedId) });
-  const reply = adminEmailApi.useSendAdminEmailReply();
-  const compose = adminEmailApi.useCreateAdminEmail();
-  const [composeOpen, setComposeOpen] = useState(false);
-  const selected = detail.data?.status === 200 ? detail.data.data : undefined;
   const tableRows = rows.filter((row): row is typeof row & { id: string } => Boolean(row.id));
   const columns: AdminColumn<(typeof tableRows)[number]>[] = [
     { key: 'subject', header: '제목', render: (row) => row.subject || '(제목 없음)' },
@@ -58,8 +54,8 @@ export function AdminEmailsScreen() {
     <Screen>
       <TitleRow>
         <AdminPageTitle>메일함</AdminPageTitle>
-        <ComposeButton type="button" onClick={() => setComposeOpen((open) => !open)}>
-          {composeOpen ? '작성 닫기' : '새 메일 작성'}
+        <ComposeButton type="button" onClick={() => router.push('/admin/emails/compose')}>
+          새 메일 작성
         </ComposeButton>
       </TitleRow>
       <FilterBar>
@@ -82,60 +78,87 @@ export function AdminEmailsScreen() {
           메일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      {composeOpen ? (
-        <ComposePanel
-          sending={compose.isPending}
-          error={
-            compose.isError
-              ? '메일 발송에 실패했어요. 입력한 내용으로 다시 시도해 주세요.'
-              : undefined
-          }
-          onSend={async (data) => {
-            try {
-              await compose.mutateAsync(data);
-              setComposeOpen(false);
-              return true;
-            } catch {
-              return false;
-            }
-          }}
-        />
-      ) : null}
       <AdminTable
         columns={columns}
         rows={tableRows}
-        selectedRowId={selectedId}
-        onRowClick={(row) => setSelectedId(row.id)}
+        onRowClick={(row) => router.push(`/admin/emails/${row.id}`)}
       />
-      <Content>
-        <Detail>
-          {!selectedId ? (
-            <AdminInlineNotice>메일을 선택하면 대화 내용이 보여요.</AdminInlineNotice>
-          ) : null}
-          {selectedId && detail.isPending ? (
-            <AdminInlineNotice>대화를 불러오는 중이에요.</AdminInlineNotice>
-          ) : null}
-          {selected ? (
-            <ThreadDetail
-              thread={selected}
-              sending={reply.isPending}
-              onReply={async (text) => {
-                try {
-                  await reply.mutateAsync({ id: selected.id ?? '', data: { text } });
-                  return true;
-                } catch {
-                  return false;
-                }
-              }}
-              error={
-                reply.isError
-                  ? '답장 발송에 실패했어요. 같은 내용으로 다시 시도해 주세요.'
-                  : undefined
+    </Screen>
+  );
+}
+
+export function AdminEmailComposeScreen() {
+  const router = useRouter();
+  const compose = adminEmailApi.useCreateAdminEmail();
+  return (
+    <Screen>
+      <TitleRow>
+        <AdminPageTitle>새 메일 작성</AdminPageTitle>
+        <BackButton type="button" onClick={() => router.push('/admin/emails')}>
+          메일함으로
+        </BackButton>
+      </TitleRow>
+      <ComposePanel
+        sending={compose.isPending}
+        error={
+          compose.isError
+            ? '메일 발송에 실패했어요. 입력한 내용으로 다시 시도해 주세요.'
+            : undefined
+        }
+        onSend={async (data) => {
+          try {
+            await compose.mutateAsync(data);
+            router.push('/admin/emails');
+            return true;
+          } catch {
+            return false;
+          }
+        }}
+      />
+    </Screen>
+  );
+}
+
+export function AdminEmailThreadScreen({ id }: { id: string }) {
+  const router = useRouter();
+  const detail = adminEmailApi.useGetAdminEmail(id, { enabled: true });
+  const reply = adminEmailApi.useSendAdminEmailReply();
+  const selected = detail.data?.status === 200 ? detail.data.data : undefined;
+  return (
+    <Screen>
+      <TitleRow>
+        <AdminPageTitle>메일 보기</AdminPageTitle>
+        <BackButton type="button" onClick={() => router.push('/admin/emails')}>
+          메일함으로
+        </BackButton>
+      </TitleRow>
+      <Detail>
+        {detail.isPending ? <AdminInlineNotice>대화를 불러오는 중이에요.</AdminInlineNotice> : null}
+        {detail.isError ? (
+          <AdminInlineNotice role="alert">
+            메일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+          </AdminInlineNotice>
+        ) : null}
+        {selected ? (
+          <ThreadDetail
+            thread={selected}
+            sending={reply.isPending}
+            onReply={async (text) => {
+              try {
+                await reply.mutateAsync({ id: selected.id ?? id, data: { text } });
+                return true;
+              } catch {
+                return false;
               }
-            />
-          ) : null}
-        </Detail>
-      </Content>
+            }}
+            error={
+              reply.isError
+                ? '답장 발송에 실패했어요. 같은 내용으로 다시 시도해 주세요.'
+                : undefined
+            }
+          />
+        ) : null}
+      </Detail>
     </Screen>
   );
 }
@@ -317,18 +340,21 @@ const ComposeTextarea = styled.textarea({
   resize: 'vertical',
   ...textStyle.body,
 });
-const Content = styled.div({
-  display: 'grid',
-  gridTemplateColumns: 'minmax(0, 1fr)',
-  gap: 20,
-  minHeight: 560,
-});
 const Detail = styled.section({
   border: `1px solid ${c.gray200}`,
   borderRadius: 10,
   padding: 24,
   minWidth: 0,
   overflow: 'auto',
+});
+const BackButton = styled.button({
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 6,
+  padding: '9px 14px',
+  background: c.white,
+  color: c.gray900,
+  cursor: 'pointer',
+  ...textStyle.subtitle,
 });
 const Timeline = styled.div({ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 24 });
 const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
