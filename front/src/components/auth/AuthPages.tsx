@@ -172,6 +172,7 @@ const ProgressTrack = styled.div({
 });
 // 마운트 시 이전 스텝 폭에서 현재 스텝 폭으로 채워진다. 인증 확인 전까지 화면이 비어 있어
 // JS 타이밍(rAF) 기반 전환은 요소가 그려지기 전에 끝나 버리므로 순수 CSS 마운트 애니메이션을 쓴다.
+// keyframes 이름에 from-to 수치를 넣어 변형 간 이름 충돌(뒤로가기 시 잘못된 폭 표시)을 막는다.
 const ProgressFill = styled('div', {
   shouldForwardProp: (prop) => prop !== '$from' && prop !== '$to',
 })<{ $from: number; $to: number }>(({ $from, $to }) => ({
@@ -179,8 +180,8 @@ const ProgressFill = styled('div', {
   background: c.primary,
   borderRadius: 30,
   width: `${$to}%`,
-  animation: 'semo-onboarding-bar-fill .5s ease-in-out both',
-  '@keyframes semo-onboarding-bar-fill': {
+  animation: `semo-onboarding-bar-fill-${$from}-${$to} .5s ease-in-out both`,
+  [`@keyframes semo-onboarding-bar-fill-${$from}-${$to}`]: {
     from: { width: `${$from}%` },
     to: { width: `${$to}%` },
   },
