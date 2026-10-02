@@ -76,6 +76,7 @@ export function BizPostingFormPage() {
             hashtags: values.hashtags ?? undefined,
             topics: values.topics ?? undefined,
             inquiryContact: values.inquiryContact ?? undefined,
+            visibility: values.visibility,
           },
         });
         router.push(hrefOf(`/postings/${response.data.id}`));
@@ -201,6 +202,7 @@ const EMPTY_POSTING: PostingInput = {
   targets: [],
   organizerType: null,
   prizeAmount: '',
+  visibility: 'public',
 };
 
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));

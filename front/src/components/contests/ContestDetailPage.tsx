@@ -86,18 +86,16 @@ export function ContestDetailPage({
         dday: challenge.endDate ? `D-${daysUntil(challenge.endDate, now)}` : '',
         deadline: formatDate(challenge.endDate) || '-',
         teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
-        sections: challenge.description
-          ? [
-              ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
-              ...((challenge.hashtags ?? []).length
-                ? [{ title: '해시태그', body: (challenge.hashtags ?? []).join(' ') }]
-                : []),
-              { title: '상세 안내', body: challenge.description },
-              ...(challenge.inquiryContact
-                ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
-                : []),
-            ]
-          : [],
+        sections: [
+          ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
+          ...((challenge.hashtags ?? []).length
+            ? [{ title: '해시태그', body: (challenge.hashtags ?? []).join(' ') }]
+            : []),
+          ...(challenge.description ? [{ title: '상세 안내', body: challenge.description }] : []),
+          ...(challenge.inquiryContact
+            ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
+            : []),
+        ],
       }
     : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
       // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다(#278).
