@@ -532,6 +532,21 @@ describe('ChallengesService.create', () => {
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
   });
 
+  it('stores the requested status, falling back to contestAutoPublish when omitted', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+    const url = 'https://example.com/apply';
+
+    await service.create({ ...baseDto, recruitUrl: url, status: 'published' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url, status: 'draft' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url } as any, 'user-1');
+
+    expect(valuesCalls[0]).toMatchObject({ status: 'published' });
+    expect(valuesCalls[1]).toMatchObject({ status: 'draft' });
+    // contestAutoPublish 스텁이 false라 draft
+    expect(valuesCalls[2]).toMatchObject({ status: 'draft' });
+  });
+
   it('persists recruitUrl for external recruitMethod and clears any url provided for seMOchall', async () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
@@ -649,7 +664,7 @@ describe('ChallengesService.update', () => {
   it('returns 404 when the challenge is missing or owned by another business', async () => {
     const { service, db } = createUpdateService([]);
     await expect(service.update('ch-1', { title: 'x' }, owner)).rejects.toThrow(
-      'Challenge not found',
+      '챌린지를 찾을 수 없습니다',
     );
     expect(db.update).not.toHaveBeenCalled();
   });
@@ -697,13 +712,13 @@ describe('ChallengesService.update', () => {
     const { service, db } = createUpdateService([current]);
     await expect(
       service.update('ch-1', { endDate: '2029-12-31T00:00:00Z' }, owner),
-    ).rejects.toThrow('endDate must not be before startDate');
+    ).rejects.toThrow('종료일은 시작일 이후여야 합니다');
     expect(db.update).not.toHaveBeenCalled();
   });
 
   it('rejects an empty patch', async () => {
     const { service } = createUpdateService([current]);
-    await expect(service.update('ch-1', {}, owner)).rejects.toThrow('No fields to update');
+    await expect(service.update('ch-1', {}, owner)).rejects.toThrow('수정할 항목이 없습니다');
   });
 
   it('applies recruitUrl when the existing challenge recruits externally', async () => {
@@ -746,7 +761,7 @@ describe('ChallengesService.findById', () => {
     const db = { select: vi.fn().mockReturnValue({ from }), insert } as any;
     const service = new ChallengesService(db, {} as any, createFilesStub() as any);
 
-    await expect(service.findById('draft-id')).rejects.toThrow('Challenge not found');
+    await expect(service.findById('draft-id')).rejects.toThrow('챌린지를 찾을 수 없습니다.');
     expect(collectSqlValues(where.mock.calls[0]?.[0])).toEqual(
       expect.arrayContaining(['published', 'closed']),
     );
@@ -777,10 +792,10 @@ describe('ChallengesService.findById', () => {
     const service = new ChallengesService(db, {} as any, createFilesStub() as any);
 
     await expect(service.findMineById('draft-id', 'other-owner')).rejects.toThrow(
-      'Challenge not found',
+      '챌린지를 찾을 수 없습니다.',
     );
     await expect(service.getStatsForOwner('draft-id', 'other-owner')).rejects.toThrow(
-      'Challenge not found',
+      '챌린지를 찾을 수 없습니다.',
     );
     expect(collectSqlValues(where.mock.calls[0]?.[0])).toContain('other-owner');
     expect(db.select).toHaveBeenCalledTimes(2);
@@ -790,7 +805,7 @@ describe('ChallengesService.findById', () => {
     const db = { select: vi.fn().mockReturnValue(queryChain([])) } as any;
     const service = new ChallengesService(db, {} as any, createFilesStub() as any);
 
-    await expect(service.getStats('draft-id')).rejects.toThrow('Challenge not found');
+    await expect(service.getStats('draft-id')).rejects.toThrow('챌린지를 찾을 수 없습니다.');
     expect(db.select).toHaveBeenCalledTimes(1);
   });
 

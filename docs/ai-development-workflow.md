@@ -49,7 +49,7 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 ./scripts/ai-workflow.sh dependencies 104 101,102
 ```
 
-명령은 Issue 존재, self dependency, 순환 dependency를 검사한다. worker 시작은 모든 선행 Issue가 `CLOSED`일 때만 허용된다. dependency 없는 Issue는 별도 worktree/branch에서 병렬 실행할 수 있다. `ai-ready` label 이벤트는 Issue 번호별 Actions concurrency group으로 직렬화되어 같은 Issue의 runner dispatch가 중복되지 않는다. 동일 파일을 크게 수정할 가능성은 Issue의 `Conflict Surface`에서 Planner가 선언하고, worker가 순차 처리로 넘긴다.
+명령은 Issue 존재, self dependency, 순환 dependency를 검사한다. worker 시작은 모든 선행 Issue가 `CLOSED`일 때만 허용된다. dependency 없는 Issue는 별도 worktree/branch에서 병렬 실행할 수 있다. `ai-ready` label 이벤트는 Issue 번호별 Actions concurrency group으로 직렬화되어 같은 Issue의 runner dispatch가 중복되지 않는다. 동일 파일을 크게 수정할 가능성은 Issue의 `충돌 가능 영역`에서 Planner가 선언하고, worker가 순차 처리로 넘긴다.
 
 ## Planner: 자연어 요청을 Issue로 만들기
 
@@ -156,18 +156,20 @@ git push -u origin HEAD
 ./scripts/ai-workflow.sh pr 123 'fix: prevent admin session redirect loop' /tmp/pr.md
 ```
 
-PR body에는 다음을 포함한다.
+PR body는 한국어로, 핵심만 간략히 쓰고 맨 위에 `한줄요약`을 둔다. 다음을 포함한다.
 
 ```md
 Closes #123
 
-## Summary
+한줄요약: ...
 
-## Changes
+## 요약
 
-## Implementation Details
+## 변경 사항
 
-## Testing
+## 구현 상세
+
+## 테스트
 
 - `pnpm lint` — pass
 - `pnpm typecheck` — pass
@@ -175,17 +177,17 @@ Closes #123
 - `pnpm --filter @semochal/api-client test` — pass
 - `pnpm --filter @semochal/api-client build && pnpm --filter @semochal/front build && pnpm --filter @semochal/server build` — pass
 
-## Acceptance Criteria
+## 인수 조건
 
 - [x] ...
 
-## AI Review
+## AI 리뷰
 
 PASS (reviewer: separate agent/session)
 
-## Risk / Regression Points
+## 위험 / 회귀 지점
 
-## Human reviewer focus
+## 리뷰어 확인 포인트
 ```
 
 AI는 PR까지만 만든다. 인간 reviewer가 최종 merge를 담당한다.

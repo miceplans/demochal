@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Param,
   ParseUUIDPipe,
   Post,
@@ -34,10 +35,11 @@ import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
 import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../common/throttling/throttling.js';
-import { Public } from './public.decorator.js';
+import { Authenticated, Public } from './public.decorator.js';
 import { CurrentUser } from './current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from './jwt-auth.guard.js';
 import { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { LOGIN_NEXT_COOKIE_NAME, sanitizeNextPath } from './next-path.js';
 
 const GOOGLE_STATE_COOKIE_NAME = 'semochal_google_oauth_state';
@@ -386,6 +388,7 @@ export class AuthController {
 
   @Post('withdraw')
   @HttpCode(204)
+  @Authenticated()
   @UseGuards(JwtAuthGuard)
   async withdraw(
     @Body() dto: WithdrawAccountDto,
@@ -396,9 +399,18 @@ export class AuthController {
     response.clearCookie(AUTH_COOKIE_NAME, authCookieClearOptions);
   }
 
+  @Patch('password')
+  @HttpCode(200)
+  @Authenticated()
+  @UseGuards(JwtAuthGuard)
+  async changePassword(@Body() dto: ChangePasswordDto, @CurrentUser() user: AuthenticatedUser) {
+    await this.authService.changePassword(user.id, dto);
+    return { changed: true };
+  }
+
   private assertGoogleConfigured() {
     if (!env.googleClientId || !env.googleClientSecret) {
-      throw new ServiceUnavailableException('Google login is not configured');
+      throw new ServiceUnavailableException('구글 로그인이 현재 제공되지 않습니다.');
     }
   }
 
@@ -424,7 +436,7 @@ export class AuthController {
 
   private assertNaverConfigured() {
     if (!env.naverClientId || !env.naverClientSecret) {
-      throw new ServiceUnavailableException('Naver login is not configured');
+      throw new ServiceUnavailableException('네이버 로그인이 현재 제공되지 않습니다.');
     }
   }
 
@@ -450,7 +462,7 @@ export class AuthController {
 
   private assertKakaoConfigured() {
     if (!env.kakaoClientId) {
-      throw new ServiceUnavailableException('Kakao login is not configured');
+      throw new ServiceUnavailableException('카카오 로그인이 현재 제공되지 않습니다.');
     }
   }
 

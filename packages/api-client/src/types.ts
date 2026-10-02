@@ -134,13 +134,20 @@ export interface Application {
   teammates: string[];
   evaluation: 'undecided' | 'pass' | 'fail';
   managerMemo?: string | null;
+  formAnswers?: ApplicationFormAnswer[];
 }
+
+export type ApplicationAnswerInput = { questionId: string; value: string | string[] };
+export type ApplicationFormAnswer = ApplicationAnswerInput & {
+  title: string;
+  type: 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
+};
 
 export interface ApplyChallengeRequest {
   challengeId: string;
   role?: string;
   teammates?: string[];
-  formAnswers?: Record<string, unknown>[];
+  formAnswers?: ApplicationAnswerInput[];
 }
 
 /** Pending order for a paid challenge, returned by POST /applications — feeds the Toss payment request. */

@@ -30,4 +30,15 @@ export type ListAdminUsersParams = {
    * 포지션 뱃지 (부분 일치, 예: 프론트엔드)
    */
   position?: string;
+  /**
+   * 페이지 번호 (1부터)
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * 페이지 크기 (최대 50)
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
 };

@@ -15,7 +15,7 @@ const TeamTag = styled(Tag)({
   lineHeight: 'normal',
   [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
 });
-const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
+const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',
   minWidth: 0,
@@ -27,6 +27,33 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   '.dday': { color: c.primary, ...textStyle.overline },
   h3: textStyle.h3,
+  // 탐색 목록 보기(Figma contestCard 1345:22813): 100px 썸네일 + 세로로 쌓은 본문(제목 / 태그·D-day / 북마크·팀 배지).
+  ...(row
+    ? {
+        display: 'grid',
+        gridTemplateColumns: '100px minmax(0, 1fr)',
+        alignItems: 'start',
+        padding: 12,
+        borderRadius: 8,
+        border: `0.5px solid ${c.gray100}`,
+        '> a:first-of-type': { display: 'block' },
+        '.artwork': { width: 100, height: 101, background: c.gray100, borderRadius: 0 },
+        '.card-body': {
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          gap: 8,
+          padding: 14,
+          minWidth: 0,
+        },
+        h3: textStyle.mCardTitle,
+        '.meta': { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8 },
+        '.meta > div': { gap: 12, justifyContent: 'flex-start !important' },
+        '.meta > div:last-of-type': { gap: 20 },
+        '.tag': { padding: '3px 8px', ...textStyle.mTagText, lineHeight: 'normal' },
+        '.dday': textStyle.mCounterText,
+      }
+    : {}),
   [mobile]: {
     ...(horizontal
       ? {
@@ -56,11 +83,14 @@ const Card = styled.article<{ horizontal?: boolean }>(({ horizontal }) => ({
 export function ContestCard({
   contest,
   horizontal = false,
+  row = false,
   simple = false,
   href = '/contests/public-data',
 }: {
   contest: Contest;
   horizontal?: boolean;
+  /** 데스크톱 목록 보기(가로 카드). */
+  row?: boolean;
   simple?: boolean;
   href?: string;
 }) {
@@ -79,7 +109,7 @@ export function ContestCard({
     </IconButton>
   );
   return (
-    <Card horizontal={horizontal} data-component="contest-card">
+    <Card horizontal={horizontal} row={row} data-component="contest-card">
       <Link href={href} aria-label={`${contest.title} 상세`}>
         <div className="artwork" />
       </Link>
@@ -95,7 +125,7 @@ export function ContestCard({
         ) : (
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>
-              <CategoryTag>{contest.category}</CategoryTag>
+              <CategoryTag className="tag">{contest.category}</CategoryTag>
               <span className="dday">D-{contest.days}</span>
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>

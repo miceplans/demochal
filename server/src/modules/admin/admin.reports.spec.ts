@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { reports } from '../../db/schema.js';
 import { createDbStub, referencesColumn, createService, reportRow } from './admin.test-helpers.js';
@@ -70,6 +70,15 @@ describe('AdminService — reports', () => {
 
     await expect(service.resolveReport('missing', { action: 'resolve' })).rejects.toBeInstanceOf(
       NotFoundException,
+    );
+  });
+
+  it('refuses to re-process a report that is no longer open', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[{ id: 'r1' }]] });
+    const { service } = createService(db);
+
+    await expect(service.resolveReport('r1', { action: 'dismiss' })).rejects.toBeInstanceOf(
+      ConflictException,
     );
   });
 });

@@ -32,12 +32,14 @@ const joinedWithinOptionToParam: Record<string, '7d' | '30d' | '1y'> = {
 };
 
 const ALL = '전체';
+const PAGE_SIZE = 30;
 
 export function AdminUsersScreen() {
   const [query, setQuery] = useState('');
   const [statusLabel, setStatusLabel] = useState('');
   const [joinedWithinLabel, setJoinedWithinLabel] = useState('');
   const [position, setPosition] = useState('');
+  const [page, setPage] = useState(1);
   const [suspendTarget, setSuspendTarget] = useState<UserRow | null>(null);
   const [suspendReason, setSuspendReason] = useState('');
   const toast = useToast();
@@ -48,7 +50,18 @@ export function AdminUsersScreen() {
     status: statusOptionToParam[statusLabel],
     joinedWithin: joinedWithinOptionToParam[joinedWithinLabel],
     position: position && position !== ALL ? position : undefined,
+    page,
+    pageSize: PAGE_SIZE,
   });
+  const total = usersQuery.data?.data.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  // 필터가 바뀌면 첫 페이지부터 보고, 정지/해제로 마지막 페이지가 사라지면 한 페이지 앞으로 당긴다.
+  const changeFilter = (apply: () => void) => {
+    apply();
+    setPage(1);
+  };
+  if (usersQuery.isSuccess && page > totalPages) setPage(totalPages);
 
   const closeSuspend = () => {
     setSuspendTarget(null);
@@ -69,7 +82,7 @@ export function AdminUsersScreen() {
 
   const rows = useMemo<UserRow[]>(
     () =>
-      (usersQuery.data?.data ?? []).map((user, index) => ({
+      (usersQuery.data?.data.items ?? []).map((user, index) => ({
         id: user.id ?? String(index),
         name: user.name ?? '',
         email: user.email ?? '',
@@ -125,25 +138,25 @@ export function AdminUsersScreen() {
           placeholder="이름/이메일 검색"
           label="이름/이메일 검색"
           value={query}
-          onChange={setQuery}
+          onChange={(value) => changeFilter(() => setQuery(value))}
         />
         <SelectFilter
           label="가입일 범위"
           options={['최근 7일', '최근 30일', '최근 1년', ALL]}
           value={joinedWithinLabel}
-          onChange={setJoinedWithinLabel}
+          onChange={(value) => changeFilter(() => setJoinedWithinLabel(value))}
         />
         <SelectFilter
           label="포지션 뱃지"
           options={[ALL, '기획', '프론트엔드', '백엔드', '디자이너']}
           value={position}
-          onChange={setPosition}
+          onChange={(value) => changeFilter(() => setPosition(value))}
         />
         <SelectFilter
           label="활동 상태"
           options={['활성', '정지']}
           value={statusLabel}
-          onChange={setStatusLabel}
+          onChange={(value) => changeFilter(() => setStatusLabel(value))}
         />
       </FilterBar>
       {usersQuery.isPending ? (
@@ -156,7 +169,24 @@ export function AdminUsersScreen() {
           </button>
         </AdminInlineNotice>
       ) : (
-        <AdminTable columns={columns} rows={rows} />
+        <>
+          <AdminTable columns={columns} rows={rows} />
+          <Pager aria-label="페이지 이동">
+            <RowButton type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+              이전
+            </RowButton>
+            <PageInfo>
+              {page} / {totalPages} (총 {total}명)
+            </PageInfo>
+            <RowButton
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+            >
+              다음
+            </RowButton>
+          </Pager>
+        </>
       )}
       {suspendTarget &&
         typeof document !== 'undefined' &&
@@ -218,6 +248,15 @@ const RowButton = styled('button', { shouldForwardProp: (prop) => prop !== 'dang
   '&:hover:not(:disabled)': { background: c.gray50 },
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 }));
+
+const Pager = styled.nav({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 12,
+  marginTop: 16,
+});
+const PageInfo = styled.span({ ...textStyle.metaText, color: c.gray500 });
 
 const Backdrop = styled.div({
   position: 'fixed',

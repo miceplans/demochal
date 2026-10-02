@@ -239,7 +239,7 @@ export class ChallengesService {
       .from(challenges)
       .where(eq(challenges.id, id))
       .limit(1);
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     return challenge;
   }
 
@@ -249,7 +249,7 @@ export class ChallengesService {
       .from(challenges)
       .where(and(eq(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
       .limit(1);
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     return challenge;
   }
 
@@ -279,7 +279,7 @@ export class ChallengesService {
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
-    if (!row) throw new NotFoundException('Challenge not found');
+    if (!row) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     const posterUrl = await this.filesService.resolvePublicUrl(row.challenge.posterFileId);
     return { ...row.challenge, posterUrl };
   }
@@ -314,7 +314,7 @@ export class ChallengesService {
       .from(businesses)
       .where(and(eq(businesses.id, dto.businessId), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
-    if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const recruitMethod = dto.recruitMethod ?? 'external';
@@ -339,9 +339,11 @@ export class ChallengesService {
         posterFileId: dto.posterFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
-        status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
-          ? 'published'
-          : 'draft',
+        status:
+          dto.status ??
+          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
+            ? 'published'
+            : 'draft'),
       })
       .returning();
     return challenge;
@@ -368,14 +370,14 @@ export class ChallengesService {
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(ownership)
       .limit(1);
-    if (!current) throw new NotFoundException('Challenge not found');
+    if (!current) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     // null은 포스터 제거라 검증에서 제외 — 존재하고 public+ready인 파일만 참조할 수 있다.
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
     if (endDate.getTime() < startDate.getTime()) {
-      throw new BadRequestException('endDate must not be before startDate');
+      throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
     }
 
     const patch = {
@@ -394,7 +396,7 @@ export class ChallengesService {
       ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
       ...(dto.applicationForm !== undefined && { applicationForm: dto.applicationForm }),
     };
-    if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
+    if (Object.keys(patch).length === 0) throw new BadRequestException('수정할 항목이 없습니다.');
 
     const [updated] = await this.db
       .update(challenges)
@@ -411,11 +413,13 @@ export class ChallengesService {
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
 
     const allowed = ALLOWED_TRANSITIONS[challenge.status] ?? [];
     if (!allowed.includes(dto.status)) {
-      throw new ConflictException(`Cannot move a ${challenge.status} challenge to ${dto.status}`);
+      throw new ConflictException(
+        `${challenge.status} 상태의 챌린지를 ${dto.status}(으)로 변경할 수 없습니다.`,
+      );
     }
 
     const [updated] = await this.db

@@ -43,7 +43,7 @@ export class MaintenanceGuard implements CanActivate {
     }
 
     if (await this.isAdmin(request)) return true;
-    throw new ServiceUnavailableException('Service is under maintenance');
+    throw new ServiceUnavailableException('서비스 점검 중입니다. 잠시 후 다시 이용해 주세요.');
   }
 
   // The token's role claim is a login-time snapshot, so the bypass checks the DB

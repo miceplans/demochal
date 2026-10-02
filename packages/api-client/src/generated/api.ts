@@ -47,6 +47,7 @@ import type {
   AdminDashboard,
   AdminSettings,
   AdminUserEntry,
+  AdminUserPage,
   Application,
   ApplyChallenge201,
   ApplyChallengeRequest,
@@ -57,6 +58,8 @@ import type {
   CertificateEntry,
   Challenge,
   ChallengeStats,
+  ChangePassword200,
+  ChangePasswordBody,
   CheckHealth200,
   CheckHealth503,
   ConfirmContactVerification200,
@@ -73,6 +76,7 @@ import type {
   GetAdminAnalytics200,
   GetAdminAnalyticsParams,
   GetAdminDashboardParams,
+  GetApplicationAttachment200,
   GetBillingCustomerKey200,
   GetInterests200,
   HandleTossWebhook200,
@@ -148,6 +152,7 @@ import type {
   UpdateApplicationBody,
   UpdateBusinessBody,
   UpdateChallengeRequest,
+  UpdateChallengeStatusBody,
   UpdateMyProfileBody,
   UpdateTeamMemberRequest,
   User,
@@ -823,6 +828,138 @@ export const useLogin = <TError = void, TContext = unknown>(
   TContext
 > => {
   return useMutation(getLoginMutationOptions(options), queryClient);
+};
+
+export type changePasswordResponse200 = {
+  data: ChangePassword200;
+  status: 200;
+};
+
+export type changePasswordResponse400 = {
+  data: void;
+  status: 400;
+};
+
+export type changePasswordResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type changePasswordResponseSuccess = changePasswordResponse200 & {
+  headers: Headers;
+};
+export type changePasswordResponseError = (
+  changePasswordResponse400 | changePasswordResponse401
+) & {
+  headers: Headers;
+};
+
+export type changePasswordResponse = changePasswordResponseSuccess | changePasswordResponseError;
+
+export const getChangePasswordUrl = () => {
+  return `/auth/password`;
+};
+
+/**
+ * 로그인한 사용자의 현재 비밀번호를 확인한 뒤 새 비밀번호 해시로 교체한다.
+ * 현재 비밀번호가 없거나(소셜 전용 계정) 일치하지 않으면 변경하지 않는다.
+ * @summary 로그인 비밀번호 변경
+ */
+export const changePassword = async (
+  changePasswordBody: ChangePasswordBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<changePasswordResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<changePasswordResponse>(getChangePasswordUrl(), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(changePasswordBody),
+  });
+};
+
+export const getChangePasswordMutationKey = () => ['changePassword'] as const;
+
+export const getChangePasswordMutationOptions = <
+  TError = void | UnauthorizedResponse,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof changePassword>>,
+    TError,
+    ChangePasswordMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  ChangePasswordMutationVariables,
+  TContext
+> => {
+  const mutationKey = getChangePasswordMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof changePassword>>,
+    ChangePasswordMutationVariables
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return changePassword(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ChangePasswordMutationResult = NonNullable<Awaited<ReturnType<typeof changePassword>>>;
+export type ChangePasswordMutationBody = ChangePasswordBody;
+export type ChangePasswordMutationError = void | UnauthorizedResponse;
+export type ChangePasswordMutationVariables = { data: ChangePasswordBody };
+
+/**
+ * @summary 로그인 비밀번호 변경
+ */
+export const useChangePassword = <TError = void | UnauthorizedResponse, TContext = unknown>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof changePassword>>,
+      TError,
+      ChangePasswordMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof changePassword>>,
+  TError,
+  ChangePasswordMutationVariables,
+  TContext
+> => {
+  return useMutation(getChangePasswordMutationOptions(options), queryClient);
 };
 
 export type getMyAuthInfoResponse200 = {
@@ -2378,6 +2515,155 @@ export const useUpdateChallenge = <
   TContext
 > => {
   return useMutation(getUpdateChallengeMutationOptions(options), queryClient);
+};
+
+export type updateChallengeStatusResponse200 = {
+  data: Challenge;
+  status: 200;
+};
+
+export type updateChallengeStatusResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type updateChallengeStatusResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type updateChallengeStatusResponse409 = {
+  data: void;
+  status: 409;
+};
+
+export type updateChallengeStatusResponseSuccess = updateChallengeStatusResponse200 & {
+  headers: Headers;
+};
+export type updateChallengeStatusResponseError = (
+  | updateChallengeStatusResponse401
+  | updateChallengeStatusResponse404
+  | updateChallengeStatusResponse409
+) & {
+  headers: Headers;
+};
+
+export type updateChallengeStatusResponse =
+  updateChallengeStatusResponseSuccess | updateChallengeStatusResponseError;
+
+export const getUpdateChallengeStatusUrl = (id: string) => {
+  return `/challenges/${id}/status`;
+};
+
+/**
+ * 소유 기업만 호출할 수 있다. 허용 전이는 draft → published, published → closed 뿐이며
+ * 그 외는 409. 권한이 없거나 존재하지 않으면 404.
+ * @summary 챌린지 상태 변경 (기업)
+ */
+export const updateChallengeStatus = async (
+  id: string,
+  updateChallengeStatusBody: UpdateChallengeStatusBody,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<updateChallengeStatusResponse> => {
+  const getHeaders = (
+    h?: NonNullable<RequestInit['headers']>,
+  ): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(
+          h as Iterable<Iterable<string>>,
+          (entry) => Array.from(entry) as [string, string],
+        ),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+  return apiFetch<updateChallengeStatusResponse>(getUpdateChallengeStatusUrl(id), {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateChallengeStatusBody),
+  });
+};
+
+export const getUpdateChallengeStatusMutationKey = () => ['updateChallengeStatus'] as const;
+
+export const getUpdateChallengeStatusMutationOptions = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateChallengeStatus>>,
+    TError,
+    UpdateChallengeStatusMutationVariables,
+    TContext
+  >;
+  request?: SecondParameter<typeof apiFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateChallengeStatus>>,
+  TError,
+  UpdateChallengeStatusMutationVariables,
+  TContext
+> => {
+  const mutationKey = getUpdateChallengeStatusMutationKey();
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateChallengeStatus>>,
+    UpdateChallengeStatusMutationVariables
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateChallengeStatus(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateChallengeStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateChallengeStatus>>
+>;
+export type UpdateChallengeStatusMutationBody = UpdateChallengeStatusBody;
+export type UpdateChallengeStatusMutationError = UnauthorizedResponse | NotFoundResponse | void;
+export type UpdateChallengeStatusMutationVariables = {
+  id: string;
+  data: UpdateChallengeStatusBody;
+};
+
+/**
+ * @summary 챌린지 상태 변경 (기업)
+ */
+export const useUpdateChallengeStatus = <
+  TError = UnauthorizedResponse | NotFoundResponse | void,
+  TContext = unknown,
+>(
+  options?: {
+    mutation?: UseMutationOptions<
+      Awaited<ReturnType<typeof updateChallengeStatus>>,
+      TError,
+      UpdateChallengeStatusMutationVariables,
+      TContext
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseMutationResult<
+  Awaited<ReturnType<typeof updateChallengeStatus>>,
+  TError,
+  UpdateChallengeStatusMutationVariables,
+  TContext
+> => {
+  return useMutation(getUpdateChallengeStatusMutationOptions(options), queryClient);
 };
 
 export type getChallengeStatsResponse200 = {
@@ -4663,6 +4949,177 @@ export function useListManagedApplications<
   return withQueryKey(query, queryOptions.queryKey);
 }
 
+export type getApplicationAttachmentResponse200 = {
+  data: GetApplicationAttachment200;
+  status: 200;
+};
+
+export type getApplicationAttachmentResponse401 = {
+  data: UnauthorizedResponse;
+  status: 401;
+};
+
+export type getApplicationAttachmentResponse404 = {
+  data: NotFoundResponse;
+  status: 404;
+};
+
+export type getApplicationAttachmentResponseSuccess = getApplicationAttachmentResponse200 & {
+  headers: Headers;
+};
+export type getApplicationAttachmentResponseError = (
+  getApplicationAttachmentResponse401 | getApplicationAttachmentResponse404
+) & {
+  headers: Headers;
+};
+
+export type getApplicationAttachmentResponse =
+  getApplicationAttachmentResponseSuccess | getApplicationAttachmentResponseError;
+
+export const getGetApplicationAttachmentUrl = (id: string, fileId: string) => {
+  return `/applications/${id}/files/${fileId}`;
+};
+
+/**
+ * 신청자 또는 해당 기업 소유자만 접근 가능. 유료 신청은 기업 조회 전에 결제 완료가 필요하다. private 파일에 대한 5분 유효 URL을 반환하며 응답은 캐시하지 않는다.
+ * @summary 지원서 첨부파일 다운로드 주소 조회
+ */
+export const getApplicationAttachment = async (
+  id: string,
+  fileId: string,
+  options?: Parameters<typeof apiFetch>[1],
+): Promise<getApplicationAttachmentResponse> => {
+  return apiFetch<getApplicationAttachmentResponse>(getGetApplicationAttachmentUrl(id, fileId), {
+    ...options,
+    method: 'GET',
+  });
+};
+
+export const getGetApplicationAttachmentQueryKey = (id: string, fileId: string) => {
+  return [`/applications/${id}/files/${fileId}`] as const;
+};
+
+export const getGetApplicationAttachmentQueryOptions = <
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetApplicationAttachmentQueryKey(id, fileId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getApplicationAttachment>>> = ({
+    signal,
+  }) => getApplicationAttachment(id, fileId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: id !== null && id !== undefined && fileId !== null && fileId !== undefined,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+};
+
+export type GetApplicationAttachmentQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getApplicationAttachment>>
+>;
+export type GetApplicationAttachmentQueryError = UnauthorizedResponse | NotFoundResponse;
+
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options: {
+    query: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    > &
+      Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApplicationAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getApplicationAttachment>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    > &
+      Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getApplicationAttachment>>,
+          TError,
+          Awaited<ReturnType<typeof getApplicationAttachment>>
+        >,
+        'initialData'
+      >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+/**
+ * @summary 지원서 첨부파일 다운로드 주소 조회
+ */
+
+export function useGetApplicationAttachment<
+  TData = Awaited<ReturnType<typeof getApplicationAttachment>>,
+  TError = UnauthorizedResponse | NotFoundResponse,
+>(
+  id: string,
+  fileId: string,
+  options?: {
+    query?: Partial<
+      UseQueryOptions<Awaited<ReturnType<typeof getApplicationAttachment>>, TError, TData>
+    >;
+    request?: SecondParameter<typeof apiFetch>;
+  },
+  queryClient?: QueryClient,
+): UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+  const queryOptions = getGetApplicationAttachmentQueryOptions(id, fileId, options);
+
+  const query = useQuery(queryOptions, queryClient) as UseQueryResult<TData, TError> & {
+    queryKey: DataTag<QueryKey, TData, TError>;
+  };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
 export type getApplicationResponse200 = {
   data: Application;
   status: 200;
@@ -5550,7 +6007,10 @@ export const getListMyNotificationsUrl = (params?: ListMyNotificationsParams) =>
 
 /**
  * 알림 화면(`/notifications`): 생성일 내림차순, 탭(전체/팀매칭/마감/공고)별 필터.
- * 푸시/이메일/인앱 소켓 등 실제 채널 발송은 TODO — 현재는 DB 저장만.
+ * 인앱 실시간: `GET /notifications/stream`(SSE, 인증 쿠키)이 새 알림 커밋 시 `notification`
+ * 이벤트({ notificationId })를 보내고 25초마다 `ping`을 보낸다. 이벤트는 id만 담으므로
+ * 클라이언트는 이 목록 API를 다시 조회한다(스트림은 orval 생성 대상이 아니라 `EventSource`로 직접 구독).
+ * 이메일은 outbox로 발송한다. Web Push는 TODO.
  * @summary 내 알림 목록 조회
  */
 export const listMyNotifications = async (
@@ -11755,7 +12215,7 @@ export const useUpdateAdPricing = <TError = unknown, TContext = unknown>(
 };
 
 export type listAdminUsersResponse200 = {
-  data: AdminUserEntry[];
+  data: AdminUserPage;
   status: 200;
 };
 

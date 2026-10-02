@@ -10,6 +10,7 @@ import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primit
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
+import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
@@ -76,7 +77,12 @@ export function TeamDetailPage() {
       onError: (error) => {
         if (error instanceof ApiError && error.status === 401) goLogin();
         else if (error instanceof ApiError && error.status === 400)
-          toast.error('신청할 수 없어요', '이미 신청했거나 내가 만든 팀이에요');
+          toast.error(
+            '신청할 수 없어요',
+            apiErrorMessage(error, '이미 신청했거나 내가 만든 팀이에요'),
+          );
+        else
+          toast.error('팀 신청에 실패했어요', apiErrorMessage(error, '잠시 후 다시 시도해주세요'));
       },
     },
   });

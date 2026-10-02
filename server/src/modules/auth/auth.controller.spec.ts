@@ -24,6 +24,7 @@ function createController() {
     register: vi.fn().mockResolvedValue({ accessToken: 'signed.jwt', user }),
     me: vi.fn().mockResolvedValue(user),
     withdraw: vi.fn().mockResolvedValue(undefined),
+    changePassword: vi.fn().mockResolvedValue(undefined),
   };
   return {
     controller: new AuthController(
@@ -84,6 +85,18 @@ describe('AuthController cookie session flow', () => {
       expect.objectContaining({ path: '/' }),
     );
   });
+
+  it('changes the authenticated user password without returning credentials', async () => {
+    const { controller, service } = createController();
+    const dto = {
+      currentPassword: testPassword,
+      newPassword: ['new', 'password'].join('-'),
+      confirmNewPassword: ['new', 'password'].join('-'),
+    };
+
+    await expect(controller.changePassword(dto, user)).resolves.toEqual({ changed: true });
+    expect(service.changePassword).toHaveBeenCalledWith(user.id, dto);
+  });
 });
 
 describe('AuthController Google callback input-security opt-out', () => {
@@ -110,9 +123,13 @@ describe('AuthController Google callback input-security opt-out', () => {
       AuthController.prototype.naverLogin,
       AuthController.prototype.kakaoLogin,
       AuthController.prototype.logout,
+      AuthController.prototype.withdraw,
+      AuthController.prototype.changePassword,
     ]) {
       expect(reflector.get(SKIP_INPUT_SECURITY_KEY, handler)).toBeUndefined();
     }
+    expect(reflector.get('isPublic', AuthController.prototype.withdraw)).toBe(false);
+    expect(reflector.get('isPublic', AuthController.prototype.changePassword)).toBe(false);
   });
 
   it('still verifies the signed state before exchanging an opaque code containing `--`', async () => {

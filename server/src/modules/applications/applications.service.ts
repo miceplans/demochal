@@ -1,7 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, exists, or } from 'drizzle-orm';
+import { and, desc, eq, exists, inArray, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { applications, businesses, challenges, orders } from '../../db/schema.js';
+import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
+import { validateFormAnswers, type FormAnswer } from './form-answers.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 
@@ -26,11 +27,12 @@ export class ApplicationsService {
           status: challenges.status,
           startDate: challenges.startDate,
           endDate: challenges.endDate,
+          applicationForm: challenges.applicationForm,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
-      if (!challenge) throw new NotFoundException('Challenge not found');
+      if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its
       // payable pending order instead of duplicating rows.
@@ -54,7 +56,31 @@ export class ApplicationsService {
         challenge.startDate.getTime() > now.getTime() ||
         challenge.endDate.getTime() < now.getTime()
       ) {
-        throw new BadRequestException('Challenge is not accepting applications');
+        throw new BadRequestException('신청을 받지 않는 챌린지입니다.');
+      }
+
+      const formAnswers = validateFormAnswers(challenge.applicationForm, dto.formAnswers);
+      const fileIds = [
+        ...new Set(
+          formAnswers
+            .filter((answer) => answer.type === 'file' && answer.value)
+            .map((answer) => answer.value as string),
+        ),
+      ];
+      if (fileIds.length) {
+        const ownedFiles = await tx
+          .select({ id: files.id })
+          .from(files)
+          .where(
+            and(
+              inArray(files.id, fileIds),
+              eq(files.uploaderUserId, userId),
+              eq(files.bucket, 'private'),
+              eq(files.uploadStatus, 'ready'),
+            ),
+          );
+        if (ownedFiles.length !== fileIds.length)
+          throw new BadRequestException('A ready private file owned by the applicant is required');
       }
 
       const [application] = await tx
@@ -64,7 +90,7 @@ export class ApplicationsService {
           userId,
           role: dto.role,
           teammates: dto.teammates ?? [],
-          formAnswers: dto.formAnswers ?? [],
+          formAnswers,
         })
         .returning();
       if (!application) throw new Error('Failed to create application');
@@ -186,16 +212,49 @@ export class ApplicationsService {
   async findById(id: string, userId: string) {
     const row = await this.findWithBusinessOwner(id);
     if (!row || (row.application.userId !== userId && row.businessOwnerId !== userId)) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
+    }
+    if (row.application.userId !== userId && row.price > 0) {
+      const [paid] = await this.db
+        .select({ id: orders.id })
+        .from(orders)
+        .where(and(eq(orders.applicationId, id), eq(orders.status, 'paid')))
+        .limit(1);
+      if (!paid) throw new NotFoundException('Application not found');
     }
     return row.application;
+  }
+
+  async findAttachment(id: string, fileId: string, userId: string) {
+    const application = await this.findById(id, userId);
+    const answers = application.formAnswers as FormAnswer[];
+    if (
+      !Array.isArray(answers) ||
+      !answers.some((answer) => answer.type === 'file' && answer.value === fileId)
+    ) {
+      throw new NotFoundException('File not found');
+    }
+    const [file] = await this.db
+      .select()
+      .from(files)
+      .where(
+        and(
+          eq(files.id, fileId),
+          eq(files.uploaderUserId, application.userId),
+          eq(files.bucket, 'private'),
+          eq(files.uploadStatus, 'ready'),
+        ),
+      )
+      .limit(1);
+    if (!file) throw new NotFoundException('File not found');
+    return file;
   }
 
   // Only the business that owns the challenge may review (status/evaluation/memo).
   async update(id: string, dto: UpdateApplicationDto, userId: string) {
     const row = await this.findWithBusinessOwner(id);
     if (!row || row.businessOwnerId !== userId) {
-      throw new NotFoundException('Application not found');
+      throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     }
 
     const [application] = await this.db
@@ -207,13 +266,17 @@ export class ApplicationsService {
       })
       .where(eq(applications.id, id))
       .returning();
-    if (!application) throw new NotFoundException('Application not found');
+    if (!application) throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     return application;
   }
 
   private async findWithBusinessOwner(id: string) {
     const [row] = await this.db
-      .select({ application: applications, businessOwnerId: businesses.ownerUserId })
+      .select({
+        application: applications,
+        businessOwnerId: businesses.ownerUserId,
+        price: challenges.price,
+      })
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
       .innerJoin(businesses, eq(challenges.businessId, businesses.id))

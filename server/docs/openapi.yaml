@@ -244,6 +244,38 @@ paths:
                   user: { $ref: '#/components/schemas/User' }
         '401':
           description: 인증 실패 (이메일 없음 또는 비밀번호 불일치)
+  /auth/password:
+    patch:
+      tags: [Auth]
+      summary: 로그인 비밀번호 변경
+      operationId: changePassword
+      x-impl-status: implemented
+      description: |
+        로그인한 사용자의 현재 비밀번호를 확인한 뒤 새 비밀번호 해시로 교체한다.
+        현재 비밀번호가 없거나(소셜 전용 계정) 일치하지 않으면 변경하지 않는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [currentPassword, newPassword, confirmNewPassword]
+              properties:
+                currentPassword: { type: string, minLength: 8, maxLength: 128 }
+                newPassword: { type: string, minLength: 8, maxLength: 128 }
+                confirmNewPassword: { type: string, minLength: 8, maxLength: 128 }
+      responses:
+        '200':
+          description: 비밀번호 변경 완료
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [changed]
+                properties:
+                  changed: { type: boolean, enum: [true] }
+        '400': { description: 소셜 전용 계정 또는 새 비밀번호 확인 불일치 }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /auth/me:
     get:
       tags: [Auth]
@@ -462,7 +494,7 @@ paths:
             schema: { $ref: '#/components/schemas/CreateChallengeRequest' }
       responses:
         '201':
-          description: 등록된 챌린지 (status=draft)
+          description: 등록된 챌린지 (status 미지정 시 `contestAutoPublish`에 따라 draft/published)
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Challenge' }
@@ -538,6 +570,38 @@ paths:
               schema: { $ref: '#/components/schemas/Challenge' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /challenges/{id}/status:
+    patch:
+      tags: [Challenges]
+      summary: 챌린지 상태 변경 (기업)
+      operationId: updateChallengeStatus
+      x-impl-status: implemented
+      description: |
+        소유 기업만 호출할 수 있다. 허용 전이는 draft → published, published → closed 뿐이며
+        그 외는 409. 권한이 없거나 존재하지 않으면 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [published, closed] }
+      responses:
+        '200':
+          description: 변경된 챌린지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Challenge' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { description: 허용되지 않는 상태 전이 }
   /challenges/{id}/stats:
     get:
       tags: [Challenges]
@@ -885,6 +949,7 @@ paths:
                         type: object
                         nullable: true
                         description: 유료 챌린지(price > 0)의 pending 주문 — 토스 결제 요청(orderId·amount)과 orderName 표시(name)에 사용. 무료 챌린지는 null.
+                        required: [id, amount, name]
                         properties:
                           id: { type: string, format: uuid }
                           amount: { type: integer }
@@ -937,6 +1002,28 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Application' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
+  /applications/{id}/files/{fileId}:
+    get:
+      tags: [Applications]
+      summary: 지원서 첨부파일 다운로드 주소 조회
+      operationId: getApplicationAttachment
+      x-impl-status: implemented
+      description: 신청자 또는 해당 기업 소유자만 접근 가능. 유료 신청은 기업 조회 전에 결제 완료가 필요하다. private 파일에 대한 5분 유효 URL을 반환하며 응답은 캐시하지 않는다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: fileId, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 일시적인 비공개 파일 다운로드 URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, format: uri }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /applications/{id}:
     get:
       tags: [Applications]
@@ -2265,12 +2352,25 @@ paths:
         - name: position
           in: query
           schema: { type: string, description: '포지션 뱃지 (부분 일치, 예: 프론트엔드)' }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1, description: '페이지 번호 (1부터)' }
+        - name: pageSize
+          in: query
+          schema:
+            {
+              type: integer,
+              minimum: 1,
+              maximum: 50,
+              default: 30,
+              description: '페이지 크기 (최대 50)',
+            }
       responses:
         '200':
-          description: 사용자 목록
+          description: 사용자 목록 (최신 가입순, offset 페이지네이션)
           content:
             application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
   /admin/users/{id}/suspend:
     post:
       tags: [Admin]
@@ -2729,6 +2829,12 @@ components:
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
+        status:
+          {
+            type: string,
+            enum: [draft, published],
+            description: '공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다.',
+          }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
         recruitUrl:
           {
@@ -2970,6 +3076,9 @@ components:
         teammates: { type: array, items: { type: string }, description: 팀원 구성 }
         evaluation: { type: string, enum: [undecided, pass, fail] }
         managerMemo: { type: string }
+        formAnswers:
+          type: array
+          items: { $ref: '#/components/schemas/ApplicationFormAnswer' }
         challengeTitle: { type: string, description: 'listMyApplications 응답 전용 — 챌린지 제목' }
         businessName:
           { type: string, description: 'listMyApplications 응답 전용 — 주최 기업(협회)명' }
@@ -2981,11 +3090,32 @@ components:
         role: { type: string }
         teammates: { type: array, items: { type: string } }
         formAnswers:
-          {
-            type: array,
-            items: { type: object, additionalProperties: true },
-            description: 신청폼 응답 (planned),
-          }
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ApplicationAnswerInput' }
+          description: 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID.
+    ApplicationAnswerInput:
+      type: object
+      required: [questionId, value]
+      properties:
+        questionId: { type: string, maxLength: 500 }
+        value:
+          oneOf:
+            - { type: string, maxLength: 10000 }
+            - {
+                type: array,
+                maxItems: 50,
+                uniqueItems: true,
+                items: { type: string, maxLength: 500 },
+              }
+    ApplicationFormAnswer:
+      allOf:
+        - $ref: '#/components/schemas/ApplicationAnswerInput'
+        - type: object
+          required: [title, type]
+          properties:
+            title: { type: string, description: 서버에서 저장한 제출 당시 질문 제목 }
+            type: { type: string, enum: [dropdown, checkbox, radio, file, short, long] }
     Notification:
       type: object
       required: [id, type, payload, createdAt]
@@ -3443,6 +3573,14 @@ components:
         dday: { type: string, description: "'D-7' 형태" }
         teams: { type: string, description: "'팀 모집 3건' 형태" }
         unread: { type: boolean }
+    AdminUserPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+        total: { type: integer, description: 필터에 해당하는 전체 사용자 수 }
+        page: { type: integer }
+        pageSize: { type: integer }
     AdminUserEntry:
       type: object
       description: 사용자 관리 테이블 행 (UserRow) — 이메일 마스킹, 신고 누적 포함

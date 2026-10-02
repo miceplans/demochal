@@ -6,7 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { TrafficRange } from '@/data/admin-design';
-import { formatDateTimeDot as formatBaseDate } from '@/lib/date';
+import { formatDateTimeDotKst as formatBaseDate } from '@/lib/date';
 import { AdminSectionTitle, StatCard, StatRow } from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';
@@ -48,7 +48,7 @@ export function AdminDashboardScreen() {
       </section>
       {dashboard?.generatedAt && (
         <span style={{ ...textStyle.metaText, color: c.gray500 }}>
-          {formatBaseDate(dashboard.generatedAt)} 기준
+          {formatBaseDate(dashboard.generatedAt)} 기준 (KST)
         </span>
       )}
     </>
