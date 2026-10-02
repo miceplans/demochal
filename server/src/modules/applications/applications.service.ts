@@ -32,6 +32,11 @@ export class ApplicationsService {
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
       if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+      // Private visibility is a hard access boundary, including retries that
+      // would otherwise reuse or replace a pending payment order.
+      if (challenge.visibility === 'private') {
+        throw new BadRequestException('신청을 받지 않는 챌린지입니다.');
+      }
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its
       // payable pending order instead of duplicating rows.
@@ -52,7 +57,6 @@ export class ApplicationsService {
       const now = new Date();
       if (
         challenge.status !== 'published' ||
-        challenge.visibility === 'private' ||
         challenge.startDate.getTime() > now.getTime() ||
         challenge.endDate.getTime() < now.getTime()
       ) {

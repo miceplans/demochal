@@ -136,6 +136,18 @@ describe('ApplicationsService.apply', () => {
     expect(db.insert).not.toHaveBeenCalled();
   });
 
+  it('does not reuse or replace an existing application order after it becomes private', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'private', visibility: 'private' },
+      existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
+      latestOrder: { id: 'old-order', amount: 10000, status: 'canceled' },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
   it.each([
     ['closed', { status: 'closed' }],
     ['expired', { endDate: new Date(Date.now() - 60_000) }],

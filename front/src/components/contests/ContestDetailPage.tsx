@@ -89,6 +89,9 @@ export function ContestDetailPage({
         sections: challenge.description
           ? [
               ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
+              ...((challenge.hashtags ?? []).length
+                ? [{ title: '해시태그', body: (challenge.hashtags ?? []).join(' ') }]
+                : []),
               { title: '상세 안내', body: challenge.description },
               ...(challenge.inquiryContact
                 ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
