@@ -152,7 +152,7 @@ export function PeopleBanners() {
             style={{ objectFit: 'cover' }}
           />
         </Layer>
-        <Layer style={{ right: -12, top: 71.5, width: 368, height: 175 }}>
+        <Layer style={{ right: -12, top: 79.5, width: 368, height: 175 }}>
           <Image
             src="/assets/people/banner-team-people.png"
             alt=""
