@@ -1,8 +1,10 @@
 'use client';
+import Image from 'next/image';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import type { PersonCardModel } from './person';
-import { Row, Tag, Wrap } from '@/components/common/Primitives';
+import { Wrap } from '@/components/common/Primitives';
+import { badgeToneColors, type BadgeTone } from '@/components/ui/Badge';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -11,10 +13,10 @@ import { textStyle } from '@/styles/typography';
 const Card = styled.div({
   display: 'flex',
   flexDirection: 'column',
+  alignItems: 'center',
   justifyContent: 'space-between',
-  gap: 24,
+  gap: 12,
   width: '100%',
-  minHeight: 177,
   padding: 20,
   border: `1px solid ${c.gray200}`,
   borderRadius: 8,
@@ -32,7 +34,19 @@ const Card = styled.div({
     },
   },
 });
-const Bottom = styled.div({ display: 'grid', alignItems: 'end' });
+const Top = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 6,
+  maxWidth: '100%',
+});
+const Bottom = styled.div({
+  display: 'grid',
+  alignItems: 'end',
+  justifyItems: 'center',
+  width: '100%',
+});
 const layer = {
   gridArea: '1 / 1',
   transition: 'opacity 0.15s ease, visibility 0.15s ease',
@@ -41,13 +55,14 @@ const Info = styled.div({
   ...layer,
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
-  '@media (hover: none)': { gridArea: 'auto', marginBottom: 16 },
+  gap: 6,
+  '@media (hover: none)': { gridArea: 'auto' },
 });
 const Actions = styled.div({
   ...layer,
   display: 'flex',
   gap: 4,
+  width: '100%',
   opacity: 0,
   visibility: 'hidden',
   '@media (hover: none)': { gridArea: 'auto', opacity: 1, visibility: 'visible' },
@@ -76,19 +91,50 @@ const ActionLink = styled(Link)({
 
 const Avatar = styled.span({
   flexShrink: 0,
-  width: 59,
-  height: 59,
+  width: 147,
+  height: 147,
   borderRadius: '50%',
   background: c.gray100,
 });
-const Name = styled.span({ ...textStyle.h1_2, color: c.gray900, wordBreak: 'break-word' });
+const Name = styled.span({
+  ...textStyle.h1_2,
+  color: c.gray900,
+  textAlign: 'center',
+  wordBreak: 'break-word',
+});
+// TODO: 포트폴리오 배지의 하늘색(Figma 1354:23299)은 아직 디자인 토큰에 없다 — 토큰 추가 시 교체.
+const portfolioColors = { background: '#dff7ff', color: '#169ac6' };
+const VerifyBadge = styled.span<{ tone: BadgeTone }>(({ tone }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  height: 20,
+  padding: '4px 9.5px',
+  borderRadius: 7.6,
+  fontSize: 10.4,
+  fontWeight: 400,
+  lineHeight: 'normal',
+  whiteSpace: 'nowrap',
+  ...badgeToneColors(tone),
+  ...(tone === 'blue' ? portfolioColors : tone === 'gray' ? { color: c.gray900 } : {}),
+}));
 const StackChip = styled.span({
-  ...textStyle.finePrint,
-  borderRadius: 15,
-  padding: '4px 10px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 20,
+  padding: '4px 10.3px',
+  borderRadius: 14.67,
+  fontSize: 9.5,
+  fontWeight: 400,
+  lineHeight: 'normal',
   background: c.gray100,
   color: c.gray900,
 });
+const BADGE_ICONS: Partial<Record<BadgeTone, { src: string; size: number }>> = {
+  gray: { src: '/assets/people/card-github.svg', size: 10.4 },
+  blue: { src: '/assets/people/card-portfolio.svg', size: 11.7 },
+};
 
 export function PersonCard({
   person,
@@ -103,19 +149,31 @@ export function PersonCard({
   if (person.hasAwards) badges.push({ label: '출품이력', tone: 'green' });
   return (
     <Card>
-      <Row gap={12}>
+      <Top>
         <Avatar aria-hidden />
         <Name>{person.name ?? '이름 없음'}</Name>
-      </Row>
+      </Top>
       <Bottom>
         <Info data-card-info>
           {badges.length > 0 && (
             <Wrap style={{ gap: 4 }}>
-              {badges.map((badge) => (
-                <Tag key={badge.label} tone={badge.tone}>
-                  {badge.label}
-                </Tag>
-              ))}
+              {badges.map((badge) => {
+                const icon = BADGE_ICONS[badge.tone];
+                return (
+                  <VerifyBadge key={badge.label} tone={badge.tone}>
+                    {icon && (
+                      <Image
+                        src={icon.src}
+                        width={icon.size}
+                        height={icon.size}
+                        alt=""
+                        unoptimized
+                      />
+                    )}
+                    {badge.label}
+                  </VerifyBadge>
+                );
+              })}
             </Wrap>
           )}
           {(person.stacks ?? []).length > 0 && (
