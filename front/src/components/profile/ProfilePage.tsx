@@ -89,43 +89,47 @@ function ProfilePageContent() {
   const stacks = user.stacks ?? [];
   const awards = user.awardHistory ?? [];
   const badges = verificationBadges(user);
-  const subline = [user.position, user.region].filter(Boolean).join(' · ');
 
   return (
     <UserShell title="프로필" compact>
       <Content>
         <Grid>
           <ProfileCard>
-            <Stack gap={30}>
-              <Row gap={16} style={{ alignItems: 'flex-start' }}>
-                <Avatar aria-hidden />
-                <Stack gap={4} style={{ flex: 1 }}>
-                  <Name>{user.name ?? '이름 없음'}</Name>
-                  {subline ? <Sub>{subline}</Sub> : null}
-                </Stack>
-              </Row>
-              <Stack gap={16}>
-                {user.bio ? <Bio>{user.bio}</Bio> : null}
-                <Stack gap={12}>
-                  <SectionLabel>외부 링크</SectionLabel>
-                  {links.length === 0 ? (
-                    <Muted>등록된 외부 링크가 없어요.</Muted>
-                  ) : (
-                    links.map((link) => (
-                      <LinkRow
-                        key={link.url ?? link.label}
-                        href={link.url}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Icon name={linkIcon(link.url)} size={16} />
-                        <span>{linkText(link)}</span>
-                      </LinkRow>
-                    ))
-                  )}
-                </Stack>
-              </Stack>
+            <Row gap={16}>
+              <Avatar aria-hidden />
+              <Name>{user.name ?? '이름 없음'}</Name>
+            </Row>
+            {user.bio ? <Bio>{user.bio}</Bio> : null}
+            {badges.length > 0 && (
+              <Wrap style={{ gap: 8 }}>
+                {badges.map((badge) => (
+                  <ProfileBadge key={badge.label} tone={badge.tone}>
+                    <Icon name={badge.icon} size={12} />
+                    {badge.label}
+                  </ProfileBadge>
+                ))}
+              </Wrap>
+            )}
+            <Divider />
+            <Stack gap={12}>
+              <SectionLabel>외부 링크</SectionLabel>
+              {links.length === 0 ? (
+                <Muted>등록된 외부 링크가 없어요.</Muted>
+              ) : (
+                links.map((link) => (
+                  <LinkRow
+                    key={link.url ?? link.label}
+                    href={link.url}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <Icon name={linkIcon(link.url)} size={16} />
+                    <span>{linkText(link)}</span>
+                  </LinkRow>
+                ))
+              )}
             </Stack>
+            <Divider />
             <Stack gap={8}>
               {canInvite && (
                 <Button onClick={() => setScoutOpen(true)} style={{ width: '100%' }}>
@@ -143,21 +147,6 @@ function ProfilePageContent() {
             </Stack>
           </ProfileCard>
           <Stack gap={28}>
-            <Section>
-              <SectionTitle>내 뱃지</SectionTitle>
-              {badges.length === 0 ? (
-                <Muted>등록된 뱃지가 없어요.</Muted>
-              ) : (
-                <Wrap style={{ gap: 8 }}>
-                  {badges.map((badge) => (
-                    <Tag key={badge.label} tone={badge.tone}>
-                      <Icon name={badge.icon} size={12} />
-                      {badge.label}
-                    </Tag>
-                  ))}
-                </Wrap>
-              )}
-            </Section>
             <Section>
               <SectionTitle>기술 스택</SectionTitle>
               {stacks.length === 0 ? (
@@ -224,7 +213,7 @@ const Grid = styled.div({
 const ProfileCard = styled.div({
   display: 'flex',
   flexDirection: 'column',
-  gap: 48,
+  gap: 20,
   padding: 24,
   border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
@@ -239,7 +228,14 @@ const Avatar = styled.div({
   background: c.gray100,
 });
 const Name = styled.p({ ...textStyle.subtitle2, color: c.gray900, lineHeight: 'normal' });
-const Sub = styled.p({ ...textStyle.finePrint2, color: c.gray700, lineHeight: 'normal' });
+const ProfileBadge = styled(Tag)({ padding: '4px 10px', borderRadius: 8, lineHeight: 'normal' });
+const Divider = styled.hr({
+  width: '100%',
+  height: 1,
+  margin: 0,
+  border: 0,
+  background: c.gray100,
+});
 const Bio = styled.p({ ...textStyle.finePrint2, color: c.gray700, lineHeight: 'normal' });
 const SectionLabel = styled.p({ ...textStyle.subtitle, color: c.gray900 });
 const LinkRow = styled.a({
@@ -253,7 +249,7 @@ const LinkRow = styled.a({
   '&:hover': { color: c.gray900 },
 });
 const Section = styled.section({ display: 'flex', flexDirection: 'column', gap: 12 });
-const SectionTitle = styled.h2({ ...textStyle.title, color: c.gray900, lineHeight: 'normal' });
+const SectionTitle = styled.h2({ ...textStyle.h3_2, color: c.gray900, lineHeight: 'normal' });
 const StackChip = styled.span({
   ...textStyle.finePrint2,
   borderRadius: 20,
