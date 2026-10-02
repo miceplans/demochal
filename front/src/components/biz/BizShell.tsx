@@ -313,7 +313,7 @@ const FooterBox = styled.footer({
   ...textStyle.body,
   lineHeight: 'normal',
 });
-export function BizFooter({ logoSize = 24 }: { logoSize?: number }) {
+export function BizFooter({ logoSize = 31 }: { logoSize?: number }) {
   const hrefOf = useBizHref();
   return (
     <FooterBox>
