@@ -150,7 +150,7 @@ const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   fontWeight: 600,
-  fontSize: 20,
+  fontSize: 16,
 }));
 const QuestionTitleInput = styled.input({
   flex: 1,
