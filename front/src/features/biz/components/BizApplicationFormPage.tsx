@@ -150,7 +150,7 @@ const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   alignItems: 'center',
   justifyContent: 'center',
   fontWeight: 600,
-  fontSize: 16,
+  fontSize: 14,
 }));
 const QuestionTitleInput = styled.input({
   flex: 1,
@@ -210,7 +210,7 @@ const AddOptionButton = styled.button({
 
 const PreviewInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray100}`,
+  border: `1px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.gray50,
@@ -218,7 +218,7 @@ const PreviewInput = styled.input({
 });
 const PreviewTextarea = styled.textarea({
   minHeight: 72,
-  border: `1px solid ${c.gray100}`,
+  border: `1px solid ${c.gray200}`,
   borderRadius: 8,
   padding: 14,
   background: c.gray50,
