@@ -30,6 +30,7 @@ type AdsScreen = 'manage' | 'products' | 'complete';
 type SelectedAd = {
   placement: AdPlacement;
   name: string;
+  landingUrl?: string;
   price: number;
   period: string;
   product: AdProduct;
@@ -73,9 +74,11 @@ export function BizAdsPage() {
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
   const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
   const [adTitles, setAdTitles] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [adLinks, setAdLinks] = useState<Partial<Record<AdPlacement, string>>>({});
   const [processing, setProcessing] = useState(false);
   const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
   const [adName, setAdName] = useState('');
+  const [adLink, setAdLink] = useState('');
   const previewUrls = useRef<Set<string>>(new Set());
   const toast = useToast();
   const hrefOf = useBizHref();
@@ -118,7 +121,7 @@ export function BizAdsPage() {
       dailyPrices[product.placement] = product.dailyPrice;
     }
   }
-  const openPayment = async (placement: AdPlacement) => {
+  const openPayment = async (placement: AdPlacement, meta?: { name: string; link: string }) => {
     try {
       // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
       const { data: products } = await generated.listAdProducts();
@@ -136,7 +139,10 @@ export function BizAdsPage() {
       }
       setSelectedAd({
         placement,
-        name: adTitles[placement]?.trim() || product.name,
+        // 모달에서 방금 입력한 이름/링크를 우선 쓴다. 바로 전 setState가 아직
+        // 반영되지 않았을 때 state를 읽으면 입력값이 무시되기 때문이다.
+        name: meta?.name || adTitles[placement]?.trim() || product.name,
+        landingUrl: meta?.link || adLinks[placement] || undefined,
         price: product.dailyPrice,
         period: start,
         product,
@@ -206,6 +212,7 @@ export function BizAdsPage() {
         `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
       );
       setAdName(adTitles[placement] ?? '');
+      setAdLink(adLinks[placement] ?? '');
       setNameModalPlacement(placement);
     } catch {
       if (image) URL.revokeObjectURL(image.previewUrl);
@@ -230,6 +237,8 @@ export function BizAdsPage() {
           expectedDailyPrice: selectedAd.product.dailyPrice,
           title: selectedAd.name,
           imageFileId: uploadedFileIds[selectedAd.placement],
+          // 빈 문자열은 전송하지 않는다(서버 @IsUrl 검증 대상이 된다).
+          landingUrl: selectedAd.landingUrl,
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
@@ -587,18 +596,13 @@ export function BizAdsPage() {
                   maxLength={30}
                   autoFocus
                 />
-                <PositionField>
-                  <PositionSelect
-                    value={nameModalPlacement}
-                    disabled
-                    aria-label="광고 위치"
-                    title="업로드한 이미지에 맞춰 지정된 위치예요"
-                  >
-                    <option value="hero">홈 상단 배너 광고</option>
-                    <option value="gallery">홈 중간 이미지 광고</option>
-                  </PositionSelect>
-                  <PositionIcon src="/assets/icons/figma-chevron-down.svg" alt="" />
-                </PositionField>
+                <NameInput
+                  value={adLink}
+                  onChange={(event) => setAdLink(event.target.value)}
+                  placeholder="https:// 광고 클릭 시 이동할 링크 (선택)"
+                  aria-label="광고 링크"
+                  inputMode="url"
+                />
               </NameFields>
               <PopupActions>
                 <PopupAction type="button" secondary onClick={() => setNameModalPlacement(null)}>
@@ -609,9 +613,19 @@ export function BizAdsPage() {
                   disabled={!adName.trim()}
                   onClick={() => {
                     const placement = nameModalPlacement;
+                    const link = adLink.trim();
+                    // 홈 캐러셀은 http(s)만 랜딩으로 쓴다 — 나머지 스킴은 여기서 막는다.
+                    if (link && !/^https?:\/\//i.test(link)) {
+                      toast.error(
+                        '링크 주소를 확인해주세요',
+                        'http:// 또는 https://로 시작하는 주소만 등록할 수 있어요',
+                      );
+                      return;
+                    }
                     setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
+                    setAdLinks((current) => ({ ...current, [placement]: link }));
                     setNameModalPlacement(null);
-                    void openPayment(placement);
+                    void openPayment(placement, { name: adName.trim(), link });
                   }}
                 >
                   등록하기
@@ -816,29 +830,5 @@ const NameInput = styled.input({
   ...textStyle.body,
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const PositionField = styled.div({ position: 'relative', display: 'flex' });
-const PositionSelect = styled.select({
-  width: '100%',
-  height: 44,
-  padding: '0 34px 0 14px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  background: c.white,
-  color: c.gray900,
-  cursor: 'pointer',
-  ...textStyle.body,
-  appearance: 'none',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
-});
-const PositionIcon = styled.img({
-  position: 'absolute',
-  top: '50%',
-  right: 12,
-  width: 14,
-  height: 14,
-  transform: 'translateY(-50%)',
-  pointerEvents: 'none',
 });
 const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });
