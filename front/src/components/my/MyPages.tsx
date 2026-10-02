@@ -56,6 +56,14 @@ const MobileMenu = styled.nav({
   borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
+const MaterialSymbol = styled.span({
+  fontFamily: 'Material Symbols Outlined',
+  fontSize: 18,
+  lineHeight: 1,
+  fontWeight: 400,
+  fontStyle: 'normal',
+  fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20",
+});
 const Participating = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
@@ -572,7 +580,7 @@ export function MyPage() {
     }
   };
   return (
-    <MyShell title="MY">
+    <MyShell title="MY" hideMobileTitle>
       <Stack gap={28}>
         <Row gap={24}>
           <AvatarPicker busy={avatarUploading} aria-label="프로필 이미지 변경">
@@ -613,7 +621,7 @@ export function MyPage() {
               disabled={me.data?.status !== 200}
               onClick={startBioEdit}
             >
-              <Icon name="imgAddSlotIc" size={12} />
+              <MaterialSymbol aria-hidden>add</MaterialSymbol>
             </AddButton>
           </Row>
         )}
@@ -624,7 +632,7 @@ export function MyPage() {
           extra={certificates}
           trailing={
             <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
-              <Icon name="imgAddSlotIc" size={12} />
+              <MaterialSymbol aria-hidden>add</MaterialSymbol>
             </AddButton>
           }
         />
@@ -648,7 +656,7 @@ export function MyPage() {
               disabled={me.data?.status !== 200}
               onClick={() => setSkillOpen(true)}
             >
-              <Icon name="imgAddSlotIc" size={12} />
+              <MaterialSymbol aria-hidden>add</MaterialSymbol>
             </AddButton>
           }
         />
