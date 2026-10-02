@@ -350,7 +350,9 @@ export function BizAdsPage() {
             </TableHead>
             {contractsLoading && (
               <TableRow role="row">
-                <LoadingState label="광고 목록을 불러오는 중이에요." />
+                <FullSpan>
+                  <LoadingState compact label="광고 목록을 불러오는 중이에요." />
+                </FullSpan>
               </TableRow>
             )}
             {!contractsLoading && contractsError && (
@@ -667,6 +669,7 @@ const TableRow = styled.div({
   borderTop: `0.5px solid ${c.gray200}`,
   ...textStyle.body,
 });
+const FullSpan = styled.div({ gridColumn: '1 / -1' });
 const TableHead = styled(TableRow)({
   minHeight: 48,
   borderTop: 0,
