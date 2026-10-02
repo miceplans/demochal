@@ -551,9 +551,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
         <ToolButton type="button" title="링크 필드 추가" onClick={() => addQuestion('short')}>
           <Icon src="/assets/icons/toolbar-link.svg" size={20} alt="링크 필드 추가" />
         </ToolButton>
-        <ToolButton type="button" title="AI로 질문 만들기 (준비 중)" disabled>
-          AI
-        </ToolButton>
+        {/* TODO: "AI로 질문 만들기" 버튼은 생성 API가 생기면 다시 노출한다. */}
         <ToolButton type="button" title="파일 업로드 질문 추가" onClick={() => addQuestion('file')}>
           <Icon src="/assets/icons/toolbar-file.svg" size={20} alt="파일 업로드 질문 추가" />
         </ToolButton>
