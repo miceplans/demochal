@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -47,6 +47,7 @@ function startsWithAt(bytes: Uint8Array, offset: number, ...signature: number[])
 
 @Injectable()
 export class FilesService {
+  private readonly logger = new Logger(FilesService.name);
   private readonly s3 = createS3Client();
 
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
@@ -95,9 +96,22 @@ export class FilesService {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus === 'ready') return this.withPublicUrl(file);
 
-    const head = await this.s3.send(
-      new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
-    );
+    let head;
+    try {
+      head = await this.s3.send(
+        new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
+      );
+    } catch (error) {
+      const name = (error as { name?: string } | undefined)?.name;
+      if (name !== 'NotFound' && name !== 'NoSuchKey') throw error;
+      // A concurrent finalize may have already promoted (and removed) the pending
+      // object — return its result instead of failing.
+      const current = await this.findOwnedFile(id, userId);
+      if (current.uploadStatus === 'ready') return this.withPublicUrl(current);
+      throw new NotFoundException(
+        '업로드된 파일을 찾을 수 없습니다. 업로드를 마친 뒤 다시 시도해 주세요.',
+      );
+    }
     if (
       head.ContentType !== file.contentType ||
       !head.ContentLength ||
@@ -132,7 +146,6 @@ export class FilesService {
           MetadataDirective: 'REPLACE',
         }),
       );
-      await this.s3.send(new DeleteObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
     }
 
     const [readyFile] = await this.db
@@ -140,6 +153,17 @@ export class FilesService {
       .set({ bucket: file.requestedBucket, key: targetKey, uploadStatus: 'ready' })
       .where(eq(files.id, id))
       .returning();
+
+    // Remove the pending original only after the DB points at the promoted copy —
+    // deleting first would lose the file if the update failed. A failed delete
+    // just leaves an orphan under pending/.
+    if (targetBucket !== env.s3PrivateBucket) {
+      try {
+        await this.s3.send(new DeleteObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
+      } catch (error) {
+        this.logger.warn(`Failed to delete promoted pending object for file ${id}`, error);
+      }
+    }
     return this.withPublicUrl(readyFile!);
   }
 
