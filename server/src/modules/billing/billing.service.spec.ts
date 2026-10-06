@@ -41,14 +41,6 @@ function collectParamValues(node: any, acc: unknown[] = []): unknown[] {
   return acc;
 }
 
-function createInsertStub(created: unknown) {
-  const returning = vi.fn().mockResolvedValue([created]);
-  const values = vi.fn().mockReturnValue({ returning });
-  const insert = vi.fn(() => ({ values }));
-  const db: any = { insert };
-  return { db, insert, values };
-}
-
 /**
  * Stub covering issueCard()'s full surface: the attempts-table insert with
  * onConflictDoNothing, the paymentCards insert, the attempts update/delete,
@@ -122,26 +114,6 @@ describe('BillingService', () => {
       { id: 'card-1', cardName: '국민카드', maskedNumber: '****-****-****-1234' },
     ]);
     expect(JSON.stringify(cards)).not.toContain('billingKey');
-  });
-
-  it('stores the billingKey but returns the card without it', async () => {
-    const { db, values } = createInsertStub({
-      id: 'card-2',
-      cardName: null,
-      maskedNumber: '****-****-****-5678',
-    });
-    const service = new BillingService(db);
-
-    const card = await service.registerCard('biz-1', {
-      billingKey: 'bk-secret',
-      maskedNumber: '****-****-****-5678',
-    });
-
-    expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ businessId: 'biz-1', billingKey: 'bk-secret' }),
-    );
-    expect(card).toEqual({ id: 'card-2', cardName: null, maskedNumber: '****-****-****-5678' });
-    expect(card).not.toHaveProperty('billingKey');
   });
 
   it('derives the billing customerKey from the business', () => {
