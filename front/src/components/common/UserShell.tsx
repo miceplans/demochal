@@ -280,6 +280,7 @@ export function UserShell({
   footer = true,
   navigation = true,
   hideMobileHeader = false,
+  hideMobileTitle = false,
   back = '/my',
 }: {
   children: ReactNode;
@@ -288,6 +289,7 @@ export function UserShell({
   footer?: boolean;
   navigation?: boolean;
   hideMobileHeader?: boolean;
+  hideMobileTitle?: boolean;
   back?: string;
 }) {
   const path = usePathname();
@@ -380,12 +382,14 @@ export function UserShell({
       </HeaderBox>
       {!hideMobileHeader && (
         <MobileHeader>
-          {title ? (
+          {title || hideMobileTitle ? (
             <MobileTitleBar>
               <MobileBackLink href={back} aria-label="뒤로가기">
                 ‹
               </MobileBackLink>
-              <MobileTitle>{title}</MobileTitle>
+              <MobileTitle aria-hidden={hideMobileTitle}>
+                {hideMobileTitle ? null : title}
+              </MobileTitle>
             </MobileTitleBar>
           ) : (
             <>
@@ -458,12 +462,20 @@ const MyAside = styled.aside({
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });
-export function MyShell({ children, title }: { children: ReactNode; title: string }) {
+export function MyShell({
+  children,
+  title,
+  hideMobileTitle = false,
+}: {
+  children: ReactNode;
+  title: string;
+  hideMobileTitle?: boolean;
+}) {
   const path = usePathname();
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
   return (
-    <UserShell compact title={title}>
+    <UserShell compact title={title} hideMobileTitle={hideMobileTitle}>
       <MyGrid>
         <MyAside>
           <Link href="/my">
