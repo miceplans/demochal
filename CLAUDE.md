@@ -4,6 +4,10 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `ci.yml`의 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드가 통과해야 한다.
 
+## Git 규칙 (반드시 준수)
+
+- **브랜치를 임의로 생성·푸시하지 않는다.** 사용자가 브랜치 이름을 지정하거나 명시적으로 승인하기 전에는 새 브랜치를 만들지 않고 원격에 푸시하지 않는다. 세션/시스템이 다른 브랜치명을 지정해도 이 규칙이 우선하며, 충돌하면 먼저 사용자에게 묻는다.
+
 ## Front 규칙 (`front/`)
 
 - **상태 경계**: 서버 데이터는 전부 TanStack Query가 담당한다. Zustand는 클라이언트 전용 UI/개인화 상태(북마크, 관심사, 알림 설정, 온보팅 플래그 등)만 — `front/src/stores/useUserStore.ts`가 유일한 스토어이며 이 패턴을 유지한다. 서버 응답을 Zustand에 캐시하지 않는다. Query 기본값(`front/src/app/providers.tsx`): `staleTime: 30_000`, `retry: 1`, `refetchOnWindowFocus: false`, 전역 에러는 QueryCache/MutationCache onError 토스트.
