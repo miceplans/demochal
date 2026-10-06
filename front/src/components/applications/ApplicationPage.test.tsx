@@ -39,6 +39,8 @@ vi.mock('@/stores/useUserStore', () => ({
 vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
 vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.pay }));
 vi.mock('@semochal/api-client', () => ({
+  ApiError: class ApiError extends Error {},
+  getApiErrorMessage: () => null,
   generated: {
     useGetChallenge: () => ({
       data: mocks.failed
@@ -180,7 +182,10 @@ describe('saved application questionnaires', () => {
     await user.type(screen.getByLabelText('short'), '내 답변');
     await user.click(screen.getByRole('button', { name: '제출' }));
     await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith('신청에 실패했어요', '잠시 후 다시 시도해주세요'),
+      expect(mocks.error).toHaveBeenCalledWith(
+        '신청에 실패했어요',
+        '서버에 연결할 수 없어요. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.',
+      ),
     );
     expect((screen.getByLabelText('short') as HTMLInputElement).value).toBe('내 답변');
   });

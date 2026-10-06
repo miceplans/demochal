@@ -91,15 +91,19 @@ describe('MyPage 링크 섹션', () => {
     };
   });
 
-  it('등록된 링크를 프로필 표시 규칙으로 보여준다', () => {
+  it('등록된 링크를 인라인 편집 행으로 보여준다', () => {
     renderMyPage();
-    expect(screen.getByText('github.com/kim')).toBeTruthy();
+    expect((screen.getByLabelText('링크 이름 1') as HTMLInputElement).value).toBe('GitHub');
+    expect((screen.getByLabelText('링크 주소 1') as HTMLInputElement).value).toBe(
+      'https://github.com/kim',
+    );
   });
 
-  it('링크가 없으면 안내 문구를 보여준다', () => {
+  it('링크가 없으면 빈 편집 목록과 추가 버튼을 보여준다', () => {
     mocks.me.externalLinks = [];
     renderMyPage();
-    expect(screen.getByText('링크를 남겨보세요.')).toBeTruthy();
+    expect(screen.queryByLabelText('링크 이름 1')).toBeNull();
+    expect(screen.getByRole('button', { name: '링크 추가' })).toBeTruthy();
   });
 
   it('링크를 추가해 저장하면 스킴을 붙여 externalLinks로 저장한다', async () => {
@@ -108,21 +112,16 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('링크를 남겨보세요.'));
-    expect(screen.getByLabelText('링크 관리')).toBeTruthy();
-
-    await user.click(screen.getByRole('button', { name: '+ 링크 추가' }));
+    await user.click(screen.getByRole('button', { name: '링크 추가' }));
     await user.type(screen.getByLabelText('링크 이름 1'), '블로그');
     await user.type(screen.getByLabelText('링크 주소 1'), 'blog.example.com');
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.tab();
 
     await waitFor(() =>
       expect(mocks.mutateAsync).toHaveBeenCalledWith({
         data: { externalLinks: [{ label: '블로그', url: 'https://blog.example.com' }] },
       }),
     );
-    expect(mocks.success).toHaveBeenCalledWith('링크를 저장했어요');
-    expect(screen.queryByLabelText('링크 관리')).toBeNull();
   });
 
   it('기존 링크가 있는 상태에서 추가하면 기존 값을 유지한다', async () => {
@@ -130,16 +129,10 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('github.com/kim'));
-    expect((screen.getByLabelText('링크 이름 1') as HTMLInputElement).value).toBe('GitHub');
-    expect((screen.getByLabelText('링크 주소 1') as HTMLInputElement).value).toBe(
-      'https://github.com/kim',
-    );
-
-    await user.click(screen.getByRole('button', { name: '+ 링크 추가' }));
+    await user.click(screen.getByRole('button', { name: '링크 추가' }));
     await user.type(screen.getByLabelText('링크 이름 2'), '노션');
     await user.type(screen.getByLabelText('링크 주소 2'), 'https://notion.so/kim');
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.tab();
 
     await waitFor(() =>
       expect(mocks.mutateAsync).toHaveBeenCalledWith({
@@ -157,11 +150,10 @@ describe('MyPage 링크 섹션', () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('github.com/kim'));
     const urlInput = screen.getByLabelText('링크 주소 1');
     await user.clear(urlInput);
     await user.type(urlInput, 'javascript:alert(1)');
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.tab();
 
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
     expect(mocks.error).toHaveBeenCalledWith(
@@ -170,29 +162,20 @@ describe('MyPage 링크 섹션', () => {
     );
   });
 
-  it('이름이나 주소가 비어 있으면 저장하지 않는다', async () => {
+  it('빈 링크 행은 저장하지 않는다', async () => {
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('github.com/kim'));
-    await user.click(screen.getByRole('button', { name: '+ 링크 추가' }));
-    await user.click(screen.getByRole('button', { name: '저장' }));
-
+    await user.click(screen.getByRole('button', { name: '링크 추가' }));
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
-    expect(mocks.error).toHaveBeenCalledWith(
-      '링크를 확인해주세요',
-      '링크 이름과 주소를 모두 입력해주세요',
-    );
   });
 
-  it('삭제 후 저장하면 링크가 제거된다', async () => {
+  it('삭제하면 빈 목록을 저장한다', async () => {
     mocks.mutateAsync.mockResolvedValue({ status: 200 });
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('github.com/kim'));
-    await user.click(screen.getByRole('button', { name: '삭제' }));
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.click(screen.getByRole('button', { name: '링크 1 삭제' }));
 
     await waitFor(() =>
       expect(mocks.mutateAsync).toHaveBeenCalledWith({ data: { externalLinks: [] } }),
@@ -202,25 +185,22 @@ describe('MyPage 링크 섹션', () => {
   it('서버 프로필 로딩 전에는 편집을 시작할 수 없다', async () => {
     mocks.meLoaded = false;
     mocks.me.externalLinks = [];
-    const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('링크를 남겨보세요.'));
-    expect(screen.queryByLabelText('링크 관리')).toBeNull();
+    expect(screen.queryByLabelText('링크 이름 1')).toBeNull();
+    expect(screen.queryByRole('button', { name: '링크 추가' })).toBeNull();
     expect(mocks.mutateAsync).not.toHaveBeenCalled();
   });
 
-  it('저장에 실패하면 에러 토스트를 띄우고 모달을 유지한다', async () => {
+  it('저장에 실패하면 에러 토스트를 띄운다', async () => {
     mocks.mutateAsync.mockRejectedValue(new Error('boom'));
     const user = userEvent.setup();
     renderMyPage();
 
-    await user.dblClick(screen.getByText('github.com/kim'));
-    await user.click(screen.getByRole('button', { name: '저장' }));
+    await user.click(screen.getByRole('button', { name: '링크 1 삭제' }));
 
     await waitFor(() =>
       expect(mocks.error).toHaveBeenCalledWith('저장에 실패했어요', '잠시 후 다시 시도해주세요'),
     );
-    expect(screen.getByLabelText('링크 관리')).toBeTruthy();
   });
 });

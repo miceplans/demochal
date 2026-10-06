@@ -5,6 +5,8 @@ import { BizProfilePage } from './BizProfilePage';
 
 const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn(), success: vi.fn(), error: vi.fn() }));
 vi.mock('@semochal/api-client', () => ({
+  ApiError: class ApiError extends Error {},
+  getApiErrorMessage: () => null,
   generated: {
     useChangePassword: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
     useGetMyAuthInfo: () => ({

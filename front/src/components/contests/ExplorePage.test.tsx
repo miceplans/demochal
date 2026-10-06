@@ -84,9 +84,19 @@ function setQueries({
 describe('ExplorePage loading skeletons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('shows team-shaped skeleton cards while team results are pending', () => {
     setQueries({ teamsPending: true, teamsSuccess: false });
