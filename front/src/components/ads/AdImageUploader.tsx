@@ -20,6 +20,8 @@ type Props = {
   compact?: boolean;
   label?: string;
   aspectRatio?: number;
+  /** 광고가 실제로 노출되는 가로 px — 크롭 모달 미리보기를 이 크기로 맞춘다. */
+  previewWidth?: number;
   onFileSelected: (file: File) => void;
 };
 type CropImage = { file: File; url: string; width: number; height: number };
@@ -91,6 +93,7 @@ export function AdImageUploader({
   compact = false,
   label = '파일 찾기',
   aspectRatio = 1,
+  previewWidth = 400,
   onFileSelected,
 }: Props) {
   const inputId = useId();
@@ -99,6 +102,7 @@ export function AdImageUploader({
   const [image, setImage] = useState<CropImage | null>(null);
   const [position, setPosition] = useState({ x: 0.5, y: 0.5 });
   const [processing, setProcessing] = useState(false);
+  const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
 
   useEffect(
@@ -148,25 +152,17 @@ export function AdImageUploader({
   };
   const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
     const drag = dragRef.current;
-    if (!drag || !image) return;
+    const frame = frameRef.current;
+    if (!drag || !image || !frame) return;
+    // 화면에 표시된 프레임 px 기준: 이미지가 프레임을 넘치는 만큼이 이동 가능 범위.
+    const rect = frame.getBoundingClientRect();
     const sourceRatio = image.width / image.height;
-    const cropWidth = sourceRatio > aspectRatio ? image.height * aspectRatio : image.width;
-    const cropHeight = sourceRatio > aspectRatio ? image.height : image.width / aspectRatio;
+    const overflowX = sourceRatio > aspectRatio ? rect.height * sourceRatio - rect.width : 0;
+    const overflowY = sourceRatio > aspectRatio ? 0 : rect.width / sourceRatio - rect.height;
+    const clamp = (value: number) => Math.min(1, Math.max(0, value));
     setPosition({
-      x: Math.min(
-        1,
-        Math.max(
-          0,
-          drag.x - (event.clientX - drag.pointerX) / Math.max(1, image.width - cropWidth) / 2,
-        ),
-      ),
-      y: Math.min(
-        1,
-        Math.max(
-          0,
-          drag.y - (event.clientY - drag.pointerY) / Math.max(1, image.height - cropHeight) / 2,
-        ),
-      ),
+      x: overflowX > 0 ? clamp(drag.x - (event.clientX - drag.pointerX) / overflowX) : drag.x,
+      y: overflowY > 0 ? clamp(drag.y - (event.clientY - drag.pointerY) / overflowY) : drag.y,
     });
   };
   const confirmCrop = async () => {
@@ -186,10 +182,11 @@ export function AdImageUploader({
   const sourceRatio = image ? image.width / image.height : 1;
   const coverWidth = sourceRatio > aspectRatio ? `${(sourceRatio / aspectRatio) * 100}%` : '100%';
   const coverHeight = sourceRatio > aspectRatio ? '100%' : `${(aspectRatio / sourceRatio) * 100}%`;
+  // 프레임 대비 %: 이미지가 넘치는 만큼 음수 방향으로 밀어 position(0~1)에 대응시킨다.
   const imageLeft =
-    sourceRatio > aspectRatio ? `${position.x * (100 - (100 * aspectRatio) / sourceRatio)}%` : '0%';
+    sourceRatio > aspectRatio ? `${-position.x * (sourceRatio / aspectRatio - 1) * 100}%` : '0%';
   const imageTop =
-    sourceRatio > aspectRatio ? '0%' : `${position.y * (100 - (100 * sourceRatio) / aspectRatio)}%`;
+    sourceRatio > aspectRatio ? '0%' : `${-position.y * (aspectRatio / sourceRatio - 1) * 100}%`;
 
   return (
     <>
@@ -222,10 +219,16 @@ export function AdImageUploader({
               role="presentation"
               onMouseDown={(event) => event.currentTarget === event.target && closeCrop()}
             >
-              <CropDialog role="dialog" aria-modal="true" aria-labelledby="ad-crop-title">
+              <CropDialog
+                previewWidth={previewWidth}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="ad-crop-title"
+              >
                 <h2 id="ad-crop-title">광고 이미지 위치 조정</h2>
                 <p>드래그해서 광고에 보일 위치를 조정한 뒤 확인해주세요.</p>
                 <CropFrame
+                  ref={frameRef}
                   aspectRatio={aspectRatio}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
@@ -311,15 +314,16 @@ const ModalBackdrop = styled.div({
   padding: 20,
   background: 'rgba(0,0,0,.45)',
 });
-const CropDialog = styled.div({
-  width: 'min(100%, 440px)',
+const CropDialog = styled.div<{ previewWidth: number }>(({ previewWidth }) => ({
+  // 프레임(광고 실제 크기) + 좌우 패딩 24*2
+  width: `min(100%, ${previewWidth + 48}px)`,
   padding: 24,
   borderRadius: 14,
   background: c.white,
   boxShadow: '0 16px 48px rgba(0,0,0,.22)',
   '& h2': { margin: 0, ...textStyle.h3_2 },
   '& p': { margin: '8px 0 18px', color: c.gray500, ...textStyle.body },
-});
+}));
 const CropFrame = styled.div<{ aspectRatio: number }>(({ aspectRatio }) => ({
   position: 'relative',
   width: '100%',

@@ -180,6 +180,7 @@ export function AdPlacementPreview({
                       <AdImageUploader
                         compact={view === 'mobile'}
                         aspectRatio={1060 / 250}
+                        previewWidth={1060}
                         busy={processing}
                         onFileSelected={(file) => onImagePicked?.('hero', file)}
                       />
@@ -269,6 +270,7 @@ export function AdPlacementPreview({
                       <AdImageUploader
                         compact
                         aspectRatio={298 / 190}
+                        previewWidth={298}
                         busy={processing}
                         onFileSelected={(file) => onImagePicked?.('gallery', file)}
                       />
