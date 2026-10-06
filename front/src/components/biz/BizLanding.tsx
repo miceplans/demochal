@@ -11,7 +11,7 @@ import {
   BizLandingHeader,
   Logo,
 } from '@/components/biz/BizShell';
-import { BizInquiryForm } from '@/components/biz/BizInquiryForm';
+import { BizOperationsPage } from '@/features/biz/components/BizOperationsPage';
 import { DriftWall, type DriftWallItem } from '@/components/biz/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';
 
@@ -95,15 +95,6 @@ const Inquiry = styled.section({
   alignItems: 'center',
   [mobile]: { padding: '80px 16px' },
 });
-const InquiryReveal = styled(RevealOnScroll)({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 28,
-  width: '100%',
-  maxWidth: 500,
-});
-const InquiryTitle = styled.h2({ ...textStyle.display, textAlign: 'center' });
 const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
   display: 'grid',
@@ -340,18 +331,11 @@ export function BizLanding() {
         </OpsReveal>
       </Ops>
       <Inquiry id="inquiry">
-        <InquiryReveal>
-          <div
-            data-reveal-item
-            style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}
-          >
-            <FlowLabel>문의하기</FlowLabel>
-            <InquiryTitle>온라인 상담 및 견적 문의</InquiryTitle>
+        <RevealOnScroll>
+          <div data-reveal-item>
+            <BizOperationsPage titleAs="h2" />
           </div>
-          <div data-reveal-item style={{ width: '100%' }}>
-            <BizInquiryForm />
-          </div>
-        </InquiryReveal>
+        </RevealOnScroll>
       </Inquiry>
       <BizFooter />
     </>

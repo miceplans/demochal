@@ -8,7 +8,7 @@ import { orgProfile } from '@/data/biz-design';
 
 const ICON = '/assets/icons';
 
-export function BizOperationsPage() {
+export function BizOperationsPage({ titleAs }: { titleAs?: 'h1' | 'h2' }) {
   return (
     <Wrap>
       <TopBlock>
@@ -18,7 +18,7 @@ export function BizOperationsPage() {
             <Cross>X</Cross>
             <Logo size={11} />
           </Brand>
-          <Title>온라인 상담 및 견적 문의</Title>
+          <Title as={titleAs}>온라인 상담 및 견적 문의</Title>
         </Header>
         <BizInquiryForm />
       </TopBlock>
@@ -57,6 +57,7 @@ const TopBlock = styled.div({
   justifyContent: 'center',
   padding: '32px 0',
   width: 500,
+  maxWidth: '100%',
 });
 const Header = styled.div({
   display: 'flex',
@@ -69,7 +70,13 @@ const MiceLogo = styled.img({ height: 14, width: 'auto' });
 const Cross = styled.span({ ...textStyle.h3_2, color: c.gray900 });
 const Title = styled.h1({ ...textStyle.display, color: c.gray900 });
 
-const InfoRow = styled.div({ display: 'flex', gap: 27, alignItems: 'center' });
+const InfoRow = styled.div({
+  display: 'flex',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  gap: 27,
+  alignItems: 'center',
+});
 const MapImg = styled.img({ width: 300, height: 184, borderRadius: 8, objectFit: 'cover' });
 const InfoList = styled.div({ display: 'flex', flexDirection: 'column', gap: 16 });
 const InfoItem = styled.div({ display: 'flex', gap: 8, alignItems: 'center' });
