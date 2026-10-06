@@ -1,5 +1,7 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { ads } from '../../db/schema.js';
+import { OrdersService } from '../orders/orders.service.js';
 import { PaymentsService } from './payments.service.js';
 
 const fetchMock = vi.fn();
@@ -684,6 +686,174 @@ describe('PaymentsService', () => {
         '결제 승인에 실패했습니다',
       );
       expect(insertValues).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Compensation driven by the REAL OrdersService: settleOrderPaid rejects a
+   * reservation whose payment TTL expired, so both the DONE webhook and the
+   * confirm path must auto-cancel the Toss payment instead of settling.
+   */
+  describe('expired ad reservation TTL (real OrdersService)', () => {
+    const confirmDto = { orderId: 'order-1', paymentKey: 'pay-key-1', amount: 50000 };
+    const pendingOrder = {
+      id: 'order-1',
+      amount: 50000,
+      status: 'pending',
+      adId: 'ad-1',
+      userId: 'user-1',
+    };
+    const ttlExpiredAd = {
+      id: 'ad-1',
+      status: 'preparing',
+      endDate: '2099-01-01',
+      expiresAt: new Date(Date.now() - 1),
+    };
+
+    /**
+     * One drizzle stub shared by both services: payments insert chains plus
+     * orders select/update chains, with transaction(cb) running cb against
+     * the stub itself so settleOrderPaid sees the same tx.
+     */
+    function createCombinedDbStub(opts: {
+      order: Record<string, unknown>;
+      ad: Record<string, unknown>;
+    }) {
+      const insertValues = vi.fn(() => ({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      }));
+      const insert = vi.fn(() => ({ values: insertValues }));
+
+      const orderForUpdate = vi.fn().mockResolvedValue([opts.order]);
+      const orderLimit = vi.fn().mockResolvedValue([opts.order]);
+      const adForUpdate = vi.fn().mockResolvedValue([opts.ad]);
+      const selectFrom = vi.fn((table: unknown) => ({
+        where: vi.fn().mockReturnValue({
+          for: table === ads ? adForUpdate : orderForUpdate,
+          limit: orderLimit,
+        }),
+      }));
+      const select = vi.fn(() => ({ from: selectFrom }));
+
+      const ordersUpdateSet = vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
+          returning: vi.fn().mockResolvedValue([{ ...opts.order, status: 'paid' }]),
+        }),
+      });
+      const adsUpdateSet = vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue(undefined),
+      });
+      const update = vi.fn((table: unknown) => ({
+        set: table === ads ? adsUpdateSet : ordersUpdateSet,
+      }));
+
+      const db: any = { insert, select, update };
+      db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
+      return { db, insertValues, ordersUpdateSet, adsUpdateSet, orderLimit };
+    }
+
+    function createService(opts: { order: Record<string, unknown>; ad: Record<string, unknown> }) {
+      const { db, insertValues, ordersUpdateSet, adsUpdateSet, orderLimit } =
+        createCombinedDbStub(opts);
+      const service = new PaymentsService(db, new OrdersService(db));
+      return { service, db, insertValues, ordersUpdateSet, adsUpdateSet, orderLimit };
+    }
+
+    it('DONE webhook: TTL-expired reservation is not settled and Toss cancel compensates', async () => {
+      fetchMock.mockReset();
+      fetchMock
+        .mockResolvedValueOnce(tossResponse('DONE'))
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      const { service, insertValues, ordersUpdateSet, adsUpdateSet } = createService({
+        order: pendingOrder,
+        ad: ttlExpiredAd,
+      });
+
+      // Refunded + recorded locally → acked, so Toss does not redeliver forever.
+      await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+      const [cancelUrl, cancelInit] = fetchMock.mock.calls[1]!;
+      expect(cancelUrl).toBe('https://api.tosspayments.com/v1/payments/pay-key-1/cancel');
+      expect(cancelInit.method).toBe('POST');
+      expect(cancelInit.headers['Idempotency-Key']).toBe('cancel:order-1');
+      // Never paid, never activated: the only order write is the compensation
+      // cancellation; the refund is recorded as 'canceled'.
+      expect(ordersUpdateSet).toHaveBeenCalledTimes(1);
+      expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
+      expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
+      expect(adsUpdateSet).not.toHaveBeenCalled();
+      expect(insertValues).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
+      );
+    });
+
+    it('DONE webhook: redelivery after the TTL refund is idempotently acked', async () => {
+      fetchMock.mockReset();
+      fetchMock
+        .mockResolvedValueOnce(tossResponse('DONE'))
+        .mockResolvedValueOnce({ ok: true, status: 200 })
+        .mockResolvedValueOnce(tossResponse('CANCELED'));
+      const { service, insertValues, ordersUpdateSet, orderLimit } = createService({
+        order: pendingOrder,
+        ad: ttlExpiredAd,
+      });
+
+      await service.handleTossWebhook(webhook('DONE'));
+
+      // Locally the order is now canceled (via the compensation path), and
+      // Toss reports the payment as CANCELED on the redelivered verification.
+      orderLimit.mockResolvedValue([{ ...pendingOrder, status: 'canceled' }]);
+      await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+      // Exactly one compensating cancel across both deliveries, and no
+      // further payment writes after the refund record.
+      const cancelCalls = fetchMock.mock.calls.filter(
+        (call) => (call[1] as RequestInit | undefined)?.method === 'POST',
+      );
+      expect(cancelCalls).toHaveLength(1);
+      expect(insertValues).toHaveBeenCalledTimes(2); // paid attempt + canceled record
+      expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
+    });
+
+    it('settles normally while the TTL is still valid', async () => {
+      fetchMock.mockReset();
+      fetchMock.mockResolvedValue(tossResponse('DONE'));
+      const { service, ordersUpdateSet, adsUpdateSet } = createService({
+        order: pendingOrder,
+        ad: { ...ttlExpiredAd, expiresAt: new Date(Date.now() + 30 * 60 * 1000) },
+      });
+
+      await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+      expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'paid' });
+      expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'canceled' });
+      expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'active' });
+    });
+
+    it('confirm path: TTL-expired reservation is rejected after approval and refunded', async () => {
+      fetchMock.mockReset();
+      fetchMock
+        .mockResolvedValueOnce(tossResponse('DONE'))
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      const { service, insertValues, ordersUpdateSet, adsUpdateSet } = createService({
+        order: pendingOrder,
+        ad: ttlExpiredAd,
+      });
+
+      await expect(service.confirmPayment('user-1', confirmDto)).rejects.toThrow(
+        '결제 마감 시간이 지난 광고 예약입니다.',
+      );
+
+      expect(fetchMock.mock.calls[1]![0]).toBe(
+        'https://api.tosspayments.com/v1/payments/pay-key-1/cancel',
+      );
+      expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
+      expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
+      expect(adsUpdateSet).not.toHaveBeenCalled();
+      expect(insertValues).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
+      );
     });
   });
 });

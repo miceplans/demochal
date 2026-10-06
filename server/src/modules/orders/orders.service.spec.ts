@@ -1,6 +1,6 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ads } from '../../db/schema.js';
 import { OrdersService } from './orders.service.js';
 
@@ -8,11 +8,15 @@ import { OrdersService } from './orders.service.js';
 function createDbStub(
   existingOrder?: { id: string; status: string; adId?: string },
   updatedOrder?: { id: string; status: string; adId?: string },
+  ad: Record<string, unknown> = {
+    id: 'ad-1',
+    status: 'preparing',
+    endDate: '2099-01-01',
+    expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+  },
 ) {
   const forUpdate = vi.fn().mockResolvedValue(existingOrder ? [existingOrder] : []);
-  const adForUpdate = vi
-    .fn()
-    .mockResolvedValue([{ id: 'ad-1', status: 'preparing', endDate: '2099-01-01' }]);
+  const adForUpdate = vi.fn().mockResolvedValue([ad]);
   const selectFrom = vi.fn((table: unknown) => ({
     where: vi.fn().mockReturnValue({ for: table === ads ? adForUpdate : forUpdate }),
   }));
@@ -154,5 +158,81 @@ describe('OrdersService.markPaid', () => {
     await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
     expect(ordersUpdateSet).not.toHaveBeenCalled();
     expect(adsUpdateSet).not.toHaveBeenCalled();
+  });
+});
+
+describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
+  const now = new Date('2026-10-06T12:00:00.000Z');
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const preparingAd = (expiresAt: Date | null) => ({
+    id: 'ad-1',
+    status: 'preparing',
+    endDate: '2099-01-01',
+    expiresAt,
+  });
+
+  it('rejects settling once the payment TTL has passed', async () => {
+    const { db, ordersUpdateSet, adsUpdateSet } = createDbStub(
+      { id: 'order-1', status: 'pending', adId: 'ad-1' },
+      undefined,
+      preparingAd(new Date(now.getTime() - 1)),
+    );
+    const service = new OrdersService(db);
+
+    await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
+    expect(ordersUpdateSet).not.toHaveBeenCalled();
+    expect(adsUpdateSet).not.toHaveBeenCalled();
+  });
+
+  // reservingCondition (ads.service) releases the dates at the exact expiry
+  // instant (gt(expiresAt, now)), so settlement must reject there too —
+  // otherwise the re-activated ad double-books dates another buyer may own.
+  it('rejects at the exact expiry instant', async () => {
+    const { db, ordersUpdateSet } = createDbStub(
+      { id: 'order-1', status: 'pending', adId: 'ad-1' },
+      undefined,
+      preparingAd(new Date(now.getTime())),
+    );
+    const service = new OrdersService(db);
+
+    await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
+    expect(ordersUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('rejects when expiresAt is missing (a null TTL never holds dates)', async () => {
+    const { db, ordersUpdateSet } = createDbStub(
+      { id: 'order-1', status: 'pending', adId: 'ad-1' },
+      undefined,
+      preparingAd(null),
+    );
+    const service = new OrdersService(db);
+
+    await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
+    expect(ordersUpdateSet).not.toHaveBeenCalled();
+  });
+
+  it('settles while the TTL is still in the future', async () => {
+    const existing = { id: 'order-1', status: 'pending', adId: 'ad-1' };
+    const { db, ordersUpdateSet, adsUpdateSet } = createDbStub(
+      existing,
+      { ...existing, status: 'paid' },
+      preparingAd(new Date(now.getTime() + 1)),
+    );
+    const service = new OrdersService(db);
+
+    const result = await service.markPaid('order-1');
+
+    expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'paid' });
+    expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'active' });
+    expect(result).toEqual({ id: 'order-1', status: 'paid', adId: 'ad-1' });
   });
 });
