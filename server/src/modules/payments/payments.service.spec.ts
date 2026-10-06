@@ -1,4 +1,4 @@
-import { ConflictException } from '@nestjs/common';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { PaymentsService } from './payments.service.js';
 
@@ -7,17 +7,22 @@ vi.stubGlobal('fetch', fetchMock);
 
 /**
  * Drizzle stub. insert().values() returns the conflict handlers the service
- * chains onto every payment write (unique on payments.orderId).
+ * chains onto every payment write (unique on payments.orderId); select() backs
+ * the PARTIAL_CANCELED precondition lookup over the existing payment row.
  */
-function createDbStub() {
+function createDbStub(existingPayment: { status: string } | null = { status: 'paid' }) {
   const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
   const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
   const insertValues = vi.fn(() => ({ onConflictDoNothing, onConflictDoUpdate }));
   const insert = vi.fn(() => ({ values: insertValues }));
+  const limit = vi.fn().mockResolvedValue(existingPayment ? [existingPayment] : []);
+  const where = vi.fn(() => ({ limit }));
+  const from = vi.fn(() => ({ where }));
+  const select = vi.fn(() => ({ from }));
   const tx = { insert };
   const transaction = vi.fn(async (fn: (txArg: unknown) => Promise<void>) => fn(tx));
-  const db: any = { insert, transaction };
-  return { db, tx, insertValues, onConflictDoNothing, onConflictDoUpdate, transaction };
+  const db: any = { insert, select, transaction };
+  return { db, tx, insertValues, onConflictDoNothing, onConflictDoUpdate, select, transaction };
 }
 
 function createOrdersStub(orderStatus: string = 'pending') {
@@ -40,6 +45,17 @@ const webhook = (status: string) => ({
 const tossResponse = (status: string) => ({
   ok: true,
   json: async () => ({ status, orderId: 'order-1', paymentKey: 'pay-key-1', totalAmount: 50000 }),
+});
+
+const partialCancelTossResponse = () => ({
+  ok: true,
+  json: async () => ({
+    status: 'PARTIAL_CANCELED',
+    orderId: 'order-1',
+    paymentKey: 'pay-key-1',
+    totalAmount: 50000,
+    balanceAmount: 30000,
+  }),
 });
 
 describe('PaymentsService', () => {
@@ -86,18 +102,9 @@ describe('PaymentsService', () => {
   });
 
   it('reconciles PARTIAL_CANCELED by persisting the Toss-reported refunded amount', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        status: 'PARTIAL_CANCELED',
-        orderId: 'order-1',
-        paymentKey: 'pay-key-1',
-        totalAmount: 50000,
-        balanceAmount: 30000,
-      }),
-    });
+    fetchMock.mockResolvedValue(partialCancelTossResponse());
     const { db, insertValues, onConflictDoUpdate } = createDbStub();
-    const orders = createOrdersStub();
+    const orders = createOrdersStub('paid');
     const service = new PaymentsService(db, orders as any);
 
     await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
@@ -119,18 +126,9 @@ describe('PaymentsService', () => {
   });
 
   it('is idempotent across redelivered PARTIAL_CANCELED webhooks (sets, never increments)', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        status: 'PARTIAL_CANCELED',
-        orderId: 'order-1',
-        paymentKey: 'pay-key-1',
-        totalAmount: 50000,
-        balanceAmount: 30000,
-      }),
-    });
+    fetchMock.mockResolvedValue(partialCancelTossResponse());
     const { db, onConflictDoUpdate } = createDbStub();
-    const service = new PaymentsService(db, createOrdersStub() as any);
+    const service = new PaymentsService(db, createOrdersStub('paid') as any);
 
     await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
     await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
@@ -140,6 +138,72 @@ describe('PaymentsService', () => {
       expect(arg).toEqual(expect.objectContaining({ set: { refundedAmount: 20000 } }));
     }
   });
+
+  it('rejects PARTIAL_CANCELED that outran DONE instead of inserting a phantom paid row', async () => {
+    fetchMock.mockResolvedValue(partialCancelTossResponse());
+    const { db, insertValues, onConflictDoUpdate } = createDbStub(null);
+    const orders = createOrdersStub('pending');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('PARTIAL_CANCELED'))).rejects.toThrow(
+      UnauthorizedException,
+    );
+
+    // No payment row exists yet — Toss redelivers after DONE settles the order.
+    expect(insertValues).not.toHaveBeenCalled();
+    expect(onConflictDoUpdate).not.toHaveBeenCalled();
+  });
+
+  it('applies a redelivered PARTIAL_CANCELED after DONE settles, idempotently', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(partialCancelTossResponse()) // outran DONE → rejected
+      .mockResolvedValueOnce(tossResponse('DONE')) // settlement
+      .mockResolvedValue(partialCancelTossResponse()); // redeliveries
+    const { db, insertValues, onConflictDoUpdate } = createDbStub();
+    const order = { id: 'order-1', amount: 50000, status: 'pending' };
+    const orders = {
+      ...createOrdersStub(),
+      findByIdInternal: vi.fn(async () => order),
+      settleOrderPaid: vi.fn(async () => {
+        order.status = 'paid';
+      }),
+    };
+    const service = new PaymentsService(db, orders as any);
+
+    // 1. PARTIAL_CANCELED raced ahead of DONE → rejected, no phantom row.
+    await expect(service.handleTossWebhook(webhook('PARTIAL_CANCELED'))).rejects.toThrow(
+      UnauthorizedException,
+    );
+    expect(insertValues).not.toHaveBeenCalled();
+
+    // 2. DONE settles the order and its payment row.
+    await service.handleTossWebhook(webhook('DONE'));
+    expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+
+    // 3. Redelivered (and duplicated) PARTIAL_CANCELED converges via SET.
+    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+    await service.handleTossWebhook(webhook('PARTIAL_CANCELED'));
+    expect(onConflictDoUpdate).toHaveBeenCalledTimes(2);
+    for (const [arg] of onConflictDoUpdate.mock.calls as any[]) {
+      expect(arg).toEqual(expect.objectContaining({ set: { refundedAmount: 20000 } }));
+    }
+  });
+
+  it.each(['canceled', 'expired'])(
+    'ignores PARTIAL_CANCELED for a payment already settled as %s',
+    async (status) => {
+      fetchMock.mockResolvedValue(partialCancelTossResponse());
+      const { db, insertValues, onConflictDoUpdate } = createDbStub({ status });
+      const orders = createOrdersStub(status);
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(service.handleTossWebhook(webhook('PARTIAL_CANCELED'))).resolves.toBeUndefined();
+
+      expect(insertValues).not.toHaveBeenCalled();
+      expect(onConflictDoUpdate).not.toHaveBeenCalled();
+    },
+  );
 
   it('rejects a PARTIAL_CANCELED webhook whose Toss amount mismatches the order', async () => {
     fetchMock.mockResolvedValue({
