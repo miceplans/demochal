@@ -590,10 +590,105 @@ function ParticipationHistory() {
   );
 }
 
-export function MyPage() {
-  const toast = useToast();
+// 쿼리 결과를 뱃지 라벨로 바꾼다. 반려된 요청은 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
+function useCertificateLabels() {
+  const certificatesQuery = generated.useListMyCertificates();
+  return (certificatesQuery.data?.data ?? [])
+    .filter((x) => x.status !== 'rejected')
+    .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+}
+
+// 한 줄 소개·뱃지·기술 스택·링크 편집. 데스크톱은 MY에, 모바일은 /my/profile-edit에서 쓴다.
+function ProfileEditor() {
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const mySkills = meInfo?.stacks ?? [];
+  const myLinks = meInfo?.externalLinks ?? [];
+  const certificates = useCertificateLabels();
+  const updateProfile = generated.useUpdateMyProfile({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
+      },
+    },
+  });
+  return (
+    <Stack gap={28}>
+      <Stack gap={12}>
+        <Heading>한 줄 소개</Heading>
+        {me.data?.status === 200 ? (
+          <InlineBio
+            initial={meInfo?.bio ?? ''}
+            onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
+          />
+        ) : (
+          <Muted>불러오는 중이에요.</Muted>
+        )}
+      </Stack>
+      <div>
+        <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+        <Badges
+          extra={certificates}
+          trailing={
+            <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
+              <Icon name="imgAddSlotIc" size={12} />
+            </AddButton>
+          }
+        />
+      </div>
+      <Heading>기술 스택</Heading>
+      <SkillStack
+        skills={mySkills}
+        trailing={
+          <AddButton
+            aria-label="기술 스택 추가하기"
+            // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
+            disabled={me.data?.status !== 200}
+            onClick={() => setSkillOpen(true)}
+          >
+            <Icon name="imgAddSlotIc" size={12} />
+          </AddButton>
+        }
+      />
+      <Stack gap={12}>
+        <Heading>링크</Heading>
+        {me.data?.status === 200 ? (
+          <InlineLinks
+            initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
+            onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
+          />
+        ) : (
+          <Muted>불러오는 중이에요.</Muted>
+        )}
+      </Stack>
+      <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
+      <SkillAddModal
+        open={skillOpen}
+        onClose={() => setSkillOpen(false)}
+        existing={mySkills}
+        onAdd={(skills) =>
+          updateProfile.mutateAsync({
+            data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
+          })
+        }
+      />
+    </Stack>
+  );
+}
+
+export function MyProfileEditPage() {
+  return (
+    <MyShell title="내 프로필 수정">
+      <ProfileEditor />
+    </MyShell>
+  );
+}
+
+export function MyPage() {
+  const toast = useToast();
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
@@ -601,13 +696,7 @@ export function MyPage() {
   const displayName =
     meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
   const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
-  const mySkills = meInfo?.stacks ?? [];
-  const myLinks = meInfo?.externalLinks ?? [];
-  const certificatesQuery = generated.useListMyCertificates();
-  // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
-  const certificates = (certificatesQuery.data?.data ?? [])
-    .filter((x) => x.status !== 'rejected')
-    .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+  const certificates = useCertificateLabels();
   // 참여중 = 수락된 팀 멤버십과 챌린지 지원(예선 통과). 심사중 지원은 지원현황 페이지에서 본다.
   const participatingTeamsQuery = generated.useListMyTeamApplications();
   const participatingChallengesQuery = generated.useListMyApplications();
@@ -717,63 +806,23 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
-        <Stack gap={12}>
-          <Heading>한 줄 소개</Heading>
-          {me.data?.status === 200 ? (
-            <InlineBio
-              initial={meInfo?.bio ?? ''}
-              onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
-            />
-          ) : (
-            <Muted>불러오는 중이에요.</Muted>
-          )}
-        </Stack>
         <DesktopOnly>
-          <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+          <ProfileEditor />
         </DesktopOnly>
-        <Badges
-          extra={certificates}
-          trailing={
-            <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
-              <Icon name="imgAddSlotIc" size={12} />
-            </AddButton>
-          }
-        />
         <MobileOnly>
-          <MobileMenu>
-            {myMenu.map(([href, label]) => (
-              <Link key={href} href={href}>
-                {label}
-                <span style={{ fontSize: 14 }}>›</span>
-              </Link>
-            ))}
-          </MobileMenu>
+          <Stack gap={28}>
+            {meInfo?.bio && <Muted>{meInfo.bio}</Muted>}
+            <Badges extra={certificates} />
+            <MobileMenu>
+              {[['/my/profile-edit', '내 프로필 수정'], ...myMenu].map(([href, label]) => (
+                <Link key={href} href={href}>
+                  {label}
+                  <span style={{ fontSize: 14 }}>›</span>
+                </Link>
+              ))}
+            </MobileMenu>
+          </Stack>
         </MobileOnly>
-        <Heading>기술 스택</Heading>
-        <SkillStack
-          skills={mySkills}
-          trailing={
-            <AddButton
-              aria-label="기술 스택 추가하기"
-              // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
-              disabled={me.data?.status !== 200}
-              onClick={() => setSkillOpen(true)}
-            >
-              <Icon name="imgAddSlotIc" size={12} />
-            </AddButton>
-          }
-        />
-        <Stack gap={12}>
-          <Heading>링크</Heading>
-          {me.data?.status === 200 ? (
-            <InlineLinks
-              initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
-              onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
-            />
-          ) : (
-            <Muted>불러오는 중이에요.</Muted>
-          )}
-        </Stack>
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
@@ -806,17 +855,6 @@ export function MyPage() {
           <ParticipationHistory />
         </MobileOnly>
       </Stack>
-      <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
-      <SkillAddModal
-        open={skillOpen}
-        onClose={() => setSkillOpen(false)}
-        existing={mySkills}
-        onAdd={(skills) =>
-          updateProfile.mutateAsync({
-            data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
-          })
-        }
-      />
     </MyShell>
   );
 }

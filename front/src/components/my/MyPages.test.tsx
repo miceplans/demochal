@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { MyPage } from './MyPages';
+import { MyPage, MyProfileEditPage } from './MyPages';
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
@@ -202,5 +202,23 @@ describe('MyPage 링크 섹션', () => {
     await waitFor(() =>
       expect(mocks.error).toHaveBeenCalledWith('저장에 실패했어요', '잠시 후 다시 시도해주세요'),
     );
+  });
+});
+
+describe('내 프로필 수정 페이지', () => {
+  afterEach(cleanup);
+
+  it('링크·뱃지·기술 스택 편집 UI를 보여준다', () => {
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <MyProfileEditPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole('button', { name: '링크 추가' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '자격증 인증하기' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '기술 스택 추가하기' })).toBeTruthy();
   });
 });
