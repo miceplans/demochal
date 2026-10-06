@@ -130,7 +130,6 @@ import type {
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
-  RegisterPaymentCardBody,
   RejectVerificationBody,
   Report,
   RequestContactVerification201,
@@ -7943,110 +7942,6 @@ export function useListPaymentCards<TData = Awaited<ReturnType<typeof listPaymen
 
 
 
-
-export type registerPaymentCardResponse201 = {
-  data: PaymentCard
-  status: 201
-}
-
-export type registerPaymentCardResponseSuccess = (registerPaymentCardResponse201) & {
-  headers: Headers;
-};
-;
-
-export type registerPaymentCardResponse = (registerPaymentCardResponseSuccess)
-
-export const getRegisterPaymentCardUrl = () => {
-
-
-
-
-  return `/billing/cards`
-}
-
-/**
- * 토스페이먼츠 빌링키 발급 후 저장. 카드번호는 마스킹되어 반환된다.
- * 서버는 원본 카드번호를 절대 받지 않으므로(PCI 범위는 토스에 남음) `maskedNumber`는
- * 빌링키 발급 시 토스가 클라이언트에 직접 내려주는 값을 그대로 전달받아야 한다 —
- * 원 스키마엔 없던 implemented 확장 필드.
- * @summary 결제수단 등록
- */
-export const registerPaymentCard = async (registerPaymentCardBody: RegisterPaymentCardBody, options?: Parameters<typeof apiFetch>[1]): Promise<registerPaymentCardResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<registerPaymentCardResponse>(getRegisterPaymentCardUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(registerPaymentCardBody)
-  }
-);}
-
-
-
-
-
-export const getRegisterPaymentCardMutationKey = () => ['registerPaymentCard'] as const;
-
-export const getRegisterPaymentCardMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPaymentCard>>, TError,RegisterPaymentCardMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof registerPaymentCard>>, TError,RegisterPaymentCardMutationVariables, TContext> => {
-
-const mutationKey = getRegisterPaymentCardMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerPaymentCard>>, RegisterPaymentCardMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  registerPaymentCard(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RegisterPaymentCardMutationResult = NonNullable<Awaited<ReturnType<typeof registerPaymentCard>>>
-    export type RegisterPaymentCardMutationBody = RegisterPaymentCardBody
-    export type RegisterPaymentCardMutationError = unknown
-    export type RegisterPaymentCardMutationVariables = {data: RegisterPaymentCardBody}
-
-    /**
- * @summary 결제수단 등록
- */
-export const useRegisterPaymentCard = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerPaymentCard>>, TError,RegisterPaymentCardMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof registerPaymentCard>>,
-        TError,
-        RegisterPaymentCardMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRegisterPaymentCardMutationOptions(options), queryClient);
-    }
 
 export type listPaymentHistoryResponse200 = {
   data: ListPaymentHistory200
