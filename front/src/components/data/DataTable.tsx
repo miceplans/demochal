@@ -37,18 +37,26 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <Th
-                  key={header.id}
-                  sortable={header.column.getCanSort()}
-                  onClick={header.column.getToggleSortingHandler()}
-                >
-                  {header.isPlaceholder
-                    ? null
-                    : flexRender(header.column.columnDef.header, header.getContext())}
-                  {{ asc: ' ▲', desc: ' ▼' }[header.column.getIsSorted() as string] ?? ''}
-                </Th>
-              ))}
+              {headerGroup.headers.map((header) => {
+                const sorted = header.column.getIsSorted();
+                return (
+                  <Th
+                    key={header.id}
+                    sortable={header.column.getCanSort()}
+                    onClick={header.column.getToggleSortingHandler()}
+                  >
+                    {header.isPlaceholder
+                      ? null
+                      : flexRender(header.column.columnDef.header, header.getContext())}
+                    {/* 단일 화살표를 회전 전환해 asc/desc 토글을 끊김 없이 보여준다. */}
+                    {sorted ? (
+                      <SortMark dir={sorted === 'asc' ? 'asc' : 'desc'} aria-hidden="true">
+                        ▲
+                      </SortMark>
+                    ) : null}
+                  </Th>
+                );
+              })}
             </tr>
           ))}
         </thead>
@@ -97,6 +105,13 @@ const Th = styled.th<{ sortable?: boolean }>`
   white-space: nowrap;
   cursor: ${(p) => (p.sortable ? 'pointer' : 'default')};
   border-bottom: 0.5px solid ${(p) => p.theme.colors.gray[200]};
+`;
+
+const SortMark = styled.span<{ dir: 'asc' | 'desc' }>`
+  display: inline-block;
+  margin-left: 2px;
+  transform: rotate(${(p) => (p.dir === 'desc' ? '180deg' : '0deg')});
+  transition: transform 0.2s ease;
 `;
 
 const Td = styled.td`

@@ -168,6 +168,29 @@ describe('saved application questionnaires', () => {
     expect(mocks.apply).not.toHaveBeenCalled();
   });
 
+  it('shows an inline spinner on the submit button while the application is being created', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    let resolveApply: ((value: unknown) => void) | undefined;
+    mocks.apply.mockReturnValue(
+      new Promise((resolve) => {
+        resolveApply = resolve;
+      }),
+    );
+    const user = userEvent.setup();
+    const { container } = render(<ApplicationPage />);
+    await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
+    await user.click(screen.getByRole('button', { name: '제출' }));
+
+    // 제출 중에는 문구가 바뀌고 인라인 스피너가 붙는다.
+    expect(screen.getByRole('button', { name: '처리 중…' })).toBeTruthy();
+    expect(container.querySelector('[data-component="submit-spinner"]')).toBeTruthy();
+
+    resolveApply?.({ status: 201, data: { id: 'app-1', order: null } });
+    await waitFor(() =>
+      expect(container.querySelector('[data-component="submit-spinner"]')).toBeNull(),
+    );
+  });
+
   it('does not submit an unloaded challenge and preserves inputs after API failure', async () => {
     mocks.failed = true;
     const { container, unmount } = render(<ApplicationPage />);
