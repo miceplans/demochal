@@ -4,7 +4,7 @@ packages:
   - 'packages/*'
 allowBuilds:
   esbuild: true
-  sharp: false
+  sharp: true
   unrs-resolver: false
   '@scarf/scarf': false
 overrides:
