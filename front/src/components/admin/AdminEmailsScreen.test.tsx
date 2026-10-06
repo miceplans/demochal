@@ -174,7 +174,10 @@ describe('AdminEmailsScreen', () => {
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
     expect(textarea).toHaveProperty('value', '재시도할 답장');
     await user.selectOptions(screen.getByRole('combobox', { name: '상태' }), '처리중');
-    expect(mocks.updateStatus).toHaveBeenCalledWith({ id: 'thread-1', data: { status: 'pending' } });
+    expect(mocks.updateStatus).toHaveBeenCalledWith({
+      id: 'thread-1',
+      data: { status: 'pending' },
+    });
   });
 
   it('renders a separate compose page and sends a new email', async () => {
