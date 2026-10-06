@@ -2,7 +2,8 @@ name: PR AI orchestration
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    # risk 분석은 PR 생성/재오픈 시 1회만 실행한다(synchronize 제거 — 토큰 절감).
+    types: [opened, reopened]
   workflow_run:
     workflows: [PR validation]
     types: [completed]
