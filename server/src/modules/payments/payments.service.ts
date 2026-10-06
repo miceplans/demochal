@@ -427,6 +427,36 @@ export class PaymentsService {
       throw new BadGatewayException('Toss partial cancellation response missing balanceAmount');
     }
 
+    // Toss only allows a partial cancel on an already-approved payment, so
+    // this webhook must never be the first one we process for an order. When
+    // it outruns the DONE webhook there is no payment row yet, and the upsert
+    // below would insert a phantom 'paid' row onto a still-pending order.
+    // Reject instead — Toss redelivers, and once DONE settles, the redelivery
+    // applies normally (same re-verify-and-redeliver pattern as the
+    // verification failures above).
+    const [payment] = await this.db
+      .select({ status: payments.status })
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .limit(1);
+    if (order.status === 'pending' || !payment) {
+      this.logger.warn(`Rejected PARTIAL_CANCELED for order ${orderId} without a settled payment`);
+      throw new UnauthorizedException(
+        'Toss partial cancellation arrived before the payment was settled',
+      );
+    }
+
+    // Terminal or inconsistent settled states are acknowledged, never rejected:
+    // a 4xx would make Toss retry a state no redelivery can change (same
+    // contract as handleDone). The upsert's setWhere below still guards the
+    // row against a concurrent full cancel racing this read.
+    if (order.status !== 'paid' || payment.status !== 'paid') {
+      this.logger.warn(
+        `Ignoring PARTIAL_CANCELED for order ${orderId} settled as ${order.status}/${payment.status}`,
+      );
+      return;
+    }
+
     // Toss reports the running balance, not a per-webhook delta: always SET
     // refundedAmount from it (never increment) so an out-of-order or
     // redelivered webhook converges to the same value instead of
