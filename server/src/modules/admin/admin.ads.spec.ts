@@ -166,7 +166,7 @@ describe('AdminService — ad pause', () => {
     const { service } = createService(db);
 
     await expect(service.pauseAd('ad1')).resolves.toEqual({ id: 'ad1', status: 'paused' });
-    expect(setCalls[0]).toEqual([{ status: 'paused' }]);
+    expect(setCalls[0]).toEqual([{ status: 'paused', pausedBy: 'admin' }]);
   });
 
   it('refuses a non-active ad with 400', async () => {

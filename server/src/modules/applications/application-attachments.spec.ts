@@ -33,7 +33,12 @@ function setup(rows: unknown[][]) {
 
 describe('application attachments and answer access', () => {
   it.each(['applicant', 'owner'])('permits %s to read a referenced private file', async (user) => {
-    const { service, conditions } = setup([[record()], [{ id: fileId, key: 'private-document' }]]);
+    // 신청자가 아닌 접근(업주)은 접수 확정 여부를 확인하는 조회가 한 번 더 있다.
+    const { service, conditions } = setup([
+      [record()],
+      ...(user === 'owner' ? [[{ id: 'app-1' }]] : []),
+      [{ id: fileId, key: 'private-document' }],
+    ]);
     await expect(service.findAttachment('app-1', fileId, user)).resolves.toMatchObject({
       id: fileId,
     });
@@ -54,14 +59,14 @@ describe('application attachments and answer access', () => {
     expect(db.select).toHaveBeenCalledTimes(1);
   });
   it('denies files that were not submitted in this application', async () => {
-    const { service, db } = setup([[record()]]);
+    const { service, db } = setup([[record()], [{ id: 'app-1' }]]);
     await expect(service.findAttachment('app-1', 'other-file', 'owner')).rejects.toThrow(
       NotFoundException,
     );
-    expect(db.select).toHaveBeenCalledTimes(1);
+    expect(db.select).toHaveBeenCalledTimes(2);
   });
   it('denies a missing, non-private, non-ready, or wrong-uploader file', async () => {
-    const { service } = setup([[record()], []]);
+    const { service } = setup([[record()], [{ id: 'app-1' }], []]);
     await expect(service.findAttachment('app-1', fileId, 'owner')).rejects.toThrow(
       NotFoundException,
     );

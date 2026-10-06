@@ -6,6 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { adToday } from '../ads/ad-period.js';
 import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -168,8 +169,8 @@ export function maskBizNumber(registrationNumber: string): string {
 }
 
 /** ads의 노출 기간 기준(AdsService.listPublic과 동일): 종료일 당일까지 노출된다. */
-const utcDayStart = (now = new Date()) =>
-  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+// 광고 기간은 KST 날짜 기준이다(adToday) — 목록/집계도 같은 기준을 쓴다.
+const utcDayStart = (now = new Date()) => adToday(now);
 
 const formatMonthDay = (date: Date) =>
   `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -578,7 +579,7 @@ export class AdminService {
   async pauseAd(id: string) {
     const [updated] = await this.db
       .update(ads)
-      .set({ status: 'paused' })
+      .set({ status: 'paused', pausedBy: 'admin' })
       .where(and(eq(ads.id, id), eq(ads.status, 'active')))
       .returning({ id: ads.id, status: ads.status });
     if (updated) return updated;

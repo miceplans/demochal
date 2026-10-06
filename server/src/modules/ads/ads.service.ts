@@ -13,7 +13,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
-import { adPeriod } from './ad-period.js';
+import { adPeriod, adToday } from './ad-period.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
@@ -92,13 +92,10 @@ export class AdsService implements OnModuleInit {
     const conditions = [eq(ads.businessId, businessId)];
     if (status) conditions.push(eq(ads.status, status));
     if (opts?.withinServingWindow) {
-      // listPublic과 동일한 노출 기간 조건이다. 계약이 만료된 'active' 광고는
-      // 실제로 노출되지 않으므로 대시보드 진행중 광고 집계에서도 제외한다.
-      const now = new Date();
-      const todayStart = new Date(
-        Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-      );
-      conditions.push(lte(ads.startDate, now), gte(ads.endDate, todayStart));
+      // listPublic과 동일한 노출 기간 조건이다(KST 날짜 기준). 계약이 만료된 'active'
+      // 광고는 실제로 노출되지 않으므로 대시보드 진행중 광고 집계에서도 제외한다.
+      const today = adToday();
+      conditions.push(lte(ads.startDate, today), gte(ads.endDate, today));
     }
     const rows = await this.db
       .select()
@@ -109,10 +106,8 @@ export class AdsService implements OnModuleInit {
   }
 
   async listPublic(placement: 'hero' | 'gallery') {
-    const now = new Date();
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
+    // 광고 기간은 KST 날짜(자정 UTC로 저장)이므로 결제 확정과 같은 adToday 기준으로 비교한다.
+    const today = adToday();
     const rows = await this.db
       .select({
         id: ads.id,
@@ -129,11 +124,9 @@ export class AdsService implements OnModuleInit {
         and(
           eq(ads.status, 'active'),
           eq(adProducts.placement, placement),
-          lte(ads.startDate, now),
-          // Ad dates are stored at midnight. Compare the end date with the
-          // start of today so a contract remains visible through its stated
-          // end date, not only until that day's first instant.
-          gte(ads.endDate, todayStart),
+          lte(ads.startDate, today),
+          // 종료일 당일까지 노출한다.
+          gte(ads.endDate, today),
         ),
       )
       .orderBy(asc(ads.startDate), asc(ads.createdAt));
@@ -253,6 +246,15 @@ export class AdsService implements OnModuleInit {
       throw new BadRequestException('진행 중인 광고만 일시정지할 수 있습니다.');
     }
     if (dto.status === 'active') {
+      if (ad.status === 'paused' && ad.pausedBy === 'admin') {
+        throw new ForbiddenException('관리자가 중단한 광고는 직접 재개할 수 없습니다.');
+      }
+      if (ad.status !== 'paused' && ad.status !== 'active') {
+        throw new BadRequestException('일시정지된 광고만 재개할 수 있습니다.');
+      }
+      if (ad.endDate < adToday()) {
+        throw new BadRequestException('계약 기간이 끝난 광고는 재개할 수 없습니다.');
+      }
       return this.db.transaction(async (tx) => {
         // markCancelled locks this same order row. This makes cancellation and
         // reactivation serialize, so a refunded order cannot resume serving.
@@ -262,7 +264,7 @@ export class AdsService implements OnModuleInit {
         }
         const [updated] = await tx
           .update(ads)
-          .set({ status: dto.status })
+          .set({ status: dto.status, pausedBy: null })
           .where(eq(ads.id, id))
           .returning();
         return updated;
@@ -270,7 +272,11 @@ export class AdsService implements OnModuleInit {
     }
     const [updated] = await this.db
       .update(ads)
-      .set({ status: dto.status })
+      .set(
+        dto.status === 'paused'
+          ? { status: dto.status, pausedBy: 'owner' }
+          : { status: dto.status },
+      )
       .where(eq(ads.id, id))
       .returning();
     return updated;
