@@ -128,6 +128,11 @@ export const challenges = pgTable('challenges', {
   // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
   // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
   applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
+  summary: varchar('summary', { length: 300 }),
+  hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
+  topics: jsonb('topics').$type<string[]>().notNull().default([]),
+  inquiryContact: varchar('inquiry_contact', { length: 200 }),
+  visibility: varchar('visibility', { length: 20 }).notNull().default('public'),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),

@@ -1,4 +1,5 @@
 import {
+  ArrayMaxSize,
   ArrayUnique,
   IsArray,
   IsDateString,
@@ -79,4 +80,34 @@ export class CreateChallengeDto {
   @IsOptional()
   @IsUUID()
   posterFileId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(300)
+  summary?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  hashtags?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  topics?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  inquiryContact?: string;
+
+  @IsOptional()
+  @IsIn(['public', 'private'])
+  visibility?: 'public' | 'private';
 }

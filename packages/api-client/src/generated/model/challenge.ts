@@ -27,6 +27,7 @@ export interface Challenge {
   businessId?: string;
   title: string;
   description?: string;
+  summary?: string | null;
   /** 참가비 (원) */
   price?: number;
   /** 모집 인원 */
@@ -67,6 +68,9 @@ export interface Challenge {
   /** 지원 자격 */
   eligibility?: string;
   hashtags?: string[];
+  topics?: string[];
+  inquiryContact?: string | null;
+  visibility?: 'public' | 'private';
   /** 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
   recruitMethod?: ChallengeRecruitMethod;
   /**

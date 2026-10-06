@@ -2,9 +2,9 @@ import { BadRequestException, Inject, Injectable, NotFoundException } from '@nes
 import { and, desc, eq, exists, inArray, or } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
-import { validateFormAnswers, type FormAnswer } from './form-answers.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
+import { validateFormAnswers, type FormAnswer } from './form-answers.js';
 
 // Toss orderName 상한은 100자 — 그 이상의 챌린지 제목이 checkout 오픈을 막지 않게 잘라낸다.
 function tossOrderName(title: string) {
@@ -28,11 +28,17 @@ export class ApplicationsService {
           startDate: challenges.startDate,
           endDate: challenges.endDate,
           applicationForm: challenges.applicationForm,
+          visibility: challenges.visibility,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
         .limit(1);
       if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+      // Private visibility is a hard access boundary, including retries that
+      // would otherwise reuse or replace a pending payment order.
+      if (challenge.visibility === 'private') {
+        throw new BadRequestException('신청을 받지 않는 챌린지입니다.');
+      }
       // Idempotent for (userId, challengeId): a retry after a lost response,
       // SDK rejection, or resubmission reuses the existing application and its
       // payable pending order instead of duplicating rows.
