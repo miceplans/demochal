@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateChallengeRequestTargetsItem =
-  (typeof CreateChallengeRequestTargetsItem)[keyof typeof CreateChallengeRequestTargetsItem];
+export type CreateChallengeRequestTargetsItem = typeof CreateChallengeRequestTargetsItem[keyof typeof CreateChallengeRequestTargetsItem];
+
 
 export const CreateChallengeRequestTargetsItem = {
   어린이: '어린이',

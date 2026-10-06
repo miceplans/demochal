@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -17,6 +18,7 @@ import {
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
 import { generated } from '@semochal/api-client';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { toDateKey } from '@/lib/date';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
@@ -349,7 +351,9 @@ export function BizAdsPage() {
             </TableHead>
             {contractsLoading && (
               <TableRow role="row">
-                <span>광고 목록을 불러오는 중이에요.</span>
+                <FullSpan>
+                  <LoadingState compact label="광고 목록을 불러오는 중이에요." />
+                </FullSpan>
               </TableRow>
             )}
             {!contractsLoading && contractsError && (
@@ -588,16 +592,15 @@ export function BizAdsPage() {
                   autoFocus
                 />
                 <PositionField>
-                  <PositionSelect
+                  <Dropdown
+                    options={[
+                      { value: 'hero', label: '홈 상단 배너 광고' },
+                      { value: 'gallery', label: '홈 중간 이미지 광고' },
+                    ]}
                     value={nameModalPlacement}
                     disabled
                     aria-label="광고 위치"
-                    title="업로드한 이미지에 맞춰 지정된 위치예요"
-                  >
-                    <option value="hero">홈 상단 배너 광고</option>
-                    <option value="gallery">홈 중간 이미지 광고</option>
-                  </PositionSelect>
-                  <PositionIcon src="/assets/icons/figma-chevron-down.svg" alt="" />
+                  />
                 </PositionField>
               </NameFields>
               <PopupActions>
@@ -666,6 +669,7 @@ const TableRow = styled.div({
   borderTop: `0.5px solid ${c.gray200}`,
   ...textStyle.body,
 });
+const FullSpan = styled.div({ gridColumn: '1 / -1' });
 const TableHead = styled(TableRow)({
   minHeight: 48,
   borderTop: 0,
@@ -818,27 +822,4 @@ const NameInput = styled.input({
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const PositionField = styled.div({ position: 'relative', display: 'flex' });
-const PositionSelect = styled.select({
-  width: '100%',
-  height: 44,
-  padding: '0 34px 0 14px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  background: c.white,
-  color: c.gray900,
-  cursor: 'pointer',
-  ...textStyle.body,
-  appearance: 'none',
-  '&:focus': { outline: 'none', borderColor: c.primary },
-  '&:disabled': { cursor: 'not-allowed', opacity: 0.6 },
-});
-const PositionIcon = styled.img({
-  position: 'absolute',
-  top: '50%',
-  right: 12,
-  width: 14,
-  height: 14,
-  transform: 'translateY(-50%)',
-  pointerEvents: 'none',
-});
 const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });

@@ -1744,33 +1744,6 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/PaymentCard' } }
-    post:
-      tags: [Billing]
-      summary: 결제수단 등록
-      operationId: registerPaymentCard
-      x-impl-status: implemented
-      description: |
-        토스페이먼츠 빌링키 발급 후 저장. 카드번호는 마스킹되어 반환된다.
-        서버는 원본 카드번호를 절대 받지 않으므로(PCI 범위는 토스에 남음) `maskedNumber`는
-        빌링키 발급 시 토스가 클라이언트에 직접 내려주는 값을 그대로 전달받아야 한다 —
-        원 스키마엔 없던 implemented 확장 필드.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [billingKey, maskedNumber]
-              properties:
-                billingKey: { type: string, description: 토스 빌링키 }
-                cardName: { type: string }
-                maskedNumber: { type: string, example: '****-****-****-1234' }
-      responses:
-        '201':
-          description: 등록된 결제수단
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PaymentCard' }
   /billing/history:
     get:
       tags: [Billing]
@@ -2165,6 +2138,31 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AdminEmailMessage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/emails/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: 고객지원 메일 thread 상태 변경
+      operationId: updateAdminEmailStatus
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAdminEmailStatus' }
+      responses:
+        '200':
+          description: 상태 변경된 thread
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailThread' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -2738,6 +2736,11 @@ components:
         subject: { type: string, minLength: 1, maxLength: 998 }
         text: { type: string, minLength: 1, maxLength: 100000 }
         html: { type: string, maxLength: 100000 }
+    UpdateAdminEmailStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [open, pending, resolved] }
     User:
       type: object
       properties:

@@ -41,6 +41,34 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Private one-off tasks need outbound access through the NAT gateway to pull
+# the public postgres image and reach Secrets Manager, CloudWatch Logs and the
+# ECS Exec message service. They still have no public IP and cannot accept
+# unsolicited inbound traffic.
+resource "aws_eip" "nat" {
+  domain = "vpc"
+}
+
+resource "aws_nat_gateway" "this" {
+  allocation_id = aws_eip.nat.id
+  subnet_id     = aws_subnet.public["0"].id
+  depends_on    = [aws_internet_gateway.this]
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this.id
+  }
+}
+
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private["0"].id
+  route_table_id = aws_route_table.private.id
+}
+
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb"
   description = "Public HTTPS ingress for the staging API load balancer"
@@ -190,6 +218,44 @@ resource "aws_security_group" "migrate_task" {
   }
 }
 
+resource "aws_security_group" "db_admin" {
+  name        = "${local.name_prefix}-db-admin"
+  description = "On-demand database administration task; no inbound traffic"
+  vpc_id      = aws_vpc.this.id
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "udp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "DNS to the VPC resolver"
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  egress {
+    description = "HTTPS for Docker Hub, Secrets Manager, Logs and ECS Exec"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    description     = "PostgreSQL only to the RDS security group"
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.database.id]
+  }
+}
+
 resource "aws_security_group" "database" {
   name        = "${local.name_prefix}-database"
   description = "PostgreSQL only from the ECS API, worker and migration tasks"
@@ -218,4 +284,15 @@ resource "aws_security_group" "database" {
     protocol        = "tcp"
     security_groups = [aws_security_group.migrate_task.id]
   }
+
+}
+
+resource "aws_security_group_rule" "database_from_db_admin" {
+  type                     = "ingress"
+  description              = "On-demand db-admin task"
+  security_group_id        = aws_security_group.database.id
+  source_security_group_id = aws_security_group.db_admin.id
+  from_port                = 5432
+  to_port                  = 5432
+  protocol                 = "tcp"
 }

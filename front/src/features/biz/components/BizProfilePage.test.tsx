@@ -4,7 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizProfilePage } from './BizProfilePage';
 
 const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn(), success: vi.fn(), error: vi.fn() }));
-vi.mock('@semochal/api-client', () => ({
+vi.mock('@semochal/api-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {
     useChangePassword: () => ({ mutateAsync: mocks.mutateAsync, isPending: false }),
     useGetMyAuthInfo: () => ({

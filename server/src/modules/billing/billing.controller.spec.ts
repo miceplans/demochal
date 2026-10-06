@@ -10,7 +10,6 @@ const user = { id: 'user-1', email: 'biz@semochal.kr', name: '사업자', role: 
 function createController(business: { id: string } | null = { id: 'biz-1' }) {
   const billingService = {
     listCards: vi.fn().mockResolvedValue([]),
-    registerCard: vi.fn(),
     getCustomerKey: vi.fn().mockReturnValue('semochal-biz-biz-1'),
     issueCard: vi.fn(),
   };
