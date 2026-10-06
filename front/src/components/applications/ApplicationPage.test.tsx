@@ -6,6 +6,7 @@ import { ApplicationPage } from './ApplicationPage';
 import { ThemeProvider } from '@emotion/react';
 import { theme } from '@/styles/theme';
 import type { Question } from './ApplicationQuestions';
+import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
 
 const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
@@ -38,7 +39,8 @@ vi.mock('@/stores/useUserStore', () => ({
 }));
 vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
 vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.pay }));
-vi.mock('@semochal/api-client', () => ({
+vi.mock('@semochal/api-client', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {
     useGetChallenge: () => ({
       data: mocks.failed
@@ -181,7 +183,7 @@ describe('saved application questionnaires', () => {
     await user.type(screen.getByLabelText('short'), '내 답변');
     await user.click(screen.getByRole('button', { name: '제출' }));
     await waitFor(() =>
-      expect(mocks.error).toHaveBeenCalledWith('신청에 실패했어요', '잠시 후 다시 시도해주세요'),
+      expect(mocks.error).toHaveBeenCalledWith('신청에 실패했어요', NETWORK_ERROR_MESSAGE),
     );
     expect((screen.getByLabelText('short') as HTMLInputElement).value).toBe('내 답변');
   });
