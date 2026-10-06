@@ -196,6 +196,15 @@ const FooterBox = styled.footer({
   lineHeight: 'normal',
   [mobile]: { display: 'none' },
 });
+const SocialCircle = styled.span({
+  width: 24,
+  height: 24,
+  borderRadius: 18,
+  background: c.gray500,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
 export function Footer() {
   return (
     <FooterBox>
@@ -216,7 +225,50 @@ export function Footer() {
           <span>부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호</span>
           <span>051-783-1170 / mice@miceplans.com</span>
         </div>
-        <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <Row style={{ gap: 4 }}>
+            <a
+              href="https://www.miceplans.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="MICEPLANS"
+            >
+              <SocialCircle>
+                <img
+                  src="/assets/icons/figma-footer/miceplans.svg"
+                  alt=""
+                  width={13.41}
+                  height={12}
+                />
+              </SocialCircle>
+            </a>
+            <a
+              href="https://www.youtube.com/@icclabcreativecontentslab6004/videos"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTube"
+            >
+              <SocialCircle>
+                <img
+                  src="/assets/icons/figma-footer/youtube.svg"
+                  alt=""
+                  width={14.19}
+                  height={10}
+                />
+              </SocialCircle>
+            </a>
+            <a
+              href="https://www.instagram.com/miceplans/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              style={{ display: 'flex' }}
+            >
+              <img src="/assets/icons/figma-footer/instagram.svg" alt="" width={24} height={24} />
+            </a>
+          </Row>
+          <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
+        </div>
       </Row>
     </FooterBox>
   );
