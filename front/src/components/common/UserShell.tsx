@@ -342,6 +342,8 @@ export function UserShell({
             <>
               <SearchBar />
               <Row gap={20}>
+                <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
+                <HeaderActionLink href="/biz/operations">챌린지 대행 문의</HeaderActionLink>
                 {isLoggedIn ? (
                   <>
                     <Link href="/notifications" aria-label="알림">
@@ -352,15 +354,11 @@ export function UserShell({
                     </Link>
                   </>
                 ) : (
-                  <>
-                    <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
-                    <HeaderActionLink href="/biz/operations">챌린지 대행 문의</HeaderActionLink>
-                    <Link href="/login">
-                      <Button as="span" small>
-                        로그인/회원가입
-                      </Button>
-                    </Link>
-                  </>
+                  <Link href="/login">
+                    <Button as="span" small>
+                      로그인/회원가입
+                    </Button>
+                  </Link>
                 )}
               </Row>
             </>
