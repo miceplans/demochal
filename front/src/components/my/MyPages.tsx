@@ -1326,7 +1326,8 @@ const NotificationBody = styled.div({
 // 매핑되지 않은 유형은 '전체'에서만 보인다.
 const notificationTabs = ['전체', '팀매칭', '공고'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
-const notificationCategory: Record<string, NotificationTab> = {
+type NotificationCategory = NotificationTab | '인증·결과' | '마감';
+const notificationCategory: Record<string, NotificationCategory> = {
   team_matching: '팀매칭',
   'verification.result': '인증·결과',
   deadline: '마감',
