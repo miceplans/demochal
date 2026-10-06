@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(32);
+    expect(journal.entries).toHaveLength(33);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -495,5 +495,18 @@ describe('0030_user_bio migration', () => {
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "bio" varchar(100)');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)|NOT NULL/);
+  });
+});
+
+describe('0032_payments_refund_retry migration', () => {
+  it('adds the refund retry bookkeeping columns without destructive DDL', () => {
+    const tag = journal.entries[32]?.tag;
+    expect(tag).toBe('0032_payments_refund_retry');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'ALTER TABLE "payments" ADD COLUMN IF NOT EXISTS "refund_retry_count" integer DEFAULT 0 NOT NULL',
+    );
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "refund_retried_at" timestamp');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });

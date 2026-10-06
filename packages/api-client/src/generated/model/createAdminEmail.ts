@@ -17,9 +17,19 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type RegisterPaymentCardBody = {
-  /** 토스 빌링키 */
-  billingKey: string;
-  cardName?: string;
-  maskedNumber: string;
-};
+export interface CreateAdminEmail {
+  /** @maxLength 998 */
+  to: string;
+  /**
+     * @minLength 1
+     * @maxLength 998
+     */
+  subject: string;
+  /**
+     * @minLength 1
+     * @maxLength 100000
+     */
+  text: string;
+  /** @maxLength 100000 */
+  html?: string;
+}

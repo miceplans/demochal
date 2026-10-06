@@ -20,10 +20,10 @@ import type { ListAdminCertificatesCategory } from './listAdminCertificatesCateg
 import type { ListAdminCertificatesStatus } from './listAdminCertificatesStatus';
 
 export type ListAdminCertificatesParams = {
-  status?: ListAdminCertificatesStatus;
-  q?: string;
-  /**
-   * 수상 실적 | 출품 이력
-   */
-  category?: ListAdminCertificatesCategory;
+status?: ListAdminCertificatesStatus;
+q?: string;
+/**
+ * 수상 실적 | 출품 이력
+ */
+category?: ListAdminCertificatesCategory;
 };

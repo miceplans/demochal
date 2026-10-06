@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -160,7 +161,7 @@ export function BizProfileEditPage() {
   if (!initialized && businessQuery.isPending)
     return (
       <BizContent>
-        <p>기업 정보를 불러오는 중입니다.</p>
+        <LoadingState label="기업 정보를 불러오는 중입니다." />
       </BizContent>
     );
   if (!business || businessLoadError)

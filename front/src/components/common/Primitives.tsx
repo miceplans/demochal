@@ -81,18 +81,6 @@ export const Input = styled.input({
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
-export const Select = styled.select({
-  minWidth: 0,
-  height: 40,
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  background: c.white,
-  color: c.gray700,
-  transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-  '&:hover:not(:focus)': { borderColor: c.gray300 },
-  '&:focus': { outline: 'none', boxShadow: s.focus },
-});
 export const Row = styled.div<{ gap?: number }>(({ gap = 12 }) => ({
   display: 'flex',
   alignItems: 'center',

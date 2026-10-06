@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { ExposureChart } from '@/components/biz/ExposureChart';
-import { BizContent, FieldSelect, useBizHref } from '@/components/biz/BizShell';
+import { BizContent, useBizHref } from '@/components/biz/BizShell';
+import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/lib/api-error';
@@ -88,7 +90,7 @@ export function BizReportsPage() {
   if (loading)
     return (
       <BizContent>
-        <p>리포트를 불러오는 중입니다.</p>
+        <LoadingState label="리포트를 불러오는 중입니다." />
       </BizContent>
     );
   if (error)
@@ -126,18 +128,13 @@ export function BizReportsPage() {
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <HeadingRow>
           <Heading>{period}까지의 리포트</Heading>
-          <FieldSelect
+          <Dropdown
             aria-label="광고 선택"
+            options={ads.map((item) => ({ value: item.id, label: item.title }))}
             value={selectedId}
-            onChange={(event) => selectAd(event.target.value)}
-            style={{ width: 160 }}
-          >
-            {ads.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </FieldSelect>
+            onChange={selectAd}
+            width={160}
+          />
         </HeadingRow>
         <ReportTable
           labelHeader="날짜"

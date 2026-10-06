@@ -23,14 +23,14 @@ export interface PresignedUploadRequest {
   bucket: PresignedUploadRequestBucket;
   contentType: PresignedUploadRequestContentType;
   /**
-   * 경로 구분자(슬래시·역슬래시) 불가
-   * @maxLength 255
-   */
+     * 경로 구분자(슬래시·역슬래시) 불가
+     * @maxLength 255
+     */
   fileName: string;
   /**
-   * 최대 10MB
-   * @minimum 1
-   * @maximum 10485760
-   */
+     * 최대 10MB
+     * @minimum 1
+     * @maximum 10485760
+     */
   sizeBytes: number;
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -96,7 +97,7 @@ export function BizPostingEditPage() {
   if (challengeQuery.isPending)
     return (
       <BizContent>
-        <Message>공고 정보를 불러오는 중입니다.</Message>
+        <LoadingState label="공고 정보를 불러오는 중입니다." />
       </BizContent>
     );
   if (!challenge)
@@ -480,24 +481,6 @@ function PostingForm({
                   />
                 </ToolGroup>
                 <ToolGroup>
-                  <DropdownTextButton type="button" disabled>
-                    Normal text
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownTextButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <DropdownIconButton type="button" aria-label="텍스트 정렬" disabled>
-                    <ToolIcon src={`${ICON}/figma-align-left.svg`} alt="" />
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownIconButton>
-                </ToolGroup>
-                <ToolGroup>
-                  <DropdownIconButton type="button" aria-label="색상" disabled>
-                    <ToolIcon src={`${ICON}/figma-color-picker.svg`} alt="" />
-                    <ChevronIcon src={`${ICON}/figma-chevron-down.svg`} alt="" />
-                  </DropdownIconButton>
-                </ToolGroup>
-                <ToolGroup>
                   <ToolBtn onRun={runCommand} label="굵게" icon="figma-bold.svg" command="bold" />
                   <ToolBtn
                     onRun={runCommand}
@@ -807,6 +790,11 @@ const RoleInput = styled.input({
   border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
+  background: c.white,
+  color: c.gray900,
+  fontFamily: 'inherit',
+  colorScheme: 'light',
+  '&::-webkit-calendar-picker-indicator': { cursor: 'pointer' },
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const AddRoleButton = styled.button({
@@ -877,22 +865,6 @@ const ToolButton = styled.button({
   '&:hover': { background: c.gray100 },
 });
 const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
-const DropdownButton = styled.button({
-  height: 28,
-  border: 0,
-  borderRadius: 4,
-  background: 'transparent',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 2,
-  ...textStyle.bodySmall,
-  color: c.gray900,
-  '&:hover': { background: c.gray100 },
-});
-const DropdownTextButton = styled(DropdownButton)({ padding: '0 4px 0 8px' });
-const DropdownIconButton = styled(DropdownButton)({ padding: '0 4px' });
-const ChevronIcon = styled.img({ width: 16, height: 16, objectFit: 'contain' });
 const ContentsArea = styled.div({
   padding: '12px 16px 16px',
   outline: 'none',

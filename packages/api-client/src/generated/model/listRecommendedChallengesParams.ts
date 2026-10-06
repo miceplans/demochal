@@ -18,9 +18,9 @@
  */
 
 export type ListRecommendedChallengesParams = {
-  /**
-   * @minimum 1
-   * @maximum 20
-   */
-  limit?: number;
+/**
+ * @minimum 1
+ * @maximum 20
+ */
+limit?: number;
 };

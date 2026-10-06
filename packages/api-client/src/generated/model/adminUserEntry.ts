@@ -33,8 +33,8 @@ export interface AdminUserEntry {
   /** 활성/정지 뱃지 */
   status?: AdminUserEntryStatus;
   /**
-   * 정지 사유 (정지 상태일 때)
-   * @nullable
-   */
+     * 정지 사유 (정지 상태일 때)
+     * @nullable
+     */
   suspendedReason?: string | null;
 }

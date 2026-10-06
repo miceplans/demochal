@@ -8,7 +8,7 @@ import { generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
 import { useToast } from '@/components/common/Toast';
 import { Button, Muted, Row, Stack } from '@/components/common/Primitives';
-import { colors as c } from '@/styles/design';
+import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 const statusLabel: Record<string, string> = {
@@ -25,6 +25,7 @@ const Card = styled.section({
   border: `0.5px solid ${c.gray100}`,
   borderRadius: 16,
   background: c.white,
+  [mobile]: { padding: 18 },
 });
 const Circle = styled.span<{ size: number }>(({ size }) => ({
   flexShrink: 0,
@@ -47,6 +48,7 @@ const TeamBlock = styled.div({
   padding: 16,
   borderRadius: 12,
   background: c.gray50,
+  [mobile]: { padding: 12, gap: 10 },
 });
 const SectionTitle = styled.h3({ ...textStyle.caption2, color: c.gray900 });
 const Box = styled.div({
@@ -69,6 +71,7 @@ const CtaBar = styled.div({
   padding: '16px max(24px, calc((100% - 1200px) / 2))',
   borderTop: `0.5px solid ${c.gray100}`,
   background: c.white,
+  [mobile]: { padding: '12px 16px' },
 });
 const Menu = styled.div({
   position: 'absolute',

@@ -107,6 +107,11 @@ resource "aws_cloudwatch_log_group" "migrate" {
   retention_in_days = 7
 }
 
+resource "aws_cloudwatch_log_group" "db_admin" {
+  name              = "/ecs/${local.name_prefix}/db-admin"
+  retention_in_days = 7
+}
+
 data "aws_iam_policy_document" "task_assume_role" {
   statement {
     actions = ["sts:AssumeRole"]
@@ -222,6 +227,31 @@ resource "aws_iam_role_policy" "worker_task" {
   name   = "worker-sqs-private-files"
   role   = aws_iam_role.worker_task.id
   policy = data.aws_iam_policy_document.worker_task.json
+}
+
+resource "aws_iam_role" "db_admin_task" {
+  name               = "${local.name_prefix}-db-admin-task"
+  assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
+}
+
+data "aws_iam_policy_document" "db_admin_task" {
+  statement {
+    # ECS Exec uses the SSM message channel. No Secrets Manager, S3, or other
+    # application permissions are needed by the psql container.
+    actions = [
+      "ssmmessages:CreateControlChannel",
+      "ssmmessages:CreateDataChannel",
+      "ssmmessages:OpenControlChannel",
+      "ssmmessages:OpenDataChannel",
+    ]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_role_policy" "db_admin_task" {
+  name   = "ecs-exec-ssm-messages"
+  role   = aws_iam_role.db_admin_task.id
+  policy = data.aws_iam_policy_document.db_admin_task.json
 }
 
 # One-off migration task role: no AWS API calls happen inside the container
@@ -368,6 +398,34 @@ resource "aws_ecs_task_definition" "migrate" {
   }])
 }
 
+# On-demand database administration task. This is intentionally a task
+# definition only: operators launch it with `aws ecs run-task --enable-execute-command`
+# when they need psql access and stop it afterwards.
+resource "aws_ecs_task_definition" "db_admin" {
+  family                   = "${local.name_prefix}-db-admin"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution.arn
+  task_role_arn            = aws_iam_role.db_admin_task.arn
+  container_definitions = jsonencode([{
+    name      = "db-admin"
+    image     = "postgres:16-bookworm"
+    essential = true
+    command   = ["sleep", "infinity"]
+    secrets   = local.migrate_secrets
+    logConfiguration = {
+      logDriver = "awslogs"
+      options = {
+        awslogs-group         = aws_cloudwatch_log_group.db_admin.name
+        awslogs-region        = var.aws_region
+        awslogs-stream-prefix = "db-admin"
+      }
+    }
+  }])
+}
+
 resource "aws_ecs_service" "api" {
   name            = "api"
   cluster         = aws_ecs_cluster.this.id
@@ -392,7 +450,9 @@ resource "aws_ecs_service" "api" {
   lifecycle {
     # GitHub Actions owns the deployed revision and runtime scale after the
     # existing staging service is promoted to the production workload.
-    ignore_changes = [task_definition, desired_count]
+    # ECS Exec is also enabled by the existing operational deployment and is
+    # intentionally left untouched by this Terraform change.
+    ignore_changes = [task_definition, desired_count, enable_execute_command]
     precondition {
       condition     = !var.enable_runtime || var.api_desired_count == 0 || can(regex("@sha256:[0-9a-f]{64}$", var.api_image))
       error_message = "When the API runtime is enabled, api_image must be an immutable ECR digest."
