@@ -1,6 +1,7 @@
 import { hkdfSync, randomBytes } from 'node:crypto';
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
+import { parseIpAllowlist } from '../common/throttling/ip-allowlist.js';
 
 // No-op in production (ECS/Vercel inject env vars directly, no .env file present).
 loadDotenv({ quiet: true });
@@ -32,6 +33,11 @@ const envSchema = z
     SQS_INBOUND_EMAILS_QUEUE_URL: z.string().default(''),
 
     TOSS_SECRET_KEY: z.string().default(''),
+    // Toss 웹훅 출발 IP 허용목록 (쉼표 구분, 정확 IP + 선택적 IPv4 CIDR).
+    // 비우면 비활성(현행 동작 유지) — 토스 IP 대역이 바뀌면 운영자가 보안 문서의
+    // 인바운드 IP 목록을 갱신해 설정한다(기본값 하드코딩 금지). 잘못된 항목은
+    // 파싱 단계에서 throw해 서버 기동이 실패한다.
+    TOSS_WEBHOOK_ALLOWED_IPS: z.string().default(''),
 
     CLOVA_OCR_API_URL: z.string().default(''),
     CLOVA_OCR_SECRET_KEY: z.string().default(''),
@@ -108,6 +114,11 @@ export const env = {
   sqsInboundEmailsQueueUrl: raw.SQS_INBOUND_EMAILS_QUEUE_URL,
 
   tossSecretKey: raw.TOSS_SECRET_KEY,
+  tossWebhookAllowlist: parseIpAllowlist(
+    raw.TOSS_WEBHOOK_ALLOWED_IPS.split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean),
+  ),
 
   clovaOcrApiUrl: raw.CLOVA_OCR_API_URL,
   clovaOcrSecretKey: raw.CLOVA_OCR_SECRET_KEY,
