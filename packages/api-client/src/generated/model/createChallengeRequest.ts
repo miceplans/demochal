@@ -20,14 +20,25 @@ import type { CreateChallengeRequestOrganizerType } from './createChallengeReque
 import type { CreateChallengeRequestRecruitMethod } from './createChallengeRequestRecruitMethod';
 import type { CreateChallengeRequestStatus } from './createChallengeRequestStatus';
 import type { CreateChallengeRequestTargetsItem } from './createChallengeRequestTargetsItem';
+import type { CreateChallengeRequestVisibility } from './createChallengeRequestVisibility';
 
 export interface CreateChallengeRequest {
   businessId: string;
+  /** @maxLength 300 */
   summary?: string;
+  /**
+     * @maxItems 20
+     * @items.maxLength 50
+     */
   hashtags?: string[];
+  /**
+     * @maxItems 30
+     * @items.maxLength 100
+     */
   topics?: string[];
+  /** @maxLength 200 */
   inquiryContact?: string;
-  visibility?: 'public' | 'private';
+  visibility?: CreateChallengeRequestVisibility;
   title: string;
   description: string;
   /** @minimum 1 */

@@ -2367,6 +2367,30 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   status: { type: string, enum: [paused] }
+  /admin/challenges/{id}/publish:
+    post:
+      tags: [Admin]
+      summary: 관리자 공고 게시 승인
+      operationId: publishAdminChallenge
+      x-impl-status: implemented
+      description: |
+        `contestAutoPublish`가 꺼져 있으면 기관이 만든 공고는 draft로 저장되고, 이 API로 게시를 승인한다.
+        draft 공고만 published로 전환한다. 없으면 404, draft가 아니면 409.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 게시된 공고
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [published] }
   /admin/ad-pricing:
     get:
       tags: [Admin]

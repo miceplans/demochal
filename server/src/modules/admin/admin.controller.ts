@@ -99,6 +99,11 @@ export class AdminController {
     return this.adminService.listAds(q, status);
   }
 
+  @Post('challenges/:id/publish')
+  publishChallenge(@Param('id') id: string) {
+    return this.adminService.publishChallenge(id);
+  }
+
   @Post('ads/:id/pause')
   pauseAd(@Param('id') id: string) {
     return this.adminService.pauseAd(id);

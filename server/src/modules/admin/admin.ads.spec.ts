@@ -1,4 +1,4 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { ads, businesses } from '../../db/schema.js';
 import {
@@ -181,5 +181,32 @@ describe('AdminService — ad pause', () => {
     const { service } = createService(db);
 
     await expect(service.pauseAd('missing')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('AdminService — publishChallenge', () => {
+  it('approves a draft challenge by setting it published', async () => {
+    const { db, setCalls } = createDbStub({ update: [[{ id: 'c1', status: 'published' }]] });
+    const { service } = createService(db);
+
+    await expect(service.publishChallenge('c1')).resolves.toEqual({
+      id: 'c1',
+      status: 'published',
+    });
+    expect(setCalls[0]).toEqual([{ status: 'published' }]);
+  });
+
+  it('refuses a non-draft challenge with 409', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[{ id: 'c1' }]] });
+    const { service } = createService(db);
+
+    await expect(service.publishChallenge('c1')).rejects.toBeInstanceOf(ConflictException);
+  });
+
+  it('throws 404 for an unknown challenge', async () => {
+    const { db } = createDbStub({ update: [[]], select: [[]] });
+    const { service } = createService(db);
+
+    await expect(service.publishChallenge('missing')).rejects.toBeInstanceOf(NotFoundException);
   });
 });

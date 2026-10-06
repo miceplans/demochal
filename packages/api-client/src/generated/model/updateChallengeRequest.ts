@@ -19,16 +19,35 @@
 import type { ApplicationFormQuestion } from './applicationFormQuestion';
 import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
 import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
+import type { UpdateChallengeRequestVisibility } from './updateChallengeRequestVisibility';
 
 /**
  * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
  */
 export interface UpdateChallengeRequest {
+  /**
+     * @maxLength 300
+     * @nullable
+     */
   summary?: string | null;
+  /**
+     * @maxItems 20
+     * @nullable
+     * @items.maxLength 50
+     */
   hashtags?: string[] | null;
+  /**
+     * @maxItems 30
+     * @nullable
+     * @items.maxLength 100
+     */
   topics?: string[] | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
   inquiryContact?: string | null;
-  visibility?: 'public' | 'private';
+  visibility?: UpdateChallengeRequestVisibility;
   /** @maxLength 200 */
   title?: string;
   /** @maxLength 20000 */

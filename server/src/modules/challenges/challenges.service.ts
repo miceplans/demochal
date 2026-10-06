@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -334,6 +335,12 @@ export class ChallengesService {
       throw new BadRequestException('recruitUrl is required when recruitMethod is external');
     }
 
+    // 자동 게시가 꺼져 있으면 소유자가 published를 요청해도 draft로 저장하고
+    // 관리자 승인(POST /admin/challenges/{id}/publish) 뒤에 게시한다.
+    const autoPublish = await this.adminSettingsService.isEnabled('contestAutoPublish');
+    const requestedStatus = dto.status ?? (autoPublish ? 'published' : 'draft');
+    const status = requestedStatus === 'published' && !autoPublish ? 'draft' : requestedStatus;
+
     const [challenge] = await this.db
       .insert(challenges)
       .values({
@@ -356,11 +363,7 @@ export class ChallengesService {
         topics: dto.topics ?? [],
         inquiryContact: dto.inquiryContact,
         visibility: dto.visibility ?? 'public',
-        status:
-          dto.status ??
-          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
-            ? 'published'
-            : 'draft'),
+        status,
       })
       .returning();
     return challenge;
@@ -436,6 +439,15 @@ export class ChallengesService {
       .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
     if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+
+    // 자동 게시가 꺼져 있으면 draft → published는 관리자 승인으로만 가능하다.
+    if (
+      challenge.status === 'draft' &&
+      dto.status === 'published' &&
+      !(await this.adminSettingsService.isEnabled('contestAutoPublish'))
+    ) {
+      throw new ForbiddenException('관리자 승인 후 게시됩니다. 검수 요청이 접수되었습니다.');
+    }
 
     const allowed = ALLOWED_TRANSITIONS[challenge.status] ?? [];
     if (!allowed.includes(dto.status)) {

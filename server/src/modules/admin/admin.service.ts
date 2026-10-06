@@ -575,6 +575,23 @@ export class AdminService {
 
   // ---------------------------------------------------------------------- ads
 
+  /** 관리자 공고 게시 승인 — draft 공고만 published로 전이한다. 원자적 조건부 UPDATE. */
+  async publishChallenge(id: string) {
+    const [updated] = await this.db
+      .update(challenges)
+      .set({ status: 'published' })
+      .where(and(eq(challenges.id, id), eq(challenges.status, 'draft')))
+      .returning({ id: challenges.id, status: challenges.status });
+    if (updated) return updated;
+    const [existing] = await this.db
+      .select({ id: challenges.id })
+      .from(challenges)
+      .where(eq(challenges.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
+  }
+
   /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */
   async pauseAd(id: string) {
     const [updated] = await this.db
