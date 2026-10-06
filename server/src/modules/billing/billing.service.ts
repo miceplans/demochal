@@ -5,7 +5,6 @@ import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { billingAuthAttempts, paymentCards } from '../../db/schema.js';
-import type { RegisterPaymentCardDto } from './dto/register-payment-card.dto.js';
 
 @Injectable()
 export class BillingService {
@@ -24,23 +23,6 @@ export class BillingService {
       .from(paymentCards)
       .where(eq(paymentCards.businessId, businessId))
       .orderBy(desc(paymentCards.createdAt));
-  }
-
-  async registerCard(businessId: string, dto: RegisterPaymentCardDto) {
-    const [card] = await this.db
-      .insert(paymentCards)
-      .values({
-        businessId,
-        billingKey: dto.billingKey,
-        cardName: dto.cardName,
-        maskedNumber: dto.maskedNumber,
-      })
-      .returning({
-        id: paymentCards.id,
-        cardName: paymentCards.cardName,
-        maskedNumber: paymentCards.maskedNumber,
-      });
-    return card;
   }
 
   // 빌링 인증(customerKey)은 businessId에서 유도한다 — 클라이언트가 사전에 키를 알 필요 없게.
