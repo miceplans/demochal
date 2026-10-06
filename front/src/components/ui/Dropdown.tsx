@@ -2,7 +2,11 @@
 
 import styled from '@emotion/styled';
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+
+// 옵션이 이 개수를 넘으면 목록을 2열로 펼친다(요소1 요소2 / 요소3).
+const TWO_COLUMN_THRESHOLD = 6;
 
 export interface DropdownOption {
   value: string;
@@ -10,16 +14,12 @@ export interface DropdownOption {
 }
 
 type DropdownSize = 'L' | 'S';
-// pill: 모바일 필터용 알약 스타일(회색 배경, 둥근 모서리, 작은 글자).
-type DropdownVariant = 'default' | 'pill';
-
 interface DropdownProps {
   options: DropdownOption[];
   value?: string;
   defaultValue?: string;
   placeholder?: string;
   size?: DropdownSize;
-  variant?: DropdownVariant;
   width?: number | string;
   disabled?: boolean;
   onChange?: (value: string) => void;
@@ -32,7 +32,7 @@ const Wrapper = styled.div<{ $width: string }>`
   width: ${({ $width }) => $width};
 `;
 
-const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: boolean }>`
+const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -68,17 +68,13 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean; $pill: 
     cursor: not-allowed;
   }
 
-  ${({ $pill, theme }) =>
-    $pill
-      ? `
-    height: 34px;
-    background: ${theme.colors.gray[100]};
-    border: 0.5px solid ${theme.colors.gray[100]};
-    border-radius: 24px;
+  /* 모바일에서는 닫힌 드롭다운 버튼을 작게 한다. */
+  ${mobile} {
+    height: ${({ $size }) => ($size === 'L' ? '38px' : '30px')};
+    padding: 0 10px;
+    gap: 6px;
     font-size: ${textStyle.mSubText.fontSize}px;
-    color: ${theme.colors.gray[700]};
-  `
-      : ''}
+  }
 `;
 
 const Chevron = styled.span<{ $open: boolean }>`
@@ -90,6 +86,11 @@ const Chevron = styled.span<{ $open: boolean }>`
   transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')})
     translateY(${(p) => (p.$open ? '2px' : '-2px')});
   transition: transform 0.18s ease;
+
+  ${mobile} {
+    width: 6px;
+    height: 6px;
+  }
 `;
 
 // 트리거 폭(모바일 알약은 최대 110px)보다 긴 라벨이 고정 높이를 밀어내지 않도록 한 줄로 자른다.
@@ -100,19 +101,33 @@ const TriggerLabel = styled.span`
   white-space: nowrap;
 `;
 
-const Listbox = styled.ul`
+const Listbox = styled.ul<{ $columns: number }>`
   position: absolute;
   top: calc(100% + 9px);
   left: 0;
   z-index: 30;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(${({ $columns }) => $columns}, minmax(0, 1fr));
   align-items: stretch;
   min-width: 100%;
+  width: ${({ $columns }) => ($columns > 1 ? 'max-content' : 'auto')};
   max-width: calc(100vw - 32px);
   margin: 0;
   padding: 0;
   list-style: none;
+  ${({ $columns, theme }) =>
+    $columns > 1
+      ? `
+    background: ${theme.colors.background};
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 2px rgb(0 0 0 / 10%);
+    & > li {
+      border-radius: 0;
+      box-shadow: none;
+    }
+  `
+      : ''}
   transform-origin: top center;
   animation: semo-listbox-in 0.16s ease-out;
   @keyframes semo-listbox-in {
@@ -146,6 +161,11 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   }
 `;
 
+// 2열에서 옵션이 홀수일 때 마지막 줄의 빈 칸을 채워 직사각형 모양을 유지한다.
+const Filler = styled.li`
+  background: ${(p) => p.theme.colors.background};
+`;
+
 // 긴 라벨은 열린 목록에서 우측으로 늘어나 전체를 보여주고, 화면 폭을 넘어갈 때만 말줄임한다.
 const OptionLabel = styled.span`
   min-width: 0;
@@ -160,7 +180,6 @@ export function Dropdown({
   defaultValue = '',
   placeholder = '요소를 선택하세요',
   size = 'L',
-  variant = 'default',
   width = '100%',
   disabled = false,
   onChange,
@@ -172,6 +191,7 @@ export function Dropdown({
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  const columns = options.length > TWO_COLUMN_THRESHOLD ? 2 : 1;
 
   const selectedValue = value !== undefined ? value : internalValue;
   const selectedIndex = options.findIndex((option) => option.value === selectedValue);
@@ -211,11 +231,23 @@ export function Dropdown({
       case 'ArrowDown':
         event.preventDefault();
         if (!open) openListbox();
-        else setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+        else setActiveIndex((i) => Math.min(i + columns, options.length - 1));
         break;
       case 'ArrowUp':
         event.preventDefault();
-        if (open) setActiveIndex((i) => Math.max(i - 1, 0));
+        if (open) setActiveIndex((i) => Math.max(i - columns, 0));
+        break;
+      case 'ArrowRight':
+        if (open && columns > 1) {
+          event.preventDefault();
+          setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+        }
+        break;
+      case 'ArrowLeft':
+        if (open && columns > 1) {
+          event.preventDefault();
+          setActiveIndex((i) => Math.max(i - 1, 0));
+        }
         break;
       case 'Home':
         if (open) setActiveIndex(0);
@@ -233,9 +265,14 @@ export function Dropdown({
   };
 
   const radiusFor = (index: number) => {
-    if (options.length === 1) return '8px';
-    if (index === 0) return '8px 8px 0 0';
-    if (index === options.length - 1) return '0 0 8px 8px';
+    const last = options.length - 1;
+    if (columns === 1) {
+      if (options.length === 1) return '8px';
+      if (index === 0) return '8px 8px 0 0';
+      if (index === last) return '0 0 8px 8px';
+      return '0';
+    }
+    // 2열: 목록 컨테이너가 모서리를 둥글게 처리한다.
     return '0';
   };
 
@@ -249,7 +286,6 @@ export function Dropdown({
       <Trigger
         type="button"
         $size={size}
-        $pill={variant === 'pill'}
         $hasValue={Boolean(selected)}
         disabled={disabled}
         role="combobox"
@@ -264,7 +300,7 @@ export function Dropdown({
         <Chevron aria-hidden="true" $open={open} />
       </Trigger>
       {open && options.length > 0 ? (
-        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>
+        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel} $columns={columns}>
           {options.map((option, index) => (
             <Option
               key={option.value}
@@ -280,6 +316,7 @@ export function Dropdown({
               <OptionLabel>{option.label}</OptionLabel>
             </Option>
           ))}
+          {columns > 1 && options.length % 2 === 1 ? <Filler aria-hidden="true" /> : null}
         </Listbox>
       ) : null}
     </Wrapper>

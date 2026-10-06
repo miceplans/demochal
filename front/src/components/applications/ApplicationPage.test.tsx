@@ -91,7 +91,8 @@ describe('saved application questionnaires', () => {
     await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
     await user.type(screen.getByLabelText('short'), '짧은 답변');
     await user.type(screen.getByLabelText('long'), '긴 답변');
-    await user.selectOptions(screen.getByLabelText('dropdown'), 'A');
+    await user.click(screen.getByRole('combobox', { name: 'dropdown' }));
+    await user.click(screen.getByRole('option', { name: 'A' }));
     await user.click(
       within(screen.getByRole('group', { name: 'radio (필수)' })).getByLabelText('B'),
     );
