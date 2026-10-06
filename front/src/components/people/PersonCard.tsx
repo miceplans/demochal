@@ -16,7 +16,7 @@ const Card = styled.div({
   width: '100%',
   minHeight: 177,
   padding: 20,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
   transition: 'box-shadow 0.15s ease',
@@ -59,11 +59,11 @@ const actionStyle = (primary?: boolean) => ({
   height: 37,
   padding: '10px 12px',
   borderRadius: 6,
-  border: primary ? 'none' : `1px solid ${c.gray200}`,
+  border: primary ? 'none' : `0.5px solid ${c.gray200}`,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray900,
   cursor: 'pointer',
-  '&:hover:not(:disabled)': { background: primary ? '#005ee0' : c.gray50 },
+  '&:hover:not(:disabled)': { background: primary ? c.primaryHover : c.gray50 },
   '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
 });
 const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => actionStyle(primary));

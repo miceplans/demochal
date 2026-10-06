@@ -6,6 +6,7 @@ import { QueueModule } from './queue/queue.module.js';
 import { OutboxModule } from './outbox/outbox.module.js';
 import { VerificationsModule } from './modules/verifications/verifications.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import { EmailModule } from './modules/email/email.module.js';
 
 // Subset of AppModule needed to process background jobs. Shares the same
 // VerificationsModule/NotificationsModule as the HTTP app — only the entry
@@ -20,6 +21,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     OutboxModule,
     VerificationsModule,
     NotificationsModule,
+    EmailModule,
   ],
 })
 export class WorkerModule {}

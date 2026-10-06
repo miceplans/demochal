@@ -10,6 +10,8 @@ worker_desired_count = 0
 # SES sending identity + DKIM/MAIL FROM/DMARC records in hosted_zone_id.
 # https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html
 ses_domain = "semochall.com"
-# Turns service email delivery on. Leave empty until the identity's DKIM status is
-# SUCCESS and SES production access is granted (see infra/README.md).
-ses_from_email = ""
+ses_configuration_set_name = "my-first-configuration-set"
+# Turns service email delivery on after the identity's DKIM status is SUCCESS
+# and SES production access is granted (see infra/README.md).
+ses_from_email         = "noreply@semochall.com"
+ses_support_from_email = "help@semochall.com"

@@ -22,8 +22,8 @@
  * @nullable
  */
 export type ApplyChallenge201Order = {
-  id?: string;
-  amount?: number;
+  id: string;
+  amount: number;
   /** 챌린지 제목 (토스 orderName) */
-  name?: string;
+  name: string;
 } | null;

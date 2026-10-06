@@ -1,3 +1,4 @@
+import { ConflictException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { PaymentsService } from './payments.service.js';
 
@@ -246,6 +247,67 @@ describe('PaymentsService', () => {
     expect(insertValues).toHaveBeenCalledTimes(1);
   });
 
+  it('refunds via Toss when DONE cannot settle the order (e.g. ad contract ended)', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(tossResponse('DONE'))
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    const { db } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.settleOrderPaid.mockRejectedValue(new ConflictException('종료된 광고'));
+    const service = new PaymentsService(db, orders as any);
+
+    // Refunded + recorded locally → acked, so Toss does not redeliver forever.
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+
+    const [url, init] = fetchMock.mock.calls[1]!;
+    expect(url).toBe('https://api.tosspayments.com/v1/payments/pay-key-1/cancel');
+    expect(init.method).toBe('POST');
+    expect(init.headers['Idempotency-Key']).toBe('cancel:order-1');
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+  });
+
+  it('records refund_pending and rethrows when the compensating cancel fails', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(tossResponse('DONE'))
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.settleOrderPaid.mockRejectedValue(new ConflictException('종료된 광고'));
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('종료된 광고');
+
+    expect(insertValues).toHaveBeenLastCalledWith(
+      expect.objectContaining({ orderId: 'order-1', status: 'refund_pending' }),
+    );
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
+  });
+
+  it('acks a DONE redelivery once the payment was refunded and the order canceled', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(tossResponse('CANCELED'));
+    const { db, transaction } = createDbStub();
+    const orders = createOrdersStub('canceled');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it('does not refund on a transient settlement failure (a later webhook can settle it)', async () => {
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db } = createDbStub();
+    const orders = createOrdersStub('pending');
+    orders.settleOrderPaid.mockRejectedValue(new Error('connection reset'));
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow('connection reset');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('propagates a cancellation failure so CANCELED rolls back instead of half-committing', async () => {
     fetchMock.mockResolvedValue(tossResponse('CANCELED'));
     const { db, transaction, insertValues } = createDbStub();
@@ -453,6 +515,55 @@ describe('PaymentsService', () => {
           approvedAt: expect.any(Date),
         }),
       );
+    });
+
+    it('refunds via Toss and rethrows when the order cannot be settled after approval', async () => {
+      fetchMock.mockReset();
+      fetchMock
+        .mockResolvedValueOnce(tossResponse('DONE'))
+        .mockResolvedValueOnce({ ok: true, status: 200 });
+      const { db } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      orders.settleOrderPaid.mockRejectedValue(new ConflictException('결제할 수 없는 주문입니다.'));
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(service.confirmPayment('user-1', confirmDto)).rejects.toThrow(
+        '결제할 수 없는 주문입니다.',
+      );
+
+      expect(fetchMock.mock.calls[0]![1].headers['Idempotency-Key']).toBe('confirm:order-1');
+      expect(fetchMock.mock.calls[1]![0]).toContain('/pay-key-1/cancel');
+    });
+
+    it('converges on the recorded Toss payment when the confirm was already processed', async () => {
+      fetchMock.mockReset();
+      fetchMock
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ code: 'ALREADY_PROCESSED_PAYMENT' }),
+        })
+        .mockResolvedValueOnce(tossResponse('DONE'));
+      const { db, transaction } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmPayment('user-1', confirmDto);
+
+      expect(fetchMock.mock.calls[1]![0]).toBe(
+        'https://api.tosspayments.com/v1/payments/pay-key-1',
+      );
+      expect(transaction).toHaveBeenCalledTimes(1);
     });
 
     it('rejects a confirm whose amount does not match the order before calling Toss', async () => {

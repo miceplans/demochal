@@ -26,6 +26,7 @@ export class ApplicationsService {
           status: challenges.status,
           startDate: challenges.startDate,
           endDate: challenges.endDate,
+          applicationForm: challenges.applicationForm,
           visibility: challenges.visibility,
         })
         .from(challenges)

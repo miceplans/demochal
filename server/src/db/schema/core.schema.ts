@@ -253,7 +253,9 @@ export const payments = pgTable(
     provider: varchar('provider', { length: 20 }).notNull().default('toss'),
     providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
     amount: integer('amount').notNull(),
-    // Valid values: ready | paid | canceled | expired. Legacy rows can contain
+    // Valid values: ready | paid | canceled | expired | refund_pending
+    // (charged but the order could not be settled and the compensating Toss cancel
+    // failed — needs a retry/manual refund). Legacy rows can contain
     // done | cancelled and are handled when reading billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set

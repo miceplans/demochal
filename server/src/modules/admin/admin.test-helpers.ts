@@ -36,11 +36,13 @@ export function createDbStub(
   const valuesCalls: unknown[][] = [];
   const selectWhereCalls: unknown[][] = [];
   const limitCalls: unknown[][] = [];
+  const offsetCalls: unknown[][] = [];
   const db: any = {
     select: vi.fn(() =>
       chainable(selectQueue.length ? selectQueue.shift() : [], {
         where: (args) => selectWhereCalls.push(args),
         limit: (args) => limitCalls.push(args),
+        offset: (args) => offsetCalls.push(args),
       }),
     ),
     update: vi.fn(() =>
@@ -55,7 +57,7 @@ export function createDbStub(
     ),
     transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
-  return { db, setCalls, valuesCalls, selectWhereCalls, limitCalls };
+  return { db, setCalls, valuesCalls, selectWhereCalls, limitCalls, offsetCalls };
 }
 
 /** drizzle SQL 트리에서 문자열 값(Param 포함)을 모은다. */

@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
@@ -53,7 +54,7 @@ const MobileMenu = styled.nav({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const Participating = styled.div({
@@ -61,7 +62,7 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
-    border: `1px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
     transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
@@ -75,7 +76,7 @@ const Participating = styled.div({
 });
 const UploadBox = styled.label({
   border: `2px dashed ${c.gray100}`,
-  background: '#f8f8f8',
+  background: c.surface,
   borderRadius: 12,
   padding: 8,
   display: 'flex',
@@ -93,7 +94,7 @@ const UploadBox = styled.label({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const HiddenInput = styled.input({
@@ -115,7 +116,7 @@ const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
   background: c.gray100,
   flexShrink: 0,
   overflow: 'hidden',
-  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
 }));
 const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
 // 아바타 자체가 파일 선택 트리거다(프로필 링크와 겹치지 않게 Link 밖에 둔다).
@@ -259,58 +260,55 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 const BIO_MAX_LENGTH = 100;
 
-function BioEditModal({
-  open,
-  onClose,
+const BioText = styled(Muted)({
+  cursor: 'text',
+  borderRadius: 4,
+});
+
+// 더블클릭으로 여는 인라인 편집 — Enter 저장, Escape/blur 취소.
+function BioInlineEdit({
   initial,
-  onSave,
+  saving,
+  onSubmit,
+  onCancel,
 }: {
-  open: boolean;
-  onClose: () => void;
   initial: string;
-  onSave: (bio: string) => Promise<unknown>;
+  saving: boolean;
+  onSubmit: (bio: string) => void;
+  onCancel: () => void;
 }) {
-  const toast = useToast();
   const [value, setValue] = useState(initial);
-  const [saving, setSaving] = useState(false);
-  const submit = async (e: FormEvent) => {
+  const cancel = () => {
+    if (!saving) onCancel();
+  };
+  const submit = (e: FormEvent) => {
     e.preventDefault();
-    setSaving(true);
-    try {
-      await onSave(value.trim());
-      toast.success('한 줄 소개를 저장했어요');
-      onClose();
-    } catch {
-      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
-    } finally {
-      setSaving(false);
-    }
+    if (!saving) onSubmit(value.trim());
   };
   return (
-    <Modal open={open} onClose={onClose} title="한 줄 소개" width={420}>
-      <form onSubmit={submit}>
-        <Stack gap={12}>
-          <Input
-            aria-label="한 줄 소개"
-            placeholder="나를 한 줄로 소개해보세요"
-            maxLength={BIO_MAX_LENGTH}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-          />
-          <Muted style={{ textAlign: 'right' }}>
-            {value.length}/{BIO_MAX_LENGTH}
-          </Muted>
-          <Row style={{ justifyContent: 'flex-end' }}>
-            <Button type="button" small tone="plain" onClick={onClose}>
-              취소
-            </Button>
-            <Button type="submit" small disabled={saving}>
-              저장
-            </Button>
-          </Row>
-        </Stack>
-      </form>
-    </Modal>
+    <form style={{ flex: 1 }} onSubmit={submit}>
+      <Stack gap={4}>
+        <Input
+          autoFocus
+          aria-label="한 줄 소개"
+          placeholder="나를 한 줄로 소개해보세요"
+          maxLength={BIO_MAX_LENGTH}
+          value={value}
+          disabled={saving}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+          onBlur={cancel}
+        />
+        <Muted style={{ textAlign: 'right' }}>
+          {value.length}/{BIO_MAX_LENGTH}
+        </Muted>
+      </Stack>
+    </form>
   );
 }
 
@@ -444,7 +442,7 @@ function ParticipationHistory() {
           </div>
         </HistoryCard>
       ))}
-      {isPending && <Muted>참가 이력을 불러오는 중이에요.</Muted>}
+      {isPending && <LoadingState label="참가 이력을 불러오는 중이에요." />}
       {isError && <Muted>참가 이력을 불러오지 못했어요. 새로고침해주세요.</Muted>}
       {!isPending && !isError && items.length === 0 && <Muted>아직 참가 이력이 없어요.</Muted>}
     </Stack>
@@ -455,7 +453,8 @@ export function MyPage() {
   const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
-  const [bioOpen, setBioOpen] = useState(false);
+  const [bioEditing, setBioEditing] = useState(false);
+  const [bioSaving, setBioSaving] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
@@ -504,6 +503,23 @@ export function MyPage() {
       },
     },
   });
+  // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
+  const startBioEdit = () => {
+    if (me.data?.status !== 200) return;
+    setBioEditing(true);
+  };
+  const saveBio = async (bio: string) => {
+    setBioSaving(true);
+    try {
+      await updateProfile.mutateAsync({ data: { bio } });
+      toast.success('한 줄 소개를 저장했어요');
+      setBioEditing(false);
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setBioSaving(false);
+    }
+  };
   const requestUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -578,17 +594,30 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
-        <Row gap={8}>
-          {meInfo?.bio ? <Muted>{meInfo.bio}</Muted> : <Muted>한 줄 소개를 남겨보세요.</Muted>}
-          <AddButton
-            aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
-            // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
-            disabled={me.data?.status !== 200}
-            onClick={() => setBioOpen(true)}
-          >
-            <Icon name="imgAddSlotIc" size={12} />
-          </AddButton>
-        </Row>
+        {bioEditing ? (
+          <BioInlineEdit
+            // 편집 시작 시 최신 소개로 입력값을 초기화한다.
+            key={meInfo?.bio ?? ''}
+            initial={meInfo?.bio ?? ''}
+            saving={bioSaving}
+            onSubmit={saveBio}
+            onCancel={() => setBioEditing(false)}
+          />
+        ) : (
+          <Row gap={8}>
+            <BioText onDoubleClick={startBioEdit} title="더블클릭하여 수정">
+              {meInfo?.bio ? meInfo.bio : '한 줄 소개를 남겨보세요.'}
+            </BioText>
+            <AddButton
+              aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
+              // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
+              disabled={me.data?.status !== 200}
+              onClick={startBioEdit}
+            >
+              <Icon name="imgAddSlotIc" size={12} />
+            </AddButton>
+          </Row>
+        )}
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
@@ -627,7 +656,7 @@ export function MyPage() {
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
             <Muted>참여 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : participatingItems.length === 0 ? (
@@ -655,14 +684,6 @@ export function MyPage() {
         </MobileOnly>
       </Stack>
       <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
-      <BioEditModal
-        // 열 때마다 최신 소개로 입력값을 초기화한다.
-        key={`${bioOpen}-${meInfo?.bio ?? ''}`}
-        open={bioOpen}
-        onClose={() => setBioOpen(false)}
-        initial={meInfo?.bio ?? ''}
-        onSave={(bio) => updateProfile.mutateAsync({ data: { bio } })}
-      />
       <SkillAddModal
         open={skillOpen}
         onClose={() => setSkillOpen(false)}
@@ -686,7 +707,7 @@ export function MyTeamsPage() {
           <Title>내 팀</Title>
         </DesktopOnly>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 목록을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -767,7 +788,7 @@ export function BookmarksPage() {
             <ContestCard key={x.id} contest={x} />
           ))}
         </BookmarkGrid>
-        {isPending && <Muted>북마크를 불러오는 중이에요.</Muted>}
+        {isPending && <LoadingState label="북마크를 불러오는 중이에요." />}
         {isError && <Muted>북마크를 불러오지 못했어요.</Muted>}
         {!isPending && !isError && data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
       </Stack>
@@ -848,7 +869,7 @@ export function InterestsPage() {
   );
 }
 const SettingsGroup = styled.section({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
   '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
@@ -858,7 +879,7 @@ const SettingsGroup = styled.section({
     gap: 16,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTop: `1px solid ${c.gray100}`,
+    borderTop: `0.5px solid ${c.gray100}`,
   },
   [mobile]: {
     border: 0,
@@ -918,11 +939,11 @@ export function NotificationSettingsPage() {
 const Table = styled.table({
   width: '100%',
   borderSpacing: 0,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   ...textStyle.bodySmall,
   '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
+  '& td, & th': { padding: '14px 16px', borderBottom: `0.5px solid ${c.gray100}` },
   '& th:first-child': { borderRadius: '11px 0 0 0' },
   '& th:last-child': { borderRadius: '0 11px 0 0' },
   '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
@@ -955,7 +976,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
           {challengeQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : challengeQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : challengeApps.length === 0 ? (
@@ -997,7 +1018,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
           {teamQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : teamQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : teamApps.length === 0 ? (
@@ -1137,7 +1158,7 @@ export function TeamApplicantsPage() {
     <MyShell title="팀 지원현황">
       <Stack gap={40}>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 지원 현황을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -1258,7 +1279,7 @@ const NotificationTabButton = styled.button({
   minWidth: 0,
   height: 40,
   border: 0,
-  borderBottom: '2px solid transparent',
+  borderBottom: '0.5px solid transparent',
   background: 'transparent',
   fontFamily: 'inherit',
   fontSize: 15,
@@ -1496,7 +1517,7 @@ export function NotificationsPage() {
               );
             })}
           </NotificationList>
-          {notificationsQuery.isPending && <Muted>알림을 불러오는 중이에요.</Muted>}
+          {notificationsQuery.isPending && <LoadingState label="알림을 불러오는 중이에요." />}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
           {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>

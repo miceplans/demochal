@@ -18,8 +18,8 @@
  */
 
 export type ListMyNotificationsParams = {
-  /**
-   * 알림 유형 필터 (team_matching | deadline | posting 등)
-   */
-  type?: string;
+/**
+ * 알림 유형 필터 (team_matching | deadline | posting 등)
+ */
+type?: string;
 };

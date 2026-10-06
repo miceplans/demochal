@@ -14,11 +14,18 @@ import {
 describe('AdminService — time buckets', () => {
   const now = new Date('2026-09-23T10:00:00Z');
 
+  it('rolls the day over at KST midnight, not UTC midnight', () => {
+    // 2026-09-23 16:00 UTC = 2026-09-24 01:00 KST
+    const buckets = timeBuckets('day', 2, new Date('2026-09-23T16:00:00Z'));
+    expect(buckets.keys).toEqual(['2026-09-23', '2026-09-24']);
+    expect(buckets.since.toISOString()).toBe('2026-09-22T15:00:00.000Z');
+  });
+
   it('builds consecutive day buckets ending today', () => {
     const buckets = timeBuckets('day', 3, now);
     expect(buckets.keys).toEqual(['2026-09-21', '2026-09-22', '2026-09-23']);
     expect(buckets.labels).toEqual(['9/21', '9/22', '9/23']);
-    expect(buckets.since.toISOString()).toBe('2026-09-21T00:00:00.000Z');
+    expect(buckets.since.toISOString()).toBe('2026-09-20T15:00:00.000Z');
   });
 
   it('builds month buckets across a year boundary', () => {
@@ -155,7 +162,7 @@ describe('AdminService — analytics', () => {
       adNumber: 7,
       startDate: new Date('2026-08-24T00:00:00Z'),
       endDate: new Date('2026-09-24T00:00:00Z'),
-      paidAmount: 250,
+      paidAmount: 999,
     },
     organization: '부산광역시',
   };
@@ -210,12 +217,15 @@ describe('AdminService — analytics', () => {
   });
 
   it('resolves ?ad=N by the stable ads.ad_number column, not list position', async () => {
-    const { db, selectWhereCalls } = createDbStub({ select: [...baseSelects(), [adRow]] });
+    const { db, selectWhereCalls } = createDbStub({
+      select: [...baseSelects(), [adRow], [{ total: 250 }]],
+    });
     const { service, adsService } = createService(db);
 
     const result = await service.getAnalytics('7');
 
-    const adWhere = selectWhereCalls[selectWhereCalls.length - 1]?.[0];
+    // 마지막 select는 결제 순액 집계라, 광고 조회는 그 직전이다.
+    const adWhere = selectWhereCalls[selectWhereCalls.length - 2]?.[0];
     expect(referencesColumn(adWhere, ads.adNumber)).toBe(true);
     expect(referencesColumn(adWhere, ads.id)).toBe(false);
     expect(adsService.getReportForAdmin).toHaveBeenCalledWith(uuid);
@@ -236,12 +246,15 @@ describe('AdminService — analytics', () => {
       hourly: [],
       monthlyClicks: [],
     };
-    const { db, selectWhereCalls } = createDbStub({ select: [...baseSelects(), [adRow]] });
+    const { db, selectWhereCalls } = createDbStub({
+      select: [...baseSelects(), [adRow], [{ total: 250 }]],
+    });
     const { service } = createService(db, createNotificationsStub(), createAdsStub(report));
 
     const result = await service.getAnalytics(uuid);
 
-    const adWhere = selectWhereCalls[selectWhereCalls.length - 1]?.[0];
+    // 마지막 select는 결제 순액 집계라, 광고 조회는 그 직전이다.
+    const adWhere = selectWhereCalls[selectWhereCalls.length - 2]?.[0];
     expect(referencesColumn(adWhere, ads.id)).toBe(true);
     expect(result.adReport?.stats.map((card) => card.value)).toEqual(['1200', '36', '3%', '250']);
     expect(result.adReport?.daily).toEqual(report.daily);

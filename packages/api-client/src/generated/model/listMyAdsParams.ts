@@ -19,5 +19,5 @@
 import type { ListMyAdsStatus } from './listMyAdsStatus';
 
 export type ListMyAdsParams = {
-  status?: ListMyAdsStatus;
+status?: ListMyAdsStatus;
 };

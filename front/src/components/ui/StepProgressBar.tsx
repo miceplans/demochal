@@ -65,7 +65,7 @@ const Dot = styled.span<{ state: StepState }>(({ state }) => ({
   justifyContent: 'center',
   ...textStyle.mMicroTag,
   background: state === 'done' ? c.primary : state === 'todo' ? c.gray50 : c.white,
-  border: `1.5px solid ${state === 'todo' ? c.gray200 : c.primary}`,
+  border: `0.5px solid ${state === 'todo' ? c.gray200 : c.primary}`,
   color: state === 'current' ? c.primary : c.gray700,
 }));
 const Check = styled.img({ width: 17.5, height: 17.5 });

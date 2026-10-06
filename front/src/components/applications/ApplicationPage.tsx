@@ -14,6 +14,7 @@ import { apiErrorMessage } from '@/lib/api-error';
 import { requestTossPayment } from '@/lib/payments';
 import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
+import { ApplicationQuestions, isAnswerValid, type Answers } from './ApplicationQuestions';
 
 const Form = styled.form({
   display: 'flex',
@@ -59,7 +60,7 @@ const StepNumber = styled.span<{ $completed: boolean }>(({ $completed }) => ({
   height: 30,
   placeItems: 'center',
   flexShrink: 0,
-  border: `${$completed ? 0 : 1.25}px solid ${c.primary}`,
+  border: `${$completed ? 0 : 0.5}px solid ${c.primary}`,
   borderRadius: '50%',
   background: $completed ? c.primary : c.white,
   color: $completed ? c.white : c.primary,
@@ -104,7 +105,7 @@ const AddMember = styled.button({
   alignItems: 'center',
   justifyContent: 'center',
   gap: 6,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 10,
   background: c.white,
   color: c.gray500,
@@ -142,18 +143,22 @@ export function ApplicationPage() {
   // useSearchParams는 Suspense 경계가 필요해(정적 프리렌더) 폼을 안쪽 컴포넌트로 감싼다.
   return (
     <Suspense fallback={null}>
-      <ApplicationForm />
+      <ApplicationFormRoute />
     </Suspense>
   );
 }
 
-function ApplicationForm() {
+function ApplicationFormRoute() {
+  const challengeId = useSearchParams().get('challenge');
+  return <ApplicationForm key={challengeId ?? 'generic'} challengeId={challengeId} />;
+}
+
+function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   const draft = useUserStore((s) => s.applicationDraft);
   const save = useUserStore((s) => s.saveApplication);
   const toast = useToast();
   const router = useRouter();
   // /applications/new?challenge=<uuid> — 챌린지 상세의 "참가 신청하기" 링크로만 들어온다.
-  const challengeId = useSearchParams().get('challenge');
   const challengeQuery = generated.useGetChallenge(challengeId ?? '', {
     query: { enabled: Boolean(challengeId) },
   });
@@ -165,6 +170,11 @@ function ApplicationForm() {
   const [pickedRole, setPickedRole] = useState(draft?.role ?? '백엔드');
   const [members, setMembers] = useState(draft?.members ?? [{ name: '', role: '백엔드' }]);
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [answers, setAnswers] = useState<Answers>(
+    draft?.challengeId === challengeId ? (draft.answers ?? {}) : {},
+  );
+  const questions = challenge?.applicationForm ?? [];
   const membersComplete = members.length > 0 && members.every((member) => member.name.trim());
   // 저장값이 현재 선택지에 없으면(다른 챌린지 임시저장 등) 첫 선택지로 보정해 보여주고 본다.
   const role = roleOptions.some((option) => option.value === pickedRole)
@@ -176,14 +186,24 @@ function ApplicationForm() {
       : { ...member, role: fallbackRole },
   );
   const saveDraft = () => {
-    save({ role, members: normalizedMembers });
+    save({ role, members: normalizedMembers, challengeId: challengeId ?? undefined, answers });
     toast.success('임시저장했어요');
   };
 
   // /applications/new?challenge=<uuid> 진입 시에만 실제 신청·결제 흐름으로 동작한다(챌린지 상세 등에서 링크).
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    save({ role, members: normalizedMembers });
+    if (submitting || uploading) return;
+    if (challengeId && (!challenge || challengeQuery.isError)) {
+      toast.error('공고 정보를 불러온 뒤 다시 제출해 주세요.');
+      return;
+    }
+    const invalid = questions.find((question) => !isAnswerValid(question, answers[question.id]));
+    if (invalid) {
+      toast.error(`“${invalid.title}” 답변을 확인해 주세요.`);
+      return;
+    }
+    save({ role, members: normalizedMembers, challengeId: challengeId ?? undefined, answers });
     if (!challengeId) {
       // 목업 카탈로그 화면에서는 진입 링크에 챌린지 UUID가 없다 — 이 경우 저장만 하고
       // 실제 신청·결제 흐름은 챌린지 신청 링크(/applications/new?challenge=<uuid>) 경로로만
@@ -204,11 +224,16 @@ function ApplicationForm() {
       await adApi.orders.cancel(orderId).catch(() => {});
     };
     try {
-      const result = await adApi.applications.apply({
+      const response = await generated.applyChallenge({
         challengeId,
         role,
         teammates: members.map((member) => member.name),
+        formAnswers: questions
+          .filter((question) => answers[question.id] !== undefined)
+          .map((question) => ({ questionId: question.id, value: answers[question.id]! })),
       });
+      if (response.status !== 201) throw new Error('Application rejected');
+      const result = response.data;
       // 무료 챌린지(price 0)는 결제 없이 완료. 유료는 서버가 만든 pending 주문으로 토스 결제창을 연다.
       if (!result.order) {
         toast.success('신청이 완료됐어요');
@@ -308,13 +333,31 @@ function ApplicationForm() {
               </AddMember>
             </MemberList>
           </Step>
+          <ApplicationQuestions
+            questions={questions}
+            answers={answers}
+            onChange={(id, value) => setAnswers((current) => ({ ...current, [id]: value }))}
+            onUploading={setUploading}
+            disabled={submitting || uploading}
+          />
+          {challengeId && challengeQuery.isError && (
+            <p role="alert">
+              공고 정보를 불러오지 못했습니다.{' '}
+              <button type="button" onClick={() => void challengeQuery.refetch()}>
+                다시 시도
+              </button>
+            </p>
+          )}
         </Content>
         <Actions>
           <ActionButton type="button" tone="plain" onClick={saveDraft}>
             임시저장
           </ActionButton>
-          <ActionButton type="submit" disabled={submitting}>
-            {submitting ? '처리 중…' : '제출'}
+          <ActionButton
+            type="submit"
+            disabled={submitting || uploading || Boolean(challengeId && !challenge)}
+          >
+            {uploading ? '첨부파일 업로드 중…' : submitting ? '처리 중…' : '제출'}
           </ActionButton>
         </Actions>
       </Form>

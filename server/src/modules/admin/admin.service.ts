@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gte, ilike, inArray, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -70,6 +70,8 @@ export function escapeLike(value: string): string {
 const like = (value: string) => `%${escapeLike(value)}%`;
 
 const DAY_MS = 86_400_000;
+const DEFAULT_USERS_PAGE_SIZE = 30;
+const MAX_USERS_PAGE_SIZE = 50;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type BucketUnit = 'day' | 'month';
@@ -82,20 +84,28 @@ interface TimeBuckets {
 
 const toDateKey = (date: Date) => date.toISOString().slice(0, 10);
 
+/** 관리자 집계 버킷의 기준 시간대. 저장은 UTC, 일/월 경계는 KST(UTC+9, DST 없음)로 자른다. */
+const BUCKET_TIME_ZONE = 'Asia/Seoul';
+const BUCKET_OFFSET_MS = 9 * 3_600_000;
+
 /**
- * Consecutive UTC day/month buckets ending at `now` (inclusive). Keys match
+ * Consecutive KST day/month buckets ending at `now` (inclusive). Keys match
  * {@link bucketKey}'s `YYYY-MM-DD` output so SQL group-by rows can be joined back.
  */
 export function timeBuckets(unit: BucketUnit, count: number, now = new Date()): TimeBuckets {
+  // KST 벽시계 시각을 UTC 필드로 옮겨 계산한 뒤, since만 실제 순간(UTC)으로 되돌린다.
+  const kstNow = new Date(now.getTime() + BUCKET_OFFSET_MS);
   const starts = Array.from({ length: count }, (_, i) => {
     const offset = count - 1 - i;
     return unit === 'day'
-      ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - offset))
-      : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - offset, 1));
+      ? new Date(
+          Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate() - offset),
+        )
+      : new Date(Date.UTC(kstNow.getUTCFullYear(), kstNow.getUTCMonth() - offset, 1));
   });
   return {
     unit,
-    since: starts[0]!,
+    since: new Date(starts[0]!.getTime() - BUCKET_OFFSET_MS),
     keys: starts.map(toDateKey),
     labels: starts.map((date) =>
       unit === 'day'
@@ -111,9 +121,12 @@ const RANGE_BUCKETS: Record<string, [BucketUnit, number]> = {
   '1year': ['month', 12],
 };
 
-/** `YYYY-MM-DD` of the day/month a timestamp falls in (timestamps are stored as UTC). */
+/**
+ * `YYYY-MM-DD` of the KST day/month a timestamp falls in. 컬럼은 tz 없는 `timestamp`(UTC 저장)이라
+ * UTC로 해석한 뒤 KST로 변환해 DB 세션 TZ와 무관하게 버킷 경계가 고정된다.
+ */
 function bucketKey(unit: BucketUnit, column: PgColumn) {
-  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column}), 'YYYY-MM-DD')`;
+  return sql<string>`to_char(date_trunc(${sql.raw(`'${unit}'`)}, ${column} AT TIME ZONE 'UTC' AT TIME ZONE ${sql.raw(`'${BUCKET_TIME_ZONE}'`)}), 'YYYY-MM-DD')`;
 }
 
 /** Smallest 1/2/5×10ⁿ ≥ max (at least 10) so the chart's five even ticks stay round. */
@@ -153,6 +166,10 @@ export function maskEmail(email: string): string {
 export function maskBizNumber(registrationNumber: string): string {
   return `${registrationNumber.slice(0, 7)}*****`;
 }
+
+/** ads의 노출 기간 기준(AdsService.listPublic과 동일): 종료일 당일까지 노출된다. */
+const utcDayStart = (now = new Date()) =>
+  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
 const formatMonthDay = (date: Date) =>
   `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -292,7 +309,15 @@ export class AdminService {
       .where(eq(businesses.verificationStatus, 'pending'));
 
     const conditions = [];
-    if (q) conditions.push(ilike(businesses.name, like(q)));
+    // 검색창이 "기관명/담당자"이므로 기관 소유자(담당자) 이름도 함께 매칭한다.
+    if (q) {
+      conditions.push(
+        or(
+          ilike(businesses.name, like(q)),
+          sql`${businesses.ownerUserId} in (select ${users.id} from ${users} where ${users.name} ilike ${like(q)})`,
+        ),
+      );
+    }
     if (status) conditions.push(eq(businesses.verificationStatus, status));
     if (type) conditions.push(eq(businesses.type, type));
     const rows = await this.db
@@ -377,8 +402,8 @@ export class AdminService {
     status: 'verified' | 'rejected',
     reason: string | null,
   ) {
-    // 조회·상태 전이·기관 상태 갱신을 한 트랜잭션에서 처리하고(행 잠금), 알림은 커밋 후 발송한다.
-    const { updated, ownerUserId } = await this.db.transaction(async (tx) => {
+    // 조회·상태 전이·기관 상태 갱신·결과 알림을 한 트랜잭션에서 처리한다(행 잠금).
+    const updated = await this.db.transaction(async (tx) => {
       const [verification] = await tx
         .select()
         .from(verifications)
@@ -409,18 +434,24 @@ export class AdminService {
         await tx
           .update(businesses)
           .set({ verificationStatus: status })
-          .where(eq(businesses.id, business.id));
+          .where(
+            and(
+              eq(businesses.id, business.id),
+              // 더 최근 인증 요청이 있으면 이 처리가 기관의 현재 상태를 덮어쓰지 않는다.
+              sql`not exists (select 1 from ${verifications} where ${verifications.businessId} = ${business.id} and ${verifications.createdAt} > ${verification.createdAt})`,
+            ),
+          );
       }
-      return { updated: row, ownerUserId: business?.ownerUserId };
+      if (business?.ownerUserId) {
+        await this.notificationsService.create(
+          business.ownerUserId,
+          'verification.result',
+          { verificationId: id, status, ...(reason ? { reason } : {}) },
+          tx,
+        );
+      }
+      return row;
     });
-
-    if (ownerUserId) {
-      await this.notificationsService.create(ownerUserId, 'verification.result', {
-        verificationId: id,
-        status,
-        ...(reason ? { reason } : {}),
-      });
-    }
 
     return updated;
   }
@@ -485,32 +516,51 @@ export class AdminService {
     if (certificate.status === status) {
       throw new ConflictException(`이미 ${status} 상태의 인증서입니다.`);
     }
-    const [updated] = await this.db
-      .update(certificates)
-      .set({
-        status,
-        rejectionReason: dto.action === 'reject' ? (reason ?? null) : null,
-      })
-      .where(eq(certificates.id, id))
-      .returning();
-
-    const [owner] = await this.db
-      .select()
-      .from(users)
-      .where(eq(users.id, certificate.userId))
-      .limit(1);
-
-    if (dto.action === 'approve' && owner) {
-      // read-modify-write 대신 단일 UPDATE로 원자적으로 중복 없이 추가한다.
-      await this.db
-        .update(users)
+    // 상태 전이와 뱃지 부여/회수는 한 트랜잭션으로 처리해 서로 어긋나지 않게 한다.
+    const { updated, owner } = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(certificates)
         .set({
-          badges: sql`case when ${users.badges} @> jsonb_build_array(${certificate.title}::text)
+          status,
+          rejectionReason: dto.action === 'reject' ? (reason ?? null) : null,
+        })
+        .where(eq(certificates.id, id))
+        .returning();
+
+      const [certificateOwner] = await tx
+        .select()
+        .from(users)
+        .where(eq(users.id, certificate.userId))
+        .limit(1);
+
+      if (dto.action === 'approve' && certificateOwner) {
+        // read-modify-write 대신 단일 UPDATE로 원자적으로 중복 없이 추가한다.
+        await tx
+          .update(users)
+          .set({
+            badges: sql`case when ${users.badges} @> jsonb_build_array(${certificate.title}::text)
             then ${users.badges}
             else ${users.badges} || jsonb_build_array(${certificate.title}::text) end`,
-        })
-        .where(eq(users.id, owner.id));
-    }
+          })
+          .where(eq(users.id, certificateOwner.id));
+      } else if (dto.action === 'reject' && certificate.status === 'verified' && certificateOwner) {
+        // 승인했던 인증서를 거부로 뒤집으면 그 인증서로 받은 뱃지를 회수한다
+        // (같은 제목의 다른 인증 완료 인증서가 있으면 유지).
+        await tx
+          .update(users)
+          .set({
+            badges: sql`case when exists (
+              select 1 from ${certificates}
+              where ${certificates.userId} = ${certificateOwner.id}
+                and ${certificates.title} = ${certificate.title}
+                and ${certificates.status} = 'verified'
+                and ${certificates.id} <> ${id}
+            ) then ${users.badges} else ${users.badges} - ${certificate.title}::text end`,
+          })
+          .where(eq(users.id, certificateOwner.id));
+      }
+      return { updated: row, owner: certificateOwner };
+    });
 
     return {
       id: updated!.id,
@@ -542,9 +592,20 @@ export class AdminService {
   }
 
   async listAds(q?: string, status?: string) {
+    // 'ended'로 전환하는 배치가 없어 계약이 끝난 광고도 DB에는 active로 남는다.
+    // 실제로 노출되지 않으므로 목록에서는 종료로 취급해 상태·필터를 일치시킨다.
+    const todayStart = utcDayStart();
     const conditions = [];
     if (q) conditions.push(or(ilike(ads.title, like(q)), ilike(businesses.name, like(q))));
-    if (status) conditions.push(eq(ads.status, status));
+    if (status === 'active') {
+      conditions.push(and(eq(ads.status, 'active'), gte(ads.endDate, todayStart)));
+    } else if (status === 'ended') {
+      conditions.push(
+        or(eq(ads.status, 'ended'), and(eq(ads.status, 'active'), lt(ads.endDate, todayStart))),
+      );
+    } else if (status) {
+      conditions.push(eq(ads.status, status));
+    }
     const rows = await this.db
       .select({ ad: ads, organization: businesses.name, productName: adProducts.name })
       .from(ads)
@@ -553,18 +614,32 @@ export class AdminService {
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(ads.createdAt));
 
-    return rows.map(({ ad, organization, productName }) => ({ ...ad, organization, productName }));
+    return rows.map(({ ad, organization, productName }) => ({
+      ...ad,
+      status: ad.status === 'active' && ad.endDate < todayStart ? 'ended' : ad.status,
+      organization,
+      productName,
+    }));
   }
 
   async getAdPricing() {
     const products = await this.db.select().from(adProducts).orderBy(asc(adProducts.createdAt));
+    const now = new Date();
     const result = [];
     for (const product of products) {
       const [current] = await this.db
         .select({ ad: ads, organization: businesses.name })
         .from(ads)
         .innerJoin(businesses, eq(ads.businessId, businesses.id))
-        .where(and(eq(ads.productId, product.id), eq(ads.status, 'active')))
+        .where(
+          and(
+            eq(ads.productId, product.id),
+            eq(ads.status, 'active'),
+            // 노출 기간이 끝났거나 아직 시작 전인 광고는 "현재 광고"가 아니다.
+            lte(ads.startDate, now),
+            gte(ads.endDate, utcDayStart(now)),
+          ),
+        )
         .orderBy(desc(ads.createdAt))
         .limit(1);
       result.push({
@@ -588,18 +663,36 @@ export class AdminService {
         throw new BadRequestException(`알 수 없는 광고 자리입니다: ${item.slot}`);
       }
     }
-    for (const item of items) {
-      await this.db
-        .update(adProducts)
-        .set({ dailyPrice: item.dailyPrice })
-        .where(eq(adProducts.placement, item.slot));
+    if (new Set(items.map((item) => item.slot)).size !== items.length) {
+      throw new BadRequestException('Duplicate ad slot');
     }
+    // 일부 슬롯만 반영되지 않도록 한 트랜잭션으로 갱신한다.
+    await this.db.transaction(async (tx) => {
+      for (const item of items) {
+        await tx
+          .update(adProducts)
+          .set({ dailyPrice: item.dailyPrice })
+          .where(eq(adProducts.placement, item.slot));
+      }
+    });
     return this.getAdPricing();
   }
 
   // --------------------------------------------------------------------- users
 
-  async listUsers(q?: string, status?: string, joinedWithin?: string, position?: string) {
+  async listUsers(
+    q?: string,
+    status?: string,
+    joinedWithin?: string,
+    position?: string,
+    pageParam?: number,
+    pageSizeParam?: number,
+  ) {
+    const page = Math.max(1, Math.trunc(pageParam ?? 1) || 1);
+    const pageSize = Math.min(
+      MAX_USERS_PAGE_SIZE,
+      Math.max(1, Math.trunc(pageSizeParam ?? DEFAULT_USERS_PAGE_SIZE) || DEFAULT_USERS_PAGE_SIZE),
+    );
     const conditions = [];
     if (q) conditions.push(or(ilike(users.name, like(q)), ilike(users.email, like(q))));
     if (status) conditions.push(eq(users.suspended, status === 'suspended'));
@@ -609,14 +702,26 @@ export class AdminService {
     }
     // users.position is free text ("프론트엔드 개발자" etc.), so match the badge as a substring.
     if (position) conditions.push(ilike(users.position, like(position)));
-    const rows = await this.db
-      .select()
-      .from(users)
-      .where(conditions.length ? and(...conditions) : undefined)
-      .orderBy(desc(users.createdAt));
+    const where = conditions.length ? and(...conditions) : undefined;
+    // id를 보조 정렬키로 둬 createdAt이 같은 행도 페이지 사이에서 중복·누락되지 않게 한다.
+    const [rows, [totalRow]] = await Promise.all([
+      this.db
+        .select()
+        .from(users)
+        .where(where)
+        .orderBy(desc(users.createdAt), desc(users.id))
+        .limit(pageSize)
+        .offset((page - 1) * pageSize),
+      this.db.select({ count: countRows }).from(users).where(where),
+    ]);
 
     const countByUser = await this.countReportsAgainst(rows.map((row) => row.id));
-    return rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0));
+    return {
+      items: rows.map((row) => this.toAdminUser(row, countByUser.get(row.id) ?? 0)),
+      total: totalRow?.count ?? 0,
+      page,
+      pageSize,
+    };
   }
 
   async suspendUser(id: string, dto: SuspendUserDto) {
@@ -693,6 +798,7 @@ export class AdminService {
   }
 
   async resolveReport(id: string, dto: ResolveReportDto) {
+    // 대기(open) 신고만 처리할 수 있다 — 이미 처리된 신고의 상태/처리일을 덮어쓰지 않는다.
     const [updated] = await this.db
       .update(reports)
       .set({
@@ -700,10 +806,16 @@ export class AdminService {
         note: dto.note ?? null,
         resolvedAt: new Date(),
       })
-      .where(eq(reports.id, id))
+      .where(and(eq(reports.id, id), eq(reports.status, 'open')))
       .returning();
-    if (!updated) throw new NotFoundException('신고를 찾을 수 없습니다.');
-    return this.toReport(updated);
+    if (updated) return this.toReport(updated);
+    const [existing] = await this.db
+      .select({ id: reports.id })
+      .from(reports)
+      .where(eq(reports.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('Report not found');
+    throw new ConflictException('Report is already processed');
   }
 
   // ------------------------------------------------------------------ contents
@@ -924,6 +1036,14 @@ export class AdminService {
     if (!row) throw new NotFoundException('광고를 찾을 수 없습니다.');
 
     const report = await this.adsService.getReportForAdmin(row.ad.id);
+    // 라벨은 "결제 완료 금액"이므로 예약가(paidAmount)가 아니라 실제 결제 순액을 쓴다.
+    const [spend] = await this.db
+      .select({
+        total: sql<number>`coalesce(sum(${payments.amount} - ${payments.refundedAmount}), 0)::int`,
+      })
+      .from(payments)
+      .innerJoin(orders, eq(payments.orderId, orders.id))
+      .where(and(eq(orders.adId, row.ad.id), inArray(payments.status, ['paid', 'done'])));
     return {
       adId: row.ad.id,
       adNumber: row.ad.adNumber,
@@ -945,7 +1065,7 @@ export class AdminService {
         { label: 'CTR', value: `${report.totals.ctr}%`, meta: '최근 31일 계측값', dot: '#F59E0B' },
         {
           label: '집행 광고비',
-          value: String(row.ad.paidAmount),
+          value: String(spend?.total ?? 0),
           meta: '결제 완료 금액',
           dot: '#8B5CF6',
         },

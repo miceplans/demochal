@@ -150,7 +150,7 @@ const ExportButton = styled.button({
   gap: 6,
   height: 40,
   padding: '0 16px',
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,
@@ -195,7 +195,7 @@ const ModalButton = styled('button', { shouldForwardProp: (prop) => prop !== 'pr
 }>(({ primary }) => ({
   height: 40,
   padding: '0 18px',
-  border: primary ? 0 : `1px solid ${c.gray300}`,
+  border: primary ? 0 : `0.5px solid ${c.gray300}`,
   borderRadius: 6,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray900,

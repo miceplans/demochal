@@ -17,6 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { ApplicationEvaluation } from './applicationEvaluation';
+import type { ApplicationFormAnswer } from './applicationFormAnswer';
 import type { ApplicationStatus } from './applicationStatus';
 
 export interface Application {
@@ -32,6 +33,7 @@ export interface Application {
   teammates: string[];
   evaluation: ApplicationEvaluation;
   managerMemo?: string;
+  formAnswers?: ApplicationFormAnswer[];
   /** listMyApplications 응답 전용 — 챌린지 제목 */
   challengeTitle?: string;
   /** listMyApplications 응답 전용 — 주최 기업(협회)명 */

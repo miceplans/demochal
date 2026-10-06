@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminCertificatesCategory =
-  (typeof ListAdminCertificatesCategory)[keyof typeof ListAdminCertificatesCategory];
+export type ListAdminCertificatesCategory = typeof ListAdminCertificatesCategory[keyof typeof ListAdminCertificatesCategory];
+
 
 export const ListAdminCertificatesCategory = {
   award: 'award',

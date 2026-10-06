@@ -532,6 +532,21 @@ describe('ChallengesService.create', () => {
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
   });
 
+  it('stores the requested status, falling back to contestAutoPublish when omitted', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+    const url = 'https://example.com/apply';
+
+    await service.create({ ...baseDto, recruitUrl: url, status: 'published' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url, status: 'draft' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url } as any, 'user-1');
+
+    expect(valuesCalls[0]).toMatchObject({ status: 'published' });
+    expect(valuesCalls[1]).toMatchObject({ status: 'draft' });
+    // contestAutoPublish 스텁이 false라 draft
+    expect(valuesCalls[2]).toMatchObject({ status: 'draft' });
+  });
+
   it('persists recruitUrl for external recruitMethod and clears any url provided for seMOchall', async () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);

@@ -18,6 +18,7 @@
  */
 import type { CreateChallengeRequestOrganizerType } from './createChallengeRequestOrganizerType';
 import type { CreateChallengeRequestRecruitMethod } from './createChallengeRequestRecruitMethod';
+import type { CreateChallengeRequestStatus } from './createChallengeRequestStatus';
 import type { CreateChallengeRequestTargetsItem } from './createChallengeRequestTargetsItem';
 
 export interface CreateChallengeRequest {
@@ -40,16 +41,18 @@ export interface CreateChallengeRequest {
   targets?: CreateChallengeRequestTargetsItem[];
   organizerType?: CreateChallengeRequestOrganizerType;
   /**
-   * 총상금(만원)
-   * @minimum 0
-   */
+     * 총상금(만원)
+     * @minimum 0
+     */
   prizeAmount?: number;
   /** 챌린지 포스터 파일 ID */
   posterFileId?: string;
+  /** 공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다. */
+  status?: CreateChallengeRequestStatus;
   recruitMethod?: CreateChallengeRequestRecruitMethod;
   /**
-   * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.
-   * @maxLength 2048
-   */
+     * recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.
+     * @maxLength 2048
+     */
   recruitUrl?: string;
 }

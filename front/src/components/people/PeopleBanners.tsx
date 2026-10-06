@@ -60,7 +60,7 @@ const UseButton = styled(Link)({
   fontWeight: 600,
   lineHeight: 'normal',
   textDecoration: 'none',
-  '&:hover': { background: '#005ee0' },
+  '&:hover': { background: c.primaryHover },
   [mobile]: { left: 20, bottom: 16 },
 });
 
@@ -142,7 +142,8 @@ export function PeopleBanners() {
   return (
     <Row>
       <TeamBanner>
-        <Layer style={{ left: 0, top: -91.5, width: '100%', height: 485, filter: 'blur(17.5px)' }}>
+        {/* 블러·왼쪽 페이드가 Figma 렌더로 이미 반영된 이미지(1334:22794)라 별도 filter 없이 쓴다. */}
+        <Layer style={{ inset: 0 }}>
           <Image
             src="/assets/people/banner-team-bg.png"
             alt=""
@@ -151,12 +152,12 @@ export function PeopleBanners() {
             style={{ objectFit: 'cover' }}
           />
         </Layer>
-        <Layer style={{ right: -49, top: -22.5, width: 592, height: 281 }}>
+        <Layer style={{ right: -12, top: 71.5, width: 368, height: 175 }}>
           <Image
             src="/assets/people/banner-team-people.png"
             alt=""
             fill
-            sizes="592px"
+            sizes="368px"
             style={{ objectFit: 'cover' }}
           />
         </Layer>

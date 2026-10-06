@@ -1,6 +1,8 @@
 'use client';
 
 import styled from '@emotion/styled';
+import { Fragment } from 'react';
+import { ApplicationAnswers } from './ApplicationAnswers';
 import type { Application } from '@semochal/api-client';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
@@ -44,7 +46,7 @@ const Row = styled.div({
   padding: '0 16px',
   gap: 16,
   ...textStyle.body,
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
 });
 const HeadRow = styled(Row)({
   minHeight: 48,
@@ -62,7 +64,7 @@ const Cell = styled.span<{ w?: number }>(({ w }) => ({
 }));
 const MemoInput = styled.input({
   width: '100%',
-  border: '1px solid transparent',
+  border: '0.5px solid transparent',
   borderRadius: 6,
   padding: '6px 8px',
   background: 'transparent',
@@ -92,45 +94,48 @@ export function ApplicationTable({
       </HeadRow>
       {rows.length === 0 && <Empty>접수된 지원서가 없습니다.</Empty>}
       {rows.map((row) => (
-        <Row key={row.id}>
-          <Cell w={150}>{row.teammates.join(', ') || row.role || '—'}</Cell>
-          <Cell w={150}>{row.userId.slice(0, 8)}</Cell>
-          <Cell w={150}>
-            <Dropdown
-              options={STATUS_OPTIONS}
-              aria-label={`${row.id} 신청 상태`}
-              value={row.status === 'pending' ? undefined : row.status}
-              placeholder={STATUS_LABEL.pending}
-              size="S"
-              onChange={(value) =>
-                onUpdate(row.id, { status: value as Exclude<Application['status'], 'pending'> })
-              }
-            />
-          </Cell>
-          <Cell>
-            <MemoInput
-              aria-label={`${row.id} 담당자 메모`}
-              defaultValue={row.managerMemo ?? ''}
-              placeholder="메모 입력"
-              onBlur={(event) => {
-                if (event.target.value !== (row.managerMemo ?? '')) {
-                  onUpdate(row.id, { managerMemo: event.target.value });
+        <Fragment key={row.id}>
+          <Row>
+            <Cell w={150}>{row.teammates.join(', ') || row.role || '—'}</Cell>
+            <Cell w={150}>{row.userId.slice(0, 8)}</Cell>
+            <Cell w={150}>
+              <Dropdown
+                options={STATUS_OPTIONS}
+                aria-label={`${row.id} 신청 상태`}
+                value={row.status === 'pending' ? undefined : row.status}
+                placeholder={STATUS_LABEL.pending}
+                size="S"
+                onChange={(value) =>
+                  onUpdate(row.id, { status: value as Exclude<Application['status'], 'pending'> })
                 }
-              }}
-            />
-          </Cell>
-          <Cell w={120}>
-            <Dropdown
-              options={EVALUATION_OPTIONS}
-              aria-label={`${row.id} 평가상태`}
-              value={row.evaluation}
-              size="S"
-              onChange={(value) =>
-                onUpdate(row.id, { evaluation: value as Application['evaluation'] })
-              }
-            />
-          </Cell>
-        </Row>
+              />
+            </Cell>
+            <Cell>
+              <MemoInput
+                aria-label={`${row.id} 담당자 메모`}
+                defaultValue={row.managerMemo ?? ''}
+                placeholder="메모 입력"
+                onBlur={(event) => {
+                  if (event.target.value !== (row.managerMemo ?? '')) {
+                    onUpdate(row.id, { managerMemo: event.target.value });
+                  }
+                }}
+              />
+            </Cell>
+            <Cell w={120}>
+              <Dropdown
+                options={EVALUATION_OPTIONS}
+                aria-label={`${row.id} 평가상태`}
+                value={row.evaluation}
+                size="S"
+                onChange={(value) =>
+                  onUpdate(row.id, { evaluation: value as Application['evaluation'] })
+                }
+              />
+            </Cell>
+          </Row>
+          <ApplicationAnswers applicationId={row.id} answers={row.formAnswers} />
+        </Fragment>
       ))}
     </Box>
   );

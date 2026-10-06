@@ -8,6 +8,7 @@ import { ChallengeNotificationScanService } from './challenge-notification-scan.
 import { NotificationsStreamController } from './notifications-stream.controller.js';
 import { NotificationsStreamService } from './notifications-stream.service.js';
 import { SesEmailClient } from './email/ses-email.client.js';
+import { SupportEmailProcessorService } from './email/support-email.processor.js';
 
 // Imported by both AppModule (HTTP + email outbox writes) and WorkerModule
 // (NotificationEmailProcessorService, driven by worker.ts's email queue loop).
@@ -19,11 +20,14 @@ import { SesEmailClient } from './email/ses-email.client.js';
     NotificationEmailProcessorService,
     ChallengeNotificationScanService,
     SesEmailClient,
+    SupportEmailProcessorService,
   ],
   exports: [
     NotificationsService,
     NotificationEmailProcessorService,
     ChallengeNotificationScanService,
+    SesEmailClient,
+    SupportEmailProcessorService,
   ],
 })
 export class NotificationsModule {}

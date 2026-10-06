@@ -28,10 +28,13 @@ describe('AdminService — verifications', () => {
       expect.objectContaining({ status: 'verified', updatedAt: expect.any(Date) }),
     ]);
     expect(setCalls[1]).toEqual([{ verificationStatus: 'verified' }]);
-    expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
-      verificationId: 'v1',
-      status: 'verified',
-    });
+    // 알림은 상태 갱신과 같은 트랜잭션(tx)에서 생성된다.
+    expect(notifications.create).toHaveBeenCalledWith(
+      'owner-1',
+      'verification.result',
+      { verificationId: 'v1', status: 'verified' },
+      expect.anything(),
+    );
   });
 
   it('reject records the reason, rejects the business and notifies the owner', async () => {
@@ -57,11 +60,12 @@ describe('AdminService — verifications', () => {
       }),
     ]);
     expect(setCalls[1]).toEqual([{ verificationStatus: 'rejected' }]);
-    expect(notifications.create).toHaveBeenCalledWith('owner-1', 'verification.result', {
-      verificationId: 'v1',
-      status: 'rejected',
-      reason: '서류 불일치',
-    });
+    expect(notifications.create).toHaveBeenCalledWith(
+      'owner-1',
+      'verification.result',
+      { verificationId: 'v1', status: 'rejected', reason: '서류 불일치' },
+      expect.anything(),
+    );
   });
 
   it('refuses a duplicate decision without updating or notifying again', async () => {
@@ -158,6 +162,21 @@ describe('AdminService — certificates', () => {
       expect.objectContaining({ status: 'rejected', rejectionReason: '이미지 훼손' }),
     ]);
     expect(db.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('revokes the badge when a verified certificate is flipped to rejected', async () => {
+    const verified = { ...certificateRow, status: 'verified' };
+    const owner = { id: 'u1', name: '김수아', badges: [certificateRow.title] };
+    const { db, setCalls } = createDbStub({
+      select: [[verified], [owner]],
+      update: [[{ ...verified, status: 'rejected' }], []],
+    });
+    const { service } = createService(db);
+
+    await service.verifyCertificate('c1', { action: 'reject', reason: '위조 확인' });
+
+    expect(db.update).toHaveBeenCalledTimes(2);
+    expect(setCalls[1]).toEqual([{ badges: expect.anything() }]);
   });
 
   it('reject without a reason is refused before touching the DB', async () => {

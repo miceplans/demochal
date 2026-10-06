@@ -77,13 +77,12 @@ const DropZone = styled('label', {
   height: '100%',
   minHeight: 0,
   padding: 8,
-  border: `2px dashed ${dragOver ? c.primary : '#dfedff'}`,
   borderRadius: 11,
-  background: dragOver ? '#eaf3ff' : '#f8f8f8',
+  background: dragOver ? c.paleBlue : c.surface,
   cursor: 'pointer',
   textAlign: 'center',
-  transition: 'border-color 120ms ease, background 120ms ease',
-  '&:hover, &:focus-within': { borderColor: c.primary },
+  transition: 'background 120ms ease',
+  '&:hover': { background: '#eaf3ff' },
 }));
 const UploadIcon = styled('img', { shouldForwardProp: (prop) => prop !== 'compact' })<{
   compact: boolean;
