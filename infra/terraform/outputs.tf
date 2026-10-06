@@ -41,6 +41,11 @@ output "migrate_task_definition_arn" { value = aws_ecs_task_definition.migrate.a
 output "migrate_task_definition_family" { value = aws_ecs_task_definition.migrate.family }
 output "migrate_task_subnet_id" { value = aws_subnet.public["0"].id }
 output "migrate_task_security_group_id" { value = aws_security_group.migrate_task.id }
+output "db_admin_task_definition_arn" { value = aws_ecs_task_definition.db_admin.arn }
+output "db_admin_task_definition_family" { value = aws_ecs_task_definition.db_admin.family }
+output "db_admin_subnet_id" { value = aws_subnet.private["0"].id }
+output "db_admin_security_group_id" { value = aws_security_group.db_admin.id }
+output "db_admin_task_role_arn" { value = aws_iam_role.db_admin_task.arn }
 
 output "grafana_cloudwatch_role_arn" {
   description = "IAM role ARN to register with the Grafana Cloud CloudWatch integration."

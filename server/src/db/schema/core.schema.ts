@@ -255,8 +255,10 @@ export const payments = pgTable(
     amount: integer('amount').notNull(),
     // Valid values: ready | paid | canceled | expired | refund_pending
     // (charged but the order could not be settled and the compensating Toss cancel
-    // failed — needs a retry/manual refund). Legacy rows can contain
-    // done | cancelled and are handled when reading billing history.
+    // failed — the worker retries the cancel with backoff via
+    // PaymentsService.retryRefundPendingPayments, then operators refund manually).
+    // Legacy rows can contain done | cancelled and are handled when reading
+    // billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set
     // from Toss's balanceAmount each time (never incremented) so a redelivered
@@ -264,6 +266,13 @@ export const payments = pgTable(
     // status is 'canceled' (the full amount is already excluded from revenue).
     refundedAmount: integer('refunded_amount').notNull().default(0),
     approvedAt: timestamp('approved_at'),
+    // Failed-refund retry bookkeeping for 'refund_pending' rows: how many Toss
+    // cancel retries have been attempted and when the last one ran. The worker's
+    // retryRefundPendingPayments scan backs off exponentially from refundRetriedAt
+    // and stops retrying after a capped number of attempts, leaving the row —
+    // still 'refund_pending' — for operators to refund manually.
+    refundRetryCount: integer('refund_retry_count').notNull().default(0),
+    refundRetriedAt: timestamp('refund_retried_at'),
   },
   // One payment row per order: webhook handlers upsert on order_id so that
   // concurrent Toss deliveries for the same order conflict instead of

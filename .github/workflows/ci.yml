@@ -43,10 +43,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Resolve format base
+        id: format-base
+        # pull_request에서는 base 브랜치, main push에는 푸시 이전 SHA를 base로 쓴다.
+        # base_ref는 pull_request 이벤트에서만 존재하므로 push에서는 비어 있다.
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "base=origin/${{ github.base_ref }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event.before }}" != "0000000000000000000000000000000000000000" ]; then
+            echo "base=${{ github.event.before }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "base=HEAD~1" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check formatting
         # Keep this gate aligned with the PR formatting job: baseline files are
         # tolerated, while files changed by this PR must be formatted.
-        run: node scripts/format-check.mjs --base "origin/${{ github.base_ref }}"
+        run: node scripts/format-check.mjs --base "${{ steps.format-base.outputs.base }}"
 
       - name: Lint
         run: pnpm lint
