@@ -26,9 +26,9 @@ export interface BizReviewEntry {
   /** 기관 id */
   id?: string;
   /**
-   * 최신 인증 요청 id — 승인/거부 API의 path id. 인증 요청이 없으면 null
-   * @nullable
-   */
+     * 최신 인증 요청 id — 승인/거부 API의 path id. 인증 요청이 없으면 null
+     * @nullable
+     */
   verificationId?: string | null;
   /** 기관명 (활동유형 컬럼) */
   org?: string;

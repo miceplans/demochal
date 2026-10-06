@@ -9,6 +9,13 @@ export const DEFAULT_THROTTLE = { name: 'default', ttl: 60_000, limit: 300 };
 // Credential-guessing surfaces (login, signup, contact verification codes).
 export const AUTH_THROTTLE = { default: { ttl: 60_000, limit: 10 } };
 
+// Toss webhook relay ceiling. One payment triggers only a few
+// PAYMENT_STATUS_CHANGED calls (plus a handful of Toss redeliveries), so 30
+// per minute per client blocks flood abuse of our Toss API relay while leaving
+// legitimate traffic an order of magnitude of headroom. Same in-memory-store
+// caveat as DEFAULT_THROTTLE applies (ceiling is per ECS task until Redis).
+export const TOSS_WEBHOOK_THROTTLE = { default: { ttl: 60_000, limit: 30 } };
+
 /**
  * Tracks login attempts per target account instead of per client, so spreading a
  * password-guessing run across many IPs (or behind a shared proxy IP) still hits

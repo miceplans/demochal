@@ -5,7 +5,6 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
 import { IssueBillingAuthorizationDto } from './dto/issue-billing-authorization.dto.js';
-import { RegisterPaymentCardDto } from './dto/register-payment-card.dto.js';
 import { PaymentHistoryQueryDto } from './dto/payment-history-query.dto.js';
 
 @Controller('billing')
@@ -21,14 +20,6 @@ export class BillingController {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingService.listCards(business.id);
-  }
-
-  @Post('cards')
-  @HttpCode(201)
-  async registerCard(@Body() dto: RegisterPaymentCardDto, @CurrentUser() user: AuthenticatedUser) {
-    const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
-    return this.billingService.registerCard(business.id, dto);
   }
 
   @Get('history')

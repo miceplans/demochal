@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateApplicationBodyStatus =
-  (typeof UpdateApplicationBodyStatus)[keyof typeof UpdateApplicationBodyStatus];
+export type UpdateApplicationBodyStatus = typeof UpdateApplicationBodyStatus[keyof typeof UpdateApplicationBodyStatus];
+
 
 export const UpdateApplicationBodyStatus = {
   submitted: 'submitted',

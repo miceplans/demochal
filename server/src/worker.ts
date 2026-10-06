@@ -13,12 +13,18 @@ import { ChallengeNotificationScanService } from './modules/notifications/challe
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
   NOTIFICATION_EMAIL_EVENT,
-  isEmailDeliveryConfigured,
   parseNotificationEmailJob,
 } from './modules/notifications/email/notification-email.js';
 import { EmailService } from './modules/email/email.service.js';
+import { SupportEmailProcessorService } from './modules/notifications/email/support-email.processor.js';
+import {
+  SUPPORT_EMAIL_EVENT,
+  parseSupportEmailJob,
+} from './modules/notifications/email/support-email.js';
+import { PaymentsService } from './modules/payments/payments.service.js';
 
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
+const REFUND_PENDING_SCAN_INTERVAL_MS = 10 * 60 * 1000;
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
 async function bootstrap() {
@@ -30,15 +36,21 @@ async function bootstrap() {
   const verificationsProcessor = app.get(VerificationsProcessorService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
   const emailService = app.get(EmailService);
+  const supportEmailProcessor = app.get(SupportEmailProcessorService);
 
   const challengeNotificationScan = app.get(ChallengeNotificationScanService);
   let lastChallengeScanAt = 0;
+
+  const paymentsService = app.get(PaymentsService);
+  let lastRefundPendingScanAt = 0;
 
   let shuttingDown = false;
   process.on('SIGTERM', () => (shuttingDown = true));
   process.on('SIGINT', () => (shuttingDown = true));
 
-  const emailEnabled = isEmailDeliveryConfigured();
+  const emailEnabled = Boolean(
+    env.sqsEmailsQueueUrl && (env.sesFromEmail || env.sesSupportFromEmail),
+  );
   logger.log(
     `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
       `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
@@ -47,6 +59,7 @@ async function bootstrap() {
 
   while (!shuttingDown) {
     await scanChallengeNotifications();
+    await scanRefundPendingPayments();
 
     if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
       logger.warn('No worker queue is configured, idling');
@@ -92,6 +105,25 @@ async function bootstrap() {
     }
   }
 
+  // 환불 보상이 실패한 결제(refund_pending)도 큐 설정과 무관하게 주기적으로
+  // 재스캔해 Toss 취소를 재시도한다(백오프/상한은 PaymentsService가 관리).
+  async function scanRefundPendingPayments() {
+    if (Date.now() - lastRefundPendingScanAt < REFUND_PENDING_SCAN_INTERVAL_MS) return;
+    lastRefundPendingScanAt = Date.now();
+    try {
+      const result = await paymentsService.retryRefundPendingPayments();
+      if (result.attempted > 0) {
+        logger.log(
+          `Refund retry scan: ${result.refunded} refunded, ${result.failed} failed ` +
+            `of ${result.attempted} attempted (${result.scanned} pending)`,
+        );
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      logger.error(`Refund pending scan failed (${name})`);
+    }
+  }
+
   async function pollVerifications(queueUrl: string) {
     try {
       await outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, queueUrl);
@@ -123,15 +155,23 @@ async function bootstrap() {
     } catch (error) {
       logger.error('Email outbox relay pass failed', error);
     }
+    try {
+      await outboxRelayService.relay(SUPPORT_EMAIL_EVENT, queueUrl, 10, { includeEventId: true });
+    } catch (error) {
+      logger.error('Support email outbox relay pass failed', error);
+    }
 
     const messages = await receive(queueUrl, 'email');
     for (const message of messages) {
       try {
-        const job = parseNotificationEmailJob(JSON.parse(message.Body ?? '{}'));
+        const body = JSON.parse(message.Body ?? '{}');
+        const job = parseNotificationEmailJob(body);
+        const supportJob = parseSupportEmailJob(body);
         // A malformed body can never succeed; throwing lets it reach the DLQ
         // after maxReceiveCount instead of silently dropping it.
-        if (!job) throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
-        await notificationEmailProcessor.process(job);
+        if (job) await notificationEmailProcessor.process(job);
+        else if (supportJob) await supportEmailProcessor.process(supportJob);
+        else throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
         if (message.ReceiptHandle) {
           await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
         }

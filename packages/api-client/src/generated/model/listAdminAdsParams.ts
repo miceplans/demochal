@@ -18,12 +18,12 @@
  */
 
 export type ListAdminAdsParams = {
-  /**
-   * 광고명/기관명 부분 일치 검색
-   */
-  q?: string;
-  /**
-   * 광고 상태 필터 (active/preparing/paused/ended)
-   */
-  status?: string;
+/**
+ * 광고명/기관명 부분 일치 검색
+ */
+q?: string;
+/**
+ * 광고 상태 필터 (active/preparing/paused/ended)
+ */
+status?: string;
 };

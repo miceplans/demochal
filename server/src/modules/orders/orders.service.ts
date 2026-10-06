@@ -36,6 +36,13 @@ export class OrdersService {
       if (!ad || ad.status !== 'preparing' || ad.endDate < adToday()) {
         throw new ConflictException('종료되거나 취소된 광고 계약입니다.');
       }
+      // Same cutoff as AdsService.reservingCondition: once expiresAt passes,
+      // the reservation stops holding its dates and another buyer may own
+      // them, so settling now would double-book. ConflictException drives the
+      // Toss refund compensation in PaymentsService.
+      if (!ad.expiresAt || ad.expiresAt.getTime() <= Date.now()) {
+        throw new ConflictException('결제 마감 시간이 지난 광고 예약입니다.');
+      }
     }
     const [order] = await tx
       .update(orders)

@@ -41,14 +41,6 @@ function collectParamValues(node: any, acc: unknown[] = []): unknown[] {
   return acc;
 }
 
-function createInsertStub(created: unknown) {
-  const returning = vi.fn().mockResolvedValue([created]);
-  const values = vi.fn().mockReturnValue({ returning });
-  const insert = vi.fn(() => ({ values }));
-  const db: any = { insert };
-  return { db, insert, values };
-}
-
 /**
  * Stub covering issueCard()'s full surface: the attempts-table insert with
  * onConflictDoNothing, the paymentCards insert, the attempts update/delete,
@@ -124,26 +116,6 @@ describe('BillingService', () => {
     expect(JSON.stringify(cards)).not.toContain('billingKey');
   });
 
-  it('stores the billingKey but returns the card without it', async () => {
-    const { db, values } = createInsertStub({
-      id: 'card-2',
-      cardName: null,
-      maskedNumber: '****-****-****-5678',
-    });
-    const service = new BillingService(db);
-
-    const card = await service.registerCard('biz-1', {
-      billingKey: 'bk-secret',
-      maskedNumber: '****-****-****-5678',
-    });
-
-    expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ businessId: 'biz-1', billingKey: 'bk-secret' }),
-    );
-    expect(card).toEqual({ id: 'card-2', cardName: null, maskedNumber: '****-****-****-5678' });
-    expect(card).not.toHaveProperty('billingKey');
-  });
-
   it('derives the billing customerKey from the business', () => {
     const service = new BillingService({} as never);
     expect(service.getCustomerKey('biz-1')).toBe('semochal-biz-biz-1');
@@ -197,7 +169,7 @@ describe('BillingService', () => {
     expect(db.insert).toHaveBeenCalledTimes(1); // only the conflicting attempts insert
   });
 
-  it('reconciles a retried authKey whose exchange succeeded but the response was lost', async () => {
+  it('does not guess another concurrently-created card when the attempt is unlinked', async () => {
     const { db, update } = createIssueDbStub({
       attemptInsert: [],
       attemptByHash: [
@@ -208,12 +180,10 @@ describe('BillingService', () => {
     const service = new BillingService(db);
     const fetchCallsBefore = fetchMock.mock.calls.length;
 
-    const card = await service.issueCard('biz-1', 'auth-key-1');
+    await expect(service.issueCard('biz-1', 'auth-key-1')).rejects.toThrow(ConflictException);
 
     expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
-    expect(card.id).toBe('card-9');
-    // The recovered card is linked onto the attempt for future retries.
-    expect(update).toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('refuses to re-exchange an authKey whose attempt has no stored card', async () => {

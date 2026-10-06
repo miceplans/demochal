@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminUsersStatus = (typeof ListAdminUsersStatus)[keyof typeof ListAdminUsersStatus];
+export type ListAdminUsersStatus = typeof ListAdminUsersStatus[keyof typeof ListAdminUsersStatus];
+
 
 export const ListAdminUsersStatus = {
   active: 'active',

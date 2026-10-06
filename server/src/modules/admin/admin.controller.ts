@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   ParseArrayPipe,
   Post,
   Put,
@@ -19,6 +20,7 @@ import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
 import { SendNewEmailDto, SendReplyDto } from '../email/dto/send-reply.dto.js';
+import { UpdateEmailStatusDto } from '../email/dto/update-email-status.dto.js';
 import { EmailService } from '../email/email.service.js';
 
 @UseGuards(AdminRoleGuard)
@@ -42,6 +44,11 @@ export class AdminController {
   @Get('emails/:id')
   getEmail(@Param('id') id: string) {
     return this.emailService.getThread(id);
+  }
+
+  @Patch('emails/:id/status')
+  updateEmailStatus(@Param('id') id: string, @Body() dto: UpdateEmailStatusDto) {
+    return this.emailService.updateThreadStatus(id, dto.status);
   }
 
   @Post('emails/:id/replies')
