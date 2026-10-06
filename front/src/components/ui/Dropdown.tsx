@@ -67,6 +67,14 @@ const Trigger = styled.button<{ $size: DropdownSize; $hasValue: boolean }>`
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  /* 모바일에서는 닫힌 드롭다운 버튼을 작게 한다. */
+  ${mobile} {
+    height: ${({ $size }) => ($size === 'L' ? '38px' : '30px')};
+    padding: 0 10px;
+    gap: 6px;
+    font-size: ${textStyle.mSubText.fontSize}px;
+  }
 `;
 
 const Chevron = styled.span<{ $open: boolean }>`
@@ -78,6 +86,11 @@ const Chevron = styled.span<{ $open: boolean }>`
   transform: rotate(${(p) => (p.$open ? '-135deg' : '45deg')})
     translateY(${(p) => (p.$open ? '2px' : '-2px')});
   transition: transform 0.18s ease;
+
+  ${mobile} {
+    width: 6px;
+    height: 6px;
+  }
 `;
 
 // 트리거 폭(모바일 알약은 최대 110px)보다 긴 라벨이 고정 높이를 밀어내지 않도록 한 줄로 자른다.
@@ -142,12 +155,6 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   color: #111;
   cursor: pointer;
   transition: background 0.12s ease;
-
-  /* 모바일에서는 목록이 화면을 덜 차지하도록 옵션을 작게 한다. */
-  ${mobile} {
-    padding: 8px 12px;
-    font-size: ${textStyle.mSubText.fontSize}px;
-  }
 
   &:hover {
     background: ${(p) => p.theme.colors.gray[100]};
