@@ -283,13 +283,6 @@ export interface PaymentCard {
   maskedNumber: string;
 }
 
-export interface RegisterPaymentCardRequest {
-  billingKey: string;
-  cardName?: string;
-  /** From Toss's billing-key-issue response — the server never sees a raw card number. */
-  maskedNumber: string;
-}
-
 export interface PaymentHistoryItem {
   id: string;
   name: string;
