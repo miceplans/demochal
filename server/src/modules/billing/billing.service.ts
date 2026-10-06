@@ -1,6 +1,6 @@
 import { BadGatewayException, ConflictException, Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
-import { and, desc, eq, gte } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -86,30 +86,8 @@ export class BillingService {
           .limit(1);
         if (card) return card;
       }
-      // 응답 손실로 카드만 등록된 경우를 대비해, 시도 시각 이후에 생긴 카드가 있으면 그것을 연결한다.
-      const [orphan] = await this.db
-        .select({
-          id: paymentCards.id,
-          cardName: paymentCards.cardName,
-          maskedNumber: paymentCards.maskedNumber,
-        })
-        .from(paymentCards)
-        .where(
-          and(
-            eq(paymentCards.businessId, businessId),
-            gte(paymentCards.createdAt, attempt.createdAt),
-          ),
-        )
-        .orderBy(desc(paymentCards.createdAt))
-        .limit(1);
-      if (orphan) {
-        await this.db
-          .update(billingAuthAttempts)
-          .set({ cardId: orphan.id })
-          .where(eq(billingAuthAttempts.id, attempt.id));
-        return orphan;
-      }
-      // 교환이 확인되지 않은 재시도 — 같은 one-time 키로 토스를 다시 호출하지 않는다.
+      // 교환이 확인되지 않은 재시도 — 다른 동시 등록 카드를 추정 연결하지 않고
+      // 같은 one-time 키로 토스를 다시 호출하지 않는다.
       throw new ConflictException('이미 처리된 인증 요청입니다. 결제수단 목록을 확인해주세요.');
     }
 
