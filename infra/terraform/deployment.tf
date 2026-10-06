@@ -150,7 +150,7 @@ resource "aws_lambda_function" "secret_redeploy" {
   function_name    = "${local.name_prefix}-secret-redeploy"
   role             = aws_iam_role.secret_redeploy.arn
   handler          = "secret-redeploy.handler"
-  runtime          = "nodejs20.x"
+  runtime          = "nodejs24.x"
   filename         = data.archive_file.secret_redeploy.output_path
   source_code_hash = data.archive_file.secret_redeploy.output_base64sha256
   timeout          = 30

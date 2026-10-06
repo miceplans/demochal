@@ -1,9 +1,10 @@
 'use client';
 
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -46,7 +47,21 @@ export const AdminGlobalStyles = (
   />
 );
 
+/** 로그아웃 후 로그인 화면으로 보낸다. 실패해도 세션이 남지 않도록 캐시는 항상 비운다. */
+function useAdminLogout() {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const hrefOf = useAdminHref();
+  return () => {
+    void generated.logout().finally(() => {
+      queryClient.clear();
+      router.push(hrefOf('/login'));
+    });
+  };
+}
+
 function AdminSidebar() {
+  const logout = useAdminLogout();
   const route = routeOf(usePathname() ?? '');
   const hrefOf = useAdminHref();
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
@@ -82,6 +97,9 @@ function AdminSidebar() {
           <strong style={{ ...textStyle.caption2, color: '#111827' }}>{name}</strong>
           <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{role}</span>
         </span>
+        <LogoutButton type="button" onClick={logout}>
+          로그아웃
+        </LogoutButton>
         <GearIcon href={hrefOf('/settings')} aria-label="설정">
           <svg
             width="24"
@@ -103,35 +121,98 @@ function AdminSidebar() {
   );
 }
 
+/** 콘솔은 admin 세션에서만 연다: 미인증 → 로그인으로, 비관리자 → 안내 + 로그아웃. */
+function AdminAccessGate({ children }: { children: ReactNode }) {
+  const router = useRouter();
+  const hrefOf = useAdminHref();
+  const logout = useAdminLogout();
+  const {
+    data: auth,
+    isPending,
+    isError,
+    refetch,
+  } = generated.useGetMyAuthInfo({
+    query: { retry: false },
+  });
+  const me = auth?.status === 200 ? auth.data : undefined;
+  const unauthenticated = auth?.status === 401;
+
+  useEffect(() => {
+    if (unauthenticated) router.replace(hrefOf('/login'));
+  }, [unauthenticated, router, hrefOf]);
+
+  if (isPending || unauthenticated) return null;
+  if (isError || !me) {
+    return (
+      <GateBox role="alert">
+        <p>관리자 정보를 확인하지 못했어요.</p>
+        <button type="button" onClick={() => void refetch()}>
+          다시 시도
+        </button>
+      </GateBox>
+    );
+  }
+  if (me.role !== 'admin') {
+    return (
+      <GateBox role="alert">
+        <p>관리자 계정으로만 접근할 수 있어요.</p>
+        <button type="button" onClick={logout}>
+          로그아웃
+        </button>
+      </GateBox>
+    );
+  }
+  return <>{children}</>;
+}
+
 export function AdminShell({ children }: { children: ReactNode }) {
   return (
     <>
       {AdminGlobalStyles}
-      <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', minHeight: '100dvh' }}>
-        <AdminSidebar />
-        <main
-          style={{
-            minWidth: 0,
-            flex: 1,
-            padding: '80px 60px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 24,
-            background: c.white,
-          }}
-        >
-          {children}
-        </main>
-      </div>
+      <AdminAccessGate>
+        <div style={{ display: 'flex', alignItems: 'stretch', width: '100%', minHeight: '100dvh' }}>
+          <AdminSidebar />
+          <main
+            style={{
+              minWidth: 0,
+              flex: 1,
+              padding: '80px 60px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 24,
+              background: c.white,
+            }}
+          >
+            {children}
+          </main>
+        </div>
+      </AdminAccessGate>
     </>
   );
 }
+
+const GateBox = styled.div({
+  minHeight: '100dvh',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 12,
+  color: c.gray700,
+});
+const LogoutButton = styled.button({
+  border: 0,
+  background: 'transparent',
+  color: c.gray500,
+  ...textStyle.caption2,
+  '&:hover': { color: c.gray900 },
+});
 
 const SidebarBox = styled.aside({
   width: 220,
   minWidth: 220,
   background: c.white,
-  borderRight: '1px solid #E5E7EB',
+  borderRight: '0.5px solid #E5E7EB',
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',

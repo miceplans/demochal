@@ -1,14 +1,13 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
-  S3Client,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { v4 as uuid } from 'uuid';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -18,6 +17,7 @@ import {
   type PresignedUploadRequest,
 } from './dto/presigned-upload-request.dto.js';
 import { buildPublicFileUrl } from './public-file-url.js';
+import { createS3Client } from './s3-client.js';
 
 const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/jpeg': 'jpg',
@@ -47,13 +47,14 @@ function startsWithAt(bytes: Uint8Array, offset: number, ...signature: number[])
 
 @Injectable()
 export class FilesService {
-  private readonly s3 = new S3Client({ region: env.awsRegion });
+  private readonly logger = new Logger(FilesService.name);
+  private readonly s3 = createS3Client();
 
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async requestUpload(dto: PresignedUploadRequest, uploaderUserId: string) {
     if (dto.bucket === 'public' && dto.contentType === 'application/pdf') {
-      throw new BadRequestException('PDF files can only be uploaded to the private bucket.');
+      throw new BadRequestException('PDF 파일은 보안 저장소에만 업로드할 수 있습니다.');
     }
 
     // Never write an untrusted object directly to the public bucket.  A caller
@@ -95,16 +96,29 @@ export class FilesService {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus === 'ready') return this.withPublicUrl(file);
 
-    const head = await this.s3.send(
-      new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
-    );
+    let head;
+    try {
+      head = await this.s3.send(
+        new HeadObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
+      );
+    } catch (error) {
+      const name = (error as { name?: string } | undefined)?.name;
+      if (name !== 'NotFound' && name !== 'NoSuchKey') throw error;
+      // A concurrent finalize may have already promoted (and removed) the pending
+      // object — return its result instead of failing.
+      const current = await this.findOwnedFile(id, userId);
+      if (current.uploadStatus === 'ready') return this.withPublicUrl(current);
+      throw new NotFoundException(
+        '업로드된 파일을 찾을 수 없습니다. 업로드를 마친 뒤 다시 시도해 주세요.',
+      );
+    }
     if (
       head.ContentType !== file.contentType ||
       !head.ContentLength ||
       head.ContentLength > 10 * 1024 * 1024
     ) {
       await this.rejectUpload(file.key, id);
-      throw new NotFoundException('Uploaded file is invalid');
+      throw new NotFoundException('업로드된 파일이 유효하지 않습니다.');
     }
 
     const object = await this.s3.send(
@@ -113,7 +127,7 @@ export class FilesService {
     const bytes = new Uint8Array(await object.Body!.transformToByteArray());
     if (!hasExpectedMagicBytes(file.contentType as AllowedUploadContentType, bytes)) {
       await this.rejectUpload(file.key, id);
-      throw new NotFoundException('Uploaded file is invalid');
+      throw new NotFoundException('업로드된 파일이 유효하지 않습니다.');
     }
 
     const targetBucket =
@@ -132,7 +146,6 @@ export class FilesService {
           MetadataDirective: 'REPLACE',
         }),
       );
-      await this.s3.send(new DeleteObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
     }
 
     const [readyFile] = await this.db
@@ -140,6 +153,17 @@ export class FilesService {
       .set({ bucket: file.requestedBucket, key: targetKey, uploadStatus: 'ready' })
       .where(eq(files.id, id))
       .returning();
+
+    // Remove the pending original only after the DB points at the promoted copy —
+    // deleting first would lose the file if the update failed. A failed delete
+    // just leaves an orphan under pending/.
+    if (targetBucket !== env.s3PrivateBucket) {
+      try {
+        await this.s3.send(new DeleteObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
+      } catch (error) {
+        this.logger.warn(`Failed to delete promoted pending object for file ${id}`, error);
+      }
+    }
     return this.withPublicUrl(readyFile!);
   }
 
@@ -149,7 +173,15 @@ export class FilesService {
   }
 
   async findById(id: string, userId: string) {
-    return this.withPublicUrl(await this.findOwnedFile(id, userId));
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file) throw new NotFoundException('파일을 찾을 수 없습니다.');
+    // 공개 버킷의 업로드 완료 파일은 어차피 CloudFront 공개 URL로 누구나 볼 수 있으므로
+    // (공고 포스터처럼) 업로더 본인만 조회할 수 있을 필요가 없다. 그 외 파일은 기존처럼 소유자만 조회한다.
+    const publiclyServed = file.bucket === 'public' && file.uploadStatus === 'ready';
+    if (!publiclyServed && file.uploaderUserId !== userId) {
+      throw new NotFoundException('파일을 찾을 수 없습니다.');
+    }
+    return this.withPublicUrl(file);
   }
 
   // Lets a trusted backend caller (e.g. the verifications worker) hand a
@@ -163,14 +195,47 @@ export class FilesService {
   async assertOwnedReadyPrivate(id: string, userId: string) {
     const file = await this.findOwnedFile(id, userId);
     if (file.uploadStatus !== 'ready' || file.bucket !== 'private') {
-      throw new BadRequestException('A verified private file is required');
+      throw new BadRequestException('검증된 개인 파일이 필요합니다.');
     }
     return file;
   }
 
+  // 누구나 열어보는 컨텐츠(공고 포스터 등)에서 파일을 참조하기 전 검증한다.
+  // 존재하지 않거나 pending/rejected/private 파일이면 FK 500·깨진 이미지를 막기 위해 400으로 거절한다.
+  async assertReadyPublic(id: string) {
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file || file.uploadStatus !== 'ready' || file.bucket !== 'public') {
+      throw new BadRequestException('A ready public file is required');
+    }
+    return file;
+  }
+
+  // public+ready 파일의 CDN URL을 돌려준다. 그 외 상태·비공개 파일은 null — 서버가 응답에
+  // URL을 실어 별도 권한 없이 렌더할 수 있게 하는 전용 경로다.
+  async resolvePublicUrl(id: string | null | undefined): Promise<string | null> {
+    if (!id) return null;
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    return file ? buildPublicFileUrl(file) : null;
+  }
+
+  // 목록 응답용 — id들의 공개 URL을 한 번의 쿼리로 묶어 resolve한다.
+  async resolvePublicUrls(ids: (string | null | undefined)[]): Promise<Map<string, string | null>> {
+    const unique = [...new Set(ids.filter((id): id is string => Boolean(id)))];
+    if (unique.length === 0) return new Map();
+    const rows = await this.db.select().from(files).where(inArray(files.id, unique));
+    const rowById = new Map(rows.map((file) => [file.id, file]));
+    return new Map(
+      unique.map((id) => {
+        const row = rowById.get(id);
+        return [id, row ? buildPublicFileUrl(row) : null];
+      }),
+    );
+  }
+
   private async findOwnedFile(id: string, userId: string) {
     const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
-    if (!file || file.uploaderUserId !== userId) throw new NotFoundException('File not found');
+    if (!file || file.uploaderUserId !== userId)
+      throw new NotFoundException('파일을 찾을 수 없습니다.');
     return file;
   }
 }

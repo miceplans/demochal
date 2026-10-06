@@ -1,68 +1,74 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { adApi } from '@/lib/ad-api';
-import {
-  BizContent,
-  SectionTitle,
-  FieldInput,
-  PrimaryButton,
-  useBizHref,
-} from '@/components/biz/BizShell';
+import { LoadingState } from '@/components/common/LoadingState';
+import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
+import { generated } from '@semochal/api-client';
+import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
+import { colors as c } from '@/styles/design';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import { apiErrorMessage } from '@/lib/api-error';
 
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
 
-async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
-  if (!fileId) return null;
-  try {
-    const file = await adApi.files.get(fileId);
-    return file.url ?? null;
-  } catch {
-    return null;
-  }
+function useExistingImageUrl(fileId?: string | null): string | null {
+  const query = generated.useGetFile(fileId ?? '', { query: { enabled: !!fileId } });
+  return query.data?.status === 200 ? (query.data.data.url ?? null) : null;
 }
 
 export function BizProfileEditPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
-  const [id, setId] = useState('');
+  const queryClient = useQueryClient();
+  const businessQuery = generated.useFindMyBusiness();
+  const business = businessQuery.data?.status === 200 ? businessQuery.data.data : undefined;
+  const businessLoadError = businessQuery.isError;
+
   const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
-  const [state, setState] = useState<'loading' | 'ready' | 'saving' | 'error'>('loading');
-  const [existingImages, setExistingImages] = useState<Record<ImageKind, string | null>>({
-    banner: null,
-    logo: null,
-  });
+  const [initialized, setInitialized] = useState(false);
   const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
   const [logoImage, setLogoImage] = useState<UploadedImage | null>(null);
   const [uploading, setUploading] = useState<ImageKind | null>(null);
+  const [saveError, setSaveError] = useState(false);
   const previewUrls = useRef(new Set<string>());
+
+  const existingBannerUrl = useExistingImageUrl(business?.bannerImageFileId);
+  const existingLogoUrl = useExistingImageUrl(business?.logoImageFileId);
+  const existingImages: Record<ImageKind, string | null> = {
+    banner: existingBannerUrl,
+    logo: existingLogoUrl,
+  };
+
+  const requestPresignedUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  const updateBusiness = generated.useUpdateBusiness();
+
   useEffect(() => {
     const urls = previewUrls.current;
     return () => urls.forEach((url) => URL.revokeObjectURL(url));
   }, []);
+
+  // business는 한 번만 로드되면 되고, 이후 로컬 편집 상태가 진실의 원천이므로
+  // refetch로 다시 값이 오더라도 사용자가 입력 중인 form을 덮어쓰지 않는다.
   useEffect(() => {
-    void adApi.businesses
-      .me()
-      .then(async (business) => {
-        setId(business.id);
-        setForm({
-          name: business.name,
-          address: business.address ?? '',
-          phone: business.phone ?? '',
-          email: business.email ?? '',
-        });
-        const [banner, logo] = await Promise.all([
-          resolveFileUrl(business.bannerImageFileId),
-          resolveFileUrl(business.logoImageFileId),
-        ]);
-        setExistingImages({ banner, logo });
-        setState('ready');
-      })
-      .catch(() => setState('error'));
-  }, []);
+    if (business && !initialized) {
+      // business는 라우트 진입 시 한 번만 조회되는 외부 API 동기화이며,
+      // 이후 form은 로컬 편집 상태가 진실의 원천이다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setForm({
+        name: business.name ?? '',
+        address: business.address ?? '',
+        phone: business.phone ?? '',
+        email: business.email ?? '',
+      });
+      setInitialized(true);
+    }
+  }, [business, initialized]);
+
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
@@ -76,19 +82,22 @@ export function BizProfileEditPage() {
         file,
         kind === 'banner' ? AD_IMAGE_PRESETS.hero : AD_IMAGE_PRESETS.gallery,
       );
-      const presigned = await adApi.files.requestUpload({
-        bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
+      const presigned = await requestPresignedUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          // compressToWebP는 항상 image/webp로 재인코딩한다.
+          contentType: 'image/webp',
+          fileName: image.file.name,
+          sizeBytes: image.file.size,
+        },
       });
-      const uploadRes = await fetch(presigned.uploadUrl, {
+      const uploadRes = await fetch(presigned.data.uploadUrl, {
         method: 'PUT',
         headers: { 'Content-Type': image.file.type },
         body: image.file,
       });
       if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await adApi.files.finalizeUpload(presigned.fileId);
+      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       const previous = kind === 'banner' ? bannerImage : logoImage;
       if (previous) {
@@ -96,7 +105,7 @@ export function BizProfileEditPage() {
         previewUrls.current.delete(previous.previewUrl);
       }
       previewUrls.current.add(image.previewUrl);
-      const next = { fileId: presigned.fileId, previewUrl: image.previewUrl };
+      const next = { fileId: presigned.data.fileId, previewUrl: image.previewUrl };
       if (kind === 'banner') setBannerImage(next);
       else setLogoImage(next);
       toast.success(
@@ -112,97 +121,112 @@ export function BizProfileEditPage() {
   };
 
   const save = async () => {
-    setState('saving');
+    if (!business) return;
+    setSaveError(false);
     try {
-      await adApi.businesses.update(id, {
-        ...form,
-        ...(bannerImage ? { bannerImageFileId: bannerImage.fileId } : {}),
-        ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
+      await updateBusiness.mutateAsync({
+        id: business.id,
+        data: {
+          ...form,
+          ...(bannerImage ? { bannerImageFileId: bannerImage.fileId } : {}),
+          ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
+        },
       });
+      await queryClient.invalidateQueries({ queryKey: generated.getFindMyBusinessQueryKey() });
       window.location.href = hrefOf('/profile');
-    } catch {
-      setState('error');
-      toast.error('저장 실패', '기업 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요');
+    } catch (error) {
+      setSaveError(true);
+      toast.error(
+        '저장 실패',
+        apiErrorMessage(error, '기업 정보를 저장하지 못했어요. 잠시 후 다시 시도해주세요'),
+      );
     }
   };
 
-  const renderImageField = (kind: ImageKind, label: string) => {
-    const uploaded = kind === 'banner' ? bannerImage : logoImage;
-    const previewUrl = uploaded?.previewUrl ?? existingImages[kind];
-    return (
-      <label style={{ display: 'grid', gap: 8 }}>
-        {label}
-        <input
-          type="file"
-          accept="image/*"
-          disabled={uploading !== null || state === 'saving'}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) void uploadImage(kind, file);
-          }}
-        />
-        {uploading === kind ? (
-          <span style={{ fontSize: 13 }}>이미지를 업로드하는 중입니다…</span>
-        ) : previewUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={previewUrl}
-            alt={`${label} 미리보기`}
-            style={{ maxWidth: kind === 'banner' ? 320 : 120, borderRadius: 8, objectFit: 'cover' }}
-          />
-        ) : (
-          <span style={{ fontSize: 13 }}>등록된 이미지가 없습니다.</span>
-        )}
-      </label>
-    );
-  };
+  const fileInput = (kind: ImageKind) => (
+    <input
+      type="file"
+      accept="image/*"
+      hidden
+      aria-label={kind === 'banner' ? '배너 이미지 선택' : '로고 이미지 선택'}
+      disabled={uploading !== null || updateBusiness.isPending}
+      onChange={(event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (file) void uploadImage(kind, file);
+      }}
+    />
+  );
 
-  if (state === 'loading')
+  if (!initialized && businessQuery.isPending)
     return (
       <BizContent>
-        <p>기업 정보를 불러오는 중입니다.</p>
+        <LoadingState label="기업 정보를 불러오는 중입니다." />
       </BizContent>
     );
-  if (!id)
+  if (!business || businessLoadError)
     return (
       <BizContent>
-        <p>기업 정보를 불러오지 못했습니다.</p>
+        <p role="alert">
+          {apiErrorMessage(businessQuery.error, '기업 정보를 불러오지 못했습니다.')}
+        </p>
       </BizContent>
     );
   return (
-    <BizContent>
-      <SectionTitle>기업 프로필 수정</SectionTitle>
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          void save();
-        }}
-        style={{ display: 'grid', gap: 16, maxWidth: 520 }}
-      >
-        <label>
-          기업명
-          <FieldInput value={form.name} onChange={update('name')} required />
-        </label>
-        <label>
-          주소
-          <FieldInput value={form.address} onChange={update('address')} />
-        </label>
-        <label>
-          전화번호
-          <FieldInput value={form.phone} onChange={update('phone')} />
-        </label>
-        <label>
-          이메일
-          <FieldInput type="email" value={form.email} onChange={update('email')} />
-        </label>
-        {renderImageField('banner', '배너 이미지')}
-        {renderImageField('logo', '로고 이미지')}
-        {state === 'error' && <p>저장하지 못했습니다.</p>}
-        <PrimaryButton type="submit" disabled={state === 'saving' || uploading !== null}>
-          {state === 'saving' ? '저장 중…' : '저장'}
+    <BizContent style={{ gap: 32 }}>
+      <Actions>
+        <OutlineButton type="button" onClick={() => (window.location.href = hrefOf('/profile'))}>
+          취소
+        </OutlineButton>
+        <PrimaryButton
+          type="button"
+          disabled={updateBusiness.isPending || uploading !== null}
+          onClick={() => void save()}
+        >
+          {updateBusiness.isPending ? '저장 중…' : '저장'}
         </PrimaryButton>
-      </form>
+      </Actions>
+      {/* TODO: Figma 하단 플로팅 툴바(링크·텍스트·파일·레이아웃·이미지)로 contentBlocks 편집 — 블록 에디터 미구현 */}
+      <BizOrgProfile
+        bannerUrl={bannerImage?.previewUrl ?? existingImages.banner}
+        logoUrl={logoImage?.previewUrl ?? existingImages.logo}
+        bannerInput={fileInput('banner')}
+        logoInput={fileInput('logo')}
+        name={
+          <InlineInput
+            aria-label="기업명"
+            value={form.name}
+            onChange={update('name')}
+            style={{ fontSize: 24, fontWeight: 600 }}
+          />
+        }
+        address={
+          <InlineInput aria-label="주소" value={form.address} onChange={update('address')} />
+        }
+        phone={<InlineInput aria-label="전화번호" value={form.phone} onChange={update('phone')} />}
+        email={
+          <InlineInput
+            aria-label="이메일"
+            type="email"
+            value={form.email}
+            onChange={update('email')}
+          />
+        }
+      />
+      {saveError && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
 }
+
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
+const InlineInput = styled.input({
+  width: 360,
+  border: '0.5px solid transparent',
+  borderRadius: 6,
+  padding: '4px 6px',
+  background: 'transparent',
+  font: 'inherit',
+  color: 'inherit',
+  '&:hover': { background: c.gray50 },
+  '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
+});

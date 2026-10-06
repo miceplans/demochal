@@ -118,7 +118,7 @@ export function AdminAdsScreen() {
   );
   const selected = rows.find((row) => row.id === selectedId) ?? null;
 
-  const pauseMutation = generated.useUpdateAd({
+  const pauseMutation = generated.usePauseAdminAd({
     mutation: {
       onSuccess: () => {
         toast.success('광고를 중단했어요.');
@@ -140,7 +140,7 @@ export function AdminAdsScreen() {
       toast.error('진행중인 광고만 중단할 수 있어요');
       return;
     }
-    pauseMutation.mutate({ id: selected.id, data: { status: 'paused' } });
+    pauseMutation.mutate({ id: selected.id });
   };
 
   const columns: AdminColumn<AdRow>[] = [

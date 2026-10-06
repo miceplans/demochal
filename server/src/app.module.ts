@@ -13,7 +13,10 @@ import { ApplicationsModule } from './modules/applications/applications.module.j
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 import { FilesModule } from './modules/files/files.module.js';
-import { NotificationsModule } from './modules/notifications/notifications.module.js';
+import {
+  NotificationsModule,
+  NotificationsStreamModule,
+} from './modules/notifications/notifications.module.js';
 import { AdsModule } from './modules/ads/ads.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
@@ -24,10 +27,12 @@ import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { BillingModule } from './modules/billing/billing.module.js';
 import { BizModule } from './modules/biz/biz.module.js';
+import { PeopleModule } from './modules/people/people.module.js';
 import { TeamsModule } from './modules/teams/teams.module.js';
 import { BookmarksModule } from './modules/bookmarks/bookmarks.module.js';
 import { InterestsModule } from './modules/interests/interests.module.js';
 import { OperationsModule } from './modules/operations/operations.module.js';
+import { EmailModule } from './modules/email/email.module.js';
 
 // Full module tree, served over HTTP by main.ts.
 @Module({
@@ -46,6 +51,7 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     PaymentsModule,
     FilesModule,
     NotificationsModule,
+    NotificationsStreamModule,
     AdsModule,
     CertificatesModule,
     ReportsModule,
@@ -54,9 +60,11 @@ import { OperationsModule } from './modules/operations/operations.module.js';
     BillingModule,
     BizModule,
     TeamsModule,
+    PeopleModule,
     BookmarksModule,
     InterestsModule,
     OperationsModule,
+    EmailModule,
   ],
   providers: [
     // Runs first so floods are rejected before the per-request auth DB lookup.

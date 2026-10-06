@@ -8,18 +8,22 @@ import {
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, users } from '../../db/schema.js';
+import { AdminAlertsService } from '../admin/admin-alerts.service.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
 
 @Injectable()
 export class BusinessesService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly adminAlerts: AdminAlertsService,
+  ) {}
 
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
     // One business per owner — findByOwner and the biz console assume it.
     if (await this.findByOwner(ownerUserId)) {
-      throw new ConflictException('Business already registered for this user');
+      throw new ConflictException('이미 등록된 기업 정보가 있습니다.');
     }
     const business = await this.db.transaction(async (tx) => {
       const [created] = await tx
@@ -39,6 +43,10 @@ export class BusinessesService {
         .where(and(eq(users.id, ownerUserId), eq(users.role, 'user')));
       return created;
     });
+    // 기관명/사업자번호는 알림에 싣지 않는다(개인정보 최소화) — id만 전달한다.
+    await this.adminAlerts.notify('newBusinessAlert', 'admin.business', {
+      businessId: business!.id,
+    });
     return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
   }
 
@@ -48,7 +56,7 @@ export class BusinessesService {
       .from(businesses)
       .where(eq(businesses.id, id))
       .limit(1);
-    if (!business) throw new NotFoundException('Business not found');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
@@ -65,7 +73,7 @@ export class BusinessesService {
 
   async findByOwnerOrThrow(ownerUserId: string) {
     const business = await this.findByOwner(ownerUserId);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 계정이 필요합니다.');
     return business;
   }
 
@@ -97,7 +105,7 @@ export class BusinessesService {
       })
       .where(and(eq(businesses.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .returning();
-    if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 }

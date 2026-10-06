@@ -40,7 +40,7 @@ export function StepLabel({
           placeItems: 'center',
           borderRadius: '50%',
           background: completed ? c.primary : c.white,
-          border: `1px solid ${c.primary}`,
+          border: `0.5px solid ${c.primary}`,
           color: completed ? c.white : c.primary,
           fontSize: 12,
         }}
@@ -60,6 +60,13 @@ export function RecruitmentPage() {
     </Suspense>
   );
 }
+
+// 모집글 역할은 '기타' 대신 '직접 입력'으로 자유롭게 적게 한다(공용 roles는 필터 등에서 그대로 쓴다).
+const CUSTOM_ROLE = '직접 입력';
+const PRESET_ROLES = roles.filter((x) => x !== '기타');
+const ROLE_OPTIONS = [...PRESET_ROLES, CUSTOM_ROLE].map((x) => ({ value: x, label: x }));
+const CUSTOM_ROLE_MAX = 20;
+const normalizeRole = (value: string) => value.trim().replace(/\s+/g, ' ');
 
 function RecruitmentForm() {
   const draft = useUserStore((s) => s.recruitment);
@@ -109,12 +116,40 @@ function RecruitmentForm() {
             toast.error('챌린지를 선택해주세요', '목록에서 챌린지를 골라주세요');
             return;
           }
+          const openRoles = slots.map(({ role, count }) => ({ role: normalizeRole(role), count }));
+          const myRole = normalizeRole(draft.role);
+          if (!myRole || myRole === CUSTOM_ROLE) {
+            toast.error('내가 맡은 역할을 입력해주세요');
+            return;
+          }
+          if (openRoles.some((x) => !x.role || x.role === CUSTOM_ROLE)) {
+            toast.error('모집 역할을 입력해주세요', '직접 입력을 고른 역할의 이름을 적어주세요');
+            return;
+          }
+          if (openRoles.some((x) => !Number.isInteger(x.count) || x.count < 1 || x.count > 10)) {
+            toast.error('모집 인원을 확인해주세요', '역할별 모집 인원은 1~10명이에요');
+            return;
+          }
+          const seen = new Set<string>();
+          const duplicated = openRoles.find((x) => {
+            const key = x.role.toLowerCase();
+            if (seen.has(key)) return true;
+            seen.add(key);
+            return false;
+          });
+          if (duplicated) {
+            toast.error(
+              '같은 역할이 중복됐어요',
+              `'${duplicated.role}' 슬롯은 인원 수로 합쳐주세요`,
+            );
+            return;
+          }
           createTeam.mutate({
             data: {
               challengeId,
               introduction: draft.introduction.trim() || undefined,
-              openRoles: slots.map(({ role, count }) => ({ role, count })),
-              myRole: draft.role,
+              openRoles,
+              myRole,
               preferred: draft.preferred?.trim() || undefined,
               etc: draft.etc?.trim() || undefined,
             },
@@ -155,46 +190,82 @@ function RecruitmentForm() {
           <StepLabel number={3} completed={slots.length > 0}>
             필요 역할 슬롯 추가
           </StepLabel>
-          {slots.map((slot, i) => (
-            <Row key={slot.id}>
-              <Dropdown
-                aria-label={`모집 역할 ${i + 1}`}
-                size="S"
-                value={slot.role}
-                style={{ flex: 1 }}
-                onChange={(x) =>
-                  setSlots(slots.map((s) => (s.id === slot.id ? { ...s, role: x } : s)))
-                }
-                options={roles.map((x) => ({ value: x, label: x }))}
-              />
-              <Input
-                type="number"
-                aria-label={`모집 인원 ${i + 1}`}
-                min={1}
-                max={10}
-                value={slot.count}
-                style={{ width: 100, textAlign: 'center' }}
-                onChange={(e) =>
-                  setSlots(
-                    slots.map((s) =>
-                      s.id === slot.id ? { ...s, count: Number(e.target.value) } : s,
-                    ),
-                  )
-                }
-              />
-              <IconButton
-                type="button"
-                aria-label={`역할 ${i + 1} 삭제`}
-                onClick={() => setSlots(slots.filter((s) => s.id !== slot.id))}
-              >
-                <Icon name="imgS1Del" size={16} />
-              </IconButton>
-            </Row>
-          ))}
+          {slots.map((slot, i) => {
+            const isCustom = slot.custom || !PRESET_ROLES.includes(slot.role);
+            return (
+              <Stack key={slot.id} gap={8}>
+                <Row>
+                  <Dropdown
+                    aria-label={`모집 역할 ${i + 1}`}
+                    size="S"
+                    value={isCustom ? CUSTOM_ROLE : slot.role}
+                    style={{ flex: 1 }}
+                    onChange={(x) =>
+                      setSlots(
+                        slots.map((s) =>
+                          s.id === slot.id
+                            ? x === CUSTOM_ROLE
+                              ? { ...s, custom: true, role: isCustom ? s.role : '' }
+                              : { ...s, custom: false, role: x }
+                            : s,
+                        ),
+                      )
+                    }
+                    options={ROLE_OPTIONS}
+                  />
+                  <Input
+                    type="number"
+                    aria-label={`모집 인원 ${i + 1}`}
+                    min={1}
+                    max={10}
+                    value={slot.count}
+                    style={{ width: 100, textAlign: 'center' }}
+                    onChange={(e) =>
+                      setSlots(
+                        slots.map((s) =>
+                          s.id === slot.id ? { ...s, count: Number(e.target.value) } : s,
+                        ),
+                      )
+                    }
+                  />
+                  <IconButton
+                    type="button"
+                    aria-label={`역할 ${i + 1} 삭제`}
+                    onClick={() => setSlots(slots.filter((s) => s.id !== slot.id))}
+                  >
+                    <Icon name="imgS1Del" size={16} />
+                  </IconButton>
+                </Row>
+                {isCustom && (
+                  <Input
+                    aria-label={`모집 역할 ${i + 1} 직접 입력`}
+                    placeholder="역할을 직접 입력하세요"
+                    maxLength={CUSTOM_ROLE_MAX}
+                    value={slot.role}
+                    onChange={(e) =>
+                      setSlots(
+                        slots.map((s) => (s.id === slot.id ? { ...s, role: e.target.value } : s)),
+                      )
+                    }
+                  />
+                )}
+              </Stack>
+            );
+          })}
           <Button
             type="button"
             tone="plain"
-            onClick={() => setSlots([...slots, { id: Date.now(), role: '백엔드', count: 1 }])}
+            onClick={() => {
+              // 이미 쓴 역할은 건너뛰고 기본값을 정해 중복 슬롯이 처음부터 생기지 않게 한다.
+              const used = new Set(slots.map((s) => normalizeRole(s.role).toLowerCase()));
+              const next = PRESET_ROLES.find((x) => !used.has(x.toLowerCase()));
+              setSlots([
+                ...slots,
+                next
+                  ? { id: Date.now(), role: next, count: 1 }
+                  : { id: Date.now(), role: '', count: 1, custom: true },
+              ]);
+            }}
           >
             <Icon name="imgAddSlotIc" size={16} />
             역할 슬롯 추가
@@ -206,10 +277,31 @@ function RecruitmentForm() {
           </StepLabel>
           <Dropdown
             aria-label="내가 맡은 역할"
-            value={draft.role}
-            onChange={(x) => setDraft({ ...draft, role: x })}
-            options={roles.map((x) => ({ value: x, label: x }))}
+            value={
+              draft.roleCustom || !PRESET_ROLES.includes(draft.role) ? CUSTOM_ROLE : draft.role
+            }
+            onChange={(x) =>
+              setDraft(
+                x === CUSTOM_ROLE
+                  ? {
+                      ...draft,
+                      roleCustom: true,
+                      role: PRESET_ROLES.includes(draft.role) ? '' : draft.role,
+                    }
+                  : { ...draft, roleCustom: false, role: x },
+              )
+            }
+            options={ROLE_OPTIONS}
           />
+          {(draft.roleCustom || !PRESET_ROLES.includes(draft.role)) && (
+            <Input
+              aria-label="내가 맡은 역할 직접 입력"
+              placeholder="역할을 직접 입력하세요"
+              maxLength={CUSTOM_ROLE_MAX}
+              value={draft.role}
+              onChange={(e) => setDraft({ ...draft, role: e.target.value })}
+            />
+          )}
         </Stack>
         <Stack gap={10}>
           <StepLabel number={5} completed={!!draft.preferred}>

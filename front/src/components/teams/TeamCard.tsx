@@ -4,54 +4,76 @@ import styled from '@emotion/styled';
 import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Tag, Row, Muted } from '@/components/common/Primitives';
 
-export function TeamCard({ team }: { team: Team }) {
-  return (
-    <Card data-component="team-card">
-      {team.poster ? (
-        <img className="team-artwork" src={team.poster} alt="" width={400} height={135} />
+export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
+  const poster = team.poster;
+  const content = (
+    <>
+      {poster ? (
+        <img className="team-artwork" src={poster} alt="" width={400} height={135} />
       ) : (
         <PosterPlaceholder role="img" aria-label={`${team.challenge || team.name} 대표 이미지`}>
           <PosterInitial>{(team.challenge || team.name).slice(0, 1)}</PosterInitial>
           <PosterChallenge>{team.challenge || team.name}</PosterChallenge>
         </PosterPlaceholder>
       )}
-      <div className="body">
-        <Row style={{ justifyContent: 'space-between' }}>
-          <h3>
-            <Link href={`/teams/${team.id}`}>{team.name}</Link>
-          </h3>
+      <Body>
+        <TopRow>
           <Challenge>{team.challenge}</Challenge>
-        </Row>
-        <Row gap={6}>
-          {team.filledRoles.map((role) => (
-            <RoleTag key={role} filled>
-              {role}
-            </RoleTag>
-          ))}
-          {team.recruitingRoles.map((role) => (
-            <RoleTag key={role}>{role}</RoleTag>
-          ))}
-        </Row>
-        <Row style={{ justifyContent: 'space-between' }}>
-          <Members>{team.members}</Members>
-          <Row gap={6} style={{ flexShrink: 0 }}>
-            <Report href={`/reports/new?type=team&id=${team.id}`}>신고</Report>
-            <Apply href={`/teams/${team.id}`}>지원하기</Apply>
-          </Row>
-        </Row>
-      </div>
+          <NameRow>
+            <h3>{team.name}</h3>
+            <Count>
+              ({team.joined}/{team.capacity})
+            </Count>
+          </NameRow>
+        </TopRow>
+        <BottomRow>
+          <RoleBox>
+            <RoleRow>
+              {team.recruitingRoles.map((role, i) => (
+                <RoleChip key={`recruiting-${role}-${i}`}>{role}</RoleChip>
+              ))}
+              {team.filledRoles.map((role, i) => (
+                <FilledRole
+                  key={`filled-${role}-${i}`}
+                  role="img"
+                  aria-label={`${role} 모집 완료`}
+                  title={role}
+                >
+                  <img src="/assets/icons/team-role-check.svg" alt="" width={16} height={17} />
+                </FilledRole>
+              ))}
+            </RoleRow>
+          </RoleBox>
+          {!displayOnly && <Apply>지원하기</Apply>}
+        </BottomRow>
+      </Body>
+    </>
+  );
+  return (
+    <Card data-component="team-card">
+      {displayOnly ? (
+        content
+      ) : (
+        <CardLink href={`/teams/${team.id}`} aria-label={`${team.name} 상세 보기`}>
+          {content}
+        </CardLink>
+      )}
     </Card>
   );
 }
 
 const Card = styled.article({
-  background: c.white,
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 12,
-  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
   minWidth: 0,
+  background: c.white,
+  border: `0.5px solid ${c.gray100}`,
+  borderRadius: 14,
+  overflow: 'hidden',
+  h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
   '.team-artwork': {
     width: '100%',
     height: 135,
@@ -59,14 +81,28 @@ const Card = styled.article({
     objectPosition: 'center top',
     background: c.gray100,
   },
-  '.body': { padding: 16, display: 'flex', flexDirection: 'column', gap: 10 },
-  h3: textStyle.h2,
-  [mobile]: {
-    border: '1px solid #f0f1f3',
-    borderRadius: 14,
-    '.team-artwork': { display: 'none' },
-    '.body': { padding: 14, gap: 10 },
-  },
+  [mobile]: { '.team-artwork': { display: 'none' } },
+});
+
+const CardLink = styled(Link)({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
+  flex: 1,
+  minWidth: 0,
+  borderRadius: 'inherit',
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: -2 },
+});
+
+const Body = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  gap: 24,
+  flex: 1,
+  minWidth: 0,
+  padding: 14,
 });
 
 const PosterPlaceholder = styled.div({
@@ -103,40 +139,79 @@ const PosterChallenge = styled.span({
   whiteSpace: 'nowrap',
 });
 
-const RoleTag = styled(Tag)<{ filled?: boolean }>(({ filled }) => ({
-  ...textStyle.mBadgeText,
-  lineHeight: 'normal',
-  background: filled ? c.lightGreen : c.gray100,
-  color: filled ? c.green : c.gray500,
-  border: filled ? 'none' : `0.5px solid ${c.gray200}`,
-  [mobile]: { padding: '4px 7px' },
-}));
+const TopRow = styled.div({ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 });
 
-const Challenge = styled(Muted)({ color: c.gray500, [mobile]: textStyle.mSubText });
+const Challenge = styled.p({ ...textStyle.mSubText, color: c.gray500, margin: 0 });
 
-const Members = styled(Muted)({
+const NameRow = styled.div({ display: 'flex', alignItems: 'baseline', gap: 2, minWidth: 0 });
+
+const Count = styled.span({ ...textStyle.mNameLabel, color: c.gray900, flexShrink: 0 });
+
+const BottomRow = styled.div({
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 8,
+});
+
+// 한 줄에 다 들어가면 전부 보이고, 넘치면 잘라 둔 뒤 hover 시 카드 위로 펼쳐 모두 보여준다.
+const RoleBox = styled.div({ position: 'relative', flex: 1, minWidth: 0, height: 25 });
+
+const RoleRow = styled.div({
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  display: 'flex',
+  flexWrap: 'nowrap',
+  alignItems: 'center',
+  gap: 6,
   overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  minWidth: 0,
-  [mobile]: textStyle.mSubText,
+  'div:hover > &': {
+    flexWrap: 'wrap',
+    overflow: 'visible',
+    zIndex: 2,
+    margin: -6,
+    padding: 6,
+    width: 'calc(100% + 12px)',
+    background: c.white,
+    borderRadius: 8,
+  },
 });
 
-const Apply = styled(Link)({
-  color: c.primary,
-  ...textStyle.overline,
-  whiteSpace: 'nowrap',
-  border: `1px solid ${c.primary}`,
-  borderRadius: 8,
-  padding: '6px 12px',
-  [mobile]: { padding: '6px 14px', fontWeight: 700 },
-});
-
-const Report = styled(Link)({
+const RoleChip = styled.span({
+  ...textStyle.mRoleText,
+  padding: '4px 7px',
+  borderRadius: 4,
+  background: c.gray100,
+  border: `0.5px solid ${c.gray100}`,
   color: c.gray500,
-  ...textStyle.overline,
   whiteSpace: 'nowrap',
-  padding: '6px 4px',
+  flexShrink: 0,
+});
+
+const FilledRole = styled.span({
+  flexShrink: 0,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 2,
+  borderRadius: 26,
+  background: c.green,
+});
+
+const Apply = styled.span({
+  ...textStyle.mBadgeText,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  height: 25,
+  padding: '6px 14px',
+  borderRadius: 8,
+  background: c.primary,
+  color: c.gray50,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
 });
 
 export const TeamGrid = styled.div({

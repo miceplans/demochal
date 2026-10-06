@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type PublicAdPlacement = (typeof PublicAdPlacement)[keyof typeof PublicAdPlacement];
+export type PublicAdPlacement = typeof PublicAdPlacement[keyof typeof PublicAdPlacement];
+
 
 export const PublicAdPlacement = {
   hero: 'hero',

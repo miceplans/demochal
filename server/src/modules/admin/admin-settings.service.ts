@@ -35,18 +35,18 @@ export const SETTINGS_GROUPS = [
       {
         key: 'reportAlert',
         label: '신고 접수 알림',
-        description: '신고가 접수되면 관리자에게 즉시 알림을 볩니다.',
+        description: '신고가 접수되면 관리자에게 즉시 알림을 보냅니다.',
       },
       {
         key: 'newBusinessAlert',
         label: '신규 기관 가입 알림',
-        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 볩니다.',
+        description: '신규 기관 가입 신청이 들어오면 관리자에게 알림을 보냅니다.',
       },
     ],
   },
 ];
 
-// TODO: reportAlert/newBusinessAlert는 저장만 되고 아직 알림 발송에 연결되지 않았다.
+// reportAlert/newBusinessAlert는 AdminAlertsService가 신고 접수/기관 등록 시 읽어 알림을 보낸다.
 export const DEFAULT_VALUES: Record<string, boolean> = {
   bizAutoApprove: false,
   contestAutoPublish: false,
@@ -60,7 +60,7 @@ function pickKnownBooleans(values: unknown): Record<string, boolean> {
   if (!values || typeof values !== 'object') return {};
   return Object.fromEntries(
     Object.entries(values).filter(
-      ([key, value]) => key in DEFAULT_VALUES && typeof value === 'boolean',
+      ([key, value]) => Object.hasOwn(DEFAULT_VALUES, key) && typeof value === 'boolean',
     ),
   ) as Record<string, boolean>;
 }

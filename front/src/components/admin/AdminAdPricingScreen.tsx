@@ -290,7 +290,7 @@ const DialogButton = styled('button', { shouldForwardProp: (prop) => prop !== 'p
 }>(({ primary }) => ({
   flex: 1,
   height: 37,
-  border: primary ? 0 : `1px solid #DFE2E7`,
+  border: primary ? 0 : `0.5px solid #DFE2E7`,
   borderRadius: 6,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : '#101010',
@@ -303,7 +303,7 @@ const PriceField = styled.div({
   alignItems: 'center',
   overflow: 'hidden',
   height: 48,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   background: c.white,
   '&:focus-within': { borderColor: c.primary, boxShadow: `0 0 0 3px ${c.primary}20` },
@@ -536,8 +536,8 @@ export function AdminAdPricingScreen() {
                     />
                   </FilterRow>
                   <Section>
-                    <SectionHeading title="지영님에게 맞는 AI 추천" />
-                    <Rail aria-label="지영님에게 맞는 AI 추천 목록">
+                    <SectionHeading title="맞춤 AI 추천" />
+                    <Rail aria-label="맞춤 AI 추천 목록">
                       {desktopContests.slice(0, 6).map((contest) => (
                         <ContestCard key={contest.id} contest={contest} />
                       ))}

@@ -4,9 +4,18 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 /** Figma 탐색 필터 사이드바(FilterSidebar) 구성 요소 — 그룹 제목 + 칩/체크박스. */
-export function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
+export function FilterGroup({
+  title,
+  children,
+  fit = false,
+}: {
+  title: string;
+  children: React.ReactNode;
+  /** true면 내용 폭만큼만 차지한다(가로 패널용). */
+  fit?: boolean;
+}) {
   return (
-    <Group>
+    <Group $fit={fit}>
       <GroupTitle>{title}</GroupTitle>
       {children}
     </Group>
@@ -18,14 +27,16 @@ export function ChipFilter({
   selected,
   onToggle,
   ariaLabel,
+  maxWidth,
 }: {
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
   ariaLabel: string;
+  maxWidth?: number;
 }) {
   return (
-    <Chips role="group" aria-label={ariaLabel}>
+    <Chips role="group" aria-label={ariaLabel} style={maxWidth ? { maxWidth } : undefined}>
       {options.map((option) => {
         const on = selected.includes(option);
         return (
@@ -92,7 +103,12 @@ export function CheckFilter({
 export const toggleValue = (list: string[], value: string) =>
   list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
-const Group = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' });
+const Group = styled.div<{ $fit: boolean }>(({ $fit }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  width: $fit ? 'auto' : '100%',
+}));
 const GroupTitle = styled.h3({ ...textStyle.subtitle, color: c.gray900, margin: 0 });
 const Chips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: '4px 6px' });
 const ChipButton = styled.button<{ $on: boolean }>(({ $on }) => ({

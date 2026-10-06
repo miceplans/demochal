@@ -1,22 +1,45 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
-import { applications, challenges } from '../../db/schema.js';
+import { applications, challenges, files, type ApplicationFormQuestion } from '../../db/schema.js';
+import { PgDialect } from 'drizzle-orm/pg-core';
 import { ApplicationsService } from './applications.service.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 
 /** Chainable drizzle stub matching apply(): select projections, insert().values().returning(), and transaction pass-through. */
 function createDbStub(options: {
-  challenge?: { id: string; price: number; title: string };
+  challenge?: {
+    id: string;
+    price: number;
+    title: string;
+    status?: string;
+    startDate?: Date;
+    endDate?: Date;
+    applicationForm?: ApplicationFormQuestion[];
+  };
   existingApplication?: Record<string, unknown>;
   latestOrder?: Record<string, unknown>;
   application?: Record<string, unknown>;
   order?: Record<string, unknown>;
+  ownedFiles?: { id: string }[];
 }) {
+  const challenge = options.challenge && {
+    status: 'published',
+    startDate: new Date(Date.now() - 60_000),
+    endDate: new Date(Date.now() + 60_000),
+    ...options.challenge,
+  };
   const limit = vi.fn();
   const selectFrom = vi.fn((table: unknown) => ({
-    where: vi.fn(() => {
+    where: vi.fn((condition: any) => {
+      if (table === files) {
+        const query = new PgDialect().sqlToQuery(condition);
+        expect(query.params).toContain('user-1');
+        expect(query.params).toContain('private');
+        expect(query.params).toContain('ready');
+        return Promise.resolve(options.ownedFiles ?? []);
+      }
       if (table === challenges) {
-        limit.mockResolvedValue(options.challenge ? [options.challenge] : []);
+        limit.mockResolvedValue(challenge ? [challenge] : []);
         return { limit };
       }
       if (table === applications) {
@@ -30,23 +53,27 @@ function createDbStub(options: {
   }));
   const select = vi.fn(() => ({ from: selectFrom }));
 
+  const values = vi.fn();
   const insert = vi.fn((table: unknown) => ({
-    values: vi.fn(() => ({
-      returning: vi
-        .fn()
-        .mockResolvedValue(
-          table === applications
-            ? options.application
-              ? [options.application]
-              : []
-            : options.order
-              ? [options.order]
-              : [],
-        ),
-    })),
+    values: vi.fn((body: unknown) => {
+      values(body);
+      return {
+        returning: vi
+          .fn()
+          .mockResolvedValue(
+            table === applications
+              ? options.application
+                ? [options.application]
+                : []
+              : options.order
+                ? [options.order]
+                : [],
+          ),
+      };
+    }),
   }));
 
-  const db: any = { select, insert };
+  const db: any = { select, insert, values };
   db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
   return db;
 }
@@ -54,6 +81,71 @@ function createDbStub(options: {
 const dto: ApplyChallengeDto = { challengeId: 'challenge-1' };
 
 describe('ApplicationsService.apply', () => {
+  const fileId = '11111111-1111-4111-8111-111111111111';
+  const applicationForm: ApplicationFormQuestion[] = [
+    { id: 'q1', title: '지원 동기', type: 'short', options: [], required: true },
+    { id: 'q2', title: '자료', type: 'file', options: [], required: true },
+  ];
+  it('persists verified private attachments and server-derived question snapshots', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Form', applicationForm },
+      ownedFiles: [{ id: fileId }],
+      application: { id: 'app-1' },
+    });
+    await new ApplicationsService(db).apply(
+      {
+        ...dto,
+        formAnswers: [
+          { questionId: 'q1', value: '지원합니다' },
+          { questionId: 'q2', value: fileId },
+        ],
+      },
+      'user-1',
+    );
+    expect(db.values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        formAnswers: [
+          { questionId: 'q1', title: '지원 동기', type: 'short', value: '지원합니다' },
+          { questionId: 'q2', title: '자료', type: 'file', value: fileId },
+        ],
+      }),
+    );
+  });
+  it('rejects missing answers and unowned/non-ready/non-private attachments before creating an application or order', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 1000, title: 'Form', applicationForm },
+    });
+    const service = new ApplicationsService(db);
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    await expect(
+      service.apply(
+        {
+          ...dto,
+          formAnswers: [
+            { questionId: 'q1', value: '지원합니다' },
+            { questionId: 'q2', value: fileId },
+          ],
+        },
+        'user-1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+  it('keeps original answers on a retry even after the questionnaire changed', async () => {
+    const original = [
+      { questionId: 'old', title: 'Old question', type: 'short', value: 'Original' },
+    ];
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Form', applicationForm },
+      existingApplication: { id: 'app-1', formAnswers: original },
+    });
+    const result = await new ApplicationsService(db).apply(
+      { ...dto, formAnswers: [{ questionId: 'unknown', value: 'Replacement' }] },
+      'user-1',
+    );
+    expect(result.formAnswers).toEqual(original);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
   it('returns the pending order info for a paid challenge', async () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지' },
@@ -96,6 +188,42 @@ describe('ApplicationsService.apply', () => {
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(NotFoundException);
   });
+
+  it.each([
+    ['draft', { status: 'draft' }],
+    ['closed', { status: 'closed' }],
+    ['not yet open', { startDate: new Date(Date.now() + 60_000) }],
+    ['expired', { endDate: new Date(Date.now() - 60_000) }],
+  ])('rejects a %s challenge before creating an application or order', async (_label, patch) => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'unavailable', ...patch },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['closed', { status: 'closed' }],
+    ['expired', { endDate: new Date(Date.now() - 60_000) }],
+  ])(
+    'still reuses the existing application and pending order after the challenge is %s',
+    async (_label, patch) => {
+      const db = createDbStub({
+        challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지', ...patch },
+        existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
+        latestOrder: { id: 'order-1', amount: 10000, status: 'pending' },
+      });
+      const service = new ApplicationsService(db);
+
+      const result = await service.apply(dto, 'user-1');
+
+      expect(result.id).toBe('app-1');
+      expect(result.order).toEqual({ id: 'order-1', amount: 10000, name: '유료 챌린지' });
+      expect(db.insert).not.toHaveBeenCalled();
+    },
+  );
 
   it('truncates the Toss orderName to the 100-character limit', async () => {
     const longTitle = '해'.repeat(150);

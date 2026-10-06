@@ -2,7 +2,6 @@ import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, verifications } from '../../db/schema.js';
-import { NotificationsService } from '../notifications/notifications.service.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
 import { FilesService } from '../files/files.service.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
@@ -27,7 +26,6 @@ export class VerificationsService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly outboxService: OutboxService,
     private readonly filesService: FilesService,
-    private readonly notificationsService: NotificationsService,
   ) {}
 
   async submit(dto: SubmitVerificationDto, userId: string) {
@@ -37,7 +35,7 @@ export class VerificationsService {
       .where(eq(businesses.id, dto.businessId))
       .limit(1);
     if (!business || business.ownerUserId !== userId) {
-      throw new NotFoundException('Business not found');
+      throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
     }
     await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
 
@@ -70,46 +68,7 @@ export class VerificationsService {
       .from(verifications)
       .where(eq(verifications.id, id))
       .limit(1);
-    if (!verification) throw new NotFoundException('Verification not found');
+    if (!verification) throw new NotFoundException('인증 요청을 찾을 수 없습니다.');
     return { ...verification, ...verificationStatusPresentation(verification.status) };
-  }
-
-  // Manual admin decision (`/admin/biz-review`) — distinct from the automatic
-  // NTS/OCR pipeline in verifications.processor.ts.
-  async approve(id: string) {
-    return this.decide(id, 'verified');
-  }
-
-  async reject(id: string, reason: string) {
-    return this.decide(id, 'rejected', reason);
-  }
-
-  private async decide(id: string, status: 'verified' | 'rejected', reason?: string) {
-    const [verification] = await this.db
-      .update(verifications)
-      .set({ status, rejectionReason: reason ?? null, updatedAt: new Date() })
-      .where(eq(verifications.id, id))
-      .returning();
-    if (!verification) throw new NotFoundException('Verification not found');
-
-    const [business] = await this.db
-      .select()
-      .from(businesses)
-      .where(eq(businesses.id, verification.businessId))
-      .limit(1);
-    if (business) {
-      await this.db
-        .update(businesses)
-        .set({ verificationStatus: status })
-        .where(eq(businesses.id, business.id));
-
-      await this.notificationsService.create(business.ownerUserId, 'verification.result', {
-        verificationId: verification.id,
-        status,
-        reason,
-      });
-    }
-
-    return verification;
   }
 }

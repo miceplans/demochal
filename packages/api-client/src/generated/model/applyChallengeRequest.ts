@@ -16,12 +16,15 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { ApplyChallengeRequestFormAnswersItem } from './applyChallengeRequestFormAnswersItem';
+import type { ApplicationAnswerInput } from './applicationAnswerInput';
 
 export interface ApplyChallengeRequest {
   challengeId: string;
   role?: string;
   teammates?: string[];
-  /** 신청폼 응답 (planned) */
-  formAnswers?: ApplyChallengeRequestFormAnswersItem[];
+  /**
+     * 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID.
+     * @maxItems 100
+     */
+  formAnswers?: ApplicationAnswerInput[];
 }

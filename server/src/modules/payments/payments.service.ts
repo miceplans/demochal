@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -93,7 +94,7 @@ export class PaymentsService {
     }
     if (dto.amount !== order.amount) {
       this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
-      throw new UnauthorizedException('Payment amount does not match the order');
+      throw new BadRequestException('결제 금액이 주문 금액과 일치하지 않습니다.');
     }
 
     const tossPayment = await this.confirmWithToss(dto);
@@ -103,29 +104,123 @@ export class PaymentsService {
       tossPayment.totalAmount !== order.amount
     ) {
       this.logger.warn(`Rejected unverified Toss confirmation for order ${order.id}`);
-      throw new UnauthorizedException('Toss payment did not match the order');
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
 
     // The payment write and the order transition must commit or roll back
     // together — a paid order without its payment row (or vice versa) is
     // unrecoverable.
-    return this.db.transaction(async (tx) => {
-      await this.persistPayment(tx, {
-        orderId: order.id,
-        provider: 'toss',
-        providerPaymentKey: tossPayment.paymentKey,
-        amount: tossPayment.totalAmount,
-        status: 'paid',
-        approvedAt: new Date(),
-      });
+    try {
+      return await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId: order.id,
+          provider: 'toss',
+          providerPaymentKey: tossPayment.paymentKey,
+          amount: tossPayment.totalAmount,
+          status: 'paid',
+          approvedAt: new Date(),
+        });
 
-      return this.ordersService.settleOrderPaid(tx, order.id);
-    });
+        return this.ordersService.settleOrderPaid(tx, order.id);
+      });
+    } catch (error) {
+      await this.compensateIfUnsettleable(error, order.id, tossPayment);
+      throw error;
+    }
+  }
+
+  /**
+   * Toss already charged the buyer but the order can no longer be settled (it was
+   * canceled in the meantime, or its ad contract ended/was canceled — a
+   * ConflictException from settleOrderPaid). Refund via Toss so the buyer is not
+   * left charged for an unpaid order. Transient errors are NOT compensated: the
+   * DONE webhook / a retried confirm can still settle the order later.
+   */
+  private async compensateIfUnsettleable(
+    error: unknown,
+    orderId: string,
+    tossPayment: TossPayment,
+  ): Promise<'skipped' | 'refunded' | 'failed'> {
+    if (!(error instanceof ConflictException)) return 'skipped';
+    try {
+      await this.cancelWithToss(
+        orderId,
+        tossPayment.paymentKey,
+        '주문을 확정할 수 없어 자동 취소되었습니다.',
+      );
+    } catch (cancelError) {
+      this.logger.error(
+        `Compensating Toss cancel failed for order ${orderId} — manual refund required`,
+        (cancelError as Error | undefined)?.stack,
+      );
+      // Leave a local trail of the charged-but-unrefunded payment so a
+      // reconciliation job (TODO) / operators can find it; DONE redelivery retries the cancel.
+      // TODO: alert operators and add a reconciliation job over 'refund_pending' payments.
+      // https://docs.tosspayments.com/reference#결제-취소
+      await this.recordLocally(orderId, tossPayment, 'refund_pending');
+      return 'failed';
+    }
+    this.logger.warn(`Canceled Toss payment for unsettleable order ${orderId}`);
+    // Don't wait for Toss's CANCELED webhook: record the cancellation and close the
+    // order now, so a redelivered DONE sees a settled state instead of looping.
+    await this.recordLocally(orderId, tossPayment, 'canceled');
+    return 'refunded';
+  }
+
+  private async recordLocally(
+    orderId: string,
+    tossPayment: TossPayment,
+    status: 'canceled' | 'refund_pending',
+  ): Promise<void> {
+    try {
+      await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId,
+          provider: 'toss',
+          providerPaymentKey: tossPayment.paymentKey,
+          amount: tossPayment.totalAmount,
+          status,
+        });
+        if (status === 'canceled') await this.ordersService.cancelOrder(tx, orderId);
+      });
+    } catch (error) {
+      this.logger.error(
+        `Failed to record ${status} payment for order ${orderId}`,
+        (error as Error | undefined)?.stack,
+      );
+    }
+  }
+
+  private async cancelWithToss(
+    orderId: string,
+    paymentKey: string,
+    cancelReason: string,
+  ): Promise<void> {
+    if (!env.tossSecretKey) {
+      throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
+    }
+    const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
+    const response = await fetchJson(
+      `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${authorization}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `cancel:${orderId}`,
+        },
+        body: JSON.stringify({ cancelReason }),
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!response.ok) {
+      throw new BadGatewayException(`Toss cancel rejected: HTTP ${response.status}`);
+    }
   }
 
   private async confirmWithToss(dto: ConfirmPaymentDto): Promise<TossPayment> {
     if (!env.tossSecretKey) {
-      throw new BadGatewayException('Toss payment confirmation is not configured');
+      throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }
 
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
@@ -133,7 +228,13 @@ export class PaymentsService {
     try {
       response = await fetchJson('https://api.tosspayments.com/v1/payments/confirm', {
         method: 'POST',
-        headers: { Authorization: `Basic ${authorization}` },
+        headers: {
+          Authorization: `Basic ${authorization}`,
+          'Content-Type': 'application/json',
+          // Toss replays the first result for a repeated key, so a retried confirm
+          // after a timeout cannot double-charge.
+          'Idempotency-Key': `confirm:${dto.orderId}`,
+        },
         body: JSON.stringify({
           paymentKey: dto.paymentKey,
           orderId: dto.orderId,
@@ -146,13 +247,24 @@ export class PaymentsService {
         `Toss payment confirm transport failed for order ${dto.orderId}`,
         (error as Error | undefined)?.stack,
       );
-      throw new BadGatewayException('Toss payment confirmation failed');
+      throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
     if (!response.ok) {
+      let code: string | undefined;
+      try {
+        code = ((await response.json()) as { code?: string } | null)?.code;
+      } catch {
+        // Error body is not JSON — treat as a plain rejection below.
+      }
+      if (code === 'ALREADY_PROCESSED_PAYMENT') {
+        // A previous confirm (e.g. one whose response we lost to a timeout) already
+        // went through — converge on Toss's recorded state instead of failing.
+        return this.getTossPayment(dto.paymentKey);
+      }
       this.logger.error(
         `Toss payment confirm rejected for order ${dto.orderId}: HTTP ${response.status}`,
       );
-      throw new BadGatewayException('Toss payment confirmation failed');
+      throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
     }
     return (await response.json()) as TossPayment;
   }
@@ -162,6 +274,17 @@ export class PaymentsService {
       this.ordersService.findByIdInternal(orderId),
       this.getTossPayment(paymentKey),
     ]);
+
+    // A DONE redelivered after we refunded the payment ourselves (see
+    // compensateIfUnsettleable): Toss now reports CANCELED, which is settled — ack.
+    if (
+      tossPayment.status === 'CANCELED' &&
+      tossPayment.orderId === order.id &&
+      tossPayment.totalAmount === order.amount &&
+      order.status === 'canceled'
+    ) {
+      return;
+    }
 
     if (
       tossPayment.status !== 'DONE' ||
@@ -187,18 +310,26 @@ export class PaymentsService {
     // The payment write and the order transition must commit or roll back
     // together — a paid order without its payment row (or vice versa) is
     // unrecoverable.
-    await this.db.transaction(async (tx) => {
-      await this.persistPayment(tx, {
-        orderId: order.id,
-        provider: 'toss',
-        providerPaymentKey: tossPayment.paymentKey,
-        amount: tossPayment.totalAmount,
-        status: 'paid',
-        approvedAt: new Date(),
-      });
+    try {
+      await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId: order.id,
+          provider: 'toss',
+          providerPaymentKey: tossPayment.paymentKey,
+          amount: tossPayment.totalAmount,
+          status: 'paid',
+          approvedAt: new Date(),
+        });
 
-      await this.ordersService.settleOrderPaid(tx, order.id);
-    });
+        await this.ordersService.settleOrderPaid(tx, order.id);
+      });
+    } catch (error) {
+      // Refunded and converged locally → ack. Otherwise rethrow so Toss redelivers
+      // the DONE webhook, which drives the refund retry.
+      const outcome = await this.compensateIfUnsettleable(error, order.id, tossPayment);
+      if (outcome === 'refunded') return;
+      throw error;
+    }
   }
 
   private async handleCanceled(orderId: string, paymentKey: string): Promise<void> {

@@ -12,9 +12,8 @@ const base = baseFlag >= 0 ? process.argv[baseFlag + 1] : undefined;
 if (!base) throw new Error('usage: secret-scan.mjs --base <git-ref>');
 
 // Comparing against the base ref includes committed and uncommitted worker changes
-// locally, while the Actions checkout has the PR head checked out.
-// `--diff-filter=d` drops deleted files (they add no lines), and the output is streamed
-// line by line instead of buffered, so large diffs can't hit execFileSync's maxBuffer (ENOBUFS).
+// locally, while the Actions checkout has the PR head checked out. Deleted files add
+// no lines, so they are excluded; the remaining diff is streamed line by line.
 const git = spawn('git', ['diff', '--no-ext-diff', '--unified=0', '--diff-filter=d', base], {
   stdio: ['ignore', 'pipe', 'inherit'],
 });

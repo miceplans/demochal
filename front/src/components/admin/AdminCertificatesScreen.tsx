@@ -148,7 +148,7 @@ export function AdminCertificatesScreen() {
           </TabItem>
         ))}
       </TabBar>
-      <div style={{ border: `1px solid ${c.gray200}`, borderRadius: 8, overflow: 'hidden' }}>
+      <div style={{ border: `0.5px solid ${c.gray200}`, borderRadius: 8, overflow: 'hidden' }}>
         <List>
           {rows.map((row) => (
             <Item key={row.id}>
@@ -180,7 +180,20 @@ export function AdminCertificatesScreen() {
               </Actions>
             </Item>
           ))}
-          {rows.length === 0 ? (
+          {certificatesQuery.isPending ? (
+            <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
+              불러오는 중...
+            </Item>
+          ) : certificatesQuery.isError ? (
+            <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
+              <span role="alert">
+                인증 요청을 불러오지 못했어요.{' '}
+                <button type="button" onClick={() => void certificatesQuery.refetch()}>
+                  다시 시도
+                </button>
+              </span>
+            </Item>
+          ) : rows.length === 0 ? (
             <Item style={{ justifyContent: 'center', color: c.gray500, ...textStyle.body }}>
               해당 상태의 인증 요청이 없습니다.
             </Item>
@@ -242,7 +255,11 @@ export function AdminCertificatesScreen() {
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <ApproveButton
                 onClick={closeReject}
-                style={{ background: c.white, color: c.gray700, border: `1px solid ${c.gray300}` }}
+                style={{
+                  background: c.white,
+                  color: c.gray700,
+                  border: `0.5px solid ${c.gray300}`,
+                }}
               >
                 취소
               </ApproveButton>
@@ -263,12 +280,22 @@ export function AdminCertificatesScreen() {
 const isPdf = (row: CertificateListRow) => row.fileContentType === 'application/pdf';
 
 function CertificateThumb({ row }: { row: CertificateListRow }) {
+  // presigned URL 만료·네트워크 실패를 기억한다. URL이 바뀌면 자동으로 초기화된다.
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!row.fileUrl) return <ThumbPlaceholder>원본 없음</ThumbPlaceholder>;
   if (isPdf(row)) return <ThumbPlaceholder>PDF</ThumbPlaceholder>;
-  return <Thumb src={row.fileUrl} alt={`${row.user} 상장`} />;
+  if (failedUrl === row.fileUrl) return <ThumbPlaceholder>불러오기 실패</ThumbPlaceholder>;
+  return (
+    <Thumb
+      src={row.fileUrl}
+      alt={`${row.user} 상장`}
+      onError={() => setFailedUrl(row.fileUrl ?? null)}
+    />
+  );
 }
 
 function CertificateOriginal({ row }: { row: CertificateListRow }) {
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!row.fileUrl) {
     return <PreviewPlaceholder>업로드가 완료되지 않아 원본을 볼 수 없어요.</PreviewPlaceholder>;
   }
@@ -281,7 +308,16 @@ function CertificateOriginal({ row }: { row: CertificateListRow }) {
       </PreviewPlaceholder>
     );
   }
-  return <PreviewImage src={row.fileUrl} alt={`${row.user} 상장 원본`} />;
+  if (failedUrl === row.fileUrl) {
+    return <PreviewPlaceholder>원본을 불러오지 못했어요.</PreviewPlaceholder>;
+  }
+  return (
+    <PreviewImage
+      src={row.fileUrl}
+      alt={`${row.user} 상장 원본`}
+      onError={() => setFailedUrl(row.fileUrl ?? null)}
+    />
+  );
 }
 
 const TabBar = styled.div({ display: 'flex', gap: 8 });
@@ -289,7 +325,7 @@ const TabItem = styled.button<{ active?: boolean }>(({ active }) => ({
   width: 90,
   padding: '8px 10px',
   borderRadius: 6,
-  border: '1px solid',
+  border: '0.5px solid',
   borderColor: active ? c.gray200 : c.gray200,
   background: active ? '#F8FAFC' : c.white,
   ...textStyle.subtitle,
@@ -308,7 +344,7 @@ const Item = styled.li({
   alignItems: 'center',
   gap: 16,
   padding: '18px 16px',
-  borderTop: `1px solid ${c.gray200}`,
+  borderTop: `0.5px solid ${c.gray200}`,
   background: c.white,
 });
 const ThumbButton = styled.button({
@@ -323,7 +359,7 @@ const Thumb = styled.img({
   height: 79,
   objectFit: 'cover',
   borderRadius: 8,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
 });
 const MiniAvatar = styled.span({
   width: 32,
@@ -371,7 +407,7 @@ const Overlay = styled.div({
 });
 const Dialog = styled.div({
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   padding: 24,
   display: 'flex',
@@ -392,7 +428,7 @@ const ThumbPlaceholder = styled.span({
   width: 56,
   height: 79,
   borderRadius: 8,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   background: c.gray100,
   color: c.gray500,
   ...textStyle.finePrint,
@@ -417,7 +453,7 @@ const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const RejectTextarea = styled.textarea({
   resize: 'vertical',
   padding: '10px 12px',
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   color: c.gray900,
   ...textStyle.bodySmall,

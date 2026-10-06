@@ -29,9 +29,9 @@ export interface User {
   /** 사용자 | 기업 | 관리자 */
   role?: UserRole;
   /**
-   * 기업 계정 로그인 아이디
-   * @nullable
-   */
+     * 기업 계정 로그인 아이디
+     * @nullable
+     */
   username?: string | null;
   /** @nullable */
   phone?: string | null;
@@ -40,9 +40,22 @@ export interface User {
   /** @nullable */
   phoneVerifiedAt?: string | null;
   createdAt?: string;
+  /** @nullable */
+  profileImageFileId?: string | null;
+  /**
+     * 프로필 이미지 CDN URL. 없으면 null
+     * @nullable
+     */
+  profileImageUrl?: string | null;
   /** 포지션 */
   position?: string;
   region?: string;
+  /**
+     * 프로필 한 줄 소개
+     * @maxLength 100
+     * @nullable
+     */
+  bio?: string | null;
   stacks?: string[];
   /** 깃허브 인증/포트폴리오/출품이력/자격 인증 뱃지 */
   badges?: string[];

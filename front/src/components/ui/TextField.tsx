@@ -24,7 +24,7 @@ const Label = styled.span`
 const Input = styled.input<{ hasError?: boolean }>`
   padding: 10px 12px;
   border-radius: 8px;
-  border: 1px solid ${(p) => (p.hasError ? p.theme.colors.red : p.theme.colors.gray[200])};
+  border: 0.5px solid ${(p) => (p.hasError ? p.theme.colors.red : p.theme.colors.gray[200])};
   font-size: 15px;
   background: ${(p) => p.theme.colors.gray[50]};
   outline: none;

@@ -1,6 +1,9 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { LoadingState } from '@/components/common/LoadingState';
+import { useParams, useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -23,9 +26,23 @@ function XIcon({ size = 16 }: { size?: number }) {
     </svg>
   );
 }
+
+function GripIcon({ size = 24 }: { size?: number }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      height={size}
+      viewBox="0 -960 960 960"
+      width={size}
+      fill="currentColor"
+      aria-hidden
+    >
+      <path d="M360-175.39q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm-240-240q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm-240-240q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Zm240 0q-26.65 0-45.63-18.98-18.98-18.98-18.98-45.63 0-26.65 18.98-45.63 18.98-18.98 45.63-18.98 26.65 0 45.63 18.98 18.98 18.98 18.98 45.63 0 26.65-18.98 45.63-18.98 18.98-45.63 18.98Z" />
+    </svg>
+  );
+}
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
-import { recentPosting } from '@/data/biz-design';
 
 type QuestionType = 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
 type Question = {
@@ -78,8 +95,8 @@ const TitleInput = styled.input({
   border: 0,
   outline: 'none',
   width: '100%',
-  fontSize: 32,
-  fontWeight: 700,
+  fontSize: 40,
+  fontWeight: 600,
   color: c.gray900,
   '&::placeholder': { color: c.gray300 },
 });
@@ -95,16 +112,22 @@ const QuestionBlock = styled.div({
   position: 'relative',
   display: 'flex',
   gap: 8,
-  paddingLeft: 32,
+  paddingLeft: 40,
 });
 const DeleteQuestionButton = styled.button({
   position: 'absolute',
   left: 0,
   top: 4,
+  width: 36,
+  height: 36,
   border: 0,
   background: 'none',
   padding: 0,
-  color: c.gray300,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray500,
+  cursor: 'pointer',
   '&:hover:not(:disabled)': { color: c.red },
   '&:disabled': { opacity: 0.3, cursor: 'not-allowed' },
 });
@@ -116,36 +139,63 @@ const QuestionCard = styled.div({
   gap: 20,
 });
 const QuestionHeader = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
-const NumberBadge = styled.span({
+const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   flexShrink: 0,
   width: 30,
   height: 30,
   borderRadius: '50%',
-  border: `2px solid ${c.primary}`,
-  color: c.primary,
+  border: `0.5px solid ${c.primary}`,
+  background: active ? c.primary : c.white,
+  color: active ? c.white : c.primary,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  fontWeight: 700,
+  fontWeight: 600,
   fontSize: 14,
-});
+}));
 const QuestionTitleInput = styled.input({
   flex: 1,
   minWidth: 0,
   border: 0,
   outline: 'none',
-  ...textStyle.h2_2,
-  color: c.gray900,
-  '&::placeholder': { color: c.gray900 },
+  fontSize: 24,
+  fontWeight: 600,
+  color: c.gray500,
+  '&::placeholder': { color: c.gray500 },
 });
 
 const OptionsList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
-const OptionRow = styled.div({ display: 'flex', alignItems: 'center', gap: 10 });
+const OptionRow = styled.div<{ dragging?: boolean }>(({ dragging }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  opacity: dragging ? 0.4 : 1,
+}));
 const DragHandle = styled.span({
-  color: c.gray300,
   flexShrink: 0,
-  letterSpacing: -2,
-  fontSize: 14,
+  width: 24,
+  height: 24,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray300,
+  cursor: 'grab',
+  '&:hover': { color: c.gray500 },
+  '&:active': { cursor: 'grabbing' },
+});
+const DeleteOptionButton = styled.button({
+  flexShrink: 0,
+  width: 24,
+  height: 24,
+  border: 0,
+  background: 'none',
+  padding: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  color: c.gray300,
+  '&:hover:not(:disabled)': { color: c.red },
+  '&:disabled': { opacity: 0.3, cursor: 'not-allowed' },
 });
 const AddOptionButton = styled.button({
   display: 'flex',
@@ -161,7 +211,7 @@ const AddOptionButton = styled.button({
 
 const PreviewInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.gray50,
@@ -169,7 +219,7 @@ const PreviewInput = styled.input({
 });
 const PreviewTextarea = styled.textarea({
   minHeight: 72,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: 14,
   background: c.gray50,
@@ -181,7 +231,7 @@ const PreviewUpload = styled.div({
   alignItems: 'center',
   justifyContent: 'center',
   height: 56,
-  border: `1px dashed ${c.gray200}`,
+  border: `0.5px dashed ${c.gray200}`,
   borderRadius: 8,
   color: c.gray500,
   ...textStyle.finePrint,
@@ -221,23 +271,78 @@ const ToolButton = styled.button({
   '&:disabled': { opacity: 0.35, cursor: 'not-allowed' },
 });
 
-let questionSeq = 1;
 const blankQuestion = (type: QuestionType = 'radio'): Question => ({
-  id: `q-${questionSeq++}`,
+  // 저장된 질문 id(q-N)와 충돌하지 않도록 전역 유일 id를 쓴다(리뷰 #264-2).
+  id: crypto.randomUUID(),
   title: '',
   type,
   options: isChoiceType(type) ? ['', ''] : [],
   required: false,
 });
 
+const Message = styled.p({ ...textStyle.finePrint, color: c.gray500 });
+
+function formatPeriod(startDate?: string, endDate?: string) {
+  const format = (value: string) => {
+    const date = new Date(value);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
+  };
+  if (!startDate || !endDate) return '';
+  return `${format(startDate)} ~ ${format(endDate)}`;
+}
+
 export function BizApplicationFormPage() {
+  const { id } = useParams<{ id: string }>();
+  const challengeQuery = generated.useGetMyChallenge(id, { query: { enabled: Boolean(id) } });
+  const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+
+  if (challengeQuery.isPending) {
+    return <LoadingState label="공고 정보를 불러오는 중입니다." />;
+  }
+  if (!challenge) {
+    return (
+      <Message>
+        공고를 불러오지 못했습니다.{' '}
+        <button type="button" onClick={() => void challengeQuery.refetch()}>
+          다시 시도
+        </button>
+      </Message>
+    );
+  }
+
+  // 공고 id가 바뀌면 편집 state를 초기화하기 위해 key로 에디터를 리셋한다(리뷰 #264-3).
+  return <ApplicationFormEditor key={id} id={id} challenge={challenge} />;
+}
+
+type ChallengeDetail = Extract<
+  Awaited<ReturnType<typeof generated.getMyChallenge>>,
+  { status: 200 }
+>['data'];
+
+function ApplicationFormEditor({ id, challenge }: { id: string; challenge: ChallengeDetail }) {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const updateChallenge = generated.useUpdateChallenge();
 
-  const [title, setTitle] = useState(`${recentPosting.title} 신청서`);
-  const [meta, setMeta] = useState(`${recentPosting.org} · 접수 ${recentPosting.period}`);
-  const [questions, setQuestions] = useState<Question[]>(() => [blankQuestion()]);
+  // 신청서 제목/안내문구는 서버에 저장할 필드가 없어(리뷰 #264-4) 공고 정보에서만
+  // 파생해 읽기 전용으로 보여준다. 편집할 수 없게 onChange 없이 readOnly로 렌더링한다.
+  const title = challenge.title ? `${challenge.title} 신청서` : '신청서';
+  const meta = `접수 ${formatPeriod(challenge.startDate, challenge.endDate)}`.trim();
+  const [questions, setQuestions] = useState<Question[]>(() =>
+    challenge.applicationForm && challenge.applicationForm.length > 0
+      ? challenge.applicationForm.map((q) => ({
+          id: q.id,
+          title: q.title,
+          type: q.type,
+          options: q.options ?? [],
+          required: q.required,
+        }))
+      : [blankQuestion()],
+  );
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const addQuestion = (type: QuestionType) => {
     setQuestions((qs) => [...qs, blankQuestion(type)]);
@@ -278,18 +383,44 @@ export function BizApplicationFormPage() {
       qs.map((q) => (q.id === id ? { ...q, options: q.options.filter((_, i) => i !== index) } : q)),
     );
   };
+  const reorderOption = (id: string, from: number, to: number) => {
+    if (from === to) return;
+    setQuestions((qs) =>
+      qs.map((q) => {
+        if (q.id !== id) return q;
+        const options = [...q.options];
+        const [moved] = options.splice(from, 1);
+        options.splice(to, 0, moved);
+        return { ...q, options };
+      }),
+    );
+  };
 
-  const handlePublish = () => {
-    if (!title.trim()) {
-      toast.error('신청서 제목을 입력해주세요');
-      return;
-    }
+  // 드래그 중인 옵션의 위치({questionId, index})를 추적해 순서 변경과 시각 피드백에 쓴다.
+  const [dragOption, setDragOption] = useState<{ questionId: string; index: number } | null>(null);
+
+  const handlePublish = async () => {
     if (questions.some((q) => !q.title.trim())) {
       toast.error('모든 질문의 내용을 입력해주세요');
       return;
     }
+    // 선택형 질문은 빈 옵션으로 게시할 수 없다(리뷰 #264-5).
+    const emptyChoice = questions.find(
+      (q) => isChoiceType(q.type) && q.options.some((option) => !option.trim()),
+    );
+    if (emptyChoice) {
+      toast.error('선택형 질문의 모든 옵션을 입력해주세요');
+      return;
+    }
+    try {
+      await updateChallenge.mutateAsync({ id, data: { applicationForm: questions } });
+    } catch {
+      // 전역 MutationCache(providers.tsx)가 실패 토스트를 띄운다.
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: generated.getGetMyChallengeQueryKey(id) });
     toast.success('신청서가 게시되었습니다');
-    router.push(hrefOf(`/postings/${recentPosting.id}`));
+    router.push(hrefOf(`/postings/${id}`));
   };
 
   return (
@@ -297,20 +428,15 @@ export function BizApplicationFormPage() {
       <Main>
         <TopBar>
           <TitleCol>
-            <TitleInput
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="신청서 제목을 입력해주세요"
-              aria-label="신청서 제목"
-            />
-            <MetaInput
-              value={meta}
-              onChange={(e) => setMeta(e.target.value)}
-              aria-label="신청서 안내문구"
-            />
+            <TitleInput value={title} readOnly aria-label="신청서 제목" />
+            <MetaInput value={meta} readOnly aria-label="신청서 안내문구" />
           </TitleCol>
-          <PrimaryButton style={{ height: 37, flexShrink: 0 }} onClick={handlePublish}>
-            신청서 게시
+          <PrimaryButton
+            style={{ height: 37, flexShrink: 0 }}
+            onClick={() => void handlePublish()}
+            disabled={updateChallenge.isPending}
+          >
+            {updateChallenge.isPending ? '게시 중…' : '신청서 게시'}
           </PrimaryButton>
         </TopBar>
 
@@ -322,13 +448,16 @@ export function BizApplicationFormPage() {
               onClick={() => removeQuestion(q.id)}
               aria-label={`질문 ${qi + 1} 삭제`}
             >
-              <XIcon size={20} />
+              <XIcon size={24} />
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
-                <NumberBadge aria-hidden>{qi + 1}</NumberBadge>
+                <NumberBadge aria-hidden active={q.id === activeId}>
+                  {qi + 1}
+                </NumberBadge>
                 <QuestionTitleInput
                   value={q.title}
+                  onFocus={() => setActiveId(q.id)}
                   onChange={(e) => updateQuestion(q.id, { title: e.target.value })}
                   placeholder="질문을 작성해주세요."
                   aria-label={`질문 ${qi + 1} 내용`}
@@ -345,8 +474,33 @@ export function BizApplicationFormPage() {
               {isChoiceType(q.type) && (
                 <OptionsList>
                   {q.options.map((opt, oi) => (
-                    <OptionRow key={oi}>
-                      <DragHandle aria-hidden>⋮⋮</DragHandle>
+                    <OptionRow
+                      key={oi}
+                      dragging={dragOption?.questionId === q.id && dragOption.index === oi}
+                      onDragOver={(e) => {
+                        if (!dragOption || dragOption.questionId !== q.id) return;
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (!dragOption || dragOption.questionId !== q.id) return;
+                        reorderOption(q.id, dragOption.index, oi);
+                        setDragOption(null);
+                      }}
+                    >
+                      <DragHandle
+                        title="드래그해 옵션 순서를 바꾸세요"
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData('text/plain', String(oi));
+                          e.dataTransfer.effectAllowed = 'move';
+                          setDragOption({ questionId: q.id, index: oi });
+                        }}
+                        onDragEnd={() => setDragOption(null)}
+                      >
+                        <GripIcon />
+                      </DragHandle>
                       <FieldInput
                         style={{ flex: 1 }}
                         value={opt}
@@ -354,15 +508,14 @@ export function BizApplicationFormPage() {
                         placeholder="옵션을 입력해주세요"
                         aria-label={`질문 ${qi + 1} 옵션 ${oi + 1}`}
                       />
-                      <DeleteQuestionButton
+                      <DeleteOptionButton
                         type="button"
-                        style={{ position: 'static' }}
                         disabled={q.options.length <= 1}
                         onClick={() => removeOption(q.id, oi)}
                         aria-label={`옵션 ${oi + 1} 삭제`}
                       >
                         <XIcon size={16} />
-                      </DeleteQuestionButton>
+                      </DeleteOptionButton>
                     </OptionRow>
                   ))}
                   <AddOptionButton type="button" onClick={() => addOption(q.id)}>

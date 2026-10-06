@@ -131,12 +131,28 @@ variable "ses_dmarc_policy" {
   }
 }
 
+variable "ses_configuration_set_name" {
+  description = "Existing SES configuration set attached to the sending domain identity; leave empty only when none exists."
+  type        = string
+  default     = "my-first-configuration-set"
+}
+
 variable "ses_from_email" {
-  description = "SES sender for service emails at ses_domain (e.g. no-reply@semochall.com). Set only after the identity is verified and the account has production access. Empty disables email delivery and grants no SES permission."
+  description = "SES sender for automatic service emails at ses_domain (e.g. noreply@semochall.com). Set only after the identity is verified and the account has production access. Empty disables automatic email delivery and grants no SES permission."
   type        = string
   default     = ""
   validation {
     condition     = var.ses_from_email == "" || can(regex("^[^@\\s]+@[^@\\s]+$", var.ses_from_email))
     error_message = "ses_from_email must be empty or a single email address."
+  }
+}
+
+variable "ses_support_from_email" {
+  description = "Support mailbox used for SES inbound receiving and future support replies. Empty disables inbound receiving."
+  type        = string
+  default     = "help@semochall.com"
+  validation {
+    condition     = var.ses_support_from_email == "" || can(regex("^[^@\\s]+@[^@\\s]+$", var.ses_support_from_email))
+    error_message = "ses_support_from_email must be empty or a single email address."
   }
 }

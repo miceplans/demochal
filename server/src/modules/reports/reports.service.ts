@@ -2,6 +2,7 @@ import { Inject, Injectable, BadRequestException, NotFoundException } from '@nes
 import { eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, reports, teams, users } from '../../db/schema.js';
+import { AdminAlertsService } from '../admin/admin-alerts.service.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import type { CreateReportDto } from './dto/create-report.dto.js';
 
@@ -21,7 +22,10 @@ interface ReportTarget {
 
 @Injectable()
 export class ReportsService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly adminAlerts: AdminAlertsService,
+  ) {}
 
   async create(dto: CreateReportDto, reporter: AuthenticatedUser) {
     // award는 대상 테이블이 없어 targetId 없이 접수 가능하지만, 나머지 타입은 묵시적
@@ -42,6 +46,11 @@ export class ReportsService {
         status: 'open',
       })
       .returning();
+    // 신고 내용/신고자 정보는 알림에 싣지 않는다 — 관리자 화면에서 id로 조회한다.
+    await this.adminAlerts.notify('reportAlert', 'admin.report', {
+      reportId: report!.id,
+      targetType: report!.targetType,
+    });
     return report!;
   }
 
@@ -60,7 +69,7 @@ export class ReportsService {
         .innerJoin(businesses, eq(challenges.businessId, businesses.id))
         .where(eq(challenges.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       return { content: row.title, org: row.org, reportedUserId: row.ownerId };
     }
     if (targetType === 'team') {
@@ -70,7 +79,7 @@ export class ReportsService {
         .innerJoin(challenges, eq(teams.challengeId, challenges.id))
         .where(eq(teams.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       return { content: row.title, org: row.org, reportedUserId: row.leaderId };
     }
     if (targetType === 'user') {
@@ -79,7 +88,7 @@ export class ReportsService {
         .from(users)
         .where(eq(users.id, targetId))
         .limit(1);
-      if (!row) throw new NotFoundException('Report target not found');
+      if (!row) throw new NotFoundException('신고 대상을 찾을 수 없습니다.');
       // 탈퇴 tombstone은 이름이 파기돼 null이다.
       return { content: row.name ?? '탈퇴한 사용자', org: row.position, reportedUserId: targetId };
     }

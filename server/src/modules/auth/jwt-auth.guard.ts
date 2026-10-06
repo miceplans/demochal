@@ -48,14 +48,14 @@ export class JwtAuthGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request>();
     const token = getAuthToken(request);
-    if (!token) throw new UnauthorizedException('Missing authentication cookie');
+    if (!token) throw new UnauthorizedException('로그인이 필요합니다.');
 
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       if (!payload.sub || !payload.email || !payload.role) throw new Error('Invalid token payload');
     } catch {
-      throw new UnauthorizedException('Invalid or expired token');
+      throw new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.');
     }
 
     // Re-checked on every request (not just at login) so suspending an account
@@ -71,7 +71,7 @@ export class JwtAuthGuard implements CanActivate {
       .from(users)
       .where(eq(users.id, payload.sub))
       .limit(1);
-    if (!user || user.withdrawnAt) throw new UnauthorizedException('User no longer exists');
+    if (!user || user.withdrawnAt) throw new UnauthorizedException('존재하지 않는 계정입니다.');
     if (user.suspended) {
       throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
     }

@@ -36,6 +36,8 @@ import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
+import { interestsMatch } from './interest-matching.js';
+import { FilesService } from '../files/files.service.js';
 
 // draft -> published -> closed; no other transition is valid.
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -44,6 +46,7 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 };
 
 const CHALLENGE_SORTS = ['latest', 'deadline', 'popular'] as const;
+const PUBLIC_CHALLENGE_STATUSES = ['published', 'closed'];
 type ChallengeSort = (typeof CHALLENGE_SORTS)[number];
 
 export interface ListChallengesOptions {
@@ -87,6 +90,7 @@ export class ChallengesService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly adminSettingsService: AdminSettingsService,
+    private readonly filesService: FilesService,
   ) {}
 
   /**
@@ -110,7 +114,7 @@ export class ChallengesService {
     } = options;
     const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
 
-    const conditions = [ne(challenges.status, 'draft')];
+    const conditions = [inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)];
     if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
     const categoryList = splitList(category);
     if (categoryList.length) conditions.push(inArray(challenges.category, categoryList));
@@ -235,24 +239,73 @@ export class ChallengesService {
       .from(challenges)
       .where(eq(challenges.id, id))
       .limit(1);
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+    return challenge;
+  }
+
+  private async getPublicOrThrow(id: string) {
+    const [challenge] = await this.db
+      .select()
+      .from(challenges)
+      .where(and(eq(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
+      .limit(1);
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     return challenge;
   }
 
   async findById(id: string) {
-    const challenge = await this.getOrThrow(id);
+    const challenge = await this.getPublicOrThrow(id);
     // Every detail fetch is a real "click" into the posting — see challengeViews' comment in schema.ts.
     await this.db.insert(challengeViews).values({ challengeId: id });
-    return challenge;
+    // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
+    const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+    return { ...challenge, posterUrl };
   }
 
   async stats(id: string) {
-    await this.getOrThrow(id);
+    await this.getPublicOrThrow(id);
     const [views] = await this.db
       .select({ count: count() })
       .from(challengeViews)
       .where(eq(challengeViews.challengeId, id));
     return { views: Number(views?.count ?? 0) };
+  }
+
+  /** Drafts are visible only to the business account that owns them. */
+  async findMineById(id: string, ownerUserId: string) {
+    const [row] = await this.db
+      .select({ challenge: challenges })
+      .from(challenges)
+      .innerJoin(businesses, eq(businesses.id, challenges.businessId))
+      .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
+      .limit(1);
+    if (!row) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+    const posterUrl = await this.filesService.resolvePublicUrl(row.challenge.posterFileId);
+    return { ...row.challenge, posterUrl };
+  }
+
+  async getStatsForOwner(id: string, ownerUserId: string) {
+    await this.findMineById(id, ownerUserId);
+    return this.getStatsForExistingChallenge(id);
+  }
+
+  private async getStatsForExistingChallenge(id: string) {
+    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
+
+    const [clicks, bookmarkStats, applicantDistribution, monthlyExposure] = await Promise.all([
+      this.statWithDelta(challengeViews, eq(challengeViews.challengeId, id), sevenDaysAgo),
+      this.statWithDelta(bookmarks, eq(bookmarks.challengeId, id), sevenDaysAgo),
+      this.getApplicantDistribution(id),
+      this.getMonthlyViewCounts(id),
+    ]);
+
+    return {
+      clicks,
+      bookmarks: bookmarkStats,
+      exposure: clicks,
+      applicantDistribution,
+      monthlyExposure,
+    };
   }
 
   async create(dto: CreateChallengeDto, ownerUserId: string) {
@@ -261,7 +314,13 @@ export class ChallengesService {
       .from(businesses)
       .where(and(eq(businesses.id, dto.businessId), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
-    if (!business) throw new NotFoundException('Business not found or not owned by user');
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
+
+    const recruitMethod = dto.recruitMethod ?? 'external';
+    if (recruitMethod === 'external' && !dto.recruitUrl) {
+      throw new BadRequestException('recruitUrl is required when recruitMethod is external');
+    }
 
     const [challenge] = await this.db
       .insert(challenges)
@@ -277,10 +336,14 @@ export class ChallengesService {
         targets: dto.targets,
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
-        recruitMethod: dto.recruitMethod ?? 'external',
-        status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
-          ? 'published'
-          : 'draft',
+        posterFileId: dto.posterFileId,
+        recruitMethod,
+        recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
+        status:
+          dto.status ??
+          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
+            ? 'published'
+            : 'draft'),
       })
       .returning();
     return challenge;
@@ -298,17 +361,23 @@ export class ChallengesService {
         ? eq(challenges.id, id)
         : and(eq(challenges.id, id), eq(businesses.ownerUserId, user.id));
     const [current] = await this.db
-      .select({ startDate: challenges.startDate, endDate: challenges.endDate })
+      .select({
+        startDate: challenges.startDate,
+        endDate: challenges.endDate,
+        recruitMethod: challenges.recruitMethod,
+      })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(ownership)
       .limit(1);
-    if (!current) throw new NotFoundException('Challenge not found');
+    if (!current) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+    // null은 포스터 제거라 검증에서 제외 — 존재하고 public+ready인 파일만 참조할 수 있다.
+    if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
 
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
     if (endDate.getTime() < startDate.getTime()) {
-      throw new BadRequestException('endDate must not be before startDate');
+      throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
     }
 
     const patch = {
@@ -319,11 +388,15 @@ export class ChallengesService {
       ...(dto.startDate !== undefined && { startDate }),
       ...(dto.endDate !== undefined && { endDate }),
       ...(dto.category !== undefined && { category: dto.category }),
+      ...(dto.recruitUrl !== undefined &&
+        current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),
       ...(dto.targets !== undefined && { targets: dto.targets }),
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
+      ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
+      ...(dto.applicationForm !== undefined && { applicationForm: dto.applicationForm }),
     };
-    if (Object.keys(patch).length === 0) throw new BadRequestException('No fields to update');
+    if (Object.keys(patch).length === 0) throw new BadRequestException('수정할 항목이 없습니다.');
 
     const [updated] = await this.db
       .update(challenges)
@@ -340,11 +413,13 @@ export class ChallengesService {
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
 
     const allowed = ALLOWED_TRANSITIONS[challenge.status] ?? [];
     if (!allowed.includes(dto.status)) {
-      throw new ConflictException(`Cannot move a ${challenge.status} challenge to ${dto.status}`);
+      throw new ConflictException(
+        `${challenge.status} 상태의 챌린지를 ${dto.status}(으)로 변경할 수 없습니다.`,
+      );
     }
 
     const [updated] = await this.db
@@ -356,35 +431,24 @@ export class ChallengesService {
   }
 
   async getStats(id: string) {
-    await this.getOrThrow(id);
-    const sevenDaysAgo = new Date(Date.now() - SEVEN_DAYS_MS);
-
-    const [clicks, bookmarkStats, applicantDistribution, monthlyExposure] = await Promise.all([
-      this.statWithDelta(challengeViews, eq(challengeViews.challengeId, id), sevenDaysAgo),
-      this.statWithDelta(bookmarks, eq(bookmarks.challengeId, id), sevenDaysAgo),
-      this.getApplicantDistribution(id),
-      this.getMonthlyViewCounts(id),
-    ]);
-
-    return {
-      clicks,
-      bookmarks: bookmarkStats,
-      // Card-impression tracking (as opposed to detail-page clicks) has no beacon yet,
-      // so "exposure" reuses the same click/view signal rather than a fabricated number.
-      exposure: clicks,
-      applicantDistribution,
-      monthlyExposure,
-    };
+    await this.getPublicOrThrow(id);
+    return this.getStatsForExistingChallenge(id);
   }
 
   async listSimilar(id: string) {
-    const challenge = await this.getOrThrow(id);
+    const challenge = await this.getPublicOrThrow(id);
 
     const byCategory = challenge.category
       ? await this.db
           .select()
           .from(challenges)
-          .where(and(eq(challenges.category, challenge.category), ne(challenges.id, id)))
+          .where(
+            and(
+              eq(challenges.category, challenge.category),
+              ne(challenges.id, id),
+              inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+            ),
+          )
           .orderBy(desc(challenges.createdAt))
           .limit(3)
       : [];
@@ -394,7 +458,7 @@ export class ChallengesService {
     const fallback = await this.db
       .select()
       .from(challenges)
-      .where(ne(challenges.id, id))
+      .where(and(ne(challenges.id, id), inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES)))
       .orderBy(desc(challenges.createdAt))
       .limit(3 + excludeIds.size);
 
@@ -444,8 +508,8 @@ export class ChallengesService {
       items: candidates
         .map((challenge) => {
           const interestScore =
-            interests.filter((interest) => this.interestsMatch(interest, challenge.category))
-              .length * 100;
+            interests.filter((interest) => interestsMatch(interest, challenge.category)).length *
+            100;
           const popularityScore =
             Math.min(views.get(challenge.id) ?? 0, 50) +
             3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
@@ -469,32 +533,6 @@ export class ChallengesService {
     return Array.isArray(interests)
       ? interests.filter((interest): interest is string => typeof interest === 'string')
       : [];
-  }
-
-  private interestsMatch(interest: string, category: string | null): boolean {
-    if (!category) return false;
-    const interestTokens = this.normalizeInterestTokens(interest);
-    const categoryTokens = this.normalizeInterestTokens(category);
-    return interestTokens.some((interestToken) =>
-      categoryTokens.some((categoryToken) => this.tokensMatch(interestToken, categoryToken)),
-    );
-  }
-
-  // 2자 이하 영문/숫자 토큰(ai, it 등)은 부분 일치 시 mail/digital 같은 무관한 단어에
-  // 걸리므로 정확히 같을 때만 매칭한다. 한글 토큰(영상, 창업 등)은 부분 일치를 유지한다.
-  private tokensMatch(left: string, right: string): boolean {
-    if (left === right) return true;
-    const isShortAscii = (token: string) => /^[a-z0-9]{1,2}$/.test(token);
-    if (isShortAscii(left) || isShortAscii(right)) return false;
-    return left.includes(right) || right.includes(left);
-  }
-
-  private normalizeInterestTokens(value: string): string[] {
-    return value
-      .toLowerCase()
-      .replace(/[·/\-_\s()]/g, ' ')
-      .split(' ')
-      .filter(Boolean);
   }
 
   private async statWithDelta(

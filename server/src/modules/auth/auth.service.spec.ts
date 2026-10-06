@@ -1,10 +1,15 @@
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { users } from '../../db/schema.js';
 
-const { compare } = vi.hoisted(() => ({ compare: vi.fn() }));
+const { compare, hash } = vi.hoisted(() => ({
+  compare: vi.fn(),
+  hash: vi.fn().mockResolvedValue('$2b$10$dummy-hash'),
+}));
 vi.mock('bcryptjs', async (importOriginal) => ({
   ...(await importOriginal<typeof import('bcryptjs')>()),
   compare,
+  hash,
 }));
 
 const { AuthService } = await import('./auth.service.js');
@@ -35,7 +40,7 @@ describe('AuthService.login', () => {
 
   it('still runs bcrypt when the account does not exist, so timing does not reveal it', async () => {
     await expect(serviceWith([]).login('ghost@semochal.kr', testPassword)).rejects.toThrow(
-      new UnauthorizedException('Invalid email or password'),
+      new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.'),
     );
     expect(compare).toHaveBeenCalledTimes(1);
     expect(compare.mock.calls[0]?.[1]).toMatch(/^\$2[aby]\$10\$/);
@@ -45,7 +50,7 @@ describe('AuthService.login', () => {
     compare.mockResolvedValue(true);
     await expect(
       serviceWith([{ id: 'u1', passwordHash: null }]).login('social@semochal.kr', testPassword),
-    ).rejects.toThrow(new UnauthorizedException('Invalid email or password'));
+    ).rejects.toThrow(new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.'));
     expect(compare).toHaveBeenCalledTimes(1);
   });
 
@@ -55,7 +60,7 @@ describe('AuthService.login', () => {
         'u@semochal.kr',
         wrongPassword,
       ),
-    ).rejects.toThrow(new UnauthorizedException('Invalid email or password'));
+    ).rejects.toThrow(new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.'));
     expect(compare).toHaveBeenCalledWith(wrongPassword, '$2b$10$hash');
   });
 
@@ -90,7 +95,7 @@ describe('AuthService.register', () => {
         name: '홍길동',
         password: testPassword,
       } as never),
-    ).rejects.toThrow(new ConflictException('Email or username already registered'));
+    ).rejects.toThrow(new ConflictException('이미 등록된 이메일 또는 아이디입니다.'));
   });
 
   it('stores new email signups in lowercase', async () => {
@@ -122,6 +127,73 @@ describe('AuthService.register', () => {
     });
 
     expect(values).toHaveBeenCalledWith(expect.objectContaining({ email: 'member@semochal.kr' }));
+  });
+});
+
+describe('AuthService.changePassword', () => {
+  beforeEach(() => {
+    compare.mockReset();
+    hash.mockReset();
+  });
+
+  function serviceFor(user: Record<string, unknown> | undefined) {
+    const limit = vi.fn().mockResolvedValue(user ? [user] : []);
+    const where = vi.fn(() => ({ limit }));
+    const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue([]) }));
+    const db = {
+      select: vi.fn(() => ({ from: () => ({ where }) })),
+      update: vi.fn(() => ({ set })),
+    };
+    return {
+      service: new AuthService(db as never, {} as never, {} as never, {} as never),
+      db,
+      set,
+    };
+  }
+
+  const dto = {
+    currentPassword: testPassword,
+    newPassword: ['new', 'password'].join('-'),
+    confirmNewPassword: ['new', 'password'].join('-'),
+  };
+
+  it('verifies the current password and persists only a bcrypt hash of the replacement', async () => {
+    compare.mockResolvedValue(true);
+    hash.mockResolvedValue('$2b$10$new-hash');
+    const { service, db, set } = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+
+    await expect(service.changePassword('u1', dto)).resolves.toBeUndefined();
+
+    expect(compare).toHaveBeenCalledWith(dto.currentPassword, '$2b$10$old-hash');
+    expect(hash).toHaveBeenCalledWith(dto.newPassword, 10);
+    expect(db.update).toHaveBeenCalledWith(users);
+    expect(set).toHaveBeenCalledWith({ passwordHash: '$2b$10$new-hash' });
+  });
+
+  it('does not update the password when the current password is wrong', async () => {
+    compare.mockResolvedValue(false);
+    const { service, db } = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+
+    await expect(service.changePassword('u1', dto)).rejects.toThrow(
+      new UnauthorizedException('현재 비밀번호가 올바르지 않습니다.'),
+    );
+    expect(db.update).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
+  });
+
+  it('rejects social-only accounts and mismatched confirmation without changing a hash', async () => {
+    const social = serviceFor({ id: 'u1', passwordHash: null });
+    await expect(social.service.changePassword('u1', dto)).rejects.toThrow(
+      '비밀번호가 설정되지 않은 계정입니다.',
+    );
+    compare.mockResolvedValue(true);
+    const mismatch = serviceFor({ id: 'u1', passwordHash: '$2b$10$old-hash' });
+    await expect(
+      mismatch.service.changePassword('u1', { ...dto, confirmNewPassword: 'different-password' }),
+    ).rejects.toThrow('새 비밀번호 확인이 일치하지 않습니다.');
+    expect(social.db.update).not.toHaveBeenCalled();
+    expect(mismatch.db.update).not.toHaveBeenCalled();
+    expect(hash).not.toHaveBeenCalled();
   });
 });
 

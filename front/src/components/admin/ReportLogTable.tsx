@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { ReportRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
-import { AdminTable, Badge, type AdminColumn } from './parts';
+import { AdminInlineNotice, AdminTable, Badge, type AdminColumn } from './parts';
 
 type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
 
@@ -24,10 +25,11 @@ const reportStatusLabel: Record<string, ReportRow['status']> = {
   dismissed: '거부',
 };
 
-const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red'> = {
+const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red' | 'gray'> = {
   대기: 'blue',
   승인: 'green',
   거부: 'red',
+  '알 수 없음': 'gray',
 };
 
 const columns: AdminColumn<ReportRow>[] = [
@@ -49,13 +51,13 @@ const panelShell = {
   minWidth: PANEL_WIDTH,
   boxSizing: 'border-box',
   background: c.white,
-  border: '1px solid #DFE2E7',
+  border: '0.5px solid #DFE2E7',
   borderLeft: 0,
   borderRadius: '0 8px 8px 0',
   '@media (max-width: 960px)': {
     width: 'auto',
     minWidth: 0,
-    borderLeft: '1px solid #DFE2E7',
+    borderLeft: '0.5px solid #DFE2E7',
     borderTop: 0,
     borderRadius: '0 0 8px 8px',
   },
@@ -141,27 +143,45 @@ function ReportDetailPanel({
   );
 }
 
-export function ReportLogTable({ params }: { params?: ReportFilters }) {
-  const [selected, setSelected] = useState<ReportRow | null>(null);
-  const toast = useToast();
+type ReportItem = NonNullable<
+  Awaited<ReturnType<typeof generated.listAdminReports>>['data']
+>[number];
 
-  const reportsQuery = generated.useListAdminReports(params);
+/** `reports`를 넘기면(대시보드의 최근 신고) 전체 목록 API를 호출하지 않는다. */
+export function ReportLogTable({
+  params,
+  reports,
+}: {
+  params?: ReportFilters;
+  reports?: ReportItem[];
+}) {
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const toast = useToast();
+  const queryClient = useQueryClient();
+
+  const reportsQuery = generated.useListAdminReports(params, {
+    query: { enabled: reports === undefined },
+  });
+  const source = reports ?? reportsQuery.data?.data;
 
   const rows = useMemo<ReportRow[]>(
     () =>
-      (reportsQuery.data?.data ?? []).map((report, index) => ({
+      (source ?? []).map((report, index) => ({
         id: report.id ?? String(index),
         content: report.content ?? '',
         type: targetTypeLabel[report.targetType ?? ''] ?? '',
         org: report.org ?? '',
         summary: report.summary ?? '',
-        status: reportStatusLabel[report.status ?? ''] ?? '대기',
+        // 예상 밖 상태를 '대기'로 위장하지 않는다(처리 버튼은 '대기'에서만 활성).
+        status: reportStatusLabel[report.status ?? ''] ?? '알 수 없음',
         reporter: report.reporter ?? '',
         reportedAt: report.reportedAt ?? '',
         detail: report.detail ?? '',
       })),
-    [reportsQuery.data],
+    [source],
   );
+  // 필터로 결과에서 빠진 행이 패널에 남지 않도록 현재 rows에서 derive 한다.
+  const selected = rows.find((row) => row.id === selectedId) ?? null;
 
   const resolveMutation = generated.useResolveReport({
     mutation: {
@@ -169,20 +189,29 @@ export function ReportLogTable({ params }: { params?: ReportFilters }) {
         toast.success(
           variables.data.action === 'resolve' ? '신고를 승인 처리했어요.' : '신고를 거부했어요.',
         );
-        reportsQuery.refetch();
-        setSelected(null);
+        void queryClient.invalidateQueries({ queryKey: generated.getListAdminReportsQueryKey() });
+        void queryClient.invalidateQueries({ queryKey: generated.getGetAdminDashboardQueryKey() });
+        setSelectedId(null);
       },
       onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
     },
   });
 
   const selectReport = (row: ReportRow) =>
-    setSelected((current) => (current?.id === row.id ? null : row));
-  const closePanel = () => setSelected(null);
+    setSelectedId((current) => (current === row.id ? null : row.id));
+  const closePanel = () => setSelectedId(null);
 
   return (
     <ReportWorkspace>
       <TableArea withPanel={Boolean(selected) || undefined}>
+        {reports === undefined && reportsQuery.isError ? (
+          <AdminInlineNotice role="alert">
+            신고 목록을 불러오지 못했어요.{' '}
+            <button type="button" onClick={() => void reportsQuery.refetch()}>
+              다시 시도
+            </button>
+          </AdminInlineNotice>
+        ) : null}
         <AdminTable
           columns={columns}
           rows={rows}
@@ -253,7 +282,7 @@ const InfoList = styled.dl({
   display: 'flex',
   flexDirection: 'column',
   background: c.gray50,
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 8,
   padding: '4px 14px',
 });
@@ -263,7 +292,7 @@ const InfoItem = styled.div({
   justifyContent: 'space-between',
   gap: 12,
   padding: '9px 0',
-  '& + &': { borderTop: '1px solid #E5E7EB' },
+  '& + &': { borderTop: '0.5px solid #E5E7EB' },
 });
 const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
 const InfoValue = styled.dd({
@@ -282,7 +311,7 @@ const ReportBody = styled.p({
   margin: 0,
   padding: '12px 14px',
   background: c.gray50,
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 8,
   color: c.gray700,
   ...textStyle.bodySmall,
@@ -299,7 +328,7 @@ const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
   flex: 1,
   height: 36,
   padding: '0 16px',
-  border: primary ? 0 : '1px solid #E5E7EB',
+  border: primary ? 0 : '0.5px solid #E5E7EB',
   borderRadius: 6,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray700,

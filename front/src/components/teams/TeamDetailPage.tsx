@@ -10,16 +10,36 @@ import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primit
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
+import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { formatDateDot as formatDate } from '@/lib/date';
 import { teamCapacity } from './team-model';
 
-function formatDate(iso?: string) {
-  if (!iso) return '-';
-  const date = new Date(iso);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
-    date.getDate(),
-  ).padStart(2, '0')}`;
+const REGION_DISPLAY_NAMES: Record<string, string> = {
+  서울: '서울특별시',
+  부산: '부산광역시',
+  대구: '대구광역시',
+  인천: '인천광역시',
+  광주: '광주광역시',
+  대전: '대전광역시',
+  울산: '울산광역시',
+  세종: '세종특별자치시',
+  경기: '경기도',
+  강원: '강원특별자치도',
+  충북: '충청북도',
+  충남: '충청남도',
+  전북: '전북특별자치도',
+  전남: '전라남도',
+  경북: '경상북도',
+  경남: '경상남도',
+  제주: '제주특별자치도',
+};
+
+function formatRegion(region?: string) {
+  const value = region?.trim();
+  if (!value) return '지역 무관';
+  return REGION_DISPLAY_NAMES[value] ?? value;
 }
 
 export function TeamDetailPage() {
@@ -41,6 +61,7 @@ export function TeamDetailPage() {
     query: { enabled: !!team?.challengeId },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const posterUrl = challenge?.posterUrl ?? null;
   const bookmarkId = challenge?.id;
   const saved = bookmarks.some((item) => item.id === bookmarkId);
 
@@ -56,7 +77,12 @@ export function TeamDetailPage() {
       onError: (error) => {
         if (error instanceof ApiError && error.status === 401) goLogin();
         else if (error instanceof ApiError && error.status === 400)
-          toast.error('신청할 수 없어요', '이미 신청했거나 내가 만든 팀이에요');
+          toast.error(
+            '신청할 수 없어요',
+            apiErrorMessage(error, '이미 신청했거나 내가 만든 팀이에요'),
+          );
+        else
+          toast.error('팀 신청에 실패했어요', apiErrorMessage(error, '잠시 후 다시 시도해주세요'));
       },
     },
   });
@@ -124,7 +150,11 @@ export function TeamDetailPage() {
       <Content>
         <Header>
           <Cover aria-hidden="true">
-            <span>{(team.challengeTitle || team.title || '팀').trim().slice(0, 1)}</span>
+            {posterUrl ? (
+              <img src={posterUrl} alt="" />
+            ) : (
+              <span>{(team.challengeTitle || team.title || '팀').trim().slice(0, 1)}</span>
+            )}
           </Cover>
           <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div className="heading">
@@ -230,7 +260,7 @@ export function TeamDetailPage() {
                   {accepted.length}/{capacity}명
                 </dd>
                 <dt>지역</dt>
-                <dd>{team.region || '무관'}</dd>
+                <dd>{formatRegion(team.region)}</dd>
               </dl>
             </Summary>
           </Sidebar>
@@ -257,6 +287,8 @@ const Cover = styled.div({
   height: 222,
   borderRadius: 19,
   background: '#d8e4f0',
+  overflow: 'hidden',
+  img: { width: '100%', height: '100%', objectFit: 'cover' },
   span: { fontSize: 64, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
   [mobile]: { height: 180, borderRadius: 12, span: { fontSize: 44 } },
 });
@@ -316,9 +348,9 @@ const Roster = styled.table({
   '& th': { ...textStyle.h1, height: 48, background: c.gray100 },
   '& th:first-of-type': { borderTopLeftRadius: 12 },
   '& th:last-of-type': { borderTopRightRadius: 12 },
-  '& td': { height: 56, borderBottom: `1px solid ${c.gray100}` },
-  '& td:first-of-type': { borderLeft: `1px solid ${c.gray100}` },
-  '& td:last-of-type': { borderRight: `1px solid ${c.gray100}` },
+  '& td': { height: 56, borderBottom: `0.5px solid ${c.gray100}` },
+  '& td:first-of-type': { borderLeft: `0.5px solid ${c.gray100}` },
+  '& td:last-of-type': { borderRight: `0.5px solid ${c.gray100}` },
   '& tr:last-of-type td:first-of-type': { borderBottomLeftRadius: 12 },
   '& tr:last-of-type td:last-of-type': { borderBottomRightRadius: 12 },
   [mobile]: {

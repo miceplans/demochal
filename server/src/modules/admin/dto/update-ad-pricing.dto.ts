@@ -1,4 +1,4 @@
-import { IsIn, IsInt } from 'class-validator';
+import { IsIn, IsInt, Max, Min } from 'class-validator';
 
 // The PUT body is a bare JSON array, so the controller binds it via
 // ParseArrayPipe with this class as the per-item validated type.
@@ -7,6 +7,8 @@ export class AdPricingEntryDto {
   slot!: 'hero' | 'gallery' | 'team';
 
   @IsInt()
+  @Min(1)
+  @Max(100_000_000)
   dailyPrice!: number;
 }
 

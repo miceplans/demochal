@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
@@ -23,17 +24,18 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
-import { Badges, SkillStack, History, AddButton } from '@/components/profile/ProfileCards';
+import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
 import { preferenceGroups, notificationSettings, skillCatalog } from '@/data/user-design';
-import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
+import { daysUntil } from '@/lib/date';
+import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
 import legalCopy from '@/data/design-copy.json';
 
 const MobileMenu = styled.nav({
@@ -52,7 +54,7 @@ const MobileMenu = styled.nav({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const Participating = styled.div({
@@ -60,7 +62,7 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
-    border: `1px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
     transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
@@ -74,7 +76,7 @@ const Participating = styled.div({
 });
 const UploadBox = styled.label({
   border: `2px dashed ${c.gray100}`,
-  background: '#f8f8f8',
+  background: c.surface,
   borderRadius: 12,
   padding: 8,
   display: 'flex',
@@ -92,7 +94,7 @@ const UploadBox = styled.label({
   '& a:active': { background: c.gray50 },
   '& a:hover span': { transform: 'translateX(3px)' },
   '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
 const HiddenInput = styled.input({
@@ -113,8 +115,22 @@ const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
   borderRadius: '50%',
   background: c.gray100,
   flexShrink: 0,
-  [mobile]: { width: 72, height: 72, background: '#eaf3ff' },
+  overflow: 'hidden',
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
 }));
+const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
+// 아바타 자체가 파일 선택 트리거다(프로필 링크와 겹치지 않게 Link 밖에 둔다).
+const AvatarPicker = styled.label<{ busy?: boolean }>(({ busy }) => ({
+  position: 'relative',
+  display: 'block',
+  flexShrink: 0,
+  borderRadius: '50%',
+  cursor: busy ? 'progress' : 'pointer',
+  opacity: busy ? 0.6 : 1,
+  '&:focus-within': { outline: '2px solid currentColor', outlineOffset: 2 },
+}));
+const PROFILE_IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
 
 const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
@@ -242,6 +258,60 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   );
 }
 
+const BIO_MAX_LENGTH = 100;
+
+const BioText = styled(Muted)({
+  cursor: 'text',
+  borderRadius: 4,
+});
+
+// 더블클릭으로 여는 인라인 편집 — Enter 저장, Escape/blur 취소.
+function BioInlineEdit({
+  initial,
+  saving,
+  onSubmit,
+  onCancel,
+}: {
+  initial: string;
+  saving: boolean;
+  onSubmit: (bio: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState(initial);
+  const cancel = () => {
+    if (!saving) onCancel();
+  };
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (!saving) onSubmit(value.trim());
+  };
+  return (
+    <form style={{ flex: 1 }} onSubmit={submit}>
+      <Stack gap={4}>
+        <Input
+          autoFocus
+          aria-label="한 줄 소개"
+          placeholder="나를 한 줄로 소개해보세요"
+          maxLength={BIO_MAX_LENGTH}
+          value={value}
+          disabled={saving}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              cancel();
+            }
+          }}
+          onBlur={cancel}
+        />
+        <Muted style={{ textAlign: 'right' }}>
+          {value.length}/{BIO_MAX_LENGTH}
+        </Muted>
+      </Stack>
+    </form>
+  );
+}
+
 function SkillAddModal({
   open,
   onClose,
@@ -332,9 +402,59 @@ type ParticipatingItem = {
   meta: string;
 };
 
+// 모바일 마이페이지 '참가 이력' — 챌린지·팀 지원 내역을 실제 상세 링크와 함께 보여준다(#278).
+function ParticipationHistory() {
+  const challengeQuery = generated.useListMyApplications();
+  const teamQuery = generated.useListMyTeamApplications();
+  const challengeApps = challengeQuery.data?.status === 200 ? challengeQuery.data.data : [];
+  const teamApps = teamQuery.data?.status === 200 ? teamQuery.data.data : [];
+  const items = [
+    ...challengeApps.map((row) => ({
+      id: row.id ?? '',
+      title: row.challengeTitle ?? '챌린지',
+      sub: row.businessName ?? '-',
+      createdAt: row.createdAt ?? '',
+      href: row.challengeId ? `/contests/${row.challengeId}` : '/my/applications',
+      result: challengeResultTag(row.status),
+    })),
+    ...teamApps.map((row) => ({
+      id: row.id ?? '',
+      title: row.teamTitle ?? '팀',
+      sub: row.challengeTitle ?? '챌린지',
+      createdAt: row.createdAt ?? '',
+      href: '/my/applications',
+      result: teamResultTag(row.status),
+    })),
+  ].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const isPending = challengeQuery.isPending || teamQuery.isPending;
+  const isError = challengeQuery.isError || teamQuery.isError;
+  return (
+    <Stack gap={16}>
+      {items.map((item) => (
+        <HistoryCard key={item.id} href={item.href}>
+          <div className="thumb" />
+          <div>
+            <h3>{item.title}</h3>
+            <Row gap={8}>
+              <Tag tone={item.result.tone}>{item.result.label}</Tag>
+              <Muted>{item.sub}</Muted>
+            </Row>
+          </div>
+        </HistoryCard>
+      ))}
+      {isPending && <LoadingState label="참가 이력을 불러오는 중이에요." />}
+      {isError && <Muted>참가 이력을 불러오지 못했어요. 새로고침해주세요.</Muted>}
+      {!isPending && !isError && items.length === 0 && <Muted>아직 참가 이력이 없어요.</Muted>}
+    </Stack>
+  );
+}
+
 export function MyPage() {
+  const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
+  const [bioEditing, setBioEditing] = useState(false);
+  const [bioSaving, setBioSaving] = useState(false);
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
@@ -383,18 +503,121 @@ export function MyPage() {
       },
     },
   });
+  // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
+  const startBioEdit = () => {
+    if (me.data?.status !== 200) return;
+    setBioEditing(true);
+  };
+  const saveBio = async (bio: string) => {
+    setBioSaving(true);
+    try {
+      await updateProfile.mutateAsync({ data: { bio } });
+      toast.success('한 줄 소개를 저장했어요');
+      setBioEditing(false);
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setBioSaving(false);
+    }
+  };
+  const requestUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  // 프로필 이미지는 다른 사용자에게 보이므로 public 버킷에 올린다(presign → S3 PUT → finalize → 프로필 저장).
+  const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const picked = input.files?.[0];
+    // 같은 파일을 다시 골라도 change가 발생하도록 비운다.
+    input.value = '';
+    if (!picked || avatarUploading) return;
+    if (!PROFILE_IMAGE_CONTENT_TYPES.includes(picked.type)) {
+      toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP 이미지만 올릴 수 있어요');
+      return;
+    }
+    if (picked.size === 0 || picked.size > PROFILE_IMAGE_MAX_BYTES) {
+      toast.error('파일 크기를 확인해주세요', '10MB 이하 이미지만 올릴 수 있어요');
+      return;
+    }
+    setAvatarUploading(true);
+    let previewUrl: string | undefined;
+    try {
+      const compressed = await compressToWebP(picked, PROFILE_IMAGE_PRESET);
+      previewUrl = compressed.previewUrl;
+      const presigned = await requestUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          contentType: 'image/webp',
+          fileName: compressed.file.name.replace(/[/\\]/g, '_'),
+          sizeBytes: compressed.file.size,
+        },
+      });
+      const { uploadUrl, fileId } = presigned.data;
+      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
+      const uploaded = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'image/webp' },
+        body: compressed.file,
+      });
+      if (!uploaded.ok) throw new Error('upload failed');
+      await finalizeUpload.mutateAsync({ id: fileId });
+      await updateProfile.mutateAsync({ data: { profileImageFileId: fileId } });
+      toast.success('프로필 이미지를 바꿨어요');
+    } catch (error) {
+      // API 단계 실패는 전역 MutationCache 토스트가 띄운다. 압축/S3 업로드 실패만 여기서 알린다.
+      if (!(error instanceof ApiError)) {
+        toast.error('이미지 업로드에 실패했어요', '잠시 후 다시 시도해주세요');
+      }
+    } finally {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      setAvatarUploading(false);
+    }
+  };
   return (
     <MyShell title="MY">
       <Stack gap={28}>
-        <Link href="/profile">
-          <Row gap={24}>
-            <MyAvatar large />
+        <Row gap={24}>
+          <AvatarPicker busy={avatarUploading} aria-label="프로필 이미지 변경">
+            <MyAvatar large>
+              {meInfo?.profileImageUrl ? <AvatarImage src={meInfo.profileImageUrl} alt="" /> : null}
+            </MyAvatar>
+            <HiddenInput
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={pickAvatar}
+              disabled={avatarUploading}
+            />
+          </AvatarPicker>
+          <Link href="/profile">
             <Stack gap={8}>
               <h2 style={{ fontSize: 20 }}>{displayName}</h2>
               {profileMeta && <Muted>{profileMeta}</Muted>}
             </Stack>
+          </Link>
+        </Row>
+        {bioEditing ? (
+          <BioInlineEdit
+            // 편집 시작 시 최신 소개로 입력값을 초기화한다.
+            key={meInfo?.bio ?? ''}
+            initial={meInfo?.bio ?? ''}
+            saving={bioSaving}
+            onSubmit={saveBio}
+            onCancel={() => setBioEditing(false)}
+          />
+        ) : (
+          <Row gap={8}>
+            <BioText onDoubleClick={startBioEdit} title="더블클릭하여 수정">
+              {meInfo?.bio ? meInfo.bio : '한 줄 소개를 남겨보세요.'}
+            </BioText>
+            <AddButton
+              aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
+              // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
+              disabled={me.data?.status !== 200}
+              onClick={startBioEdit}
+            >
+              <Icon name="imgAddSlotIc" size={12} />
+            </AddButton>
           </Row>
-        </Link>
+        )}
         <DesktopOnly>
           <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
         </DesktopOnly>
@@ -433,7 +656,7 @@ export function MyPage() {
         <DesktopOnly>
           <Heading style={{ marginBottom: 24 }}>참여중</Heading>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
             <Muted>참여 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : participatingItems.length === 0 ? (
@@ -457,7 +680,7 @@ export function MyPage() {
         </DesktopOnly>
         <MobileOnly>
           <Heading style={{ marginBottom: 12 }}>참가 이력</Heading>
-          <History compact />
+          <ParticipationHistory />
         </MobileOnly>
       </Stack>
       <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
@@ -484,7 +707,7 @@ export function MyTeamsPage() {
           <Title>내 팀</Title>
         </DesktopOnly>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 목록을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -531,9 +754,7 @@ export function BookmarksPage() {
     id: challenge.id ?? '',
     title: challenge.title ?? '제목 없음',
     category: challenge.category ?? '기타',
-    days: challenge.endDate
-      ? Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))
-      : 0,
+    days: daysUntil(challenge.endDate, now),
   }));
   return (
     <MyShell title="북마크 챌린지">
@@ -567,7 +788,7 @@ export function BookmarksPage() {
             <ContestCard key={x.id} contest={x} />
           ))}
         </BookmarkGrid>
-        {isPending && <Muted>북마크를 불러오는 중이에요.</Muted>}
+        {isPending && <LoadingState label="북마크를 불러오는 중이에요." />}
         {isError && <Muted>북마크를 불러오지 못했어요.</Muted>}
         {!isPending && !isError && data.length === 0 && <Muted>북마크한 챌린지가 없어요.</Muted>}
       </Stack>
@@ -575,23 +796,18 @@ export function BookmarksPage() {
   );
 }
 export function InterestsPage() {
-  const state = useUserStore();
   const toast = useToast();
   const queryClient = useQueryClient();
   // 관심분야는 서버 값이 기준이다. 브라우저에 남은 기본값이나 다른 계정의 값으로 덮어쓰지
-  // 않도록, 서버 값을 받은 뒤에만 편집/저장할 수 있게 한다. 역할/대상은 기존대로 로컬 상태.
+  // 않도록, 서버 값을 받은 뒤에만 편집/저장할 수 있게 한다.
+  // (선호 역할/참가 대상 칩은 서버 저장 필드가 없는 죽은 UI라 제거했다 — #278)
   const interestsQuery = generated.useGetInterests();
   const [editedInterests, setEditedInterests] = useState<string[] | null>(null);
   const interests = editedInterests ?? interestsQuery.data?.data.categories ?? [];
   const interestsReady = interestsQuery.isSuccess;
   const saveInterests = generated.useSaveInterests();
-  const isSelected = (key: (typeof preferenceGroups)[number]['key'], value: string) =>
-    key === 'interests' ? interests.includes(value) : state[key].includes(value);
-  const toggle = (key: (typeof preferenceGroups)[number]['key'], value: string) => {
-    if (key !== 'interests') {
-      state.togglePreference(key, value);
-      return;
-    }
+  const isSelected = (value: string) => interests.includes(value);
+  const toggle = (value: string) => {
     if (!interestsReady) return;
     setEditedInterests(
       interests.includes(value) ? interests.filter((x) => x !== value) : [...interests, value],
@@ -629,10 +845,10 @@ export function InterestsPage() {
               {g.options.map((x) => (
                 <Chip
                   key={x}
-                  selected={isSelected(g.key, x)}
-                  aria-pressed={isSelected(g.key, x)}
-                  disabled={g.key === 'interests' && !interestsReady}
-                  onClick={() => toggle(g.key, x)}
+                  selected={isSelected(x)}
+                  aria-pressed={isSelected(x)}
+                  disabled={!interestsReady}
+                  onClick={() => toggle(x)}
                 >
                   {x}
                 </Chip>
@@ -653,7 +869,7 @@ export function InterestsPage() {
   );
 }
 const SettingsGroup = styled.section({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
   '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
@@ -663,7 +879,7 @@ const SettingsGroup = styled.section({
     gap: 16,
     alignItems: 'center',
     justifyContent: 'space-between',
-    borderTop: `1px solid ${c.gray100}`,
+    borderTop: `0.5px solid ${c.gray100}`,
   },
   [mobile]: {
     border: 0,
@@ -723,11 +939,11 @@ export function NotificationSettingsPage() {
 const Table = styled.table({
   width: '100%',
   borderSpacing: 0,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   ...textStyle.bodySmall,
   '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `1px solid ${c.gray100}` },
+  '& td, & th': { padding: '14px 16px', borderBottom: `0.5px solid ${c.gray100}` },
   '& th:first-child': { borderRadius: '11px 0 0 0' },
   '& th:last-child': { borderRadius: '0 11px 0 0' },
   '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
@@ -760,7 +976,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
           {challengeQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : challengeQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : challengeApps.length === 0 ? (
@@ -780,7 +996,13 @@ export function ApplicationsPage() {
                   return (
                     <tr key={row.id}>
                       <td>
-                        <Link href="/contests/public-data">{row.challengeTitle ?? '챌린지'}</Link>
+                        {row.challengeId ? (
+                          <Link href={`/contests/${row.challengeId}`}>
+                            {row.challengeTitle ?? '챌린지'}
+                          </Link>
+                        ) : (
+                          (row.challengeTitle ?? '챌린지')
+                        )}
                       </td>
                       <td>{row.businessName ?? '-'}</td>
                       <td>
@@ -796,7 +1018,7 @@ export function ApplicationsPage() {
         <section>
           <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
           {teamQuery.isPending ? (
-            <Muted>불러오는 중이에요.</Muted>
+            <LoadingState label="불러오는 중이에요." />
           ) : teamQuery.isError ? (
             <Muted>지원 내역을 불러오지 못했어요. 새로고침해주세요.</Muted>
           ) : teamApps.length === 0 ? (
@@ -936,7 +1158,7 @@ export function TeamApplicantsPage() {
     <MyShell title="팀 지원현황">
       <Stack gap={40}>
         {managedQuery.isPending ? (
-          <Muted>불러오는 중이에요.</Muted>
+          <LoadingState label="불러오는 중이에요." />
         ) : managedQuery.isError ? (
           <Muted>팀 지원 현황을 불러오지 못했어요. 새로고침해주세요.</Muted>
         ) : teams.length === 0 ? (
@@ -1057,7 +1279,7 @@ const NotificationTabButton = styled.button({
   minWidth: 0,
   height: 40,
   border: 0,
-  borderBottom: '2px solid transparent',
+  borderBottom: '0.5px solid transparent',
   background: 'transparent',
   fontFamily: 'inherit',
   fontSize: 15,
@@ -1101,13 +1323,15 @@ const NotificationBody = styled.div({
   flexDirection: 'column',
   gap: 4,
 });
-// 서버는 team_matching(팀 지원·결과)과 verification.result(사업자 인증 결과) 알림만 생성한다.
-// 탭도 그 두 유형으로만 구성하고, 매핑되지 않은 유형은 '전체'에서만 보인다.
-const notificationTabs = ['전체', '팀매칭', '인증·결과'] as const;
+// 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지) 알림을 생성한다.
+// 매핑되지 않은 유형은 '전체'에서만 보인다.
+const notificationTabs = ['전체', '팀매칭', '마감', '공고', '인증·결과'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
 const notificationCategory: Record<string, NotificationTab> = {
   team_matching: '팀매칭',
   'verification.result': '인증·결과',
+  deadline: '마감',
+  posting: '공고',
 };
 function describeNotification(type: string, payload: Record<string, unknown>) {
   if (type === 'team_matching') {
@@ -1129,6 +1353,16 @@ function describeNotification(type: string, payload: Record<string, unknown>) {
       return '사업자 인증이 승인됐어요';
     if (payload.status === 'rejected') return '사업자 인증이 반려됐어요';
     return '사업자 인증 결과가 도착했어요';
+  }
+  if (type === 'deadline') {
+    const daysLeft = typeof payload.daysLeft === 'number' ? payload.daysLeft : undefined;
+    const dday = daysLeft === undefined ? '' : daysLeft === 0 ? ' D-Day' : ` D-${daysLeft}`;
+    return `북마크한 챌린지 마감${dday}`;
+  }
+  if (type === 'posting') {
+    if (payload.kind === 'bookmark_open') return '북마크한 챌린지 참가접수가 시작되었어요';
+    if (payload.kind === 'interest_new') return '관심분야 새 챌린지가 등록되었어요';
+    return '새 공고가 등록되었어요';
   }
   return '새 알림이 있어요';
 }
@@ -1170,9 +1404,9 @@ export function NotificationsPage() {
   const all = notificationsQuery.data?.data ?? [];
   const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
   const hasUnread = all.some((x) => !x.readAt);
-  const openItem = (id?: string, readAt?: string | null, teamId?: string) => {
+  const openItem = (id?: string, readAt?: string | null, href?: string) => {
     if (id && !readAt) markRead.mutate({ id });
-    if (teamId) router.push(`/teams/${teamId}`);
+    if (href) router.push(href);
   };
   return (
     <UserShell title="알림">
@@ -1205,6 +1439,19 @@ export function NotificationsPage() {
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
               const teamId = typeof payload.teamId === 'string' ? payload.teamId : undefined;
+              const challengeId =
+                typeof payload.challengeId === 'string' ? payload.challengeId : undefined;
+              const href = teamId
+                ? `/teams/${teamId}`
+                : challengeId
+                  ? `/contests/${challengeId}`
+                  : undefined;
+              const meta = [
+                typeof payload.title === 'string' ? payload.title : '',
+                timeAgo(item.createdAt, now),
+              ]
+                .filter(Boolean)
+                .join(' · ');
               const inviteMemberId =
                 typeof payload.invitedUserId === 'string' && typeof payload.memberId === 'string'
                   ? payload.memberId
@@ -1216,9 +1463,9 @@ export function NotificationsPage() {
                   role="button"
                   tabIndex={0}
                   data-unread={!item.readAt || undefined}
-                  onClick={() => openItem(item.id, item.readAt, teamId)}
+                  onClick={() => openItem(item.id, item.readAt, href)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter') openItem(item.id, item.readAt, teamId);
+                    if (e.key === 'Enter') openItem(item.id, item.readAt, href);
                   }}
                 >
                   <NotificationDot aria-hidden />
@@ -1264,13 +1511,13 @@ export function NotificationsPage() {
                         {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
                       </Muted>
                     )}
-                    <Muted style={{ fontSize: 12 }}>{timeAgo(item.createdAt, now)}</Muted>
+                    <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>
                 </NotificationItem>
               );
             })}
           </NotificationList>
-          {notificationsQuery.isPending && <Muted>알림을 불러오는 중이에요.</Muted>}
+          {notificationsQuery.isPending && <LoadingState label="알림을 불러오는 중이에요." />}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
           {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>

@@ -13,6 +13,13 @@ import {
 } from 'drizzle-orm/pg-core';
 
 type OpenRole = { role: string; count: number };
+export type ApplicationFormQuestion = {
+  id: string;
+  title: string;
+  type: 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
+  options: string[];
+  required: boolean;
+};
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
   // A withdrawn account retains only this FK anchor; personal fields are erased.
@@ -26,6 +33,8 @@ export const users = pgTable('users', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
   position: varchar('position', { length: 100 }),
   region: varchar('region', { length: 100 }),
+  // 프로필 한 줄 소개(최대 100자). 비어 있으면 null.
+  bio: varchar('bio', { length: 100 }),
   stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
   badges: jsonb('badges').$type<string[]>().notNull().default([]),
   externalLinks: jsonb('external_links').notNull().default([]),
@@ -48,6 +57,8 @@ export const users = pgTable('users', {
   // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
   termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
   withdrawnAt: timestamp('withdrawn_at'),
+  // 프로필 이미지: files.id (public 버킷, ready 상태). null이면 기본 아바타.
+  profileImageFileId: uuid('profile_image_file_id'),
 });
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -101,6 +112,8 @@ export const challenges = pgTable('challenges', {
   // Valid values: seMOchall | external. Challenges recruiting through the
   // in-service application form get an exposure boost in recommendations.
   recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
+  // recruitMethod === 'external'일 때만 의미 있는 외부 지원 링크. seMOchall 공고에는 남기지 않는다.
+  recruitUrl: varchar('recruit_url', { length: 2048 }),
   // 탐색 필터용 메타. 대상 유효값: 어린이 | 초등학생 | 중학생 | 고등학생 | 대학생 | 대학원생 |
   // 제한없음 | 지역제한 | 일반인 | 기업 (복수 선택).
   targets: text('targets').array(),
@@ -109,6 +122,12 @@ export const challenges = pgTable('challenges', {
   organizerType: varchar('organizer_type', { length: 30 }),
   // 총상금(만원). null이면 상금 미정/없음.
   prizeAmount: integer('prize_amount'),
+  // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
+  posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
+  // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 별도 테이블 대신
+  // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
+  // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
+  applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -149,6 +168,9 @@ export const teamMembers = pgTable('team_members', {
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
   chatLink: varchar('chat_link', { length: 500 }),
+  // 사람찾기 스카우트 제안(팀장→사용자)일 때만 채워진다. scoutedAt이 팀당 3회 제한의 집계 기준이다.
+  scoutedAt: timestamp('scouted_at'),
+  scoutMessage: varchar('scout_message', { length: 200 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const applications = pgTable('applications', {
@@ -226,7 +248,9 @@ export const payments = pgTable(
     provider: varchar('provider', { length: 20 }).notNull().default('toss'),
     providerPaymentKey: varchar('provider_payment_key', { length: 200 }).notNull(),
     amount: integer('amount').notNull(),
-    // Valid values: ready | paid | canceled | expired. Legacy rows can contain
+    // Valid values: ready | paid | canceled | expired | refund_pending
+    // (charged but the order could not be settled and the compensating Toss cancel
+    // failed — needs a retry/manual refund). Legacy rows can contain
     // done | cancelled and are handled when reading billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set

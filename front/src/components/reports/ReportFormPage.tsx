@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -10,6 +11,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { formatDateDot as formatDate } from '@/lib/date';
 
 const REPORT_REASONS = ['비방', '스팸/도배', '사기 또는 허위 정보', '저작권 침해', '기타'];
 
@@ -20,14 +22,6 @@ function isReportType(value: string | null): value is ReportType {
 }
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function formatDate(iso?: string) {
-  if (!iso) return '-';
-  const date = new Date(iso);
-  return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(
-    date.getDate(),
-  ).padStart(2, '0')}`;
-}
 
 type PreviewMeta = { label: string; value: string };
 type Preview = { title: string; org?: string; meta: PreviewMeta[] };
@@ -146,7 +140,7 @@ function ReportFormContent() {
       <Form>
         <Title>신고하기</Title>
         {targetPending ? (
-          <Muted>신고 대상을 불러오는 중이에요…</Muted>
+          <LoadingState label="신고 대상을 불러오는 중이에요…" />
         ) : !preview ? (
           <Muted>신고 대상을 찾을 수 없어요. 대상 링크를 다시 확인해주세요.</Muted>
         ) : (
@@ -250,7 +244,7 @@ const Field = styled.div({
 const Textarea = styled.textarea({
   height: 106,
   resize: 'vertical',
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   padding: '12px 14px',
   color: c.gray900,

@@ -20,10 +20,14 @@
 /**
  * 등록 시 pending
  */
-export type ApplicationStatus = (typeof ApplicationStatus)[keyof typeof ApplicationStatus];
+export type ApplicationStatus = typeof ApplicationStatus[keyof typeof ApplicationStatus];
+
 
 export const ApplicationStatus = {
   pending: 'pending',
+  submitted: 'submitted',
+  reviewing: 'reviewing',
+  needs_revision: 'needs_revision',
   accepted: 'accepted',
   rejected: 'rejected',
 } as const;

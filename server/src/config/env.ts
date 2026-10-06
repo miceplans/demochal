@@ -19,13 +19,17 @@ const envSchema = z
 
     S3_PUBLIC_BUCKET: z.string().default('semochal-public-dev'),
     S3_PRIVATE_BUCKET: z.string().default('semochal-private-dev'),
+    // Local S3-compatible endpoint (LocalStack). Empty keeps the default AWS endpoint.
+    S3_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
 
     SQS_VERIFICATIONS_QUEUE_URL: z.string().default(''),
 
     // Service email delivery (SES). Empty in local dev — the email worker
     // no-ops and DB notifications keep working without either value.
     SES_FROM_EMAIL: z.string().default(''),
+    SES_SUPPORT_FROM_EMAIL: z.string().default(''),
     SQS_EMAILS_QUEUE_URL: z.string().default(''),
+    SQS_INBOUND_EMAILS_QUEUE_URL: z.string().default(''),
 
     TOSS_SECRET_KEY: z.string().default(''),
 
@@ -95,10 +99,13 @@ export const env = {
 
   s3PublicBucket: raw.S3_PUBLIC_BUCKET,
   s3PrivateBucket: raw.S3_PRIVATE_BUCKET,
+  s3Endpoint: raw.S3_ENDPOINT || undefined,
 
   sqsVerificationsQueueUrl: raw.SQS_VERIFICATIONS_QUEUE_URL,
   sesFromEmail: raw.SES_FROM_EMAIL,
+  sesSupportFromEmail: raw.SES_SUPPORT_FROM_EMAIL,
   sqsEmailsQueueUrl: raw.SQS_EMAILS_QUEUE_URL,
+  sqsInboundEmailsQueueUrl: raw.SQS_INBOUND_EMAILS_QUEUE_URL,
 
   tossSecretKey: raw.TOSS_SECRET_KEY,
 

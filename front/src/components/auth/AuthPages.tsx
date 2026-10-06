@@ -13,7 +13,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
 import copy from '@/data/design-copy.json';
-import { LoginForm } from '@/features/auth/components/LoginForm';
 const Login = styled.div({
   minHeight: 610,
   display: 'flex',
@@ -34,7 +33,7 @@ const Social = styled(Link)<{ provider: string }>(({ provider }) => ({
   ...textStyle.label,
   background: provider === 'Kakao' ? '#fee500' : provider === 'Naver' ? '#06be34' : c.white,
   color: provider === 'Naver' ? c.white : c.gray900,
-  border: provider === 'Google' ? `1px solid ${c.gray200}` : 0,
+  border: provider === 'Google' ? `0.5px solid ${c.gray200}` : 0,
   [mobile]: {
     width: 'min(358px, calc(100vw - 32px))',
     height: 48,
@@ -47,20 +46,6 @@ const SOCIAL_LOGIN_PATHS: Record<string, string> = {
   Google: '/auth/google',
   Naver: '/auth/social/naver',
 };
-const LoginDivider = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 12,
-  width: 276,
-  ...textStyle.label,
-  color: c.gray500,
-  '&::before, &::after': { content: '""', flex: 1, height: 1, background: c.gray200 },
-  [mobile]: { width: 'min(358px, calc(100vw - 32px))' },
-});
-const EmailLogin = styled.div({
-  width: 276,
-  [mobile]: { width: 'min(358px, calc(100vw - 32px))' },
-});
 export function LoginPage({ next = null }: { next?: string | null }) {
   const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
   const startSocialLogin = (provider: string) => {
@@ -77,12 +62,6 @@ export function LoginPage({ next = null }: { next?: string | null }) {
         <Stack gap={4} style={{ alignItems: 'center' }}>
           <Logo dot />
           <p style={{ fontSize: 11 }}>세상의 모든 챌린지</p>
-        </Stack>
-        <Stack gap={16} style={{ alignItems: 'center' }}>
-          <EmailLogin>
-            <LoginForm next={next} />
-          </EmailLogin>
-          <LoginDivider>또는</LoginDivider>
         </Stack>
         <Stack gap={8}>
           {['Kakao', 'Google', 'Naver'].map((provider, i) => (
@@ -161,7 +140,7 @@ const CheckBox = styled.span<{ selected?: boolean }>(({ selected }) => ({
     width: 18,
     height: 18,
     borderRadius: 4,
-    border: selected ? 0 : `1px solid ${c.gray100}`,
+    border: selected ? 0 : `0.5px solid ${c.gray100}`,
     '& img': { width: '11px !important', height: '11px !important' },
   },
 }));
@@ -183,6 +162,39 @@ const Next = styled.div({
     zIndex: 25,
     '& button': { width: '100%', height: 52, borderRadius: 14 },
   },
+});
+const ProgressTrack = styled.div({
+  height: 4,
+  background: c.lightBlue,
+  borderRadius: 30,
+  marginTop: 12,
+  marginBottom: 40,
+});
+// 마운트 시 이전 스텝 폭에서 현재 스텝 폭으로 채워진다. 인증 확인 전까지 화면이 비어 있어
+// JS 타이밍(rAF) 기반 전환은 요소가 그려지기 전에 끝나 버리므로 순수 CSS 마운트 애니메이션을 쓴다.
+// keyframes 이름에 from-to 수치를 넣어 변형 간 이름 충돌(뒤로가기 시 잘못된 폭 표시)을 막는다.
+const ProgressFill = styled('div', {
+  shouldForwardProp: (prop) => prop !== '$from' && prop !== '$to',
+})<{ $from: number; $to: number }>(({ $from, $to }) => ({
+  height: 4,
+  background: c.primary,
+  borderRadius: 30,
+  width: `${$to}%`,
+  animation: `semo-onboarding-bar-fill-${$from}-${$to} .5s ease-in-out both`,
+  [`@keyframes semo-onboarding-bar-fill-${$from}-${$to}`]: {
+    from: { width: `${$from}%` },
+    to: { width: `${$to}%` },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+}));
+// 홈 화면 AdCarousel과 같은 수평 슬라이드 관례(0.5s ease-in-out)로 스텝 콘텐츠가 오른쪽에서 들어온다.
+const StepContent = styled.div({
+  animation: 'semo-onboarding-step-in .5s ease-in-out both',
+  '@keyframes semo-onboarding-step-in': {
+    from: { opacity: 0, transform: 'translateX(48px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
 });
 const steps = ['activity', 'interests', 'purpose', 'challenge'];
 const EMPTY_SURVEY_SELECTION: readonly string[] = [];
@@ -264,80 +276,68 @@ export function OnboardingPage({ step }: { step: string }) {
     <UserShell compact navigation={false} footer={false} hideMobileHeader>
       <Survey>
         <Logo dot />
-        <div
+        <ProgressTrack
           role="progressbar"
           aria-label="관심 설문 진행"
           aria-valuemin={0}
           aria-valuemax={4}
           aria-valuenow={index + 1}
-          style={{
-            height: 4,
-            background: c.lightBlue,
-            borderRadius: 30,
-            marginTop: 12,
-            marginBottom: 40,
-          }}
         >
-          <div
-            style={{
-              height: 4,
-              width: `${(index + 1) * 25}%`,
-              background: c.primary,
-              borderRadius: 30,
-            }}
-          />
-        </div>
-        <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
-        {index === 0 ? (
-          <ActivityDropdown>
-            <Dropdown
-              aria-label="현재 활동"
-              placeholder="활동을 선택하세요"
-              value={selected[0] ?? ''}
-              onChange={(x) => setSurvey(step, [x])}
-              options={[
-                '대학생',
-                '대학원생',
-                '직장인',
-                '취업준비생',
-                '프리랜서',
-                '일반인',
-                '청소년',
-              ].map((x) => ({ value: x, label: x }))}
-            />
-          </ActivityDropdown>
-        ) : index === 2 ? (
-          <CheckGrid>
-            {options.map((x) => (
-              <CheckOption
-                key={x}
-                type="button"
-                aria-pressed={selected.includes(x)}
-                onClick={() => toggle(x)}
-              >
-                <CheckBox selected={selected.includes(x)}>
-                  {selected.includes(x) && (
-                    <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
-                  )}
-                </CheckBox>
-                {x}
-              </CheckOption>
-            ))}
-          </CheckGrid>
-        ) : (
-          <Choices>
-            {options.map((x) => (
-              <Chip
-                key={x}
-                selected={selected.includes(x)}
-                aria-pressed={selected.includes(x)}
-                onClick={() => toggle(x)}
-              >
-                {x}
-              </Chip>
-            ))}
-          </Choices>
-        )}
+          <ProgressFill $from={index * 25} $to={(index + 1) * 25} />
+        </ProgressTrack>
+        <StepContent key={step}>
+          <h1 style={{ ...textStyle.h2, marginBottom: 16 }}>{titles[index]}</h1>
+          {index === 0 ? (
+            <ActivityDropdown>
+              <Dropdown
+                aria-label="현재 활동"
+                placeholder="활동을 선택하세요"
+                value={selected[0] ?? ''}
+                onChange={(x) => setSurvey(step, [x])}
+                options={[
+                  '대학생',
+                  '대학원생',
+                  '직장인',
+                  '취업준비생',
+                  '프리랜서',
+                  '일반인',
+                  '청소년',
+                ].map((x) => ({ value: x, label: x }))}
+              />
+            </ActivityDropdown>
+          ) : index === 2 ? (
+            <CheckGrid>
+              {options.map((x) => (
+                <CheckOption
+                  key={x}
+                  type="button"
+                  aria-pressed={selected.includes(x)}
+                  onClick={() => toggle(x)}
+                >
+                  <CheckBox selected={selected.includes(x)}>
+                    {selected.includes(x) && (
+                      <Icon src="/assets/icons/check.svg" width={9} height={9} alt="" />
+                    )}
+                  </CheckBox>
+                  {x}
+                </CheckOption>
+              ))}
+            </CheckGrid>
+          ) : (
+            <Choices>
+              {options.map((x) => (
+                <Chip
+                  key={x}
+                  selected={selected.includes(x)}
+                  aria-pressed={selected.includes(x)}
+                  onClick={() => toggle(x)}
+                >
+                  {x}
+                </Chip>
+              ))}
+            </Choices>
+          )}
+        </StepContent>
         <Next>
           <Button
             disabled={!selected.length || saveSurvey.isPending}

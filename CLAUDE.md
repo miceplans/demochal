@@ -32,6 +32,13 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 - **Docker 분기**: `Dockerfile.api`와 `Dockerfile.worker`는 같은 소스, 같은 두 단계 빌드(`pnpm --filter @semochal/server...` + `nest build`)이며 차이는 `CMD`(dist/main.js vs dist/worker.js)뿐이다. 워커 이미지에 `EXPOSE`를 추가하거나 API/워커 중 한 쪽에만 의존성·빌드 단계를 넣는 분기를 만들지 않는다. 둘 다 `ci.yml`에서 빌드 검증되므로 Dockerfile 변경 시 로컬에서 `docker build --file server/Dockerfile.{api,worker} .`를 확인한다.
 - **ECS Task Definition**(인프라 구성 시, `infra/README.md` 계획): API 서비스와 워커 서비스는 같은 태스크 정의 구조(같은 이미지, CMD 오버라이드와 환경변수만 다르게)로 유지한다. 워커에는 ALB 타깃을 붙이지 않는다.
 
+## Issue / PR 작성 규칙(모든 에이전트 준수)
+
+- 제목·본문 모두 **한국어**로 쓴다(영어 금지. 코드·식별자·명령어 제외).
+- 본문 맨 위에 **`한줄요약:`** 한 줄을 반드시 넣는다(PR은 `Closes #N` 아래).
+- **핵심만 간략히** — 섹션당 1~3줄/불릿. 해당 없는 섹션은 `해당 없음` 한 줄.
+- 템플릿(`.github/ISSUE_TEMPLATE/ai-work.yml`, `.github/pull_request_template.md`)의 섹션은 유지한다.
+
 ## 코드 스타일
 
 - Prettier(루트 `.prettierrc`): singleQuote, semi, printWidth 100, trailingComma all — `pnpm format`로 맞춘다.

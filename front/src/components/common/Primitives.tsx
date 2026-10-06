@@ -3,6 +3,7 @@ import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Button as BaseButton } from '@/components/ui/Button';
+import { Badge } from '@/components/ui/Badge';
 import type { ElementType, ReactNode } from 'react';
 
 const ICON_SOURCES: Record<string, string> = {
@@ -57,21 +58,21 @@ export const Button = styled(BaseButton, {
 })<{ tone?: 'primary' | 'outline' | 'plain'; small?: boolean; as?: ElementType }>(
   ({ tone = 'primary', small }) => ({
     borderRadius: 8,
-    border: `1px solid ${tone === 'plain' ? c.gray100 : c.primary}`,
+    border: `0.5px solid ${tone === 'plain' ? c.gray100 : c.primary}`,
     padding: small ? '6px 12px' : '12px 24px',
     background: tone === 'primary' ? c.primary : c.white,
     color: tone === 'primary' ? c.white : tone === 'outline' ? c.primary : c.gray700,
     fontSize: small ? textStyle.overline.fontSize : textStyle.buttonLabel.fontSize,
     fontWeight: 600,
     minHeight: small ? 28 : 44,
-    '&:hover:not(:disabled)': { background: tone === 'primary' ? '#005ee0' : c.gray50 },
+    '&:hover:not(:disabled)': { background: tone === 'primary' ? c.primaryHover : c.gray50 },
   }),
 );
 export const Input = styled.input({
   width: '100%',
   minWidth: 0,
   height: 44,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -83,7 +84,7 @@ export const Input = styled.input({
 export const Select = styled.select({
   minWidth: 0,
   height: 40,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -110,14 +111,14 @@ export const Title = styled.h1(textStyle.h1_2);
 export const Heading = styled.h2({ ...textStyle.title, lineHeight: 1.4 });
 export const SectionHeading = styled.h2(textStyle.h2_2);
 export const Panel = styled.section({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   background: c.white,
   padding: 24,
   [mobile]: { padding: 16 },
 });
 export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
-  border: `1px solid ${selected ? c.primary : c.gray100}`,
+  border: `0.5px solid ${selected ? c.primary : c.gray100}`,
   borderRadius: 24,
   background: selected ? c.primary : c.white,
   color: selected ? c.white : c.gray700,
@@ -129,27 +130,10 @@ export const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   '&:hover': { background: selected ? c.primary : c.gray50 },
   '&:active': { transform: 'scale(0.93)' },
 }));
-export const Tag = styled.span<{ tone?: 'blue' | 'green' | 'red' | 'gray' }>(
-  ({ tone = 'gray' }) => ({
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
-    ...textStyle.finePrint,
-    lineHeight: 1.25,
-    borderRadius: 4,
-    padding: '4px 8px',
-    background:
-      tone === 'blue'
-        ? c.lightBlue
-        : tone === 'green'
-          ? c.lightGreen
-          : tone === 'red'
-            ? c.lightRed
-            : c.gray100,
-    color:
-      tone === 'blue' ? c.primary : tone === 'green' ? c.green : tone === 'red' ? c.red : c.gray700,
-  }),
-);
+export const Tag = styled(Badge)({
+  ...textStyle.finePrint,
+  lineHeight: 1.25,
+});
 export const DesktopOnly = styled.div({ [mobile]: { display: 'none !important' } });
 export const MobileOnly = styled.div({ display: 'none', [mobile]: { display: 'block' } });
 export const IconButton = styled.button({
@@ -167,6 +151,27 @@ export const IconButton = styled.button({
   '&:disabled': { cursor: 'not-allowed' },
 });
 export const EmptyArtwork = styled.div({ background: c.gray100, borderRadius: 12 });
+// 콘텐츠가 없을 때 보여주는 빈 상태 일러스트. 안내 문구 없이 이미지만 표시한다.
+export function EmptyState({ width = 280 }: { width?: number }) {
+  return (
+    <EmptyStateWrapper>
+      <img
+        src="/assets/empty-contents.png"
+        alt=""
+        width={800}
+        height={533}
+        style={{ width: '100%', maxWidth: width, height: 'auto', display: 'block' }}
+      />
+    </EmptyStateWrapper>
+  );
+}
+const EmptyStateWrapper = styled.div({
+  display: 'flex',
+  justifyContent: 'center',
+  width: '100%',
+  padding: '40px 0',
+  [mobile]: { padding: '24px 0' },
+});
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
     <Row style={{ justifyContent: 'space-between' }}>

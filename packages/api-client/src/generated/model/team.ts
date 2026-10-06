@@ -27,24 +27,24 @@ export interface Team {
   /** 팀명 (미입력 시 "<팀장 이름>의 팀") */
   title?: string;
   /**
-   * 팀장 역할
-   * @nullable
-   */
+     * 팀장 역할
+     * @nullable
+     */
   leaderRole?: string | null;
   /**
-   * 팀 소개
-   * @nullable
-   */
+     * 팀 소개
+     * @nullable
+     */
   introduction?: string | null;
   /**
-   * 우대사항
-   * @nullable
-   */
+     * 우대사항
+     * @nullable
+     */
   preferred?: string | null;
   /**
-   * 기타
-   * @nullable
-   */
+     * 기타
+     * @nullable
+     */
   etc?: string | null;
   region?: string;
   /** 필요 역할 슬롯 */
@@ -53,6 +53,16 @@ export interface Team {
   createdAt?: string;
   /** 목록·상세 응답에 포함 */
   challengeTitle?: string;
+  /**
+     * 목록·상세 응답의 챌린지 포스터 파일 ID
+     * @nullable
+     */
+  challengePosterFileId?: string | null;
+  /**
+     * 챌린지 포스터 공개 URL (public+ready 파일). 없으면 null — 클라이언트는 placeholder 유지
+     * @nullable
+     */
+  challengePosterUrl?: string | null;
   /** 목록·상세 응답에 포함 */
   leaderName?: string;
   /** listManagedTeams 응답 전용 — 주최 기업(협회)명 */

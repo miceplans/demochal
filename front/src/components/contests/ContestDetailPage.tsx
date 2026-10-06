@@ -26,8 +26,9 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
+import { daysUntil, formatDateDot } from '@/lib/date';
 
-const formatDate = (value?: string) => (value ? value.slice(0, 10).replaceAll('-', '.') : '');
+const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
@@ -42,12 +43,17 @@ export function ContestDetailPage({
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
   const saved = bookmarks.some((item) => item.id === bookmarkId);
   const [applyVisible, setApplyVisible] = useState(true);
+  // 상단 Intro가 화면에서 사라졌는지 — 사이드바 포스터 표시 여부를 결정한다.
+  const [introInView, setIntroInView] = useState(true);
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   const challengeQuery = generated.useGetChallenge(challengeId ?? '', {
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  const posterUrl = challenge?.posterUrl ?? null;
+  // 데모 상세(challengeId 없음)는 데모 포스터, 실제 챌린지는 서버 포스터(없으면 플레이스홀더).
+  const sidebarPoster = challengeId ? posterUrl : contestDetail.poster;
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
   const { data: teamList } = generated.useListTeams(challengeId ? { challengeId } : undefined, {
     query: { enabled: teamTab },
@@ -63,9 +69,7 @@ export function ContestDetailPage({
       id: item.id ?? '',
       title: item.title ?? '',
       category: item.category ?? '',
-      days: item.endDate
-        ? Math.max(0, Math.ceil((new Date(item.endDate).getTime() - now) / 86_400_000))
-        : 0,
+      days: daysUntil(item.endDate, now),
     }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
@@ -81,16 +85,16 @@ export function ContestDetailPage({
         period: [formatDate(challenge.startDate), formatDate(challenge.endDate)]
           .filter(Boolean)
           .join(' ~ '),
-        dday: challenge.endDate
-          ? `D-${Math.max(0, Math.ceil((new Date(challenge.endDate).getTime() - now) / 86_400_000))}`
-          : '',
+        dday: challenge.endDate ? `D-${daysUntil(challenge.endDate, now)}` : '',
         deadline: formatDate(challenge.endDate) || '-',
         teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
         sections: challenge.description
           ? [{ title: '상세 안내', body: challenge.description }]
           : [],
       }
-    : contestDetail;
+    : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
+      // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다(#278).
+      contestDetail;
   // 상단 요약 — 실제 챌린지는 가짜 상금 대신 서버 값(참가비·분야·정원)만 쓴다.
   const summaryRows: [string, string][] = challenge
     ? [
@@ -113,6 +117,7 @@ export function ContestDetailPage({
       ];
   const toast = useToast();
   const applyRef = useRef<HTMLAnchorElement>(null);
+  const introRef = useRef<HTMLDivElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
   const ready = !challengeId || Boolean(challenge);
   useEffect(() => {
@@ -120,6 +125,15 @@ export function ContestDetailPage({
     const el = applyRef.current;
     if (!el) return;
     const observer = new IntersectionObserver(([entry]) => setApplyVisible(entry.isIntersecting));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [teamTab, ready]);
+  // Intro가 화면에서 사라지면 사이드바에 포스터를 띄운다(상단 커버와의 중복을 피하기 위해).
+  useEffect(() => {
+    if (teamTab || !ready) return;
+    const el = introRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(([entry]) => setIntroInView(entry.isIntersecting));
     observer.observe(el);
     return () => observer.disconnect();
   }, [teamTab, ready]);
@@ -170,9 +184,9 @@ export function ContestDetailPage({
   return (
     <UserShell title="챌린지 상세" back="/explore">
       <Content>
-        <Intro>
+        <Intro ref={introRef}>
           <div className="cover" aria-hidden="true">
-            <span>{detail.title.slice(0, 1)}</span>
+            {posterUrl ? <img src={posterUrl} alt="" /> : <span>{detail.title.slice(0, 1)}</span>}
           </div>
           <div className="intro-body">
             <Title>{detail.title}</Title>
@@ -228,17 +242,6 @@ export function ContestDetailPage({
               </TeamGrid>
             ) : (
               <Stack gap={28}>
-                {!challengeId && (
-                  <DesktopOnly>
-                    <img
-                      src={contestDetail.poster}
-                      alt={`${detail.title} 포스터`}
-                      width={860}
-                      height={860}
-                      style={{ width: '100%', height: 'auto' }}
-                    />
-                  </DesktopOnly>
-                )}
                 <MobileOnly>{summaryBox}</MobileOnly>
                 {detail.sections.map(({ title, body }) => (
                   <section key={title}>
@@ -264,6 +267,15 @@ export function ContestDetailPage({
             )}
           </div>
           <Sidebar>
+            {!teamTab && !introInView && (
+              <PosterFrame>
+                {sidebarPoster ? (
+                  <img src={sidebarPoster} alt={`${detail.title} 포스터`} />
+                ) : (
+                  <div role="img" aria-label={`${detail.title} 포스터 없음`} />
+                )}
+              </PosterFrame>
+            )}
             {!teamTab && !applyVisible && (
               <Link
                 href={external || applyHref}
@@ -343,6 +355,8 @@ const Intro = styled.div({
     display: 'grid',
     placeItems: 'center',
     flexShrink: 0,
+    overflow: 'hidden',
+    img: { width: '100%', height: '100%', objectFit: 'cover' },
     span: { fontSize: 56, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
   },
   '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
@@ -378,13 +392,22 @@ const Sidebar = styled(DesktopOnly)({
   position: 'sticky',
   top: 24,
 });
+const PosterFrame = styled.div({
+  width: '100%',
+  aspectRatio: '320 / 404',
+  borderRadius: 19,
+  background: c.gray100,
+  overflow: 'hidden',
+  img: { display: 'block', width: '100%', height: '100%', objectFit: 'contain' },
+  div: { width: '100%', height: '100%' },
+});
 const Tabs = styled.nav({
   display: 'flex',
   gap: 24,
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   marginBottom: 20,
   '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
-  '& a[aria-current=page]': { color: c.primary, borderBottom: `2px solid ${c.primary}` },
+  '& a[aria-current=page]': { color: c.primary, borderBottom: `0.5px solid ${c.primary}` },
 });
 const Summary = styled.div({
   background: c.gray50,

@@ -21,8 +21,13 @@ export interface InviteTeamRequest {
   /** 초대할 사용자 id */
   userId: string;
   /**
-   * 초대 시 제안하는 역할
-   * @maxLength 100
-   */
+     * 초대 시 제안하는 역할
+     * @maxLength 100
+     */
   role?: string;
+  /**
+     * 스카우트 제안 메시지
+     * @maxLength 200
+     */
+  message?: string;
 }

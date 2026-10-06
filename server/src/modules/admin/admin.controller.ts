@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Param,
+  Patch,
   ParseArrayPipe,
   Post,
   Put,
@@ -18,11 +19,42 @@ import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
+import { SendNewEmailDto, SendReplyDto } from '../email/dto/send-reply.dto.js';
+import { UpdateEmailStatusDto } from '../email/dto/update-email-status.dto.js';
+import { EmailService } from '../email/email.service.js';
 
 @UseGuards(AdminRoleGuard)
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly emailService: EmailService,
+  ) {}
+
+  @Get('emails')
+  listEmails(@Query('q') q?: string, @Query('status') status?: string) {
+    return this.emailService.listThreads({ q, status });
+  }
+
+  @Post('emails')
+  sendNewEmail(@Body() dto: SendNewEmailDto) {
+    return this.emailService.sendNewEmail(dto.to, dto.subject, dto.text, dto.html);
+  }
+
+  @Get('emails/:id')
+  getEmail(@Param('id') id: string) {
+    return this.emailService.getThread(id);
+  }
+
+  @Patch('emails/:id/status')
+  updateEmailStatus(@Param('id') id: string, @Body() dto: UpdateEmailStatusDto) {
+    return this.emailService.updateThreadStatus(id, dto.status);
+  }
+
+  @Post('emails/:id/replies')
+  sendEmailReply(@Param('id') id: string, @Body() dto: SendReplyDto) {
+    return this.emailService.sendReply(id, dto.text, dto.html);
+  }
 
   @Get('dashboard')
   getDashboard(@Query('range') range?: string) {
@@ -67,6 +99,11 @@ export class AdminController {
     return this.adminService.listAds(q, status);
   }
 
+  @Post('ads/:id/pause')
+  pauseAd(@Param('id') id: string) {
+    return this.adminService.pauseAd(id);
+  }
+
   @Get('ad-pricing')
   getAdPricing() {
     return this.adminService.getAdPricing();
@@ -85,8 +122,17 @@ export class AdminController {
     @Query('status') status?: string,
     @Query('joinedWithin') joinedWithin?: string,
     @Query('position') position?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
   ) {
-    return this.adminService.listUsers(q, status, joinedWithin, position);
+    return this.adminService.listUsers(
+      q,
+      status,
+      joinedWithin,
+      position,
+      page ? Number.parseInt(page, 10) : undefined,
+      pageSize ? Number.parseInt(pageSize, 10) : undefined,
+    );
   }
 
   @Post('users/:id/suspend')

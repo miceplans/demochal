@@ -7,6 +7,10 @@ export interface OutgoingEmail {
   subject: string;
   text: string;
   html: string;
+  fromEmail?: string;
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string;
 }
 
 // Thin SESv2 adapter used only by the worker's email processor. The sender
@@ -19,14 +23,19 @@ export interface OutgoingEmail {
 export class SesEmailClient {
   private readonly client = new SESv2Client({ region: env.awsRegion });
 
-  isConfigured(): boolean {
-    return Boolean(env.sesFromEmail);
+  isConfigured(from: 'noreply' | 'support' = 'noreply'): boolean {
+    return Boolean(from === 'support' ? env.sesSupportFromEmail : env.sesFromEmail);
   }
 
-  async send(email: OutgoingEmail): Promise<void> {
-    await this.client.send(
+  async send(email: OutgoingEmail): Promise<{ sesMessageId?: string }> {
+    const headers = [
+      email.messageId ? { Name: 'Message-ID', Value: email.messageId } : null,
+      email.inReplyTo ? { Name: 'In-Reply-To', Value: email.inReplyTo } : null,
+      email.references ? { Name: 'References', Value: email.references } : null,
+    ].filter((header): header is { Name: string; Value: string } => header !== null);
+    const response = await this.client.send(
       new SendEmailCommand({
-        FromEmailAddress: env.sesFromEmail,
+        FromEmailAddress: email.fromEmail ?? env.sesFromEmail,
         Destination: { ToAddresses: [email.to] },
         Content: {
           Simple: {
@@ -35,9 +44,18 @@ export class SesEmailClient {
               Text: { Data: email.text, Charset: 'UTF-8' },
               Html: { Data: email.html, Charset: 'UTF-8' },
             },
+            ...(headers.length > 0 ? { Headers: headers } : {}),
           },
         },
       }),
     );
+    return { sesMessageId: response.MessageId };
+  }
+
+  async sendSupportEmail(
+    email: Omit<OutgoingEmail, 'fromEmail'>,
+  ): Promise<{ sesMessageId?: string }> {
+    if (!this.isConfigured('support')) throw new Error('Support email sender is not configured');
+    return this.send({ ...email, fromEmail: env.sesSupportFromEmail });
   }
 }

@@ -24,7 +24,19 @@ export type UpdateMyProfileBody = {
   /** 포지션 (기획/디자인/개발 등) */
   role?: string;
   region?: string;
+  /**
+     * 한 줄 소개 (빈 문자열이면 삭제)
+     * @maxLength 100
+     */
+  bio?: string;
   stacks?: string[];
   externalLinks?: ExternalLink[];
   awardHistory?: AwardRecord[];
+  /**
+     * 프로필 이미지 파일 id. `POST /files/presign`(bucket=public) → S3 PUT →
+     * `POST /files/{id}/finalize`로 준비한 본인 이미지만 허용한다(아니면 400).
+     * `null`이면 프로필 이미지를 삭제한다.
+     * @nullable
+     */
+  profileImageFileId?: string | null;
 };

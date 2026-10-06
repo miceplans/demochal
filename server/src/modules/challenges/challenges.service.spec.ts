@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { challenges } from '../../db/schema.js';
+import { BadRequestException } from '@nestjs/common';
+import { challenges, type ApplicationFormQuestion } from '../../db/schema.js';
 import { ChallengesService } from './challenges.service.js';
 
 type ChallengeRow = {
@@ -36,7 +37,19 @@ function createService(
     .mockReturnValueOnce(candidatesQuery)
     .mockReturnValueOnce(viewsQuery)
     .mockReturnValueOnce(bookmarksQuery);
-  return { service: new ChallengesService(db, {} as any), candidatesQuery };
+  return {
+    service: new ChallengesService(db, {} as any, createFilesStub() as any),
+    candidatesQuery,
+  };
+}
+
+// posterFileId 검증/포스터 URL 해결은 FilesService 책임 — 스텁으로 고정 동작을 돌려준다.
+function createFilesStub(overrides: Record<string, unknown> = {}) {
+  return {
+    assertReadyPublic: vi.fn().mockResolvedValue({ id: 'file-1' }),
+    resolvePublicUrl: vi.fn().mockResolvedValue(null),
+    ...overrides,
+  };
 }
 
 function challenge(id: string, category: string | null, createdAt: string): ChallengeRow {
@@ -248,7 +261,12 @@ describe('ChallengesService.list', () => {
     const where = vi.fn().mockReturnValue({ orderBy, limit });
     const from = vi.fn().mockReturnValue({ where });
     const db = { select: vi.fn().mockReturnValue({ from }) } as any;
-    return { service: new ChallengesService(db, {} as any), db, where, orderBy };
+    return {
+      service: new ChallengesService(db, {} as any, createFilesStub() as any),
+      db,
+      where,
+      orderBy,
+    };
   }
 
   function whereValues(where: ReturnType<typeof createListService>['where']) {
@@ -288,7 +306,7 @@ describe('ChallengesService.list', () => {
 
     const condition = where.mock.calls[0]![0];
     expect(referencesColumn(condition, challenges.status)).toBe(true);
-    expect(whereValues(where)).toContain('draft');
+    expect(whereValues(where)).toEqual(expect.arrayContaining(['published', 'closed']));
   });
 
   it('adds a closed exclusion only when includeClosed is false', async () => {
@@ -297,8 +315,9 @@ describe('ChallengesService.list', () => {
     const withoutClosed = createListService([]);
     await withoutClosed.service.list({ limit: 20, includeClosed: false });
 
-    expect(whereValues(withClosed.where).filter((value) => value === 'closed')).toHaveLength(0);
-    expect(whereValues(withoutClosed.where).filter((value) => value === 'closed')).toHaveLength(1);
+    // 공개 상태 allowlist에 포함된 closed 1개에 더해, includeClosed=false일 때만 exclusion이 하나 추가된다.
+    expect(whereValues(withClosed.where).filter((value) => value === 'closed')).toHaveLength(1);
+    expect(whereValues(withoutClosed.where).filter((value) => value === 'closed')).toHaveLength(2);
   });
 
   it('filters by category exact match and searches title/category with ILIKE', async () => {
@@ -486,7 +505,7 @@ describe('ChallengesService.create', () => {
       }),
     }));
     const adminSettings = { isEnabled: vi.fn().mockResolvedValue(false) };
-    return new ChallengesService(db, adminSettings as any);
+    return new ChallengesService(db, adminSettings as any, createFilesStub() as any);
   }
 
   const baseDto = {
@@ -503,11 +522,109 @@ describe('ChallengesService.create', () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
 
-    await service.create({ ...baseDto, recruitMethod: 'seMOchall' } as any, 'user-1');
-    await service.create(baseDto as any, 'user-1');
+    await service.create(
+      { ...baseDto, recruitMethod: 'seMOchall', recruitUrl: undefined } as any,
+      'user-1',
+    );
+    await service.create({ ...baseDto, recruitUrl: 'https://example.com/apply' } as any, 'user-1');
 
     expect(valuesCalls[0]).toMatchObject({ recruitMethod: 'seMOchall' });
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
+  });
+
+  it('stores the requested status, falling back to contestAutoPublish when omitted', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+    const url = 'https://example.com/apply';
+
+    await service.create({ ...baseDto, recruitUrl: url, status: 'published' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url, status: 'draft' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url } as any, 'user-1');
+
+    expect(valuesCalls[0]).toMatchObject({ status: 'published' });
+    expect(valuesCalls[1]).toMatchObject({ status: 'draft' });
+    // contestAutoPublish 스텁이 false라 draft
+    expect(valuesCalls[2]).toMatchObject({ status: 'draft' });
+  });
+
+  it('persists recruitUrl for external recruitMethod and clears any url provided for seMOchall', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create(
+      { ...baseDto, recruitMethod: 'external', recruitUrl: 'https://example.com/apply' } as any,
+      'user-1',
+    );
+    await service.create(
+      {
+        ...baseDto,
+        recruitMethod: 'seMOchall',
+        recruitUrl: 'https://example.com/ignored',
+      } as any,
+      'user-1',
+    );
+
+    expect(valuesCalls[0]).toMatchObject({
+      recruitMethod: 'external',
+      recruitUrl: 'https://example.com/apply',
+    });
+    expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'seMOchall', recruitUrl: null });
+  });
+
+  it('rejects creating an external-recruit challenge (default included) without a recruitUrl', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await expect(
+      service.create({ ...baseDto, recruitMethod: 'external' } as any, 'user-1'),
+    ).rejects.toThrow('recruitUrl is required when recruitMethod is external');
+    await expect(service.create(baseDto as any, 'user-1')).rejects.toThrow(
+      'recruitUrl is required when recruitMethod is external',
+    );
+    expect(valuesCalls).toHaveLength(0);
+  });
+
+  it('persists the optional poster file id on create', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create(
+      { ...baseDto, recruitMethod: 'seMOchall', posterFileId: 'file-1' } as any,
+      'user-1',
+    );
+
+    expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1' });
+  });
+
+  it('validates the poster file and rejects create for a missing/pending/private file', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select.mockImplementation(() => queryChain([{ id: 'biz-1' }]));
+    db.insert.mockImplementation(() => ({
+      values: vi.fn().mockImplementation((captured) => {
+        valuesCalls.push(captured);
+        return { returning: vi.fn().mockResolvedValue([{ id: 'challenge-1' }]) };
+      }),
+    }));
+    const files = createFilesStub({
+      assertReadyPublic: vi
+        .fn()
+        .mockRejectedValue(new BadRequestException('A ready public file is required')),
+    });
+    const service = new ChallengesService(
+      db,
+      { isEnabled: vi.fn().mockResolvedValue(false) } as any,
+      files as any,
+    );
+
+    await expect(
+      service.create(
+        { ...baseDto, recruitMethod: 'seMOchall', posterFileId: 'file-x' } as any,
+        'user-1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(valuesCalls).toHaveLength(0);
+    expect(files.assertReadyPublic).toHaveBeenCalledWith('file-x');
   });
 });
 
@@ -529,7 +646,12 @@ describe('ChallengesService.update', () => {
       select: vi.fn().mockReturnValue({ from }),
       update: vi.fn().mockReturnValue({ set }),
     } as any;
-    return { service: new ChallengesService(db, {} as any), db, set, where };
+    return {
+      service: new ChallengesService(db, {} as any, createFilesStub() as any),
+      db,
+      set,
+      where,
+    };
   }
 
   it('updates only the provided fields for the owning business', async () => {
@@ -542,7 +664,37 @@ describe('ChallengesService.update', () => {
   it('returns 404 when the challenge is missing or owned by another business', async () => {
     const { service, db } = createUpdateService([]);
     await expect(service.update('ch-1', { title: 'x' }, owner)).rejects.toThrow(
-      'Challenge not found',
+      '챌린지를 찾을 수 없습니다',
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('updates or clears the optional poster file id', async () => {
+    const withPoster = createUpdateService([current]);
+    await withPoster.service.update('ch-1', { posterFileId: 'file-1' }, owner);
+    expect(withPoster.set).toHaveBeenCalledWith({ posterFileId: 'file-1' });
+
+    const cleared = createUpdateService([current]);
+    await cleared.service.update('ch-1', { posterFileId: null }, owner);
+    expect(cleared.set).toHaveBeenCalledWith({ posterFileId: null });
+  });
+
+  it('rejects update when posterFileId is not a ready public file', async () => {
+    const db = { select: vi.fn(), update: vi.fn() } as any;
+    const limit = vi.fn().mockResolvedValue([current]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    db.select.mockReturnValue({ from: vi.fn().mockReturnValue({ innerJoin }) });
+    db.update.mockReturnValue({ set: vi.fn() });
+    const files = createFilesStub({
+      assertReadyPublic: vi
+        .fn()
+        .mockRejectedValue(new BadRequestException('A ready public file is required')),
+    });
+    const service = new ChallengesService(db, {} as any, files as any);
+
+    await expect(service.update('ch-1', { posterFileId: 'file-x' }, owner)).rejects.toThrow(
+      BadRequestException,
     );
     expect(db.update).not.toHaveBeenCalled();
   });
@@ -560,12 +712,169 @@ describe('ChallengesService.update', () => {
     const { service, db } = createUpdateService([current]);
     await expect(
       service.update('ch-1', { endDate: '2029-12-31T00:00:00Z' }, owner),
-    ).rejects.toThrow('endDate must not be before startDate');
+    ).rejects.toThrow('종료일은 시작일 이후여야 합니다');
     expect(db.update).not.toHaveBeenCalled();
   });
 
   it('rejects an empty patch', async () => {
     const { service } = createUpdateService([current]);
-    await expect(service.update('ch-1', {}, owner)).rejects.toThrow('No fields to update');
+    await expect(service.update('ch-1', {}, owner)).rejects.toThrow('수정할 항목이 없습니다');
+  });
+
+  it('applies recruitUrl when the existing challenge recruits externally', async () => {
+    const { service, set } = createUpdateService([{ ...current, recruitMethod: 'external' }]);
+    await service.update('ch-1', { recruitUrl: 'https://example.com/apply' }, owner);
+    expect(set).toHaveBeenCalledWith({ recruitUrl: 'https://example.com/apply' });
+  });
+
+  it('ignores recruitUrl when the existing challenge recruits via seMOchall', async () => {
+    const { service, set } = createUpdateService([{ ...current, recruitMethod: 'seMOchall' }]);
+    await service.update('ch-1', { title: 'new', recruitUrl: 'https://example.com/apply' }, owner);
+    expect(set).toHaveBeenCalledWith({ title: 'new' });
+  });
+
+  it('persists applicationForm as-is so a later get returns the same questions', async () => {
+    const applicationForm: ApplicationFormQuestion[] = [
+      { id: 'q-1', title: '자기소개를 해주세요', type: 'long', options: [], required: true },
+      {
+        id: 'q-2',
+        title: '희망 역할',
+        type: 'radio',
+        options: ['기획', '디자인', '개발'],
+        required: false,
+      },
+    ];
+    const { service, set } = createUpdateService([current]);
+
+    await service.update('ch-1', { applicationForm }, owner);
+
+    expect(set).toHaveBeenCalledWith({ applicationForm });
+  });
+});
+
+describe('ChallengesService.findById', () => {
+  it('does not expose a draft row or record a view when the public lookup finds nothing', async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const insert = vi.fn();
+    const db = { select: vi.fn().mockReturnValue({ from }), insert } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findById('draft-id')).rejects.toThrow('챌린지를 찾을 수 없습니다.');
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toEqual(
+      expect.arrayContaining(['published', 'closed']),
+    );
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('returns a draft only through the owner-scoped lookup without recording a public view', async () => {
+    const challenge = { id: 'draft-id', status: 'draft', posterFileId: null };
+    const limit = vi.fn().mockResolvedValue([{ challenge }]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const insert = vi.fn();
+    const db = { select: vi.fn().mockReturnValue({ from }), insert } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findMineById('draft-id', 'owner-1')).resolves.toMatchObject(challenge);
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toContain('owner-1');
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-owner from draft detail and stats before aggregation', async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const db = { select: vi.fn().mockReturnValue({ from }) } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.findMineById('draft-id', 'other-owner')).rejects.toThrow(
+      '챌린지를 찾을 수 없습니다.',
+    );
+    await expect(service.getStatsForOwner('draft-id', 'other-owner')).rejects.toThrow(
+      '챌린지를 찾을 수 없습니다.',
+    );
+    expect(collectSqlValues(where.mock.calls[0]?.[0])).toContain('other-owner');
+    expect(db.select).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects draft statistics before running aggregate queries', async () => {
+    const db = { select: vi.fn().mockReturnValue(queryChain([])) } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    await expect(service.getStats('draft-id')).rejects.toThrow('챌린지를 찾을 수 없습니다.');
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns applicationForm exactly as stored on the row (GET reflects a prior PATCH)', async () => {
+    const applicationForm = [
+      { id: 'q-1', title: '자기소개', type: 'short', options: [], required: true },
+    ];
+    const row = { id: 'ch-1', applicationForm };
+    const limit = vi.fn().mockResolvedValue([row]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const values = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+      insert: vi.fn().mockReturnValue({ values }),
+    } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.applicationForm).toEqual(applicationForm);
+  });
+
+  it('returns null applicationForm for a challenge that never had a form saved', async () => {
+    const row = { id: 'ch-1', applicationForm: null };
+    const limit = vi.fn().mockResolvedValue([row]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const from = vi.fn().mockReturnValue({ where });
+    const values = vi.fn().mockResolvedValue(undefined);
+    const db = {
+      select: vi.fn().mockReturnValue({ from }),
+      insert: vi.fn().mockReturnValue({ values }),
+    } as any;
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.applicationForm).toBeNull();
+  });
+});
+
+describe('ChallengesService.findById', () => {
+  function createDetailService(rows: unknown[], files: ReturnType<typeof createFilesStub>) {
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select.mockImplementation(() => queryChain(rows));
+    db.insert.mockImplementation(() => ({ values: vi.fn().mockResolvedValue(undefined) }));
+    return new ChallengesService(db, {} as any, files as any);
+  }
+
+  it('attaches the resolved posterUrl next to the challenge row', async () => {
+    const files = createFilesStub({
+      resolvePublicUrl: vi.fn().mockResolvedValue('https://cdn.example.com/uploads/poster.webp'),
+    });
+    const service = createDetailService([{ id: 'ch-1', posterFileId: 'file-poster' }], files);
+
+    const result = await service.findById('ch-1');
+
+    expect(result).toMatchObject({
+      id: 'ch-1',
+      posterUrl: 'https://cdn.example.com/uploads/poster.webp',
+    });
+    expect(files.resolvePublicUrl).toHaveBeenCalledWith('file-poster');
+  });
+
+  it('falls back to a null posterUrl when the file is missing or not public-ready', async () => {
+    const service = createDetailService([{ id: 'ch-1', posterFileId: null }], createFilesStub());
+
+    const result = await service.findById('ch-1');
+
+    expect(result.posterUrl).toBeNull();
   });
 });

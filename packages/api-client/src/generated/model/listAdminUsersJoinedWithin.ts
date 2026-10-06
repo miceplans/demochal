@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminUsersJoinedWithin =
-  (typeof ListAdminUsersJoinedWithin)[keyof typeof ListAdminUsersJoinedWithin];
+export type ListAdminUsersJoinedWithin = typeof ListAdminUsersJoinedWithin[keyof typeof ListAdminUsersJoinedWithin];
+
 
 export const ListAdminUsersJoinedWithin = {
   '7d': '7d',

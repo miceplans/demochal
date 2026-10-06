@@ -4,19 +4,7 @@ import { AUTH_COOKIE_NAME } from '../auth/auth.cookie.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import { AdminController } from './admin.controller.js';
 import { AdminRoleGuard } from './admin-role.guard.js';
-
-/** Auto-chaining thenable stand-in for a drizzle select builder (see admin.service.spec.ts). */
-function chainable(resolved: unknown) {
-  const proxy: any = new Proxy(function () {}, {
-    get(_target, prop) {
-      if (prop === 'then') {
-        return (onFulfilled: (value: unknown) => unknown) => onFulfilled(resolved);
-      }
-      return () => proxy;
-    },
-  });
-  return proxy;
-}
+import { chainable } from './admin.test-helpers.js';
 
 function createDbStub(selectResult: unknown) {
   return { select: vi.fn(() => chainable(selectResult)) } as any;
@@ -54,6 +42,7 @@ describe('AdminRoleGuard', () => {
   it.each([
     ['an anonymous request', undefined],
     ['a non-admin user', { id: 'u1', email: 'member@semochal.kr', role: 'user' }],
+    ['a business user', { id: 'b1', email: 'biz@semochal.kr', role: 'business' }],
   ])('forbids %s', (_label, user) => {
     expect(() => guard.canActivate(httpContext({ user }))).toThrow(ForbiddenException);
   });
@@ -69,7 +58,7 @@ describe('JwtAuthGuard', () => {
     const { guard, verifyAsync } = createGuard(createDbStub([]));
 
     await expect(guard.canActivate(httpContext({ headers: {} }))).rejects.toThrow(
-      new UnauthorizedException('Missing authentication cookie'),
+      new UnauthorizedException('로그인이 필요합니다.'),
     );
     expect(verifyAsync).not.toHaveBeenCalled();
   });
@@ -82,7 +71,7 @@ describe('JwtAuthGuard', () => {
 
     await expect(
       guard.canActivate(httpContext({ headers: cookieHeader('tampered.jwt') })),
-    ).rejects.toThrow(new UnauthorizedException('Invalid or expired token'));
+    ).rejects.toThrow(new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.'));
   });
 
   it('rejects a token whose payload is missing required claims', async () => {

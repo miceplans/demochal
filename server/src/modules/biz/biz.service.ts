@@ -1,5 +1,5 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { challenges } from '../../db/schema.js';
 import { AdsService } from '../ads/ads.service.js';
@@ -19,17 +19,21 @@ export class BizService {
 
   async dashboard(userId: string) {
     const business = await this.businessesService.findByOwner(userId);
-    if (!business) throw new ForbiddenException('Business account required');
+    if (!business) throw new ForbiddenException('기업 계정이 필요합니다.');
 
+    // 대시보드는 실제 운영 중인 공고 기준이다: draft(미공개)·closed(종료) 공고는 제외하고
+    // 최신 published 공고를 "최근 공고"와 통계 소스로 쓴다. ("내 공고" 목록은 별개 동작.)
     const [recentPosting] = await this.db
       .select()
       .from(challenges)
-      .where(eq(challenges.businessId, business.id))
+      .where(and(eq(challenges.businessId, business.id), eq(challenges.status, 'published')))
       .orderBy(desc(challenges.createdAt))
       .limit(1);
 
     // stats 소스는 GET /challenges/{id}/stats와 동일 (ChallengeStats 재사용).
-    const stats = recentPosting ? await this.challengesService.getStats(recentPosting.id) : null;
+    const stats = recentPosting
+      ? await this.challengesService.getStatsForOwner(recentPosting.id, userId)
+      : null;
     const history = await this.billingHistoryService.forBusiness(business.id, {});
     const monthlyAdExposure = await this.adsService.monthlyExposureForBusiness(business.id);
     return {

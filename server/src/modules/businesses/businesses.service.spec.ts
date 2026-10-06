@@ -37,7 +37,7 @@ function createDbStub(updated: Record<string, unknown> | undefined) {
 describe('BusinessesService', () => {
   it('scopes the update to the authenticated owner and applies only provided fields', async () => {
     const { db, set, where } = createDbStub({ id: 'biz-1', name: '새 이름' });
-    const service = new BusinessesService(db);
+    const service = new BusinessesService(db, { notify: vi.fn() } as any);
 
     await service.update('biz-1', { name: '새 이름', bannerImageFileId: 'file-1' }, 'user-1');
 
@@ -63,10 +63,49 @@ describe('BusinessesService', () => {
 
   it('rejects with NotFound when no row matches id and owner (no partial leak)', async () => {
     const { db } = createDbStub(undefined);
-    const service = new BusinessesService(db);
+    const service = new BusinessesService(db, { notify: vi.fn() } as any);
 
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
-      'Business not found or not owned by user',
+      '기업 정보를 찾을 수 없거나 조회 권한이 없습니다.',
     );
+  });
+});
+
+describe('BusinessesService.register', () => {
+  function createRegisterDb(existing: unknown[]) {
+    const created = { id: 'biz-new', verificationStatus: 'pending', ownerUserId: 'user-1' };
+    const tx: any = {
+      insert: () => ({ values: () => ({ returning: async () => [created] }) }),
+      update: () => ({ set: () => ({ where: async () => [] }) }),
+    };
+    const db: any = {
+      select: () => ({ from: () => ({ where: () => ({ limit: async () => existing }) }) }),
+      transaction: async (callback: (tx: unknown) => unknown) => callback(tx),
+    };
+    return db;
+  }
+
+  it('raises the newBusinessAlert admin alert with the business id only', async () => {
+    const alerts = { notify: vi.fn().mockResolvedValue(undefined) };
+    const service = new BusinessesService(createRegisterDb([]), alerts as any);
+
+    await service.register(
+      { name: '한빛협회', registrationNumber: '123-45-67890', type: 'corp' } as any,
+      'user-1',
+    );
+
+    expect(alerts.notify).toHaveBeenCalledWith('newBusinessAlert', 'admin.business', {
+      businessId: 'biz-new',
+    });
+  });
+
+  it('does not alert when the owner already has a business', async () => {
+    const alerts = { notify: vi.fn() };
+    const service = new BusinessesService(createRegisterDb([{ id: 'biz-old' }]), alerts as any);
+
+    await expect(service.register({ type: 'corp' } as any, 'user-1')).rejects.toThrow(
+      '이미 등록된 기업 정보가 있습니다.',
+    );
+    expect(alerts.notify).not.toHaveBeenCalled();
   });
 });

@@ -9,6 +9,7 @@ import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
 import { generated } from '@semochal/api-client';
+import { useNotificationStream } from '@/lib/useNotificationStream';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -32,7 +33,7 @@ export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: bool
 }
 const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
   background: c.white,
-  borderBottom: `1px solid ${c.gray100}`,
+  borderBottom: `0.5px solid ${c.gray100}`,
   padding: compact
     ? '12px max(24px, calc((100% - 1200px) / 2))'
     : '8px max(24px, calc((100% - 1200px) / 2))',
@@ -41,7 +42,7 @@ const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
 const Search = styled.form({
   display: 'flex',
   alignItems: 'center',
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 8,
   gap: 8,
   padding: '0 16px',
@@ -114,7 +115,7 @@ const MobileHeader = styled.header({
     flexDirection: 'column',
     gap: 16,
     padding: '16px',
-    borderBottom: `1px solid ${c.gray100}`,
+    borderBottom: `0.5px solid ${c.gray100}`,
   },
 });
 const MobileTitleBar = styled.div({
@@ -188,12 +189,11 @@ const Bottom = styled.nav({
 const FooterBox = styled.footer({
   background: c.gray50,
   padding: '50px 60px',
-  minHeight: 367,
   display: 'flex',
   flexDirection: 'column',
-  justifyContent: 'space-between',
-  gap: 100,
+  gap: 23,
   ...textStyle.body,
+  lineHeight: 'normal',
   [mobile]: { display: 'none' },
 });
 export function Footer() {
@@ -201,21 +201,20 @@ export function Footer() {
     <FooterBox>
       <Row style={{ justifyContent: 'space-between' }}>
         <Logo dot mono />
-        <Row>
+        <Row style={{ color: c.gray900 }}>
           <Link href="/privacy">개인정보처리방침</Link>
           <Link href="/terms">이용약관</Link>
           <Link href="/youth">청소년 보호 정책</Link>
         </Row>
       </Row>
       <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div style={{ lineHeight: 1.65, maxWidth: 329 }}>
-          대표 유철한
-          <br />
-          사업자등록번호 617-81-98126
-          <br />
-          부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
-          <br />
-          051-783-1170 / mice@miceplans.com
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 329, color: c.gray900 }}
+        >
+          <span>대표 유철한</span>
+          <span>사업자등록번호 617-81-98126</span>
+          <span>부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호</span>
+          <span>051-783-1170 / mice@miceplans.com</span>
         </div>
         <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
       </Row>
@@ -245,6 +244,7 @@ export function UserShell({
   }, []);
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const isLoggedIn = auth?.status === 200;
+  useNotificationStream(isLoggedIn);
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
     ['/explore', '챌린지 탐색', '/assets/icons/figma-footer/search.svg'],
@@ -320,6 +320,9 @@ export function UserShell({
             <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
               팀 탐색
             </Link>
+            <Link href="/people" aria-current={path.startsWith('/people') ? 'page' : undefined}>
+              팀원 찾기
+            </Link>
           </Nav>
         )}
       </HeaderBox>
@@ -389,7 +392,7 @@ const MyGrid = styled.div({
   [mobile]: { display: 'block', minHeight: 0 },
 });
 const MyAside = styled.aside({
-  borderRight: `1px solid ${c.gray100}`,
+  borderRight: `0.5px solid ${c.gray100}`,
   padding: '40px 0',
   '& a': {
     display: 'block',
@@ -405,6 +408,8 @@ const MyAside = styled.aside({
 });
 export function MyShell({ children, title }: { children: ReactNode; title: string }) {
   const path = usePathname();
+  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
   return (
     <UserShell compact title={title}>
       <MyGrid>
@@ -412,7 +417,7 @@ export function MyShell({ children, title }: { children: ReactNode; title: strin
           <Link href="/my">
             <Row>
               <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gray100 }} />
-              황지영
+              {userName}
             </Row>
           </Link>
           {myMenu.map(([href, label]) => (

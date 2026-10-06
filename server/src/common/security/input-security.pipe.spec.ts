@@ -42,10 +42,17 @@ describe('InputSecurityPipe', () => {
     );
   });
 
-  it('rejects SQL payloads by default, including the `--` sequence opaque tokens use', () => {
+  it('rejects executable SQL payloads by default', () => {
     expect(() => pipe.transform("' OR '1'='1'", queryMetadata('q'))).toThrow(BadRequestException);
     expect(() => pipe.transform('1; DROP TABLE users--', queryMetadata('q'))).toThrow(
       BadRequestException,
+    );
+    expect(() => pipe.transform("admin'--", queryMetadata('q'))).toThrow(BadRequestException);
+  });
+
+  it('allows double hyphens only in a safe external recruit URL', () => {
+    expect(pipe.transform('https://example.com/apply--2026', queryMetadata('recruitUrl'))).toBe(
+      'https://example.com/apply--2026',
     );
     expect(() => pipe.transform('opaque--token--value', queryMetadata('code'))).toThrow(
       BadRequestException,
@@ -61,7 +68,7 @@ describe('InputSecurityPipe', () => {
     expect(() => pipe.transform({ keyword: "a' OR '1'='1'" }, queryMetadata('query'))).toThrow(
       BadRequestException,
     );
-    expect(() => pipe.transform(['ok', 'x--y'], queryMetadata('tags'))).toThrow(
+    expect(() => pipe.transform(['ok', '1; DROP TABLE users--'], queryMetadata('tags'))).toThrow(
       BadRequestException,
     );
   });
@@ -100,7 +107,7 @@ describe('SkipInputSecurityInterceptor', () => {
     const store: { skip?: boolean } = {};
     interceptor.intercept(executionContextFor('standard'), callHandlerObserving(store)).subscribe();
     expect(store.skip).toBeUndefined();
-    // Outside an opt-out the pipe still blocks the deny-list sequences.
+    // Outside an opt-out, opaque tokens with SQL comments remain blocked.
     expect(() => pipe.transform('opaque--token--value', queryMetadata('code'))).toThrow(
       BadRequestException,
     );

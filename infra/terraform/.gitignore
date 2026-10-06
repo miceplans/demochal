@@ -2,9 +2,13 @@
 *.tfstate
 *.tfstate.*
 staging.tfvars
+*.tfvars.bak
+*.bak
+*.pem
 crash.log
 crash.*.log
 *.tfvars.json
+*.tfplan
 override.tf
 override.tf.json
 *_override.tf

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { colors as c } from '@/styles/design';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { MyShell } from '@/components/common/UserShell';
@@ -44,7 +45,7 @@ export function AccountSettings() {
         <Button type="button" tone="plain" onClick={() => void logout()}>
           로그아웃
         </Button>
-        <hr style={{ width: '100%', border: 0, borderTop: '1px solid #eee' }} />
+        <hr style={{ width: '100%', border: 0, borderTop: '0.5px solid #eee' }} />
         <Stack gap={10}>
           <Title style={{ fontSize: 20 }}>회원 탈퇴</Title>
           <Muted>
@@ -66,7 +67,7 @@ export function AccountSettings() {
             />{' '}
             안내를 확인했고 회원 탈퇴에 동의합니다.
           </label>
-          {error && <Muted style={{ color: '#d92d20' }}>{error}</Muted>}
+          {error && <Muted style={{ color: c.red }}>{error}</Muted>}
           <Button
             type="button"
             tone="outline"

@@ -167,7 +167,7 @@ export class AdsService implements OnModuleInit {
   }
 
   async create(dto: CreateAdDto, businessId: string, userId: string) {
-    if (!businessId) throw new UnauthorizedException('Business authentication is required');
+    if (!businessId) throw new UnauthorizedException('기업 인증이 필요합니다.');
 
     const ad = await this.db.transaction(async (tx) => {
       // Lock the product row so a second concurrent create() for the same
@@ -179,11 +179,11 @@ export class AdsService implements OnModuleInit {
         .where(eq(adProducts.id, dto.productId))
         .for('update')
         .limit(1);
-      if (!product) throw new NotFoundException('Ad product not found');
+      if (!product) throw new NotFoundException('광고 상품을 찾을 수 없습니다.');
 
       if (dto.expectedDailyPrice !== product.dailyPrice) {
         throw new ConflictException({
-          message: 'Ad pricing has changed since this quote was shown; please re-confirm.',
+          message: '조회하신 이후 광고 단가가 변경되었습니다. 다시 확인해 주세요.',
           currentDailyPrice: product.dailyPrice,
         });
       }
@@ -191,7 +191,7 @@ export class AdsService implements OnModuleInit {
       const startDate = new Date(dto.startDate);
       const endDate = new Date(dto.endDate);
       if (endDate < startDate) {
-        throw new BadRequestException('endDate must not be before startDate');
+        throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
       }
 
       const reserving = await tx
@@ -200,9 +200,7 @@ export class AdsService implements OnModuleInit {
         .where(and(eq(ads.productId, dto.productId), this.reservingCondition()));
       const hasOverlap = reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate);
       if (hasOverlap) {
-        throw new BadRequestException(
-          'Selected dates overlap an existing reservation for this placement',
-        );
+        throw new BadRequestException('선택한 날짜가 이미 예약된 기간과 겹칩니다.');
       }
 
       const days = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
@@ -235,25 +233,26 @@ export class AdsService implements OnModuleInit {
 
   async findById(id: string) {
     const [ad] = await this.db.select().from(ads).where(eq(ads.id, id)).limit(1);
-    if (!ad) throw new NotFoundException('Ad not found');
+    if (!ad) throw new NotFoundException('광고를 찾을 수 없습니다.');
     return ad;
   }
 
   async updateStatus(id: string, dto: UpdateAdDto, user: AuthenticatedUser) {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
-    if (user.role !== 'admin' && (!business || business.id !== ad.businessId)) {
-      throw new ForbiddenException('Only the owning business can change this ad');
+    // 관리자 중단은 전용 엔드포인트(POST /admin/ads/:id/pause)가 담당한다.
+    if (!business || business.id !== ad.businessId) {
+      throw new ForbiddenException('해당 기업만 광고를 변경할 수 있습니다.');
     }
     // 결제 전 preparing 광고를 직접 active로 바꾸는 건 불가 — 활성화는 결제
     // 웹훅(OrdersService.markPaid)이 담당한다.
     if (dto.status === 'active' && ad.status === 'preparing') {
       throw new BadRequestException(
-        'Unpaid ads cannot be activated directly; complete payment first',
+        '결제 전 광고는 직접 활성화할 수 없습니다. 먼저 결제를 완료해 주세요.',
       );
     }
     if (dto.status === 'paused' && ad.status !== 'active') {
-      throw new BadRequestException('Only active ads can be paused');
+      throw new BadRequestException('진행 중인 광고만 일시정지할 수 있습니다.');
     }
     if (dto.status === 'active') {
       return this.db.transaction(async (tx) => {
@@ -261,7 +260,7 @@ export class AdsService implements OnModuleInit {
         // reactivation serialize, so a refunded order cannot resume serving.
         const [order] = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
         if (!order || order.status !== 'paid') {
-          throw new BadRequestException('Only ads with a paid order can be activated');
+          throw new BadRequestException('결제가 완료된 광고만 활성화할 수 있습니다.');
         }
         const [updated] = await tx
           .update(ads)
@@ -283,7 +282,7 @@ export class AdsService implements OnModuleInit {
     const ad = await this.findById(id);
     const business = await this.businessesService.findByOwner(user.id);
     if (user.role !== 'admin' && (!business || business.id !== ad.businessId)) {
-      throw new ForbiddenException('Only the owning business can view this report');
+      throw new ForbiddenException('해당 기업만 리포트를 조회할 수 있습니다.');
     }
 
     const end = query.to ?? seoulDateString(new Date());

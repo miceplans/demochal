@@ -1,6 +1,7 @@
 'use client';
 
 import { useChallengesQuery } from '../api/queries';
+import { LoadingState } from '@/components/common/LoadingState';
 import { DataTable } from '@/components/data/DataTable';
 import { BizLink } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
@@ -53,7 +54,7 @@ export function BizChallengesTable() {
 
   const rows = useMemo(() => data?.items ?? [], [data]);
 
-  if (isPending) return <div style={{ padding: '24px 0', color: c.gray500 }}>불러오는 중...</div>;
+  if (isPending) return <LoadingState label="불러오는 중..." />;
 
-  return <DataTable data={rows} columns={columns} emptyMessage="등록된 챌린지가 없습니다." />;
+  return <DataTable data={rows} columns={columns} />;
 }

@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListAdminReportsTargetType =
-  (typeof ListAdminReportsTargetType)[keyof typeof ListAdminReportsTargetType];
+export type ListAdminReportsTargetType = typeof ListAdminReportsTargetType[keyof typeof ListAdminReportsTargetType];
+
 
 export const ListAdminReportsTargetType = {
   challenge: 'challenge',

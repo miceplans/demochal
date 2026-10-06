@@ -31,7 +31,7 @@ const statusBadge: Record<BizRow['status'], 'blue' | 'green' | 'red'> = {
 };
 
 const columns: AdminColumn<BizReviewRow>[] = [
-  { key: 'org', header: '활동유형', width: 100 },
+  { key: 'org', header: '기관명', width: 100 },
   { key: 'type', header: '유형', width: 80 },
   {
     key: 'bizNumber',
@@ -319,7 +319,7 @@ const Panel = styled.aside({
   minWidth: PANEL_WIDTH,
   boxSizing: 'border-box',
   background: c.white,
-  border: '1px solid #DFE2E7',
+  border: '0.5px solid #DFE2E7',
   borderLeft: 0,
   borderRadius: '0 8px 8px 0',
   padding: '20px 24px 24px',
@@ -329,7 +329,7 @@ const Panel = styled.aside({
   '@media (max-width: 960px)': {
     width: 'auto',
     minWidth: 0,
-    borderLeft: '1px solid #DFE2E7',
+    borderLeft: '0.5px solid #DFE2E7',
     borderTop: 0,
     borderRadius: '0 0 8px 8px',
   },
@@ -359,7 +359,7 @@ const InfoList = styled.dl({
   display: 'flex',
   flexDirection: 'column',
   background: c.gray50,
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 8,
   padding: '4px 14px',
 });
@@ -369,7 +369,7 @@ const InfoItem = styled.div({
   justifyContent: 'space-between',
   gap: 12,
   padding: '9px 0',
-  '& + &': { borderTop: '1px solid #E5E7EB' },
+  '& + &': { borderTop: '0.5px solid #E5E7EB' },
 });
 const InfoLabel = styled.dt({ ...textStyle.metaText, color: c.gray500, flexShrink: 0 });
 const InfoValue = styled.dd({
@@ -401,7 +401,7 @@ const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const RejectTextarea = styled.textarea({
   resize: 'vertical',
   padding: '10px 12px',
-  border: '1px solid #E5E7EB',
+  border: '0.5px solid #E5E7EB',
   borderRadius: 8,
   color: c.gray900,
   ...textStyle.bodySmall,
@@ -411,7 +411,7 @@ const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
   flex: 1,
   height: 36,
   padding: '0 16px',
-  border: primary ? 0 : '1px solid #E5E7EB',
+  border: primary ? 0 : '0.5px solid #E5E7EB',
   borderRadius: 6,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray700,

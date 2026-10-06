@@ -54,7 +54,7 @@ export class AdsController {
   @Post()
   async create(@Body() dto: CreateAdDto, @CurrentUser() user: AuthenticatedUser) {
     const business = await this.businessesService.findByOwner(user.id);
-    if (!business) throw new UnauthorizedException('Business account required');
+    if (!business) throw new UnauthorizedException('기업 계정이 필요합니다.');
     return this.adsService.create(dto, business.id, user.id);
   }
 
