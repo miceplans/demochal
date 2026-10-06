@@ -2,6 +2,7 @@
 
 import styled from '@emotion/styled';
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 // 옵션이 이 개수를 넘으면 목록을 2열로 펼친다(요소1 요소2 / 요소3).
@@ -141,6 +142,12 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   color: #111;
   cursor: pointer;
   transition: background 0.12s ease;
+
+  /* 모바일에서는 목록이 화면을 덜 차지하도록 옵션을 작게 한다. */
+  ${mobile} {
+    padding: 8px 12px;
+    font-size: ${textStyle.mSubText.fontSize}px;
+  }
 
   &:hover {
     background: ${(p) => p.theme.colors.gray[100]};
