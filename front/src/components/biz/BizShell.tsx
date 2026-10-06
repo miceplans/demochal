@@ -8,6 +8,7 @@ import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
 import { Badge as BaseBadge } from '@/components/ui/Badge';
+import { presentBizVerificationStatus } from './verification-status';
 
 const BizNavContext = createContext('');
 export function BizNavProvider({ base, children }: { base: string; children: ReactNode }) {
@@ -258,6 +259,9 @@ export function BizSidebar() {
   const { data: business } = generated.useFindMyBusiness({ query: { retry: false } });
   const accountName = (auth?.status === 200 ? auth.data.name : undefined) ?? '불러오는 중';
   const businessName = (business?.status === 200 ? business.data.name : undefined) ?? '불러오는 중';
+  const verification = presentBizVerificationStatus(
+    business?.status === 200 ? business.data.verificationStatus : undefined,
+  );
   const logoutMutation = generated.useLogout();
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
@@ -289,6 +293,14 @@ export function BizSidebar() {
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{accountName}</strong>
             <span style={{ fontSize: 11, fontWeight: 500, color: c.gray500 }}>{businessName}</span>
+            {business?.status === 200 && (
+              <StatusTag
+                tone={verification.tone}
+                aria-label={`기업 인증 상태: ${verification.label}`}
+              >
+                {verification.label}
+              </StatusTag>
+            )}
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
