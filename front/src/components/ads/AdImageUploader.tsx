@@ -50,13 +50,16 @@ async function makeCroppedFile(
   image: CropImage,
   aspectRatio: number,
   position: { x: number; y: number },
+  minOutputWidth: number,
 ): Promise<File> {
   const sourceRatio = image.width / image.height;
   const cropWidth = sourceRatio > aspectRatio ? image.height * aspectRatio : image.width;
   const cropHeight = sourceRatio > aspectRatio ? image.height : image.width / aspectRatio;
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.round(cropWidth));
-  canvas.height = Math.max(1, Math.round(cropHeight));
+  // 원본 해상도를 유지하되, 작은 원본은 레티나(2x) 노출 폭까지 고품질로 키워 흐릿한 브라우저 확대를 피한다.
+  const scale = Math.max(1, minOutputWidth / cropWidth);
+  canvas.width = Math.max(1, Math.round(cropWidth * scale));
+  canvas.height = Math.max(1, Math.round(cropHeight * scale));
   const context = canvas.getContext('2d');
   if (!context) throw new Error('이미지를 처리할 수 없어요.');
   const source = new Image();
@@ -65,6 +68,8 @@ async function makeCroppedFile(
     source.onload = () => resolve();
     source.onerror = reject;
   });
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = 'high';
   context.drawImage(
     source,
     (image.width - cropWidth) * position.x,
@@ -80,7 +85,7 @@ async function makeCroppedFile(
     canvas.toBlob(
       (value) => (value ? resolve(value) : reject(new Error('이미지를 처리할 수 없어요.'))),
       'image/webp',
-      0.92,
+      0.98,
     ),
   );
   return new File([blob], `${image.file.name.replace(/\.[^.]+$/, '')}.webp`, {
@@ -169,7 +174,7 @@ export function AdImageUploader({
     if (!image || processing) return;
     setProcessing(true);
     try {
-      const file = await makeCroppedFile(image, aspectRatio, position);
+      const file = await makeCroppedFile(image, aspectRatio, position, previewWidth * 2);
       URL.revokeObjectURL(image.url);
       setImage(null);
       onFileSelected(file);
