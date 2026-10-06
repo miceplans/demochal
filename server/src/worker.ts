@@ -21,8 +21,10 @@ import {
   SUPPORT_EMAIL_EVENT,
   parseSupportEmailJob,
 } from './modules/notifications/email/support-email.js';
+import { PaymentsService } from './modules/payments/payments.service.js';
 
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
+const REFUND_PENDING_SCAN_INTERVAL_MS = 10 * 60 * 1000;
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
 async function bootstrap() {
@@ -39,6 +41,9 @@ async function bootstrap() {
   const challengeNotificationScan = app.get(ChallengeNotificationScanService);
   let lastChallengeScanAt = 0;
 
+  const paymentsService = app.get(PaymentsService);
+  let lastRefundPendingScanAt = 0;
+
   let shuttingDown = false;
   process.on('SIGTERM', () => (shuttingDown = true));
   process.on('SIGINT', () => (shuttingDown = true));
@@ -54,6 +59,7 @@ async function bootstrap() {
 
   while (!shuttingDown) {
     await scanChallengeNotifications();
+    await scanRefundPendingPayments();
 
     if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
       logger.warn('No worker queue is configured, idling');
@@ -96,6 +102,25 @@ async function bootstrap() {
     } catch (error) {
       const name = error instanceof Error ? error.name : 'UnknownError';
       logger.error(`Challenge notification scan failed (${name})`);
+    }
+  }
+
+  // 환불 보상이 실패한 결제(refund_pending)도 큐 설정과 무관하게 주기적으로
+  // 재스캔해 Toss 취소를 재시도한다(백오프/상한은 PaymentsService가 관리).
+  async function scanRefundPendingPayments() {
+    if (Date.now() - lastRefundPendingScanAt < REFUND_PENDING_SCAN_INTERVAL_MS) return;
+    lastRefundPendingScanAt = Date.now();
+    try {
+      const result = await paymentsService.retryRefundPendingPayments();
+      if (result.attempted > 0) {
+        logger.log(
+          `Refund retry scan: ${result.refunded} refunded, ${result.failed} failed ` +
+            `of ${result.attempted} attempted (${result.scanned} pending)`,
+        );
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      logger.error(`Refund pending scan failed (${name})`);
     }
   }
 

@@ -34,6 +34,42 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 6. `enable_runtime=true`와 `api_image`를 설정해 API 한 개를 기동합니다. worker는 기본 0개이며 큐 테스트 때만 `worker_desired_count=1`로 켭니다.
 7. 출력된 `api_url`을 Google/Kakao/Naver OAuth callback 및 Toss webhook 등록에 사용합니다. 등록 자체는 provider 계정 소유자가 수행합니다.
 
+### 필요할 때만 staging DB에 접속
+
+`db-admin` task는 private subnet에서만 실행되고 public IP를 받지 않습니다. ECS Exec를 켜서 접속한 뒤 컨테이너 안의 `DATABASE_URL`을 그대로 `psql`에 전달합니다. 실제 secret 값은 출력하거나 명령행에 직접 넣지 않습니다.
+
+```sh
+DB_ADMIN_TASK_ARN="$(aws ecs run-task \
+  --cluster "$(terraform output -raw ecs_cluster_name)" \
+  --task-definition "$(terraform output -raw db_admin_task_definition_arn)" \
+  --launch-type FARGATE \
+  --enable-execute-command \
+  --network-configuration "awsvpcConfiguration={subnets=[$(terraform output -raw db_admin_subnet_id)],securityGroups=[$(terraform output -raw db_admin_security_group_id)],assignPublicIp=DISABLED}" \
+  --query 'tasks[0].taskArn' --output text)"
+
+aws ecs wait tasks-running \
+  --cluster "$(terraform output -raw ecs_cluster_name)" \
+  --tasks "$DB_ADMIN_TASK_ARN"
+
+aws ecs execute-command \
+  --cluster "$(terraform output -raw ecs_cluster_name)" \
+  --task "$DB_ADMIN_TASK_ARN" \
+  --container db-admin \
+  --interactive \
+  --command "/bin/bash"
+
+# ECS Exec shell 안에서 실행
+psql "$DATABASE_URL"
+
+# 사용 후 로컬 셸에서 task 종료
+aws ecs stop-task \
+  --cluster "$(terraform output -raw ecs_cluster_name)" \
+  --task "$DB_ADMIN_TASK_ARN" \
+  --reason "manual db-admin session complete"
+```
+
+ECS Exec에는 AWS CLI Session Manager Plugin이 필요합니다. task가 종료되면 다시 실행해야 하며, 이 구성에는 `aws_ecs_service`가 없습니다.
+
 ### Grafana CloudWatch integration
 
 Grafana Cloud에서 발급한 external ID는 저장소나 `tfvars`에 기록하지 않습니다. apply를 실행하는 승인된 운영자 세션에서 `TF_VAR_grafana_external_id` 환경변수로만 제공하고, apply 후 `terraform output -raw grafana_cloudwatch_role_arn`의 ARN을 Grafana Cloud CloudWatch integration에 등록합니다. external ID는 IAM trust policy의 일부이므로 Terraform state에는 포함될 수 있습니다. state backend와 state를 읽을 수 있는 IAM principal은 승인된 운영자로 제한합니다. Terraform은 Grafana Labs AWS account에만 이 역할을 assume하도록 제한하며, trust policy의 external ID 조건도 함께 검증합니다.

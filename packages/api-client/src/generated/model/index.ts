@@ -191,7 +191,6 @@ export * from './registerBody';
 export * from './registerBodyAgreementsItem';
 export * from './registerBusinessRequest';
 export * from './registerBusinessRequestType';
-export * from './registerPaymentCardBody';
 export * from './rejectVerificationBody';
 export * from './report';
 export * from './reportStatus';
