@@ -92,7 +92,8 @@ const Inquiry = styled.section({
   padding: '120px 80px',
   display: 'flex',
   flexDirection: 'column',
-  alignItems: 'center',
+  alignItems: 'stretch',
+  '& > *': { minWidth: 0 },
   [mobile]: { padding: '80px 16px' },
 });
 const OpsTitle = styled.h2(textStyle.display);
