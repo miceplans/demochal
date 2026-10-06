@@ -35,7 +35,7 @@ function readImage(file: File): Promise<CropImage> {
     image.onload = () =>
       image.naturalWidth && image.naturalHeight
         ? resolve({ file, url, width: image.naturalWidth, height: image.naturalHeight })
-        : reject(new Error('이미지를 읽을 수 없어요.'));
+        : (URL.revokeObjectURL(url), reject(new Error('이미지를 읽을 수 없어요.')));
     image.onerror = () => {
       URL.revokeObjectURL(url);
       reject(new Error('이미지를 읽을 수 없어요.'));
