@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CreateCertificateRequestCategory =
-  (typeof CreateCertificateRequestCategory)[keyof typeof CreateCertificateRequestCategory];
+export type CreateCertificateRequestCategory = typeof CreateCertificateRequestCategory[keyof typeof CreateCertificateRequestCategory];
+
 
 export const CreateCertificateRequestCategory = {
   award: 'award',

@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ListPeopleSort = (typeof ListPeopleSort)[keyof typeof ListPeopleSort];
+export type ListPeopleSort = typeof ListPeopleSort[keyof typeof ListPeopleSort];
+
 
 export const ListPeopleSort = {
   recent: 'recent',

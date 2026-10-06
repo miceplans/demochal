@@ -20,7 +20,8 @@
 /**
  * 진행중/준비중/중단됨/만료
  */
-export type AdminAdEntryStatus = (typeof AdminAdEntryStatus)[keyof typeof AdminAdEntryStatus];
+export type AdminAdEntryStatus = typeof AdminAdEntryStatus[keyof typeof AdminAdEntryStatus];
+
 
 export const AdminAdEntryStatus = {
   active: 'active',

@@ -84,7 +84,7 @@ data "aws_iam_policy_document" "email_processor" {
   }
   statement {
     actions   = ["sqs:SendMessage"]
-    resources = [aws_sqs_queue.inbound_emails[0].arn]
+    resources = [aws_sqs_queue.inbound_emails.arn]
   }
 }
 
@@ -116,7 +116,7 @@ resource "aws_lambda_function" "email_processor" {
   environment {
     variables = {
       INBOX_BUCKET      = aws_s3_bucket.email_inbox[0].id
-      INBOUND_QUEUE_URL = aws_sqs_queue.inbound_emails[0].url
+      INBOUND_QUEUE_URL = aws_sqs_queue.inbound_emails.url
     }
   }
 

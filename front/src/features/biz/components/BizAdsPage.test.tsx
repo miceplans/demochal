@@ -256,4 +256,22 @@ describe('BizAdsPage 광고 링크 입력', () => {
       'https://example.com/again',
     );
   });
+
+  it('이전에 링크를 넣은 placement를 다시 업로드해 링크를 비우면 landingUrl이 전송되지 않는다', async () => {
+    renderPage();
+
+    await openNameModal('hero');
+    fillLink('https://example.com/old');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
+
+    await openNameModal('hero');
+    fillLink('');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    await submitReservation();
+
+    expect(mocks.createAd).toHaveBeenCalledTimes(1);
+    expect(mocks.createAd.mock.calls[0][0].data.landingUrl).toBeUndefined();
+  });
 });

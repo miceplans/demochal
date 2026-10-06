@@ -421,15 +421,6 @@ export const FieldInput = styled.input({
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
-export const FieldSelect = styled.select({
-  height: 40,
-  border: `0.5px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  background: c.white,
-  color: c.gray700,
-  '&:focus': { outline: 'none', boxShadow: s.focus },
-});
 export const TableBox = styled.div({
   border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,

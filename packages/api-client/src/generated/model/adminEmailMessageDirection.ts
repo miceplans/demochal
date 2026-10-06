@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type AdminEmailMessageDirection =
-  (typeof AdminEmailMessageDirection)[keyof typeof AdminEmailMessageDirection];
+export type AdminEmailMessageDirection = typeof AdminEmailMessageDirection[keyof typeof AdminEmailMessageDirection];
+
 
 export const AdminEmailMessageDirection = {
   inbound: 'inbound',

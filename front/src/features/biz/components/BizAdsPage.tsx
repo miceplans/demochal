@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -142,7 +143,8 @@ export function BizAdsPage() {
         // 모달에서 방금 입력한 이름/링크를 우선 쓴다. 바로 전 setState가 아직
         // 반영되지 않았을 때 state를 읽으면 입력값이 무시되기 때문이다.
         name: meta?.name || adTitles[placement]?.trim() || product.name,
-        landingUrl: meta?.link || adLinks[placement] || undefined,
+        // 모달 경로(meta)는 입력값을 그대로 쓴다 — 비운 링크가 이전 state로 되살아나면 안 된다.
+        landingUrl: meta ? meta.link || undefined : adLinks[placement] || undefined,
         price: product.dailyPrice,
         period: start,
         product,
@@ -358,7 +360,9 @@ export function BizAdsPage() {
             </TableHead>
             {contractsLoading && (
               <TableRow role="row">
-                <span>광고 목록을 불러오는 중이에요.</span>
+                <FullSpan>
+                  <LoadingState compact label="광고 목록을 불러오는 중이에요." />
+                </FullSpan>
               </TableRow>
             )}
             {!contractsLoading && contractsError && (
@@ -680,6 +684,7 @@ const TableRow = styled.div({
   borderTop: `0.5px solid ${c.gray200}`,
   ...textStyle.body,
 });
+const FullSpan = styled.div({ gridColumn: '1 / -1' });
 const TableHead = styled(TableRow)({
   minHeight: 48,
   borderTop: 0,

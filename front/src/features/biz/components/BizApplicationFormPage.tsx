@@ -1,5 +1,6 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -297,7 +298,7 @@ export function BizApplicationFormPage() {
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
   if (challengeQuery.isPending) {
-    return <Message>공고 정보를 불러오는 중입니다.</Message>;
+    return <LoadingState label="공고 정보를 불러오는 중입니다." />;
   }
   if (!challenge) {
     return (
@@ -551,9 +552,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
         <ToolButton type="button" title="링크 필드 추가" onClick={() => addQuestion('short')}>
           <Icon src="/assets/icons/toolbar-link.svg" size={20} alt="링크 필드 추가" />
         </ToolButton>
-        <ToolButton type="button" title="AI로 질문 만들기 (준비 중)" disabled>
-          AI
-        </ToolButton>
+        {/* TODO: "AI로 질문 만들기" 버튼은 생성 API가 생기면 다시 노출한다. */}
         <ToolButton type="button" title="파일 업로드 질문 추가" onClick={() => addQuestion('file')}>
           <Icon src="/assets/icons/toolbar-file.svg" size={20} alt="파일 업로드 질문 추가" />
         </ToolButton>

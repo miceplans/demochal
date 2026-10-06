@@ -1,5 +1,6 @@
 'use client';
 import { useDeferredValue, useMemo, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { PersonCardModel } from './person';
@@ -140,7 +141,7 @@ export function PeoplePage() {
                 options={options.stack}
               />
             </Filters>
-            {query.isPending && <Muted>불러오는 중이에요.</Muted>}
+            {query.isPending && <LoadingState label="불러오는 중이에요." />}
             {query.isError && <Muted>목록을 불러오지 못했어요.</Muted>}
             {query.isSuccess && people.length === 0 && (
               // TODO: Figma 01-B 빈 상태의 일러스트는 저장소에 자산이 없어 텍스트만 표시한다.

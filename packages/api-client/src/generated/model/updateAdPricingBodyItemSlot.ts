@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type UpdateAdPricingBodyItemSlot =
-  (typeof UpdateAdPricingBodyItemSlot)[keyof typeof UpdateAdPricingBodyItemSlot];
+export type UpdateAdPricingBodyItemSlot = typeof UpdateAdPricingBodyItemSlot[keyof typeof UpdateAdPricingBodyItemSlot];
+
 
 export const UpdateAdPricingBodyItemSlot = {
   hero: 'hero',

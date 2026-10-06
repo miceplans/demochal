@@ -17,7 +17,11 @@ const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standa
   .split('\n')
   .filter(Boolean);
 const supported = /\.(?:[cm]?[jt]sx?|json|ya?ml|md|css|scss|html)$/i;
-const files = [...new Set([...changed, ...untracked])].filter((file) => supported.test(file));
+const files = [...new Set([...changed, ...untracked])]
+  .filter((file) => supported.test(file))
+  // Orval output is validated by generation/build; the repository's existing
+  // generated files are not hand-formatted source files.
+  .filter((file) => !file.startsWith('packages/api-client/src/generated/'));
 
 if (!files.length) {
   console.log('formatting: PASS (no supported changed files)');
