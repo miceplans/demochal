@@ -222,8 +222,11 @@ export function AdPlacementPreview({
               <PagerArrow type="button" onClick={goPrev} aria-label="상단 광고 이전">
                 <ArrowIcon direction="prev" />
               </PagerArrow>
-              <HeroDots aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-                {Array.from({ length: 5 }, (_, index) => (
+              <HeroDots
+                aria-label={`상단 광고 ${activeIndex + 1} / ${heroItems.length}`}
+                aria-live="polite"
+              >
+                {Array.from({ length: heroItems.length }, (_, index) => (
                   <HeroDot key={index} active={activeIndex === index} />
                 ))}
               </HeroDots>
@@ -309,8 +312,11 @@ export function AdPlacementPreview({
               <PagerArrow type="button" onClick={goPrev} aria-label="중간 광고 이전">
                 <ArrowIcon direction="prev" />
               </PagerArrow>
-              <HeroDots aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-                {Array.from({ length: 5 }, (_, index) => (
+              <HeroDots
+                aria-label={`중간 광고 ${activeIndex + 1} / ${galleryItems.length}`}
+                aria-live="polite"
+              >
+                {Array.from({ length: galleryItems.length }, (_, index) => (
                   <HeroDot key={index} active={activeIndex === index} />
                 ))}
               </HeroDots>
