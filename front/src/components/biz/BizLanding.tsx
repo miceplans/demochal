@@ -11,6 +11,7 @@ import {
   BizLandingHeader,
   Logo,
 } from '@/components/biz/BizShell';
+import { BizOperationsPage } from '@/features/biz/components/BizOperationsPage';
 import { DriftWall, type DriftWallItem } from '@/components/biz/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';
 
@@ -40,7 +41,7 @@ const Join = styled(BizLink)({
   ...textStyle.subtitle,
   fontSize: 18,
 });
-const Consult = styled(BizLink)({
+const Consult = styled.button({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -86,6 +87,14 @@ const Ops = styled.section({
   display: 'flex',
   flexDirection: 'column',
   gap: 28,
+});
+const Inquiry = styled.section({
+  padding: '120px 80px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'stretch',
+  '& > *': { minWidth: 0 },
+  [mobile]: { padding: '80px 16px' },
 });
 const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
@@ -271,7 +280,18 @@ export function BizLanding() {
           </HeroCopy>
           <CtaRow data-reveal-item>
             <Join href="/login">지금 가입하기</Join>
-            <Consult href="/login">운영 문의하기</Consult>
+            <Consult
+              type="button"
+              onClick={() =>
+                document.getElementById('inquiry')?.scrollIntoView({
+                  behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'auto'
+                    : 'smooth',
+                })
+              }
+            >
+              운영 문의하기
+            </Consult>
           </CtaRow>
         </Hero>
       </RevealOnScroll>
@@ -311,6 +331,13 @@ export function BizLanding() {
           </OpsGrid>
         </OpsReveal>
       </Ops>
+      <Inquiry id="inquiry">
+        <RevealOnScroll>
+          <div data-reveal-item>
+            <BizOperationsPage titleAs="h2" />
+          </div>
+        </RevealOnScroll>
+      </Inquiry>
       <BizFooter />
     </>
   );
