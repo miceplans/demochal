@@ -65,11 +65,11 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
           gap: 8,
           alignItems: 'center',
         }
-      : { border: '1px solid #f0f1f3' }),
+      : { border: '0.5px solid #f0f1f3' }),
     '.artwork': {
       height: horizontal ? 100 : 160,
       background: horizontal ? c.gray100 : '#d8e3f0',
-      ...(horizontal ? { border: '1px solid #f0f1f3' } : {}),
+      ...(horizontal ? { border: '0.5px solid #f0f1f3' } : {}),
       borderRadius: horizontal ? 12 : '12px 12px 0 0',
     },
     '.card-body': { padding: horizontal ? 0 : 12, gap: horizontal ? 0 : 8, minWidth: 0 },

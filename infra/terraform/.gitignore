@@ -8,6 +8,7 @@ staging.tfvars
 crash.log
 crash.*.log
 *.tfvars.json
+*.tfplan
 override.tf
 override.tf.json
 *_override.tf

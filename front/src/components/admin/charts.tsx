@@ -80,7 +80,7 @@ const ChartCard = styled.div({
   flexDirection: 'column',
   gap: 8,
   padding: 24,
-  border: '1px solid #DFE2E7',
+  border: '0.5px solid #DFE2E7',
   borderRadius: 16,
   background: c.white,
 });
@@ -280,7 +280,7 @@ export function TrafficChart({
       style={{
         flex: 1,
         minWidth: 544,
-        border: '1px solid #DFE2E7',
+        border: '0.5px solid #DFE2E7',
         borderRadius: 12,
         padding: 16,
         display: 'flex',
@@ -429,7 +429,7 @@ export function ActivityChart({
   return (
     <div
       style={{
-        border: '1px solid #DFE2E7',
+        border: '0.5px solid #DFE2E7',
         borderRadius: 16,
         padding: 24,
         display: 'flex',
@@ -520,7 +520,7 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
   return (
     <div
       style={{
-        border: '1px solid #DFE2E7',
+        border: '0.5px solid #DFE2E7',
         borderRadius: 16,
         padding: 24,
         display: 'flex',

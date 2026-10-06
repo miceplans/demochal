@@ -17,7 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type CertificateStatus = (typeof CertificateStatus)[keyof typeof CertificateStatus];
+export type CertificateStatus = typeof CertificateStatus[keyof typeof CertificateStatus];
+
 
 export const CertificateStatus = {
   pending: 'pending',

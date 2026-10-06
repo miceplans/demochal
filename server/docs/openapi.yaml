@@ -2086,6 +2086,113 @@ paths:
                   received: { type: boolean }
 
   # ---------------------------------------------------------------- Admin
+  /admin/emails:
+    get:
+      tags: [Admin]
+      summary: 관리자 고객지원 메일 thread 목록
+      operationId: listAdminEmails
+      x-impl-status: implemented
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+        - name: status
+          in: query
+          schema: { type: string, enum: [open, pending, resolved] }
+      responses:
+        '200':
+          description: 메일 thread 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdminEmailThread' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
+    post:
+      tags: [Admin]
+      summary: 새 고객지원 메일 발송
+      operationId: createAdminEmail
+      x-impl-status: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAdminEmail' }
+      responses:
+        '201':
+          description: 발송 성공 후 저장된 outbound 메시지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailMessage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/emails/{id}:
+    get:
+      tags: [Admin]
+      summary: 관리자 고객지원 메일 thread 상세
+      operationId: getAdminEmail
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: thread 상세와 메시지 타임라인
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailThreadDetail' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/emails/{id}/replies:
+    post:
+      tags: [Admin]
+      summary: 고객지원 메일 답장 발송
+      operationId: sendAdminEmailReply
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendAdminEmailReply' }
+      responses:
+        '201':
+          description: 발송 성공 후 저장된 outbound 메시지
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailMessage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /admin/emails/{id}/status:
+    patch:
+      tags: [Admin]
+      summary: 고객지원 메일 thread 상태 변경
+      operationId: updateAdminEmailStatus
+      x-impl-status: implemented
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAdminEmailStatus' }
+      responses:
+        '200':
+          description: 상태 변경된 thread
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminEmailThread' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /admin/dashboard:
     get:
       tags: [Admin]
@@ -2352,12 +2459,25 @@ paths:
         - name: position
           in: query
           schema: { type: string, description: '포지션 뱃지 (부분 일치, 예: 프론트엔드)' }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, default: 1, description: '페이지 번호 (1부터)' }
+        - name: pageSize
+          in: query
+          schema:
+            {
+              type: integer,
+              minimum: 1,
+              maximum: 50,
+              default: 30,
+              description: '페이지 크기 (최대 50)',
+            }
       responses:
         '200':
-          description: 사용자 목록
+          description: 사용자 목록 (최신 가입순, offset 페이지네이션)
           content:
             application/json:
-              schema: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+              schema: { $ref: '#/components/schemas/AdminUserPage' }
   /admin/users/{id}/suspend:
     post:
       tags: [Admin]
@@ -2592,6 +2712,62 @@ components:
               statusCode: { type: integer, example: 403 }
               message: { type: string, example: Forbidden }
   schemas:
+    AdminEmailThread:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        subject: { type: string, nullable: true }
+        customerEmail: { type: string, format: email }
+        status: { type: string, enum: [open, pending, resolved] }
+        lastMessage: { type: string }
+        lastMessageAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AdminEmailThreadDetail:
+      allOf:
+        - $ref: '#/components/schemas/AdminEmailThread'
+        - type: object
+          properties:
+            messages: { type: array, items: { $ref: '#/components/schemas/AdminEmailMessage' } }
+    AdminEmailMessage:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        direction: { type: string, enum: [inbound, outbound] }
+        messageId: { type: string }
+        fromAddress: { type: string }
+        toAddresses: { type: array, items: { type: string } }
+        subject: { type: string, nullable: true }
+        textBody: { type: string, nullable: true }
+        htmlBody: { type: string, nullable: true }
+        sentAt: { type: string, format: date-time, nullable: true }
+        receivedAt: { type: string, format: date-time, nullable: true }
+        references: { type: array, items: { type: string } }
+        attachments: { type: array, items: { $ref: '#/components/schemas/AdminEmailAttachment' } }
+    AdminEmailAttachment:
+      type: object
+      properties:
+        filename: { type: string, nullable: true }
+        contentType: { type: string }
+        sizeBytes: { type: integer, nullable: true }
+    SendAdminEmailReply:
+      type: object
+      required: [text]
+      properties:
+        text: { type: string, minLength: 1, maxLength: 100000 }
+        html: { type: string, maxLength: 100000 }
+    CreateAdminEmail:
+      type: object
+      required: [to, subject, text]
+      properties:
+        to: { type: string, format: email, maxLength: 998 }
+        subject: { type: string, minLength: 1, maxLength: 998 }
+        text: { type: string, minLength: 1, maxLength: 100000 }
+        html: { type: string, maxLength: 100000 }
+    UpdateAdminEmailStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [open, pending, resolved] }
     User:
       type: object
       properties:
@@ -3560,6 +3736,14 @@ components:
         dday: { type: string, description: "'D-7' 형태" }
         teams: { type: string, description: "'팀 모집 3건' 형태" }
         unread: { type: boolean }
+    AdminUserPage:
+      type: object
+      required: [items, total, page, pageSize]
+      properties:
+        items: { type: array, items: { $ref: '#/components/schemas/AdminUserEntry' } }
+        total: { type: integer, description: 필터에 해당하는 전체 사용자 수 }
+        page: { type: integer }
+        pageSize: { type: integer }
     AdminUserEntry:
       type: object
       description: 사용자 관리 테이블 행 (UserRow) — 이메일 마스킹, 신고 누적 포함

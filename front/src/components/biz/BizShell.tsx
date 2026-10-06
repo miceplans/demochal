@@ -51,13 +51,13 @@ export const BizBrand = styled(Link)({
   gap: 6,
   whiteSpace: 'nowrap',
 });
-export function Logo({ size = 24 }: { size?: number }) {
+export function Logo({ size = 24, mono = false }: { size?: number; mono?: boolean }) {
   const hrefOf = useBizHref();
   return (
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src="/assets/SEMOBIZ.png"
+        src={mono ? '/assets/SEMOBIZ-mono.png' : '/assets/SEMOBIZ.png'}
         alt="SEMO.BIZ"
         style={{ height: size, width: 'auto', display: 'block' }}
       />
@@ -121,7 +121,7 @@ const HeaderSignup = styled(BizLink)({
   height: 37,
   borderRadius: 6,
   background: c.white,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   color: c.gray900,
   ...textStyle.overline,
   fontSize: 12,
@@ -178,7 +178,7 @@ const SidebarBox = styled.aside({
   left: 0,
   bottom: 0,
   width: 220,
-  borderRight: `1px solid ${c.gray100}`,
+  borderRight: `0.5px solid ${c.gray100}`,
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',
@@ -196,7 +196,7 @@ const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })
   borderRadius: 6,
   textAlign: 'left',
   ...textStyle.subtitle,
-  color: '#111111',
+  color: c.gray900,
   background: active
     ? 'linear-gradient(90deg, rgba(11, 110, 255, 0.1) 0%, rgba(255, 255, 255, 0.1) 100%)'
     : 'transparent',
@@ -213,7 +213,7 @@ const Avatar = styled.span({
   width: 34,
   height: 34,
   borderRadius: '50%',
-  background: '#EFF6FF',
+  background: c.paleBlue,
   color: c.primary,
   display: 'flex',
   alignItems: 'center',
@@ -223,7 +223,7 @@ const Avatar = styled.span({
 });
 const LogoutIcon = styled.button({
   display: 'inline-flex',
-  color: '#6B7280',
+  color: c.gray500,
   background: 'none',
   border: 0,
   padding: 0,
@@ -287,8 +287,8 @@ export function BizSidebar() {
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
           <Avatar aria-hidden>{accountName[0]}</Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <strong style={{ ...textStyle.caption2, color: '#111827' }}>{accountName}</strong>
-            <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{businessName}</span>
+            <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{accountName}</strong>
+            <span style={{ fontSize: 11, fontWeight: 500, color: c.gray500 }}>{businessName}</span>
           </span>
         </AdminIdentity>
         <LogoutIcon type="button" onClick={logout} aria-label="로그아웃">
@@ -306,32 +306,33 @@ export function BizSidebar() {
 
 const FooterBox = styled.footer({
   background: `linear-gradient(180deg, ${c.white} 0%, #e7f2ff 100%)`,
-  padding: '50px 60px',
+  padding: '32px 60px',
   display: 'flex',
   flexDirection: 'column',
-  gap: 148,
+  gap: 24,
+  ...textStyle.body,
+  lineHeight: 'normal',
 });
-export function BizFooter({ logoSize = 24 }: { logoSize?: number }) {
+export function BizFooter({ logoSize = 31 }: { logoSize?: number }) {
   const hrefOf = useBizHref();
   return (
     <FooterBox>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <Logo size={logoSize} />
-        <nav style={{ display: 'flex', gap: 12, ...textStyle.body }}>
+        <Logo size={logoSize} mono />
+        <nav style={{ display: 'flex', gap: 12, color: c.gray900 }}>
           <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
           <Link href={hrefOf('/terms')}>이용약관</Link>
           <Link href={hrefOf('/advertising')}>광고 운영정책</Link>
         </nav>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <div style={{ lineHeight: 1.65, maxWidth: 329 }}>
-          대표 유철한
-          <br />
-          사업자등록번호 617-81-98126
-          <br />
-          부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호
-          <br />
-          051-783-1170 / mice@miceplans.com
+        <div
+          style={{ display: 'flex', flexDirection: 'column', gap: 6, width: 329, color: c.gray900 }}
+        >
+          <span>대표 유철한</span>
+          <span>사업자등록번호 617-81-98126</span>
+          <span>부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호</span>
+          <span>051-783-1170 / mice@miceplans.com</span>
         </div>
         <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
       </div>
@@ -393,11 +394,11 @@ export const PrimaryButton = styled.button({
   color: c.white,
   ...textStyle.subtitle,
   padding: '10px 12px',
-  '&:hover:not(:disabled)': { background: '#005ee0' },
+  '&:hover:not(:disabled)': { background: c.primaryHover },
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 });
 export const OutlineButton = styled.button({
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: c.white,
   color: c.gray900,
@@ -413,7 +414,7 @@ export const Field = styled.label({
 });
 export const FieldInput = styled.input({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -422,7 +423,7 @@ export const FieldInput = styled.input({
 });
 export const FieldSelect = styled.select({
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -430,7 +431,7 @@ export const FieldSelect = styled.select({
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const TableBox = styled.div({
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   overflow: 'hidden',
 });
@@ -449,14 +450,14 @@ export const TRow = styled.div({
   padding: '18px 16px',
   background: c.white,
   ...textStyle.h1,
-  borderTop: `1px solid ${c.gray100}`,
+  borderTop: `0.5px solid ${c.gray100}`,
 });
 export const StatBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
   padding: 20,
-  border: `1px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
   minWidth: 0,
 });

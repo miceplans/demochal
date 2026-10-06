@@ -98,23 +98,24 @@ describe('AdminService — users', () => {
       { id: 'u2', name: '이도윤', email: 'lee@a.com', position: null, suspended: true },
     ];
     const { db, selectWhereCalls } = createDbStub({
-      select: [rows, [{ reportedUserId: 'u2', count: 4 }]],
+      select: [rows, [{ count: 2 }], [{ reportedUserId: 'u2', count: 4 }]],
     });
     const { service } = createService(db);
 
     const result = await service.listUsers();
 
-    expect(result.map((row) => [row.id, row.reports, row.status])).toEqual([
+    expect(result.items.map((row) => [row.id, row.reports, row.status])).toEqual([
       ['u1', 0, 'active'],
       ['u2', 4, 'suspended'],
     ]);
-    const countWhere = selectWhereCalls[1]?.[0];
+    expect(result).toMatchObject({ total: 2, page: 1, pageSize: 30 });
+    const countWhere = selectWhereCalls[2]?.[0];
     expect(referencesColumn(countWhere, reports.reportedUserId)).toBe(true);
     expect(referencesColumn(countWhere, reports.reporterUserId)).toBe(false);
   });
 
   it('list applies joinedWithin and position filters', async () => {
-    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { db, selectWhereCalls } = createDbStub({ select: [[], [{ count: 0 }]] });
     const { service } = createService(db);
 
     await service.listUsers(undefined, undefined, '30d', '프론트엔드');
@@ -123,12 +124,29 @@ describe('AdminService — users', () => {
     expect(referencesColumn(where, users.createdAt)).toBe(true);
     expect(referencesColumn(where, users.position)).toBe(true);
     expect(collectStrings(where)).toContain('%프론트엔드%');
-    // No users → the report-count query is skipped entirely.
-    expect(db.select).toHaveBeenCalledTimes(1);
+    // No users → the report-count query is skipped (rows + total only).
+    expect(db.select).toHaveBeenCalledTimes(2);
+    // 총 개수 쿼리에도 같은 필터가 적용된다.
+    expect(referencesColumn(selectWhereCalls[1]?.[0], users.position)).toBe(true);
+  });
+
+  it('list pages with limit/offset and clamps invalid page params', async () => {
+    const { db, limitCalls, offsetCalls } = createDbStub({ select: [[], [{ count: 95 }]] });
+    const { service } = createService(db);
+
+    const result = await service.listUsers(undefined, undefined, undefined, undefined, 3, 20);
+    expect(limitCalls[0]).toEqual([20]);
+    expect(offsetCalls[0]).toEqual([40]);
+    expect(result).toMatchObject({ total: 95, page: 3, pageSize: 20 });
+
+    const clamped = await createService(
+      createDbStub({ select: [[], [{ count: 0 }]] }).db,
+    ).service.listUsers(undefined, undefined, undefined, undefined, -5, 9999);
+    expect(clamped).toMatchObject({ page: 1, pageSize: 50 });
   });
 
   it('list ignores an unknown joinedWithin value', async () => {
-    const { db, selectWhereCalls } = createDbStub({ select: [[]] });
+    const { db, selectWhereCalls } = createDbStub({ select: [[], [{ count: 0 }]] });
     const { service } = createService(db);
 
     await service.listUsers(undefined, undefined, 'forever');

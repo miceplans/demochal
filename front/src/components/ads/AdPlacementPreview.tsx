@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState, type SyntheticEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
+import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { MovingAds } from './MovingAds';
 import { AdImageUploader } from './AdImageUploader';
+import { buildPreviewAds, fallbackAds } from './fallback-ads';
 
 export type AdPreviewView = 'mobile' | 'pc';
 export type AdPlacement = 'hero' | 'gallery';
@@ -28,6 +30,23 @@ const artwork = {
   pc: { width: 1200, background: '/assets/pc-screen.png' },
   mobile: { width: 358, background: '/assets/mobile-screen.png' },
 } as const;
+
+// 게재 중인 광고가 없거나 조회에 실패하면 fallbackAds(홈과 공유) 기본 광고 세트를
+// 보여준다. 홈(HomePage)과 같은 silentError 관례를 쓴다.
+const publicAdsQuery = { query: { meta: { silentError: true } } };
+
+type PreviewAd = {
+  src: string;
+  alt: string;
+  type?: 'image' | 'video';
+};
+
+function toPreviewAds(
+  response: Awaited<ReturnType<typeof generated.listPublicAds>> | undefined,
+): PreviewAd[] | undefined {
+  if (response?.status !== 200 || response.data.length === 0) return undefined;
+  return response.data.map((ad) => ({ src: ad.imageUrl, alt: ad.title }));
+}
 
 // fallbackPrice는 서버 기본 상품(server/src/modules/ads/ads.service.ts DEFAULT_PRODUCTS)의
 // dailyPrice와 맞춘다. 상품 조회 전이나 실패 시에만 쓰인다.
@@ -69,6 +88,35 @@ export function AdPlacementPreview({
   const priceOf = (placement: AdPlacement) =>
     price ?? dailyPrices?.[placement] ?? adInfo[placement].fallbackPrice;
   const isPricingPreview = !onSelect;
+  // 실제 홈 노출 목록과 같은 광고 수·소재로 미리보기를 구성한다. 업로드한 이미지는
+  // 첫 슬롯 하나만 교체해 한 장을 올려도 나머지 슬롯이 기존 광고 그대로 보인다.
+  const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
+  const { data: galleryAdList } = generated.useListPublicAds(
+    { placement: 'gallery' },
+    publicAdsQuery,
+  );
+  const heroItems = useMemo(
+    () =>
+      buildPreviewAds(
+        toPreviewAds(heroAdList),
+        fallbackAds.hero,
+        uploadedImages.hero
+          ? { src: uploadedImages.hero, alt: '업로드한 홈 상단 광고 이미지' }
+          : undefined,
+      ),
+    [heroAdList, uploadedImages.hero],
+  );
+  const galleryItems = useMemo(
+    () =>
+      buildPreviewAds(
+        toPreviewAds(galleryAdList),
+        fallbackAds.gallery,
+        uploadedImages.gallery
+          ? { src: uploadedImages.gallery, alt: '업로드한 홈 중간 광고 이미지' }
+          : undefined,
+      ),
+    [galleryAdList, uploadedImages.gallery],
+  );
   const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
     const canvas = canvasRef.current?.getBoundingClientRect();
     const target = event.currentTarget.getBoundingClientRect();
@@ -100,13 +148,24 @@ export function AdPlacementPreview({
       view={view}
       aria-label={`${view === 'mobile' ? '모바일' : 'PC'} 사용자 홈 광고 미리보기`}
     >
+      {/* 슬라이드 수가 바뀌면(예: fallback 3개에서 노출 1개로 줄면) 레일 위치를 재시작해
+          복제본 범위 밖의 위치가 남지 않게 한다. 홈 AdCarousel의 key 관례와 같다. */}
       <MovingAds
+        key={`hero-${heroItems.length}`}
         ariaLabel="홈 상단 광고"
-        itemCount={5}
+        itemCount={heroItems.length}
         interval={5000}
         paused={uploadPlacement === 'hero'}
       >
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+        {({
+          activeIndex,
+          goPrev,
+          goNext,
+          loopIndexes,
+          railIndex,
+          shouldAnimate,
+          handleTransitionEnd,
+        }) => (
           <HeroViewport>
             <HeroRail
               active={railIndex}
@@ -126,7 +185,11 @@ export function AdPlacementPreview({
                     </HeroSlotFrame>
                   );
                 }
-                const uploaded = uploadedImages.hero;
+                const ad = heroItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  heroItems.length > 1 && (position === 0 || position === heroItems.length + 1);
                 return (
                   <Slot
                     key={`${item}-${position}`}
@@ -138,36 +201,56 @@ export function AdPlacementPreview({
                     onClick={() => handleSlotClick('hero')}
                     aria-label="홈 상단 광고 선택"
                   >
-                    <img
-                      src={uploaded ?? '/assets/figma-ads/home-hero.png'}
-                      alt={
-                        uploaded
-                          ? '업로드한 홈 상단 광고 이미지'
-                          : position === 1
-                            ? '홈 상단 광고 예시'
-                            : ''
-                      }
-                    />
+                    {ad.type === 'video' ? (
+                      <video
+                        src={ad.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        aria-label={isClone ? undefined : ad.alt}
+                        aria-hidden={isClone || undefined}
+                      />
+                    ) : (
+                      <img src={ad.src} alt={isClone ? '' : ad.alt} />
+                    )}
                   </Slot>
                 );
               })}
             </HeroRail>
-            <HeroPager aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
-                <HeroDot key={index} active={activeIndex === index} />
-              ))}
+            <HeroPager>
+              <PagerArrow type="button" onClick={goPrev} aria-label="상단 광고 이전">
+                <ArrowIcon direction="prev" />
+              </PagerArrow>
+              <HeroDots aria-label={`상단 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <HeroDot key={index} active={activeIndex === index} />
+                ))}
+              </HeroDots>
+              <PagerArrow type="button" onClick={goNext} aria-label="상단 광고 다음">
+                <ArrowIcon direction="next" />
+              </PagerArrow>
             </HeroPager>
           </HeroViewport>
         )}
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
+        key={`gallery-${galleryItems.length}`}
         ariaLabel="홈 중간 이미지 광고"
-        itemCount={5}
+        itemCount={galleryItems.length}
         interval={5000}
         paused={uploadPlacement === 'gallery'}
       >
-        {({ activeIndex, loopIndexes, railIndex, shouldAnimate, handleTransitionEnd }) => (
+        {({
+          activeIndex,
+          goPrev,
+          goNext,
+          loopIndexes,
+          railIndex,
+          shouldAnimate,
+          handleTransitionEnd,
+        }) => (
           <GalleryViewport>
             <GalleryRail
               active={railIndex}
@@ -187,7 +270,12 @@ export function AdPlacementPreview({
                     </GallerySlotFrame>
                   );
                 }
-                const uploaded = uploadedImages.gallery;
+                const ad = galleryItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  galleryItems.length > 1 &&
+                  (position === 0 || position === galleryItems.length + 1);
                 return (
                   <GallerySlot
                     key={`${item}-${position}`}
@@ -200,24 +288,35 @@ export function AdPlacementPreview({
                     onClick={() => handleSlotClick('gallery')}
                     aria-label="홈 중간 이미지 광고 선택"
                   >
-                    <img
-                      src={uploaded ?? '/assets/figma-ads/home-gallery.png'}
-                      alt={
-                        uploaded
-                          ? '업로드한 홈 중간 광고 이미지'
-                          : position === 1
-                            ? '홈 중간 광고 예시'
-                            : ''
-                      }
-                    />
+                    {ad.type === 'video' ? (
+                      <video
+                        src={ad.src}
+                        autoPlay
+                        loop
+                        muted
+                        playsInline
+                        aria-label={isClone ? undefined : ad.alt}
+                        aria-hidden={isClone || undefined}
+                      />
+                    ) : (
+                      <img src={ad.src} alt={isClone ? '' : ad.alt} />
+                    )}
                   </GallerySlot>
                 );
               })}
             </GalleryRail>
-            <HeroPager aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
-              {Array.from({ length: 5 }, (_, index) => (
-                <HeroDot key={index} active={activeIndex === index} />
-              ))}
+            <HeroPager>
+              <PagerArrow type="button" onClick={goPrev} aria-label="중간 광고 이전">
+                <ArrowIcon direction="prev" />
+              </PagerArrow>
+              <HeroDots aria-label={`중간 광고 ${activeIndex + 1} / 5`} aria-live="polite">
+                {Array.from({ length: 5 }, (_, index) => (
+                  <HeroDot key={index} active={activeIndex === index} />
+                ))}
+              </HeroDots>
+              <PagerArrow type="button" onClick={goNext} aria-label="중간 광고 다음">
+                <ArrowIcon direction="next" />
+              </PagerArrow>
             </HeroPager>
           </GalleryViewport>
         )}
@@ -296,7 +395,7 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   cursor: 'pointer',
   transition: 'transform 180ms ease',
   transformOrigin: 'center',
-  '& img': {
+  '& img, & video': {
     display: 'block',
     width: '100%',
     height: '100%',
@@ -334,7 +433,42 @@ const HeroRail = styled('div', {
   transition: 'transform 420ms ease',
   '& > *': { flex: view === 'pc' ? '0 0 calc(100% - 160px)' : '0 0 100%' },
 }));
-const HeroPager = styled.div({ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 });
+const HeroPager = styled.div({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 10,
+  marginTop: 10,
+});
+const HeroDots = styled.div({ display: 'flex', alignItems: 'center', gap: 6 });
+const PagerArrow = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  padding: 0,
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 99,
+  background: c.white,
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.primary, color: c.primary },
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 2 },
+});
+function ArrowIcon({ direction }: { direction: 'prev' | 'next' }) {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+      <path
+        d={direction === 'prev' ? 'M7.5 2.5 4 6l3.5 3.5' : 'M4.5 2.5 8 6 4.5 9.5'}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 const HeroDot = styled('span', { shouldForwardProp: (prop) => prop !== 'active' })<{
   active: boolean;
 }>(({ active }) => ({
@@ -379,7 +513,7 @@ const GallerySlot = styled('button', {
   cursor: 'pointer',
   transition: 'transform 180ms ease',
   transformOrigin: 'center',
-  '& img': {
+  '& img, & video': {
     display: 'block',
     width: '100%',
     aspectRatio: '298 / 190',
@@ -412,7 +546,7 @@ const TooltipCard = styled('div', {
   maxWidth: 'calc(100% - 24px)',
   transform: 'translateX(-50%)',
   padding: '14px 16px',
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 10,
   background: c.white,
   boxShadow: '0 10px 26px rgba(27, 33, 44, .16)',
@@ -453,7 +587,7 @@ const PaymentButton = styled('button', { shouldForwardProp: (prop) => prop !== '
   primary?: boolean;
 }>(({ primary }) => ({
   height: 26,
-  border: primary ? 0 : `1px solid ${c.gray200}`,
+  border: primary ? 0 : `0.5px solid ${c.gray200}`,
   borderRadius: 4,
   background: primary ? c.primary : c.white,
   color: primary ? c.white : c.gray900,

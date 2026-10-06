@@ -17,8 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ApplicationFormAnswerType =
-  (typeof ApplicationFormAnswerType)[keyof typeof ApplicationFormAnswerType];
+export type ApplicationFormAnswerType = typeof ApplicationFormAnswerType[keyof typeof ApplicationFormAnswerType];
+
 
 export const ApplicationFormAnswerType = {
   dropdown: 'dropdown',

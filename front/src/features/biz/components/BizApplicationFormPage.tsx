@@ -1,5 +1,6 @@
 'use client';
 import { useState, type ChangeEvent } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -143,7 +144,7 @@ const NumberBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   width: 30,
   height: 30,
   borderRadius: '50%',
-  border: `2px solid ${c.primary}`,
+  border: `0.5px solid ${c.primary}`,
   background: active ? c.primary : c.white,
   color: active ? c.white : c.primary,
   display: 'flex',
@@ -297,7 +298,7 @@ export function BizApplicationFormPage() {
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
 
   if (challengeQuery.isPending) {
-    return <Message>공고 정보를 불러오는 중입니다.</Message>;
+    return <LoadingState label="공고 정보를 불러오는 중입니다." />;
   }
   if (!challenge) {
     return (

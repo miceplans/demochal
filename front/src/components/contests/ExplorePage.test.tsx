@@ -81,16 +81,17 @@ function setQueries({
   } as never);
 }
 
+class IntersectionObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 describe('ExplorePage loading skeletons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        observe() {}
-        disconnect() {}
-      },
-    );
+    // jsdom에는 IntersectionObserver가 없어 필터 바 sentinel 훅이 실패한다.
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
   });
 
   afterEach(() => {

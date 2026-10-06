@@ -143,4 +143,56 @@ describe('OnboardingPage', () => {
     expect(mocks.celebrate).toHaveBeenCalled();
     expect(mocks.replace).toHaveBeenCalledWith('/');
   });
+
+  it.each([
+    ['activity', 0, 25, '1'],
+    ['interests', 25, 50, '2'],
+    ['purpose', 50, 75, '3'],
+    ['challenge', 75, 100, '4'],
+  ])(
+    'renders the %s step progress bar filled to %s%% with a fill animation from %s%%',
+    (step, fromWidth, toWidth, valueNow) => {
+      renderOnboarding(step);
+
+      const progress = screen.getByRole('progressbar');
+      expect(progress.getAttribute('aria-valuenow')).toBe(valueNow);
+      const fill = progress.firstElementChild as HTMLElement;
+      expect(fill.className).not.toBe('');
+
+      const styleText = Array.from(document.querySelectorAll('style'))
+        .map((s) => s.textContent ?? '')
+        .join('\n');
+      // 마운트 시 이전 스텝 폭(from)에서 현재 스텝 폭(to)으로 채우는 keyframes와
+      // 애니메이션 비활성화 선언이 주입된다. 이름에 from-to가 붙어 변형이 구분된다.
+      expect(styleText).toContain(`semo-onboarding-bar-fill-${fromWidth}-${toWidth}`);
+      expect(styleText).toContain(`width:${fromWidth}%`);
+      expect(styleText).toContain(`width:${toWidth}%`);
+      expect(styleText).toContain('prefers-reduced-motion');
+    },
+  );
+
+  it('keeps per-variant keyframes independent when steps are revisited in one session', () => {
+    const first = renderOnboarding('interests');
+    first.unmount();
+    renderOnboarding('activity');
+
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    // browser back 등으로 변형을 재방문할 때도 이름 충돌 없이 각 keyframes가 유지돼야 한다.
+    expect(styleText).toContain('semo-onboarding-bar-fill-25-50');
+    expect(styleText).toContain('semo-onboarding-bar-fill-0-25');
+  });
+
+  it('applies a horizontal slide-in animation to the step content like the home carousel', () => {
+    renderOnboarding('interests');
+
+    const styleText = Array.from(document.querySelectorAll('style'))
+      .map((s) => s.textContent ?? '')
+      .join('\n');
+    expect(styleText).toContain('semo-onboarding-step-in');
+    expect(styleText).toContain('translateX');
+    expect(styleText).toContain('.5s ease-in-out');
+    expect(styleText).toContain('prefers-reduced-motion');
+  });
 });

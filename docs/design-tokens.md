@@ -113,3 +113,7 @@ Figma 추출 이후 컴포넌트 구현 과정에서 필요해진 값으로, 위
 | ------------------------------------- | ----------------------- | --------------------------- | -------------------------------- |
 | 반투명 흰색 표면(캐러셀 내비 버튼 등) | `--color-overlay-white` | `theme.colors.overlayWhite` | `rgb(255 255 255 / 85%)`         |
 | 캐러셀 내비 버튼 그림자               | `--shadow-carousel-nav` | `theme.shadow.carouselNav`  | `0 4px 12px rgb(27 33 44 / 16%)` |
+| 브랜드 블루 눌림/어두운 변형          | `--color-semo-dark`     | `theme.colors.semoDark`     | `#0056c2`                        |
+| 브랜드 블루 버튼 호버                 | `--color-semo-hover`    | `theme.colors.semoHover`    | `#005ee0`                        |
+| 아주 옅은 파랑 배경(아바타 등)        | `--color-pale-blue`     | `theme.colors.paleBlue`     | `#eaf3ff`                        |
+| 옅은 회색 면(업로더·입력 배경)        | `--color-surface`       | `theme.colors.surface`      | `#f8f8f8`                        |
