@@ -19,7 +19,7 @@ import {
 } from '@/components/ads/AdPlacementPreview';
 import { generated } from '@semochal/api-client';
 import { toDateKey } from '@/lib/date';
-import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 import { apiErrorMessage } from '@/lib/api-error';
@@ -175,7 +175,7 @@ export function BizAdsPage() {
     setProcessing(true);
     let image: CompressedAdImage | undefined;
     try {
-      image = await compressToWebP(file, AD_IMAGE_PRESETS[placement]);
+      image = await compressToWebP(file, CROPPED_AD_IMAGE_PRESETS[placement]);
       const presigned = await requestPresignedUpload.mutateAsync({
         data: {
           bucket: 'public',
