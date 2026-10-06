@@ -116,6 +116,7 @@ resource "aws_lambda_function" "email_processor" {
   environment {
     variables = {
       INBOX_BUCKET      = aws_s3_bucket.email_inbox[0].id
+      INBOX_KEY_PREFIX  = local.email_inbox_key_prefix
       INBOUND_QUEUE_URL = aws_sqs_queue.inbound_emails.url
     }
   }

@@ -68,3 +68,41 @@ test('logs metadata only and rethrows an S3 processing error', async () => {
   assert.equal(logs[0].includes('receipt.pdf'), false);
   assert.equal(logs[0].includes('ses-1'), true);
 });
+
+test('adds the configured S3 prefix when SES provides only the object name', async () => {
+  const handler = createHandler({
+    bucket: 'inbox',
+    objectKeyPrefix: 'inbound/',
+    getObject: async ({ Key }) => {
+      assert.equal(Key, 'inbound/ses-2');
+      return { Body: { transformToByteArray: async () => Buffer.from(mime) } };
+    },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: { messageId: 'ses-2' },
+      receipt: { recipients: ['help@semochall.com'], action: { objectKey: 'ses-2' } },
+    },
+  });
+});
+
+test('does not duplicate the configured S3 prefix', async () => {
+  const handler = createHandler({
+    bucket: 'inbox',
+    objectKeyPrefix: 'inbound/',
+    getObject: async ({ Key }) => {
+      assert.equal(Key, 'inbound/ses-3');
+      return { Body: { transformToByteArray: async () => Buffer.from(mime) } };
+    },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: { messageId: 'ses-3' },
+      receipt: { recipients: ['help@semochall.com'], action: { objectKey: 'inbound/ses-3' } },
+    },
+  });
+});
