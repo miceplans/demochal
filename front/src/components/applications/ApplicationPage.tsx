@@ -122,11 +122,27 @@ const Actions = styled.div({
 });
 const ActionButton = styled(Button)({
   flex: 1,
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
   minHeight: 37,
   padding: '10px 12px',
   borderRadius: 6,
   fontSize: 12,
   [mobile]: { minHeight: 52, borderRadius: 12, fontSize: 15 },
+});
+// 제출/업로드 중임을 텍스트 교체만이 아니라 스피너로도 보여준다.
+const Spinner = styled.span({
+  width: 13,
+  height: 13,
+  flexShrink: 0,
+  borderRadius: '50%',
+  border: `2px solid ${c.gray50}`,
+  borderTopColor: c.white,
+  animation: 'semo-spin 0.7s linear infinite',
+  '@keyframes semo-spin': { to: { transform: 'rotate(360deg)' } },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
 });
 const DeleteButton = styled(IconButton)({
   width: 16,
@@ -357,6 +373,9 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
             type="submit"
             disabled={submitting || uploading || Boolean(challengeId && !challenge)}
           >
+            {submitting || uploading ? (
+              <Spinner aria-hidden="true" data-component="submit-spinner" />
+            ) : null}
             {uploading ? '첨부파일 업로드 중…' : submitting ? '처리 중…' : '제출'}
           </ActionButton>
         </Actions>
