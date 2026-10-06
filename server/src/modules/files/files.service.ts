@@ -57,6 +57,11 @@ export class FilesService {
       throw new BadRequestException('PDF 파일은 보안 저장소에만 업로드할 수 있습니다.');
     }
 
+    // 공개 버킷의 이미지(광고·포스터·프로필 등)는 클라이언트 변환에 의존하지 않고 서버에서 WebP로 강제한다.
+    if (dto.bucket === 'public' && dto.contentType !== 'image/webp') {
+      throw new BadRequestException('공개 이미지는 WebP 형식만 업로드할 수 있습니다.');
+    }
+
     // Never write an untrusted object directly to the public bucket.  A caller
     // must finalize it, which verifies the actual bytes before promotion.
     const key = `pending/${uuid()}.${EXTENSION_BY_CONTENT_TYPE[dto.contentType]}`;
