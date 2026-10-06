@@ -25,6 +25,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -42,7 +44,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: pnpm format:check
+        # Keep this gate aligned with the PR formatting job: baseline files are
+        # tolerated, while files changed by this PR must be formatted.
+        run: node scripts/format-check.mjs --base "origin/${{ github.base_ref }}"
 
       - name: Lint
         run: pnpm lint
