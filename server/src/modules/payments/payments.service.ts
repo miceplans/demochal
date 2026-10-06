@@ -420,6 +420,21 @@ export class PaymentsService {
     // Acknowledge instead of throwing — a 4xx here makes Toss retry a
     // permanently settled state forever.
     if (order.status === 'paid') return;
+    if (order.status === 'canceled') {
+      // Toss really charged the buyer (verified DONE above) but the order was
+      // canceled in the meantime (e.g. the buyer canceled while checkout was
+      // open). Refund like the confirm path does instead of keeping the money;
+      // a failed cancel rethrows so Toss redelivers and the retry scan picks it up.
+      const outcome = await this.compensateIfUnsettleable(
+        new ConflictException('취소된 주문입니다.'),
+        order.id,
+        tossPayment,
+      );
+      if (outcome === 'failed') {
+        throw new BadGatewayException('Toss refund for a canceled order failed');
+      }
+      return;
+    }
     if (order.status !== 'pending') {
       this.logger.warn(
         `Ignoring DONE for order ${orderId} already in terminal status ${order.status}`,

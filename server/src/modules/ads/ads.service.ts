@@ -13,6 +13,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
+import { adPeriod } from './ad-period.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
@@ -188,11 +189,9 @@ export class AdsService implements OnModuleInit {
         });
       }
 
-      const startDate = new Date(dto.startDate);
-      const endDate = new Date(dto.endDate);
-      if (endDate < startDate) {
-        throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
-      }
+      // 오늘(KST) 이후의 올바른 기간만 허용한다 — 결제 확정(settleOrderPaid)이 이미
+      // 지난 기간을 거절하므로, 생성 단계에서 같은 기준으로 막아 결제 후 환불을 방지한다.
+      const { startDate, endDate, days } = adPeriod(dto.startDate, dto.endDate);
 
       const reserving = await tx
         .select()
@@ -203,7 +202,6 @@ export class AdsService implements OnModuleInit {
         throw new BadRequestException('선택한 날짜가 이미 예약된 기간과 겹칩니다.');
       }
 
-      const days = Math.round((endDate.getTime() - startDate.getTime()) / 86_400_000) + 1;
       const paidAmount = days * product.dailyPrice;
 
       const [ad] = await tx
@@ -422,11 +420,12 @@ export class AdsService implements OnModuleInit {
     }
   }
 
-  // Rows that currently occupy a placement's calendar: paid/active ads, plus
-  // preparing ads whose payment window hasn't expired yet.
+  // Rows that currently occupy a placement's calendar: paid ads (active, or paused
+  // — a paused ad can be resumed, so it keeps holding its dates), plus preparing
+  // ads whose payment window hasn't expired yet.
   private reservingCondition() {
     return or(
-      eq(ads.status, 'active'),
+      inArray(ads.status, ['active', 'paused']),
       and(eq(ads.status, 'preparing'), gt(ads.expiresAt, new Date())),
     );
   }
