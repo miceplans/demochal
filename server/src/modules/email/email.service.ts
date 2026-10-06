@@ -78,7 +78,12 @@ export class EmailService {
       ? await this.db
           .select()
           .from(emailAttachments)
-          .where(inArray(emailAttachments.messageId, messages.map((message) => message.id)))
+          .where(
+            inArray(
+              emailAttachments.messageId,
+              messages.map((message) => message.id),
+            ),
+          )
       : [];
     return {
       ...thread,
