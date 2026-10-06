@@ -101,6 +101,19 @@ const Listbox = styled.ul<{ $columns: number }>`
   margin: 0;
   padding: 0;
   list-style: none;
+  ${({ $columns, theme }) =>
+    $columns > 1
+      ? `
+    background: ${theme.colors.background};
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 2px rgb(0 0 0 / 10%);
+    & > li {
+      border-radius: 0;
+      box-shadow: none;
+    }
+  `
+      : ''}
   transform-origin: top center;
   animation: semo-listbox-in 0.16s ease-out;
   @keyframes semo-listbox-in {
@@ -132,6 +145,11 @@ const Option = styled.li<{ $radius: string; $active: boolean }>`
   &:hover {
     background: ${(p) => p.theme.colors.gray[100]};
   }
+`;
+
+// 2열에서 옵션이 홀수일 때 마지막 줄의 빈 칸을 채워 직사각형 모양을 유지한다.
+const Filler = styled.li`
+  background: ${(p) => p.theme.colors.background};
 `;
 
 // 긴 라벨은 열린 목록에서 우측으로 늘어나 전체를 보여주고, 화면 폭을 넘어갈 때만 말줄임한다.
@@ -240,14 +258,8 @@ export function Dropdown({
       if (index === last) return '0 0 8px 8px';
       return '0';
     }
-    // 2열: 목록 바깥 네 모서리에 해당하는 옵션만 둥글게 한다.
-    const lastRowStart = last - (last % 2);
-    const topLeft = index === 0;
-    const topRight = index === 1;
-    const bottomLeft = index === lastRowStart;
-    // 마지막 줄에 항목이 하나뿐이면 그 위 오른쪽 항목이 아래 오른쪽 모서리가 된다.
-    const bottomRight = last % 2 === 1 ? index === last : index === last - 1;
-    return [topLeft, topRight, bottomRight, bottomLeft].map((on) => (on ? '8px' : '0')).join(' ');
+    // 2열: 목록 컨테이너가 모서리를 둥글게 처리한다.
+    return '0';
   };
 
   return (
@@ -290,6 +302,7 @@ export function Dropdown({
               <OptionLabel>{option.label}</OptionLabel>
             </Option>
           ))}
+          {columns > 1 && options.length % 2 === 1 ? <Filler aria-hidden="true" /> : null}
         </Listbox>
       ) : null}
     </Wrapper>
