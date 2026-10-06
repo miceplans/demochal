@@ -11,6 +11,7 @@ import {
   BizLandingHeader,
   Logo,
 } from '@/components/biz/BizShell';
+import { BizInquiryForm } from '@/components/biz/BizInquiryForm';
 import { DriftWall, type DriftWallItem } from '@/components/biz/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';
 
@@ -40,7 +41,7 @@ const Join = styled(BizLink)({
   ...textStyle.subtitle,
   fontSize: 18,
 });
-const Consult = styled(BizLink)({
+const Consult = styled.button({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -87,6 +88,22 @@ const Ops = styled.section({
   flexDirection: 'column',
   gap: 28,
 });
+const Inquiry = styled.section({
+  padding: '120px 80px',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  [mobile]: { padding: '80px 16px' },
+});
+const InquiryReveal = styled(RevealOnScroll)({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 28,
+  width: '100%',
+  maxWidth: 500,
+});
+const InquiryTitle = styled.h2({ ...textStyle.display, textAlign: 'center' });
 const OpsTitle = styled.h2(textStyle.display);
 const OpsGrid = styled.div({
   display: 'grid',
@@ -271,7 +288,18 @@ export function BizLanding() {
           </HeroCopy>
           <CtaRow data-reveal-item>
             <Join href="/login">지금 가입하기</Join>
-            <Consult href="/login">운영 문의하기</Consult>
+            <Consult
+              type="button"
+              onClick={() =>
+                document.getElementById('inquiry')?.scrollIntoView({
+                  behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    ? 'auto'
+                    : 'smooth',
+                })
+              }
+            >
+              운영 문의하기
+            </Consult>
           </CtaRow>
         </Hero>
       </RevealOnScroll>
@@ -311,6 +339,20 @@ export function BizLanding() {
           </OpsGrid>
         </OpsReveal>
       </Ops>
+      <Inquiry id="inquiry">
+        <InquiryReveal>
+          <div
+            data-reveal-item
+            style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'center' }}
+          >
+            <FlowLabel>문의하기</FlowLabel>
+            <InquiryTitle>온라인 상담 및 견적 문의</InquiryTitle>
+          </div>
+          <div data-reveal-item style={{ width: '100%' }}>
+            <BizInquiryForm />
+          </div>
+        </InquiryReveal>
+      </Inquiry>
       <BizFooter />
     </>
   );
