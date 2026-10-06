@@ -2,7 +2,12 @@ name: Code Review (GLM)
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
+    types: [opened, ready_for_review, reopened]
+    # 문서 전용 변경은 AI 리뷰를 실행하지 않는다(토큰 절감).
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - '.github/**/*.md'
 
 jobs:
   # Z.AI 계정 잔액이 없으면 review job을 실행하지 않고 CI에서 Skipped로 표시한다.
@@ -46,6 +51,10 @@ jobs:
     if: needs.check-quota.outputs.skip_review != 'true'
     runs-on: ubuntu-latest
     environment: ZAI_API_KEY
+    # 같은 PR의 리뷰 실행이 쌓이면 이전 실행을 취소한다(토큰 낭비 방지).
+    concurrency:
+      group: glm-review-${{ github.event.pull_request.number }}
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
