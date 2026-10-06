@@ -353,9 +353,11 @@ export class ChallengesService {
         topics: dto.topics ?? [],
         inquiryContact: dto.inquiryContact,
         visibility: dto.visibility ?? 'public',
-        status: (await this.adminSettingsService.isEnabled('contestAutoPublish'))
-          ? 'published'
-          : 'draft',
+        status:
+          dto.status ??
+          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
+            ? 'published'
+            : 'draft'),
       })
       .returning();
     return challenge;
