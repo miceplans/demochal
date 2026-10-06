@@ -81,12 +81,23 @@ function setQueries({
   } as never);
 }
 
+class IntersectionObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
 describe('ExplorePage loading skeletons', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // jsdom에는 IntersectionObserver가 없어 필터 바 sentinel 훅이 실패한다.
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
   });
 
-  afterEach(() => cleanup());
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
 
   it('shows team-shaped skeleton cards while team results are pending', () => {
     setQueries({ teamsPending: true, teamsSuccess: false });

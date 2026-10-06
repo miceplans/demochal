@@ -22,7 +22,6 @@ import type {
   PublicAd,
   PresignedUploadRequest,
   PresignedUploadResponse,
-  RegisterPaymentCardRequest,
   Team,
   UpdateApplicationRequest,
   UpdateBusinessRequest,
@@ -175,8 +174,6 @@ export function createApiClient(options: HttpClientOptions) {
     },
     billing: {
       listCards: () => http.get<PaymentCard[]>('/billing/cards'),
-      registerCard: (body: RegisterPaymentCardRequest) =>
-        http.post<PaymentCard>('/billing/cards', body),
       getHistory: (params?: { from?: string; to?: string }) => {
         const q = new URLSearchParams();
         if (params?.from) q.set('from', params.from);
