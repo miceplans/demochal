@@ -4,6 +4,9 @@ import styled from '@emotion/styled';
 import { useEffect, useId, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { textStyle } from '@/styles/typography';
 
+// 옵션이 이 개수를 넘으면 목록을 2열로 펼친다(요소1 요소2 / 요소3).
+const TWO_COLUMN_THRESHOLD = 6;
+
 export interface DropdownOption {
   value: string;
   label: string;
@@ -84,15 +87,16 @@ const TriggerLabel = styled.span`
   white-space: nowrap;
 `;
 
-const Listbox = styled.ul`
+const Listbox = styled.ul<{ $columns: number }>`
   position: absolute;
   top: calc(100% + 9px);
   left: 0;
   z-index: 30;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(${({ $columns }) => $columns}, minmax(0, 1fr));
   align-items: stretch;
   min-width: 100%;
+  width: ${({ $columns }) => ($columns > 1 ? 'max-content' : 'auto')};
   max-width: calc(100vw - 32px);
   margin: 0;
   padding: 0;
@@ -155,6 +159,7 @@ export function Dropdown({
   const [activeIndex, setActiveIndex] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const listboxId = useId();
+  const columns = options.length > TWO_COLUMN_THRESHOLD ? 2 : 1;
 
   const selectedValue = value !== undefined ? value : internalValue;
   const selectedIndex = options.findIndex((option) => option.value === selectedValue);
@@ -194,11 +199,23 @@ export function Dropdown({
       case 'ArrowDown':
         event.preventDefault();
         if (!open) openListbox();
-        else setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+        else setActiveIndex((i) => Math.min(i + columns, options.length - 1));
         break;
       case 'ArrowUp':
         event.preventDefault();
-        if (open) setActiveIndex((i) => Math.max(i - 1, 0));
+        if (open) setActiveIndex((i) => Math.max(i - columns, 0));
+        break;
+      case 'ArrowRight':
+        if (open && columns > 1) {
+          event.preventDefault();
+          setActiveIndex((i) => Math.min(i + 1, options.length - 1));
+        }
+        break;
+      case 'ArrowLeft':
+        if (open && columns > 1) {
+          event.preventDefault();
+          setActiveIndex((i) => Math.max(i - 1, 0));
+        }
         break;
       case 'Home':
         if (open) setActiveIndex(0);
@@ -216,10 +233,21 @@ export function Dropdown({
   };
 
   const radiusFor = (index: number) => {
-    if (options.length === 1) return '8px';
-    if (index === 0) return '8px 8px 0 0';
-    if (index === options.length - 1) return '0 0 8px 8px';
-    return '0';
+    const last = options.length - 1;
+    if (columns === 1) {
+      if (options.length === 1) return '8px';
+      if (index === 0) return '8px 8px 0 0';
+      if (index === last) return '0 0 8px 8px';
+      return '0';
+    }
+    // 2열: 목록 바깥 네 모서리에 해당하는 옵션만 둥글게 한다.
+    const lastRowStart = last - (last % 2);
+    const topLeft = index === 0;
+    const topRight = index === 1;
+    const bottomLeft = index === lastRowStart;
+    // 마지막 줄에 항목이 하나뿐이면 그 위 오른쪽 항목이 아래 오른쪽 모서리가 된다.
+    const bottomRight = last % 2 === 1 ? index === last : index === last - 1;
+    return [topLeft, topRight, bottomRight, bottomLeft].map((on) => (on ? '8px' : '0')).join(' ');
   };
 
   return (
@@ -246,7 +274,7 @@ export function Dropdown({
         <Chevron aria-hidden="true" $open={open} />
       </Trigger>
       {open && options.length > 0 ? (
-        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel}>
+        <Listbox id={listboxId} role="listbox" aria-label={ariaLabel} $columns={columns}>
           {options.map((option, index) => (
             <Option
               key={option.value}
