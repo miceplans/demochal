@@ -2805,6 +2805,10 @@ components:
         businessId: { type: string, format: uuid }
         title: { type: string }
         description: { type: string }
+        summary: { type: string, nullable: true, maxLength: 300 }
+        topics: { type: array, items: { type: string, maxLength: 100 } }
+        inquiryContact: { type: string, nullable: true, maxLength: 200 }
+        visibility: { type: string, enum: [public, private], default: public }
         price: { type: integer, description: 참가비 (원) }
         capacity: { type: integer, description: 모집 인원 }
         startDate: { type: string, format: date-time }
@@ -2914,6 +2918,13 @@ components:
       required: [businessId, title, description, price, capacity, startDate, endDate]
       properties:
         businessId: { type: string, format: uuid }
+        summary: { type: string, maxLength: 300 }
+        hashtags:
+          { type: array, maxItems: 20, uniqueItems: true, items: { type: string, maxLength: 50 } }
+        topics:
+          { type: array, maxItems: 30, uniqueItems: true, items: { type: string, maxLength: 100 } }
+        inquiryContact: { type: string, maxLength: 200 }
+        visibility: { type: string, enum: [public, private], default: public }
         title: { type: string }
         description: { type: string }
         price: { type: integer, minimum: 1 }
@@ -2982,6 +2993,25 @@ components:
       type: object
       description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
       properties:
+        summary: { type: string, nullable: true, maxLength: 300 }
+        hashtags:
+          {
+            type: array,
+            nullable: true,
+            maxItems: 20,
+            uniqueItems: true,
+            items: { type: string, maxLength: 50 },
+          }
+        topics:
+          {
+            type: array,
+            nullable: true,
+            maxItems: 30,
+            uniqueItems: true,
+            items: { type: string, maxLength: 100 },
+          }
+        inquiryContact: { type: string, nullable: true, maxLength: 200 }
+        visibility: { type: string, enum: [public, private] }
         title: { type: string, maxLength: 200 }
         description: { type: string, maxLength: 20000 }
         price: { type: integer, minimum: 0 }

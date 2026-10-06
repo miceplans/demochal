@@ -63,6 +63,7 @@ export class TeamsService {
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
       .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .where(eq(challenges.visibility, 'public'))
       .orderBy(desc(teams.createdAt));
     const q = filters.q?.toLowerCase();
     const regionList = splitList(filters.region);
@@ -122,7 +123,7 @@ export class TeamsService {
     const [challenge] = await this.db
       .select({ id: challenges.id })
       .from(challenges)
-      .where(eq(challenges.id, dto.challengeId))
+      .where(and(eq(challenges.id, dto.challengeId), eq(challenges.visibility, 'public')))
       .limit(1);
     if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
 

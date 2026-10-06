@@ -224,6 +224,13 @@
       "when": 1791257397000,
       "tag": "0032_payments_refund_retry",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791260000000,
+      "tag": "0033_challenge_posting_metadata",
+      "breakpoints": true
     }
   ]
 }

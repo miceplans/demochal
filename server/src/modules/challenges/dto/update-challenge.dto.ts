@@ -90,4 +90,34 @@ export class UpdateChallengeDto {
   @ValidateNested({ each: true })
   @Type(() => ApplicationFormQuestionDto)
   applicationForm?: ApplicationFormQuestionDto[];
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(300)
+  summary?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  hashtags?: string[] | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsArray()
+  @ArrayUnique()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  @MaxLength(100, { each: true })
+  topics?: string[] | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(200)
+  inquiryContact?: string | null;
+
+  @IsOptional()
+  @IsIn(['public', 'private'])
+  visibility?: 'public' | 'private';
 }

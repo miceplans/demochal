@@ -12,6 +12,7 @@ function createDbStub(options: {
     price: number;
     title: string;
     status?: string;
+    visibility?: string;
     startDate?: Date;
     endDate?: Date;
     applicationForm?: ApplicationFormQuestion[];
@@ -197,6 +198,28 @@ describe('ApplicationsService.apply', () => {
   ])('rejects a %s challenge before creating an application or order', async (_label, patch) => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: 'unavailable', ...patch },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects a private challenge before creating an application or order', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'private', visibility: 'private' },
+    });
+    const service = new ApplicationsService(db);
+
+    await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('does not reuse or replace an existing application order after it becomes private', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 10000, title: 'private', visibility: 'private' },
+      existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
+      latestOrder: { id: 'old-order', amount: 10000, status: 'canceled' },
     });
     const service = new ApplicationsService(db);
 

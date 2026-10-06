@@ -24,6 +24,11 @@ import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequest
  * 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
  */
 export interface UpdateChallengeRequest {
+  summary?: string | null;
+  hashtags?: string[] | null;
+  topics?: string[] | null;
+  inquiryContact?: string | null;
+  visibility?: 'public' | 'private';
   /** @maxLength 200 */
   title?: string;
   /** @maxLength 20000 */
