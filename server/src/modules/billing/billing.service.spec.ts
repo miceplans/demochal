@@ -197,7 +197,7 @@ describe('BillingService', () => {
     expect(db.insert).toHaveBeenCalledTimes(1); // only the conflicting attempts insert
   });
 
-  it('reconciles a retried authKey whose exchange succeeded but the response was lost', async () => {
+  it('does not guess another concurrently-created card when the attempt is unlinked', async () => {
     const { db, update } = createIssueDbStub({
       attemptInsert: [],
       attemptByHash: [
@@ -208,12 +208,10 @@ describe('BillingService', () => {
     const service = new BillingService(db);
     const fetchCallsBefore = fetchMock.mock.calls.length;
 
-    const card = await service.issueCard('biz-1', 'auth-key-1');
+    await expect(service.issueCard('biz-1', 'auth-key-1')).rejects.toThrow(ConflictException);
 
     expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
-    expect(card.id).toBe('card-9');
-    // The recovered card is linked onto the attempt for future retries.
-    expect(update).toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
   });
 
   it('refuses to re-exchange an authKey whose attempt has no stored card', async () => {
