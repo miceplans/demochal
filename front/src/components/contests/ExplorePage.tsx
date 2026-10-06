@@ -29,6 +29,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ChallengeSearch } from './ChallengeSearch';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
 import { daysUntil } from '@/lib/date';
@@ -92,19 +93,21 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   ];
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
-  // 챌린지 목록(탐색)과 팀 모드의 챌린지 드롭다운 옵션을 한 쿼리로 공용한다 — teamMode와 무관하게 항상 조회.
-  // 팀 모드에서는 드롭다운 옵션 확보가 목적이라 고정 50건, 탐색 모드에서는 더보기 클릭 시 limit을 늘린다.
-  const challengesQuery = generated.useListChallenges({
-    limit: teamMode ? 50 : limit,
-    q: query || undefined,
-    category: selectedCategories.join(',') || undefined,
-    targets: targets.join(',') || undefined,
-    organizerType: organizers.join(',') || undefined,
-    prizeMin: prize[0] > PRIZE_MIN ? prize[0] : undefined,
-    prizeMax: prize[1] < PRIZE_MAX ? prize[1] : undefined,
-    includeClosed,
-    sort: sort === '마감임박' ? 'deadline' : sort === '인기' ? 'popular' : 'latest',
-  });
+  // 챌린지 탐색 목록. 팀 모드의 챌린지 필터는 ChallengeSearch가 따로 검색하므로 여기서는 조회하지 않는다.
+  const challengesQuery = generated.useListChallenges(
+    {
+      limit,
+      q: query || undefined,
+      category: selectedCategories.join(',') || undefined,
+      targets: targets.join(',') || undefined,
+      organizerType: organizers.join(',') || undefined,
+      prizeMin: prize[0] > PRIZE_MIN ? prize[0] : undefined,
+      prizeMax: prize[1] < PRIZE_MAX ? prize[1] : undefined,
+      includeClosed,
+      sort: sort === '마감임박' ? 'deadline' : sort === '인기' ? 'popular' : 'latest',
+    },
+    { query: { enabled: !teamMode } },
+  );
   const challengeOptions = challengesQuery.data?.data.items ?? [];
   const teamsQuery = generated.useListTeams(
     {
@@ -137,16 +140,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
             <Heading>필터</Heading>
             <>
               <FilterGroup title="챌린지">
-                <Dropdown
-                  aria-label="챌린지"
-                  size="S"
-                  value={challengeId}
-                  onChange={setChallengeId}
-                  options={[
-                    { value: '', label: '전체 챌린지' },
-                    ...challengeOptions.map((x) => ({ value: x.id ?? '', label: x.title ?? '' })),
-                  ]}
-                />
+                <ChallengeSearch value={challengeId} onChange={setChallengeId} />
               </FilterGroup>
               <FilterGroup title="필요 역할">
                 <ChipFilter
@@ -269,43 +263,37 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
         <Results $team={teamMode} $wide={filterOpen}>
           <MobileFilters>
             {teamMode ? (
-              [
-                {
-                  label: '전체 챌린지',
-                  value: challengeId,
-                  onChange: setChallengeId,
-                  options: challengeOptions.map((x) => ({
-                    value: x.id ?? '',
-                    label: x.title ?? '',
-                  })),
-                },
-                {
-                  label: '필요역할',
-                  value: teamRoles[0] ?? '',
-                  onChange: (value: string) => setTeamRoles(value ? [value] : []),
-                  options: roles.map((x) => ({ value: x, label: x })),
-                },
-                {
-                  label: '지역',
-                  value: regionLabels[0] ?? '',
-                  onChange: (value: string) => setRegionLabels(value ? [value] : []),
-                  options: regionGroups.map((group) => ({
-                    value: group.label,
-                    label: group.label,
-                  })),
-                },
-              ].map((filter) => (
-                <Dropdown
-                  key={filter.label}
-                  aria-label={filter.label}
-                  size="S"
-                  width="auto"
-                  style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
-                  value={filter.value}
-                  onChange={filter.onChange}
-                  options={[{ value: '', label: filter.label }, ...filter.options]}
-                />
-              ))
+              <>
+                <ChallengeSearch fullWidth value={challengeId} onChange={setChallengeId} />
+                {[
+                  {
+                    label: '필요역할',
+                    value: teamRoles[0] ?? '',
+                    onChange: (value: string) => setTeamRoles(value ? [value] : []),
+                    options: roles.map((x) => ({ value: x, label: x })),
+                  },
+                  {
+                    label: '지역',
+                    value: regionLabels[0] ?? '',
+                    onChange: (value: string) => setRegionLabels(value ? [value] : []),
+                    options: regionGroups.map((group) => ({
+                      value: group.label,
+                      label: group.label,
+                    })),
+                  },
+                ].map((filter) => (
+                  <Dropdown
+                    key={filter.label}
+                    aria-label={filter.label}
+                    size="S"
+                    width="auto"
+                    style={{ maxWidth: MOBILE_FILTER_MAX_WIDTH }}
+                    value={filter.value}
+                    onChange={filter.onChange}
+                    options={[{ value: '', label: filter.label }, ...filter.options]}
+                  />
+                ))}
+              </>
             ) : (
               <>
                 <Dropdown
