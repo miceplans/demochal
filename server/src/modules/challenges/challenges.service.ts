@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -29,13 +30,13 @@ import {
   businesses,
   challengeViews,
   challenges,
-  orders,
   users,
 } from '../../db/schema.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
+import { effectiveApplicationCondition } from '../applications/effective-application.js';
 import { interestsMatch } from './interest-matching.js';
 import { FilesService } from '../files/files.service.js';
 
@@ -118,7 +119,10 @@ export class ChallengesService {
       inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
       eq(challenges.visibility, 'public'),
     ];
-    if (!includeClosed) conditions.push(ne(challenges.status, 'closed'));
+    // 마감일이 지난 공고는 status가 아직 published여도 종료로 취급한다(자동 마감 배치가 없다).
+    if (!includeClosed) {
+      conditions.push(ne(challenges.status, 'closed'), gt(challenges.endDate, new Date()));
+    }
     const categoryList = splitList(category);
     if (categoryList.length) conditions.push(inArray(challenges.category, categoryList));
     const targetList = splitList(targets);
@@ -331,6 +335,12 @@ export class ChallengesService {
       throw new BadRequestException('recruitUrl is required when recruitMethod is external');
     }
 
+    // 자동 게시가 꺼져 있으면 소유자가 published를 요청해도 draft로 저장하고
+    // 관리자 승인(POST /admin/challenges/{id}/publish) 뒤에 게시한다.
+    const autoPublish = await this.adminSettingsService.isEnabled('contestAutoPublish');
+    const requestedStatus = dto.status ?? (autoPublish ? 'published' : 'draft');
+    const status = requestedStatus === 'published' && !autoPublish ? 'draft' : requestedStatus;
+
     const [challenge] = await this.db
       .insert(challenges)
       .values({
@@ -353,11 +363,7 @@ export class ChallengesService {
         topics: dto.topics ?? [],
         inquiryContact: dto.inquiryContact,
         visibility: dto.visibility ?? 'public',
-        status:
-          dto.status ??
-          ((await this.adminSettingsService.isEnabled('contestAutoPublish'))
-            ? 'published'
-            : 'draft'),
+        status,
       })
       .returning();
     return challenge;
@@ -433,6 +439,15 @@ export class ChallengesService {
       .where(and(eq(challenges.id, id), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
     if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
+
+    // 자동 게시가 꺼져 있으면 draft → published는 관리자 승인으로만 가능하다.
+    if (
+      challenge.status === 'draft' &&
+      dto.status === 'published' &&
+      !(await this.adminSettingsService.isEnabled('contestAutoPublish'))
+    ) {
+      throw new ForbiddenException('관리자 승인 후 게시됩니다. 검수 요청이 접수되었습니다.');
+    }
 
     const allowed = ALLOWED_TRANSITIONS[challenge.status] ?? [];
     if (!allowed.includes(dto.status)) {
@@ -593,13 +608,12 @@ export class ChallengesService {
       .select({ role: applications.role, total: count() })
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
-      .leftJoin(orders, eq(orders.applicationId, applications.id))
       .where(
         and(
           eq(applications.challengeId, challengeId),
           // 유료 챌린지의 미결제 신청 시도(pending 주문만 있는 행)는 아직 실제
           // 신청이 아니므로 지원자 통계에서 제외한다 — 주문이 paid에 도달한 것만 집계.
-          or(eq(challenges.price, 0), eq(orders.status, 'paid')),
+          effectiveApplicationCondition,
         ),
       )
       .groupBy(applications.role);
@@ -613,8 +627,14 @@ export class ChallengesService {
   }
 
   private async getMonthlyViewCounts(challengeId: string) {
-    const now = new Date();
-    const rangeStart = new Date(now.getFullYear(), now.getMonth() - 5, 1);
+    // 월 경계는 서비스 기준 시간대(KST)로 계산한다 — 서버(UTC)의 로컬 월과 어긋나지 않게.
+    const KST_OFFSET_MS = 9 * 60 * 60 * 1000;
+    const kst = new Date(Date.now() + KST_OFFSET_MS);
+    const monthIndex = (date: Date) => date.getUTCFullYear() * 12 + date.getUTCMonth();
+    const currentMonth = monthIndex(kst);
+    const rangeStart = new Date(
+      Date.UTC(kst.getUTCFullYear(), kst.getUTCMonth() - 5, 1) - KST_OFFSET_MS,
+    );
     const rows = await this.db
       .select({ createdAt: challengeViews.createdAt })
       .from(challengeViews)
@@ -624,13 +644,11 @@ export class ChallengesService {
 
     const months: { label: string; value: number }[] = [];
     for (let i = 5; i >= 0; i -= 1) {
-      const bucket = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const target = currentMonth - i;
       const value = rows.filter(
-        (row) =>
-          row.createdAt.getFullYear() === bucket.getFullYear() &&
-          row.createdAt.getMonth() === bucket.getMonth(),
+        (row) => monthIndex(new Date(row.createdAt.getTime() + KST_OFFSET_MS)) === target,
       ).length;
-      months.push({ label: `${bucket.getMonth() + 1}월`, value });
+      months.push({ label: `${(((target % 12) + 12) % 12) + 1}월`, value });
     }
     return months;
   }

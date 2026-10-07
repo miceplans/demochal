@@ -6,6 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { adToday } from '../ads/ad-period.js';
 import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -168,8 +169,8 @@ export function maskBizNumber(registrationNumber: string): string {
 }
 
 /** ads의 노출 기간 기준(AdsService.listPublic과 동일): 종료일 당일까지 노출된다. */
-const utcDayStart = (now = new Date()) =>
-  new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+// 광고 기간은 KST 날짜 기준이다(adToday) — 목록/집계도 같은 기준을 쓴다.
+const utcDayStart = (now = new Date()) => adToday(now);
 
 const formatMonthDay = (date: Date) =>
   `${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
@@ -574,11 +575,28 @@ export class AdminService {
 
   // ---------------------------------------------------------------------- ads
 
+  /** 관리자 공고 게시 승인 — draft 공고만 published로 전이한다. 원자적 조건부 UPDATE. */
+  async publishChallenge(id: string) {
+    const [updated] = await this.db
+      .update(challenges)
+      .set({ status: 'published' })
+      .where(and(eq(challenges.id, id), eq(challenges.status, 'draft')))
+      .returning({ id: challenges.id, status: challenges.status });
+    if (updated) return updated;
+    const [existing] = await this.db
+      .select({ id: challenges.id })
+      .from(challenges)
+      .where(eq(challenges.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
+  }
+
   /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */
   async pauseAd(id: string) {
     const [updated] = await this.db
       .update(ads)
-      .set({ status: 'paused' })
+      .set({ status: 'paused', pausedBy: 'admin' })
       .where(and(eq(ads.id, id), eq(ads.status, 'active')))
       .returning({ id: ads.id, status: ads.status });
     if (updated) return updated;

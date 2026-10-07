@@ -21,13 +21,26 @@ import type { ChallengeOrganizerType } from './challengeOrganizerType';
 import type { ChallengeRecruitMethod } from './challengeRecruitMethod';
 import type { ChallengeStatus } from './challengeStatus';
 import type { ChallengeTargetsItem } from './challengeTargetsItem';
+import type { ChallengeVisibility } from './challengeVisibility';
 
 export interface Challenge {
   id: string;
   businessId?: string;
   title: string;
   description?: string;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
   summary?: string | null;
+  /** @items.maxLength 100 */
+  topics?: string[];
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  inquiryContact?: string | null;
+  visibility?: ChallengeVisibility;
   /** 참가비 (원) */
   price?: number;
   /** 모집 인원 */
@@ -68,9 +81,6 @@ export interface Challenge {
   /** 지원 자격 */
   eligibility?: string;
   hashtags?: string[];
-  topics?: string[];
-  inquiryContact?: string | null;
-  visibility?: 'public' | 'private';
   /** 세모챌 내 신청폼 | 외부 링크. seMOchall은 추천 노출 순위 부스트 대상 */
   recruitMethod?: ChallengeRecruitMethod;
   /**

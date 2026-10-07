@@ -410,8 +410,9 @@ export class TeamsService {
         challengeTitle,
         introduction: team.introduction,
         status: team.status,
-        // 팀장 포함 인원 / 정원(팀장 + 모집 슬롯 합계).
-        memberCount: 1 + (memberRow?.accepted ?? 0),
+        // 팀장 포함 인원 / 정원(팀장 + 모집 슬롯 합계). 팀장은 create에서 accepted 멤버로
+        // 이미 들어가므로 accepted 수에 +1을 하지 않는다.
+        memberCount: memberRow?.accepted ?? 0,
         capacity,
       },
       sender: {
@@ -445,6 +446,11 @@ export class TeamsService {
     }
     if (member.userId === team.leaderUserId) {
       throw new BadRequestException('리더는 자신의 멤버십을 변경할 수 없습니다.');
+    }
+
+    // 초대(invited)의 수락은 초대받은 본인만 할 수 있다 — 리더는 거절(취소)만 가능하다.
+    if (member.status === 'invited' && member.userId !== user.id && dto.status === 'accepted') {
+      throw new ForbiddenException('초대받은 본인만 초대를 수락할 수 있습니다.');
     }
 
     const [updated] = await this.db
