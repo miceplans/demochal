@@ -145,7 +145,8 @@ export function createHandler({
       const ses = record.ses ?? {};
       const receipt = ses.receipt ?? {};
       const action = receipt.action ?? {};
-      const sesMessageId = ses.mail?.messageId ?? null;
+      const mail = ses.mail ?? {};
+      const sesMessageId = mail.messageId ?? null;
       const rawObjectKey = action.objectKey ?? sesMessageId;
       const objectKey = rawObjectKey ? resolveObjectKey(rawObjectKey, objectKeyPrefix) : null;
       const recipient = receipt.recipients?.[0] ?? null;
@@ -154,10 +155,12 @@ export function createHandler({
       try {
         const object = await getObject({ Bucket: bucket, Key: objectKey });
         const parsed = parseMimeMessage((await bodyToBuffer(object.Body)).toString('utf8'));
+        const from = parsed.from || mail.source || null;
+        const to = parsed.to || mail.destination?.[0] || recipient;
         const payload = {
-          messageId: parsed.messageId,
-          from: parsed.from,
-          to: parsed.to,
+          messageId: parsed.messageId || sesMessageId,
+          from,
+          to,
           subject: parsed.subject || '(제목 없음)',
           inReplyTo: parsed.inReplyTo || undefined,
           references: parsed.references ? (parsed.references.match(/<[^>]+>/g) ?? []) : [],
