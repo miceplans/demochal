@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   fetchMock: vi.fn(),
+  requestPayment: vi.fn(),
+  cancelOrder: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -69,6 +71,9 @@ vi.mock('@/lib/image-compression', () => ({
 vi.mock('@/lib/api-error', () => ({
   apiErrorMessage: (_: unknown, fallback: string) => fallback,
 }));
+
+vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.requestPayment }));
+vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
@@ -137,6 +142,9 @@ function fillLink(value: string) {
 async function submitReservation() {
   fireEvent.click(await screen.findByRole('button', { name: '계약 신청' }));
   await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
+  expect(mocks.requestPayment).toHaveBeenCalledWith(
+    expect.objectContaining({ orderId: 'order-1', amount: 100000, flow: 'ad' }),
+  );
 }
 
 const heroBody = {
@@ -151,11 +159,18 @@ const heroBody = {
 describe('BizAdsPage 광고 링크 입력', () => {
   beforeEach(() => {
     mocks.createAd.mockReset();
-    mocks.createAd.mockResolvedValue({ status: 201, data: { paidAmount: 100000 } });
+    mocks.createAd.mockResolvedValue({
+      status: 201,
+      data: { paidAmount: 100000, order: { id: 'order-1', amount: 100000, name: '봄 이벤트' } },
+    });
     mocks.toastSuccess.mockReset();
     mocks.toastError.mockReset();
     mocks.fetchMock.mockReset();
     mocks.fetchMock.mockResolvedValue({ ok: true });
+    mocks.requestPayment.mockReset();
+    mocks.requestPayment.mockResolvedValue(true);
+    mocks.cancelOrder.mockReset();
+    mocks.cancelOrder.mockResolvedValue({});
     vi.stubGlobal('fetch', mocks.fetchMock);
   });
 

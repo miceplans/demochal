@@ -34,9 +34,8 @@ const envSchema = z
 
     TOSS_SECRET_KEY: z.string().default(''),
     // Toss 웹훅 출발 IP 허용목록 (쉼표 구분, 정확 IP + 선택적 IPv4 CIDR).
-    // 비우면 비활성(현행 동작 유지) — 토스 IP 대역이 바뀌면 운영자가 보안 문서의
-    // 인바운드 IP 목록을 갱신해 설정한다(기본값 하드코딩 금지). 잘못된 항목은
-    // 파싱 단계에서 throw해 서버 기동이 실패한다.
+    // 운영에서는 반드시 설정한다. 개발/테스트 환경만 빈 값으로 둘 수 있다.
+    // 잘못된 항목은 파싱 단계에서 throw해 서버 기동이 실패한다.
     TOSS_WEBHOOK_ALLOWED_IPS: z.string().default(''),
 
     CLOVA_OCR_API_URL: z.string().default(''),
@@ -82,6 +81,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['JWT_SECRET'],
         message: `JWT_SECRET must be set to at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
+      });
+    }
+    if (value.NODE_ENV === 'production' && !value.TOSS_WEBHOOK_ALLOWED_IPS.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['TOSS_WEBHOOK_ALLOWED_IPS'],
+        message: 'TOSS_WEBHOOK_ALLOWED_IPS must be set in production',
       });
     }
   });

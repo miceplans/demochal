@@ -3506,6 +3506,14 @@ components:
         impressions: { type: integer, nullable: true, description: 누적 노출수 (준비중이면 null) }
         bookmarks: { type: integer, nullable: true, description: 누적 북마크수 (준비중이면 null) }
         paidAmount: { type: integer, description: 결제 금액 (원) }
+        order:
+          nullable: true
+          description: 생성 직후 Toss 결제창을 열기 위한 pending 주문 정보
+          required: [id, amount, name]
+          properties:
+            id: { type: string, format: uuid }
+            amount: { type: integer, description: 결제 금액 (원) }
+            name: { type: string, description: Toss 결제창에 표시할 주문명 }
     PublicAd:
       type: object
       required: [id, title, imageUrl, placement]

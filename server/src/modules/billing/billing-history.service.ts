@@ -39,6 +39,7 @@ export class BillingHistoryService {
         id: payments.id,
         name: sql<string | null>`coalesce(${ads.title}, ${challenges.title})`,
         amount: payments.amount,
+        refundedAmount: payments.refundedAmount,
         status: payments.status,
         approvedAt: payments.approvedAt,
       })
@@ -61,7 +62,8 @@ export class BillingHistoryService {
       // 보관한다. refunded 행을 -row.amount로 내보내면 PaymentHistoryItem 계약(환불은 양수)을
       // 어기고, total에서 환불이 또 한번 잔액을 깎는 것처럼 보이게 된다 — 매핑된 status 기준으로
       // 부호를 정한다. paid 행은 기존 음수(차감) 표시 규약을 유지한다.
-      const amount = status === 'refunded' ? row.amount : -row.amount;
+      const netAmount = Math.max(0, row.amount - (row.refundedAmount ?? 0));
+      const amount = status === 'refunded' ? row.amount : -netAmount;
       return {
         id: row.id,
         name: row.name ?? '주문',
@@ -76,7 +78,10 @@ export class BillingHistoryService {
     // alongside 'paid'. The item mapping above preserves both current and legacy
     // status vocabulary for API consumers.
     const total = rows.reduce(
-      (sum, row) => (row.status === 'paid' || row.status === 'done' ? sum - row.amount : sum),
+      (sum, row) =>
+        row.status === 'paid' || row.status === 'done'
+          ? sum - Math.max(0, row.amount - (row.refundedAmount ?? 0))
+          : sum,
       0,
     );
     return { items, total };

@@ -23,6 +23,8 @@ import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compr
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 import { apiErrorMessage } from '@/lib/api-error';
+import { requestTossPayment } from '@/lib/payments';
+import { adApi } from '@/lib/ad-api';
 
 type Ad = Awaited<ReturnType<typeof generated.listMyAds>>['data'][number];
 type AdProduct = Awaited<ReturnType<typeof generated.listAdProducts>>['data'][number];
@@ -244,6 +246,17 @@ export function BizAdsPage() {
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
+      if (!created.data.order) throw new Error('결제 주문을 생성하지 못했습니다.');
+      const started = await requestTossPayment({
+        orderId: created.data.order.id,
+        amount: created.data.order.amount,
+        orderName: created.data.order.name,
+        flow: 'ad',
+      });
+      if (!started) {
+        await adApi.orders.cancel(created.data.order.id).catch(() => {});
+        throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+      }
       await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
       setSelectedAd({
         ...selectedAd,
