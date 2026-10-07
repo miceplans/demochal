@@ -58,14 +58,6 @@ const MobileMenu = styled.nav({
   borderBottom: `0.5px solid ${c.gray100}`,
   paddingBottom: 24,
 });
-const MaterialSymbol = styled.span({
-  fontFamily: 'Material Symbols Outlined',
-  fontSize: 18,
-  lineHeight: 1,
-  fontWeight: 400,
-  fontStyle: 'normal',
-  fontVariationSettings: "'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 20",
-});
 const Participating = styled.div({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',
@@ -680,7 +672,7 @@ function ProfileEditor() {
               disabled={me.data?.status !== 200}
               onClick={startBioEdit}
             >
-              <MaterialSymbol aria-hidden>add</MaterialSymbol>
+              <Icon name="imgAddSlotIc" size={18} />
             </AddButton>
           </Row>
         )}
@@ -691,7 +683,7 @@ function ProfileEditor() {
           extra={certificates}
           trailing={
             <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
-              <MaterialSymbol aria-hidden>add</MaterialSymbol>
+              <Icon name="imgAddSlotIc" size={18} />
             </AddButton>
           }
         />
@@ -706,7 +698,7 @@ function ProfileEditor() {
             disabled={me.data?.status !== 200}
             onClick={() => setSkillOpen(true)}
           >
-            <MaterialSymbol aria-hidden>add</MaterialSymbol>
+            <Icon name="imgAddSlotIc" size={18} />
           </AddButton>
         }
       />
