@@ -127,6 +127,7 @@ import type {
   PersonCard,
   PresignedUploadRequest,
   PublicAd,
+  PublishAdminChallenge200,
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
@@ -8781,7 +8782,7 @@ export const getUpdateAdUrl = (id: string,) => {
 }
 
 /**
- * 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
+ * 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다). 재개(`active`)는 일시정지된 광고만 가능하며, 관리자가 중단한 광고(403)나 계약 기간이 끝난 광고(400)는 재개할 수 없다.
  * @summary 광고 상태 변경 (중단 등)
  */
 export const updateAd = async (id: string,
@@ -10778,6 +10779,94 @@ export const usePauseAdminAd = <TError = unknown,
         TContext
       > => {
       return useMutation(getPauseAdminAdMutationOptions(options), queryClient);
+    }
+
+export type publishAdminChallengeResponse200 = {
+  data: PublishAdminChallenge200
+  status: 200
+}
+
+export type publishAdminChallengeResponseSuccess = (publishAdminChallengeResponse200) & {
+  headers: Headers;
+};
+;
+
+export type publishAdminChallengeResponse = (publishAdminChallengeResponseSuccess)
+
+export const getPublishAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/publish`
+}
+
+/**
+ * `contestAutoPublish`가 꺼져 있으면 기관이 만든 공고는 draft로 저장되고, 이 API로 게시를 승인한다.
+ * draft 공고만 published로 전환한다. 없으면 404, draft가 아니면 409.
+ * @summary 관리자 공고 게시 승인
+ */
+export const publishAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<publishAdminChallengeResponse> => {
+
+  return apiFetch<publishAdminChallengeResponse>(getPublishAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPublishAdminChallengeMutationKey = () => ['publishAdminChallenge'] as const;
+
+export const getPublishAdminChallengeMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getPublishAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishAdminChallenge>>, PublishAdminChallengeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  publishAdminChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof publishAdminChallenge>>>
+
+    export type PublishAdminChallengeMutationError = unknown
+    export type PublishAdminChallengeMutationVariables = {id: string}
+
+    /**
+ * @summary 관리자 공고 게시 승인
+ */
+export const usePublishAdminChallenge = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof publishAdminChallenge>>,
+        TError,
+        PublishAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPublishAdminChallengeMutationOptions(options), queryClient);
     }
 
 export type getAdPricingResponse200 = {

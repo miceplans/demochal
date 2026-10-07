@@ -16,7 +16,10 @@ function createDbStub(options: {
     startDate?: Date;
     endDate?: Date;
     applicationForm?: ApplicationFormQuestion[];
+    recruitMethod?: string;
+    capacity?: number;
   };
+  acceptedCount?: number;
   existingApplication?: Record<string, unknown>;
   latestOrder?: Record<string, unknown>;
   application?: Record<string, unknown>;
@@ -45,7 +48,8 @@ function createDbStub(options: {
       }
       if (table === applications) {
         limit.mockResolvedValue(options.existingApplication ? [options.existingApplication] : []);
-        return { limit };
+        // 정원 집계(`select count ... where`)는 limit 없이 바로 await된다.
+        return Object.assign(Promise.resolve([{ total: options.acceptedCount ?? 0 }]), { limit });
       }
       // orders (latest lookup in orderForApplication)
       limit.mockResolvedValue(options.latestOrder ? [options.latestOrder] : []);
@@ -203,6 +207,36 @@ describe('ApplicationsService.apply', () => {
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
     expect(db.insert).not.toHaveBeenCalled();
+  });
+
+  it('rejects applying to an external-recruit challenge before creating rows', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Ext', recruitMethod: 'external' },
+    });
+    await expect(new ApplicationsService(db).apply(dto, 'user-1')).rejects.toThrow(
+      '외부 접수 챌린지',
+    );
+    expect(db.values).not.toHaveBeenCalled();
+  });
+
+  it('rejects a new application once the accepted applicants fill the capacity', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Full', capacity: 2 },
+      acceptedCount: 2,
+    });
+    await expect(new ApplicationsService(db).apply(dto, 'user-1')).rejects.toThrow('정원');
+    expect(db.values).not.toHaveBeenCalled();
+  });
+
+  it('accepts a new application while seats remain', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Open', capacity: 2 },
+      acceptedCount: 1,
+      application: { id: 'app-1' },
+    });
+    await expect(new ApplicationsService(db).apply(dto, 'user-1')).resolves.toMatchObject({
+      id: 'app-1',
+    });
   });
 
   it('rejects a private challenge before creating an application or order', async () => {

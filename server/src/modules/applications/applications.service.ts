@@ -1,9 +1,10 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, exists, inArray, or } from 'drizzle-orm';
+import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
+import { effectiveApplicationCondition } from './effective-application.js';
 import { validateFormAnswers, type FormAnswer } from './form-answers.js';
 
 // Toss orderName 상한은 100자 — 그 이상의 챌린지 제목이 checkout 오픈을 막지 않게 잘라낸다.
@@ -29,6 +30,8 @@ export class ApplicationsService {
           endDate: challenges.endDate,
           applicationForm: challenges.applicationForm,
           visibility: challenges.visibility,
+          recruitMethod: challenges.recruitMethod,
+          capacity: challenges.capacity,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
@@ -63,6 +66,21 @@ export class ApplicationsService {
         challenge.endDate.getTime() < now.getTime()
       ) {
         throw new BadRequestException('신청을 받지 않는 챌린지입니다.');
+      }
+
+      // 외부 접수 공고는 앱 안에서 신청·결제를 받지 않는다(recruitUrl로 이동).
+      if (challenge.recruitMethod === 'external') {
+        throw new BadRequestException('외부 접수 챌린지는 앱에서 신청할 수 없습니다.');
+      }
+      // 정원은 실제 접수된 신청(무료 접수 + 결제 완료) 기준으로 센다.
+      if (challenge.capacity !== undefined) {
+        const [accepted] = await tx
+          .select({ total: count() })
+          .from(applications)
+          .where(and(eq(applications.challengeId, challenge.id), effectiveApplicationCondition));
+        if (Number(accepted?.total ?? 0) >= challenge.capacity) {
+          throw new BadRequestException('모집 정원이 마감된 챌린지입니다.');
+        }
       }
 
       const formAnswers = validateFormAnswers(challenge.applicationForm, dto.formAnswers);
@@ -195,20 +213,7 @@ export class ApplicationsService {
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
       .innerJoin(businesses, eq(challenges.businessId, businesses.id))
-      .where(
-        and(
-          ...conditions,
-          or(
-            eq(challenges.price, 0),
-            exists(
-              this.db
-                .select({ id: orders.id })
-                .from(orders)
-                .where(and(eq(orders.applicationId, applications.id), eq(orders.status, 'paid'))),
-            ),
-          ),
-        ),
-      )
+      .where(and(...conditions, effectiveApplicationCondition))
       .orderBy(desc(applications.createdAt))
       .limit(100);
     return rows.map(({ application }) => application);
@@ -220,13 +225,13 @@ export class ApplicationsService {
     if (!row || (row.application.userId !== userId && row.businessOwnerId !== userId)) {
       throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     }
-    if (row.application.userId !== userId && row.price > 0) {
-      const [paid] = await this.db
-        .select({ id: orders.id })
-        .from(orders)
-        .where(and(eq(orders.applicationId, id), eq(orders.status, 'paid')))
+    if (row.application.userId !== userId) {
+      const [visible] = await this.db
+        .select({ id: applications.id })
+        .from(applications)
+        .where(and(eq(applications.id, id), effectiveApplicationCondition))
         .limit(1);
-      if (!paid) throw new NotFoundException('Application not found');
+      if (!visible) throw new NotFoundException('Application not found');
     }
     return row.application;
   }

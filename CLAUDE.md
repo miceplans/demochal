@@ -25,8 +25,8 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 ## 아키텍처 규칙(준수 필수)
 
-- **Outbox 패턴**: DB 트랜잭션과 외부 부수효과(메시지 발송, 웹훅 처리, 알림)를 묶어야 하는 경우 Outbox 패턴을 적용한다. 현재 코드베이스에는 구현이 없으며, `verifications.service.ts`의 fire-and-forget SQS 발송과 Toss 웹훅 처리가 개선 대상이다. 이 패턴을 우회하는 방향으로 새 코드를 쓰지 않는다.
-- **결제(Toss Payments)**: Toss 웹훅은 서명이 없으므로, 수신 즉시 신뢰해서 주문 상태를 바꾸지 않고 반드시 Toss API(`GET /v1/payments/{paymentKey}`)로 상태를 재조회해 대사한다(`payments.controller.ts` TODO 주석). 금액-주문 대사, 멱등 처리, `payments` 테이블 영속화를 함께 갖춘다. 미구현 상태(CANCELED 처리 등)를 조용히 스킵하지 않고 TODO로 명시한다.
+- **Outbox 패턴**: DB 트랜잭션과 외부 부수효과(메시지 발송, 알림 등)를 묶어야 하는 경우 `outbox_events` + `OutboxService.enqueue(tx, ...)`를 사용하고, 발송은 워커의 `OutboxRelayService`가 맡는다(`verifications`, 이메일/알림 이벤트가 적용 사례). 트랜잭션 밖 fire-and-forget 발송을 새로 추가하지 않는다.
+- **결제(Toss Payments)**: Toss 웹훅은 서명이 없으므로 수신 즉시 신뢰하지 않고 반드시 Toss API(`GET /v1/payments/{paymentKey}`)로 재조회해 대사한다. 클라이언트 승인(`POST /payments/confirm`)과 웹훅(DONE/CANCELED/EXPIRED/ABORTED/PARTIAL_CANCELED)은 금액-주문 대사·멱등 처리·`payments` 영속화를 갖췄고, 정산 불가 주문은 자동 환불(실패 시 `refund_pending` + 워커 재시도)한다. 미처리 상태를 조용히 스킵하지 말고 TODO로 명시한다.
 - **개인정보(사업자등록증 등)**: 민감 문서는 반드시 private 버킷(`S3_PRIVATE_BUCKET`)에만 저장하고 presigned PUT(5분)으로만 접근한다(`modules/files/files.service.ts`). 공개/비공개 버킷 분리를 없애지 않는다. OCR/진위확인 결과(`ocrResult` 등)와 사업자번호를 로그에 남기지 않는다.
 - **청소년 보호**: 현재는 `front/src/app/youth/` 정적 안내 페이지만 존재하며 정책 강제 로직은 없다. 연령 확인·보호 관련 코드를 추가할 경우 별도 검토를 거치고, 개인정보 수집 최소화 원칙을 적용한다.
 - **Docker 분기**: `Dockerfile.api`와 `Dockerfile.worker`는 같은 소스, 같은 두 단계 빌드(`pnpm --filter @semochal/server...` + `nest build`)이며 차이는 `CMD`(dist/main.js vs dist/worker.js)뿐이다. 워커 이미지에 `EXPOSE`를 추가하거나 API/워커 중 한 쪽에만 의존성·빌드 단계를 넣는 분기를 만들지 않는다. 둘 다 `ci.yml`에서 빌드 검증되므로 Dockerfile 변경 시 로컬에서 `docker build --file server/Dockerfile.{api,worker} .`를 확인한다.
@@ -50,7 +50,7 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 - server: Vitest — `pnpm --filter @semochal/server test`(spec은 `**/*.spec.ts`). 스키마 변경 시 `db/schema-migration.spec.ts` 반영 필수.
 - packages/api-client: Vitest — `pnpm --filter @semochal/api-client test`. CI(`ci.yml`)가 두 test 스텝을 모두 실행한다.
-- front 테스트는 없다 — 새 테스트 프레임워크를 임의로 추가하지 않는다.
+- front: Vitest(`pnpm --filter front test`, `*.test.tsx`)가 이미 있다 — 새 테스트 프레임워크를 임의로 추가하지 않는다.
 
 ## CI/CD
 

@@ -796,7 +796,7 @@ describe('TeamsService', () => {
         id: 'member-9',
         status: 'invited',
         message: '안녕하세요',
-        team: { title: '세모 세미나 기획팀', memberCount: 3, capacity: 3 },
+        team: { title: '세모 세미나 기획팀', memberCount: 2, capacity: 3 },
         sender: { name: '팀장', challengeCount: 12, badgeCount: 2 },
       });
     });
@@ -840,6 +840,24 @@ describe('TeamsService', () => {
       applicantUserId: applicant.id,
       inviteAccepted: true,
     });
+  });
+
+  it('updateMember forbids the leader from accepting an invite on the invitee behalf', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-9', userId: applicant.id, status: 'invited', chatLink: null }]),
+      );
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
+
+    await expect(
+      service.updateMember('team-1', 'member-9', { status: 'accepted' }, leader),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('updateMember invite rejection stores the decision without notifying the leader', async () => {
