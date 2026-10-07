@@ -60,4 +60,31 @@ describe('AdImageUploader', () => {
       name: 'banner.webp',
     });
   });
+
+  it('이미지가 아닌 파일을 선택하면 오류 문구를 보여준다', async () => {
+    render(<AdImageUploader aspectRatio={2} onFileSelected={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText('파일 찾기'), {
+      target: { files: [new File(['text'], 'note.txt', { type: 'text/plain' })] },
+    });
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      '이미지 파일만 업로드할 수 있어요.',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('crop 처리에 실패하면 모달을 유지하고 오류 문구를 보여준다', async () => {
+    const onFileSelected = vi.fn();
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as never;
+    HTMLCanvasElement.prototype.toBlob = vi.fn((callback) => callback(null));
+    render(<AdImageUploader aspectRatio={2} onFileSelected={onFileSelected} />);
+    fireEvent.change(screen.getByLabelText('파일 찾기'), {
+      target: { files: [new File(['image'], 'banner.png', { type: 'image/png' })] },
+    });
+    fireEvent.click(await screen.findByRole('button', { name: '확인' }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe('이미지를 처리할 수 없어요.');
+    expect(screen.getByRole('dialog')).not.toBeNull();
+    expect(onFileSelected).not.toHaveBeenCalled();
+  });
 });

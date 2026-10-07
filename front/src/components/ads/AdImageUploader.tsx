@@ -26,6 +26,10 @@ type Props = {
 };
 type CropImage = { file: File; url: string; width: number; height: number };
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : '이미지를 처리할 수 없어요.';
+}
+
 function readImage(file: File): Promise<CropImage> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -107,6 +111,7 @@ export function AdImageUploader({
   const [image, setImage] = useState<CropImage | null>(null);
   const [position, setPosition] = useState({ x: 0.5, y: 0.5 });
   const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
 
@@ -119,6 +124,7 @@ export function AdImageUploader({
   const closeCrop = useCallback(() => {
     if (!processing) {
       setImage(null);
+      setError(null);
       setPosition({ x: 0.5, y: 0.5 });
     }
   }, [processing]);
@@ -132,11 +138,13 @@ export function AdImageUploader({
   }, [closeCrop, image]);
   const chooseFile = async (file: File) => {
     if (busy || processing) return;
+    setError(null);
     try {
       setImage(await readImage(file));
       setPosition({ x: 0.5, y: 0.5 });
-    } catch {
+    } catch (e) {
       setImage(null);
+      setError(errorMessage(e));
     }
   };
   const acceptFiles = (files: FileList | null) => {
@@ -173,13 +181,15 @@ export function AdImageUploader({
   const confirmCrop = async () => {
     if (!image || processing) return;
     setProcessing(true);
+    setError(null);
     try {
       const file = await makeCroppedFile(image, aspectRatio, position, previewWidth * 2);
       URL.revokeObjectURL(image.url);
       setImage(null);
       onFileSelected(file);
-    } catch {
-      setImage(null);
+    } catch (e) {
+      // 모달을 유지해 사용자가 실패를 인지하고 다시 시도하거나 취소할 수 있게 한다.
+      setError(errorMessage(e));
     } finally {
       setProcessing(false);
     }
@@ -209,6 +219,7 @@ export function AdImageUploader({
       >
         <UploadIcon src="/assets/icons/figma-upload-cloud.svg" alt="" compact={compact} />
         <Guide role={busy ? 'status' : undefined}>{busy ? '이미지 처리 중...' : label}</Guide>
+        {error && !image ? <ErrorText role="alert">{error}</ErrorText> : null}
         <HiddenInput
           id={inputId}
           ref={inputRef}
@@ -240,6 +251,9 @@ export function AdImageUploader({
                   onPointerUp={() => {
                     dragRef.current = null;
                   }}
+                  onPointerCancel={() => {
+                    dragRef.current = null;
+                  }}
                 >
                   <CropImagePreview
                     src={image.url}
@@ -252,6 +266,7 @@ export function AdImageUploader({
                     }}
                   />
                 </CropFrame>
+                {error ? <ErrorText role="alert">{error}</ErrorText> : null}
                 <CropActions>
                   <CropButton type="button" onClick={closeCrop} disabled={processing}>
                     취소
@@ -302,6 +317,12 @@ const UploadIcon = styled('img', { shouldForwardProp: (prop) => prop !== 'compac
   pointerEvents: 'none',
 }));
 const Guide = styled.span({ color: c.gray500, ...textStyle.metaText });
+const ErrorText = styled.span({
+  display: 'block',
+  marginTop: 8,
+  color: c.red,
+  ...textStyle.metaText,
+});
 const HiddenInput = styled.input({
   position: 'absolute',
   width: 1,
