@@ -48,6 +48,7 @@ import type {
   AdReport,
   AdSlotPricing,
   AdminAdEntry,
+  AdminAutomatedEmail,
   AdminDashboard,
   AdminEmailMessage,
   AdminEmailThread,
@@ -92,6 +93,7 @@ import type {
   IssueBillingAuthorizationBody,
   JoinTeamRequest,
   ListAdminAdsParams,
+  ListAdminAutomatedEmailsParams,
   ListAdminBusinesses200,
   ListAdminBusinessesParams,
   ListAdminCertificatesParams,
@@ -9546,6 +9548,133 @@ export const useCreateAdminEmail = <TError = BadRequestResponse | ForbiddenRespo
       > => {
       return useMutation(getCreateAdminEmailMutationOptions(options), queryClient);
     }
+
+export type listAdminAutomatedEmailsResponse200 = {
+  data: AdminAutomatedEmail[]
+  status: 200
+}
+
+export type listAdminAutomatedEmailsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type listAdminAutomatedEmailsResponseSuccess = (listAdminAutomatedEmailsResponse200) & {
+  headers: Headers;
+};
+export type listAdminAutomatedEmailsResponseError = (listAdminAutomatedEmailsResponse403) & {
+  headers: Headers;
+};
+
+export type listAdminAutomatedEmailsResponse = (listAdminAutomatedEmailsResponseSuccess | listAdminAutomatedEmailsResponseError)
+
+export const getListAdminAutomatedEmailsUrl = (params?: ListAdminAutomatedEmailsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/emails/automated?${stringifiedParams}` : `/admin/emails/automated`
+}
+
+/**
+ * @summary no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+ */
+export const listAdminAutomatedEmails = async (params?: ListAdminAutomatedEmailsParams, options?: Parameters<typeof apiFetch>[1]): Promise<listAdminAutomatedEmailsResponse> => {
+
+  return apiFetch<listAdminAutomatedEmailsResponse>(getListAdminAutomatedEmailsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAutomatedEmailsQueryKey = (params?: ListAdminAutomatedEmailsParams,) => {
+    return [
+    `/admin/emails/automated`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminAutomatedEmailsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAutomatedEmailsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAutomatedEmails>>> = ({ signal }) => listAdminAutomatedEmails(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminAutomatedEmailsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAutomatedEmails>>>
+export type ListAdminAutomatedEmailsQueryError = ForbiddenResponse
+
+
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params: undefined |  ListAdminAutomatedEmailsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+ */
+
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminAutomatedEmailsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type getAdminEmailResponse200 = {
   data: AdminEmailThreadDetail

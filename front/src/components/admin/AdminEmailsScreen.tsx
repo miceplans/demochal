@@ -22,6 +22,20 @@ import {
   FieldLabel as AdminFieldLabel,
 } from './parts';
 
+type Mailbox = 'support' | 'noreply';
+const MAILBOXES: { key: Mailbox; label: string; address: string }[] = [
+  { key: 'support', label: '고객지원', address: 'help@semochall.com' },
+  { key: 'noreply', label: '자동 발송', address: 'no-reply@semochall.com' },
+];
+const statusTone: Record<string, 'red' | 'blue' | 'green'> = {
+  open: 'red',
+  pending: 'blue',
+  resolved: 'green',
+};
+const automatedTypeLabel: Record<string, string> = {
+  'verification.result': '인증 결과',
+  team_matching: '팀 매칭',
+};
 const statusLabel: Record<string, string> = { open: '미처리', pending: '처리중', resolved: '완료' };
 const statusValue: Record<string, string> = { 미처리: 'open', 처리중: 'pending', 완료: 'resolved' };
 function formatTime(value?: string) {
@@ -37,6 +51,112 @@ function formatTime(value?: string) {
 }
 
 export function AdminEmailsScreen() {
+  const router = useRouter();
+  const [mailbox, setMailbox] = useState<Mailbox>('support');
+  return (
+    <Screen>
+      <TitleRow>
+        <AdminPageTitle>메일함</AdminPageTitle>
+        {mailbox === 'support' ? (
+          <ApproveButton type="button" onClick={() => router.push('/admin/emails/compose')}>
+            + 새 메일
+          </ApproveButton>
+        ) : null}
+      </TitleRow>
+      <MailboxTabs role="tablist" aria-label="메일함 구분">
+        {MAILBOXES.map((box) => (
+          <MailboxTab
+            key={box.key}
+            type="button"
+            role="tab"
+            id={`mailbox-tab-${box.key}`}
+            aria-selected={mailbox === box.key}
+            aria-controls="mailbox-panel"
+            active={mailbox === box.key}
+            onClick={() => setMailbox(box.key)}
+          >
+            {box.label}
+            <TabAddress>{box.address}</TabAddress>
+          </MailboxTab>
+        ))}
+      </MailboxTabs>
+      <Panel role="tabpanel" id="mailbox-panel" aria-labelledby={`mailbox-tab-${mailbox}`}>
+        {mailbox === 'support' ? <SupportMailbox /> : <AutomatedMailbox />}
+      </Panel>
+    </Screen>
+  );
+}
+
+function AutomatedMailbox() {
+  const [query, setQuery] = useState('');
+  const list = generated.useListAdminAutomatedEmails({ q: query || undefined });
+  const rows = (list.data?.status === 200 ? list.data.data : []).filter(
+    (row): row is typeof row & { id: string } => Boolean(row.id),
+  );
+  const columns: AdminColumn<(typeof rows)[number]>[] = [
+    {
+      key: 'subject',
+      header: '메일',
+      render: (row) => (
+        <MailCell>
+          <MailIcon aria-hidden>✉</MailIcon>
+          <MailCopy>
+            <MailSubject>{row.subject || '(제목 없음)'}</MailSubject>
+            <MailCustomer>
+              {(row.type && automatedTypeLabel[row.type]) || row.type || '알림'}
+            </MailCustomer>
+          </MailCopy>
+        </MailCell>
+      ),
+    },
+    { key: 'recipient', header: '수신자', render: (row) => row.recipient || '-' },
+    {
+      key: 'sentAt',
+      header: '발송 시각',
+      render: (row) => <TimeCell>{formatTime(row.sentAt ?? undefined)}</TimeCell>,
+    },
+    { key: 'status', header: '상태', render: () => <Badge tone="green">발송 완료</Badge> },
+  ];
+  return (
+    <>
+      <StatRow>
+        <StatCard
+          label="최근 발송"
+          value={String(rows.length)}
+          meta="최근 200건 기준 자동 발송"
+          dot={c.green}
+        />
+      </StatRow>
+      <FilterBar>
+        <SearchFilter
+          placeholder="제목 또는 수신자 검색"
+          label="제목 또는 수신자 검색"
+          value={query}
+          onChange={setQuery}
+        />
+        {query ? (
+          <RejectButton type="button" onClick={() => setQuery('')}>
+            필터 초기화
+          </RejectButton>
+        ) : null}
+      </FilterBar>
+      {list.isPending ? (
+        <AdminInlineNotice>발송 내역을 불러오는 중이에요.</AdminInlineNotice>
+      ) : null}
+      {list.isError ? (
+        <AdminInlineNotice role="alert">
+          발송 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+        </AdminInlineNotice>
+      ) : null}
+      {list.isSuccess && rows.length === 0 ? (
+        <AdminInlineNotice>자동 발송된 메일이 없어요.</AdminInlineNotice>
+      ) : null}
+      <AdminTable columns={columns} rows={rows} />
+    </>
+  );
+}
+
+function SupportMailbox() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
@@ -86,33 +206,29 @@ export function AdminEmailsScreen() {
       key: 'status',
       header: '상태',
       render: (row) => (
-        <Badge>{row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}</Badge>
+        <Badge tone={statusTone[row.status ?? 'open'] ?? 'gray'}>
+          {row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}
+        </Badge>
       ),
     },
   ];
 
   return (
-    <Screen>
-      <TitleRow>
-        <PageHeading>
-          <AdminPageTitle>메일함</AdminPageTitle>
-          <PageDescription>고객 문의를 확인하고 빠르게 답장하세요.</PageDescription>
-        </PageHeading>
-        <HeaderActions>
-          <ApproveButton type="button" onClick={() => router.push('/admin/emails/compose')}>
-            + 새 메일
-          </ApproveButton>
-        </HeaderActions>
-      </TitleRow>
+    <>
       <StatRow>
         <StatCard label="전체 메일" value={String(counts.total)} meta="전체 고객 문의" />
         <StatCard
           label="미처리"
           value={String(counts.open)}
           meta="확인이 필요한 메일"
+          dot={c.red}
+        />
+        <StatCard
+          label="처리중"
+          value={String(counts.pending)}
+          meta="답변 진행 중"
           dot={c.primary}
         />
-        <StatCard label="처리중" value={String(counts.pending)} meta="답변 진행 중" dot="#D97706" />
         <StatCard
           label="완료"
           value={String(counts.resolved)}
@@ -156,7 +272,7 @@ export function AdminEmailsScreen() {
         rows={tableRows}
         onRowClick={(row) => router.push(`/admin/emails/${row.id}`)}
       />
-    </Screen>
+    </>
   );
 }
 
@@ -371,7 +487,7 @@ function ThreadDetail({
     <>
       <ThreadHeader>
         <div>
-          <Eyebrow>고객지원 문의</Eyebrow>
+          <Eyebrow>고객지원 · help@semochall.com</Eyebrow>
           <ThreadTitle>{thread.subject || '(제목 없음)'}</ThreadTitle>
           <CustomerLine>
             {thread.customerEmail || '고객 이메일 없음'}{' '}
@@ -414,7 +530,8 @@ function ThreadDetail({
         ))}
       </Timeline>
       <ReplyBox aria-label="답장 작성">
-        <textarea
+        <ComposeTextarea
+          aria-label="답장 내용"
           value={text}
           onChange={(event) => setText(event.target.value)}
           placeholder="답장 내용을 입력하세요."
@@ -440,7 +557,29 @@ function ThreadDetail({
 }
 
 const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 24, minHeight: 0 });
-const PageHeading = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 });
+const MailboxTabs = styled.div({
+  display: 'flex',
+  gap: 24,
+  borderBottom: `0.5px solid ${c.gray200}`,
+});
+const MailboxTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active: boolean;
+}>(({ active }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: 2,
+  marginBottom: -0.5,
+  padding: '10px 4px',
+  border: 0,
+  borderBottom: `2px solid ${active ? c.primary : 'transparent'}`,
+  background: 'transparent',
+  color: active ? c.primary : c.gray500,
+  cursor: 'pointer',
+  ...textStyle.subtitle,
+}));
+const TabAddress = styled.span({ ...textStyle.metaText, color: c.gray500 });
+const Panel = styled.div({ display: 'flex', flexDirection: 'column', gap: 24, minWidth: 0 });
 const PageHeadingWithBack = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
 const BackGlyph = styled.button({
   border: 0,
@@ -451,8 +590,6 @@ const BackGlyph = styled.button({
   fontSize: 28,
   lineHeight: 1,
 });
-const PageDescription = styled.p({ margin: 0, color: c.gray500, ...textStyle.caption });
-const HeaderActions = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
 const MailCell = styled.div({ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220 });
 const MailIcon = styled.span({
   display: 'grid',
@@ -460,7 +597,7 @@ const MailIcon = styled.span({
   width: 32,
   height: 32,
   borderRadius: 4,
-  background: '#EFF6FF',
+  background: c.lightBlue,
   color: c.primary,
   fontSize: 16,
 });
@@ -500,24 +637,28 @@ const ComposeForm = styled.form({
   gap: 10,
   maxWidth: 760,
   padding: 24,
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
   background: c.white,
 });
 const Field = styled.label({ display: 'flex', flexDirection: 'column', gap: 7 });
 const ComposeInput = styled.input({
   padding: '10px 12px',
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 4,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 10,
+  outline: 'none',
   ...textStyle.body,
+  '&:focus': { borderColor: c.primary },
 });
 const ComposeTextarea = styled.textarea({
   minHeight: 140,
   padding: '10px 12px',
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 4,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 10,
+  outline: 'none',
   resize: 'vertical',
   ...textStyle.body,
+  '&:focus': { borderColor: c.primary },
 });
 const ComposeFooter = styled.div({
   display: 'flex',
@@ -528,8 +669,8 @@ const ComposeFooter = styled.div({
 });
 const CharacterCount = styled.span({ color: c.gray500, fontSize: 12 });
 const Detail = styled.section({
-  border: `1px solid ${c.gray200}`,
-  borderRadius: 6,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
   padding: 24,
   minWidth: 0,
   overflow: 'auto',
@@ -540,7 +681,7 @@ const ThreadHeader = styled.div({
   justifyContent: 'space-between',
   gap: 20,
   paddingBottom: 20,
-  borderBottom: `1px solid ${c.gray200}`,
+  borderBottom: `0.5px solid ${c.gray200}`,
   '@media (max-width: 700px)': { flexDirection: 'column' },
 });
 const Eyebrow = styled.span({
@@ -572,8 +713,8 @@ const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
   alignSelf: outbound ? 'flex-end' : 'flex-start',
   width: 'min(90%, 640px)',
   padding: 14,
-  borderRadius: 6,
-  background: outbound ? '#EFF6FF' : c.gray50,
+  borderRadius: 8,
+  background: outbound ? c.lightBlue : c.gray50,
 }));
 const MessageMeta = styled.div({ color: c.gray500, fontSize: 12, marginBottom: 8 });
 const MessageBody = styled.div({
@@ -589,4 +730,4 @@ const AttachmentList = styled.ul({
 });
 const ReplyBox = styled.div({ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 });
 const ReplyActions = styled.div({ display: 'flex', justifyContent: 'flex-end' });
-const Error = styled.p({ margin: 0, color: '#B42318', ...textStyle.caption2 });
+const Error = styled.p({ margin: 0, color: c.red, ...textStyle.caption2 });
