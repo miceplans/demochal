@@ -83,6 +83,7 @@ export function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const paymentKey = searchParams.get('paymentKey');
+  const isAdFlow = searchParams.get('flow') === 'ad';
   const valid = Boolean(orderId && paymentKey);
 
   const [state, setState] = useState<PaymentState>('checking');
@@ -185,9 +186,15 @@ export function PaymentSuccessPage() {
             <img src="/assets/icons/check.svg" alt="" width={28} height={28} />
           </PaidBadge>
           <Title>결제가 완료됐어요</Title>
-          <Description>신청이 확정됐어요. 내 신청에서 확인할 수 있어요.</Description>
+          <Description>
+            {isAdFlow
+              ? '광고 계약이 확정됐어요.'
+              : '신청이 확정됐어요. 내 신청에서 확인할 수 있어요.'}
+          </Description>
           <Actions>
-            <Button onClick={() => router.push('/my/applications')}>내 신청 보기</Button>
+            <Button onClick={() => router.push(isAdFlow ? '/biz/ads' : '/my/applications')}>
+              {isAdFlow ? '광고 관리로 이동' : '내 신청 보기'}
+            </Button>
           </Actions>
         </PaidBlock>
       )}
@@ -196,10 +203,15 @@ export function PaymentSuccessPage() {
           <Title>결제를 완료하지 못했어요</Title>
           <Description>{message ?? '결제가 완료되지 않았어요.'}</Description>
           <Actions>
-            <Button onClick={() => router.push('/my/applications')} tone="outline">
-              내 신청 보기
+            <Button
+              onClick={() => router.push(isAdFlow ? '/biz/ads' : '/my/applications')}
+              tone="outline"
+            >
+              {isAdFlow ? '광고 관리로 이동' : '내 신청 보기'}
             </Button>
-            <Button onClick={() => router.push('/contests/public-data')}>다시 신청하기</Button>
+            <Button onClick={() => router.push(isAdFlow ? '/biz/ads' : '/contests/public-data')}>
+              {isAdFlow ? '광고 관리로 이동' : '다시 신청하기'}
+            </Button>
           </Actions>
         </>
       )}
@@ -209,8 +221,11 @@ export function PaymentSuccessPage() {
           <Description>{message}</Description>
           <Actions>
             <Button onClick={() => window.location.reload()}>새로고침</Button>
-            <Button onClick={() => router.push('/my/applications')} tone="outline">
-              내 신청 보기
+            <Button
+              onClick={() => router.push(isAdFlow ? '/biz/ads' : '/my/applications')}
+              tone="outline"
+            >
+              {isAdFlow ? '광고 관리로 이동' : '내 신청 보기'}
             </Button>
           </Actions>
         </>

@@ -228,6 +228,7 @@ export interface Ad {
   status: 'active' | 'preparing' | 'paused' | 'ended';
   paidAmount: number;
   createdAt: string;
+  order?: { id: string; amount: number; name: string } | null;
 }
 
 /** Public, currently serving ad creative used by the user-facing home page. */

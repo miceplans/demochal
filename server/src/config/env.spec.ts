@@ -10,14 +10,24 @@ describe('env JWT_SECRET validation', () => {
   afterEach(() => vi.unstubAllEnvs());
 
   it('rejects a short JWT_SECRET in production', async () => {
-    await expect(loadEnv({ NODE_ENV: 'production', JWT_SECRET: 'x' })).rejects.toThrow(
-      /JWT_SECRET/,
-    );
+    await expect(
+      loadEnv({ NODE_ENV: 'production', JWT_SECRET: 'x', TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1' }),
+    ).rejects.toThrow(/JWT_SECRET/);
   });
 
   it('accepts a 32+ character JWT_SECRET in production', async () => {
-    const { env } = await loadEnv({ NODE_ENV: 'production', JWT_SECRET: 'a'.repeat(32) });
+    const { env } = await loadEnv({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a'.repeat(32),
+      TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1',
+    });
     expect(env.jwtSecret).toBe('a'.repeat(32));
+  });
+
+  it('rejects an empty webhook allowlist in production', async () => {
+    await expect(
+      loadEnv({ NODE_ENV: 'production', JWT_SECRET: 'a'.repeat(32), TOSS_WEBHOOK_ALLOWED_IPS: '' }),
+    ).rejects.toThrow(/TOSS_WEBHOOK_ALLOWED_IPS/);
   });
 
   it('derives an OAuth state key distinct from the JWT secret', async () => {

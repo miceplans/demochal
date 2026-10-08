@@ -43,6 +43,7 @@ const ROWS = [
     amount: 100_000,
     status: 'paid',
     approvedAt: new Date('2026-09-10T09:00:00Z'),
+    refundedAmount: 20_000,
   },
   {
     id: 'pay-2',
@@ -85,7 +86,7 @@ describe('BillingHistoryService', () => {
       {
         id: 'pay-1',
         name: '홈 히어로 배너 광고',
-        amount: -100_000,
+        amount: -80_000,
         paidAt: '2026-09-10T09:00:00.000Z',
         status: 'paid',
       },
@@ -117,7 +118,7 @@ describe('BillingHistoryService', () => {
     // canceled/refunded, expired, and ready rows contribute 0. Positive refund
     // display amounts (pay-2, pay-6) are not part of this reduce — they don't
     // get subtracted a second time.
-    expect(total).toBe(-110_000);
+    expect(total).toBe(-90_000);
   });
 
   it('filters never-charged payment attempts (expired/ready) out of the query', async () => {
