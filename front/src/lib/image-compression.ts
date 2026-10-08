@@ -18,6 +18,13 @@ export const AD_IMAGE_PRESETS = {
   gallery: { initialQuality: 0.8, maxSizeMB: 0.15, maxWidthOrHeight: 900 },
 } as const satisfies Record<string, AdImagePreset>;
 
+// 크롭 모달에서 이미 광고 크기(2x)로 잘라 WebP로 만든 파일용 — 재압축으로 화질이 또 깎이지 않게
+// 해상도 상한을 크롭 출력(hero 2120 / gallery 596)보다 크게, 용량·품질 상한을 넉넉하게 둔다.
+export const CROPPED_AD_IMAGE_PRESETS = {
+  hero: { initialQuality: 0.95, maxSizeMB: 1, maxWidthOrHeight: 2400 },
+  gallery: { initialQuality: 0.95, maxSizeMB: 0.5, maxWidthOrHeight: 1200 },
+} as const satisfies Record<string, AdImagePreset>;
+
 export const PROFILE_IMAGE_PRESET = {
   initialQuality: 0.85,
   maxSizeMB: 0.2,

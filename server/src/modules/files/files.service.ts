@@ -8,6 +8,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { eq, inArray } from 'drizzle-orm';
+import sharp from 'sharp';
 import { v4 as uuid } from 'uuid';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -137,25 +138,56 @@ export class FilesService {
 
     const targetBucket =
       file.requestedBucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
+    let convertedWebp: Buffer | undefined;
+    if (targetBucket !== env.s3PrivateBucket && file.contentType !== 'image/webp') {
+      try {
+        const source = await this.s3.send(
+          new GetObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
+        );
+        const sourceBytes = Buffer.from(await source.Body!.transformToByteArray());
+        convertedWebp = await sharp(sourceBytes).webp().toBuffer();
+      } catch (error) {
+        await this.rejectUpload(file.key, id);
+        this.logger.warn(`Failed to convert upload ${id} to WebP`, error);
+        throw new NotFoundException('업로드된 이미지 변환에 실패했습니다.');
+      }
+    }
     const targetKey =
       targetBucket === env.s3PrivateBucket
         ? file.key
-        : `uploads/${file.id}.${EXTENSION_BY_CONTENT_TYPE[file.contentType as AllowedUploadContentType]}`;
+        : `uploads/${file.id}.${convertedWebp ? 'webp' : EXTENSION_BY_CONTENT_TYPE[file.contentType as AllowedUploadContentType]}`;
     if (targetBucket !== env.s3PrivateBucket) {
-      await this.s3.send(
-        new CopyObjectCommand({
-          Bucket: targetBucket,
-          Key: targetKey,
-          CopySource: `${env.s3PrivateBucket}/${file.key}`,
-          ContentType: file.contentType,
-          MetadataDirective: 'REPLACE',
-        }),
-      );
+      if (convertedWebp) {
+        await this.s3.send(
+          new PutObjectCommand({
+            Bucket: targetBucket,
+            Key: targetKey,
+            Body: convertedWebp,
+            ContentType: 'image/webp',
+            ContentLength: convertedWebp.length,
+          }),
+        );
+      } else {
+        await this.s3.send(
+          new CopyObjectCommand({
+            Bucket: targetBucket,
+            Key: targetKey,
+            CopySource: `${env.s3PrivateBucket}/${file.key}`,
+            ContentType: file.contentType,
+            MetadataDirective: 'REPLACE',
+          }),
+        );
+      }
     }
 
     const [readyFile] = await this.db
       .update(files)
-      .set({ bucket: file.requestedBucket, key: targetKey, uploadStatus: 'ready' })
+      .set({
+        bucket: file.requestedBucket,
+        key: targetKey,
+        contentType: convertedWebp ? 'image/webp' : file.contentType,
+        uploadStatus: 'ready',
+      })
       .where(eq(files.id, id))
       .returning();
 
