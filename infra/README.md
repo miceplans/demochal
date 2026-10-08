@@ -117,6 +117,22 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
 확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
 `NODE_TLS_REJECT_UNAUTHORIZED=0`으로 우회하지 않습니다.
 
+## DB 관리용 psql 이미지
+
+운영 API/워커 이미지는 변경하지 않고, `server/Dockerfile.dbadmin`(PostgreSQL 클라이언트 16 +
+`global-bundle.pem`, `PGSSLMODE=verify-full`)을 별도 이미지로 둔다. CI 배포 대상이 아니며
+승인된 운영자가 수동으로 build/push한다. 서비스는 만들지 않고 one-off 태스크로만 실행한다.
+
+1. `docker build --file server/Dockerfile.dbadmin --tag <ecr>/<repo>:dbadmin-<날짜> .` 후 ECR에 push한다.
+2. TODO(Terraform): 이 이미지를 쓰는 `dbadmin` task definition(migrate와 같은 서브넷/보안그룹,
+   `DATABASE_URL`은 application secret 매핑, `enableExecuteCommand`, 인바운드 없음)을 추가한다.
+   https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html
+3. `aws ecs run-task ... --enable-execute-command`로 띄운 뒤 `aws ecs execute-command ... --command "/bin/bash"`로 접속해
+   `psql "$DATABASE_URL"`을 실행한다. 작업이 끝나면 태스크를 `aws ecs stop-task`로 종료한다.
+
+`DATABASE_URL`에는 `sslmode`/`sslrootcert` 등 `ssl*` 파라미터를 넣지 않는다(URL 값이 환경변수보다 우선한다).
+`sslmode=disable`/`require`로 우회하지 않는다.
+
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 
 - `lambda/verification-cleanup/` — 사업자등록증 만료 삭제 배치 (EventBridge 트리거, Lambda)
