@@ -143,6 +143,23 @@ describe('FilesService.resolvePublicUrls', () => {
   });
 });
 
+describe('FilesService.requestUpload', () => {
+  it.each(['image/png', 'image/jpeg'] as const)(
+    'rejects %s for the public bucket',
+    async (contentType) => {
+      const { service, db } = createService([]);
+
+      await expect(
+        service.requestUpload(
+          { bucket: 'public', contentType, fileName: 'a', sizeBytes: 1 },
+          'user-1',
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(db.select).not.toHaveBeenCalled();
+    },
+  );
+});
+
 describe('FilesService.finalizeUpload', () => {
   const pending = {
     id: 'file-1',

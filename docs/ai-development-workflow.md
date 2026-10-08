@@ -194,7 +194,7 @@ AI는 PR까지만 만든다. 인간 reviewer가 최종 merge를 담당한다.
 
 ### PR risk scoring
 
-PR 생성 및 synchronize 시 [PR AI orchestration](../.github/workflows/pr-ai-orchestration.yml)이 독립 AI runner에 diff 기반 risk analysis를 전달한다. 단순 line count 대신 authentication, authorization, payment, database/migration, infrastructure, file ownership, secrets, permissions, API contract, 변경 의미와 regression surface를 분석한다.
+PR 생성 및 재오픈 시 [PR AI orchestration](../.github/workflows/pr-ai-orchestration.yml)이 독립 AI runner에 diff 기반 risk analysis를 전달한다. synchronize(추가 push)에서는 실행하지 않는다. 단순 line count 대신 authentication, authorization, payment, database/migration, infrastructure, file ownership, secrets, permissions, API contract, 변경 의미와 regression surface를 분석한다.
 
 결과는 PR의 단일 `risk:low|medium|high|critical` label 및 review comment로 기록한다.
 

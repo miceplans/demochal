@@ -1,9 +1,21 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
+import { env } from '../../config/env.js';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { emailAttachments, emailMessages, emailThreads } from '../../db/schema.js';
+import {
+  emailAttachments,
+  emailMessages,
+  emailSendStates,
+  emailThreads,
+  notifications,
+  outboxEvents,
+  users,
+} from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
+import { maskEmail } from '../admin/admin.service.js';
+import { NOTIFICATION_EMAIL_EVENT } from '../notifications/email/notification-email.js';
+import { renderNotificationEmail } from '../notifications/email/notification-email.templates.js';
 import { SUPPORT_EMAIL_EVENT } from '../notifications/email/support-email.js';
 import {
   normalizeMessageId,
@@ -13,6 +25,7 @@ import {
   type InboundEmail,
 } from './email.types.js';
 
+const AUTOMATED_LIST_LIMIT = 200;
 const statuses = ['open', 'pending', 'resolved'] as const;
 
 @Injectable()
@@ -62,6 +75,73 @@ export class EmailService {
       );
   }
 
+  /**
+   * no-reply@ 자동 발송(서비스 알림 메일) 내역. 별도 저장소 없이 outbox + email_send_states에서
+   * 파생하며, 수신자 주소는 마스킹해서 내려준다. 읽기 전용이다.
+   */
+  async listAutomated(query?: { q?: string }) {
+    const sent = await this.db
+      .select({
+        id: emailSendStates.id,
+        sentAt: emailSendStates.sentAt,
+        payload: outboxEvents.payload,
+      })
+      .from(emailSendStates)
+      .innerJoin(outboxEvents, eq(outboxEvents.id, emailSendStates.outboxEventId))
+      .where(
+        and(
+          eq(emailSendStates.status, 'sent'),
+          eq(outboxEvents.eventType, NOTIFICATION_EMAIL_EVENT),
+        ),
+      )
+      .orderBy(desc(emailSendStates.sentAt))
+      .limit(AUTOMATED_LIST_LIMIT);
+    const notificationIds = sent
+      .map((row) => (row.payload as { notificationId?: unknown } | null)?.notificationId)
+      .filter((value): value is string => typeof value === 'string');
+    const rows = notificationIds.length
+      ? await this.db
+          .select({
+            id: notifications.id,
+            type: notifications.type,
+            payload: notifications.payload,
+            email: users.email,
+          })
+          .from(notifications)
+          .leftJoin(users, eq(users.id, notifications.userId))
+          .where(inArray(notifications.id, notificationIds))
+      : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    const origin = env.frontendOrigins[0] ?? 'http://localhost:3000';
+    const q = query?.q?.trim().toLocaleLowerCase('ko-KR');
+    return sent
+      .map((row) => {
+        const id = (row.payload as { notificationId?: string } | null)?.notificationId;
+        const notification = id ? byId.get(id) : undefined;
+        const rendered = notification
+          ? renderNotificationEmail(
+              notification.type,
+              (notification.payload ?? {}) as Record<string, unknown>,
+              origin,
+            )
+          : null;
+        return {
+          id: row.id,
+          subject: rendered?.subject ?? '(삭제된 알림)',
+          type: notification?.type ?? '',
+          recipient: notification?.email ? maskEmail(notification.email) : '',
+          status: 'sent' as const,
+          sentAt: row.sentAt,
+        };
+      })
+      .filter(
+        (row) =>
+          !q ||
+          row.subject.toLocaleLowerCase('ko-KR').includes(q) ||
+          row.recipient.toLocaleLowerCase('ko-KR').includes(q),
+      );
+  }
+
   async getThread(id: string) {
     const [thread] = await this.db
       .select()
@@ -78,7 +158,12 @@ export class EmailService {
       ? await this.db
           .select()
           .from(emailAttachments)
-          .where(inArray(emailAttachments.messageId, messages.map((message) => message.id)))
+          .where(
+            inArray(
+              emailAttachments.messageId,
+              messages.map((message) => message.id),
+            ),
+          )
       : [];
     return {
       ...thread,

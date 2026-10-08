@@ -7,13 +7,22 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, eq, ne } from 'drizzle-orm';
+import { and, asc, eq, lt, ne } from 'drizzle-orm';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 import type { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
+
+// refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
+// 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
+// 스캔 주기마다 API를 때리는 걸 막는다. 상한에 도달한 row는 refund_pending으로
+// 남기고 로그로 수동 환불이 필요함을 남긴다.
+const REFUND_RETRY_BASE_BACKOFF_MS = 5 * 60 * 1000;
+const REFUND_RETRY_MAX_BACKOFF_MS = 6 * 60 * 60 * 1000;
+const REFUND_RETRY_MAX_ATTEMPTS = 5;
+const REFUND_RETRY_BATCH_LIMIT = 50;
 
 export interface TossWebhookPayload {
   eventType: string;
@@ -153,9 +162,9 @@ export class PaymentsService {
         `Compensating Toss cancel failed for order ${orderId} — manual refund required`,
         (cancelError as Error | undefined)?.stack,
       );
-      // Leave a local trail of the charged-but-unrefunded payment so a
-      // reconciliation job (TODO) / operators can find it; DONE redelivery retries the cancel.
-      // TODO: alert operators and add a reconciliation job over 'refund_pending' payments.
+      // Leave a local trail of the charged-but-unrefunded payment; the worker's
+      // retryRefundPendingPayments scan retries the cancel with backoff and logs
+      // when the retry cap is reached. DONE redelivery also retries the cancel.
       // https://docs.tosspayments.com/reference#결제-취소
       await this.recordLocally(orderId, tossPayment, 'refund_pending');
       return 'failed';
@@ -186,6 +195,117 @@ export class PaymentsService {
     } catch (error) {
       this.logger.error(
         `Failed to record ${status} payment for order ${orderId}`,
+        (error as Error | undefined)?.stack,
+      );
+    }
+  }
+
+  /**
+   * 워커가 주기적으로 호출하는 refund_pending 스캔. 결제는 됐지만 주문 확정이
+   * 불가능해 Toss 취소(환불)마저 실패한 결제를 찾아 취소를 재시도한다.
+   * 성공하면 recordLocally(..., 'canceled')로 결제와 주문을 같은 트랜잭션에서
+   * 정산하고, 실패하면 refundRetryCount/refundRetriedAt을 갱신해 지수 백오프 뒤
+   * 다시 시도한다. Toss 취소는 cancelWithToss를 그대로 재사용해 Idempotency-Key
+   * (cancel:{orderId})로 중복 취소를 방지한다. 이미 'canceled'로 정산된 row는
+   * 조건에서 제외되므로 재처리하지 않는다(멱등).
+   */
+  async retryRefundPendingPayments(now = new Date()): Promise<{
+    scanned: number;
+    attempted: number;
+    refunded: number;
+    failed: number;
+  }> {
+    const candidates = await this.db
+      .select()
+      .from(payments)
+      .where(
+        and(
+          eq(payments.status, 'refund_pending'),
+          lt(payments.refundRetryCount, REFUND_RETRY_MAX_ATTEMPTS),
+        ),
+      )
+      .orderBy(asc(payments.refundRetriedAt))
+      .limit(REFUND_RETRY_BATCH_LIMIT);
+
+    const summary = { scanned: candidates.length, attempted: 0, refunded: 0, failed: 0 };
+    if (candidates.length === 0) return summary;
+
+    if (!env.tossSecretKey) {
+      // Misconfiguration must not burn retry attempts — every cancel would fail.
+      this.logger.error('Toss is not configured; skipping the refund_pending retry scan');
+      return summary;
+    }
+
+    for (const payment of candidates) {
+      // WHERE이 이미 좁혀줬지만, 재처리 대상 조건을 애플리케이션에서도 다시 검사해
+      // 정산(취소)된 row가 절대 다시 취소되지 않도록 한다.
+      if (
+        payment.status !== 'refund_pending' ||
+        payment.refundRetryCount >= REFUND_RETRY_MAX_ATTEMPTS
+      ) {
+        continue;
+      }
+      const dueAt = payment.refundRetriedAt
+        ? payment.refundRetriedAt.getTime() + this.refundRetryBackoffMs(payment.refundRetryCount)
+        : Number.NEGATIVE_INFINITY;
+      if (dueAt > now.getTime()) continue;
+
+      summary.attempted += 1;
+      try {
+        await this.cancelWithToss(
+          payment.orderId,
+          payment.providerPaymentKey,
+          '주문을 확정할 수 없어 자동 취소되었습니다.',
+        );
+      } catch (error) {
+        summary.failed += 1;
+        await this.recordRefundRetry(payment.id, payment.refundRetryCount + 1, now);
+        if (payment.refundRetryCount + 1 >= REFUND_RETRY_MAX_ATTEMPTS) {
+          this.logger.error(
+            `Refund retry cap reached for order ${payment.orderId} ` +
+              `after ${payment.refundRetryCount + 1} attempts — manual refund required`,
+            (error as Error | undefined)?.stack,
+          );
+        } else {
+          this.logger.warn(
+            `Refund retry ${payment.refundRetryCount + 1}/${REFUND_RETRY_MAX_ATTEMPTS} ` +
+              `failed for order ${payment.orderId}; backing off`,
+          );
+        }
+        continue;
+      }
+
+      this.logger.warn(`Refunded unsettleable payment for order ${payment.orderId} on retry`);
+      await this.recordLocally(
+        payment.orderId,
+        {
+          paymentKey: payment.providerPaymentKey,
+          orderId: payment.orderId,
+          status: 'DONE',
+          totalAmount: payment.amount,
+        },
+        'canceled',
+      );
+      summary.refunded += 1;
+    }
+    return summary;
+  }
+
+  // 지수 백오프: 기준 간격 × 2^(이미 시도한 횟수)에 상한을 둔다. 마지막 시도
+  // 시각부터 이 간격이 지난 row만 재시도 대상이 된다.
+  private refundRetryBackoffMs(attempts: number): number {
+    return Math.min(REFUND_RETRY_BASE_BACKOFF_MS * 2 ** attempts, REFUND_RETRY_MAX_BACKOFF_MS);
+  }
+
+  private async recordRefundRetry(paymentId: string, attempts: number, retriedAt: Date) {
+    try {
+      await this.db
+        .update(payments)
+        .set({ refundRetryCount: attempts, refundRetriedAt: retriedAt })
+        .where(eq(payments.id, paymentId));
+    } catch (error) {
+      this.logger.error(
+        `Failed to record refund retry for payment ${paymentId}`,
         (error as Error | undefined)?.stack,
       );
     }
@@ -300,6 +420,21 @@ export class PaymentsService {
     // Acknowledge instead of throwing — a 4xx here makes Toss retry a
     // permanently settled state forever.
     if (order.status === 'paid') return;
+    if (order.status === 'canceled') {
+      // Toss really charged the buyer (verified DONE above) but the order was
+      // canceled in the meantime (e.g. the buyer canceled while checkout was
+      // open). Refund like the confirm path does instead of keeping the money;
+      // a failed cancel rethrows so Toss redelivers and the retry scan picks it up.
+      const outcome = await this.compensateIfUnsettleable(
+        new ConflictException('취소된 주문입니다.'),
+        order.id,
+        tossPayment,
+      );
+      if (outcome === 'failed') {
+        throw new BadGatewayException('Toss refund for a canceled order failed');
+      }
+      return;
+    }
     if (order.status !== 'pending') {
       this.logger.warn(
         `Ignoring DONE for order ${orderId} already in terminal status ${order.status}`,
@@ -425,6 +560,36 @@ export class PaymentsService {
     }
     if (typeof tossPayment.balanceAmount !== 'number') {
       throw new BadGatewayException('Toss partial cancellation response missing balanceAmount');
+    }
+
+    // Toss only allows a partial cancel on an already-approved payment, so
+    // this webhook must never be the first one we process for an order. When
+    // it outruns the DONE webhook there is no payment row yet, and the upsert
+    // below would insert a phantom 'paid' row onto a still-pending order.
+    // Reject instead — Toss redelivers, and once DONE settles, the redelivery
+    // applies normally (same re-verify-and-redeliver pattern as the
+    // verification failures above).
+    const [payment] = await this.db
+      .select({ status: payments.status })
+      .from(payments)
+      .where(eq(payments.orderId, order.id))
+      .limit(1);
+    if (order.status === 'pending' || !payment) {
+      this.logger.warn(`Rejected PARTIAL_CANCELED for order ${orderId} without a settled payment`);
+      throw new UnauthorizedException(
+        'Toss partial cancellation arrived before the payment was settled',
+      );
+    }
+
+    // Terminal or inconsistent settled states are acknowledged, never rejected:
+    // a 4xx would make Toss retry a state no redelivery can change (same
+    // contract as handleDone). The upsert's setWhere below still guards the
+    // row against a concurrent full cancel racing this read.
+    if (order.status !== 'paid' || payment.status !== 'paid') {
+      this.logger.warn(
+        `Ignoring PARTIAL_CANCELED for order ${orderId} settled as ${order.status}/${payment.status}`,
+      );
+      return;
     }
 
     // Toss reports the running balance, not a per-webhook delta: always SET

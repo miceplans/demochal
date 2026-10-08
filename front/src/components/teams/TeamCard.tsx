@@ -73,6 +73,10 @@ const Card = styled.article({
   border: `0.5px solid ${c.gray100}`,
   borderRadius: 14,
   overflow: 'hidden',
+  // ContestCard와 같은 hover lift로 카드 인터랙션 톤을 맞춘다.
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
   h3: { ...textStyle.mTabLabel, color: c.gray900, minWidth: 0 },
   '.team-artwork': {
     width: '100%',

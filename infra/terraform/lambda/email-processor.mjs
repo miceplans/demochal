@@ -118,6 +118,12 @@ function eventRecords(event) {
   return event ? [event] : [];
 }
 
+function resolveObjectKey(objectKey, prefix) {
+  if (!prefix || objectKey.startsWith(prefix)) return objectKey;
+  const normalizedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
+  return `${normalizedPrefix}${objectKey}`;
+}
+
 async function bodyToBuffer(body) {
   if (body instanceof Uint8Array) return Buffer.from(body);
   if (body?.transformToByteArray) return Buffer.from(await body.transformToByteArray());
@@ -131,6 +137,7 @@ export function createHandler({
   publish,
   logger = console,
   bucket = process.env.INBOX_BUCKET,
+  objectKeyPrefix = process.env.INBOX_KEY_PREFIX ?? '',
 }) {
   return async function handle(event) {
     const records = eventRecords(event);
@@ -138,18 +145,22 @@ export function createHandler({
       const ses = record.ses ?? {};
       const receipt = ses.receipt ?? {};
       const action = receipt.action ?? {};
-      const sesMessageId = ses.mail?.messageId ?? null;
-      const objectKey = action.objectKey ?? sesMessageId;
+      const mail = ses.mail ?? {};
+      const sesMessageId = mail.messageId ?? null;
+      const rawObjectKey = action.objectKey ?? sesMessageId;
+      const objectKey = rawObjectKey ? resolveObjectKey(rawObjectKey, objectKeyPrefix) : null;
       const recipient = receipt.recipients?.[0] ?? null;
       if (!objectKey) throw new Error('SES record has no S3 object key');
 
       try {
         const object = await getObject({ Bucket: bucket, Key: objectKey });
         const parsed = parseMimeMessage((await bodyToBuffer(object.Body)).toString('utf8'));
+        const from = parsed.from || mail.source || null;
+        const to = parsed.to || mail.destination?.[0] || recipient;
         const payload = {
-          messageId: parsed.messageId,
-          from: parsed.from,
-          to: parsed.to,
+          messageId: parsed.messageId || sesMessageId,
+          from,
+          to,
           subject: parsed.subject || '(제목 없음)',
           inReplyTo: parsed.inReplyTo || undefined,
           references: parsed.references ? (parsed.references.match(/<[^>]+>/g) ?? []) : [],

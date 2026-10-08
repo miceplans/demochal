@@ -196,6 +196,15 @@ const FooterBox = styled.footer({
   lineHeight: 'normal',
   [mobile]: { display: 'none' },
 });
+const SocialCircle = styled.span({
+  width: 24,
+  height: 24,
+  borderRadius: 18,
+  background: c.gray500,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+});
 export function Footer() {
   return (
     <FooterBox>
@@ -216,7 +225,50 @@ export function Footer() {
           <span>부산광역시 해운대구 센텀북대로 60 센텀IS타워 1807호</span>
           <span>051-783-1170 / mice@miceplans.com</span>
         </div>
-        <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          <Row style={{ gap: 4 }}>
+            <a
+              href="https://www.miceplans.com/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="MICEPLANS"
+            >
+              <SocialCircle>
+                <img
+                  src="/assets/icons/figma-footer/miceplans.svg"
+                  alt=""
+                  width={13.41}
+                  height={12}
+                />
+              </SocialCircle>
+            </a>
+            <a
+              href="https://www.youtube.com/@icclabcreativecontentslab6004/videos"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="YouTube"
+            >
+              <SocialCircle>
+                <img
+                  src="/assets/icons/figma-footer/youtube.svg"
+                  alt=""
+                  width={14.19}
+                  height={10}
+                />
+              </SocialCircle>
+            </a>
+            <a
+              href="https://www.instagram.com/miceplans/"
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Instagram"
+              style={{ display: 'flex' }}
+            >
+              <img src="/assets/icons/figma-footer/instagram.svg" alt="" width={24} height={24} />
+            </a>
+          </Row>
+          <span style={{ color: c.gray500 }}>© MICEPLANS. ALL Rights Reserved.</span>
+        </div>
       </Row>
     </FooterBox>
   );
@@ -228,6 +280,7 @@ export function UserShell({
   footer = true,
   navigation = true,
   hideMobileHeader = false,
+  hideMobileTitle = false,
   back = '/my',
 }: {
   children: ReactNode;
@@ -236,6 +289,7 @@ export function UserShell({
   footer?: boolean;
   navigation?: boolean;
   hideMobileHeader?: boolean;
+  hideMobileTitle?: boolean;
   back?: string;
 }) {
   const path = usePathname();
@@ -288,6 +342,8 @@ export function UserShell({
             <>
               <SearchBar />
               <Row gap={20}>
+                <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
+                <HeaderActionLink href="/biz/operations">챌린지 대행 문의</HeaderActionLink>
                 {isLoggedIn ? (
                   <>
                     <Link href="/notifications" aria-label="알림">
@@ -298,15 +354,11 @@ export function UserShell({
                     </Link>
                   </>
                 ) : (
-                  <>
-                    <HeaderActionLink href="/biz/postings/new">챌린지 만들기</HeaderActionLink>
-                    <HeaderActionLink href="/biz/operations">챌린지 대행 문의</HeaderActionLink>
-                    <Link href="/login">
-                      <Button as="span" small>
-                        로그인/회원가입
-                      </Button>
-                    </Link>
-                  </>
+                  <Link href="/login">
+                    <Button as="span" small>
+                      로그인/회원가입
+                    </Button>
+                  </Link>
                 )}
               </Row>
             </>
@@ -328,12 +380,14 @@ export function UserShell({
       </HeaderBox>
       {!hideMobileHeader && (
         <MobileHeader>
-          {title ? (
+          {title || hideMobileTitle ? (
             <MobileTitleBar>
               <MobileBackLink href={back} aria-label="뒤로가기">
                 ‹
               </MobileBackLink>
-              <MobileTitle>{title}</MobileTitle>
+              <MobileTitle aria-hidden={hideMobileTitle}>
+                {hideMobileTitle ? null : title}
+              </MobileTitle>
             </MobileTitleBar>
           ) : (
             <>
@@ -406,12 +460,20 @@ const MyAside = styled.aside({
   '& a[aria-current=page]': { background: c.gray100 },
   [mobile]: { display: 'none' },
 });
-export function MyShell({ children, title }: { children: ReactNode; title: string }) {
+export function MyShell({
+  children,
+  title,
+  hideMobileTitle = false,
+}: {
+  children: ReactNode;
+  title: string;
+  hideMobileTitle?: boolean;
+}) {
   const path = usePathname();
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
   return (
-    <UserShell compact title={title}>
+    <UserShell compact title={title} hideMobileTitle={hideMobileTitle}>
       <MyGrid>
         <MyAside>
           <Link href="/my">

@@ -16,10 +16,9 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { PublishAdminChallenge200Status } from './publishAdminChallenge200Status';
 
-export type RegisterPaymentCardBody = {
-  /** 토스 빌링키 */
-  billingKey: string;
-  cardName?: string;
-  maskedNumber: string;
+export type PublishAdminChallenge200 = {
+  id?: string;
+  status?: PublishAdminChallenge200Status;
 };

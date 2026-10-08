@@ -46,6 +46,36 @@ const Actions = styled.div({
   flexWrap: 'wrap',
   justifyContent: 'center',
 });
+// paid 전환 시 콘텐츠가 페이드업으로 등장하고 확인 배지가 팝한다.
+const PaidBlock = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 16,
+  animation: 'semo-paid-rise 0.3s ease-out both',
+  '@keyframes semo-paid-rise': {
+    from: { opacity: 0, transform: 'translateY(8px)' },
+    to: { opacity: 1, transform: 'none' },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+});
+const PaidBadge = styled.span({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  background: c.primary,
+  animation: 'semo-paid-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both',
+  animationDelay: '0.1s',
+  '@keyframes semo-paid-pop': {
+    from: { transform: 'scale(0.5)', opacity: 0 },
+    to: { transform: 'scale(1)', opacity: 1 },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+  img: { width: 28, height: 28 },
+});
 
 export function PaymentSuccessPage() {
   const router = useRouter();
@@ -150,13 +180,16 @@ export function PaymentSuccessPage() {
         </>
       )}
       {state === 'paid' && (
-        <>
+        <PaidBlock>
+          <PaidBadge aria-hidden="true">
+            <img src="/assets/icons/check.svg" alt="" width={28} height={28} />
+          </PaidBadge>
           <Title>결제가 완료됐어요</Title>
           <Description>신청이 확정됐어요. 내 신청에서 확인할 수 있어요.</Description>
           <Actions>
             <Button onClick={() => router.push('/my/applications')}>내 신청 보기</Button>
           </Actions>
-        </>
+        </PaidBlock>
       )}
       {state === 'failed' && (
         <>

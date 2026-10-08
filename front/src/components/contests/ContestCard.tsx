@@ -15,6 +15,24 @@ const TeamTag = styled(Tag)({
   lineHeight: 'normal',
   [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
 });
+// 북마크 저장 순간 팝 + 저장 상태 배경 강조로 토글 피드백을 준다(저장 해제는 틴트만 사라지게).
+const ScrapButton = styled(IconButton, {
+  shouldForwardProp: (prop) => prop !== '$saved',
+})<{ $saved?: boolean }>(({ $saved }) => ({
+  borderRadius: 999,
+  ...($saved
+    ? {
+        background: c.lightBlue,
+        animation: 'semo-scrap-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
+        '@keyframes semo-scrap-pop': {
+          '0%': { transform: 'scale(0.8)' },
+          '60%': { transform: 'scale(1.18)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
+      }
+    : {}),
+}));
 const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',
@@ -98,15 +116,16 @@ export function ContestCard({
   const bookmarkable = isBookmarkableId(contest.id);
   const saved = bookmarks.some((challenge) => challenge.id === contest.id);
   const scrapButton = (
-    <IconButton
+    <ScrapButton
       aria-label={`${contest.title} 북마크`}
       aria-pressed={saved}
+      $saved={saved}
       disabled={!bookmarkable || isToggling}
       title={bookmarkable ? undefined : '서버 챌린지 ID가 없어 북마크할 수 없어요'}
       onClick={() => toggleBookmark(contest.id)}
     >
       <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
-    </IconButton>
+    </ScrapButton>
   );
   return (
     <Card horizontal={horizontal} row={row} data-component="contest-card">

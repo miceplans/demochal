@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ads } from '../../db/schema.js';
+import { adToday } from './ad-period.js';
 import { AdsService } from './ads.service.js';
 
 vi.mock('../files/public-file-url.js', () => ({
@@ -147,7 +148,7 @@ describe('AdsService.updateStatus', () => {
 
   it('rejects reactivating an ad whose order was canceled', async () => {
     const { db, forUpdate, set } = createDbStub(
-      { ...AD, status: 'ended' },
+      { ...AD, status: 'paused', endDate: new Date(Date.now() + 5 * 86_400_000) },
       { id: 'order-1', adId: 'ad-1', status: 'canceled' },
     );
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
@@ -197,8 +198,33 @@ describe('AdsService.updateStatus', () => {
 
     const updated = await service.updateStatus('ad-1', { status: 'paused' }, OWNER);
 
-    expect(set).toHaveBeenCalledWith({ status: 'paused' });
+    expect(set).toHaveBeenCalledWith({ status: 'paused', pausedBy: 'owner' });
     expect(updated).toEqual({ ...AD, status: 'paused' });
+  });
+
+  it('forbids the business from resuming an ad paused by an admin', async () => {
+    const { db, set } = createDbStub({ ...AD, status: 'paused', pausedBy: 'admin' });
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
+      '관리자가 중단한 광고',
+    );
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('rejects resuming an ad whose contract period already ended', async () => {
+    const { db, set } = createDbStub({
+      ...AD,
+      status: 'paused',
+      pausedBy: 'owner',
+      endDate: new Date(Date.now() - 3 * 86_400_000),
+    });
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).rejects.toThrow(
+      '계약 기간이 끝난',
+    );
+    expect(set).not.toHaveBeenCalled();
   });
 
   it('no longer lets an admin bypass ownership on PATCH (admin pause has its own endpoint)', async () => {
@@ -235,10 +261,8 @@ describe('AdsService.listMine', () => {
     rows: T[],
     now: Date,
   ) {
-    const todayStart = new Date(
-      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-    );
-    return rows.filter((row) => row.startDate <= now && row.endDate >= todayStart);
+    const today = adToday(now);
+    return rows.filter((row) => row.startDate <= today && row.endDate >= today);
   }
 
   it('excludes expired-but-active ads when withinServingWindow is set', async () => {
@@ -262,18 +286,14 @@ describe('AdsService.listMine', () => {
 
     expect(result.map((ad) => ad.id)).toEqual(['ad-live']);
     const condition = where.mock.calls[0]![0];
-    const after = new Date();
-    const expectedTodayStart = new Date(
-      Date.UTC(before.getUTCFullYear(), before.getUTCMonth(), before.getUTCDate()),
-    );
-    // startDate <= now, endDate >= 오늘 0시(UTC) — 열·연산자·값이 뒤바뀐 구현은 통과하지 못한다.
+    const expectedTodayStart = adToday(before);
+    // startDate <= 오늘, endDate >= 오늘(KST 날짜, adToday 기준) — 열·연산자·값이 뒤바뀐 구현은 통과하지 못한다.
     expect(
       hasPairedPredicate(
         condition,
         ads.startDate,
         '<=',
-        (v) =>
-          v instanceof Date && v.getTime() >= before.getTime() && v.getTime() <= after.getTime(),
+        (v) => v instanceof Date && v.getTime() === expectedTodayStart.getTime(),
       ),
     ).toBe(true);
     expect(
@@ -308,7 +328,7 @@ describe('AdsService.listMine', () => {
       ...AD,
       id: 'ad-ends-today',
       startDate: new Date(now.getTime() - 2 * DAY_MS),
-      endDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+      endDate: adToday(now),
     };
     const { db, where } = createListMineDbStub(simulateServingWindow([endsTodayAd], now));
     const service = new AdsService(db, createBusinessesStub() as any);

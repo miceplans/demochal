@@ -1744,33 +1744,6 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/PaymentCard' } }
-    post:
-      tags: [Billing]
-      summary: 결제수단 등록
-      operationId: registerPaymentCard
-      x-impl-status: implemented
-      description: |
-        토스페이먼츠 빌링키 발급 후 저장. 카드번호는 마스킹되어 반환된다.
-        서버는 원본 카드번호를 절대 받지 않으므로(PCI 범위는 토스에 남음) `maskedNumber`는
-        빌링키 발급 시 토스가 클라이언트에 직접 내려주는 값을 그대로 전달받아야 한다 —
-        원 스키마엔 없던 implemented 확장 필드.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [billingKey, maskedNumber]
-              properties:
-                billingKey: { type: string, description: 토스 빌링키 }
-                cardName: { type: string }
-                maskedNumber: { type: string, example: '****-****-****-1234' }
-      responses:
-        '201':
-          description: 등록된 결제수단
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/PaymentCard' }
   /billing/history:
     get:
       tags: [Billing]
@@ -1949,7 +1922,7 @@ paths:
       summary: 광고 상태 변경 (중단 등)
       operationId: updateAd
       x-impl-status: implemented
-      description: 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
+      description: 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다). 재개(`active`)는 일시정지된 광고만 가능하며, 관리자가 중단한 광고(403)나 계약 기간이 끝난 광고(400)는 재개할 수 없다.
       parameters:
         - name: id
           in: path
@@ -2123,6 +2096,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AdminEmailMessage' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/emails/automated:
+    get:
+      tags: [Admin]
+      summary: no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+      operationId: listAdminAutomatedEmails
+      x-impl-status: implemented
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200':
+          description: 자동 발송 내역
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdminAutomatedEmail' } }
         '403': { $ref: '#/components/responses/Forbidden' }
   /admin/emails/{id}:
     get:
@@ -2394,6 +2384,30 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   status: { type: string, enum: [paused] }
+  /admin/challenges/{id}/publish:
+    post:
+      tags: [Admin]
+      summary: 관리자 공고 게시 승인
+      operationId: publishAdminChallenge
+      x-impl-status: implemented
+      description: |
+        `contestAutoPublish`가 꺼져 있으면 기관이 만든 공고는 draft로 저장되고, 이 API로 게시를 승인한다.
+        draft 공고만 published로 전환한다. 없으면 404, draft가 아니면 409.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 게시된 공고
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  status: { type: string, enum: [published] }
   /admin/ad-pricing:
     get:
       tags: [Admin]
@@ -2722,6 +2736,15 @@ components:
         lastMessage: { type: string }
         lastMessageAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    AdminAutomatedEmail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        subject: { type: string }
+        type: { type: string, description: 알림 유형 }
+        recipient: { type: string, description: 마스킹된 수신자 주소 }
+        status: { type: string, enum: [sent] }
+        sentAt: { type: string, format: date-time, nullable: true }
     AdminEmailThreadDetail:
       allOf:
         - $ref: '#/components/schemas/AdminEmailThread'
@@ -2832,6 +2855,10 @@ components:
         businessId: { type: string, format: uuid }
         title: { type: string }
         description: { type: string }
+        summary: { type: string, nullable: true, maxLength: 300 }
+        topics: { type: array, items: { type: string, maxLength: 100 } }
+        inquiryContact: { type: string, nullable: true, maxLength: 200 }
+        visibility: { type: string, enum: [public, private], default: public }
         price: { type: integer, description: 참가비 (원) }
         capacity: { type: integer, description: 모집 인원 }
         startDate: { type: string, format: date-time }
@@ -2941,6 +2968,13 @@ components:
       required: [businessId, title, description, price, capacity, startDate, endDate]
       properties:
         businessId: { type: string, format: uuid }
+        summary: { type: string, maxLength: 300 }
+        hashtags:
+          { type: array, maxItems: 20, uniqueItems: true, items: { type: string, maxLength: 50 } }
+        topics:
+          { type: array, maxItems: 30, uniqueItems: true, items: { type: string, maxLength: 100 } }
+        inquiryContact: { type: string, maxLength: 200 }
+        visibility: { type: string, enum: [public, private], default: public }
         title: { type: string }
         description: { type: string }
         price: { type: integer, minimum: 1 }
@@ -3009,6 +3043,25 @@ components:
       type: object
       description: 보낸 필드만 수정한다. businessId/status는 수정할 수 없다.
       properties:
+        summary: { type: string, nullable: true, maxLength: 300 }
+        hashtags:
+          {
+            type: array,
+            nullable: true,
+            maxItems: 20,
+            uniqueItems: true,
+            items: { type: string, maxLength: 50 },
+          }
+        topics:
+          {
+            type: array,
+            nullable: true,
+            maxItems: 30,
+            uniqueItems: true,
+            items: { type: string, maxLength: 100 },
+          }
+        inquiryContact: { type: string, nullable: true, maxLength: 200 }
+        visibility: { type: string, enum: [public, private] }
         title: { type: string, maxLength: 200 }
         description: { type: string, maxLength: 20000 }
         price: { type: integer, minimum: 0 }

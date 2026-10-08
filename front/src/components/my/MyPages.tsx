@@ -25,6 +25,7 @@ import {
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
+import { normalizeLinkUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -62,6 +63,9 @@ const Participating = styled.div({
   gridTemplateColumns: '1fr 1fr',
   gap: 20,
   '& a': {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 22,
     border: `0.5px solid ${c.gray100}`,
     borderRadius: 12,
     padding: 16,
@@ -136,6 +140,14 @@ const certificateBadges = ['자격증', '수료증', '어학성적', '수상경�
 const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const CERTIFICATE_MAX_BYTES = 10 * 1024 * 1024;
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
+
+const EndRow = styled(Row)<{ $mt?: number }>(({ $mt }) => ({
+  justifyContent: 'flex-end',
+  marginTop: $mt,
+}));
+const HeadingSpaced = styled(Heading)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const TitleSpaced = styled(Title)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const MutedSpaced = styled(Muted)<{ $mt: number }>(({ $mt }) => ({ marginTop: $mt }));
 
 function CertificateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
@@ -244,14 +256,14 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
               required
             />
           </UploadBox>
-          <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+          <EndRow $mt={4}>
             <Button type="button" small tone="plain" onClick={close} disabled={submitting}>
               취소
             </Button>
             <Button type="submit" small disabled={!badge || !file || submitting}>
               {submitting ? '요청 중…' : '인증 요청'}
             </Button>
-          </Row>
+          </EndRow>
         </Stack>
       </form>
     </Modal>
@@ -363,7 +375,7 @@ function SkillAddModal({
         ))}
         {options.length === 0 && <Muted>검색 결과가 없어요.</Muted>}
       </SkillGrid>
-      <Row style={{ justifyContent: 'flex-end', marginTop: 4 }}>
+      <EndRow $mt={4}>
         <Button type="button" small tone="plain" onClick={close}>
           취소
         </Button>
@@ -386,8 +398,150 @@ function SkillAddModal({
         >
           추가하기{picked.length > 0 ? ` (${picked.length})` : ''}
         </Button>
-      </Row>
+      </EndRow>
     </Modal>
+  );
+}
+
+const LinkList = styled.div({ display: 'flex', flexDirection: 'column', gap: 12 });
+const LinkRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
+const linkInput = {
+  height: 40,
+  padding: '0 14px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  minWidth: 0,
+  font: 'inherit',
+  fontSize: 15,
+  color: c.gray900,
+  background: 'transparent',
+  '&::placeholder': { color: c.gray200 },
+  '&:focus': { outline: 'none', borderColor: c.gray500 },
+} as const;
+const LinkLabelInput = styled.input({ ...linkInput, width: 101, flexShrink: 0 });
+const LinkUrlInput = styled.input({ ...linkInput, flex: 1 });
+const LinkDeleteButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  flexShrink: 0,
+  border: 0,
+  background: 'transparent',
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { color: c.gray900 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const LinkAddButton = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  height: 40,
+  width: '100%',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: 'transparent',
+  color: c.gray500,
+  ...textStyle.caption,
+  cursor: 'pointer',
+  '&:hover': { background: c.gray50 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+
+const LINK_LABEL_MAX_LENGTH = 50;
+const LINK_URL_MAX_LENGTH = 500;
+
+type LinkDraft = { label: string; url: string };
+
+// 프로필 링크(externalLinks)를 행 단위로 바로 편집한다. 이름·주소가 모두 유효한 행만 저장한다.
+function InlineLinks({
+  initial,
+  onSave,
+}: {
+  initial: LinkDraft[];
+  onSave: (links: LinkDraft[]) => Promise<unknown>;
+}) {
+  const toast = useToast();
+  const [rows, setRows] = useState<LinkDraft[]>(initial);
+  const [saving, setSaving] = useState(false);
+  const toSaved = (list: LinkDraft[]) => {
+    const out: LinkDraft[] = [];
+    for (const row of list) {
+      const label = row.label.trim();
+      const url = normalizeLinkUrl(row.url);
+      if (label && url) out.push({ label, url });
+    }
+    return out;
+  };
+  const [saved, setSaved] = useState(() => JSON.stringify(toSaved(initial)));
+  const persist = async (list: LinkDraft[], checkUrl: boolean) => {
+    if (checkUrl) {
+      const bad = list.find((r) => r.label.trim() && r.url.trim() && !normalizeLinkUrl(r.url));
+      if (bad) {
+        toast.error('링크 주소를 확인해주세요', 'http:// 또는 https:// 주소만 저장할 수 있어요');
+        return;
+      }
+    }
+    const links = toSaved(list);
+    const next = JSON.stringify(links);
+    if (next === saved || saving) return;
+    setSaving(true);
+    try {
+      await onSave(links);
+      setSaved(next);
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const updateRow = (index: number, patch: Partial<LinkDraft>) =>
+    setRows((r) => r.map((row, i) => (i === index ? { ...row, ...patch } : row)));
+  const removeRow = (index: number) => {
+    const next = rows.filter((_, i) => i !== index);
+    setRows(next);
+    void persist(next, false);
+  };
+  return (
+    <>
+      <LinkList>
+        {rows.map((row, index) => (
+          <LinkRow key={index}>
+            <LinkLabelInput
+              aria-label={`링크 이름 ${index + 1}`}
+              placeholder="이름"
+              maxLength={LINK_LABEL_MAX_LENGTH}
+              value={row.label}
+              onChange={(e) => updateRow(index, { label: e.target.value })}
+              onBlur={() => void persist(rows, true)}
+            />
+            <LinkUrlInput
+              aria-label={`링크 주소 ${index + 1}`}
+              placeholder="https://"
+              maxLength={LINK_URL_MAX_LENGTH}
+              value={row.url}
+              onChange={(e) => updateRow(index, { url: e.target.value })}
+              onBlur={() => void persist(rows, true)}
+            />
+            <LinkDeleteButton
+              type="button"
+              aria-label={`링크 ${index + 1} 삭제`}
+              disabled={saving}
+              onClick={() => removeRow(index)}
+            >
+              <Icon name="imgS2Del" size={16} />
+            </LinkDeleteButton>
+          </LinkRow>
+        ))}
+      </LinkList>
+      <LinkAddButton type="button" onClick={() => setRows((r) => [...r, { label: '', url: '' }])}>
+        <Icon name="imgAddSlotIc" size={14} />
+        링크 추가
+      </LinkAddButton>
+    </>
   );
 }
 
@@ -449,7 +603,16 @@ function ParticipationHistory() {
   );
 }
 
-export function MyPage() {
+// 쿼리 결과를 뱃지 라벨로 바꾼다. 반려된 요청은 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
+function useCertificateLabels() {
+  const certificatesQuery = generated.useListMyCertificates();
+  return (certificatesQuery.data?.data ?? [])
+    .filter((x) => x.status !== 'rejected')
+    .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+}
+
+// 한 줄 소개·뱃지·기술 스택·링크 편집. 데스크톱은 MY에, 모바일은 /my/profile-edit에서 쓴다.
+function ProfileEditor() {
   const toast = useToast();
   const [certOpen, setCertOpen] = useState(false);
   const [skillOpen, setSkillOpen] = useState(false);
@@ -458,16 +621,131 @@ export function MyPage() {
   const queryClient = useQueryClient();
   const me = generated.useGetMyAuthInfo({ query: { retry: false } });
   const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const mySkills = meInfo?.stacks ?? [];
+  const myLinks = meInfo?.externalLinks ?? [];
+  const certificates = useCertificateLabels();
+  const updateProfile = generated.useUpdateMyProfile({
+    mutation: {
+      onSuccess: () => {
+        void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
+      },
+    },
+  });
+  // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
+  const startBioEdit = () => {
+    if (me.data?.status !== 200) return;
+    setBioEditing(true);
+  };
+  const saveBio = async (bio: string) => {
+    setBioSaving(true);
+    try {
+      await updateProfile.mutateAsync({ data: { bio } });
+      toast.success('한 줄 소개를 저장했어요');
+      setBioEditing(false);
+    } catch {
+      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
+    } finally {
+      setBioSaving(false);
+    }
+  };
+  return (
+    <Stack gap={28}>
+      <Stack gap={12}>
+        <Heading>한 줄 소개</Heading>
+        {bioEditing ? (
+          <BioInlineEdit
+            // 편집 시작 시 최신 소개로 입력값을 초기화한다.
+            key={meInfo?.bio ?? ''}
+            initial={meInfo?.bio ?? ''}
+            saving={bioSaving}
+            onSubmit={saveBio}
+            onCancel={() => setBioEditing(false)}
+          />
+        ) : (
+          <Row gap={8}>
+            <BioText onDoubleClick={startBioEdit} title="더블클릭하여 수정">
+              {meInfo?.bio ? meInfo.bio : '한 줄 소개를 남겨보세요.'}
+            </BioText>
+            <AddButton
+              aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
+              // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
+              disabled={me.data?.status !== 200}
+              onClick={startBioEdit}
+            >
+              <Icon name="imgAddSlotIc" size={18} />
+            </AddButton>
+          </Row>
+        )}
+      </Stack>
+      <div>
+        <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+        <Badges
+          extra={certificates}
+          trailing={
+            <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
+              <Icon name="imgAddSlotIc" size={18} />
+            </AddButton>
+          }
+        />
+      </div>
+      <Heading>기술 스택</Heading>
+      <SkillStack
+        skills={mySkills}
+        trailing={
+          <AddButton
+            aria-label="기술 스택 추가하기"
+            // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
+            disabled={me.data?.status !== 200}
+            onClick={() => setSkillOpen(true)}
+          >
+            <Icon name="imgAddSlotIc" size={18} />
+          </AddButton>
+        }
+      />
+      <Stack gap={12}>
+        <Heading>링크</Heading>
+        {me.data?.status === 200 ? (
+          <InlineLinks
+            initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
+            onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
+          />
+        ) : (
+          <Muted>불러오는 중이에요.</Muted>
+        )}
+      </Stack>
+      <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
+      <SkillAddModal
+        open={skillOpen}
+        onClose={() => setSkillOpen(false)}
+        existing={mySkills}
+        onAdd={(skills) =>
+          updateProfile.mutateAsync({
+            data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
+          })
+        }
+      />
+    </Stack>
+  );
+}
+
+export function MyProfileEditPage() {
+  return (
+    <MyShell title="내 프로필 수정">
+      <ProfileEditor />
+    </MyShell>
+  );
+}
+
+export function MyPage() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
   // 이름이 없으면 이메일 앞부분을, 그마저 없으면 표시명을 쓴다.
   const displayName =
     meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
   const profileMeta = [meInfo?.position, meInfo?.region].filter(Boolean).join(' · ');
-  const mySkills = meInfo?.stacks ?? [];
-  const certificatesQuery = generated.useListMyCertificates();
-  // 반려된 요청은 뱃지로 보이지 않고, 검토 중인 요청은 상태를 함께 표시한다.
-  const certificates = (certificatesQuery.data?.data ?? [])
-    .filter((x) => x.status !== 'rejected')
-    .map((x) => (x.status === 'verified' ? (x.title ?? '') : `${x.title ?? ''} · 검토 중`));
+  const certificates = useCertificateLabels();
   // 참여중 = 수락된 팀 멤버십과 챌린지 지원(예선 통과). 심사중 지원은 지원현황 페이지에서 본다.
   const participatingTeamsQuery = generated.useListMyTeamApplications();
   const participatingChallengesQuery = generated.useListMyApplications();
@@ -503,23 +781,6 @@ export function MyPage() {
       },
     },
   });
-  // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
-  const startBioEdit = () => {
-    if (me.data?.status !== 200) return;
-    setBioEditing(true);
-  };
-  const saveBio = async (bio: string) => {
-    setBioSaving(true);
-    try {
-      await updateProfile.mutateAsync({ data: { bio } });
-      toast.success('한 줄 소개를 저장했어요');
-      setBioEditing(false);
-    } catch {
-      toast.error('저장에 실패했어요', '잠시 후 다시 시도해주세요');
-    } finally {
-      setBioSaving(false);
-    }
-  };
   const requestUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
   const [avatarUploading, setAvatarUploading] = useState(false);
@@ -573,7 +834,7 @@ export function MyPage() {
     }
   };
   return (
-    <MyShell title="MY">
+    <MyShell title="MY" hideMobileTitle>
       <Stack gap={28}>
         <Row gap={24}>
           <AvatarPicker busy={avatarUploading} aria-label="프로필 이미지 변경">
@@ -594,67 +855,25 @@ export function MyPage() {
             </Stack>
           </Link>
         </Row>
-        {bioEditing ? (
-          <BioInlineEdit
-            // 편집 시작 시 최신 소개로 입력값을 초기화한다.
-            key={meInfo?.bio ?? ''}
-            initial={meInfo?.bio ?? ''}
-            saving={bioSaving}
-            onSubmit={saveBio}
-            onCancel={() => setBioEditing(false)}
-          />
-        ) : (
-          <Row gap={8}>
-            <BioText onDoubleClick={startBioEdit} title="더블클릭하여 수정">
-              {meInfo?.bio ? meInfo.bio : '한 줄 소개를 남겨보세요.'}
-            </BioText>
-            <AddButton
-              aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
-              // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
-              disabled={me.data?.status !== 200}
-              onClick={startBioEdit}
-            >
-              <Icon name="imgAddSlotIc" size={12} />
-            </AddButton>
-          </Row>
-        )}
         <DesktopOnly>
-          <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+          <ProfileEditor />
         </DesktopOnly>
-        <Badges
-          extra={certificates}
-          trailing={
-            <AddButton aria-label="자격증 인증하기" onClick={() => setCertOpen(true)}>
-              <Icon name="imgAddSlotIc" size={12} />
-            </AddButton>
-          }
-        />
         <MobileOnly>
-          <MobileMenu>
-            {myMenu.map(([href, label]) => (
-              <Link key={href} href={href}>
-                {label}
-                <span style={{ fontSize: 14 }}>›</span>
-              </Link>
-            ))}
-          </MobileMenu>
+          <Stack gap={28}>
+            {meInfo?.bio && <Muted>{meInfo.bio}</Muted>}
+            <Badges extra={certificates} />
+            <MobileMenu>
+              {[['/my/profile-edit', '내 프로필 수정'], ...myMenu].map(([href, label]) => (
+                <Link key={href} href={href}>
+                  {label}
+                  <span style={{ fontSize: 14 }}>›</span>
+                </Link>
+              ))}
+            </MobileMenu>
+          </Stack>
         </MobileOnly>
-        <Heading>기술 스택</Heading>
-        <SkillStack
-          skills={mySkills}
-          trailing={
-            <AddButton
-              aria-label="기술 스택 추가하기"
-              // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
-              disabled={me.data?.status !== 200}
-              onClick={() => setSkillOpen(true)}
-            >
-              <Icon name="imgAddSlotIc" size={12} />
-            </AddButton>
-          }
-        />
         <DesktopOnly>
-          <Heading style={{ marginBottom: 24 }}>참여중</Heading>
+          <HeadingSpaced $mb={24}>참여중</HeadingSpaced>
           {participatingTeamsQuery.isPending || participatingChallengesQuery.isPending ? (
             <LoadingState label="불러오는 중이에요." />
           ) : participatingTeamsQuery.isError || participatingChallengesQuery.isError ? (
@@ -665,35 +884,26 @@ export function MyPage() {
             <Participating>
               {participatingItems.map((item) => (
                 <Link key={item.key} href={item.href}>
-                  <Heading>{item.title}</Heading>
-                  {item.sub && <Muted>{item.sub}</Muted>}
+                  <div>
+                    <Heading style={{ fontSize: 15 }}>{item.title}</Heading>
+                    {item.sub && <Muted>{item.sub}</Muted>}
+                  </div>
                   {item.role && (
-                    <Wrap style={{ margin: '20px 0' }}>
+                    <Wrap style={{ gap: 6 }}>
                       <Tag tone="blue">{item.role}</Tag>
                     </Wrap>
                   )}
-                  <Muted>{item.meta}</Muted>
+                  <Muted style={{ fontSize: 12 }}>{item.meta}</Muted>
                 </Link>
               ))}
             </Participating>
           )}
         </DesktopOnly>
         <MobileOnly>
-          <Heading style={{ marginBottom: 12 }}>참가 이력</Heading>
+          <HeadingSpaced $mb={12}>참가 이력</HeadingSpaced>
           <ParticipationHistory />
         </MobileOnly>
       </Stack>
-      <CertificateModal open={certOpen} onClose={() => setCertOpen(false)} />
-      <SkillAddModal
-        open={skillOpen}
-        onClose={() => setSkillOpen(false)}
-        existing={mySkills}
-        onAdd={(skills) =>
-          updateProfile.mutateAsync({
-            data: { stacks: [...mySkills, ...skills.filter((s) => !mySkills.includes(s))] },
-          })
-        }
-      />
     </MyShell>
   );
 }
@@ -974,7 +1184,7 @@ export function ApplicationsPage() {
     <MyShell title="지원현황">
       <Stack gap={40}>
         <section>
-          <Title style={{ marginBottom: 20 }}>챌린지 지원 현황</Title>
+          <TitleSpaced $mb={20}>챌린지 지원 현황</TitleSpaced>
           {challengeQuery.isPending ? (
             <LoadingState label="불러오는 중이에요." />
           ) : challengeQuery.isError ? (
@@ -1016,7 +1226,7 @@ export function ApplicationsPage() {
           )}
         </section>
         <section>
-          <Title style={{ marginBottom: 20 }}>팀 지원현황</Title>
+          <TitleSpaced $mb={20}>팀 지원현황</TitleSpaced>
           {teamQuery.isPending ? (
             <LoadingState label="불러오는 중이에요." />
           ) : teamQuery.isError ? (
@@ -1168,9 +1378,9 @@ export function TeamApplicantsPage() {
             <section key={team.id}>
               <div>
                 <Title>{team.title}</Title>
-                <Muted style={{ marginTop: 8 }}>
+                <MutedSpaced $mt={8}>
                   {team.challengeTitle ?? '챌린지'} · {team.businessName ?? '-'}
-                </Muted>
+                </MutedSpaced>
               </div>
               <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
                 <Heading>팀 지원현황</Heading>
@@ -1179,7 +1389,7 @@ export function TeamApplicantsPage() {
                 </Button>
               </Row>
               {(team.members ?? []).length === 0 ? (
-                <Muted style={{ marginTop: 16 }}>아직 지원자가 없어요.</Muted>
+                <MutedSpaced $mt={16}>아직 지원자가 없어요.</MutedSpaced>
               ) : (
                 <Table>
                   <thead>
@@ -1244,14 +1454,14 @@ export function TeamApplicantsPage() {
             value={link}
             onChange={(e) => setLink(e.target.value)}
           />
-          <Row style={{ justifyContent: 'flex-end', marginTop: 16 }}>
+          <EndRow $mt={16}>
             <Button type="button" small tone="plain" onClick={closeSendModal}>
               취소
             </Button>
             <Button type="submit" small disabled={updateMember.isPending}>
               확인
             </Button>
-          </Row>
+          </EndRow>
         </form>
       </Modal>
     </MyShell>
@@ -1325,9 +1535,10 @@ const NotificationBody = styled.div({
 });
 // 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지) 알림을 생성한다.
 // 매핑되지 않은 유형은 '전체'에서만 보인다.
-const notificationTabs = ['전체', '팀매칭', '마감', '공고', '인증·결과'] as const;
+const notificationTabs = ['전체', '팀매칭', '공고'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
-const notificationCategory: Record<string, NotificationTab> = {
+type NotificationCategory = NotificationTab | '인증·결과' | '마감';
+const notificationCategory: Record<string, NotificationCategory> = {
   team_matching: '팀매칭',
   'verification.result': '인증·결과',
   deadline: '마감',
@@ -1425,7 +1636,7 @@ export function NotificationsPage() {
               </NotificationTabButton>
             ))}
           </NotificationTabs>
-          <Row style={{ justifyContent: 'flex-end' }}>
+          <EndRow>
             <Button
               small
               tone="plain"
@@ -1434,7 +1645,7 @@ export function NotificationsPage() {
             >
               모두 읽음
             </Button>
-          </Row>
+          </EndRow>
           <NotificationList>
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;
@@ -1507,9 +1718,9 @@ export function NotificationsPage() {
                       </Row>
                     )}
                     {inviteResponse && (
-                      <Muted style={{ marginTop: 8 }}>
+                      <MutedSpaced $mt={8}>
                         {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
-                      </Muted>
+                      </MutedSpaced>
                     )}
                     <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>
@@ -1519,7 +1730,6 @@ export function NotificationsPage() {
           </NotificationList>
           {notificationsQuery.isPending && <LoadingState label="알림을 불러오는 중이에요." />}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
-          {notificationsQuery.isSuccess && items.length === 0 && <Muted>알림이 없어요.</Muted>}
         </Stack>
       </NotificationContent>
     </UserShell>

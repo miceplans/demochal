@@ -128,6 +128,11 @@ export const challenges = pgTable('challenges', {
   // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
   // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
   applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
+  summary: varchar('summary', { length: 300 }),
+  hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
+  topics: jsonb('topics').$type<string[]>().notNull().default([]),
+  inquiryContact: varchar('inquiry_contact', { length: 200 }),
+  visibility: varchar('visibility', { length: 20 }).notNull().default('public'),
 });
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -225,6 +230,8 @@ export const ads = pgTable('ads', {
   status: varchar('status', { length: 20 }).notNull().default('preparing'),
   paidAmount: integer('paid_amount').notNull().default(0),
   expiresAt: timestamp('expires_at'),
+  // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
+  pausedBy: varchar('paused_by', { length: 10 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const orders = pgTable('orders', {
@@ -250,8 +257,10 @@ export const payments = pgTable(
     amount: integer('amount').notNull(),
     // Valid values: ready | paid | canceled | expired | refund_pending
     // (charged but the order could not be settled and the compensating Toss cancel
-    // failed — needs a retry/manual refund). Legacy rows can contain
-    // done | cancelled and are handled when reading billing history.
+    // failed — the worker retries the cancel with backoff via
+    // PaymentsService.retryRefundPendingPayments, then operators refund manually).
+    // Legacy rows can contain done | cancelled and are handled when reading
+    // billing history.
     status: varchar('status', { length: 20 }).notNull().default('ready'),
     // Cumulative amount refunded via Toss PARTIAL_CANCELED reconciliation, set
     // from Toss's balanceAmount each time (never incremented) so a redelivered
@@ -259,6 +268,13 @@ export const payments = pgTable(
     // status is 'canceled' (the full amount is already excluded from revenue).
     refundedAmount: integer('refunded_amount').notNull().default(0),
     approvedAt: timestamp('approved_at'),
+    // Failed-refund retry bookkeeping for 'refund_pending' rows: how many Toss
+    // cancel retries have been attempted and when the last one ran. The worker's
+    // retryRefundPendingPayments scan backs off exponentially from refundRetriedAt
+    // and stops retrying after a capped number of attempts, leaving the row —
+    // still 'refund_pending' — for operators to refund manually.
+    refundRetryCount: integer('refund_retry_count').notNull().default(0),
+    refundRetriedAt: timestamp('refund_retried_at'),
   },
   // One payment row per order: webhook handlers upsert on order_id so that
   // concurrent Toss deliveries for the same order conflict instead of

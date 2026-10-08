@@ -21,12 +21,26 @@ import type { ChallengeOrganizerType } from './challengeOrganizerType';
 import type { ChallengeRecruitMethod } from './challengeRecruitMethod';
 import type { ChallengeStatus } from './challengeStatus';
 import type { ChallengeTargetsItem } from './challengeTargetsItem';
+import type { ChallengeVisibility } from './challengeVisibility';
 
 export interface Challenge {
   id: string;
   businessId?: string;
   title: string;
   description?: string;
+  /**
+     * @maxLength 300
+     * @nullable
+     */
+  summary?: string | null;
+  /** @items.maxLength 100 */
+  topics?: string[];
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  inquiryContact?: string | null;
+  visibility?: ChallengeVisibility;
   /** 참가비 (원) */
   price?: number;
   /** 모집 인원 */

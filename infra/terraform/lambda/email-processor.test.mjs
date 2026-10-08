@@ -68,3 +68,81 @@ test('logs metadata only and rethrows an S3 processing error', async () => {
   assert.equal(logs[0].includes('receipt.pdf'), false);
   assert.equal(logs[0].includes('ses-1'), true);
 });
+
+test('adds the configured S3 prefix when SES provides only the object name', async () => {
+  const handler = createHandler({
+    bucket: 'inbox',
+    objectKeyPrefix: 'inbound/',
+    getObject: async ({ Key }) => {
+      assert.equal(Key, 'inbound/ses-2');
+      return { Body: { transformToByteArray: async () => Buffer.from(mime) } };
+    },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: { messageId: 'ses-2' },
+      receipt: { recipients: ['help@semochall.com'], action: { objectKey: 'ses-2' } },
+    },
+  });
+});
+
+test('does not duplicate the configured S3 prefix', async () => {
+  const handler = createHandler({
+    bucket: 'inbox',
+    objectKeyPrefix: 'inbound/',
+    getObject: async ({ Key }) => {
+      assert.equal(Key, 'inbound/ses-3');
+      return { Body: { transformToByteArray: async () => Buffer.from(mime) } };
+    },
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: { messageId: 'ses-3' },
+      receipt: { recipients: ['help@semochall.com'], action: { objectKey: 'inbound/ses-3' } },
+    },
+  });
+});
+
+test('uses SES envelope metadata when MIME address headers are missing', async () => {
+  const payloads = [];
+  const headerlessMime = ['Subject: 문의', 'Content-Type: text/plain', '', '본문'].join('\r\n');
+  const handler = createHandler({
+    bucket: 'inbox',
+    getObject: async () => ({
+      Body: { transformToByteArray: async () => Buffer.from(headerlessMime) },
+    }),
+    publish: async (payload) => payloads.push(payload),
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: {
+        messageId: 'ses-envelope-id',
+        source: 'customer@example.com',
+        destination: ['help@semochall.com'],
+      },
+      receipt: {
+        recipients: ['help@semochall.com'],
+        action: { objectKey: 'inbound/ses-envelope-id' },
+      },
+    },
+  });
+
+  assert.deepEqual(payloads[0], {
+    messageId: 'ses-envelope-id',
+    from: 'customer@example.com',
+    to: 'help@semochall.com',
+    subject: '문의',
+    inReplyTo: undefined,
+    references: [],
+    text: '본문',
+    html: undefined,
+    sentAt: payloads[0].sentAt,
+    attachments: [],
+  });
+});

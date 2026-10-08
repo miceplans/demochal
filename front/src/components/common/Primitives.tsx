@@ -8,6 +8,7 @@ import type { ElementType, ReactNode } from 'react';
 
 const ICON_SOURCES: Record<string, string> = {
   imgS1Del: '/assets/icons/delete.svg',
+  imgS2Del: '/assets/icons/s2-del.svg',
   imgAddSlotIc: '/assets/icons/add.svg',
   imgGithub: '/assets/icons/github.svg',
   imgDescription24DpE3E3E3Fill0Wght300Grad0Opsz241: '/assets/icons/document.svg',
@@ -79,18 +80,6 @@ export const Input = styled.input({
   transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
   '&:hover:not(:focus)': { borderColor: c.gray300 },
   '&::placeholder': { color: c.gray500 },
-  '&:focus': { outline: 'none', boxShadow: s.focus },
-});
-export const Select = styled.select({
-  minWidth: 0,
-  height: 40,
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  background: c.white,
-  color: c.gray700,
-  transition: 'box-shadow 0.15s ease, border-color 0.15s ease',
-  '&:hover:not(:focus)': { borderColor: c.gray300 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
 });
 export const Row = styled.div<{ gap?: number }>(({ gap = 12 }) => ({
@@ -171,6 +160,13 @@ const EmptyStateWrapper = styled.div({
   width: '100%',
   padding: '40px 0',
   [mobile]: { padding: '24px 0' },
+  // 빈 상태가 등장할 때 갑작스럽게 나타나지 않도록 페이드인한다.
+  animation: 'semo-empty-in 0.25s ease-out both',
+  '@keyframes semo-empty-in': {
+    from: { opacity: 0 },
+    to: { opacity: 1 },
+  },
+  '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
 });
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   return (
