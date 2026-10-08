@@ -163,7 +163,7 @@ export class AdsService implements OnModuleInit {
   async create(dto: CreateAdDto, businessId: string, userId: string) {
     if (!businessId) throw new UnauthorizedException('기업 인증이 필요합니다.');
 
-    const ad = await this.db.transaction(async (tx) => {
+    const created = await this.db.transaction(async (tx) => {
       // Lock the product row so a second concurrent create() for the same
       // placement waits here instead of racing this transaction's overlap
       // check.
@@ -215,11 +215,22 @@ export class AdsService implements OnModuleInit {
 
       // Pending payment for this reservation; POST /payments/webhook/toss
       // settles it (OrdersService.markPaid flips the ad to active).
-      await tx.insert(orders).values({ adId: ad!.id, userId, amount: paidAmount });
+      const [order] = await tx
+        .insert(orders)
+        .values({ adId: ad!.id, userId, amount: paidAmount })
+        .returning({ id: orders.id, amount: orders.amount });
 
-      return ad!;
+      if (!order) throw new Error('Failed to create ad payment order');
+      return { ad: ad!, order };
     });
-    return (await this.withImageUrls([ad]))[0]!;
+    const [ad] = await this.withImageUrls([created.ad]);
+    return {
+      ...ad,
+      order: {
+        ...created.order,
+        name: created.ad.title.trim().slice(0, 100) || '광고 신청',
+      },
+    };
   }
 
   async findById(id: string) {

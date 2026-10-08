@@ -16,38 +16,14 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AdOrder } from './adOrder';
-import type { AdStatus } from './adStatus';
 
-export interface Ad {
+/**
+ * 생성 직후 Toss 결제창을 열기 위한 pending 주문 정보
+ */
+export type AdOrder = {
   id: string;
-  businessId: string;
-  productId: string;
-  /** 광고명 (연결된 챌린지명) */
-  title: string;
-  imageFileId?: string;
-  /**
-     * imageFileId가 가리키는 파일의 CloudFront 공개 URL (ready 상태일 때만 값이 있음)
-     * @nullable
-     */
-  imageUrl?: string | null;
-  landingUrl?: string;
-  startDate: string;
-  endDate: string;
-  /** 진행중/준비중/중단됨/만료 — 대시보드 '진행중인 광고' 테이블 표기용 */
-  status: AdStatus;
-  /**
-     * 누적 노출수 (준비중이면 null)
-     * @nullable
-     */
-  impressions?: number | null;
-  /**
-     * 누적 북마크수 (준비중이면 null)
-     * @nullable
-     */
-  bookmarks?: number | null;
   /** 결제 금액 (원) */
-  paidAmount: number;
-  /** 생성 직후 Toss 결제창을 열기 위한 pending 주문 정보 */
-  order?: AdOrder;
-}
+  amount: number;
+  /** Toss 결제창에 표시할 주문명 */
+  name: string;
+} | null;

@@ -21,6 +21,7 @@ export interface TossPaymentParams {
   orderId: string;
   amount: number;
   orderName: string;
+  flow?: 'ad';
 }
 
 /**
@@ -32,6 +33,7 @@ export async function requestTossPayment({
   orderId,
   amount,
   orderName,
+  flow,
 }: TossPaymentParams): Promise<boolean> {
   const payment = getTossPayment();
   if (!payment) return false;
@@ -41,8 +43,8 @@ export async function requestTossPayment({
     amount: { value: amount, currency: 'KRW' },
     orderId,
     orderName,
-    successUrl: `${window.location.origin}/payments/success`,
-    failUrl: `${window.location.origin}/payments/fail`,
+    successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
+    failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
   });
   return true;
 }
