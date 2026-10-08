@@ -231,6 +231,13 @@
       "when": 1791260000000,
       "tag": "0033_challenge_posting_metadata",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791270000000,
+      "tag": "0034_ads_paused_by",
+      "breakpoints": true
     }
   ]
 }

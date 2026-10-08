@@ -8,6 +8,7 @@ import type { ElementType, ReactNode } from 'react';
 
 const ICON_SOURCES: Record<string, string> = {
   imgS1Del: '/assets/icons/delete.svg',
+  imgS2Del: '/assets/icons/s2-del.svg',
   imgAddSlotIc: '/assets/icons/add.svg',
   imgGithub: '/assets/icons/github.svg',
   imgDescription24DpE3E3E3Fill0Wght300Grad0Opsz241: '/assets/icons/document.svg',

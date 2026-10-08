@@ -48,6 +48,7 @@ import type {
   AdReport,
   AdSlotPricing,
   AdminAdEntry,
+  AdminAutomatedEmail,
   AdminDashboard,
   AdminEmailMessage,
   AdminEmailThread,
@@ -92,6 +93,7 @@ import type {
   IssueBillingAuthorizationBody,
   JoinTeamRequest,
   ListAdminAdsParams,
+  ListAdminAutomatedEmailsParams,
   ListAdminBusinesses200,
   ListAdminBusinessesParams,
   ListAdminCertificatesParams,
@@ -127,6 +129,7 @@ import type {
   PersonCard,
   PresignedUploadRequest,
   PublicAd,
+  PublishAdminChallenge200,
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
@@ -8781,7 +8784,7 @@ export const getUpdateAdUrl = (id: string,) => {
 }
 
 /**
- * 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다).
+ * 광고 소유 기업의 상태 변경(중단 등). 관리자 중단은 `POST /admin/ads/{id}/pause`를 사용한다(관리자는 이 경로로 타 기업 광고를 바꿀 수 없다). 재개(`active`)는 일시정지된 광고만 가능하며, 관리자가 중단한 광고(403)나 계약 기간이 끝난 광고(400)는 재개할 수 없다.
  * @summary 광고 상태 변경 (중단 등)
  */
 export const updateAd = async (id: string,
@@ -9545,6 +9548,133 @@ export const useCreateAdminEmail = <TError = BadRequestResponse | ForbiddenRespo
       > => {
       return useMutation(getCreateAdminEmailMutationOptions(options), queryClient);
     }
+
+export type listAdminAutomatedEmailsResponse200 = {
+  data: AdminAutomatedEmail[]
+  status: 200
+}
+
+export type listAdminAutomatedEmailsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type listAdminAutomatedEmailsResponseSuccess = (listAdminAutomatedEmailsResponse200) & {
+  headers: Headers;
+};
+export type listAdminAutomatedEmailsResponseError = (listAdminAutomatedEmailsResponse403) & {
+  headers: Headers;
+};
+
+export type listAdminAutomatedEmailsResponse = (listAdminAutomatedEmailsResponseSuccess | listAdminAutomatedEmailsResponseError)
+
+export const getListAdminAutomatedEmailsUrl = (params?: ListAdminAutomatedEmailsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/emails/automated?${stringifiedParams}` : `/admin/emails/automated`
+}
+
+/**
+ * @summary no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+ */
+export const listAdminAutomatedEmails = async (params?: ListAdminAutomatedEmailsParams, options?: Parameters<typeof apiFetch>[1]): Promise<listAdminAutomatedEmailsResponse> => {
+
+  return apiFetch<listAdminAutomatedEmailsResponse>(getListAdminAutomatedEmailsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminAutomatedEmailsQueryKey = (params?: ListAdminAutomatedEmailsParams,) => {
+    return [
+    `/admin/emails/automated`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminAutomatedEmailsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminAutomatedEmailsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminAutomatedEmails>>> = ({ signal }) => listAdminAutomatedEmails(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminAutomatedEmailsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminAutomatedEmails>>>
+export type ListAdminAutomatedEmailsQueryError = ForbiddenResponse
+
+
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params: undefined |  ListAdminAutomatedEmailsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminAutomatedEmails>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+ */
+
+export function useListAdminAutomatedEmails<TData = Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError = ForbiddenResponse>(
+ params?: ListAdminAutomatedEmailsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminAutomatedEmails>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminAutomatedEmailsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export type getAdminEmailResponse200 = {
   data: AdminEmailThreadDetail
@@ -10778,6 +10908,94 @@ export const usePauseAdminAd = <TError = unknown,
         TContext
       > => {
       return useMutation(getPauseAdminAdMutationOptions(options), queryClient);
+    }
+
+export type publishAdminChallengeResponse200 = {
+  data: PublishAdminChallenge200
+  status: 200
+}
+
+export type publishAdminChallengeResponseSuccess = (publishAdminChallengeResponse200) & {
+  headers: Headers;
+};
+;
+
+export type publishAdminChallengeResponse = (publishAdminChallengeResponseSuccess)
+
+export const getPublishAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/publish`
+}
+
+/**
+ * `contestAutoPublish`가 꺼져 있으면 기관이 만든 공고는 draft로 저장되고, 이 API로 게시를 승인한다.
+ * draft 공고만 published로 전환한다. 없으면 404, draft가 아니면 409.
+ * @summary 관리자 공고 게시 승인
+ */
+export const publishAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<publishAdminChallengeResponse> => {
+
+  return apiFetch<publishAdminChallengeResponse>(getPublishAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPublishAdminChallengeMutationKey = () => ['publishAdminChallenge'] as const;
+
+export const getPublishAdminChallengeMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getPublishAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof publishAdminChallenge>>, PublishAdminChallengeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  publishAdminChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PublishAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof publishAdminChallenge>>>
+
+    export type PublishAdminChallengeMutationError = unknown
+    export type PublishAdminChallengeMutationVariables = {id: string}
+
+    /**
+ * @summary 관리자 공고 게시 승인
+ */
+export const usePublishAdminChallenge = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof publishAdminChallenge>>, TError,PublishAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof publishAdminChallenge>>,
+        TError,
+        PublishAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPublishAdminChallengeMutationOptions(options), queryClient);
     }
 
 export type getAdPricingResponse200 = {

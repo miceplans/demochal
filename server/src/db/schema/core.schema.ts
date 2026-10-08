@@ -230,6 +230,8 @@ export const ads = pgTable('ads', {
   status: varchar('status', { length: 20 }).notNull().default('preparing'),
   paidAmount: integer('paid_amount').notNull().default(0),
   expiresAt: timestamp('expires_at'),
+  // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
+  pausedBy: varchar('paused_by', { length: 10 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const orders = pgTable('orders', {

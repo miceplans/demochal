@@ -106,3 +106,43 @@ test('does not duplicate the configured S3 prefix', async () => {
     },
   });
 });
+
+test('uses SES envelope metadata when MIME address headers are missing', async () => {
+  const payloads = [];
+  const headerlessMime = ['Subject: 문의', 'Content-Type: text/plain', '', '본문'].join('\r\n');
+  const handler = createHandler({
+    bucket: 'inbox',
+    getObject: async () => ({
+      Body: { transformToByteArray: async () => Buffer.from(headerlessMime) },
+    }),
+    publish: async (payload) => payloads.push(payload),
+    logger: { info: () => {}, error: () => {} },
+  });
+
+  await handler({
+    ses: {
+      mail: {
+        messageId: 'ses-envelope-id',
+        source: 'customer@example.com',
+        destination: ['help@semochall.com'],
+      },
+      receipt: {
+        recipients: ['help@semochall.com'],
+        action: { objectKey: 'inbound/ses-envelope-id' },
+      },
+    },
+  });
+
+  assert.deepEqual(payloads[0], {
+    messageId: 'ses-envelope-id',
+    from: 'customer@example.com',
+    to: 'help@semochall.com',
+    subject: '문의',
+    inReplyTo: undefined,
+    references: [],
+    text: '본문',
+    html: undefined,
+    sentAt: payloads[0].sentAt,
+    attachments: [],
+  });
+});

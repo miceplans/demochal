@@ -495,7 +495,7 @@ describe('ChallengesService.list', () => {
 });
 
 describe('ChallengesService.create', () => {
-  function createCapturingService(valuesCalls: Record<string, unknown>[]) {
+  function createCapturingService(valuesCalls: Record<string, unknown>[], autoPublish = false) {
     const db = { select: vi.fn(), insert: vi.fn() } as any;
     db.select.mockImplementation(() => queryChain([{ id: 'biz-1' }]));
     db.insert.mockImplementation(() => ({
@@ -504,7 +504,7 @@ describe('ChallengesService.create', () => {
         return { returning: vi.fn().mockResolvedValue([{ id: 'challenge-1' }]) };
       }),
     }));
-    const adminSettings = { isEnabled: vi.fn().mockResolvedValue(false) };
+    const adminSettings = { isEnabled: vi.fn().mockResolvedValue(autoPublish) };
     return new ChallengesService(db, adminSettings as any, createFilesStub() as any);
   }
 
@@ -532,7 +532,7 @@ describe('ChallengesService.create', () => {
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
   });
 
-  it('stores the requested status, falling back to contestAutoPublish when omitted', async () => {
+  it('keeps owner-requested published as draft until an admin approves when auto publish is off', async () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
     const url = 'https://example.com/apply';
@@ -541,10 +541,37 @@ describe('ChallengesService.create', () => {
     await service.create({ ...baseDto, recruitUrl: url, status: 'draft' } as any, 'user-1');
     await service.create({ ...baseDto, recruitUrl: url } as any, 'user-1');
 
-    expect(valuesCalls[0]).toMatchObject({ status: 'published' });
-    expect(valuesCalls[1]).toMatchObject({ status: 'draft' });
-    // contestAutoPublish 스텁이 false라 draft
-    expect(valuesCalls[2]).toMatchObject({ status: 'draft' });
+    expect(valuesCalls.map((call) => call.status)).toEqual(['draft', 'draft', 'draft']);
+  });
+
+  it('honors the requested status, defaulting to published, when auto publish is on', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls, true);
+    const url = 'https://example.com/apply';
+
+    await service.create({ ...baseDto, recruitUrl: url, status: 'published' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url, status: 'draft' } as any, 'user-1');
+    await service.create({ ...baseDto, recruitUrl: url } as any, 'user-1');
+
+    expect(valuesCalls.map((call) => call.status)).toEqual(['published', 'draft', 'published']);
+  });
+
+  it('forbids the owner from publishing a draft while auto publish is off', async () => {
+    const db = { select: vi.fn(), update: vi.fn() } as any;
+    const chain: any = {
+      from: () => chain,
+      innerJoin: () => chain,
+      where: () => chain,
+      limit: async () => [{ id: 'c1', status: 'draft', businessId: 'biz-1' }],
+    };
+    db.select.mockImplementation(() => chain);
+    const adminSettings = { isEnabled: vi.fn().mockResolvedValue(false) };
+    const service = new ChallengesService(db, adminSettings as any, createFilesStub() as any);
+
+    await expect(
+      service.updateStatus('c1', { status: 'published' } as any, 'user-1'),
+    ).rejects.toThrow('관리자 승인');
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('persists recruitUrl for external recruitMethod and clears any url provided for seMOchall', async () => {

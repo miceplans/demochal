@@ -1,5 +1,6 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsOptional,
   IsUUID,
@@ -75,6 +76,14 @@ export class UpdateProfileDto {
   @ValidateNested({ each: true })
   @Type(() => ExternalLinkDto)
   externalLinks?: ExternalLinkDto[];
+
+  // 프로필 뱃지 라벨 목록. 전체 치환 방식(빈 배열이면 전체 삭제). 서비스에서 trim·빈 값 제거·중복 제거 후 저장한다.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  badges?: string[];
 
   @IsOptional()
   @IsArray()
