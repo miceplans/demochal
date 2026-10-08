@@ -287,17 +287,33 @@ describe('PaymentsService', () => {
     expect(orders.settleOrderPaid).not.toHaveBeenCalled();
   });
 
-  it('acknowledges DONE arriving after EXPIRED settled the order instead of retry-looping Toss', async () => {
-    fetchMock.mockResolvedValue(tossResponse('DONE'));
-    const { db, transaction, insertValues } = createDbStub();
+  it('refunds a charged payment whose order was already canceled (DONE after buyer cancel)', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(tossResponse('DONE'))
+      .mockResolvedValueOnce({ ok: true, status: 200 });
+    const { db } = createDbStub();
     const orders = createOrdersStub('canceled');
     const service = new PaymentsService(db, orders as any);
 
     await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
 
-    expect(transaction).not.toHaveBeenCalled();
-    expect(insertValues).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls[1]![0]).toBe(
+      'https://api.tosspayments.com/v1/payments/pay-key-1/cancel',
+    );
     expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+  });
+
+  it('rethrows when refunding a charged payment for a canceled order fails', async () => {
+    fetchMock.mockReset();
+    fetchMock
+      .mockResolvedValueOnce(tossResponse('DONE'))
+      .mockResolvedValueOnce({ ok: false, status: 500 });
+    const { db } = createDbStub();
+    const orders = createOrdersStub('canceled');
+    const service = new PaymentsService(db, orders as any);
+
+    await expect(service.handleTossWebhook(webhook('DONE'))).rejects.toThrow();
   });
 
   it('propagates a settlement failure so DONE rolls back instead of half-committing', async () => {

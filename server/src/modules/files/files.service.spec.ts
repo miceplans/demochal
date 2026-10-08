@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
+const { sharpMock } = vi.hoisted(() => ({ sharpMock: vi.fn() }));
+vi.mock('sharp', () => ({ default: sharpMock }));
+
 // env는 모듈 임포트 시점에 파싱되므로, FilesService를 불러오기 전에 CDN 기본 URL을 고정한다.
 vi.hoisted(() => {
   process.env.PUBLIC_ASSETS_BASE_URL = 'https://cdn.test';
@@ -168,6 +171,7 @@ describe('FilesService.finalizeUpload', () => {
     uploaderUserId: 'user-1',
   };
   const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const convertedWebp = Buffer.from('converted-webp');
 
   function setup(
     selectRows: unknown[][],
@@ -176,7 +180,15 @@ describe('FilesService.finalizeUpload', () => {
     const order: string[] = [];
     const updateReturning = vi.fn().mockImplementation(async () => {
       order.push('db-update');
-      return [{ ...pending, bucket: 'public', key: 'uploads/file-1.png', uploadStatus: 'ready' }];
+      return [
+        {
+          ...pending,
+          bucket: 'public',
+          key: 'uploads/file-1.webp',
+          contentType: 'image/webp',
+          uploadStatus: 'ready',
+        },
+      ];
     });
     const selects = selectRows.map((rows) => selectChain(rows));
     const select = vi.fn();
@@ -225,6 +237,7 @@ describe('FilesService.finalizeUpload', () => {
   });
 
   it('deletes the pending original only after the DB update succeeds', async () => {
+    sharpMock.mockReturnValue({ webp: () => ({ toBuffer: async () => convertedWebp }) });
     const { service, order } = setup([[pending]], (cmd) => {
       const name = cmd.constructor.name;
       if (name === 'HeadObjectCommand') return { ContentType: 'image/png', ContentLength: 8 };
@@ -237,9 +250,25 @@ describe('FilesService.finalizeUpload', () => {
     expect(order).toEqual([
       'HeadObjectCommand',
       'GetObjectCommand',
-      'CopyObjectCommand',
+      'GetObjectCommand',
+      'PutObjectCommand',
       'db-update',
       'DeleteObjectCommand',
     ]);
+  });
+
+  it('converts a public PNG to WebP before promotion', async () => {
+    sharpMock.mockReturnValue({ webp: () => ({ toBuffer: async () => convertedWebp }) });
+    const { service } = setup([[pending]], (cmd) => {
+      if (cmd.constructor.name === 'HeadObjectCommand') {
+        return { ContentType: 'image/png', ContentLength: png.length };
+      }
+      return { Body: { transformToByteArray: async () => png } };
+    });
+
+    const result = await service.finalizeUpload('file-1', 'user-1');
+
+    expect(sharpMock).toHaveBeenCalledWith(Buffer.from(png));
+    expect(result).toMatchObject({ key: 'uploads/file-1.webp', contentType: 'image/webp' });
   });
 });

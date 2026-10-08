@@ -10,6 +10,7 @@ import {
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
+  automated: vi.fn(),
   detail: vi.fn(),
   send: vi.fn(),
   create: vi.fn(),
@@ -22,6 +23,7 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 vi.mock('@semochal/api-client', () => ({
   generated: {
     useListAdminEmails: mocks.list,
+    useListAdminAutomatedEmails: mocks.automated,
     useGetAdminEmail: mocks.detail,
     useSendAdminEmailReply: mocks.send,
     useCreateAdminEmail: mocks.create,
@@ -34,7 +36,13 @@ vi.mock('./parts', () => ({
     rows,
     onRowClick,
   }: {
-    rows: Array<{ id: string; subject?: string; customerEmail?: string; lastMessage?: string }>;
+    rows: Array<{
+      id: string;
+      subject?: string;
+      customerEmail?: string;
+      lastMessage?: string;
+      recipient?: string;
+    }>;
     columns?: unknown;
     selectedRowId?: string;
     onRowClick?: (row: {
@@ -50,6 +58,7 @@ vi.mock('./parts', () => ({
           <span>{row.subject}</span>
           <span>{row.customerEmail}</span>
           <span>{row.lastMessage}</span>
+          <span>{row.recipient}</span>
         </button>
       ))}
     </div>
@@ -125,6 +134,24 @@ describe('AdminEmailsScreen', () => {
       isPending: false,
       isError: false,
     });
+    mocks.automated.mockReturnValue({
+      data: {
+        status: 200,
+        data: [
+          {
+            id: 'auto-1',
+            subject: '[세모챌] 인증 결과 안내',
+            type: 'verification.result',
+            recipient: 'k***@gmail.com',
+            status: 'sent',
+            sentAt: '2026-10-02T00:00:00.000Z',
+          },
+        ],
+      },
+      isPending: false,
+      isError: false,
+      isSuccess: true,
+    });
     mocks.detail.mockReturnValue({
       data: {
         status: 200,
@@ -159,6 +186,19 @@ describe('AdminEmailsScreen', () => {
     render(<AdminEmailsScreen />);
     await user.click(screen.getByRole('button', { name: /문의/ }));
     expect(mocks.push).toHaveBeenCalledWith('/admin/emails/thread-1');
+  });
+
+  it('switches between help@ and no-reply@ mailboxes', async () => {
+    const user = userEvent.setup();
+    render(<AdminEmailsScreen />);
+    expect(
+      screen.getByRole('tab', { name: /help@semochall\.com/ }).getAttribute('aria-selected'),
+    ).toBe('true');
+    expect(screen.getByRole('button', { name: '+ 새 메일' })).toBeTruthy();
+    await user.click(screen.getByRole('tab', { name: /no-reply@semochall\.com/ }));
+    expect(screen.getByText('k***@gmail.com')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '+ 새 메일' })).toBeNull();
+    expect(screen.queryByText('도와주세요')).toBeNull();
   });
 
   it('keeps the reply draft on the mail view page when sending fails', async () => {

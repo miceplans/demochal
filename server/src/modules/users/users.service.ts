@@ -42,6 +42,7 @@ export class UsersService {
         ...(dto.bio !== undefined && { bio: dto.bio || null }),
         ...(dto.stacks !== undefined && { stacks: dto.stacks }),
         ...(dto.externalLinks !== undefined && { externalLinks: dto.externalLinks }),
+        ...(dto.badges !== undefined && { badges: sanitizeBadges(dto.badges) }),
         ...(dto.awardHistory !== undefined && { awardHistory: dto.awardHistory }),
         // null은 삭제(기본 아바타로 복귀), 문자열은 위에서 검증한 파일로 교체.
         ...(dto.profileImageFileId !== undefined && { profileImageFileId: dto.profileImageFileId }),
@@ -93,6 +94,19 @@ export class UsersService {
     await this.findById(userId);
     throw new ConflictException('이미 관심분야 설문을 완료했습니다.');
   }
+}
+
+/** 뱃지 라벨 정규화: trim·빈 값 제거·중복 제거(첫 등장 순서 유지) 후 저장한다. */
+function sanitizeBadges(badges: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const badge of badges) {
+    const trimmed = badge.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
 }
 
 function toPublicUser(user: UserRow) {
