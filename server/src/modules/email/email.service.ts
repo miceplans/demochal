@@ -27,6 +27,14 @@ import {
 
 const AUTOMATED_LIST_LIMIT = 200;
 const statuses = ['open', 'pending', 'resolved'] as const;
+type EmailMessageRow = typeof emailMessages.$inferSelect;
+
+function resolveCustomerEmail(
+  inbound: Pick<EmailMessageRow, 'fromAddress'> | undefined,
+  latest: Pick<EmailMessageRow, 'toAddresses'> | undefined,
+) {
+  return inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '';
+}
 
 @Injectable()
 export class EmailService {
@@ -62,7 +70,7 @@ export class EmailService {
         const inbound = inboundByThread.get(thread.id);
         return {
           ...thread,
-          customerEmail: inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '',
+          customerEmail: resolveCustomerEmail(inbound, latest),
           lastMessage: latest?.textBody ?? latest?.htmlBody ?? '',
           lastMessageAt: latest?.sentAt ?? latest?.receivedAt ?? thread.updatedAt,
         };
@@ -154,6 +162,8 @@ export class EmailService {
       .from(emailMessages)
       .where(eq(emailMessages.threadId, id))
       .orderBy(emailMessages.createdAt);
+    const latestMessage = messages.at(-1);
+    const lastInbound = [...messages].reverse().find((message) => message.direction === 'INBOUND');
     const allAttachments = messages.length
       ? await this.db
           .select()
@@ -167,6 +177,7 @@ export class EmailService {
       : [];
     return {
       ...thread,
+      customerEmail: resolveCustomerEmail(lastInbound, latestMessage),
       messages: messages.map((message) => ({
         ...message,
         direction: message.direction.toLowerCase(),
