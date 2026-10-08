@@ -2097,6 +2097,23 @@ paths:
               schema: { $ref: '#/components/schemas/AdminEmailMessage' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /admin/emails/automated:
+    get:
+      tags: [Admin]
+      summary: no-reply 자동 발송 메일 내역(읽기 전용, 수신자 마스킹)
+      operationId: listAdminAutomatedEmails
+      x-impl-status: implemented
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string, maxLength: 200 }
+      responses:
+        '200':
+          description: 자동 발송 내역
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/AdminAutomatedEmail' } }
+        '403': { $ref: '#/components/responses/Forbidden' }
   /admin/emails/{id}:
     get:
       tags: [Admin]
@@ -2719,6 +2736,15 @@ components:
         lastMessage: { type: string }
         lastMessageAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    AdminAutomatedEmail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        subject: { type: string }
+        type: { type: string, description: 알림 유형 }
+        recipient: { type: string, description: 마스킹된 수신자 주소 }
+        status: { type: string, enum: [sent] }
+        sentAt: { type: string, format: date-time, nullable: true }
     AdminEmailThreadDetail:
       allOf:
         - $ref: '#/components/schemas/AdminEmailThread'

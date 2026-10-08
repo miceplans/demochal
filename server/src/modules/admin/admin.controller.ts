@@ -36,6 +36,12 @@ export class AdminController {
     return this.emailService.listThreads({ q, status });
   }
 
+  // `emails/:id`보다 먼저 선언해야 'automated'가 id로 매칭되지 않는다.
+  @Get('emails/automated')
+  listAutomatedEmails(@Query('q') q?: string) {
+    return this.emailService.listAutomated({ q });
+  }
+
   @Post('emails')
   sendNewEmail(@Body() dto: SendNewEmailDto) {
     return this.emailService.sendNewEmail(dto.to, dto.subject, dto.text, dto.html);
