@@ -1,0 +1,19 @@
+# DB 관리용 이미지(psql). API/워커 이미지와 분리되어 있으며 서비스 배포 대상이 아니다.
+# Build context is the monorepo root: docker build -f server/Dockerfile.dbadmin .
+# RDS는 PostgreSQL 16이므로 PGDG 저장소의 클라이언트 16을 설치한다(빌드 시점에만 인터넷 필요).
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates postgresql-common \
+    && /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y \
+    && apt-get install -y --no-install-recommends postgresql-client-16 \
+    && rm -rf /var/lib/apt/lists/*
+
+# API/워커와 같은 RDS CA 번들로 서버 인증서를 검증한다.
+COPY server/certs/global-bundle.pem /app/certs/global-bundle.pem
+
+ENV PGSSLMODE=verify-full \
+    PGSSLROOTCERT=/app/certs/global-bundle.pem
+
+# ECS Exec 접속용으로 상시 대기한다: `psql "$DATABASE_URL"`
+CMD ["sleep", "infinity"]
