@@ -9,6 +9,7 @@ import { textStyle } from '@/styles/typography';
 import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, FilterBar, SearchFilter, SelectFilter } from './parts';
 import { ReportLogTable } from './ReportLogTable';
+import { DownloadIcon } from './AdminIcons';
 
 type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
 
@@ -19,26 +20,6 @@ const targetTypeLabel: Record<string, string> = {
   user: '프로필',
 };
 const statusLabel: Record<string, string> = { open: '대기', resolved: '승인', dismissed: '거부' };
-
-function DownloadGlyph() {
-  return (
-    <svg
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-      <path d="m7 10 5 5 5-5" />
-      <path d="M12 15V3" />
-    </svg>
-  );
-}
 
 export function AdminReportsScreen() {
   const [exportOpen, setExportOpen] = useState(false);
@@ -75,7 +56,7 @@ export function AdminReportsScreen() {
       <TitleRow>
         <AdminPageTitle>신고 처리</AdminPageTitle>
         <ExportButton type="button" onClick={() => setExportOpen(true)}>
-          <DownloadGlyph />
+          <DownloadIcon />
           내보내기
         </ExportButton>
       </TitleRow>

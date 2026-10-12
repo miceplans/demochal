@@ -9,6 +9,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { AdminInlineNotice, AdminTable, Badge, type AdminColumn } from './parts';
+import { CloseIcon } from './AdminIcons';
 
 type ReportFilters = NonNullable<Parameters<typeof generated.listAdminReports>[0]>;
 
@@ -62,23 +63,6 @@ const panelShell = {
     borderRadius: '0 0 8px 8px',
   },
 } as const;
-function CloseGlyph() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
 function ReportDetailPanel({
   row,
   onClose,
@@ -105,7 +89,7 @@ function ReportDetailPanel({
           <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
         </TitleRow>
         <CloseButton type="button" aria-label="신고 상세 닫기" onClick={onClose}>
-          <CloseGlyph />
+          <CloseIcon />
         </CloseButton>
       </PanelHeader>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
