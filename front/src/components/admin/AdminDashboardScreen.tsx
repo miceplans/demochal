@@ -43,7 +43,7 @@ export function AdminDashboardScreen() {
         ))}
       </StatRow>
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <AdminSectionTitle style={{ color: '#111827' }}>신고 로그</AdminSectionTitle>
+        <AdminSectionTitle style={{ color: c.gray900 }}>신고 로그</AdminSectionTitle>
         <ReportLogTable reports={dashboard?.reports ?? []} />
       </section>
       {dashboard?.generatedAt && (

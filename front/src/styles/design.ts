@@ -2,6 +2,7 @@ import { theme } from './theme';
 export const colors = {
   primary: theme.colors.semo,
   primaryHover: theme.colors.semoHover,
+  primaryDark: theme.colors.semoDark,
   paleBlue: theme.colors.paleBlue,
   surface: theme.colors.surface,
   white: theme.colors.background,

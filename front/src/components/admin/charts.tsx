@@ -80,7 +80,7 @@ const ChartCard = styled.div({
   flexDirection: 'column',
   gap: 8,
   padding: 24,
-  border: '0.5px solid #DFE2E7',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 16,
   background: c.white,
 });
@@ -124,7 +124,7 @@ function GaugeBar(props: {
       <path
         d={arcPath(cx, cy, mid, 180, 360)}
         fill="none"
-        stroke="#E5E7EB"
+        stroke={c.gray200}
         strokeWidth={width}
         strokeLinecap="round"
       />
@@ -280,7 +280,7 @@ export function TrafficChart({
       style={{
         flex: 1,
         minWidth: 544,
-        border: '0.5px solid #DFE2E7',
+        border: `0.5px solid ${c.gray200}`,
         borderRadius: 12,
         padding: 16,
         display: 'flex',
@@ -346,7 +346,7 @@ export function TrafficChart({
                   <stop offset="1" stopColor={c.primary} stopOpacity="0" />
                 </linearGradient>
               </defs>
-              <CartesianGrid vertical={false} stroke="#E5E7EB" />
+              <CartesianGrid vertical={false} stroke={c.gray200} />
               <XAxis
                 dataKey="label"
                 tickLine={false}
@@ -429,7 +429,7 @@ export function ActivityChart({
   return (
     <div
       style={{
-        border: '0.5px solid #DFE2E7',
+        border: `0.5px solid ${c.gray200}`,
         borderRadius: 16,
         padding: 24,
         display: 'flex',
@@ -465,7 +465,7 @@ export function ActivityChart({
                   <stop offset="1" stopColor={c.lightBlue} stopOpacity="0.05" />
                 </linearGradient>
               </defs>
-              <CartesianGrid vertical={false} stroke="#E5E7EB" />
+              <CartesianGrid vertical={false} stroke={c.gray200} />
               <XAxis
                 dataKey="month"
                 tickLine={false}
@@ -520,7 +520,7 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
   return (
     <div
       style={{
-        border: '0.5px solid #DFE2E7',
+        border: `0.5px solid ${c.gray200}`,
         borderRadius: 16,
         padding: 24,
         display: 'flex',
@@ -537,7 +537,7 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
             노출수
           </Legend>
           <Legend>
-            <LegendDot color="#22C55E" />
+            <LegendDot color={c.green} />
             클릭수
           </Legend>
         </span>
@@ -551,23 +551,23 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
                 <stop offset="1" stopColor={c.primary} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke={c.gray200} vertical={false} />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, color: '#6B7280' }}
+              tick={{ fontSize: 12, color: c.gray700 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               yAxisId="left"
-              tick={{ fontSize: 12, color: '#6B7280' }}
+              tick={{ fontSize: 12, color: c.gray700 }}
               tickLine={false}
               axisLine={false}
             />
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 12, color: '#6B7280' }}
+              tick={{ fontSize: 12, color: c.gray700 }}
               tickLine={false}
               axisLine={false}
             />
@@ -586,7 +586,7 @@ export function AdReportChart({ daily }: { daily: AdDailyStat[] }) {
               type="monotone"
               dataKey="clicks"
               name="클릭수"
-              stroke="#22C55E"
+              stroke={c.green}
               strokeWidth={2}
               dot={false}
             />

@@ -127,7 +127,7 @@ const HeroCard = styled('button', { shouldForwardProp: (prop) => prop !== 'compa
   borderRadius: 12,
   cursor: 'pointer',
   textAlign: 'left',
-  backgroundImage: `linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, #FFFFFF 100%), url(${HERO_IMAGE})`,
+  backgroundImage: `linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, ${c.white} 100%), url(${HERO_IMAGE})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   transition: 'box-shadow 180ms ease',
@@ -140,7 +140,7 @@ const HeroLabel = styled('span', { shouldForwardProp: (prop) => prop !== 'compac
   fontSize: compact ? 14 : 24,
   fontWeight: 400,
   lineHeight: 1.3,
-  color: '#101010',
+  color: c.gray900,
 }));
 const HeroPrice = styled('strong', { shouldForwardProp: (prop) => prop !== 'compact' })<{
   compact?: boolean;
@@ -149,7 +149,7 @@ const HeroPrice = styled('strong', { shouldForwardProp: (prop) => prop !== 'comp
   fontWeight: 600,
   lineHeight: 1.3,
   letterSpacing: '-0.01em',
-  color: '#101010',
+  color: c.gray900,
 }));
 
 const Pager = styled.div({ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 10 });
@@ -189,8 +189,8 @@ const SectionHead = styled.div({
   justifyContent: 'space-between',
   alignItems: 'center',
 });
-const SectionTitle = styled.h2({ margin: 0, fontSize: 18, fontWeight: 700, color: '#101010' });
-const MoreLabel = styled.span({ ...textStyle.secondaryText, color: '#858A99' });
+const SectionTitle = styled.h2({ margin: 0, fontSize: 18, fontWeight: 700, color: c.gray900 });
+const MoreLabel = styled.span({ ...textStyle.secondaryText, color: c.gray500 });
 
 const Rail = styled.div({
   display: 'flex',
@@ -258,7 +258,7 @@ const DialogThumb = styled.div({
   backgroundPosition: 'center',
 });
 const DialogBody = styled.div({ display: 'flex', flexDirection: 'column', gap: 15 });
-const DialogTitle = styled.h2({ margin: 0, ...textStyle.h1_2, color: '#101010' });
+const DialogTitle = styled.h2({ margin: 0, ...textStyle.h1_2, color: c.gray900 });
 const InfoRow = styled.div({
   display: 'flex',
   justifyContent: 'space-between',
@@ -270,9 +270,9 @@ const InfoLabel = styled.span({
   display: 'inline-block',
   width: 80,
   ...textStyle.caption2,
-  color: '#101010',
+  color: c.gray900,
 });
-const InfoValue = styled.span({ ...textStyle.caption, color: '#101010' });
+const InfoValue = styled.span({ ...textStyle.caption, color: c.gray900 });
 const ReportLink = styled(Link)({
   display: 'inline-flex',
   alignItems: 'center',
@@ -290,14 +290,14 @@ const DialogButton = styled('button', { shouldForwardProp: (prop) => prop !== 'p
 }>(({ primary }) => ({
   flex: 1,
   height: 37,
-  border: primary ? 0 : `0.5px solid #DFE2E7`,
+  border: primary ? 0 : `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: primary ? c.primary : c.white,
-  color: primary ? c.white : '#101010',
+  color: primary ? c.white : c.gray900,
   cursor: 'pointer',
   ...(primary ? textStyle.mFeatureTitle : textStyle.overline),
 }));
-const ModalText = styled.p({ margin: 0, ...textStyle.caption, color: '#101010' });
+const ModalText = styled.p({ margin: 0, ...textStyle.caption, color: c.gray900 });
 const PriceField = styled.div({
   display: 'flex',
   alignItems: 'center',
@@ -315,7 +315,7 @@ const PriceInput = styled.input({
   padding: '0 14px',
   border: 0,
   outline: 0,
-  color: '#101010',
+  color: c.gray900,
   background: 'transparent',
   ...textStyle.bodyLarge,
 });
@@ -714,7 +714,7 @@ export function AdminAdPricingScreen() {
                     결제 금액은 유지됩니다.
                   </ModalText>
                   <label style={{ display: 'grid', gap: 8 }} htmlFor={inputId}>
-                    <span style={{ ...textStyle.subtitle, color: '#101010' }}>하루 광고비</span>
+                    <span style={{ ...textStyle.subtitle, color: c.gray900 }}>하루 광고비</span>
                     <PriceField>
                       <PriceInput
                         id={inputId}

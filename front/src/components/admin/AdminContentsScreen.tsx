@@ -29,7 +29,7 @@ const CardGrid = styled.div({
 const TeamCard = styled.article({
   position: 'relative',
   flex: '0 0 calc((100% - 48px) / 4)',
-  border: '0.5px solid #E0E0E0',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   background: c.gray100,
   overflow: 'hidden',
@@ -46,7 +46,7 @@ const UnreadDot = styled.span({
 });
 const TeamCover = styled.div({
   height: 135,
-  background: 'linear-gradient(135deg, #E2E6EC 0%, #EFF1F4 100%)',
+  background: `linear-gradient(135deg, ${c.gray200} 0%, ${c.gray100} 100%)`,
 });
 const TeamBody = styled.div({
   background: c.white,
@@ -65,23 +65,23 @@ const RoleBadge = styled.span<{ active?: boolean }>(({ active }) => ({
   padding: '4px 8px',
   borderRadius: 4,
   ...textStyle.mBadgeText,
-  background: active ? c.lightGreen : '#F5F5F5',
-  color: active ? c.green : '#999999',
-  border: active ? 'none' : '0.5px solid #E0E0E0',
+  background: active ? c.lightGreen : c.gray100,
+  color: active ? c.green : c.gray500,
+  border: active ? 'none' : `0.5px solid ${c.gray200}`,
 }));
 /* ---------- 챌린지 카드 ---------- */
 
 const ContestCard = styled.article({
   position: 'relative',
   flex: '0 0 calc((100% - 48px) / 4)',
-  border: '0.5px solid #E0E0E0',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
   background: c.gray100,
   overflow: 'hidden',
 });
 const ContestCover = styled.div({
   height: 189,
-  background: 'linear-gradient(135deg, #DDE4EE 0%, #EDF1F6 100%)',
+  background: `linear-gradient(135deg, ${c.gray200} 0%, ${c.gray100} 100%)`,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

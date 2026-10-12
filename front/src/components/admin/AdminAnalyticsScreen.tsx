@@ -14,11 +14,11 @@ import { ActivityChart, AdReportChart } from './charts';
 const ExportButton = styled.button({
   border: 0,
   borderRadius: 10,
-  background: '#0877FF',
-  color: '#fff',
+  background: c.primary,
+  color: c.white,
   padding: '12px 20px',
   ...({ fontSize: 14, fontWeight: 600 } as const),
-  '&:hover': { background: '#0056c2' },
+  '&:hover': { background: c.primaryDark },
 });
 
 const AdReportBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 24 });
