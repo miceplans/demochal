@@ -120,8 +120,8 @@ function AdminSidebar() {
       <ProfileRow>
         <Avatar aria-hidden>{name.charAt(0)}</Avatar>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <strong style={{ ...textStyle.caption2, color: '#111827' }}>{name}</strong>
-          <span style={{ fontSize: 11, fontWeight: 500, color: '#6B7280' }}>{role}</span>
+          <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{name}</strong>
+          <span style={{ fontSize: 11, fontWeight: 500, color: c.gray700 }}>{role}</span>
         </span>
         <LogoutButton type="button" onClick={logout}>
           로그아웃
@@ -225,7 +225,7 @@ const SidebarBox = styled.aside({
   width: 220,
   minWidth: 220,
   background: c.white,
-  borderRight: '0.5px solid #E5E7EB',
+  borderRight: `0.5px solid ${c.gray200}`,
   padding: '28px 18px',
   display: 'flex',
   flexDirection: 'column',
@@ -248,7 +248,7 @@ const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })
   padding: '10px 12px',
   borderRadius: 6,
   ...textStyle.subtitle,
-  color: '#111111',
+  color: c.gray900,
   background: active
     ? 'linear-gradient(90deg, rgba(11,110,255,0.1) 0%, rgba(255,255,255,0.1) 100%)'
     : 'transparent',
@@ -259,7 +259,7 @@ const Avatar = styled.span({
   width: 34,
   height: 34,
   borderRadius: '50%',
-  background: '#EFF6FF',
+  background: c.paleBlue,
   color: c.primary,
   display: 'flex',
   alignItems: 'center',

@@ -40,12 +40,12 @@ const Panel = styled.div({
   gap: 24,
   padding: '40px 32px',
   borderRadius: 12,
-  border: '0.5px solid #E5E7EB',
+  border: `0.5px solid ${c.gray200}`,
   background: c.white,
 });
 
 const Heading = styled.h1({
   ...textStyle.h2_2,
-  color: '#111827',
+  color: c.gray900,
   textAlign: 'center',
 });

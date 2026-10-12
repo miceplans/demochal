@@ -305,7 +305,7 @@ const TabItem = styled.button<{ active?: boolean }>(({ active }) => ({
   borderRadius: 6,
   border: '0.5px solid',
   borderColor: active ? c.gray200 : c.gray200,
-  background: active ? '#F8FAFC' : c.white,
+  background: active ? c.surface : c.white,
   ...textStyle.subtitle,
   color: c.gray900,
 }));
@@ -343,7 +343,7 @@ const MiniAvatar = styled.span({
   width: 32,
   height: 32,
   borderRadius: '50%',
-  background: '#EFF6FF',
+  background: c.paleBlue,
   color: c.primary,
   display: 'inline-flex',
   alignItems: 'center',

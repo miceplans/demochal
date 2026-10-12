@@ -156,15 +156,15 @@ const StatBox = styled.div({
   flexDirection: 'column',
   gap: 8,
   padding: 18,
-  border: '0.5px solid #E5E7EB',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 16,
   minWidth: 0,
   flex: 1,
   background: c.white,
 });
-const StatLabel = styled.span({ ...textStyle.subtitle, color: '#6B7280' });
-const StatValue = styled.strong({ ...textStyle.h1_2, color: '#111827' });
-const StatMeta = styled.span({ ...textStyle.metaText, color: '#6B7280' });
+const StatLabel = styled.span({ ...textStyle.subtitle, color: c.gray700 });
+const StatValue = styled.strong({ ...textStyle.h1_2, color: c.gray900 });
+const StatMeta = styled.span({ ...textStyle.metaText, color: c.gray700 });
 const StatDot = styled.span<{ color: string }>(({ color }) => ({
   width: 9,
   height: 9,
@@ -190,7 +190,7 @@ const SearchBox = styled.label({
   width: 360,
   height: 42,
   padding: '0 14px',
-  border: '0.5px solid #E5E7EB',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 10,
   background: c.white,
   '&:focus-within': { borderColor: c.primary },
@@ -202,12 +202,12 @@ const SearchInput = styled.input({
   outline: 'none',
   background: 'transparent',
   ...textStyle.body,
-  '&::placeholder': { color: '#6B7280' },
+  '&::placeholder': { color: c.gray700 },
 });
 const SearchGlyph = styled.span({ display: 'inline-flex', color: c.gray500 });
 
 const TableBox = styled.div({
-  border: '0.5px solid #DFE2E7',
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   overflow: 'hidden',
   background: c.white,
@@ -230,14 +230,14 @@ const BodyRow = styled.div<{ last?: boolean; clickable?: boolean; selected?: boo
     gap: 40,
     height: 56,
     padding: '0 16px',
-    background: selected ? '#EFF6FF' : c.white,
-    borderTop: '0.5px solid #DFE2E7',
+    background: selected ? c.paleBlue : c.white,
+    borderTop: `0.5px solid ${c.gray200}`,
     borderRadius: last ? '0 0 8px 8px' : undefined,
     ...textStyle.bodyLarge,
     color: c.gray900,
     cursor: clickable ? 'pointer' : undefined,
     transition: clickable ? 'background-color 160ms ease' : undefined,
-    '&:hover': clickable ? { background: selected ? '#DBEAFE' : c.gray50 } : undefined,
+    '&:hover': clickable ? { background: selected ? c.lightBlue : c.gray50 } : undefined,
   }),
 );
 const Cell = styled('span', { shouldForwardProp: (prop) => prop !== 'width' })<{ width?: number }>(
@@ -278,7 +278,7 @@ export const ApproveButton = styled.button({
   color: c.white,
   ...textStyle.subtitle,
   padding: '8px 16px',
-  '&:hover': { background: '#0056c2' },
+  '&:hover': { background: c.primaryDark },
 });
 export const RejectButton = styled.button({
   border: `0.5px solid ${c.gray200}`,
