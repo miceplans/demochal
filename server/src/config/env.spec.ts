@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { parseIpAllowlist } from '../common/throttling/ip-allowlist.js';
 
 async function loadEnv(vars: Record<string, string>) {
   vi.resetModules();
@@ -24,10 +25,25 @@ describe('env JWT_SECRET validation', () => {
     expect(env.jwtSecret).toBe('a'.repeat(32));
   });
 
-  it('rejects an empty webhook allowlist in production', async () => {
+  it('rejects an empty webhook allowlist in production when the Toss key is set', async () => {
     await expect(
-      loadEnv({ NODE_ENV: 'production', JWT_SECRET: 'a'.repeat(32), TOSS_WEBHOOK_ALLOWED_IPS: '' }),
+      loadEnv({
+        NODE_ENV: 'production',
+        JWT_SECRET: 'a'.repeat(32),
+        TOSS_SECRET_KEY: 'test_sk',
+        TOSS_WEBHOOK_ALLOWED_IPS: '',
+      }),
     ).rejects.toThrow(/TOSS_WEBHOOK_ALLOWED_IPS/);
+  });
+
+  it('allows an empty webhook allowlist in production without a Toss key', async () => {
+    const { env } = await loadEnv({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a'.repeat(32),
+      TOSS_SECRET_KEY: '',
+      TOSS_WEBHOOK_ALLOWED_IPS: '',
+    });
+    expect(env.tossWebhookAllowlist).toEqual(parseIpAllowlist([]));
   });
 
   it('derives an OAuth state key distinct from the JWT secret', async () => {
