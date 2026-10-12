@@ -83,7 +83,13 @@ const envSchema = z
         message: `JWT_SECRET must be set to at least ${MIN_JWT_SECRET_LENGTH} characters in production`,
       });
     }
-    if (value.NODE_ENV === 'production' && !value.TOSS_WEBHOOK_ALLOWED_IPS.trim()) {
+    // TODO: Toss 승인 전에는 허용 IP가 없어 키가 없을 때만 면제한다. 승인 후 키를 넣으면
+    // 허용 IP도 함께 강제된다. https://docs.tosspayments.com/reference/using-api/webhook-events
+    if (
+      value.NODE_ENV === 'production' &&
+      value.TOSS_SECRET_KEY &&
+      !value.TOSS_WEBHOOK_ALLOWED_IPS.trim()
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['TOSS_WEBHOOK_ALLOWED_IPS'],
