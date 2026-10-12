@@ -68,3 +68,81 @@ export function GearIcon({ size = 24 }: IconProps) {
     </Icon>
   );
 }
+
+export function DashboardIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect width="7" height="9" x="3" y="3" rx="1" />
+      <rect width="7" height="5" x="14" y="3" rx="1" />
+      <rect width="7" height="9" x="14" y="12" rx="1" />
+      <rect width="7" height="5" x="3" y="16" rx="1" />
+    </Icon>
+  );
+}
+
+export function BuildingIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+      <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+      <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" />
+      <path d="M10 6h4M10 10h4M10 14h4M10 18h4" />
+    </Icon>
+  );
+}
+
+export function MegaphoneIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="m3 11 18-5v12L3 14v-3z" />
+      <path d="M11.6 16.8a3 3 0 1 1-5.8-1.6" />
+    </Icon>
+  );
+}
+
+export function UsersIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </Icon>
+  );
+}
+
+export function MonitorIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect width="20" height="14" x="2" y="3" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+    </Icon>
+  );
+}
+
+export function FlagIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" />
+      <path d="M4 22v-7" />
+    </Icon>
+  );
+}
+
+export function MailIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </Icon>
+  );
+}
+
+export function BarChartIcon({ size = 18 }: IconProps) {
+  return (
+    <Icon size={size}>
+      <path d="M3 3v16a2 2 0 0 0 2 2h16" />
+      <path d="M18 17V9M13 17V5M8 17v-3" />
+    </Icon>
+  );
+}

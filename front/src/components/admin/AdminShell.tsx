@@ -11,12 +11,36 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
-import { GearIcon } from './AdminIcons';
+import {
+  BarChartIcon,
+  BuildingIcon,
+  DashboardIcon,
+  FlagIcon,
+  GearIcon,
+  MailIcon,
+  MegaphoneIcon,
+  MonitorIcon,
+  TrophyIcon,
+  UsersIcon,
+} from './AdminIcons';
 
 const roleLabel: Record<string, string> = {
   admin: '관리자',
   business: '기업',
   user: '일반 사용자',
+};
+
+const menuIcon: Record<string, ReactNode> = {
+  '/': <DashboardIcon />,
+  '/biz-review': <BuildingIcon />,
+  '/certificates': <TrophyIcon size={18} />,
+  '/ad-pricing': <MegaphoneIcon />,
+  '/users': <UsersIcon />,
+  '/contents': <MonitorIcon />,
+  '/reports': <FlagIcon />,
+  '/emails': <MailIcon />,
+  '/analytics': <BarChartIcon />,
+  '/settings': <GearIcon size={18} />,
 };
 
 const AdminNavContext = createContext('');
@@ -86,6 +110,7 @@ function AdminSidebar() {
                 active={active || undefined}
                 aria-current={active ? 'page' : undefined}
               >
+                {menuIcon[href]}
                 {label}
               </NavItem>
             );
@@ -217,6 +242,9 @@ const NavItems = styled.nav({ display: 'flex', flexDirection: 'column', gap: 6, 
 const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })<{
   active?: boolean;
 }>(({ active }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
   padding: '10px 12px',
   borderRadius: 6,
   ...textStyle.subtitle,
