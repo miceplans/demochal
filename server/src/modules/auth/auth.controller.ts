@@ -496,7 +496,7 @@ export class AuthController {
   }
 
   /** Only a null survey is incomplete; otherwise return to the page from `?next=`. */
-  private postLoginUrl(user: { onboardingSurvey?: unknown }, request: Request, response: Response) {
+  private postLoginUrl(user: { onboardingSurvey: unknown }, request: Request, response: Response) {
     const raw = request.headers.cookie
       ?.split(';')
       .map((value) => value.trim())
