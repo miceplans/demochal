@@ -1,4 +1,67 @@
-const textDecoder = new TextDecoder('utf-8', { fatal: false });
+const utf8Decoder = new TextDecoder('utf-8', { fatal: true });
+
+function decodeEncodedWord(charset, encoding, encodedText) {
+  if (charset.toLowerCase() !== 'utf-8') return null;
+  try {
+    if (encoding.toLowerCase() === 'b') {
+      if (
+        !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encodedText) ||
+        !encodedText
+      )
+        return null;
+      return utf8Decoder.decode(Buffer.from(encodedText, 'base64'));
+    }
+    const bytes = [];
+    for (let index = 0; index < encodedText.length; index += 1) {
+      const character = encodedText[index];
+      if (character === '_') {
+        bytes.push(0x20);
+      } else if (character === '=') {
+        const hex = encodedText.slice(index + 1, index + 3);
+        if (!/^[0-9A-F]{2}$/i.test(hex)) return null;
+        bytes.push(Number.parseInt(hex, 16));
+        index += 2;
+      } else {
+        const code = character.charCodeAt(0);
+        if (code > 0x7f) return null;
+        bytes.push(code);
+      }
+    }
+    return utf8Decoder.decode(new Uint8Array(bytes));
+  } catch {
+    return null;
+  }
+}
+
+function decodeMimeHeader(value) {
+  const encodedWord = /=\?([^?\s]+)\?([bq])\?([^?]*)\?=/gi;
+  let decoded = '';
+  let previousEnd = 0;
+  let previousWasEncoded = false;
+  for (const match of value.matchAll(encodedWord)) {
+    const [raw, charset, encoding, encodedText] = match;
+    const start = match.index ?? 0;
+    const between = value.slice(previousEnd, start);
+    const current = decodeEncodedWord(charset, encoding, encodedText);
+    if (!(previousWasEncoded && current !== null && /^\s+$/.test(between))) decoded += between;
+    decoded += current ?? raw;
+    previousWasEncoded = current !== null;
+    previousEnd = start + raw.length;
+  }
+  return decoded + value.slice(previousEnd);
+}
+
+function decodeAddressHeader(value) {
+  let decoded = '';
+  let previousEnd = 0;
+  for (const match of value.matchAll(/<[^>]*>/g)) {
+    const start = match.index ?? 0;
+    decoded += decodeMimeHeader(value.slice(previousEnd, start));
+    decoded += match[0];
+    previousEnd = start + match[0].length;
+  }
+  return decoded + decodeMimeHeader(value.slice(previousEnd));
+}
 
 function unfold(value) {
   return value.replace(/\r?\n[ \t]+/g, ' ');
@@ -98,10 +161,10 @@ export function parseMimeMessage(raw) {
   const message = splitMessage(raw);
   const result = {
     messageId: header(message.headers, 'message-id') || null,
-    from: header(message.headers, 'from') || null,
-    to: header(message.headers, 'to') || null,
-    cc: header(message.headers, 'cc') || null,
-    subject: header(message.headers, 'subject') || null,
+    from: decodeAddressHeader(header(message.headers, 'from')) || null,
+    to: decodeAddressHeader(header(message.headers, 'to')) || null,
+    cc: decodeAddressHeader(header(message.headers, 'cc')) || null,
+    subject: decodeMimeHeader(header(message.headers, 'subject')) || null,
     date: header(message.headers, 'date') || null,
     inReplyTo: header(message.headers, 'in-reply-to') || null,
     references: header(message.headers, 'references') || null,
