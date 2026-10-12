@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -38,6 +39,36 @@ const automatedTypeLabel: Record<string, string> = {
 };
 const statusLabel: Record<string, string> = { open: '미처리', pending: '처리중', resolved: '완료' };
 const statusValue: Record<string, string> = { 미처리: 'open', 처리중: 'pending', 완료: 'resolved' };
+type EmailStatus = 'open' | 'pending' | 'resolved';
+type EmailStatusRecord = { id?: string; status?: string };
+
+export function updateCachedEmailStatus<T>(
+  cached: T | undefined,
+  id: string,
+  status: EmailStatus,
+): T | undefined {
+  if (!cached || typeof cached !== 'object') return cached;
+  const response = cached as { status?: unknown; data?: unknown };
+  if (response.status !== 200) return cached;
+  if (Array.isArray(response.data)) {
+    return {
+      ...response,
+      data: response.data.map((row) => {
+        if (!row || typeof row !== 'object' || (row as EmailStatusRecord).id !== id) return row;
+        return { ...row, status };
+      }),
+    } as T;
+  }
+  if (
+    response.data &&
+    typeof response.data === 'object' &&
+    (response.data as EmailStatusRecord).id === id
+  ) {
+    return { ...response, data: { ...response.data, status } } as T;
+  }
+  return cached;
+}
+
 function formatTime(value?: string) {
   if (!value) return '-';
   const date = new Date(value);
@@ -316,9 +347,51 @@ export function AdminEmailComposeScreen() {
 
 export function AdminEmailThreadScreen({ id }: { id: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const detail = generated.useGetAdminEmail(id, { query: { enabled: true } });
   const reply = generated.useSendAdminEmailReply();
-  const statusMutation = generated.useUpdateAdminEmailStatus();
+  const statusMutation = generated.useUpdateAdminEmailStatus({
+    mutation: {
+      onMutate: async ({ id: threadId, data }) => {
+        const status = data.status as EmailStatus;
+        const detailKey = generated.getGetAdminEmailQueryKey(threadId);
+        const listKey = generated.getListAdminEmailsQueryKey();
+        await Promise.all([
+          queryClient.cancelQueries({ queryKey: detailKey }),
+          queryClient.cancelQueries({ queryKey: listKey }),
+        ]);
+        const previousDetail = queryClient.getQueryData(detailKey);
+        const previousLists = queryClient.getQueriesData({ queryKey: listKey });
+        queryClient.setQueryData(detailKey, (cached) =>
+          updateCachedEmailStatus(cached, threadId, status),
+        );
+        queryClient.setQueriesData({ queryKey: listKey }, (cached) =>
+          updateCachedEmailStatus(cached, threadId, status),
+        );
+        return { previousDetail, previousLists };
+      },
+      onError: (_error, variables, context) => {
+        const detailKey = generated.getGetAdminEmailQueryKey(variables.id);
+        if (context?.previousDetail !== undefined)
+          queryClient.setQueryData(detailKey, context.previousDetail);
+        context?.previousLists.forEach(([key, value]) => queryClient.setQueryData(key, value));
+      },
+      onSuccess: (response, variables) => {
+        if (response.status !== 200) return;
+        const detailKey = generated.getGetAdminEmailQueryKey(variables.id);
+        queryClient.setQueryData(detailKey, (cached) =>
+          updateCachedEmailStatus(cached, variables.id, response.data.status as EmailStatus),
+        );
+        queryClient.setQueriesData({ queryKey: generated.getListAdminEmailsQueryKey() }, (cached) =>
+          updateCachedEmailStatus(cached, variables.id, response.data.status as EmailStatus),
+        );
+      },
+      onSettled: () => {
+        void queryClient.invalidateQueries({ queryKey: generated.getGetAdminEmailQueryKey(id) });
+        void queryClient.invalidateQueries({ queryKey: generated.getListAdminEmailsQueryKey() });
+      },
+    },
+  });
   const selected = detail.data?.status === 200 ? detail.data.data : undefined;
   const [copied, setCopied] = useState(false);
   return (
@@ -347,6 +420,7 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
             thread={selected}
             sending={reply.isPending}
             onStatusChange={(status) => statusMutation.mutate({ id, data: { status } })}
+            statusChanging={statusMutation.isPending}
             copied={copied}
             onCopyEmail={() => {
               if (!selected.customerEmail) return;
@@ -368,6 +442,11 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
             error={
               reply.isError
                 ? '답장 발송에 실패했어요. 같은 내용으로 다시 시도해 주세요.'
+                : undefined
+            }
+            statusError={
+              statusMutation.isError
+                ? '상태를 변경하지 못했어요. 잠시 후 다시 시도해 주세요.'
                 : undefined
             }
           />
@@ -470,17 +549,21 @@ function ThreadDetail({
   sending,
   onReply,
   onStatusChange,
+  statusChanging,
   copied,
   onCopyEmail,
   error,
+  statusError,
 }: {
   thread: EmailThreadDetail;
   sending: boolean;
   onReply: (text: string) => Promise<boolean>;
-  onStatusChange: (status: 'open' | 'pending' | 'resolved') => void;
+  onStatusChange: (status: EmailStatus) => void;
+  statusChanging: boolean;
   copied: boolean;
   onCopyEmail: () => void;
   error?: string;
+  statusError?: string;
 }) {
   const [text, setText] = useState('');
   return (
@@ -500,10 +583,10 @@ function ThreadDetail({
           label="상태"
           options={['미처리', '처리중', '완료']}
           value={statusLabel[thread.status ?? ''] ?? ''}
-          onChange={(value) =>
-            onStatusChange(statusValue[value] as 'open' | 'pending' | 'resolved')
-          }
+          disabled={statusChanging}
+          onChange={(value) => onStatusChange(statusValue[value] as EmailStatus)}
         />
+        {statusError ? <Error role="alert">{statusError}</Error> : null}
       </ThreadHeader>
       <Timeline>
         {(thread.messages ?? []).map((message) => (

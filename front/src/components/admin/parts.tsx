@@ -84,11 +84,13 @@ export function SelectFilter({
   label,
   options,
   value,
+  disabled,
   onChange,
 }: {
   label: string;
   options: string[];
   value?: string;
+  disabled?: boolean;
   onChange?: (value: string) => void;
 }) {
   const dropdownOptions: DropdownOption[] = options.map((option) => ({
@@ -102,6 +104,7 @@ export function SelectFilter({
       placeholder={label}
       aria-label={label}
       width={160}
+      disabled={disabled}
       onChange={onChange}
     />
   );

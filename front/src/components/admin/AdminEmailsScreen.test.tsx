@@ -1,7 +1,8 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import {
   AdminEmailComposeScreen,
   AdminEmailThreadScreen,
@@ -28,6 +29,8 @@ vi.mock('@semochal/api-client', () => ({
     useSendAdminEmailReply: mocks.send,
     useCreateAdminEmail: mocks.create,
     useUpdateAdminEmailStatus: mocks.updateStatus,
+    getGetAdminEmailQueryKey: (id: string) => [`/admin/emails/${id}`],
+    getListAdminEmailsQueryKey: () => ['/admin/emails'],
   },
 }));
 
@@ -77,13 +80,20 @@ vi.mock('./parts', () => ({
   SelectFilter: ({
     label,
     value,
+    disabled,
     onChange,
   }: {
     label: string;
     value?: string;
+    disabled?: boolean;
     onChange?: (value: string) => void;
   }) => (
-    <select aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)}>
+    <select
+      aria-label={label}
+      value={value}
+      disabled={disabled}
+      onChange={(event) => onChange?.(event.target.value)}
+    >
       <option value="">{label}</option>
       <option value="미처리">미처리</option>
       <option value="처리중">처리중</option>
@@ -111,6 +121,22 @@ vi.mock('./parts', () => ({
     <input aria-label={label} value={value} onChange={(event) => onChange?.(event.target.value)} />
   ),
 }));
+
+type StatusVariables = { id: string; data: { status: 'open' | 'pending' | 'resolved' } };
+type StatusContext = {
+  previousDetail: unknown;
+  previousLists: Array<[readonly unknown[], unknown]>;
+};
+type StatusMutationOptions = {
+  mutation?: {
+    onMutate?: (variables: StatusVariables) => Promise<StatusContext>;
+    onError?: (error: Error, variables: StatusVariables, context: StatusContext) => void;
+    onSuccess?: (
+      response: { status: 200; data: { id: string; status: 'open' | 'pending' | 'resolved' } },
+      variables: StatusVariables,
+    ) => void;
+  };
+};
 
 describe('AdminEmailsScreen', () => {
   afterEach(cleanup);
@@ -208,7 +234,12 @@ describe('AdminEmailsScreen', () => {
       mutateAsync: vi.fn().mockRejectedValue(new Error('SES failed')),
     });
     const user = userEvent.setup();
-    render(<AdminEmailThreadScreen id="thread-1" />);
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AdminEmailThreadScreen id="thread-1" />
+      </QueryClientProvider>,
+    );
     const textarea = screen.getByPlaceholderText('답장 내용을 입력하세요.');
     await user.type(textarea, '재시도할 답장');
     await user.click(screen.getByRole('button', { name: '답장 보내기' }));
@@ -218,6 +249,116 @@ describe('AdminEmailsScreen', () => {
       id: 'thread-1',
       data: { status: 'pending' },
     });
+  });
+
+  it('updates observed detail, list, and summary immediately, then restores both when status saving fails', async () => {
+    let statusOptions: StatusMutationOptions | undefined;
+    mocks.updateStatus.mockImplementation((options: StatusMutationOptions) => {
+      statusOptions = options;
+      return { isPending: false, isError: false, mutate: vi.fn() };
+    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const cachedList = {
+      status: 200,
+      data: [
+        { id: 'thread-1', status: 'open' },
+        { id: 'thread-2', status: 'resolved' },
+      ],
+    };
+    const cachedDetail = { status: 200, data: { id: 'thread-1', status: 'open' } };
+    queryClient.setQueryData(['/admin/emails/thread-1'], cachedDetail);
+    queryClient.setQueryData(['/admin/emails'], cachedList);
+    function EmailStatusCacheObserver() {
+      const detail = useQuery({
+        queryKey: ['/admin/emails/thread-1'],
+        queryFn: async () => cachedDetail,
+        enabled: false,
+      });
+      const list = useQuery({
+        queryKey: ['/admin/emails'],
+        queryFn: async () => cachedList,
+        enabled: false,
+      });
+      const rows = list.data?.status === 200 ? list.data.data : [];
+      return (
+        <>
+          <output data-testid="detail-status">{detail.data?.data.status}</output>
+          <output data-testid="row-status">{rows[0]?.status}</output>
+          <output data-testid="open-count">
+            {rows.filter((row) => row.status === 'open').length}
+          </output>
+          <output data-testid="pending-count">
+            {rows.filter((row) => row.status === 'pending').length}
+          </output>
+        </>
+      );
+    }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AdminEmailThreadScreen id="thread-1" />
+        <EmailStatusCacheObserver />
+      </QueryClientProvider>,
+    );
+
+    let context: StatusContext | undefined;
+    await act(async () => {
+      context = await statusOptions?.mutation?.onMutate?.({
+        id: 'thread-1',
+        data: { status: 'pending' },
+      });
+    });
+
+    expect(queryClient.getQueryData(['/admin/emails/thread-1'])).toEqual({
+      status: 200,
+      data: { id: 'thread-1', status: 'pending' },
+    });
+    expect(queryClient.getQueryData(['/admin/emails'])).toEqual({
+      status: 200,
+      data: [
+        { id: 'thread-1', status: 'pending' },
+        { id: 'thread-2', status: 'resolved' },
+      ],
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-status').textContent).toBe('pending');
+      expect(screen.getByTestId('row-status').textContent).toBe('pending');
+      expect(screen.getByTestId('open-count').textContent).toBe('0');
+      expect(screen.getByTestId('pending-count').textContent).toBe('1');
+    });
+
+    act(() => {
+      statusOptions?.mutation?.onSuccess?.(
+        { status: 200, data: { id: 'thread-1', status: 'resolved' } },
+        { id: 'thread-1', data: { status: 'pending' } },
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('detail-status').textContent).toBe('resolved');
+      expect(screen.getByTestId('row-status').textContent).toBe('resolved');
+      expect(screen.getByTestId('pending-count').textContent).toBe('0');
+    });
+
+    act(() => {
+      statusOptions?.mutation?.onError?.(
+        new Error('save failed'),
+        { id: 'thread-1', data: { status: 'pending' } },
+        context!,
+      );
+    });
+    expect(queryClient.getQueryData(['/admin/emails/thread-1'])).toEqual(cachedDetail);
+    expect(queryClient.getQueryData(['/admin/emails'])).toEqual(cachedList);
+  });
+
+  it('blocks another status selection while saving and shows an error after a failed update', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    mocks.updateStatus.mockReturnValue({ isPending: true, isError: true, mutate: vi.fn() });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AdminEmailThreadScreen id="thread-1" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByRole('combobox', { name: '상태' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('alert').textContent).toContain('상태를 변경하지 못했어요');
   });
 
   it('renders a separate compose page and sends a new email', async () => {
