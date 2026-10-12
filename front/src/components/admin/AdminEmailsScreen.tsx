@@ -148,9 +148,6 @@ function AutomatedMailbox() {
           발송 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      {list.isSuccess && rows.length === 0 ? (
-        <AdminInlineNotice>자동 발송된 메일이 없어요.</AdminInlineNotice>
-      ) : null}
       <AdminTable columns={columns} rows={rows} />
     </>
   );
