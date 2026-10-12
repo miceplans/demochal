@@ -68,7 +68,7 @@ aws ecs stop-task \
   --reason "manual db-admin session complete"
 ```
 
-ECS Exec에는 AWS CLI Session Manager Plugin이 필요합니다. task가 종료되면 다시 실행해야 하며, 이 구성에는 `aws_ecs_service`가 없습니다.
+ECS Exec에는 AWS CLI Session Manager Plugin이 필요합니다. task가 종료되면 다시 실행해야 하며, 이 구성에는 `aws_ecs_service`가 없습니다. 이 태스크가 쓰는 psql 이미지와 서버 인증서 검증(`verify-full`) 활성화 절차는 아래의 "DB 관리용 psql 이미지"를 참고합니다.
 
 ### Grafana CloudWatch integration
 
@@ -116,6 +116,28 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
 인증서 검증 오류가 발생하면 CA bundle의 AWS 원본과 image digest/task definition 일치를
 확인합니다. `--no-verify`, `rejectUnauthorized: false`, 또는
 `NODE_TLS_REJECT_UNAUTHORIZED=0`으로 우회하지 않습니다.
+
+## DB 관리용 psql 이미지
+
+운영 API/워커 이미지는 변경하지 않고, `server/Dockerfile.dbadmin`(PostgreSQL 클라이언트 16 +
+`global-bundle.pem`, `PGSSLMODE=verify-full`)을 별도 이미지로 둔다. CI 배포 대상이 아니며
+승인된 운영자가 수동으로 build/push한다. 서비스는 만들지 않고 one-off 태스크로만 실행한다.
+
+1. `docker build --file server/Dockerfile.dbadmin --tag <ecr>/<repo>:dbadmin-<날짜> .` 후 ECR에 push한다.
+2. TODO(Terraform): dbadmin 전용 ECR repository(`semochal-staging-dbadmin`)를 추가하고, 기존
+   `aws_ecs_task_definition.db_admin`(`infra/terraform/compute.tf`)의 자리표시자 이미지
+   `postgres:16-bookworm`을 이 이미지로 교체한다. 태스크 정의의 서브넷, `db-admin`
+   보안그룹, `DATABASE_URL` secret 매핑, 로그 그룹과 상단의 "필요할 때만 staging DB에
+   접속" 절차는 그대로 유지한다. 자리표시자 이미지에는 `PGSSLMODE`가 없어 libpq
+   기본값(`prefer`)으로 동작하므로, 교체 전까지는 서버 인증서 검증 없이 암호화만 된다.
+   인증서 번들은 이미지에 포함되므로 task definition에 별도 CA 경로 설정은 필요 없다.
+   https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs-exec.html
+3. 접속은 "필요할 때만 staging DB에 접속" 절차를 따르고, 컨테이너 안에서
+   `psql "$DATABASE_URL"`을 그대로 실행한다. 작업이 끝나면 태스크를
+   `aws ecs stop-task`로 종료한다.
+
+`DATABASE_URL`에는 `sslmode`/`sslrootcert` 등 `ssl*` 파라미터를 넣지 않는다(URL 값이 환경변수보다 우선한다).
+`sslmode=disable`/`require`로 우회하지 않는다.
 
 ## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
 
