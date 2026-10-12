@@ -20,6 +20,7 @@ import {
   StatRow,
   type AdminColumn,
 } from './parts';
+import { CloseIcon } from './AdminIcons';
 
 // 승인/거부 API는 기관 id가 아니라 최신 인증 요청 id를 받는다(없으면 심사 불가).
 type BizReviewRow = BizRow & { verificationId: string | null };
@@ -58,23 +59,6 @@ const columns: AdminColumn<BizReviewRow>[] = [
 
 const PANEL_WIDTH = 360;
 
-function CloseGlyph() {
-  return (
-    <svg
-      width="14"
-      height="14"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="M18 6 6 18M6 6l12 12" />
-    </svg>
-  );
-}
-
 function BizDetailPanel({
   row,
   onClose,
@@ -109,7 +93,7 @@ function BizDetailPanel({
           <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
         </TitleRow>
         <CloseButton type="button" aria-label="기관 심사 상세 닫기" onClick={onClose}>
-          <CloseGlyph />
+          <CloseIcon />
         </CloseButton>
       </PanelHeader>
       <InfoList>
