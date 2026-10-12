@@ -495,15 +495,15 @@ export class AuthController {
     }
   }
 
-  /** Onboarding first; otherwise return to the page the user came from (`?next=`). */
-  private postLoginUrl(user: { onboardingSurvey?: unknown }, request: Request, response: Response) {
+  /** Only a null survey is incomplete; otherwise return to the page from `?next=`. */
+  private postLoginUrl(user: { onboardingSurvey: unknown }, request: Request, response: Response) {
     const raw = request.headers.cookie
       ?.split(';')
       .map((value) => value.trim())
       .find((value) => value.startsWith(`${LOGIN_NEXT_COOKIE_NAME}=`))
       ?.slice(LOGIN_NEXT_COOKIE_NAME.length + 1);
     response.clearCookie(LOGIN_NEXT_COOKIE_NAME, { path: '/' });
-    if (!user.onboardingSurvey) return this.frontendUrl('/onboarding/activity');
+    if (user.onboardingSurvey === null) return this.frontendUrl('/onboarding/activity');
     let next: string | null = null;
     try {
       next = sanitizeNextPath(raw && decodeURIComponent(raw));

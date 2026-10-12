@@ -314,7 +314,7 @@ describe('AuthController Kakao callback', () => {
     const service = {
       loginWithKakao: vi.fn().mockResolvedValue({
         accessToken: 'signed.jwt',
-        user: { ...user, onboardingSurvey: false },
+        user: { ...user, onboardingSurvey: null },
       }),
     };
     const controller = new FreshController(
@@ -376,6 +376,25 @@ describe('AuthController Kakao callback', () => {
     });
     expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed.jwt', authCookieOptions);
     expect(res.redirect).toHaveBeenCalledWith('http://localhost:3000/onboarding/activity');
+  });
+
+  it('does not send an existing user with a false survey value back to onboarding', async () => {
+    const { controller, service, mockedFetchJson, request, state } = await setup();
+    service.loginWithKakao.mockResolvedValue({
+      accessToken: 'signed.jwt',
+      user: { ...user, onboardingSurvey: false },
+    });
+    mockKakaoResponses(mockedFetchJson, {
+      email: 'Member@Kakao.com',
+      is_email_valid: true,
+      is_email_verified: true,
+      profile: { nickname: '카카오회원' },
+    });
+    const res = response();
+
+    await controller.kakaoCallback('kakao--code', state, undefined, request, res);
+
+    expect(res.redirect).toHaveBeenCalledWith('http://localhost:3000/');
   });
 
   it('refuses an unverified Kakao email so it cannot be linked to an existing account', async () => {

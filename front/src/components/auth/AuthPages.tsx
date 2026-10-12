@@ -216,7 +216,7 @@ export function OnboardingPage({ step }: { step: string }) {
   const unauthenticated =
     auth.error instanceof ApiError && (auth.error.status === 401 || auth.error.status === 403);
   const alreadySurveyed =
-    authChecked && auth.data?.status === 200 && Boolean(auth.data.data.onboardingSurvey);
+    authChecked && auth.data?.status === 200 && auth.data.data.onboardingSurvey !== null;
   // 실패하면 전역 MutationCache가 에러 토스트를 띄우고, 로컬 완료 처리하지 않아 다시 시도할 수 있다.
   const saveSurvey = generated.useSaveOnboardingSurvey({
     mutation: {
