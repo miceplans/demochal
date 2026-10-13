@@ -2,7 +2,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 type UserState = {
-  isLoggedIn: boolean;
   interests: string[];
   query: string;
   survey: Record<string, string[]>;
@@ -24,7 +23,6 @@ type UserState = {
     challengeId?: string;
     answers?: Record<string, string | string[]>;
   } | null;
-  login: () => void;
   logout: () => void;
   setQuery: (value: string) => void;
   setSurvey: (step: string, values: string[]) => void;
@@ -35,15 +33,13 @@ type UserState = {
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      isLoggedIn: false,
       interests: ['IT · 소프트웨어', '데이터 · AI'],
       query: '',
       survey: {},
       hasCompletedOnboarding: false,
       recruitment: { challenge: '', introduction: '', role: '프론트엔드', preferred: '', etc: '' },
       applicationDraft: null,
-      login: () => set({ isLoggedIn: true }),
-      logout: () => set({ isLoggedIn: false, applicationDraft: null }),
+      logout: () => set({ applicationDraft: null }),
       setQuery: (query) => set({ query }),
       setSurvey: (step, values) => set((s) => ({ survey: { ...s.survey, [step]: values } })),
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
@@ -52,7 +48,7 @@ export const useUserStore = create<UserState>()(
     }),
     {
       name: 'semo-user-publishing',
-      version: 3,
+      version: 4,
       // v1 → v2: 북마크를 서버(TanStack Query)로 옮기며 로컬 bookmarks만 버린다.
       // v2 → v3: '선호 역할'/'참가 대상' 칩 제거(서버 미지원)로 roles/audience를 버린다.
       // migrate가 없으면 버전 불일치 시 저장값 전체(온보딩 완료 등)가 무시된다.
@@ -62,17 +58,16 @@ export const useUserStore = create<UserState>()(
         delete rest.bookmarks;
         delete rest.roles;
         delete rest.audience;
+        delete rest.isLoggedIn;
         return rest as unknown as UserState;
       },
       partialize: ({
-        isLoggedIn,
         interests,
         survey,
         hasCompletedOnboarding,
         recruitment,
         applicationDraft,
       }) => ({
-        isLoggedIn,
         interests,
         survey,
         hasCompletedOnboarding,

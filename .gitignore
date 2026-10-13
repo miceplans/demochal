@@ -11,9 +11,10 @@ coverage/
 .env.*.local
 .DS_Store
 .turbo/
-.vercel/
+.vercel
 *.tsbuildinfo
 server/docs/openapi.html
 .aider*
-.vercel
 .env*
+.idea/
+.tmp-figma/

@@ -72,8 +72,8 @@ cmd_issue_create() {
   local title="$1" body="$2" labels="${3:-}"
   [[ -f "$body" ]] || die "issue body file not found: $body"
   [[ "$title" =~ ^(feat|fix|refactor|test|chore|security):\  ]] || die "title must start with feat:, fix:, refactor:, test:, chore:, or security:"
-  if gh issue list --state open --search "in:title \"$title\"" --json title --jq '.[].title' | grep -Fxq "$title"; then
-    die "an open issue with the same title already exists"
+  if gh issue list --state all --search "in:title \"$title\"" --json title --jq '.[].title' | grep -Fxq "$title"; then
+    die "an issue with the same title already exists"
   fi
   local args=(issue create --title "$title" --body-file "$body") label
   IFS=',' read -r -a requested_labels <<< "$labels"
@@ -215,6 +215,7 @@ cmd_pr_risk() {
 }
 
 cmd_discover() {
+  need rg
   rg -n --hidden --glob '!.git/**' --glob '!node_modules/**' --glob '!pnpm-lock.yaml' --glob '!**/dist/**' \
     --glob '!scripts/**' --glob '!docs/ai-development-workflow.md' --glob '!server/docs/openapi.html' \
     --glob '!packages/api-client/src/generated/**' \
@@ -222,6 +223,7 @@ cmd_discover() {
 }
 
 cmd_validate() {
+  need pnpm
   pnpm lint
   pnpm typecheck
   pnpm --filter @semochal/server test
