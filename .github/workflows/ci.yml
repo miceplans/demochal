@@ -77,6 +77,9 @@ jobs:
 
       - name: Build workspaces
         run: pnpm build
+        env:
+          # CI 검증 빌드용 기본값. 실제 배포 환경에서는 운영 API 오리진을 반드시 명시해야 빌드된다(프론트 next.config의 fail-closed 검증).
+          API_PROXY_TARGET: http://localhost:3001
 
       - name: Build API image
         run: docker build --file server/Dockerfile.api --tag semochal-api:ci .

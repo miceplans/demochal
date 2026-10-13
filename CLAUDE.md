@@ -2,7 +2,7 @@
 
 pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App Router + React 19), `server`(NestJS + Drizzle + SQS 워커), `packages/api-client`(orval 생성 클라이언트), `packages/config`(공유 tsconfig). 브랜치 `main` 기준, PR 단위 작업.
 
-주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `ci.yml`의 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드가 통과해야 한다.
+주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `pr-validation` 워크플로(PR validation)의 format:check → lint → typecheck → 테스트(서버/프론트/api-client) → 빌드 + Docker 빌드가 통과해야 하며, `main` push 시 `ci.yml`(CI)이 전체 검증 후 배포를 진행한다. 로컬에서 `pnpm build`·품질 게이트의 프론트 빌드는 `front/.env.local`의 `API_PROXY_TARGET`(백엔드 오리진, 로컬 기본값 `http://localhost:3001`)이 필요하다.
 
 ## Git 규칙 (반드시 준수)
 

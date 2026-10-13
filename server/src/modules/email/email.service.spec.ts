@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { SQL } from 'drizzle-orm';
 import { emailMessages } from '../../db/schema.js';
 import { EmailService } from './email.service.js';
 
@@ -170,19 +171,45 @@ describe('EmailService.ingestInbound', () => {
       messageId: 'new-1@example.com',
     });
 
-    // 전체 테이블 스캔 대신 in-reply-to/references 정규화 값(±앵글 브래킷)으로만 조회한다.
-    expect(inArrayCalls).toContainEqual({
-      column: emailMessages.messageId,
-      value: [
-        'reply-1@example.com',
-        '<reply-1@example.com>',
-        'ref-2@example.com',
-        '<ref-2@example.com>',
-      ],
-    });
+    // 전체 테이블 스캔 대신 in-reply-to/references 정규화 값(±앵글 브래킷, 소문자)으로만
+    // 조회하고, 저장된 message_id는 lower()로 비교한다.
+    const linkedCall = inArrayCalls.find(
+      (call) => Array.isArray(call.value) && call.value.length === 4,
+    );
+    expect(linkedCall?.value).toEqual([
+      'reply-1@example.com',
+      '<reply-1@example.com>',
+      'ref-2@example.com',
+      '<ref-2@example.com>',
+    ]);
+    expect(linkedCall?.column).not.toBe(emailMessages.messageId);
+    expect(linkedCall?.column).toBeInstanceOf(SQL);
     expect(linkedWhere).toHaveBeenCalled();
     expect(tx.update).toHaveBeenCalled();
     expect(tx.insert).toHaveBeenCalled();
+  });
+
+  it('lowercases mixed-case link headers before matching stored message ids', async () => {
+    const { db } = createIngestDb([]);
+    const service = new EmailService(db, {} as never);
+    inArrayCalls.length = 0;
+
+    const mixed = {
+      ...inbound,
+      inReplyTo: '<Reply-1@Example.COM>',
+      references: ['<Ref-2@Example.com>'],
+    };
+    await service.ingestInbound(mixed);
+
+    const linkedCall = inArrayCalls.find(
+      (call) => Array.isArray(call.value) && call.value.length === 4,
+    );
+    expect(linkedCall?.value).toEqual([
+      'reply-1@example.com',
+      '<reply-1@example.com>',
+      'ref-2@example.com',
+      '<ref-2@example.com>',
+    ]);
   });
 
   it('creates a new thread when no link header matches and skips the candidate query', async () => {

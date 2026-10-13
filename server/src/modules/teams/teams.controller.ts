@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { Public } from '../auth/public.decorator.js';
 import { CreateTeamDto } from './dto/create-team.dto.js';
 import { InviteTeamDto } from './dto/invite-team.dto.js';
@@ -52,6 +62,7 @@ export class TeamsController {
   }
 
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: AuthenticatedUser) {
     return this.teamsService.findById(id, user);

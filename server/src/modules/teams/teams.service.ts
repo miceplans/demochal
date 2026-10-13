@@ -181,7 +181,8 @@ export class TeamsService {
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, id));
 
-    // list()와 같은 가시성 규칙: 비공개 챌린지의 팀은 리더·팀원(지원 포함)만 볼 수 있다.
+    // list()는 비공개 챌린지를 아예 목록에서 제외하지만, 상세는 팀 관계자의 접근을 허용한다:
+    // 비공개 챌린지의 팀은 리더·팀원(지원 포함)·관리자만 볼 수 있다.
     const isLeader = user?.id === row.team.leaderUserId;
     const isMember = user ? members.some((member) => member.userId === user.id) : false;
     if (row.challengeVisibility !== 'public' && !isLeader && !isMember && user?.role !== 'admin') {

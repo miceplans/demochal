@@ -105,6 +105,17 @@ jobs:
           API_PROXY_TARGET: http://localhost:3001
       - run: pnpm --filter @semochal/server build
 
+  docker-build:
+    name: Build API and worker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build API image
+        run: docker build --file server/Dockerfile.api --tag semochal-api:ci .
+      - name: Build worker image
+        run: docker build --file server/Dockerfile.worker --tag semochal-worker:ci .
+
   secret-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -132,7 +143,7 @@ jobs:
 
   quality-gate:
     if: always()
-    needs: [lint, formatting, typecheck, tests, build, secret-scan, dependency-audit]
+    needs: [lint, formatting, typecheck, tests, build, docker-build, secret-scan, dependency-audit]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -143,16 +154,18 @@ jobs:
           TYPECHECK: ${{ needs.typecheck.result }}
           TESTS: ${{ needs.tests.result }}
           BUILD: ${{ needs.build.result }}
+          DOCKER_BUILD: ${{ needs.docker-build.result }}
           SECRET_SCAN: ${{ needs.secret-scan.result }}
           DEPENDENCY_AUDIT: ${{ needs.dependency-audit.result }}
         run: |
-          printf 'lint: %s\nformatting: %s\ntypecheck: %s\ntests: %s\nbuild: %s\nsecret-scan: %s\ndependency-audit: %s\n' \
-            "$LINT" "$FORMATTING" "$TYPECHECK" "$TESTS" "$BUILD" "$SECRET_SCAN" "$DEPENDENCY_AUDIT"
+          printf 'lint: %s\nformatting: %s\ntypecheck: %s\ntests: %s\nbuild: %s\ndocker-build: %s\nsecret-scan: %s\ndependency-audit: %s\n' \
+            "$LINT" "$FORMATTING" "$TYPECHECK" "$TESTS" "$BUILD" "$DOCKER_BUILD" "$SECRET_SCAN" "$DEPENDENCY_AUDIT"
           test "$LINT" = success
           test "$FORMATTING" = success
           test "$TYPECHECK" = success
           test "$TESTS" = success
           test "$BUILD" = success
+          test "$DOCKER_BUILD" = success
           test "$SECRET_SCAN" = success
           test "$DEPENDENCY_AUDIT" = success
           echo QUALITY_GATE_PASS
