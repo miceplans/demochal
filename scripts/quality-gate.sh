@@ -24,11 +24,12 @@ run_check lint pnpm lint
 run_check formatting node scripts/format-check.mjs --base "$base_ref"
 run_check typecheck pnpm typecheck
 run_check tests pnpm --filter @semochal/server test:cov
+# front 테스트는 @semochal/api-client의 빌드 산출물(dist)을 import하므로 먼저 빌드한다(신선한 클론에서 필수).
+run_check api-client-build pnpm --filter @semochal/api-client build
 run_check front-tests pnpm --filter @semochal/front test
 run_check api-client-tests pnpm --filter @semochal/api-client test
 run_check merged-branch-cleanup-tests node --test scripts/merged-branch-cleanup.test.mjs
 run_check secret-scan-tests node --test scripts/secret-scan.test.mjs
-run_check api-client-build pnpm --filter @semochal/api-client build
 run_check front-build pnpm --filter @semochal/front build
 run_check server-build pnpm --filter @semochal/server build
 run_check secret-scan node scripts/secret-scan.mjs --base "$base_ref"

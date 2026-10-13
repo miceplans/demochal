@@ -103,6 +103,8 @@ jobs:
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
+      # front 테스트는 api-client의 dist를 import하므로 먼저 빌드한다.
+      - run: pnpm --filter @semochal/api-client build
       - run: pnpm --filter @semochal/front test
 
   # Same gates as pr-validation.yml: a direct push to main must not bypass the

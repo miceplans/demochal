@@ -99,6 +99,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # front 테스트는 api-client의 dist를 import하므로 먼저 빌드한다(동일 순서는 build 잡과 같다).
+      - run: pnpm --filter @semochal/api-client build
       # Front unit tests (Vitest) — same command as the front workspace `test` script.
       - run: pnpm --filter @semochal/front test
 
