@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { issueForReport, sanitizeUrl, validateReport } from './qa-report.mjs';
+import { issueForReport, sanitizeText, sanitizeUrl, validateReport } from './qa-report.mjs';
 
 const base = {
   kind: 'bug',
@@ -33,6 +33,15 @@ test('sensitive evidence is redacted before issue rendering', () => {
   });
   assert.match(result.body, /\[REDACTED\]/);
   assert.doesNotMatch(result.body, /abc123|secret/);
+});
+
+test('URL query secrets are fully redacted', () => {
+  const sanitized = sanitizeText(
+    'callback https://example.com/callback?code=SECRET&paymentKey=PAYMENT_SECRET',
+  );
+  assert.doesNotMatch(sanitized, /SECRET|PAYMENT_SECRET/);
+  assert.match(sanitized, /code=REDACTED/);
+  assert.match(sanitized, /paymentKey=REDACTED/);
 });
 
 test('low confidence and elevated risk block automation', () => {

@@ -41,7 +41,7 @@ export function sanitizeText(value, limit = MAX.text) {
     .replace(EMAIL, '[REDACTED_EMAIL]')
     .replace(PHONE, '[REDACTED_PHONE]')
     .replace(/https?:\/\/[^\s]+/gi, (url) =>
-      url.replace(/([?&](?:token|key|secret|password|code)=[^&\s]*)/gi, '$1=REDACTED'),
+      url.replace(/([?&](?:token|key|secret|password|code|paymentKey)=)[^&\s]*/gi, '$1REDACTED'),
     )
     .trim()
     .slice(0, limit);
