@@ -72,9 +72,6 @@ jobs:
       - name: Run api-client unit tests
         run: pnpm --filter @semochal/api-client test
 
-      - name: Run front unit tests
-        run: pnpm --filter @semochal/front test
-
       - name: Build workspaces
         run: pnpm build
         env:
@@ -89,6 +86,24 @@ jobs:
 
       - name: Run production deployment Lambda unit tests
         run: node --test infra/terraform/lambda/secret-redeploy.test.mjs
+
+  # jsdom 30(front 테스트 환경)이 요구하는 Node 22+에서만 프론트 테스트를 돌린다(pr-validation의
+  # front-tests 잡과 동일). 앱 런타임은 jsdom을 로드하지 않아 Node 20 기준과 무관하다.
+  front-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @semochal/front test
 
   # Same gates as pr-validation.yml: a direct push to main must not bypass the
   # credential scan or the production dependency audit before deploying.
@@ -125,7 +140,7 @@ jobs:
 
   deploy-production:
     name: Deploy production API and worker
-    needs: [verify, secret-scan, dependency-audit]
+    needs: [verify, front-tests, secret-scan, dependency-audit]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
