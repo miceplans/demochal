@@ -167,7 +167,7 @@ Both production services enable the ECS deployment circuit breaker with rollback
 
 ### GitHub Environment setup
 
-Create the GitHub Environment named `production` and require reviewers before deployment. Configure its deployment branch policy to allow **only `main`**. The IAM OIDC trust restricts the repository subject to `miceplans/demochal` and this Environment; GitHub's standard environment OIDC subject does not additionally carry the ref, so the Environment branch rule is the required `main` restriction.
+Create the GitHub Environment named `Production` and require reviewers before deployment. Configure its deployment branch policy to allow **only `main`**. The IAM OIDC trust restricts the repository subject to `miceplans/demochal` and this Environment; GitHub's standard environment OIDC subject does not additionally carry the ref, so the Environment branch rule is the required `main` restriction.
 
 After the initial Terraform apply, set these **Environment variables** (not secrets) from the corresponding Terraform outputs. They contain identifiers, never application credentials:
 
@@ -185,7 +185,7 @@ After the initial Terraform apply, set these **Environment variables** (not secr
 | `PRODUCTION_MIGRATE_SUBNET_ID`         | `migrate_task_subnet_id`         |
 | `PRODUCTION_MIGRATE_SECURITY_GROUP_ID` | `migrate_task_security_group_id` |
 
-Also set `PRODUCTION_API_DESIRED_COUNT` and `PRODUCTION_WORKER_DESIRED_COUNT` to the approved production scale. A main push first completes the existing verify job, then pauses for `production` Environment approval. Once approved, it builds API and worker images, pushes immutable `deploy-<commit-sha>` tags, resolves ECR digests, registers API/worker/migrate revisions from the Terraform templates, runs the migration task, updates the two services, and waits for stability. Database migration runs only inside this approved deployment job.
+Also set `PRODUCTION_API_DESIRED_COUNT` and `PRODUCTION_WORKER_DESIRED_COUNT` to the approved production scale. A main push first completes the existing verify job, then pauses for `Production` Environment approval. Once approved, it builds API and worker images, pushes immutable `deploy-<commit-sha>` tags, resolves ECR digests, registers API/worker/migrate revisions from the Terraform templates, runs the migration task, updates the two services, and waits for stability. Database migration runs only inside this approved deployment job.
 
 ### Secret value refresh
 
