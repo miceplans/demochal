@@ -93,7 +93,7 @@ cd ../semochall-issue-123
 ```
 
 4. `ai-working`으로 전환하고 Issue의 scope와 acceptance criteria만 구현한다.
-5. 먼저 테스트와 Quality Gate를 실행한다. 이 monorepo의 기본 검증은 lint, formatting, typecheck, server unit/coverage test, api-client unit test, 실제 build 대상(`api-client`, `front`, `server`)의 build, changed-line secret scan, production dependency audit이다. 현재 root `pnpm build`는 build script가 없는 `packages/config`까지 선택하므로 이 워크플로에서는 사용하지 않는다.
+5. 먼저 테스트와 Quality Gate를 실행한다. 이 monorepo의 기본 검증은 lint, formatting, typecheck, server unit/coverage test, api-client unit test, 실제 build 대상(`api-client`, `front`, `server`)의 build, changed-line secret scan, production dependency audit이다.
 
 ```bash
 ./scripts/ai-workflow.sh validate
@@ -209,6 +209,8 @@ PR 생성 및 재오픈 시 [PR AI orchestration](../.github/workflows/pr-ai-orc
 `.github/workflows/pr-validation.yml`은 PR의 `opened`, `synchronize`, `reopened` 이벤트에서 기존 CI를 재사용해 `lint`, `formatting`, `typecheck`, `tests`, `build`를 각각 보이는 job으로 실행한다. 새 `secret-scan`은 PR에서 추가한 줄만 검사하고 값 자체를 출력하지 않으며, `dependency-audit`은 production dependency의 high/critical known vulnerability를 막는다. 마지막 `quality-gate` job은 일곱 job 모두 성공할 때만 `QUALITY_GATE_PASS`로 성공한다. 이 job이 PR의 재현 가능한 최종 Gate다.
 
 `issue-ai-orchestration.yml`은 Issue triage/worker label event를, `pr-ai-orchestration.yml`은 PR risk와 failed validation event를 신뢰된 AI runner에 전달한다. 이들은 code checkout/수정/merge를 하지 않는다.
+
+`pr-ai-orchestration.yml`은 inline review comment와 PR 일반 comment도 `pr-review-comment` mode로 trusted runner에 전달한다. webhook에는 원문을 싣지 않고 repository, PR 번호, comment id만 전달하며, runner가 자기 GitHub token으로 comment/PR/diff를 다시 읽는다. payload의 `sessionKey`는 `repository:pr:<number>`이고 `idempotencyKey`는 comment id 기반이다. runner는 이 key에 매핑된 coding-agent session을 재개해 comment의 구체적 수정만 수행한다. runner의 자동 reply에는 `<!-- ai-automation-reply -->` marker를 넣어 재귀 trigger를 막는다. runner가 session을 재개할 수 없는 경우에는 comment에 이유를 남기고 `needs-human`으로 중단한다.
 
 AI runner를 연결하려면 repository secret `AI_AUTOMATION_WEBHOOK_URL`, `AI_AUTOMATION_WEBHOOK_TOKEN`을 설정한다. runner는 자기 GitHub token으로 Issue/PR 내용을 다시 읽고, `scripts/ai-workflow.sh`의 guard를 통과해 labels/comments/branch/PR을 변경한다. secret이 없으면 dispatch는 no-op으로 성공하며 `ai-triage`는 사람이 CLI에서 처리할 수 있다. Actions 권한은 `contents: read`, Issue label/comment용 `issues: write`, PR metadata용 `pull-requests: read`로 한정된다. fork PR에는 secret이 노출되지 않는다.
 

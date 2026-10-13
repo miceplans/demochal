@@ -1,36 +1,20 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# front
 
-## Getting Started
+세모챌 웹 프론트엔드 (Next.js 16 App Router + React 19).
 
-First, run the development server:
+## 실행
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+루트에서 `pnpm dev`를 실행하면 `@semochal/api-client` 빌드 후 front/server가 함께 뜬다.
+front만 띄우려면 `pnpm --filter front dev` (기본 포트 3000).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 스크립트
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `pnpm --filter front lint` / `typecheck` / `test` / `build`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 규칙
 
-## Learn More
+- 서버 데이터는 TanStack Query + `@semochal/api-client`로만 호출한다 (`fetch` 직접 호출 금지).
+- Zustand(`src/stores/useUserStore.ts`)는 클라이언트 전용 UI/개인화 상태만 둔다.
+- 클라이언트 환경변수는 `NEXT_PUBLIC_*`만 사용한다.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+자세한 프로젝트 규칙은 루트 `CLAUDE.md`를 따른다.

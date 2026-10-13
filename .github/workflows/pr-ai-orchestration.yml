@@ -4,6 +4,10 @@ on:
   pull_request:
     # risk 분석은 PR 생성/재오픈 시 1회만 실행한다(synchronize 제거 — 토큰 절감).
     types: [opened, reopened]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
   workflow_run:
     workflows: [PR validation]
     types: [completed]
@@ -24,14 +28,27 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
       # Trust boundary: PR authors can rewrite scripts/, but the webhook token
-      # below must only ever be handled by the base-branch revision of
-      # ai-dispatch.mjs. The PR checkout stays available for reading the diff;
-      # the executed script is reset to the trusted base revision, and the PR
-      # metadata it sends comes from the GitHub event payload, never PR code.
-      - name: Restore trusted base-branch scripts
-        run: git checkout "origin/${{ github.base_ref }}" -- scripts/
+      # below must only ever be handled by the base-commit revision of the
+      # dispatch chain. ai-dispatch.mjs imports ./qa-report.mjs, so the restore
+      # must cover every local module the executed script can load — restoring
+      # only ai-dispatch.mjs would leave its PR-controlled imports in place.
+      # The PR checkout stays available for reading the diff; PR metadata comes
+      # from the GitHub event payload, never PR code.
+      - name: Resolve immutable PR base SHA
+        id: pr-base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          base_sha="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}" --jq '.base.sha')"
+          echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
+      - name: Restore trusted base-commit scripts
+        env:
+          BASE_SHA: ${{ steps.pr-base.outputs.base_sha }}
+        run: |
+          git fetch origin "$BASE_SHA" --depth=1
+          git checkout "$BASE_SHA" -- scripts/
       - name: Dispatch PR risk analysis to the trusted AI runner
         run: node scripts/ai-dispatch.mjs pr-risk
         env:
@@ -47,8 +64,69 @@ jobs:
       cancel-in-progress: false
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 1
+      # ai-dispatch.mjs의 로컬 import(qa-report.mjs 포함) 전체를 기본 브랜치 판으로 복원한다.
+      - name: Restore trusted default-branch scripts
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          git fetch origin "$DEFAULT_BRANCH" --depth=1
+          git checkout "origin/$DEFAULT_BRANCH" -- scripts/
       - name: Dispatch failed validation to the trusted AI runner
         run: node scripts/ai-dispatch.mjs ci-repair
         env:
           AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
           AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
+
+  review-comment:
+    if: >-
+      (github.event_name == 'pull_request_review_comment' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request)) &&
+      !contains(github.event.comment.body, '<!-- ai-automation-reply -->')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    concurrency:
+      group: ai-pr-comment-${{ github.event.pull_request.number || github.event.issue.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Dispatch comment to the trusted AI runner
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
+        run: |
+          if [[ -z "$AI_AUTOMATION_WEBHOOK_URL" || -z "$AI_AUTOMATION_WEBHOOK_TOKEN" ]]; then
+            echo "AI dispatch skipped: webhook secrets are not configured."
+            exit 0
+          fi
+
+          event="$(cat "$GITHUB_EVENT_PATH")"
+          pr_number="$(jq -r '.pull_request.number // .issue.number' <<<"$event")"
+          comment_id="$(jq -r '.comment.id' <<<"$event")"
+          payload="$(jq -n \
+            --arg repository "$GITHUB_REPOSITORY" \
+            --arg event_name "$GITHUB_EVENT_NAME" \
+            --arg delivery "$GITHUB_RUN_ID" \
+            --arg pr_number "$pr_number" \
+            --arg comment_id "$comment_id" '
+              {
+                mode: "pr-review-comment",
+                repository: $repository,
+                eventName: $event_name,
+                delivery: $delivery,
+                pullRequest: { number: ($pr_number | tonumber) },
+                reviewComment: {
+                  id: ($comment_id | tonumber),
+                  sessionKey: ( $repository + ":pr:" + $pr_number ),
+                  idempotencyKey: ( $repository + ":pr-comment:" + $comment_id )
+                }
+              }
+            ')
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'content-type: application/json' \
+            --header "authorization: Bearer ${AI_AUTOMATION_WEBHOOK_TOKEN}" \
+            --data "$payload" \
+            "$AI_AUTOMATION_WEBHOOK_URL"
+          echo "AI dispatch (pr-review-comment) accepted."

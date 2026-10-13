@@ -49,6 +49,8 @@ function createDbStub() {
     select: vi.fn(),
     insert: vi.fn(),
     update: vi.fn(),
+    execute: vi.fn().mockResolvedValue(undefined),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
   return db;
 }

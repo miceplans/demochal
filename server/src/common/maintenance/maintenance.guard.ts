@@ -15,7 +15,7 @@ import { getAuthToken } from '../../modules/auth/auth.cookie.js';
 import type { AuthenticatedRequest } from '../../modules/auth/jwt-auth.guard.js';
 
 // Authentication entry points must remain reachable while maintenance mode is
-// enabled. In particular, Google's redirect is a new browser request and
+// enabled. In particular, the Google/Naver/Kakao redirect is a new browser request and
 // cannot complete if it is forced through the settings database first.
 const EXEMPT_PATHS = new Set([
   '/health',
@@ -23,6 +23,10 @@ const EXEMPT_PATHS = new Set([
   '/auth/me',
   '/auth/google',
   '/auth/google/callback',
+  '/auth/social/naver',
+  '/auth/social/naver/callback',
+  '/auth/social/kakao',
+  '/auth/social/kakao/callback',
 ]);
 
 @Injectable()

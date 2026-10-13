@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, inArray, isNotNull, ne } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -320,35 +320,39 @@ export class TeamsService {
       .limit(1);
     if (existing) throw new ConflictException('이미 지원하거나 초대된 멤버예요');
 
-    // TODO: 동시 요청 시 한도를 넘을 수 있다 — 필요하면 팀 행 잠금(SELECT ... FOR UPDATE)으로 직렬화.
-    const { used } = await this.countScouts(id);
-    if (used >= SCOUT_LIMIT_PER_TEAM) {
-      throw new ConflictException('이 팀의 스카우트 횟수를 모두 사용했어요');
-    }
+    // 팀 행을 잠가 동시 스카우트 요청이 한도(SCOUT_LIMIT_PER_TEAM)를 넘지 않게 직렬화한다.
+    const member = await this.db.transaction(async (tx) => {
+      await tx.execute(sql`select 1 from ${teams} where ${teams.id} = ${id} for update`);
+      const { used } = await this.countScouts(id, tx);
+      if (used >= SCOUT_LIMIT_PER_TEAM) {
+        throw new ConflictException('이 팀의 스카우트 횟수를 모두 사용했어요');
+      }
 
-    const [member] = await this.db
-      .insert(teamMembers)
-      .values({
-        teamId: id,
-        userId: dto.userId,
-        role: dto.role,
-        status: 'invited',
-        scoutedAt: new Date(),
-        scoutMessage: dto.message?.trim() || null,
-      })
-      .returning();
+      const [created] = await tx
+        .insert(teamMembers)
+        .values({
+          teamId: id,
+          userId: dto.userId,
+          role: dto.role,
+          status: 'invited',
+          scoutedAt: new Date(),
+          scoutMessage: dto.message?.trim() || null,
+        })
+        .returning();
+      return created!;
+    });
 
     await this.notificationsService.create(dto.userId, 'team_matching', {
       teamId: id,
       invitedUserId: dto.userId,
-      memberId: member!.id,
+      memberId: member.id,
       ...(dto.role ? { role: dto.role } : {}),
     });
     return member;
   }
 
-  private async countScouts(teamId: string) {
-    const [row] = await this.db
+  private async countScouts(teamId: string, executor: Pick<Database, 'select'> = this.db) {
+    const [row] = await executor
       .select({ used: count() })
       .from(teamMembers)
       .where(and(eq(teamMembers.teamId, teamId), isNotNull(teamMembers.scoutedAt)));

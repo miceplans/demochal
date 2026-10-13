@@ -15,21 +15,25 @@ function dbReturning(rows: unknown[]) {
 }
 
 describe('MaintenanceGuard', () => {
-  it.each(['/auth/google', '/auth/google/callback'])(
-    'allows Google OAuth endpoint %s without querying maintenance settings',
-    async (path) => {
-      const adminSettingsService = { isEnabled: vi.fn() };
-      const jwtService = { verifyAsync: vi.fn() };
-      const guard = new MaintenanceGuard(
-        adminSettingsService as never,
-        jwtService as never,
-        {} as never,
-      );
+  it.each([
+    '/auth/google',
+    '/auth/google/callback',
+    '/auth/social/naver',
+    '/auth/social/naver/callback',
+    '/auth/social/kakao',
+    '/auth/social/kakao/callback',
+  ])('allows OAuth endpoint %s without querying maintenance settings', async (path) => {
+    const adminSettingsService = { isEnabled: vi.fn() };
+    const jwtService = { verifyAsync: vi.fn() };
+    const guard = new MaintenanceGuard(
+      adminSettingsService as never,
+      jwtService as never,
+      {} as never,
+    );
 
-      await expect(guard.canActivate(contextFor(path))).resolves.toBe(true);
-      expect(adminSettingsService.isEnabled).not.toHaveBeenCalled();
-    },
-  );
+    await expect(guard.canActivate(contextFor(path))).resolves.toBe(true);
+    expect(adminSettingsService.isEnabled).not.toHaveBeenCalled();
+  });
 
   describe('while maintenance mode is on', () => {
     const adminSettingsService = { isEnabled: vi.fn().mockResolvedValue(true) };
