@@ -648,7 +648,7 @@ describe('PaymentsService', () => {
       expect(transaction).toHaveBeenCalledTimes(1);
     });
 
-    it('rejects a confirm whose amount does not match the order before calling Toss', async () => {
+    it('rejects a confirm whose amount does not match the order with 409 before calling Toss', async () => {
       const { db, insertValues } = createDbStub();
       const orders = {
         ...createOrdersStub('pending'),
@@ -661,10 +661,30 @@ describe('PaymentsService', () => {
 
       await expect(
         service.confirmPayment('user-1', { ...confirmDto, amount: 99999 }),
+      ).rejects.toThrow(ConflictException);
+      await expect(
+        service.confirmPayment('user-1', { ...confirmDto, amount: 99999 }),
       ).rejects.toThrow('결제 금액이 주문 금액과 일치하지 않습니다');
 
       expect(fetchMock.mock.calls.length).toBe(fetchCallsBefore);
       expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('sends the server-stored order amount to Toss, not the client-supplied one', async () => {
+      fetchMock.mockResolvedValue(tossResponse('DONE'));
+      const { db } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmPayment('user-1', confirmDto);
+
+      const body = JSON.parse(fetchMock.mock.calls[0]![1].body as string);
+      expect(body).toEqual({ paymentKey: 'pay-key-1', orderId: 'order-1', amount: 50000 });
     });
 
     it('is idempotent for an order already settled as paid (no Toss re-call)', async () => {

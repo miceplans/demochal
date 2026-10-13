@@ -15,7 +15,7 @@ export class VerificationsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.verificationsService.findById(id);
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.verificationsService.findById(id, user);
   }
 }

@@ -53,8 +53,8 @@ export class TeamsController {
 
   @Public()
   @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.teamsService.findById(id);
+  findOne(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user?: AuthenticatedUser) {
+    return this.teamsService.findById(id, user);
   }
 
   @Post(':id/join')

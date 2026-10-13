@@ -53,6 +53,36 @@ describe('env JWT_SECRET validation', () => {
   });
 });
 
+describe('env SWAGGER_ENABLED', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('defaults to off in production', async () => {
+    const { env } = await loadEnv({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a'.repeat(32),
+      TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1',
+    });
+    expect(env.swaggerEnabled).toBe(false);
+  });
+
+  it('defaults to on outside production', async () => {
+    const { env } = await loadEnv({ NODE_ENV: 'development', JWT_SECRET: 'a'.repeat(32) });
+    expect(env.swaggerEnabled).toBe(true);
+  });
+
+  it('honours an explicit override in either direction', async () => {
+    const prod = await loadEnv({
+      NODE_ENV: 'production',
+      JWT_SECRET: 'a'.repeat(32),
+      TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1',
+      SWAGGER_ENABLED: 'true',
+    });
+    expect(prod.env.swaggerEnabled).toBe(true);
+    const dev = await loadEnv({ NODE_ENV: 'development', SWAGGER_ENABLED: 'false' });
+    expect(dev.env.swaggerEnabled).toBe(false);
+  });
+});
+
 describe('env S3_ENDPOINT', () => {
   afterEach(() => vi.unstubAllEnvs());
 

@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(35);
+    expect(journal.entries).toHaveLength(36);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -484,6 +484,18 @@ describe('ORM column coverage', () => {
         expect(chainSql, `${tableName}.${column.name}`).toContain(`"${column.name}"`);
       }
     }
+  });
+});
+
+describe('0035_users_email_lower_unique migration', () => {
+  it('adds a case-insensitive unique index on users.email without destructive DDL', () => {
+    const tag = journal.entries[35]?.tag;
+    expect(tag).toBe('0035_users_email_lower_unique');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "users_email_lower_unique" ON "users" (lower("email"))',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
   });
 });
 

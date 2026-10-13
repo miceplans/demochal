@@ -7,7 +7,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { createHash, randomInt, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomInt, timingSafeEqual } from 'node:crypto';
 import { and, eq, gt, isNull } from 'drizzle-orm';
 import { env } from '../../config/env.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -34,7 +34,10 @@ const CODE_IN_RESPONSE_ENVS = new Set(['development', 'test']);
 // A confirmed code must be used for signup within this window.
 const VERIFIED_USABLE_MS = 30 * 60 * 1000;
 
-const hashCode = (code: string) => createHash('sha256').update(code).digest('hex');
+// 코드는 서버만 아는 키로 HMAC-SHA256해 저장한다 — 6자리 숫자라 무솔트 SHA-256 다이제스트는
+// DB 유출 시 전수조사로 즉시 복구된다.
+const hashCode = (code: string) =>
+  createHmac('sha256', env.contactVerificationCodeSecret).update(code).digest('hex');
 
 export function normalizeContact(channel: ContactChannel, target: string): string {
   if (channel === 'email') return target.trim().toLowerCase();

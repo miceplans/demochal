@@ -1,10 +1,13 @@
-import { createHash } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { env } from '../../config/env.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 
-const hash = (code: string) => createHash('sha256').update(code).digest('hex');
+// 서비스와 같은 HMAC(파생 키)로 코드 해시를 재현한다.
+const hash = (code: string) =>
+  createHmac('sha256', env.contactVerificationCodeSecret).update(code).digest('hex');
+const plainSha256 = (code: string) => createHash('sha256').update(code).digest('hex');
 
 function createDb(row: Record<string, unknown> | undefined) {
   const set = vi.fn().mockReturnValue({ where: vi.fn().mockResolvedValue(undefined) });
@@ -73,6 +76,33 @@ describe('ContactVerificationsService.confirm', () => {
 });
 
 describe('ContactVerificationsService.request', () => {
+  it('stores the code as a keyed HMAC, not an offline-recoverable plain SHA-256 digest', async () => {
+    let storedHash: string | undefined;
+    const tx: any = {
+      insert: () => ({
+        values: (row: { codeHash: string }) => {
+          storedHash = row.codeHash;
+          return { returning: async () => [{ id: 'cv-1' }] };
+        },
+      }),
+    };
+    const db: any = {
+      select: vi.fn(() => ({
+        from: () => ({ where: () => ({ limit: async () => [] }) }),
+      })),
+      transaction: vi.fn(async (cb: (txArg: unknown) => unknown) => cb(tx)),
+    };
+    const outbox = { enqueue: vi.fn().mockResolvedValue(undefined) };
+    const service = new ContactVerificationsService(db, outbox as any);
+
+    const { devCode } = await service.request('email', 'biz@semo.kr');
+
+    expect(storedHash).toBe(hash(devCode));
+    expect(storedHash).not.toBe(plainSha256(devCode));
+    // 파생 키는 JWT 시크릿과 달라야 한다.
+    expect(env.contactVerificationCodeSecret.equals(Buffer.from(env.jwtSecret))).toBe(false);
+  });
+
   it.each(['production', 'staging', 'prod'])(
     'refuses to issue a code (and so never returns devCode) when NODE_ENV=%s',
     async (nodeEnv) => {

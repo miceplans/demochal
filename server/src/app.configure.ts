@@ -27,9 +27,13 @@ export function configureApp(app: INestApplication): void {
   app.useGlobalInterceptors(new SkipInputSecurityInterceptor(new Reflector()));
 
   // Also the source for packages/api-client's future OpenAPI-generated types.
-  const document = SwaggerModule.createDocument(
-    app,
-    new DocumentBuilder().setTitle('semochal API').setVersion('0.0.1').build(),
-  );
-  SwaggerModule.setup('docs', app, document);
+  // 비밀번호/키가 아닌 엔드포인트 계약만 담지만, 외부에 드러낼지는 SWAGGER_ENABLED로
+  // 제어한다 — 기본은 production에서만 끈다(see config/env.ts).
+  if (env.swaggerEnabled) {
+    const document = SwaggerModule.createDocument(
+      app,
+      new DocumentBuilder().setTitle('semochal API').setVersion('0.0.1').build(),
+    );
+    SwaggerModule.setup('docs', app, document);
+  }
 }
