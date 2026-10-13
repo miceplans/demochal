@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   mark-triage:
-    if: github.event.action == 'opened'
+    if: github.event.action == 'opened' && !contains(github.event.issue.labels.*.name, 'needs-human')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -26,7 +26,7 @@ jobs:
             });
 
   triage:
-    if: github.event.action == 'labeled' && github.event.label.name == 'ai-triage'
+    if: github.event.action == 'labeled' && github.event.label.name == 'ai-triage' && !contains(github.event.issue.labels.*.name, 'needs-human')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     concurrency:

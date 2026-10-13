@@ -79,6 +79,10 @@ jobs:
       - run: pnpm --filter @semochal/api-client test
       # Standalone script tests — merged-branch-cleanup (added in #376).
       - run: node --test scripts/merged-branch-cleanup.test.mjs
+      # QA report schema, privacy, and automation-boundary tests.
+      - run: node --test scripts/qa-report.test.mjs
+      # QA dispatch payload privacy tests.
+      - run: node --test scripts/ai-dispatch.test.mjs
 
   build:
     runs-on: ubuntu-latest

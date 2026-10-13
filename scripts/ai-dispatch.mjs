@@ -4,9 +4,10 @@
  * It never sends repository secrets and never changes code or labels itself.
  */
 import { readFile } from 'node:fs/promises';
+import { sanitizeText, sanitizeUrl } from './qa-report.mjs';
 
 const mode = process.argv[2];
-const allowedModes = new Set(['triage', 'worker', 'pr-risk', 'ci-repair']);
+const allowedModes = new Set(['triage', 'worker', 'pr-risk', 'ci-repair', 'qa']);
 if (!allowedModes.has(mode)) throw new Error(`Unsupported dispatch mode: ${mode}`);
 
 const endpoint = process.env.AI_AUTOMATION_WEBHOOK_URL;
@@ -19,6 +20,10 @@ if (!endpoint || !token) {
 const eventPath = process.env.GITHUB_EVENT_PATH;
 if (!eventPath) throw new Error('GITHUB_EVENT_PATH is required inside GitHub Actions');
 const event = JSON.parse(await readFile(eventPath, 'utf8'));
+const qaUrl = (() => {
+  if (!event.inputs?.target_url) return undefined;
+  return sanitizeUrl(event.inputs.target_url);
+})();
 const payload = {
   mode,
   repository: process.env.GITHUB_REPOSITORY,
@@ -43,6 +48,15 @@ const payload = {
     conclusion: event.workflow_run.conclusion,
     htmlUrl: event.workflow_run.html_url,
   },
+  qa:
+    mode === 'qa' && event.inputs
+      ? {
+          targetUrl: qaUrl,
+          scenario: sanitizeText(event.inputs.scenario),
+          environment: sanitizeText(event.inputs.environment),
+          reportEvent: 'qa-report',
+        }
+      : undefined,
 };
 
 const response = await fetch(endpoint, {
