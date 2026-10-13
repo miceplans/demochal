@@ -1,0 +1,22 @@
+{
+  "name": "profile-save",
+  "targetUrl": "https://staging.example.com/profile",
+  "environment": "staging",
+  "viewport": { "width": 390, "height": 844 },
+  "steps": [
+    {
+      "action": "click",
+      "selector": "[data-testid=profile-name]",
+      "label": "프로필 이름 입력 열기"
+    },
+    {
+      "action": "fill",
+      "selector": "input[name=name]",
+      "value": "QA sample",
+      "label": "프로필 이름 입력"
+    },
+    { "action": "click", "selector": "button[type=submit]", "label": "저장" },
+    { "action": "wait", "ms": 1000, "label": "저장 결과 대기" },
+    { "action": "screenshot", "label": "최종 화면 캡처" }
+  ]
+}

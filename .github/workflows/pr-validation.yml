@@ -83,6 +83,8 @@ jobs:
       - run: node --test scripts/qa-report.test.mjs
       # QA dispatch payload privacy tests.
       - run: node --test scripts/ai-dispatch.test.mjs
+      # Playwright/GLM contract tests do not launch a browser or call the network.
+      - run: node --test qa/*.test.mjs
 
   build:
     runs-on: ubuntu-latest

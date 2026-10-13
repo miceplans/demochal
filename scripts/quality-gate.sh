@@ -28,6 +28,7 @@ run_check api-client-tests pnpm --filter @semochal/api-client test
 run_check merged-branch-cleanup-tests node --test scripts/merged-branch-cleanup.test.mjs
 run_check qa-report-tests node --test scripts/qa-report.test.mjs
 run_check ai-dispatch-tests node --test scripts/ai-dispatch.test.mjs
+run_check qa-runner-tests node --test qa/*.test.mjs
 run_check api-client-build pnpm --filter @semochal/api-client build
 run_check front-build pnpm --filter @semochal/front build
 run_check server-build pnpm --filter @semochal/server build

@@ -57,3 +57,27 @@ runner는 GitHub `repository_dispatch`의 `qa-report` event로 다음 형태의 
 - 정상 report는 `fix:` 또는 `feat:` Issue로 만들고 `ai-triage`에 위임한다.
 - fingerprint가 같은 열린 QA Issue가 있으면 새 Issue 대신 기존 Issue에 재현 comment를 추가한다.
 - QA Issue 생성 이후의 구현·검증·review·PR은 기존 `docs/ai-development-workflow.md`를 따른다.
+
+## 실제 브라우저 runner 실행
+
+저장소의 `qa/runner.mjs`는 Playwright로 Chromium을 실행하고, GLM은 관찰 결과를 QA report JSON으로 판정한다. GLM은 브라우저 도구를 직접 호출하지 않는다.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm exec playwright install chromium
+pnpm qa:browser -- --scenario qa/scenario.example.json --dry-run
+```
+
+실제 제출 시에는 다음 환경변수를 runner에만 설정한다.
+
+```text
+GLM_API_KEY 또는 ZAI_API_KEY
+GLM_BASE_URL=https://api.z.ai/api/anthropic
+GLM_MODEL=glm-4.7
+QA_REPORT_TOKEN=<GitHub repository_dispatch 권한 token>
+GITHUB_REPOSITORY=owner/repository
+```
+
+`QA_REPORT_ENDPOINT`를 지정하면 기본 GitHub repository dispatch endpoint를 대체할 수 있다. GitHub Issue workflow가 받는 event type은 `qa-report`다. `--dry-run`은 GitHub에 제출하지 않고 `QA_OUTPUT_DIR`에 screenshot과 `report.json`만 저장한다.
+
+시나리오는 JSON으로 정의하며 지원 action은 `click`, `fill`, `press`, `wait`, `screenshot`이다. 인증이 필요한 시나리오는 cookie나 password를 파일·Issue·로그에 기록하지 않는 별도 staging 계정과 runner 전용 secret을 사용한다.

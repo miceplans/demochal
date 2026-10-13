@@ -12,6 +12,8 @@
     "dev:front": "pnpm --filter ./front dev",
     "dev:server": "pnpm --filter ./server dev",
     "dev:worker": "pnpm --filter ./server dev:worker",
+    "qa:browser": "node qa/runner.mjs",
+    "qa:test": "node --test qa/*.test.mjs",
     "build": "pnpm --filter ./front --filter ./server --filter './packages/*' run build",
     "lint": "pnpm --filter ./front --filter ./server run lint",
     "typecheck": "pnpm -r run typecheck",
@@ -20,6 +22,7 @@
   },
   "packageManager": "pnpm@12.3.4",
   "devDependencies": {
+    "playwright": "^1.64.0",
     "prettier": "^3.9.6"
   }
 }
