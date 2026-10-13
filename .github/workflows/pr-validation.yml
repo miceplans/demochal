@@ -160,7 +160,18 @@ jobs:
 
   quality-gate:
     if: always()
-    needs: [lint, formatting, typecheck, tests, build, docker-build, front-tests, secret-scan, dependency-audit]
+    needs:
+      [
+        lint,
+        formatting,
+        typecheck,
+        tests,
+        build,
+        docker-build,
+        front-tests,
+        secret-scan,
+        dependency-audit,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
