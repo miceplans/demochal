@@ -210,6 +210,8 @@ PR 생성 및 재오픈 시 [PR AI orchestration](../.github/workflows/pr-ai-orc
 
 `issue-ai-orchestration.yml`은 Issue triage/worker label event를, `pr-ai-orchestration.yml`은 PR risk와 failed validation event를 신뢰된 AI runner에 전달한다. 이들은 code checkout/수정/merge를 하지 않는다.
 
+`pr-ai-orchestration.yml`은 inline review comment와 PR 일반 comment도 `pr-review-comment` mode로 trusted runner에 전달한다. webhook에는 원문을 싣지 않고 repository, PR 번호, comment id만 전달하며, runner가 자기 GitHub token으로 comment/PR/diff를 다시 읽는다. payload의 `sessionKey`는 `repository:pr:<number>`이고 `idempotencyKey`는 comment id 기반이다. runner는 이 key에 매핑된 coding-agent session을 재개해 comment의 구체적 수정만 수행한다. runner의 자동 reply에는 `<!-- ai-automation-reply -->` marker를 넣어 재귀 trigger를 막는다. runner가 session을 재개할 수 없는 경우에는 comment에 이유를 남기고 `needs-human`으로 중단한다.
+
 AI runner를 연결하려면 repository secret `AI_AUTOMATION_WEBHOOK_URL`, `AI_AUTOMATION_WEBHOOK_TOKEN`을 설정한다. runner는 자기 GitHub token으로 Issue/PR 내용을 다시 읽고, `scripts/ai-workflow.sh`의 guard를 통과해 labels/comments/branch/PR을 변경한다. secret이 없으면 dispatch는 no-op으로 성공하며 `ai-triage`는 사람이 CLI에서 처리할 수 있다. Actions 권한은 `contents: read`, Issue label/comment용 `issues: write`, PR metadata용 `pull-requests: read`로 한정된다. fork PR에는 secret이 노출되지 않는다.
 
 ### CI failure / Quality Gate repair

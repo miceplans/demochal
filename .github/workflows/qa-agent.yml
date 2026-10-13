@@ -1,0 +1,69 @@
+name: Browser QA agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: Staging URL to inspect
+        required: true
+        type: string
+      scenario:
+        description: QA scenario name
+        required: true
+        type: string
+      environment:
+        description: Environment label, for example staging
+        required: true
+        default: staging
+        type: string
+  repository_dispatch:
+    types: [qa-report]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  dispatch-browser-qa:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dispatch browser QA to the trusted runner
+        run: node scripts/ai-dispatch.mjs qa
+        env:
+          AI_AUTOMATION_WEBHOOK_URL: ${{ secrets.AI_AUTOMATION_WEBHOOK_URL }}
+          AI_AUTOMATION_WEBHOOK_TOKEN: ${{ secrets.AI_AUTOMATION_WEBHOOK_TOKEN }}
+
+  ingest-report:
+    if: github.event_name == 'repository_dispatch' && github.event.action == 'qa-report'
+    concurrency:
+      group: qa-report-ingest
+      cancel-in-progress: false
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate and create or update QA Issue
+        uses: actions/github-script@v7
+        env:
+          QA_REPORT_JSON: ${{ toJSON(github.event.client_payload.report) }}
+        with:
+          script: |
+            const { issueForReport, reportEvidenceComment, validateReport } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/qa-report.mjs`);
+            const report = validateReport(JSON.parse(process.env.QA_REPORT_JSON));
+            const issue = issueForReport(report);
+            const { owner, repo } = context.repo;
+            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner, repo, state: 'open', per_page: 100,
+            });
+            const duplicate = openIssues.find(({ pull_request: pullRequest, body }) => !pullRequest && body?.includes(`<!-- qa-fingerprint:${report.fingerprint} -->`));
+            if (duplicate) {
+              await github.rest.issues.createComment({ owner, repo, issue_number: duplicate.number, body: reportEvidenceComment(report) });
+              core.info(`Updated existing QA issue #${duplicate.number}`);
+              return;
+            }
+            const labels = ['type:' + (report.kind === 'bug' ? 'bug' : 'feature'), ...(issue.labels.length ? issue.labels : [])];
+            const created = await github.rest.issues.create({ owner, repo, title: issue.title, body: issue.body, labels });
+            core.info(`Created QA issue #${created.data.number}`);
