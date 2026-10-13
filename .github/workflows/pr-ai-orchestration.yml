@@ -22,7 +22,16 @@ jobs:
       group: ai-pr-risk-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      # Trust boundary: PR authors can rewrite scripts/, but the webhook token
+      # below must only ever be handled by the base-branch revision of
+      # ai-dispatch.mjs. The PR checkout stays available for reading the diff;
+      # the executed script is reset to the trusted base revision, and the PR
+      # metadata it sends comes from the GitHub event payload, never PR code.
+      - name: Restore trusted base-branch scripts
+        run: git checkout "origin/${{ github.base_ref }}" -- scripts/
       - name: Dispatch PR risk analysis to the trusted AI runner
         run: node scripts/ai-dispatch.mjs pr-risk
         env:
@@ -37,7 +46,7 @@ jobs:
       group: ai-ci-repair-${{ github.event.workflow_run.id }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Dispatch failed validation to the trusted AI runner
         run: node scripts/ai-dispatch.mjs ci-repair
         env:

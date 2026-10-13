@@ -23,4 +23,5 @@ COPY --from=build /repo/server/certs ./certs
 COPY --from=build /prod ./
 
 # No EXPOSE: this process only consumes SQS, it accepts no inbound traffic.
+USER node
 CMD ["node", "dist/worker.js"]

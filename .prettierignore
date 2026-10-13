@@ -7,3 +7,8 @@ pnpm-lock.yaml
 front/next-env.d.ts
 # orval 생성 코드
 packages/api-client/src/generated
+# Prettier는 .gitignore를 읽지 않는다 — 로컬 생성물을 명시적으로 제외
+.terraform/
+tfplan
+.vercel/
+.tmp-figma/
