@@ -47,6 +47,7 @@ import { FilesService } from '../files/files.service.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import { AdsService } from '../ads/ads.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import type { RejectContentDto } from './dto/reject-content.dto.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { ResolveReportDto } from './dto/resolve-report.dto.js';
 import type { SuspendUserDto } from './dto/suspend-user.dto.js';
@@ -151,6 +152,9 @@ export function niceMax(max: number) {
   const step = [1, 2, 5, 10].find((factor) => factor * magnitude >= max) ?? 10;
   return step * magnitude;
 }
+
+/** 관리자 콘텐츠 반려 알림 타입. payload: targetType(team|challenge), targetId, title, reason. */
+const CONTENT_REJECTED_NOTIFICATION = 'content.rejected';
 
 /** `GET /admin/contents` section page size: default 8 cards, "더보기" grows it, capped at 50. */
 const CONTENTS_PAGE_SIZE = 8;
@@ -606,38 +610,80 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
-  /** 관리자 챌린지 반려 — 이미 반려된 공고가 아니면 rejected로 전이한다(공개 목록은 published/closed만 노출). */
-  async rejectChallenge(id: string) {
-    const [updated] = await this.db
-      .update(challenges)
-      .set({ status: 'rejected' })
-      .where(and(eq(challenges.id, id), ne(challenges.status, 'rejected')))
-      .returning({ id: challenges.id, status: challenges.status });
-    if (updated) return updated;
-    const [existing] = await this.db
-      .select({ id: challenges.id })
-      .from(challenges)
-      .where(eq(challenges.id, id))
-      .limit(1);
-    if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
-    throw new ConflictException('이미 반려된 공고입니다.');
+  /**
+   * 관리자 챌린지 반려 — 이미 반려된 공고가 아니면 rejected로 전이한다(공개 목록은 published/closed만 노출).
+   * 기관 소유자에게 사유와 함께 알림을 같은 트랜잭션에서 남긴다.
+   */
+  async rejectChallenge(id: string, dto: RejectContentDto) {
+    const reason = dto.reason.trim();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(challenges)
+        .set({ status: 'rejected' })
+        .where(and(eq(challenges.id, id), ne(challenges.status, 'rejected')))
+        .returning({
+          id: challenges.id,
+          status: challenges.status,
+          title: challenges.title,
+          businessId: challenges.businessId,
+        });
+      if (!updated) {
+        const [existing] = await tx
+          .select({ id: challenges.id })
+          .from(challenges)
+          .where(eq(challenges.id, id))
+          .limit(1);
+        if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
+        throw new ConflictException('이미 반려된 공고입니다.');
+      }
+      const [business] = await tx
+        .select({ ownerUserId: businesses.ownerUserId })
+        .from(businesses)
+        .where(eq(businesses.id, updated.businessId))
+        .limit(1);
+      if (business?.ownerUserId) {
+        await this.notificationsService.create(
+          business.ownerUserId,
+          CONTENT_REJECTED_NOTIFICATION,
+          { targetType: 'challenge', targetId: id, title: updated.title, reason },
+          tx,
+        );
+      }
+      return { id: updated.id, status: updated.status };
+    });
   }
 
-  /** 관리자 팀 모집글 반려 — 이미 반려된 팀이 아니면 rejected로 전이한다. */
-  async rejectTeam(id: string) {
-    const [updated] = await this.db
-      .update(teams)
-      .set({ status: 'rejected' })
-      .where(and(eq(teams.id, id), ne(teams.status, 'rejected')))
-      .returning({ id: teams.id, status: teams.status });
-    if (updated) return updated;
-    const [existing] = await this.db
-      .select({ id: teams.id })
-      .from(teams)
-      .where(eq(teams.id, id))
-      .limit(1);
-    if (!existing) throw new NotFoundException('팀을 찾을 수 없습니다.');
-    throw new ConflictException('이미 반려된 팀입니다.');
+  /** 관리자 팀 모집글 반려 — 이미 반려된 팀이 아니면 rejected로 전이하고 팀장에게 사유를 알린다. */
+  async rejectTeam(id: string, dto: RejectContentDto) {
+    const reason = dto.reason.trim();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(teams)
+        .set({ status: 'rejected' })
+        .where(and(eq(teams.id, id), ne(teams.status, 'rejected')))
+        .returning({
+          id: teams.id,
+          status: teams.status,
+          title: teams.title,
+          leaderUserId: teams.leaderUserId,
+        });
+      if (!updated) {
+        const [existing] = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.id, id))
+          .limit(1);
+        if (!existing) throw new NotFoundException('팀을 찾을 수 없습니다.');
+        throw new ConflictException('이미 반려된 팀입니다.');
+      }
+      await this.notificationsService.create(
+        updated.leaderUserId,
+        CONTENT_REJECTED_NOTIFICATION,
+        { targetType: 'team', targetId: id, title: updated.title, reason },
+        tx,
+      );
+      return { id: updated.id, status: updated.status };
+    });
   }
 
   /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */

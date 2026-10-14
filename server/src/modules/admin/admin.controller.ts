@@ -15,6 +15,7 @@ import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
 import { AdminRoleGuard } from './admin-role.guard.js';
 import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
+import { RejectContentDto } from './dto/reject-content.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
@@ -111,13 +112,13 @@ export class AdminController {
   }
 
   @Post('challenges/:id/reject')
-  rejectChallenge(@Param('id') id: string) {
-    return this.adminService.rejectChallenge(id);
+  rejectChallenge(@Param('id') id: string, @Body() dto: RejectContentDto) {
+    return this.adminService.rejectChallenge(id, dto);
   }
 
   @Post('teams/:id/reject')
-  rejectTeam(@Param('id') id: string) {
-    return this.adminService.rejectTeam(id);
+  rejectTeam(@Param('id') id: string, @Body() dto: RejectContentDto) {
+    return this.adminService.rejectTeam(id, dto);
   }
 
   @Post('ads/:id/pause')

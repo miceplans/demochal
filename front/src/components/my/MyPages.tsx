@@ -1533,7 +1533,7 @@ const NotificationBody = styled.div({
   flexDirection: 'column',
   gap: 4,
 });
-// 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지) 알림을 생성한다.
+// 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지), content.rejected(관리자 반려) 알림을 생성한다.
 // 매핑되지 않은 유형은 '전체'에서만 보인다.
 const notificationTabs = ['전체', '팀매칭', '공고'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
@@ -1541,6 +1541,7 @@ type NotificationCategory = NotificationTab | '인증·결과' | '마감';
 const notificationCategory: Record<string, NotificationCategory> = {
   team_matching: '팀매칭',
   'verification.result': '인증·결과',
+  'content.rejected': '인증·결과',
   deadline: '마감',
   posting: '공고',
 };
@@ -1564,6 +1565,9 @@ function describeNotification(type: string, payload: Record<string, unknown>) {
       return '사업자 인증이 승인됐어요';
     if (payload.status === 'rejected') return '사업자 인증이 반려됐어요';
     return '사업자 인증 결과가 도착했어요';
+  }
+  if (type === 'content.rejected') {
+    return payload.targetType === 'team' ? '팀 모집글이 반려됐어요' : '챌린지 공고가 반려됐어요';
   }
   if (type === 'deadline') {
     const daysLeft = typeof payload.daysLeft === 'number' ? payload.daysLeft : undefined;
@@ -1721,6 +1725,9 @@ export function NotificationsPage() {
                       <MutedSpaced $mt={8}>
                         {inviteResponse === 'accepted' ? '초대를 수락했어요' : '초대를 거절했어요'}
                       </MutedSpaced>
+                    )}
+                    {item.type === 'content.rejected' && typeof payload.reason === 'string' && (
+                      <Muted style={{ fontSize: 13 }}>반려 사유: {payload.reason}</Muted>
                     )}
                     <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>
