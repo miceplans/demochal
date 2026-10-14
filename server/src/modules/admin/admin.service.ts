@@ -611,25 +611,53 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
-  /** 관리자 '확인' 처리 — 모니터링 목록에서 제외한다(멱등). 신고 상태는 바꾸지 않는다. */
+  /**
+   * 관리자 '확인' 처리 — 모니터링 목록에서 제외하고, 이 콘텐츠에 걸린 대기(open) 신고를 모두
+   * 처리됨(resolved)으로 바꾼다. 멱등(이미 처리된 신고는 건드리지 않는다).
+   */
   async confirmTeam(id: string) {
-    const [updated] = await this.db
-      .update(teams)
-      .set({ adminReviewedAt: new Date() })
-      .where(eq(teams.id, id))
-      .returning({ id: teams.id });
-    if (!updated) throw new NotFoundException('팀을 찾을 수 없습니다.');
-    return { id: updated.id, confirmed: true };
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(teams)
+        .set({ adminReviewedAt: new Date() })
+        .where(eq(teams.id, id))
+        .returning({ id: teams.id });
+      if (!updated) throw new NotFoundException('팀을 찾을 수 없습니다.');
+      const resolved = await this.resolveOpenReports(tx, 'team', id);
+      return { id: updated.id, confirmed: true, resolvedReports: resolved };
+    });
   }
 
   async confirmChallenge(id: string) {
-    const [updated] = await this.db
-      .update(challenges)
-      .set({ adminReviewedAt: new Date() })
-      .where(eq(challenges.id, id))
-      .returning({ id: challenges.id });
-    if (!updated) throw new NotFoundException('공고를 찾을 수 없습니다.');
-    return { id: updated.id, confirmed: true };
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(challenges)
+        .set({ adminReviewedAt: new Date() })
+        .where(eq(challenges.id, id))
+        .returning({ id: challenges.id });
+      if (!updated) throw new NotFoundException('공고를 찾을 수 없습니다.');
+      const resolved = await this.resolveOpenReports(tx, 'challenge', id);
+      return { id: updated.id, confirmed: true, resolvedReports: resolved };
+    });
+  }
+
+  private async resolveOpenReports(
+    executor: Pick<Database, 'update'>,
+    targetType: 'team' | 'challenge',
+    targetId: string,
+  ) {
+    const rows = await executor
+      .update(reports)
+      .set({ status: 'resolved', resolvedAt: new Date() })
+      .where(
+        and(
+          eq(reports.targetType, targetType),
+          eq(reports.targetId, targetId),
+          eq(reports.status, 'open'),
+        ),
+      )
+      .returning({ id: reports.id });
+    return rows.length;
   }
 
   /** 콘텐츠 상세 페이지용 — 팀 모집글 전체 내용, 팀원, 접수된 신고. */

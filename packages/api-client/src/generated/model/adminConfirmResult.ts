@@ -20,4 +20,6 @@
 export interface AdminConfirmResult {
   id?: string;
   confirmed?: boolean;
+  /** 이번 확인으로 처리됨으로 바뀐 신고 수 */
+  resolvedReports?: number;
 }

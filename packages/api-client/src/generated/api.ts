@@ -12065,7 +12065,7 @@ export const getConfirmAdminTeamUrl = (id: string,) => {
 }
 
 /**
- * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
  * @summary 팀 확인 처리
  */
 export const confirmAdminTeam = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminTeamResponse> => {
@@ -12159,7 +12159,7 @@ export const getConfirmAdminChallengeUrl = (id: string,) => {
 }
 
 /**
- * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
  * @summary 챌린지 확인 처리
  */
 export const confirmAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminChallengeResponse> => {
