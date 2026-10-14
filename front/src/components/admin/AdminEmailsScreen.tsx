@@ -700,6 +700,7 @@ const StatusChip = styled('button', { shouldForwardProp: (prop) => prop !== 'act
   color: active ? c.white : c.gray700,
   cursor: 'pointer',
   ...textStyle.subtitle,
+  fontWeight: 600,
   '&:hover': { background: active ? c.primaryDark : c.gray50 },
 }));
 const ChipCount = styled.span({ ...textStyle.metaText, color: 'inherit' });
