@@ -2615,9 +2615,18 @@ paths:
       summary: 챌린지 반려
       operationId: rejectAdminChallenge
       x-impl-status: implemented
-      description: 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409.
+      description: 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409. 기관 소유자에게 사유와 함께 `content.rejected` 알림을 보낸다.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500, description: 반려 사유 }
       responses:
         '200':
           description: 반려됨
@@ -2632,9 +2641,18 @@ paths:
       summary: 팀 모집글 반려
       operationId: rejectAdminTeam
       x-impl-status: implemented
-      description: 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409.
+      description: 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409. 팀장에게 사유와 함께 `content.rejected` 알림을 보낸다.
       parameters:
         - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500, description: 반려 사유 }
       responses:
         '200':
           description: 반려됨

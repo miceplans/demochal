@@ -134,6 +134,8 @@ import type {
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
+  RejectAdminChallengeBody,
+  RejectAdminTeamBody,
   RejectVerificationBody,
   Report,
   RequestContactVerification201,
@@ -11822,17 +11824,32 @@ export const getRejectAdminChallengeUrl = (id: string,) => {
 }
 
 /**
- * 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409.
+ * 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409. 기관 소유자에게 사유와 함께 `content.rejected` 알림을 보낸다.
  * @summary 챌린지 반려
  */
-export const rejectAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminChallengeResponse> => {
+export const rejectAdminChallenge = async (id: string,
+    rejectAdminChallengeBody: RejectAdminChallengeBody, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminChallengeResponse> => {
 
-  return apiFetch<rejectAdminChallengeResponse>(getRejectAdminChallengeUrl(id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<rejectAdminChallengeResponse>(getRejectAdminChallengeUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectAdminChallengeBody)
   }
 );}
 
@@ -11857,9 +11874,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminChallenge>>, RejectAdminChallengeMutationVariables> = (props) => {
-          const {id} = props ?? {};
+          const {id,data} = props ?? {};
 
-          return  rejectAdminChallenge(id,requestOptions)
+          return  rejectAdminChallenge(id,data,requestOptions)
         }
 
 
@@ -11870,9 +11887,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RejectAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminChallenge>>>
-
+    export type RejectAdminChallengeMutationBody = RejectAdminChallengeBody
     export type RejectAdminChallengeMutationError = void
-    export type RejectAdminChallengeMutationVariables = {id: string}
+    export type RejectAdminChallengeMutationVariables = {id: string;data: RejectAdminChallengeBody}
 
     /**
  * @summary 챌린지 반려
@@ -11921,17 +11938,32 @@ export const getRejectAdminTeamUrl = (id: string,) => {
 }
 
 /**
- * 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409.
+ * 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409. 팀장에게 사유와 함께 `content.rejected` 알림을 보낸다.
  * @summary 팀 모집글 반려
  */
-export const rejectAdminTeam = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminTeamResponse> => {
+export const rejectAdminTeam = async (id: string,
+    rejectAdminTeamBody: RejectAdminTeamBody, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminTeamResponse> => {
 
-  return apiFetch<rejectAdminTeamResponse>(getRejectAdminTeamUrl(id),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<rejectAdminTeamResponse>(getRejectAdminTeamUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectAdminTeamBody)
   }
 );}
 
@@ -11956,9 +11988,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
       const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminTeam>>, RejectAdminTeamMutationVariables> = (props) => {
-          const {id} = props ?? {};
+          const {id,data} = props ?? {};
 
-          return  rejectAdminTeam(id,requestOptions)
+          return  rejectAdminTeam(id,data,requestOptions)
         }
 
 
@@ -11969,9 +12001,9 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type RejectAdminTeamMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminTeam>>>
-
+    export type RejectAdminTeamMutationBody = RejectAdminTeamBody
     export type RejectAdminTeamMutationError = void
-    export type RejectAdminTeamMutationVariables = {id: string}
+    export type RejectAdminTeamMutationVariables = {id: string;data: RejectAdminTeamBody}
 
     /**
  * @summary 팀 모집글 반려

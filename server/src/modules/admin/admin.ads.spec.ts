@@ -212,32 +212,57 @@ describe('AdminService — publishChallenge', () => {
 });
 
 describe('AdminService — rejectChallenge / rejectTeam', () => {
-  it('rejects a challenge by setting status rejected', async () => {
-    const { db, setCalls } = createDbStub({ update: [[{ id: 'c1', status: 'rejected' }]] });
-    const { service } = createService(db);
+  const dto = { reason: ' 부적절한 내용 ' };
 
-    await expect(service.rejectChallenge('c1')).resolves.toEqual({ id: 'c1', status: 'rejected' });
+  it('rejects a challenge and notifies the business owner with the reason', async () => {
+    const { db, setCalls } = createDbStub({
+      update: [[{ id: 'c1', status: 'rejected', title: '공고', businessId: 'b1' }]],
+      select: [[{ ownerUserId: 'u1' }]],
+    });
+    const { service, notifications } = createService(db);
+
+    await expect(service.rejectChallenge('c1', dto)).resolves.toEqual({
+      id: 'c1',
+      status: 'rejected',
+    });
     expect(setCalls[0]).toEqual([{ status: 'rejected' }]);
+    expect(notifications.create).toHaveBeenCalledWith(
+      'u1',
+      'content.rejected',
+      { targetType: 'challenge', targetId: 'c1', title: '공고', reason: '부적절한 내용' },
+      expect.anything(),
+    );
   });
 
   it('returns 409 for an already rejected challenge and 404 for an unknown one', async () => {
     const conflict = createService(createDbStub({ update: [[]], select: [[{ id: 'c1' }]] }).db);
-    await expect(conflict.service.rejectChallenge('c1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(conflict.service.rejectChallenge('c1', dto)).rejects.toBeInstanceOf(
+      ConflictException,
+    );
     const missing = createService(createDbStub({ update: [[]], select: [[]] }).db);
-    await expect(missing.service.rejectChallenge('x')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(missing.service.rejectChallenge('x', dto)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
+    expect(conflict.notifications.create).not.toHaveBeenCalled();
   });
 
-  it('rejects a team, with 409/404 on the failure paths', async () => {
-    const { db, setCalls } = createDbStub({ update: [[{ id: 't1', status: 'rejected' }]] });
-    await expect(createService(db).service.rejectTeam('t1')).resolves.toEqual({
-      id: 't1',
-      status: 'rejected',
+  it('rejects a team and notifies the leader, with 409/404 on the failure paths', async () => {
+    const { db, setCalls } = createDbStub({
+      update: [[{ id: 't1', status: 'rejected', title: '팀', leaderUserId: 'u2' }]],
     });
+    const { service, notifications } = createService(db);
+    await expect(service.rejectTeam('t1', dto)).resolves.toEqual({ id: 't1', status: 'rejected' });
     expect(setCalls[0]).toEqual([{ status: 'rejected' }]);
+    expect(notifications.create).toHaveBeenCalledWith(
+      'u2',
+      'content.rejected',
+      { targetType: 'team', targetId: 't1', title: '팀', reason: '부적절한 내용' },
+      expect.anything(),
+    );
 
     const conflict = createService(createDbStub({ update: [[]], select: [[{ id: 't1' }]] }).db);
-    await expect(conflict.service.rejectTeam('t1')).rejects.toBeInstanceOf(ConflictException);
+    await expect(conflict.service.rejectTeam('t1', dto)).rejects.toBeInstanceOf(ConflictException);
     const missing = createService(createDbStub({ update: [[]], select: [[]] }).db);
-    await expect(missing.service.rejectTeam('x')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(missing.service.rejectTeam('x', dto)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
