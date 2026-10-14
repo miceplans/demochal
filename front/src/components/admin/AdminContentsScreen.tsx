@@ -224,18 +224,15 @@ export function AdminContentsScreen() {
     () => ({ q: reportQuery || undefined, targetType: kindOptionToTargetType[kind] }),
     [reportQuery, kind],
   );
-  const refetchContents = contentsQuery.refetch;
   const toast = useToast();
   const router = useRouter();
   const hrefOf = useAdminHref();
 
   useEffect(() => {
     if (!contentsQuery.isError) return;
-    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
-      action: { label: '다시 시도', onClick: () => void refetchContents() },
-    });
+    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.');
     // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
-  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, refetchContents, toast]);
+  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>
