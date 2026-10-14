@@ -237,6 +237,17 @@ describe('AdminEmailsScreen', () => {
     expect(screen.queryByText('도와주세요')).toBeNull();
   });
 
+  it('shows the recipient and a Re: subject in the reply form', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AdminEmailThreadScreen id="thread-1" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByLabelText('받는 사람')).toHaveProperty('value', 'customer@example.com');
+    expect(screen.getByLabelText('답장 제목')).toHaveProperty('value', 'Re: 문의');
+  });
+
   it('keeps the reply draft on the mail view page when sending fails', async () => {
     mocks.send.mockReturnValue({
       isPending: false,
