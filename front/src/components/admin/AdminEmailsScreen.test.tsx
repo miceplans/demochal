@@ -214,6 +214,16 @@ describe('AdminEmailsScreen', () => {
     expect(mocks.push).toHaveBeenCalledWith('/admin/emails/thread-1');
   });
 
+  it('filters the list with the status chips and shows counts', async () => {
+    const user = userEvent.setup();
+    render(<AdminEmailsScreen />);
+    const chip = screen.getByRole('button', { name: /^미처리/ });
+    expect(chip.textContent).toContain('1');
+    await user.click(chip);
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(mocks.list).toHaveBeenCalledWith({ q: undefined, status: 'open' });
+  });
+
   it('switches between help@ and no-reply@ mailboxes', async () => {
     const user = userEvent.setup();
     render(<AdminEmailsScreen />);
