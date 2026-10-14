@@ -212,7 +212,7 @@ const ReasonTextarea = styled.textarea({
   ...textStyle.bodySmall,
   '&:focus': { outline: 'none', borderColor: c.primary },
 });
-const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
+const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: -12 });
 
 const EMPTY = '작성되지 않았어요';
 const formatDateDot = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
@@ -562,19 +562,18 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
               </div>
             )}
           </div>
-
-          <ActionBar
-            rejected={rejected}
-            pending={reject.isPending}
-            reason={reason}
-            onReject={(value) => reject.mutate({ id, data: { reason: value } })}
-            onConfirm={() => confirm.mutate({ id })}
-            confirming={confirm.isPending}
-          />
         </Body>
       </Main>
       <Side>
         <ReasonField value={reason} onChange={setReason} hidden={rejected} />
+        <ActionBar
+          rejected={rejected}
+          pending={reject.isPending}
+          reason={reason}
+          onReject={(value) => reject.mutate({ id, data: { reason: value } })}
+          onConfirm={() => confirm.mutate({ id })}
+          confirming={confirm.isPending}
+        />
         <ReportsBox title="이 공모전에 들어온 신고" reports={challenge.reports ?? []} />
         <NextList kind="challenge" currentId={id} />
       </Side>
@@ -656,19 +655,18 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
               <Section title="기타">{team.etc}</Section>
             </Body>
           </div>
-
-          <ActionBar
-            rejected={rejected}
-            pending={reject.isPending}
-            reason={reason}
-            onReject={(value) => reject.mutate({ id, data: { reason: value } })}
-            onConfirm={() => confirm.mutate({ id })}
-            confirming={confirm.isPending}
-          />
         </Body>
       </Main>
       <Side>
         <ReasonField value={reason} onChange={setReason} hidden={rejected} />
+        <ActionBar
+          rejected={rejected}
+          pending={reject.isPending}
+          reason={reason}
+          onReject={(value) => reject.mutate({ id, data: { reason: value } })}
+          onConfirm={() => confirm.mutate({ id })}
+          confirming={confirm.isPending}
+        />
         <ReportsBox title="이 팀에 들어온 신고" reports={team.reports ?? []} />
         <NextList kind="team" currentId={id} />
       </Side>
