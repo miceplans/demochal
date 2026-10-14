@@ -49,12 +49,14 @@ import type {
   AdSlotPricing,
   AdminAdEntry,
   AdminAutomatedEmail,
+  AdminChallengeDetail,
   AdminDashboard,
   AdminEmailMessage,
   AdminEmailThread,
   AdminEmailThreadDetail,
   AdminRejectResult,
   AdminSettings,
+  AdminTeamDetail,
   AdminUserEntry,
   AdminUserPage,
   Application,
@@ -11779,6 +11781,248 @@ export function useListAdminContents<TData = Awaited<ReturnType<typeof listAdmin
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListAdminContentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getAdminTeamDetailResponse200 = {
+  data: AdminTeamDetail
+  status: 200
+}
+
+export type getAdminTeamDetailResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getAdminTeamDetailResponseSuccess = (getAdminTeamDetailResponse200) & {
+  headers: Headers;
+};
+export type getAdminTeamDetailResponseError = (getAdminTeamDetailResponse404) & {
+  headers: Headers;
+};
+
+export type getAdminTeamDetailResponse = (getAdminTeamDetailResponseSuccess | getAdminTeamDetailResponseError)
+
+export const getGetAdminTeamDetailUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}`
+}
+
+/**
+ * 팀이 작성한 모집글 전체 내용, 참여 팀원, 접수된 신고(최신 20건). 반려된 팀도 조회된다.
+ * @summary 팀 모집글 상세 (콘텐츠 모니터링)
+ */
+export const getAdminTeamDetail = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getAdminTeamDetailResponse> => {
+
+  return apiFetch<getAdminTeamDetailResponse>(getGetAdminTeamDetailUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTeamDetailQueryKey = (id: string,) => {
+    return [
+    `/admin/teams/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminTeamDetailQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTeamDetailQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTeamDetail>>> = ({ signal }) => getAdminTeamDetail(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminTeamDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTeamDetail>>>
+export type GetAdminTeamDetailQueryError = void
+
+
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminTeamDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminTeamDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminTeamDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminTeamDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 팀 모집글 상세 (콘텐츠 모니터링)
+ */
+
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminTeamDetailQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getAdminChallengeDetailResponse200 = {
+  data: AdminChallengeDetail
+  status: 200
+}
+
+export type getAdminChallengeDetailResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getAdminChallengeDetailResponseSuccess = (getAdminChallengeDetailResponse200) & {
+  headers: Headers;
+};
+export type getAdminChallengeDetailResponseError = (getAdminChallengeDetailResponse404) & {
+  headers: Headers;
+};
+
+export type getAdminChallengeDetailResponse = (getAdminChallengeDetailResponseSuccess | getAdminChallengeDetailResponseError)
+
+export const getGetAdminChallengeDetailUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}`
+}
+
+/**
+ * 공고 전체 내용, 주최 기관, 접수된 신고(최신 20건). 반려된 공고도 조회된다.
+ * @summary 챌린지 공고 상세 (콘텐츠 모니터링)
+ */
+export const getAdminChallengeDetail = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getAdminChallengeDetailResponse> => {
+
+  return apiFetch<getAdminChallengeDetailResponse>(getGetAdminChallengeDetailUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminChallengeDetailQueryKey = (id: string,) => {
+    return [
+    `/admin/challenges/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminChallengeDetailQueryOptions = <TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminChallengeDetailQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminChallengeDetail>>> = ({ signal }) => getAdminChallengeDetail(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminChallengeDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminChallengeDetail>>>
+export type GetAdminChallengeDetailQueryError = void
+
+
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 챌린지 공고 상세 (콘텐츠 모니터링)
+ */
+
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminChallengeDetailQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -111,6 +111,16 @@ export class AdminController {
     return this.adminService.publishChallenge(id);
   }
 
+  @Get('teams/:id')
+  getTeamDetail(@Param('id') id: string) {
+    return this.adminService.getTeamDetail(id);
+  }
+
+  @Get('challenges/:id')
+  getChallengeDetail(@Param('id') id: string) {
+    return this.adminService.getChallengeDetail(id);
+  }
+
   @Post('challenges/:id/reject')
   rejectChallenge(@Param('id') id: string, @Body() dto: RejectContentDto) {
     return this.adminService.rejectChallenge(id, dto);
