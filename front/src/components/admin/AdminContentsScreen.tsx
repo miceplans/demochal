@@ -145,13 +145,88 @@ const PreviewModal = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 20,
-  width: 'min(100%, 360px)',
+  width: 'min(100%, 480px)',
   padding: 24,
   borderRadius: 12,
   background: c.white,
   boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
 });
 const PreviewTitle = styled.h2({ margin: 0, ...textStyle.h2_2, color: c.gray900 });
+const PreviewScroll = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  maxHeight: '55vh',
+  overflowY: 'auto',
+});
+const DetailHead = styled.div({ display: 'flex', flexDirection: 'column', gap: 4 });
+const DetailName = styled.strong({ ...textStyle.h2_2, color: c.gray900 });
+const DetailSub = styled.span({ ...textStyle.bodySmall, color: c.gray500 });
+const DetailField = styled.div({ display: 'flex', flexDirection: 'column', gap: 4 });
+const DetailLabel = styled.span({ ...textStyle.metaText, color: c.gray500 });
+const DetailText = styled.p({
+  margin: 0,
+  ...textStyle.bodySmall,
+  color: c.gray900,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
+});
+const EMPTY = '작성되지 않았어요';
+
+const formatDate = (iso: string) => (iso ? iso.slice(0, 10) : '');
+
+function DetailItem({ label, children }: { label: string; children?: string | null }) {
+  return (
+    <DetailField>
+      <DetailLabel>{label}</DetailLabel>
+      <DetailText>{children || EMPTY}</DetailText>
+    </DetailField>
+  );
+}
+
+const teamDetail = (team: TeamCardRow) => (
+  <PreviewScroll>
+    <DetailHead>
+      <DetailName>{team.name}</DetailName>
+      <DetailSub>{team.challenge}</DetailSub>
+    </DetailHead>
+    <DetailItem label="팀장">
+      {[team.leaderName, team.leaderRole, team.region].filter(Boolean).join(' · ')}
+    </DetailItem>
+    <DetailItem label="모집 역할">
+      {team.openRoles.map((slot) => `${slot.role} ${slot.count}명`).join(', ')}
+    </DetailItem>
+    <DetailItem label="참여 현황">{team.members}</DetailItem>
+    <DetailItem label="팀 소개">{team.introduction}</DetailItem>
+    <DetailItem label="우대사항">{team.preferred}</DetailItem>
+    <DetailItem label="기타">{team.etc}</DetailItem>
+  </PreviewScroll>
+);
+
+const contestDetail = (contest: ContestCardRow) => (
+  <PreviewScroll>
+    <DetailHead>
+      <DetailName>{contest.title}</DetailName>
+      <DetailSub>
+        {[contest.category, contest.dday, contest.teams].filter(Boolean).join(' · ')}
+      </DetailSub>
+    </DetailHead>
+    <DetailItem label="한줄 소개">{contest.summary}</DetailItem>
+    <DetailItem label="접수 기간">
+      {`${formatDate(contest.startDate)} ~ ${formatDate(contest.endDate)}`}
+    </DetailItem>
+    <DetailItem label="모집 인원 · 참가비">
+      {`${contest.capacity}명 · ${contest.price > 0 ? `${contest.price.toLocaleString()}원` : '무료'}`}
+    </DetailItem>
+    <DetailItem label="총상금">
+      {contest.prizeAmount ? `${contest.prizeAmount.toLocaleString()}만원` : ''}
+    </DetailItem>
+    <DetailItem label="대상">{contest.targets.join(', ')}</DetailItem>
+    <DetailItem label="해시태그">{contest.hashtags.map((tag) => `#${tag}`).join(' ')}</DetailItem>
+    <DetailItem label="공고 내용">{contest.description}</DetailItem>
+  </PreviewScroll>
+);
+
 const ReasonLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const ReasonTextarea = styled.textarea({
   marginTop: 8,
@@ -198,6 +273,13 @@ type TeamCardRow = {
   roles: string[];
   otherRoles: string[];
   unread: boolean;
+  leaderName: string;
+  leaderRole: string;
+  region: string;
+  introduction: string;
+  preferred: string;
+  etc: string;
+  openRoles: { role: string; count: number }[];
 };
 
 type ContestCardRow = {
@@ -207,6 +289,15 @@ type ContestCardRow = {
   dday: string;
   teams: string;
   unread: boolean;
+  summary: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  price: number;
+  capacity: number;
+  prizeAmount: number | null;
+  targets: string[];
+  hashtags: string[];
 };
 
 const teamCardContent = (team: TeamCardRow) => (
@@ -317,6 +408,16 @@ export function AdminContentsScreen() {
         roles: team.roles ?? [],
         otherRoles: team.otherRoles ?? [],
         unread: team.unread ?? false,
+        leaderName: team.leaderName ?? '',
+        leaderRole: team.leaderRole ?? '',
+        region: team.region ?? '',
+        introduction: team.introduction ?? '',
+        preferred: team.preferred ?? '',
+        etc: team.etc ?? '',
+        openRoles: (team.openRoles ?? []).map((slot) => ({
+          role: slot.role ?? '',
+          count: slot.count ?? 0,
+        })),
       })),
     [contentsQuery.data],
   );
@@ -330,6 +431,15 @@ export function AdminContentsScreen() {
         dday: contest.dday ?? '',
         teams: contest.teams ?? '',
         unread: contest.unread ?? false,
+        summary: contest.summary ?? '',
+        description: contest.description ?? '',
+        startDate: contest.startDate ?? '',
+        endDate: contest.endDate ?? '',
+        price: contest.price ?? 0,
+        capacity: contest.capacity ?? 0,
+        prizeAmount: contest.prizeAmount ?? null,
+        targets: contest.targets ?? [],
+        hashtags: contest.hashtags ?? [],
       })),
     [contentsQuery.data],
   );
@@ -434,17 +544,13 @@ export function AdminContentsScreen() {
               <PreviewTitle id="content-preview-title">
                 {preview.kind === 'team' ? '팀 미리보기' : '챌린지 미리보기'}
               </PreviewTitle>
-              {preview.kind === 'team' ? (
-                previewTeam ? (
-                  <TeamCard as="div" style={{ flex: 'none', cursor: 'default' }}>
-                    {teamCardContent(previewTeam)}
-                  </TeamCard>
-                ) : null
-              ) : previewContest ? (
-                <ContestCard as="div" style={{ flex: 'none', cursor: 'default' }}>
-                  {contestCardContent(previewContest)}
-                </ContestCard>
-              ) : null}
+              {preview.kind === 'team'
+                ? previewTeam
+                  ? teamDetail(previewTeam)
+                  : null
+                : previewContest
+                  ? contestDetail(previewContest)
+                  : null}
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 <ReasonLabel htmlFor="content-reject-reason">반려 사유</ReasonLabel>
                 <ReasonTextarea

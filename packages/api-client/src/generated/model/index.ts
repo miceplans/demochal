@@ -44,6 +44,7 @@ export * from './adminSettingsValues';
 export * from './adminStatCard';
 export * from './adminStatCardList';
 export * from './adminTeamCard';
+export * from './adminTeamCardOpenRolesItem';
 export * from './adminUserEntry';
 export * from './adminUserEntryStatus';
 export * from './adminUserPage';
