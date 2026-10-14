@@ -18,6 +18,8 @@ import { NOTIFICATION_EMAIL_EVENT } from '../notifications/email/notification-em
 import { renderNotificationEmail } from '../notifications/email/notification-email.templates.js';
 import { SUPPORT_EMAIL_EVENT } from '../notifications/email/support-email.js';
 import {
+  decodeMimeWords,
+  extractAddress,
   normalizeMessageId,
   resolveThreadId,
   safeHeader,
@@ -33,7 +35,7 @@ function resolveCustomerEmail(
   inbound: Pick<EmailMessageRow, 'fromAddress'> | undefined,
   latest: Pick<EmailMessageRow, 'toAddresses'> | undefined,
 ) {
-  return inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '';
+  return decodeMimeWords(inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '');
 }
 
 @Injectable()
@@ -70,6 +72,7 @@ export class EmailService {
         const inbound = inboundByThread.get(thread.id);
         return {
           ...thread,
+          subject: thread.subject == null ? thread.subject : decodeMimeWords(thread.subject),
           customerEmail: resolveCustomerEmail(inbound, latest),
           lastMessage: latest?.textBody ?? latest?.htmlBody ?? '',
           lastMessageAt: latest?.sentAt ?? latest?.receivedAt ?? thread.updatedAt,
@@ -177,9 +180,12 @@ export class EmailService {
       : [];
     return {
       ...thread,
+      subject: thread.subject == null ? thread.subject : decodeMimeWords(thread.subject),
       customerEmail: resolveCustomerEmail(lastInbound, latestMessage),
       messages: messages.map((message) => ({
         ...message,
+        fromAddress: decodeMimeWords(message.fromAddress),
+        subject: message.subject == null ? message.subject : decodeMimeWords(message.subject),
         direction: message.direction.toLowerCase(),
         references: message.references ? message.references.split(/\s+/).filter(Boolean) : [],
         attachments: allAttachments.filter((attachment) => attachment.messageId === message.id),
@@ -297,7 +303,7 @@ export class EmailService {
           inReplyTo: lastInbound.messageId,
           references: references.join(' '),
           fromAddress: SUPPORT_EMAIL,
-          toAddresses: [lastInbound.fromAddress],
+          toAddresses: [extractAddress(lastInbound.fromAddress)],
           subject,
           textBody: text,
           htmlBody: html || null,
@@ -306,7 +312,11 @@ export class EmailService {
         })
         .returning();
       if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
-      await tx.update(emailThreads).set({ updatedAt: sentAt }).where(eq(emailThreads.id, threadId));
+      // 관리자가 답장하면 처리중으로 전환한다.
+      await tx
+        .update(emailThreads)
+        .set({ updatedAt: sentAt, status: 'pending' })
+        .where(eq(emailThreads.id, threadId));
       await this.outboxService.enqueue(tx, SUPPORT_EMAIL_EVENT, { messageId: message.id });
       return this.serializeMessage(message);
     });

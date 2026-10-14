@@ -214,6 +214,16 @@ describe('AdminEmailsScreen', () => {
     expect(mocks.push).toHaveBeenCalledWith('/admin/emails/thread-1');
   });
 
+  it('filters the list with the status chips and shows counts', async () => {
+    const user = userEvent.setup();
+    render(<AdminEmailsScreen />);
+    const chip = screen.getByRole('button', { name: /^미처리/ });
+    expect(chip.textContent).toContain('1');
+    await user.click(chip);
+    expect(chip.getAttribute('aria-pressed')).toBe('true');
+    expect(mocks.list).toHaveBeenCalledWith({ q: undefined, status: 'open' });
+  });
+
   it('switches between help@ and no-reply@ mailboxes', async () => {
     const user = userEvent.setup();
     render(<AdminEmailsScreen />);
@@ -225,6 +235,17 @@ describe('AdminEmailsScreen', () => {
     expect(screen.getByText('k***@gmail.com')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '+ 새 메일' })).toBeNull();
     expect(screen.queryByText('도와주세요')).toBeNull();
+  });
+
+  it('shows the recipient and a Re: subject in the reply form', () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={queryClient}>
+        <AdminEmailThreadScreen id="thread-1" />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByLabelText('받는 사람')).toHaveProperty('value', 'customer@example.com');
+    expect(screen.getByLabelText('답장 제목')).toHaveProperty('value', 'Re: 문의');
   });
 
   it('keeps the reply draft on the mail view page when sending fails', async () => {
