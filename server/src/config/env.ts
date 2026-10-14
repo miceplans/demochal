@@ -12,6 +12,9 @@ const envSchema = z
   .object({
     NODE_ENV: z.string().default('development'),
     PORT: z.coerce.number().int().positive().default(3001),
+    // Swagger UI(/docs) 노출 여부. 명시하지 않으면 production에서만 끄고
+    // 그 외 환경(로컬 개발 등)에서는 연다.
+    SWAGGER_ENABLED: z.enum(['true', 'false']).optional(),
 
     DATABASE_URL: z.string().default('postgres://localhost:5432/semochal'),
     DATABASE_SSL_CA_PATH: z.string().min(1).optional(),
@@ -109,6 +112,9 @@ const jwtSecret = raw.JWT_SECRET ?? randomBytes(32).toString('hex');
 export const env = {
   nodeEnv: raw.NODE_ENV,
   port: raw.PORT,
+  swaggerEnabled: raw.SWAGGER_ENABLED
+    ? raw.SWAGGER_ENABLED === 'true'
+    : raw.NODE_ENV !== 'production',
 
   databaseUrl: raw.DATABASE_URL,
   databaseSslCaPath: raw.DATABASE_SSL_CA_PATH,
@@ -140,6 +146,11 @@ export const env = {
   jwtSecret,
   // OAuth state HMAC key, derived (HKDF) so it never equals the session-signing key.
   oauthStateSecret: Buffer.from(hkdfSync('sha256', jwtSecret, '', 'semochal/oauth-state', 32)),
+  // 이메일/휴대폰 인증번호 HMAC 키. 코드가 6자리 숫자라 무솔트 다이제스트는 DB 유출 시
+  // 오프라인 복구가 쉬워 서버 비밀에서 HKDF로 떼어낸 별도 키로 HMAC한다.
+  contactVerificationCodeSecret: Buffer.from(
+    hkdfSync('sha256', jwtSecret, '', 'semochal/contact-verification-code', 32),
+  ),
   frontendOrigins: raw.FRONTEND_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),

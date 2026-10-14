@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   index,
@@ -20,46 +21,54 @@ export type ApplicationFormQuestion = {
   options: string[];
   required: boolean;
 };
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  // A withdrawn account retains only this FK anchor; personal fields are erased.
-  email: varchar('email', { length: 255 }).unique(),
-  name: varchar('name', { length: 100 }),
-  role: varchar('role', { length: 20 }).notNull().default('user'),
-  passwordHash: text('password_hash'),
-  googleSubject: varchar('google_subject', { length: 255 }).unique(),
-  naverSubject: varchar('naver_subject', { length: 255 }).unique(),
-  kakaoSubject: varchar('kakao_subject', { length: 255 }).unique(),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  position: varchar('position', { length: 100 }),
-  region: varchar('region', { length: 100 }),
-  // 프로필 한 줄 소개(최대 100자). 비어 있으면 null.
-  bio: varchar('bio', { length: 100 }),
-  stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
-  badges: jsonb('badges').$type<string[]>().notNull().default([]),
-  externalLinks: jsonb('external_links').notNull().default([]),
-  awardHistory: jsonb('award_history').notNull().default([]),
-  onboardingSurvey: jsonb('onboarding_survey'),
-  interests: jsonb('interests').$type<string[]>().notNull().default([]),
-  notificationSettings: jsonb('notification_settings')
-    .$type<Record<string, boolean>>()
-    .notNull()
-    .default({}),
-  suspended: boolean('suspended').notNull().default(false),
-  suspendedReason: text('suspended_reason'),
-  suspendedAt: timestamp('suspended_at'),
-  // 기업 회원가입(`/biz/login`)에서 받는 로그인 아이디 — 이메일 대신 로그인할 수 있다.
-  username: varchar('username', { length: 50 }).unique(),
-  phone: varchar('phone', { length: 30 }),
-  // contact_verifications 인증 완료 시각 (null이면 미인증)
-  emailVerifiedAt: timestamp('email_verified_at'),
-  phoneVerifiedAt: timestamp('phone_verified_at'),
-  // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
-  termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
-  withdrawnAt: timestamp('withdrawn_at'),
-  // 프로필 이미지: files.id (public 버킷, ready 상태). null이면 기본 아바타.
-  profileImageFileId: uuid('profile_image_file_id'),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // A withdrawn account retains only this FK anchor; personal fields are erased.
+    email: varchar('email', { length: 255 }).unique(),
+    name: varchar('name', { length: 100 }),
+    role: varchar('role', { length: 20 }).notNull().default('user'),
+    passwordHash: text('password_hash'),
+    googleSubject: varchar('google_subject', { length: 255 }).unique(),
+    naverSubject: varchar('naver_subject', { length: 255 }).unique(),
+    kakaoSubject: varchar('kakao_subject', { length: 255 }).unique(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    position: varchar('position', { length: 100 }),
+    region: varchar('region', { length: 100 }),
+    // 프로필 한 줄 소개(최대 100자). 비어 있으면 null.
+    bio: varchar('bio', { length: 100 }),
+    stacks: jsonb('stacks').$type<string[]>().notNull().default([]),
+    badges: jsonb('badges').$type<string[]>().notNull().default([]),
+    externalLinks: jsonb('external_links').notNull().default([]),
+    awardHistory: jsonb('award_history').notNull().default([]),
+    onboardingSurvey: jsonb('onboarding_survey'),
+    interests: jsonb('interests').$type<string[]>().notNull().default([]),
+    notificationSettings: jsonb('notification_settings')
+      .$type<Record<string, boolean>>()
+      .notNull()
+      .default({}),
+    suspended: boolean('suspended').notNull().default(false),
+    suspendedReason: text('suspended_reason'),
+    suspendedAt: timestamp('suspended_at'),
+    // 기업 회원가입(`/biz/login`)에서 받는 로그인 아이디 — 이메일 대신 로그인할 수 있다.
+    username: varchar('username', { length: 50 }).unique(),
+    phone: varchar('phone', { length: 30 }),
+    // contact_verifications 인증 완료 시각 (null이면 미인증)
+    emailVerifiedAt: timestamp('email_verified_at'),
+    phoneVerifiedAt: timestamp('phone_verified_at'),
+    // 약관 동의 기록: 약관 키(privacy | business) → 동의 시각(ISO)
+    termsAgreements: jsonb('terms_agreements').$type<Record<string, string>>(),
+    withdrawnAt: timestamp('withdrawn_at'),
+    // 프로필 이미지: files.id (public 버킷, ready 상태). null이면 기본 아바타.
+    profileImageFileId: uuid('profile_image_file_id'),
+  },
+  (table) => [
+    // 로그인/가입 조회는 모두 lower(email)로 매칭하므로 중복 방지도 대소문자 무시 인덱스가 담당한다 —
+    // 없으면 A@x.com / a@x.com 이 각각 가입된다.
+    uniqueIndex('users_email_lower_unique').on(sql`lower(${table.email})`),
+  ],
+);
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
   ownerUserId: uuid('owner_user_id')
@@ -296,7 +305,7 @@ export const files = pgTable('files', {
 // lost to a crash between the DB commit and the send. A poller (currently
 // OutboxRelayService, driven from worker.ts) sends pending rows and marks
 // them sent; status values: pending | sent | failed.
-// 이메일/휴대폰 인증번호. 코드는 SHA-256 해시로만 저장한다.
+// 이메일/휴대폰 인증번호. 코드는 서버 비밀에서 HKDF로 파생한 키의 HMAC-SHA256으로만 저장한다.
 export const contactVerifications = pgTable(
   'contact_verifications',
   {

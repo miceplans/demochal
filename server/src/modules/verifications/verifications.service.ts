@@ -4,6 +4,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, verifications } from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
 import { FilesService } from '../files/files.service.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
 
 // Outbox event type for a submitted verification's SQS job — shared with
@@ -62,13 +63,21 @@ export class VerificationsService {
     return { ...verification, ...verificationStatusPresentation(verification.status) };
   }
 
-  async findById(id: string) {
-    const [verification] = await this.db
-      .select()
+  // OCR 결과 등 민감한 인증 데이터가 담기므로 해당 기업의 소유자나 관리자만 볼 수 있다 —
+  // 존재 여부 자첼 숨기려 submit과 같은 404를 쓴다.
+  async findById(id: string, user: AuthenticatedUser) {
+    const [row] = await this.db
+      .select({ verification: verifications, ownerUserId: businesses.ownerUserId })
       .from(verifications)
+      .innerJoin(businesses, eq(verifications.businessId, businesses.id))
       .where(eq(verifications.id, id))
       .limit(1);
-    if (!verification) throw new NotFoundException('인증 요청을 찾을 수 없습니다.');
-    return { ...verification, ...verificationStatusPresentation(verification.status) };
+    if (!row || (row.ownerUserId !== user.id && user.role !== 'admin')) {
+      throw new NotFoundException('인증 요청을 찾을 수 없습니다.');
+    }
+    return {
+      ...row.verification,
+      ...verificationStatusPresentation(row.verification.status),
+    };
   }
 }

@@ -74,7 +74,12 @@ export function HomePage() {
     getAdPreviewPriceSnapshot,
     getAdPreviewPriceServerSnapshot,
   );
-  const adPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+  // 쿼리 파라미터 조작(?adPrice=abc → NaN)으로 페이지 전체 잠금이 걸리지 않게 유효한 숫자만 받는다.
+  const parsedAdPreviewPrice = adPriceParam ? Number(adPriceParam) : null;
+  const adPreviewPrice =
+    parsedAdPreviewPrice !== null && Number.isFinite(parsedAdPreviewPrice)
+      ? parsedAdPreviewPrice
+      : null;
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? auth.data.name : undefined;
   const { data: teamList } = generated.useListTeams();
@@ -95,16 +100,17 @@ export function HomePage() {
   });
   const liveDeadlineContests = (deadlineList?.data.items ?? [])
     .filter((challenge) => Boolean(challenge.endDate))
-    .map((challenge) => challengeToContest(challenge, now))
-    .filter((contest) => contest.days <= DEADLINE_SOON_DAYS)
-    .slice(0, 6);
+    .slice(0, 4)
+    .map((challenge) => challengeToContest(challenge, now));
+  // 목업 데이터 폴백은 개발 환경 전용 — 프로덕션에서 API가 비어있거나 실패하면 빈 상태 그대로 둔다.
+  const useMockFallbacks = process.env.NODE_ENV === 'development';
   const { recommendationContests, deadlineContests, teams, isFallbackTeamList } =
     getHomeFallbackData({
       recommendationContests: liveRecommendationContests,
       deadlineContests: liveDeadlineContests,
       teams: liveTeams,
-      fallbackContests: fallbackContests.slice(0, 4),
-      fallbackTeams: fallbackTeams.slice(0, 4),
+      fallbackContests: useMockFallbacks ? fallbackContests.slice(0, 4) : [],
+      fallbackTeams: useMockFallbacks ? fallbackTeams.slice(0, 4) : [],
     });
 
   return (

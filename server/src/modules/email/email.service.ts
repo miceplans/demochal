@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { env } from '../../config/env.js';
 import { randomUUID } from 'node:crypto';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
@@ -210,8 +210,23 @@ export class EmailService {
     const linkIds = [email.inReplyTo, ...email.references]
       .filter(Boolean)
       .map((value) => normalizeMessageId(value!));
-    const existingMessages = await this.db.select().from(emailMessages);
-    const threadId = resolveThreadId(email, existingMessages);
+    // 스레드 후보는 링크 헤더(in-reply-to/references)로만 좁힌다 — 전체 emailMessages
+    // 스캔은 인바운드 한 통마다 테이블 전체를 읽는 지연이었다. 저장된 message_id는
+    // 발신 답장이 앵글 브래킷을 붙여 저장하므로(resolveThreadId가 양쪽을 정규화해
+    // 매칭했던 것과 동일하게) 두 형태 모두, 대소문자 무시로 매칭한다.
+    const candidates = linkIds.flatMap((id) => [id, `<${id}>`]);
+    const linkedMessages = candidates.length
+      ? await this.db
+          .select({ messageId: emailMessages.messageId, threadId: emailMessages.threadId })
+          .from(emailMessages)
+          .where(
+            inArray(
+              sql<string>`lower(${emailMessages.messageId})`,
+              candidates.map((id) => id.toLowerCase()),
+            ),
+          )
+      : [];
+    const threadId = resolveThreadId(email, linkedMessages);
     const sentAt = new Date(email.sentAt);
     if (Number.isNaN(sentAt.getTime()))
       throw new BadRequestException('sentAt이 올바른 날짜가 아닙니다.');

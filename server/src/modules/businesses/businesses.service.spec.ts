@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
 /** eq/and 호출을 기록해 where 절의 실제 predicate를 검증한다. */
 const predicates = vi.hoisted(() => ({
@@ -68,6 +69,106 @@ describe('BusinessesService', () => {
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
       '기업 정보를 찾을 수 없거나 조회 권한이 없습니다.',
     );
+  });
+});
+
+describe('BusinessesService.findById access control', () => {
+  const owner = { id: 'user-1', email: 'o@x.com', name: 'Owner', role: 'user' };
+  const admin = { id: 'admin-1', email: 'a@x.com', name: 'Admin', role: 'admin' };
+  const stranger = { id: 'user-2', email: 's@x.com', name: 'Stranger', role: 'user' };
+
+  function createFindDb(row: Record<string, unknown> | undefined) {
+    const db: any = {
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => (row ? [row] : []) }) }),
+      }),
+    };
+    return db;
+  }
+
+  const businessRow = {
+    id: 'biz-1',
+    ownerUserId: owner.id,
+    registrationNumber: '123-45-67890',
+    verificationStatus: 'pending',
+  };
+
+  it('serves the full row to the owner', async () => {
+    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    await expect(service.findById('biz-1', owner)).resolves.toMatchObject({
+      id: 'biz-1',
+      registrationNumber: '123-45-67890',
+      displayStatus: '가승인',
+    });
+  });
+
+  it('serves the full row to an admin', async () => {
+    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    await expect(service.findById('biz-1', admin)).resolves.toMatchObject({ id: 'biz-1' });
+  });
+
+  it('forbids any other authenticated user from reading the sensitive row', async () => {
+    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    await expect(service.findById('biz-1', stranger)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('returns 404 for a missing business regardless of the caller', async () => {
+    const service = new BusinessesService(createFindDb(undefined), { notify: vi.fn() } as any);
+    await expect(service.findById('biz-x', admin)).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('BusinessesService.listMyChallenges pagination', () => {
+  function createListDb(rows: unknown[], limit: ReturnType<typeof vi.fn>) {
+    const db: any = {
+      select: () => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({
+              orderBy: () => ({ limit }),
+            }),
+          }),
+        }),
+      }),
+    };
+    return db;
+  }
+
+  const challengeRow = (id: string) => ({
+    challenge: { id, createdAt: new Date('2026-10-01T00:00:00.000Z') },
+  });
+
+  it('rejects an unparsable cursor with 400 before querying', async () => {
+    const limit = vi.fn();
+    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+
+    await expect(service.listMyChallenges('user-1', 'not-a-date', 20)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(limit).not.toHaveBeenCalled();
+  });
+
+  it('clamps a NaN/invalid limit to the default for LIMIT, slice, and hasMore', async () => {
+    const limit = vi.fn().mockResolvedValue([challengeRow('c-1')]);
+    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+
+    const result = await service.listMyChallenges('user-1', undefined, Number('abc'));
+
+    expect(limit).toHaveBeenCalledWith(21); // 기본 20 + hasMore 판정용 1행
+    expect(result.items).toHaveLength(1);
+    expect(result.nextCursor).toBeNull();
+  });
+
+  it('clamps an oversized limit to 100 for LIMIT, slice, and hasMore', async () => {
+    const many = Array.from({ length: 101 }, (_, i) => challengeRow(`c-${i}`));
+    const limit = vi.fn().mockResolvedValue(many);
+    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+
+    const result = await service.listMyChallenges('user-1', undefined, 5000);
+
+    expect(limit).toHaveBeenCalledWith(101);
+    expect(result.items).toHaveLength(100);
+    expect(result.nextCursor).toBe('2026-10-01T00:00:00.000Z');
   });
 });
 

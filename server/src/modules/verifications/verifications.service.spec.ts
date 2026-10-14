@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { NotFoundException } from '@nestjs/common';
 import { VERIFICATION_SUBMITTED_EVENT, VerificationsService } from './verifications.service.js';
 
 function createDbStub(
@@ -16,6 +17,59 @@ function createDbStub(
   db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
   return { db, insert, values };
 }
+
+describe('VerificationsService.findById access control', () => {
+  const owner = { id: 'user-1', email: 'o@x.com', name: 'Owner', role: 'user' };
+  const admin = { id: 'admin-1', email: 'a@x.com', name: 'Admin', role: 'admin' };
+  const stranger = { id: 'user-2', email: 's@x.com', name: 'Stranger', role: 'user' };
+
+  const verificationRow = {
+    verification: {
+      id: 'verif-1',
+      businessId: 'biz-1',
+      status: 'pending',
+      ocrResult: { businessName: '한빛협회', registrationNumber: '123-45-67890' },
+    },
+    ownerUserId: owner.id,
+  };
+
+  function createFindDb(row: typeof verificationRow | undefined) {
+    const db: any = {
+      select: vi.fn(() => ({
+        from: () => ({
+          innerJoin: () => ({
+            where: () => ({ limit: vi.fn().mockResolvedValue(row ? [row] : []) }),
+          }),
+        }),
+      })),
+    };
+    return db;
+  }
+
+  it('serves the OCR result to the business owner', async () => {
+    const service = new VerificationsService(createFindDb(verificationRow), {} as any, {} as any);
+    await expect(service.findById('verif-1', owner)).resolves.toMatchObject({
+      id: 'verif-1',
+      ocrResult: { businessName: '한빛협회' },
+      displayStatus: '가승인',
+    });
+  });
+
+  it('serves the verification to an admin', async () => {
+    const service = new VerificationsService(createFindDb(verificationRow), {} as any, {} as any);
+    await expect(service.findById('verif-1', admin)).resolves.toMatchObject({ id: 'verif-1' });
+  });
+
+  it('hides another user’s business verification behind 404 (no IDOR)', async () => {
+    const service = new VerificationsService(createFindDb(verificationRow), {} as any, {} as any);
+    await expect(service.findById('verif-1', stranger)).rejects.toThrow(NotFoundException);
+  });
+
+  it('returns 404 for a missing verification regardless of the caller', async () => {
+    const service = new VerificationsService(createFindDb(undefined), {} as any, {} as any);
+    await expect(service.findById('verif-x', admin)).rejects.toThrow(NotFoundException);
+  });
+});
 
 describe('VerificationsService.submit', () => {
   it('checks file ownership, inserts the verification, and enqueues its job in the same transaction', async () => {

@@ -32,8 +32,9 @@ export class BusinessesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.businessesService.findById(id);
+  @UseGuards(JwtAuthGuard)
+  findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.businessesService.findById(id, user);
   }
 
   @Patch(':id')

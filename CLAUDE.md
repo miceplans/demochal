@@ -2,7 +2,7 @@
 
 pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App Router + React 19), `server`(NestJS + Drizzle + SQS 워커), `packages/api-client`(orval 생성 클라이언트), `packages/config`(공유 tsconfig). 브랜치 `main` 기준, PR 단위 작업.
 
-주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `ci.yml`의 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드가 통과해야 한다.
+주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `pr-validation` 워크플로(PR validation)의 format:check → lint → typecheck → 테스트(서버/프론트/api-client) → 빌드 + Docker 빌드가 통과해야 하며, `main` push 시 `ci.yml`(CI)이 전체 검증 후 배포를 진행한다. 로컬에서 `pnpm build`·품질 게이트의 프론트 빌드는 `front/.env.local`의 `API_PROXY_TARGET`(백엔드 오리진, 로컬 기본값 `http://localhost:3001`)이 필요하다. 프론트 단위 테스트는 jsdom 30 요구로 Node 22+에서만 실행된다(Repo 런타임 기준 Node 20과 별개 — CI는 `front-tests` 잡만 Node 22, 앱 런타임은 jsdom을 로드하지 않음).
 
 ## Git 규칙 (반드시 준수)
 
@@ -29,7 +29,7 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 - **결제(Toss Payments)**: Toss 웹훅은 서명이 없으므로 수신 즉시 신뢰하지 않고 반드시 Toss API(`GET /v1/payments/{paymentKey}`)로 재조회해 대사한다. 클라이언트 승인(`POST /payments/confirm`)과 웹훅(DONE/CANCELED/EXPIRED/ABORTED/PARTIAL_CANCELED)은 금액-주문 대사·멱등 처리·`payments` 영속화를 갖췄고, 정산 불가 주문은 자동 환불(실패 시 `refund_pending` + 워커 재시도)한다. 미처리 상태를 조용히 스킵하지 말고 TODO로 명시한다.
 - **개인정보(사업자등록증 등)**: 민감 문서는 반드시 private 버킷(`S3_PRIVATE_BUCKET`)에만 저장하고 presigned PUT(5분)으로만 접근한다(`modules/files/files.service.ts`). 공개/비공개 버킷 분리를 없애지 않는다. OCR/진위확인 결과(`ocrResult` 등)와 사업자번호를 로그에 남기지 않는다.
 - **청소년 보호**: 현재는 `front/src/app/youth/` 정적 안내 페이지만 존재하며 정책 강제 로직은 없다. 연령 확인·보호 관련 코드를 추가할 경우 별도 검토를 거치고, 개인정보 수집 최소화 원칙을 적용한다.
-- **Docker 분기**: `Dockerfile.api`와 `Dockerfile.worker`는 같은 소스, 같은 두 단계 빌드(`pnpm --filter @semochal/server...` + `nest build`)이며 차이는 `CMD`(dist/main.js vs dist/worker.js)뿐이다. 워커 이미지에 `EXPOSE`를 추가하거나 API/워커 중 한 쪽에만 의존성·빌드 단계를 넣는 분기를 만들지 않는다. 둘 다 `ci.yml`에서 빌드 검증되므로 Dockerfile 변경 시 로컬에서 `docker build --file server/Dockerfile.{api,worker} .`를 확인한다.
+- **Docker 분기**: `Dockerfile.api`와 `Dockerfile.worker`는 같은 소스, 같은 두 단계 빌드(`pnpm --filter @semochal/server...` + `nest build`)이며 차이는 `CMD`(dist/main.js vs dist/worker.js)와 API 전용 `EXPOSE`/`HEALTHCHECK`뿐이다. 둘 다 런타임은 비-root(`USER node`)로 통일한다. 워커 이미지에 `EXPOSE`를 추가하거나 API/워커 중 한 쪽에만 의존성·빌드 단계를 넣는 분기를 만들지 않는다. 둘 다 `ci.yml`에서 빌드 검증되므로 Dockerfile 변경 시 로컬에서 `docker build --file server/Dockerfile.{api,worker} .`를 확인한다.
 - **ECS Task Definition**(인프라 구성 시, `infra/README.md` 계획): API 서비스와 워커 서비스는 같은 태스크 정의 구조(같은 이미지, CMD 오버라이드와 환경변수만 다르게)로 유지한다. 워커에는 ALB 타깃을 붙이지 않는다.
 
 ## Issue / PR 작성 규칙(모든 에이전트 준수)

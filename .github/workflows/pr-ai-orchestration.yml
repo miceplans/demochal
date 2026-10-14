@@ -26,9 +26,16 @@ jobs:
       group: ai-pr-risk-${{ github.event.pull_request.number }}
       cancel-in-progress: true
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 1
+      # Trust boundary: PR authors can rewrite scripts/, but the webhook token
+      # below must only ever be handled by the base-commit revision of the
+      # dispatch chain. ai-dispatch.mjs imports ./qa-report.mjs, so the restore
+      # must cover every local module the executed script can load — restoring
+      # only ai-dispatch.mjs would leave its PR-controlled imports in place.
+      # The PR checkout stays available for reading the diff; PR metadata comes
+      # from the GitHub event payload, never PR code.
       - name: Resolve immutable PR base SHA
         id: pr-base
         env:
@@ -36,12 +43,12 @@ jobs:
         run: |
           base_sha="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${{ github.event.pull_request.number }}" --jq '.base.sha')"
           echo "base_sha=$base_sha" >> "$GITHUB_OUTPUT"
-      - name: Restore trusted base-commit dispatch script
+      - name: Restore trusted base-commit scripts
         env:
           BASE_SHA: ${{ steps.pr-base.outputs.base_sha }}
         run: |
           git fetch origin "$BASE_SHA" --depth=1
-          git checkout "$BASE_SHA" -- scripts/ai-dispatch.mjs
+          git checkout "$BASE_SHA" -- scripts/
       - name: Dispatch PR risk analysis to the trusted AI runner
         run: node scripts/ai-dispatch.mjs pr-risk
         env:
@@ -56,15 +63,16 @@ jobs:
       group: ai-ci-repair-${{ github.event.workflow_run.id }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 1
-      - name: Restore trusted default-branch dispatch script
+      # ai-dispatch.mjs의 로컬 import(qa-report.mjs 포함) 전체를 기본 브랜치 판으로 복원한다.
+      - name: Restore trusted default-branch scripts
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           git fetch origin "$DEFAULT_BRANCH" --depth=1
-          git checkout "origin/$DEFAULT_BRANCH" -- scripts/ai-dispatch.mjs
+          git checkout "origin/$DEFAULT_BRANCH" -- scripts/
       - name: Dispatch failed validation to the trusted AI runner
         run: node scripts/ai-dispatch.mjs ci-repair
         env:

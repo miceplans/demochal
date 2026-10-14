@@ -59,14 +59,13 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-      id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 1
 
       # 잔액/한도 소진 등으로 리뷰 실행이 실패핰도 CI를 빨간불로 만들지 않고 스킵한다(실패 사유는 아래 warning step이 기록).
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1
         id: glm-review
         continue-on-error: true
         env:

@@ -103,10 +103,11 @@ export class PaymentsService {
     }
     if (dto.amount !== order.amount) {
       this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
-      throw new BadRequestException('결제 금액이 주문 금액과 일치하지 않습니다.');
+      throw new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.');
     }
 
-    const tossPayment = await this.confirmWithToss(dto);
+    // 토스 승인 요청에는 클라이언트가 본 금액이 아니라 서버에 저장된 주문 금액을 싣는다.
+    const tossPayment = await this.confirmWithToss(dto, order.amount);
     if (
       tossPayment.status !== 'DONE' ||
       tossPayment.orderId !== order.id ||
@@ -338,7 +339,7 @@ export class PaymentsService {
     }
   }
 
-  private async confirmWithToss(dto: ConfirmPaymentDto): Promise<TossPayment> {
+  private async confirmWithToss(dto: ConfirmPaymentDto, amount: number): Promise<TossPayment> {
     if (!env.tossSecretKey) {
       throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }
@@ -358,7 +359,7 @@ export class PaymentsService {
         body: JSON.stringify({
           paymentKey: dto.paymentKey,
           orderId: dto.orderId,
-          amount: dto.amount,
+          amount,
         }),
         signal: AbortSignal.timeout(10_000),
       });

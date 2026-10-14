@@ -56,8 +56,12 @@ vi.mock('@semochal/api-client', () => ({
 
 vi.mock('@/lib/image-compression', () => ({
   AD_IMAGE_PRESETS: {
-    hero: { maxWidth: 1060, quality: 0.8 },
-    gallery: { maxWidth: 315, quality: 0.8 },
+    hero: { initialQuality: 0.8, maxSizeMB: 0.3, maxWidthOrHeight: 1920 },
+    gallery: { initialQuality: 0.8, maxSizeMB: 0.15, maxWidthOrHeight: 900 },
+  },
+  CROPPED_AD_IMAGE_PRESETS: {
+    hero: { initialQuality: 0.95, maxSizeMB: 1, maxWidthOrHeight: 2400 },
+    gallery: { initialQuality: 0.95, maxSizeMB: 0.5, maxWidthOrHeight: 1200 },
   },
   compressToWebP: vi.fn(async () => ({
     file: new File(['webp'], 'ad.webp', { type: 'image/webp' }),

@@ -16,11 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -31,13 +31,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -49,11 +49,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -64,11 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -77,37 +77,76 @@ jobs:
       - run: pnpm --filter @semochal/server test:cov
       # api-client regression tests (orval envelope contract) — added in #91.
       - run: pnpm --filter @semochal/api-client test
-      # Standalone script tests — merged-branch-cleanup (added in #376).
+      # Standalone script tests — merged-branch-cleanup (added in #376) and secret-scan rules.
       - run: node --test scripts/merged-branch-cleanup.test.mjs
+      - run: node --test scripts/merged-branch-cleanup.test.mjs
+      - run: node --test scripts/secret-scan.test.mjs
       # QA report schema, privacy, and automation-boundary tests.
       - run: node --test scripts/qa-report.test.mjs
       # QA dispatch payload privacy tests.
       - run: node --test scripts/ai-dispatch.test.mjs
       # Playwright/GLM contract tests do not launch a browser or call the network.
       - run: node --test qa/*.test.mjs
+      # Production deployment Lambda unit tests — same step as ci.yml.
+      - run: node --test infra/terraform/lambda/secret-redeploy.test.mjs
+
+  # jsdom 30(front 테스트 환경)이 요구하는 Node 22+에서만 프론트 테스트를 돌린다.
+  # Repo 기준 런타임은 Node 20(engines, Docker)이며 앱 런타임은 jsdom을 로드하지 않으므로
+  # 테스트 전용 툴체인 요구사항으로 분리한다 — 이 브랜치 이전에도 Node 20에서는 깨져 있었다.
+  front-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # front 테스트는 api-client의 dist를 import하므로 먼저 빌드한다(동일 순서는 build 잡과 같다).
+      - run: pnpm --filter @semochal/api-client build
+      # Front unit tests (Vitest) — same command as the front workspace `test` script.
+      - run: pnpm --filter @semochal/front test
 
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @semochal/api-client build
       - run: pnpm --filter @semochal/front build
+        env:
+          # CI 검증 빌드용 기본값. 실제 배포 환경에서는 운영 API 오리진을 반드시 명시해야 빌드된다(프론트 next.config의 fail-closed 검증).
+          API_PROXY_TARGET: http://localhost:3001
       - run: pnpm --filter @semochal/server build
+
+  docker-build:
+    name: Build API and worker images
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Build API image
+        run: docker build --file server/Dockerfile.api --tag semochal-api:ci .
+      - name: Build worker image
+        run: docker build --file server/Dockerfile.worker --tag semochal-worker:ci .
 
   secret-scan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
       - run: node scripts/secret-scan.mjs --base "origin/${{ github.base_ref }}"
@@ -116,11 +155,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
         with:
           version: 12.3.4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 20
           cache: pnpm
@@ -130,7 +169,18 @@ jobs:
 
   quality-gate:
     if: always()
-    needs: [lint, formatting, typecheck, tests, build, secret-scan, dependency-audit]
+    needs:
+      [
+        lint,
+        formatting,
+        typecheck,
+        tests,
+        build,
+        docker-build,
+        front-tests,
+        secret-scan,
+        dependency-audit,
+      ]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -141,16 +191,20 @@ jobs:
           TYPECHECK: ${{ needs.typecheck.result }}
           TESTS: ${{ needs.tests.result }}
           BUILD: ${{ needs.build.result }}
+          DOCKER_BUILD: ${{ needs.docker-build.result }}
+          FRONT_TESTS: ${{ needs.front-tests.result }}
           SECRET_SCAN: ${{ needs.secret-scan.result }}
           DEPENDENCY_AUDIT: ${{ needs.dependency-audit.result }}
         run: |
-          printf 'lint: %s\nformatting: %s\ntypecheck: %s\ntests: %s\nbuild: %s\nsecret-scan: %s\ndependency-audit: %s\n' \
-            "$LINT" "$FORMATTING" "$TYPECHECK" "$TESTS" "$BUILD" "$SECRET_SCAN" "$DEPENDENCY_AUDIT"
+          printf 'lint: %s\nformatting: %s\ntypecheck: %s\ntests: %s\nbuild: %s\ndocker-build: %s\nfront-tests: %s\nsecret-scan: %s\ndependency-audit: %s\n' \
+            "$LINT" "$FORMATTING" "$TYPECHECK" "$TESTS" "$BUILD" "$DOCKER_BUILD" "$FRONT_TESTS" "$SECRET_SCAN" "$DEPENDENCY_AUDIT"
           test "$LINT" = success
           test "$FORMATTING" = success
           test "$TYPECHECK" = success
           test "$TESTS" = success
           test "$BUILD" = success
+          test "$DOCKER_BUILD" = success
+          test "$FRONT_TESTS" = success
           test "$SECRET_SCAN" = success
           test "$DEPENDENCY_AUDIT" = success
           echo QUALITY_GATE_PASS

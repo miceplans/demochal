@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Inject,
@@ -12,6 +13,9 @@ import { AdminAlertsService } from '../admin/admin-alerts.service.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
+import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+
+const LIST_MAX_LIMIT = 100;
 
 @Injectable()
 export class BusinessesService {
@@ -50,13 +54,17 @@ export class BusinessesService {
     return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
   }
 
-  async findById(id: string) {
+  // 사업자번호·주소·연락처 등 민감 필드를 담은 전체 행이므로 소유자나 관리자만 볼 수 있다.
+  async findById(id: string, user: AuthenticatedUser) {
     const [business] = await this.db
       .select()
       .from(businesses)
       .where(eq(businesses.id, id))
       .limit(1);
     if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
+    if (business.ownerUserId !== user.id && user.role !== 'admin') {
+      throw new ForbiddenException('기업 정보 조회 권한이 없습니다.');
+    }
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
@@ -78,16 +86,30 @@ export class BusinessesService {
   }
 
   async listMyChallenges(ownerUserId: string, cursor?: string, limit = 20) {
-    const where = cursor ? lt(challenges.createdAt, new Date(cursor)) : undefined;
+    // LIMIT·slice·hasMore가 모두 같은 clamped 값을 써야 한다 — SQL만 clamp하고
+    // slice/hasMore는 검증 안 된 원본 limit을 쓰면 페이지 크기가 어긋난다.
+    const pageSize = Math.min(
+      Math.max(Number.isFinite(limit) ? Math.floor(limit) : 20, 1),
+      LIST_MAX_LIMIT,
+    );
+    let before: Date | undefined;
+    if (cursor !== undefined) {
+      const parsed = new Date(cursor);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new BadRequestException('유효하지 않은 커서입니다.');
+      }
+      before = parsed;
+    }
+    const where = before ? lt(challenges.createdAt, before) : undefined;
     const rows = await this.db
       .select({ challenge: challenges })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
       .where(and(eq(businesses.ownerUserId, ownerUserId), where))
       .orderBy(desc(challenges.createdAt))
-      .limit(Math.min(Math.max(limit, 1), 100) + 1);
-    const hasMore = rows.length > limit;
-    const items = rows.slice(0, limit).map(({ challenge }) => challenge);
+      .limit(pageSize + 1);
+    const hasMore = rows.length > pageSize;
+    const items = rows.slice(0, pageSize).map(({ challenge }) => challenge);
     return { items, nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null };
   }
 

@@ -153,12 +153,13 @@ export class TeamsService {
     return team;
   }
 
-  async findById(id: string) {
+  async findById(id: string, user?: AuthenticatedUser) {
     const [row] = await this.db
       .select({
         team: teams,
         challengeTitle: challenges.title,
         challengePosterFileId: challenges.posterFileId,
+        challengeVisibility: challenges.visibility,
         leaderName: users.name,
       })
       .from(teams)
@@ -180,13 +181,27 @@ export class TeamsService {
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, id));
 
+    // list()는 비공개 챌린지를 아예 목록에서 제외하지만, 상세는 팀 관계자의 접근을 허용한다:
+    // 비공개 챌린지의 팀은 리더·팀원(지원 포함)·관리자만 볼 수 있다.
+    const isLeader = user?.id === row.team.leaderUserId;
+    const isMember = user ? members.some((member) => member.userId === user.id) : false;
+    if (row.challengeVisibility !== 'public' && !isLeader && !isMember && user?.role !== 'admin') {
+      throw new NotFoundException('팀을 찾을 수 없습니다.');
+    }
+    // 지원 대기(pending)·초대 대기(invited) 명단은 리더와 팀원에게만 보인다 — 익명·일반
+    // 방문자 응답에는 수락된 멤버만 담는다(팀원 본인 행은 팀원이니 그대로 노출된다).
+    const visibleMembers =
+      isLeader || isMember || user?.role === 'admin'
+        ? members
+        : members.filter((member) => member.status === 'accepted');
+
     return {
       ...row.team,
       challengeTitle: row.challengeTitle,
       challengePosterFileId: row.challengePosterFileId,
       challengePosterUrl: await this.filesService.resolvePublicUrl(row.challengePosterFileId),
       leaderName: row.leaderName,
-      members,
+      members: visibleMembers,
     };
   }
 

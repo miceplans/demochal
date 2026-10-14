@@ -4,6 +4,7 @@
 // down every grandchild (next dev workers, tsc watchers, ...), freeing ports.
 
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
@@ -117,10 +118,50 @@ function runOnce(name, cmd, args, next) {
   });
 }
 
+// Migrations are applied manually (CI owns production migration), so boot only
+// probes DB connectivity: a down local DB must not abort `pnpm dev`, but the
+// dev should be told how to migrate before the servers start.
+function probeDatabase(next) {
+  let url;
+  try {
+    url = new URL(process.env.DATABASE_URL ?? 'postgres://127.0.0.1:5432/postgres');
+  } catch {
+    url = new URL('postgres://127.0.0.1:5432/postgres');
+  }
+  const host = url.hostname;
+  const port = Number(url.port || 5432);
+  const hint = () =>
+    console.error(
+      `[db] PostgreSQL is not reachable at ${host}:${port} — start it (e.g. docker compose up -d db)\n` +
+        '[db] and apply migrations manually: pnpm --filter @semochal/server db:migrate',
+    );
+  const socket = net.connect(port, host);
+  socket.setTimeout(2000);
+  let settled = false;
+  const finish = () => {
+    if (settled) return;
+    settled = true;
+    socket.destroy();
+    next();
+  };
+  socket.once('connect', () => {
+    socket.end();
+    finish();
+  });
+  socket.once('error', () => {
+    hint();
+    finish();
+  });
+  socket.once('timeout', () => {
+    hint();
+    finish();
+  });
+}
+
 // 1) one-shot build (replaces the old `predev` hook)
 runOnce('api-client build', 'pnpm', ['--filter', '@semochal/api-client', 'build'], () => {
-  // 2) DB migrations — fail fast rather than serving against a stale local schema
-  runOnce('db migrate', 'pnpm', ['--filter', '@semochal/server', 'run', 'db:migrate'], () => {
+  // 2) DB connectivity check (migrations stay manual — see probeDatabase)
+  probeDatabase(() => {
     // 3) start dev servers
     for (const task of TASKS) startTask(task);
   });

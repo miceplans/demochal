@@ -14,16 +14,20 @@ const PAGE_SIZE = 100;
 const MAX_PAGES = 500;
 
 // 서버 렌더링에는 상대 경로('/api' 리라이트)가 통하지 않아 API 서버 주소로 직접 호출한다.
-function serverApiBaseUrl(): string {
+// 프로덕션에서 주소가 확정되지 않았으면 null을 반해 동적 조회를 생략한다(개발만 localhost 폰백).
+function serverApiBaseUrl(): string | null {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
   const target = process.env.API_PROXY_TARGET ?? (apiUrl?.startsWith('http') ? apiUrl : undefined);
-  return (target ?? 'http://localhost:3001').replace(/\/$/, '');
+  if (target) return target.replace(/\/$/, '');
+  return process.env.NODE_ENV === 'production' ? null : 'http://localhost:3001';
 }
 
 // 공개(published) 콘테스트만 /contests/{id}로 열거한다. draft는 목록 API가, closed는 includeClosed=false가 거른다.
 // lastModified는 API가 내려주는 createdAt(콘테스트에 updatedAt 컬럼이 없음)이며 빌드 시각을 쓰지 않는다(#354).
 async function contestEntries(limit: number): Promise<MetadataRoute.Sitemap> {
-  configureGeneratedApi({ baseUrl: serverApiBaseUrl() });
+  const baseUrl = serverApiBaseUrl();
+  if (!baseUrl) return [];
+  configureGeneratedApi({ baseUrl });
   const entries: MetadataRoute.Sitemap = [];
   let cursor: string | undefined;
   for (let page = 0; page < MAX_PAGES && entries.length < limit; page += 1) {

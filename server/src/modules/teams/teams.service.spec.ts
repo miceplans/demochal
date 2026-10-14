@@ -297,9 +297,10 @@ describe('TeamsService', () => {
       .mockReturnValueOnce(
         selectChain([
           {
-            team: { id: 'team-1', title: 'AI 해커톤 팀' },
+            team: { id: 'team-1', title: 'AI 해커톤 팀', leaderUserId: leader.id },
             challengeTitle: '2026 AI 챌린지',
             challengePosterFileId: 'file-poster-1',
+            challengeVisibility: 'public',
             leaderName: 'Leader',
           },
         ]),
@@ -323,6 +324,118 @@ describe('TeamsService', () => {
     expect(result.leaderName).toBe('Leader');
     expect(result.members).toHaveLength(1);
     expect(result.members[0]).toMatchObject({ userId: leader.id, status: 'accepted' });
+  });
+
+  describe('findById access control', () => {
+    const admin: AuthenticatedUser = {
+      id: 'admin-1',
+      email: 'a@x.com',
+      name: 'Admin',
+      role: 'admin',
+    };
+    const stranger: AuthenticatedUser = {
+      id: 'user-x',
+      email: 'x@x.com',
+      name: 'Stranger',
+      role: 'user',
+    };
+    const acceptedMember: AuthenticatedUser = {
+      id: 'user-member',
+      email: 'm@x.com',
+      name: 'Member',
+      role: 'user',
+    };
+    const roster = [
+      { id: 'member-1', userId: leader.id, name: 'Leader', role: '기획', status: 'accepted' },
+      {
+        id: 'member-2',
+        userId: acceptedMember.id,
+        name: 'Member',
+        role: '개발',
+        status: 'accepted',
+      },
+      {
+        id: 'member-3',
+        userId: applicant.id,
+        name: 'Applicant',
+        role: '디자인',
+        status: 'pending',
+      },
+    ];
+
+    function teamRow(visibility: string) {
+      return {
+        team: { id: 'team-1', title: 'AI 해커톤 팀', leaderUserId: leader.id },
+        challengeTitle: '2026 AI 챌린지',
+        challengePosterFileId: null,
+        challengeVisibility: visibility,
+        leaderName: 'Leader',
+      };
+    }
+
+    function createFindByIdService(visibility: string, members: unknown[]) {
+      const db = createDbStub();
+      db.select
+        .mockReturnValueOnce(selectChain([teamRow(visibility)]))
+        .mockReturnValueOnce(selectChain(members));
+      return new TeamsService(db, createNotificationsStub() as any, createFilesStub() as any);
+    }
+
+    it('hides a non-public challenge team from anonymous callers (404)', async () => {
+      const service = createFindByIdService('private', roster);
+      await expect(service.findById('team-1')).rejects.toThrow(NotFoundException);
+    });
+
+    it('hides a non-public challenge team from users outside the team (404)', async () => {
+      const service = createFindByIdService('private', roster);
+      await expect(service.findById('team-1', stranger)).rejects.toThrow(NotFoundException);
+    });
+
+    it('shows a non-public challenge team to its pending applicant with their own row', async () => {
+      const service = createFindByIdService('private', roster);
+      const result = await service.findById('team-1', applicant);
+      expect(result.members).toHaveLength(3);
+    });
+
+    it('shows a non-public challenge team to the leader', async () => {
+      const service = createFindByIdService('private', roster);
+      const result = await service.findById('team-1', leader);
+      expect(result.members).toHaveLength(3);
+    });
+
+    it('shows a non-public challenge team to an admin', async () => {
+      const service = createFindByIdService('private', roster);
+      await expect(service.findById('team-1', admin)).resolves.toBeDefined();
+    });
+
+    it('excludes pending applicants from the public response of a public team', async () => {
+      const service = createFindByIdService('public', roster);
+      const result = await service.findById('team-1', stranger);
+      expect(result.members.map((member: { status: string }) => member.status)).toEqual([
+        'accepted',
+        'accepted',
+      ]);
+      expect(
+        result.members.some((member: { userId: string }) => member.userId === applicant.id),
+      ).toBe(false);
+    });
+
+    it('serves anonymous callers the accepted members of a public team', async () => {
+      const service = createFindByIdService('public', roster);
+      const result = await service.findById('team-1');
+      expect(result.members).toHaveLength(2);
+    });
+
+    it('includes pending applicants for the leader and accepted members', async () => {
+      const leaderService = createFindByIdService('public', roster);
+      await expect(leaderService.findById('team-1', leader)).resolves.toMatchObject({
+        members: expect.arrayContaining([expect.objectContaining({ status: 'pending' })]),
+      });
+      const memberService = createFindByIdService('public', roster);
+      await expect(memberService.findById('team-1', acceptedMember)).resolves.toMatchObject({
+        members: expect.arrayContaining([expect.objectContaining({ status: 'pending' })]),
+      });
+    });
   });
 
   it('join throws 404 for a missing team', async () => {
