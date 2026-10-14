@@ -18,6 +18,7 @@ import { NOTIFICATION_EMAIL_EVENT } from '../notifications/email/notification-em
 import { renderNotificationEmail } from '../notifications/email/notification-email.templates.js';
 import { SUPPORT_EMAIL_EVENT } from '../notifications/email/support-email.js';
 import {
+  decodeMimeWords,
   normalizeMessageId,
   resolveThreadId,
   safeHeader,
@@ -33,7 +34,7 @@ function resolveCustomerEmail(
   inbound: Pick<EmailMessageRow, 'fromAddress'> | undefined,
   latest: Pick<EmailMessageRow, 'toAddresses'> | undefined,
 ) {
-  return inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '';
+  return decodeMimeWords(inbound?.fromAddress ?? latest?.toAddresses?.[0] ?? '');
 }
 
 @Injectable()
@@ -70,6 +71,7 @@ export class EmailService {
         const inbound = inboundByThread.get(thread.id);
         return {
           ...thread,
+          subject: thread.subject == null ? thread.subject : decodeMimeWords(thread.subject),
           customerEmail: resolveCustomerEmail(inbound, latest),
           lastMessage: latest?.textBody ?? latest?.htmlBody ?? '',
           lastMessageAt: latest?.sentAt ?? latest?.receivedAt ?? thread.updatedAt,
@@ -177,9 +179,12 @@ export class EmailService {
       : [];
     return {
       ...thread,
+      subject: thread.subject == null ? thread.subject : decodeMimeWords(thread.subject),
       customerEmail: resolveCustomerEmail(lastInbound, latestMessage),
       messages: messages.map((message) => ({
         ...message,
+        fromAddress: decodeMimeWords(message.fromAddress),
+        subject: message.subject == null ? message.subject : decodeMimeWords(message.subject),
         direction: message.direction.toLowerCase(),
         references: message.references ? message.references.split(/\s+/).filter(Boolean) : [],
         attachments: allAttachments.filter((attachment) => attachment.messageId === message.id),
