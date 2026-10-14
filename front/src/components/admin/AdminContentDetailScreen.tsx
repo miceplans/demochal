@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,48 +9,197 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
-import {
-  AdminInlineNotice,
-  AdminPageTitle,
-  AdminSectionTitle,
-  ApproveButton,
-  Badge,
-  RejectButton,
-} from './parts';
+import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
 import { useAdminHref } from './AdminShell';
 
-const EMPTY = '작성되지 않았어요';
+/* ---------- 레이아웃: 좌측 본문 + 우측 신고·확인 목록 ---------- */
 
-const Section = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
-const Panel = styled.div({
+const Layout = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 32 });
+const Main = styled.div({
+  flex: '1 1 0',
+  minWidth: 0,
+  maxWidth: 720,
   display: 'flex',
   flexDirection: 'column',
-  gap: 20,
-  padding: 24,
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 12,
-  background: c.white,
 });
-const Field = styled.div({ display: 'flex', flexDirection: 'column', gap: 4 });
-const Label = styled.span({ ...textStyle.metaText, color: c.gray500 });
-const LabelFor = styled.label({ ...textStyle.metaText, color: c.gray500 });
-const Text = styled.p({
-  margin: 0,
-  ...textStyle.bodySmall,
+const Side = styled.aside({
+  flex: '0 0 368px',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 24,
+});
+
+const BackButton = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 16,
+  alignSelf: 'flex-start',
+  padding: 0,
+  border: 0,
+  background: 'none',
+  cursor: 'pointer',
+  ...textStyle.body,
   color: c.gray900,
+});
+
+const Body = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 40,
+  padding: '30px 0',
+});
+
+/* ---------- 헤더 ---------- */
+
+const Header = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 24 });
+const Thumbnail = styled.div({
+  flex: '0 0 218px',
+  height: 187,
+  borderRadius: 19,
+  background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
+const HeaderInfo = styled.div({
+  alignSelf: 'stretch',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+});
+const HeaderTitle = styled.h1({
+  margin: 0,
+  fontSize: 22,
+  fontWeight: 700,
+  color: c.gray900,
+  wordBreak: 'break-word',
+});
+const HeaderSub = styled.p({ margin: '10px 0 0', ...textStyle.body, color: c.gray700 });
+const MetaList = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const MetaRow = styled.div({ display: 'flex', alignItems: 'center', gap: 9, fontSize: 11 });
+const MetaKey = styled.span({ fontWeight: 600, color: c.gray900, whiteSpace: 'nowrap' });
+const MetaValue = styled.span({ color: c.gray700 });
+const BadgeRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 });
+const HeaderBadge = styled.span<{ tone?: 'primary' | 'gray' }>(({ tone = 'primary' }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  padding: '4px 10px',
+  borderRadius: 4,
+  ...textStyle.subtitle,
+  background: tone === 'primary' ? c.primary : c.gray100,
+  color: tone === 'primary' ? c.white : c.gray700,
+}));
+
+/* ---------- 탭 · 본문 ---------- */
+
+const Tabs = styled.div({
+  display: 'flex',
+  borderBottom: `0.5px solid ${c.gray100}`,
+  marginBottom: 20,
+});
+const TabButton = styled.button<{ active: boolean }>(({ active }) => ({
+  padding: '10px 20px',
+  border: 0,
+  borderBottom: active ? `2px solid ${c.primary}` : '2px solid transparent',
+  background: 'none',
+  cursor: 'pointer',
+  fontSize: active ? 14 : 15,
+  fontWeight: active ? 600 : 400,
+  color: active ? c.primary : c.gray500,
+}));
+const Poster = styled.img({ width: '100%', display: 'block', objectFit: 'cover' });
+const SectionBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const SectionTitle = styled.p({ margin: 0, ...textStyle.h2, fontSize: 15, color: c.gray900 });
+const SectionText = styled.p({
+  margin: 0,
+  ...textStyle.body,
+  color: c.gray700,
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 });
-const TitleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
-const ReportItem = styled.li({
+const TeamLink = styled(Link)({
   display: 'flex',
   flexDirection: 'column',
-  gap: 4,
-  padding: '12px 0',
-  borderTop: `0.5px solid ${c.gray200}`,
-  '&:first-of-type': { borderTop: 0, paddingTop: 0 },
+  gap: 2,
+  padding: '14px 16px',
+  borderBottom: `0.5px solid ${c.gray200}`,
+  textDecoration: 'none',
+  color: c.gray900,
+  '&:hover': { background: c.gray100 },
 });
-const ReportList = styled.ul({ margin: 0, padding: 0, listStyle: 'none' });
+
+/* ---------- 우측 ---------- */
+
+const SideSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 4 });
+const SideTitle = styled.h2({ margin: 0, ...textStyle.h2, color: '#000' });
+const ReportBox = styled.ul({
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+});
+const ReportRow = styled.li({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  padding: '16px',
+  borderTop: `1px solid ${c.gray200}`,
+  '&:first-of-type': { borderTop: 0 },
+});
+const ReportSummary = styled.span({ fontSize: 16, lineHeight: 1.5, color: c.gray900 });
+const ReportMeta = styled.span({ ...textStyle.metaText, color: c.gray500 });
+
+const NextItem = styled(Link)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 7,
+  padding: 9,
+  borderRadius: 5,
+  textDecoration: 'none',
+  '&:hover': { background: c.gray100 },
+});
+const NextThumb = styled.div({
+  flex: '0 0 89px',
+  height: 89,
+  borderRadius: 11,
+  border: '0.9px solid #f0f1f3',
+  background: c.gray100,
+});
+const NextBody = styled.div({
+  flex: 1,
+  minWidth: 0,
+  alignSelf: 'stretch',
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+});
+const NextTitle = styled.span({
+  fontSize: 11.6,
+  fontWeight: 600,
+  lineHeight: 1.4,
+  color: c.gray900,
+});
+const NextMeta = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+});
+const MiniTag = styled.span<{ blue?: boolean }>(({ blue }) => ({
+  padding: '3px 5px',
+  borderRadius: 4,
+  fontSize: 9,
+  fontWeight: 500,
+  background: blue ? c.lightBlue : c.gray100,
+  color: blue ? c.primary : c.gray700,
+}));
+const MiniDday = styled.span({ fontSize: 10, fontWeight: 700, color: c.primary });
+
+/* ---------- 하단 이전 / 반려하기 ---------- */
+
+const RejectSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 12 });
+const LabelFor = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const ReasonTextarea = styled.textarea({
   width: '100%',
   boxSizing: 'border-box',
@@ -63,15 +213,29 @@ const ReasonTextarea = styled.textarea({
 });
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
 
-const formatDate = (iso: string) => (iso ? iso.slice(0, 10) : '');
-const statusLabel = (status: string) => (status === 'rejected' ? '반려됨' : status);
+const EMPTY = '작성되지 않았어요';
+const formatDateDot = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
+const daysLeft = (iso: string | undefined, now: number) =>
+  iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 86_400_000)) : 0;
 
-function Item({ label, children }: { label: string; children?: ReactNode }) {
+function Section({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <Field>
-      <Label>{label}</Label>
-      <Text>{children || EMPTY}</Text>
-    </Field>
+    <SectionBlock>
+      <SectionTitle>{title}</SectionTitle>
+      <SectionText>{children || EMPTY}</SectionText>
+    </SectionBlock>
+  );
+}
+
+function BackRow() {
+  const router = useRouter();
+  const hrefOf = useAdminHref();
+  return (
+    <BackButton type="button" onClick={() => router.push(hrefOf('/contents'))}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- 정적 SVG 아이콘 */}
+      <img src="/assets/icons/admin-back.svg" alt="" width={24} height={24} />
+      이전
+    </BackButton>
   );
 }
 
@@ -84,33 +248,86 @@ type ReportEntry = {
   status?: string;
 };
 
-function Reports({ reports }: { reports: ReportEntry[] }) {
+function ReportsBox({ title, reports }: { title: string; reports: ReportEntry[] }) {
   return (
-    <Section>
-      <AdminSectionTitle>접수된 신고</AdminSectionTitle>
-      <Panel>
+    <SideSection>
+      <SideTitle>{title}</SideTitle>
+      <ReportBox>
         {reports.length === 0 ? (
-          <Text>접수된 신고가 없어요.</Text>
+          <ReportRow>
+            <ReportSummary>접수된 신고가 없어요</ReportSummary>
+          </ReportRow>
         ) : (
-          <ReportList>
-            {reports.map((report) => (
-              <ReportItem key={report.id}>
-                <Text>
-                  <strong>{report.summary}</strong>
-                  {report.status === 'open' ? ' · 처리 대기' : ' · 처리됨'}
-                </Text>
-                {report.detail ? <Text>{report.detail}</Text> : null}
-                <Label>
-                  {[report.reporter, formatDate(report.reportedAt ?? '')]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Label>
-              </ReportItem>
-            ))}
-          </ReportList>
+          reports.map((report) => (
+            <ReportRow key={report.id}>
+              <ReportSummary>{report.summary}</ReportSummary>
+              {report.detail ? <ReportMeta>{report.detail}</ReportMeta> : null}
+              <ReportMeta>
+                {[
+                  report.reporter,
+                  formatDateDot(report.reportedAt),
+                  report.status === 'open' ? '처리 대기' : '처리됨',
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </ReportMeta>
+            </ReportRow>
+          ))
         )}
-      </Panel>
-    </Section>
+      </ReportBox>
+    </SideSection>
+  );
+}
+
+/** 우측 "확인해야할 공모전/팀" — 처리되지 않은 신고가 걸린(unread) 다른 콘텐츠. */
+function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: string }) {
+  const hrefOf = useAdminHref();
+  const query = generated.useListAdminContents(
+    { teamsLimit: 8, contestsLimit: 8 },
+    { query: { meta: LOCAL_ERROR_TOAST_META } },
+  );
+  const data = query.data?.data;
+  const items =
+    kind === 'team'
+      ? (data?.teams ?? [])
+          .filter((team) => team.unread && team.id !== currentId)
+          .slice(0, 5)
+          .map((team) => (
+            <NextItem key={team.id} href={hrefOf(`/contents/teams/${team.id}`)}>
+              <NextThumb />
+              <NextBody>
+                <NextTitle>{team.name}</NextTitle>
+                <NextMeta>
+                  <MiniTag>{team.challenge}</MiniTag>
+                  <MiniTag blue>{team.members}</MiniTag>
+                </NextMeta>
+              </NextBody>
+            </NextItem>
+          ))
+      : (data?.contests ?? [])
+          .filter((contest) => contest.unread && contest.id !== currentId)
+          .slice(0, 5)
+          .map((contest) => (
+            <NextItem key={contest.id} href={hrefOf(`/contents/challenges/${contest.id}`)}>
+              <NextThumb />
+              <NextBody>
+                <NextTitle>{contest.title}</NextTitle>
+                <NextMeta>
+                  <MiniTag>{contest.category}</MiniTag>
+                  <MiniDday>{contest.dday}</MiniDday>
+                </NextMeta>
+                <NextMeta>
+                  <span />
+                  <MiniTag blue>{contest.teams}</MiniTag>
+                </NextMeta>
+              </NextBody>
+            </NextItem>
+          ));
+  return (
+    <SideSection>
+      <SideTitle>{kind === 'team' ? '확인해야할 팀' : '확인해야할 공모전'}</SideTitle>
+      {items.length > 0 ? items : <SectionText>확인할 항목이 없어요.</SectionText>}
+    </SideSection>
   );
 }
 
@@ -128,9 +345,9 @@ function RejectBar({
   const hrefOf = useAdminHref();
   const [reason, setReason] = useState('');
   return (
-    <Section>
+    <RejectSection>
       {rejected ? null : (
-        <Field>
+        <>
           <LabelFor htmlFor="content-reject-reason">반려 사유</LabelFor>
           <ReasonTextarea
             id="content-reject-reason"
@@ -140,7 +357,7 @@ function RejectBar({
             maxLength={500}
             rows={4}
           />
-        </Field>
+        </>
       )}
       <Actions>
         <RejectButton type="button" onClick={() => router.push(hrefOf('/contents'))}>
@@ -154,7 +371,7 @@ function RejectBar({
           {rejected ? '반려됨' : pending ? '처리 중…' : '반려하기'}
         </ApproveButton>
       </Actions>
-    </Section>
+    </RejectSection>
   );
 }
 
@@ -173,6 +390,149 @@ function useRejectHandlers() {
   };
 }
 
+/* ---------- 챌린지 상세 ---------- */
+
+export function AdminChallengeDetailScreen({ id }: { id: string }) {
+  const hrefOf = useAdminHref();
+  const [tab, setTab] = useState<'info' | 'teams'>('info');
+  // D-day 기준 시각은 마운트 시 한 번만 잡는다.
+  const [now] = useState(() => Date.now());
+  const query = generated.useGetAdminChallengeDetail(id, {
+    query: { meta: LOCAL_ERROR_TOAST_META },
+  });
+  const reject = generated.useRejectAdminChallenge({ mutation: useRejectHandlers() });
+  const challenge = query.data?.status === 200 ? query.data.data : undefined;
+
+  if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
+  if (!challenge) return <AdminInlineNotice>공고를 불러올 수 없어요.</AdminInlineNotice>;
+
+  const rejected = challenge.status === 'rejected';
+  const period = `${formatDateDot(challenge.startDate)} ~ ${formatDateDot(challenge.endDate)}`;
+  const teams = challenge.teams ?? [];
+  const prize = challenge.prizeAmount ? `${challenge.prizeAmount.toLocaleString()}만원` : '';
+  const fee = (challenge.price ?? 0) > 0 ? `${challenge.price?.toLocaleString()}원` : '무료';
+
+  return (
+    <Layout>
+      <Main>
+        <BackRow />
+        <Body>
+          <Header>
+            <Thumbnail>
+              {challenge.posterUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- 서버가 내려주는 외부 포스터 URL
+                <img src={challenge.posterUrl} alt="" />
+              ) : null}
+            </Thumbnail>
+            <HeaderInfo>
+              <div>
+                <HeaderTitle>{challenge.title}</HeaderTitle>
+                <HeaderSub>{challenge.organization}</HeaderSub>
+              </div>
+              <div>
+                <MetaList>
+                  <MetaRow>
+                    <MetaKey>자격 / 대상</MetaKey>
+                    <MetaValue>{(challenge.targets ?? []).join(', ') || EMPTY}</MetaValue>
+                  </MetaRow>
+                  <MetaRow>
+                    <MetaKey>접수기간</MetaKey>
+                    <MetaValue>{period}</MetaValue>
+                  </MetaRow>
+                </MetaList>
+                <BadgeRow>
+                  <HeaderBadge>D-{daysLeft(challenge.endDate, now)}</HeaderBadge>
+                  {rejected ? <HeaderBadge tone="gray">반려됨</HeaderBadge> : null}
+                </BadgeRow>
+              </div>
+            </HeaderInfo>
+          </Header>
+
+          <div>
+            <Tabs role="tablist">
+              <TabButton
+                type="button"
+                role="tab"
+                aria-selected={tab === 'info'}
+                active={tab === 'info'}
+                onClick={() => setTab('info')}
+              >
+                정보
+              </TabButton>
+              <TabButton
+                type="button"
+                role="tab"
+                aria-selected={tab === 'teams'}
+                active={tab === 'teams'}
+                onClick={() => setTab('teams')}
+              >
+                팀모집
+              </TabButton>
+            </Tabs>
+            {tab === 'info' ? (
+              <SectionBlock style={{ gap: 20 }}>
+                {challenge.posterUrl ? <Poster src={challenge.posterUrl} alt="" /> : null}
+                <Body style={{ padding: 0 }}>
+                  <Section title="자격 / 대상">
+                    {[
+                      (challenge.targets ?? []).join(', '),
+                      `모집 인원 ${challenge.capacity ?? 0}명`,
+                    ]
+                      .filter(Boolean)
+                      .join('\n')}
+                  </Section>
+                  <Section title="일정">{`접수기간: ${period}`}</Section>
+                  <Section title="상금">{prize}</Section>
+                  <Section title="참가비 · 지원 방식">
+                    {[
+                      fee,
+                      challenge.recruitMethod === 'external'
+                        ? `외부 링크 ${challenge.recruitUrl ?? ''}`.trim()
+                        : '세모챌 신청서',
+                    ].join('\n')}
+                  </Section>
+                  <Section title="한줄 소개">{challenge.summary}</Section>
+                  <Section title="공고 내용">{challenge.description}</Section>
+                  <Section title="해시태그">
+                    {(challenge.hashtags ?? []).map((tag) => `#${tag}`).join(' ')}
+                  </Section>
+                </Body>
+              </SectionBlock>
+            ) : teams.length === 0 ? (
+              <SectionText>등록된 팀 모집글이 없어요.</SectionText>
+            ) : (
+              <div>
+                {teams.map((team) => (
+                  <TeamLink key={team.id} href={hrefOf(`/contents/teams/${team.id}`)}>
+                    <SectionTitle>{team.name}</SectionTitle>
+                    <SectionText>
+                      {[team.leaderName, team.status === 'rejected' ? '반려됨' : '']
+                        .filter(Boolean)
+                        .join(' · ')}
+                    </SectionText>
+                  </TeamLink>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <RejectBar
+            rejected={rejected}
+            pending={reject.isPending}
+            onReject={(reason) => reject.mutate({ id, data: { reason } })}
+          />
+        </Body>
+      </Main>
+      <Side>
+        <ReportsBox title="이 공모전에 들어온 신고" reports={challenge.reports ?? []} />
+        <NextList kind="challenge" currentId={id} />
+      </Side>
+    </Layout>
+  );
+}
+
+/* ---------- 팀 상세 (챌린지 상세와 같은 구성) ---------- */
+
 export function AdminTeamDetailScreen({ id }: { id: string }) {
   const query = generated.useGetAdminTeamDetail(id, {
     query: { meta: LOCAL_ERROR_TOAST_META },
@@ -183,97 +543,78 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
   if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
   if (!team) return <AdminInlineNotice>팀을 불러올 수 없어요.</AdminInlineNotice>;
 
-  return (
-    <>
-      <TitleRow>
-        <AdminPageTitle>{team.name}</AdminPageTitle>
-        {team.status === 'rejected' ? <Badge tone="red">{statusLabel(team.status)}</Badge> : null}
-      </TitleRow>
-      <Section>
-        <AdminSectionTitle>모집글 내용</AdminSectionTitle>
-        <Panel>
-          <Item label="소속 챌린지">{team.challenge}</Item>
-          <Item label="팀장">
-            {[team.leaderName, team.leaderRole, team.region].filter(Boolean).join(' · ')}
-          </Item>
-          <Item label="모집 역할">
-            {(team.openRoles ?? []).map((slot) => `${slot.role} ${slot.count}명`).join(', ')}
-          </Item>
-          <Item label="참여 팀원">
-            {(team.members ?? [])
-              .map((member) => [member.name, member.role].filter(Boolean).join(' · '))
-              .join('\n')}
-          </Item>
-          <Item label="팀 소개">{team.introduction}</Item>
-          <Item label="우대사항">{team.preferred}</Item>
-          <Item label="기타">{team.etc}</Item>
-          <Item label="등록일">{formatDate(team.createdAt ?? '')}</Item>
-        </Panel>
-      </Section>
-      <Reports reports={team.reports ?? []} />
-      <RejectBar
-        rejected={team.status === 'rejected'}
-        pending={reject.isPending}
-        onReject={(reason) => reject.mutate({ id, data: { reason } })}
-      />
-    </>
-  );
-}
-
-export function AdminChallengeDetailScreen({ id }: { id: string }) {
-  const query = generated.useGetAdminChallengeDetail(id, {
-    query: { meta: LOCAL_ERROR_TOAST_META },
-  });
-  const reject = generated.useRejectAdminChallenge({ mutation: useRejectHandlers() });
-  const challenge = query.data?.status === 200 ? query.data.data : undefined;
-
-  if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
-  if (!challenge) return <AdminInlineNotice>공고를 불러올 수 없어요.</AdminInlineNotice>;
+  const rejected = team.status === 'rejected';
 
   return (
-    <>
-      <TitleRow>
-        <AdminPageTitle>{challenge.title}</AdminPageTitle>
-        {challenge.status === 'rejected' ? (
-          <Badge tone="red">{statusLabel(challenge.status)}</Badge>
-        ) : null}
-      </TitleRow>
-      <Section>
-        <AdminSectionTitle>공고 내용</AdminSectionTitle>
-        <Panel>
-          <Item label="주최 기관">{challenge.organization}</Item>
-          <Item label="카테고리">{challenge.category}</Item>
-          <Item label="한줄 소개">{challenge.summary}</Item>
-          <Item label="접수 기간">
-            {`${formatDate(challenge.startDate ?? '')} ~ ${formatDate(challenge.endDate ?? '')}`}
-          </Item>
-          <Item label="모집 인원 · 참가비">
-            {`${challenge.capacity ?? 0}명 · ${
-              (challenge.price ?? 0) > 0 ? `${challenge.price?.toLocaleString()}원` : '무료'
-            }`}
-          </Item>
-          <Item label="총상금">
-            {challenge.prizeAmount ? `${challenge.prizeAmount.toLocaleString()}만원` : ''}
-          </Item>
-          <Item label="대상">{(challenge.targets ?? []).join(', ')}</Item>
-          <Item label="해시태그">
-            {(challenge.hashtags ?? []).map((tag) => `#${tag}`).join(' ')}
-          </Item>
-          <Item label="지원 방식">
-            {challenge.recruitMethod === 'external'
-              ? `외부 링크 ${challenge.recruitUrl ?? ''}`.trim()
-              : '세모챌 신청서'}
-          </Item>
-          <Item label="팀 모집">{`${challenge.teamsCount ?? 0}건`}</Item>
-          <Item label="공고 본문">{challenge.description}</Item>
-        </Panel>
-      </Section>
-      <Reports reports={challenge.reports ?? []} />
-      <RejectBar
-        rejected={challenge.status === 'rejected'}
-        pending={reject.isPending}
-        onReject={(reason) => reject.mutate({ id, data: { reason } })}
-      />
-    </>
+    <Layout>
+      <Main>
+        <BackRow />
+        <Body>
+          <Header>
+            <Thumbnail />
+            <HeaderInfo>
+              <div>
+                <HeaderTitle>{team.name}</HeaderTitle>
+                <HeaderSub>{team.challenge}</HeaderSub>
+              </div>
+              <div>
+                <MetaList>
+                  <MetaRow>
+                    <MetaKey>팀장</MetaKey>
+                    <MetaValue>
+                      {[team.leaderName, team.leaderRole].filter(Boolean).join(' · ')}
+                    </MetaValue>
+                  </MetaRow>
+                  <MetaRow>
+                    <MetaKey>지역</MetaKey>
+                    <MetaValue>{team.region || EMPTY}</MetaValue>
+                  </MetaRow>
+                  <MetaRow>
+                    <MetaKey>등록일</MetaKey>
+                    <MetaValue>{formatDateDot(team.createdAt)}</MetaValue>
+                  </MetaRow>
+                </MetaList>
+                {rejected ? (
+                  <BadgeRow>
+                    <HeaderBadge tone="gray">반려됨</HeaderBadge>
+                  </BadgeRow>
+                ) : null}
+              </div>
+            </HeaderInfo>
+          </Header>
+
+          <div>
+            <Tabs role="tablist">
+              <TabButton type="button" role="tab" aria-selected active>
+                정보
+              </TabButton>
+            </Tabs>
+            <Body style={{ padding: 0 }}>
+              <Section title="팀 소개">{team.introduction}</Section>
+              <Section title="모집 역할">
+                {(team.openRoles ?? []).map((slot) => `${slot.role} ${slot.count}명`).join('\n')}
+              </Section>
+              <Section title="참여 팀원">
+                {(team.members ?? [])
+                  .map((member) => [member.name, member.role].filter(Boolean).join(' · '))
+                  .join('\n')}
+              </Section>
+              <Section title="우대사항">{team.preferred}</Section>
+              <Section title="기타">{team.etc}</Section>
+            </Body>
+          </div>
+
+          <RejectBar
+            rejected={rejected}
+            pending={reject.isPending}
+            onReject={(reason) => reject.mutate({ id, data: { reason } })}
+          />
+        </Body>
+      </Main>
+      <Side>
+        <ReportsBox title="이 팀에 들어온 신고" reports={team.reports ?? []} />
+        <NextList kind="team" currentId={id} />
+      </Side>
+    </Layout>
   );
 }

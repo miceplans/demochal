@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { AdminChallengeDetailTeamsItem } from './adminChallengeDetailTeamsItem';
 import type { Report } from './report';
 
 export interface AdminChallengeDetail {
@@ -41,7 +42,13 @@ export interface AdminChallengeDetail {
   hashtags?: string[];
   recruitMethod?: string;
   recruitUrl?: string;
-  teamsCount?: number;
+  /**
+     * 공개 포스터 URL(없으면 null)
+     * @nullable
+     */
+  posterUrl?: string | null;
+  /** 이 챌린지에 등록된 팀 모집글 */
+  teams?: AdminChallengeDetailTeamsItem[];
   createdAt?: string;
   reports?: Report[];
 }

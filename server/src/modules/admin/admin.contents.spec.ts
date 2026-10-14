@@ -133,13 +133,17 @@ describe('AdminService — content detail', () => {
       createdAt: new Date('2026-09-30T00:00:00.000Z'),
     };
     const { db } = createDbStub({
-      select: [[{ challenge, organization: '세모기관' }], [{ count: 3 }], []],
+      select: [
+        [{ challenge, organization: '세모기관' }],
+        [{ id: 't1', title: '세모팀', status: 'recruiting', leaderName: '김팀장' }],
+        [],
+      ],
     });
     const result = await createService(db).service.getChallengeDetail('ch1');
     expect(result).toMatchObject({
       organization: '세모기관',
       description: '본문',
-      teamsCount: 3,
+      teams: [{ id: 't1', name: '세모팀', leaderName: '김팀장', status: 'recruiting' }],
       targets: [],
       reports: [],
     });

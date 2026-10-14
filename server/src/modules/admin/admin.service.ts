@@ -663,11 +663,14 @@ export class AdminService {
     if (!row) throw new NotFoundException('공고를 찾을 수 없습니다.');
     const { challenge } = row;
 
-    const [teamCount] = await this.db
-      .select({ count: countRows })
+    const teamRows = await this.db
+      .select({ id: teams.id, title: teams.title, status: teams.status, leaderName: users.name })
       .from(teams)
-      .where(eq(teams.challengeId, id));
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .where(eq(teams.challengeId, id))
+      .orderBy(desc(teams.createdAt));
     const reportRows = await this.listTargetReports('challenge', id);
+    const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
 
     return {
       id: challenge.id,
@@ -686,7 +689,13 @@ export class AdminService {
       hashtags: challenge.hashtags,
       recruitMethod: challenge.recruitMethod,
       recruitUrl: challenge.recruitUrl ?? '',
-      teamsCount: teamCount?.count ?? 0,
+      posterUrl,
+      teams: teamRows.map((team) => ({
+        id: team.id,
+        name: team.title,
+        leaderName: team.leaderName,
+        status: team.status,
+      })),
       createdAt: challenge.createdAt.toISOString(),
       reports: reportRows.map((report) => this.toReport(report)),
     };
