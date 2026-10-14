@@ -382,10 +382,15 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
               if (!selected.customerEmail) return;
               const write = navigator.clipboard?.writeText;
               if (!write) return;
-              void write.call(navigator.clipboard, selected.customerEmail).then(() => {
-                setCopied(true);
-                window.setTimeout(() => setCopied(false), 1600);
-              });
+              void write
+                .call(
+                  navigator.clipboard,
+                  selected.customerEmail.match(/<([^<>\s]+)>/)?.[1] ?? selected.customerEmail,
+                )
+                .then(() => {
+                  setCopied(true);
+                  window.setTimeout(() => setCopied(false), 1600);
+                });
             }}
             onReply={async (text) => {
               try {

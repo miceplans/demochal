@@ -19,6 +19,7 @@ import { renderNotificationEmail } from '../notifications/email/notification-ema
 import { SUPPORT_EMAIL_EVENT } from '../notifications/email/support-email.js';
 import {
   decodeMimeWords,
+  extractAddress,
   normalizeMessageId,
   resolveThreadId,
   safeHeader,
@@ -287,7 +288,7 @@ export class EmailService {
           inReplyTo: lastInbound.messageId,
           references: references.join(' '),
           fromAddress: SUPPORT_EMAIL,
-          toAddresses: [lastInbound.fromAddress],
+          toAddresses: [extractAddress(lastInbound.fromAddress)],
           subject,
           textBody: text,
           htmlBody: html || null,
