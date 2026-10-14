@@ -490,6 +490,7 @@ type EmailMessage = {
   id?: string;
   direction?: string;
   fromAddress?: string;
+  toAddresses?: string[];
   messageId?: string;
   textBody?: string | null;
   sentAt?: string | null;
@@ -504,6 +505,10 @@ type EmailThreadDetail = {
   status?: string;
   messages?: EmailMessage[];
 };
+
+function replySubject(subject?: string | null) {
+  return subject?.startsWith('Re:') ? subject : `Re: ${subject ?? '(제목 없음)'}`;
+}
 
 function ThreadDetail({
   thread,
@@ -550,34 +555,54 @@ function ThreadDetail({
         {statusError ? <Error role="alert">{statusError}</Error> : null}
       </ThreadHeader>
       <Timeline>
-        {(thread.messages ?? []).map((message) => (
-          <Message key={message.id} outbound={message.direction === 'outbound'}>
-            <MessageMeta>
-              <MessageAuthor>
-                {message.direction === 'outbound' ? '관리자' : message.fromAddress}
-              </MessageAuthor>
-              <span>
-                {new Date(message.sentAt ?? message.receivedAt ?? '').toLocaleString('ko-KR')}
-              </span>
-            </MessageMeta>
-            <MessageBody>
-              {message.textBody || '(HTML 본문은 안전을 위해 텍스트 fallback으로 표시됩니다.)'}
-            </MessageBody>
-            {message.attachments?.length ? (
-              <AttachmentList>
-                {message.attachments.map((attachment) => (
-                  <li key={`${message.id}-${attachment.filename}`}>
-                    {attachment.filename || '첨부파일'} ·{' '}
-                    {attachment.contentType ?? 'application/octet-stream'} ·{' '}
-                    {attachment.sizeBytes ?? 0} bytes
-                  </li>
-                ))}
-              </AttachmentList>
-            ) : null}
-          </Message>
-        ))}
+        {(thread.messages ?? []).map((message) => {
+          const outbound = message.direction === 'outbound';
+          return (
+            <MailCard key={message.id}>
+              <MailHead>
+                <HeadLabel>보낸 사람</HeadLabel>
+                <HeadValue>
+                  {outbound ? 'help@semochall.com' : message.fromAddress}
+                  <DirectionTag outbound={outbound}>{outbound ? '발신' : '수신'}</DirectionTag>
+                </HeadValue>
+                {message.toAddresses?.length ? (
+                  <>
+                    <HeadLabel>받는 사람</HeadLabel>
+                    <HeadValue>{message.toAddresses.join(', ')}</HeadValue>
+                  </>
+                ) : null}
+                <HeadLabel>일시</HeadLabel>
+                <HeadValue>
+                  {new Date(message.sentAt ?? message.receivedAt ?? '').toLocaleString('ko-KR')}
+                </HeadValue>
+              </MailHead>
+              <MessageBody>
+                {message.textBody || '(HTML 본문은 안전을 위해 텍스트 fallback으로 표시됩니다.)'}
+              </MessageBody>
+              {message.attachments?.length ? (
+                <AttachmentList>
+                  {message.attachments.map((attachment) => (
+                    <li key={`${message.id}-${attachment.filename}`}>
+                      {attachment.filename || '첨부파일'} ·{' '}
+                      {attachment.contentType ?? 'application/octet-stream'} ·{' '}
+                      {attachment.sizeBytes ?? 0} bytes
+                    </li>
+                  ))}
+                </AttachmentList>
+              ) : null}
+            </MailCard>
+          );
+        })}
       </Timeline>
       <ReplyBox aria-label="답장 작성">
+        <ReplyField>
+          <AdminFieldLabel>받는 사람</AdminFieldLabel>
+          <ComposeInput aria-label="받는 사람" readOnly value={thread.customerEmail ?? ''} />
+        </ReplyField>
+        <ReplyField>
+          <AdminFieldLabel>제목</AdminFieldLabel>
+          <ComposeInput aria-label="답장 제목" readOnly value={replySubject(thread.subject)} />
+        </ReplyField>
         <ComposeTextarea
           aria-label="답장 내용"
           value={text}
@@ -829,23 +854,38 @@ const Timeline = styled.div({
   gap: 14,
   marginTop: 24,
 });
-const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
-  alignSelf: outbound ? 'flex-end' : 'flex-start',
-  width: 'min(90%, 640px)',
-  padding: '14px 16px',
+const MailCard = styled.article({
+  padding: 20,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
-  background: outbound ? c.lightBlue : c.gray50,
-}));
-const MessageMeta = styled.div({
-  display: 'flex',
-  flexWrap: 'wrap',
-  justifyContent: 'space-between',
-  gap: 4,
-  marginBottom: 8,
-  color: c.gray500,
-  fontSize: 12,
+  background: c.white,
 });
-const MessageAuthor = styled.strong({ color: c.gray900, fontWeight: 700 });
+const MailHead = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'max-content 1fr',
+  gap: '6px 16px',
+  marginBottom: 16,
+  fontSize: 13,
+});
+const HeadLabel = styled.span({ color: c.gray500 });
+const HeadValue = styled.span({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  minWidth: 0,
+  color: c.gray900,
+  overflowWrap: 'anywhere',
+});
+const DirectionTag = styled.span<{ outbound?: boolean }>(({ outbound }) => ({
+  padding: '1px 8px',
+  borderRadius: 999,
+  background: outbound ? c.lightBlue : c.gray100,
+  color: outbound ? c.primary : c.gray700,
+  fontSize: 11,
+  fontWeight: 700,
+  flexShrink: 0,
+}));
+const ReplyField = styled.label({ display: 'flex', flexDirection: 'column', gap: 7 });
 const MessageBody = styled.div({
   whiteSpace: 'pre-wrap',
   overflowWrap: 'anywhere',
@@ -861,7 +901,11 @@ const ReplyBox = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 10,
-  marginTop: 24,
+  marginTop: 14,
+  padding: 20,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
 });
 const ReplyActions = styled.div({ display: 'flex', justifyContent: 'flex-end' });
 const Error = styled.p({ margin: 0, color: c.red, ...textStyle.caption2 });
