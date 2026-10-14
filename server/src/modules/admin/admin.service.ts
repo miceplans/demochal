@@ -15,6 +15,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNull,
   lt,
   lte,
   ne,
@@ -610,6 +611,27 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
+  /** 관리자 '확인' 처리 — 모니터링 목록에서 제외한다(멱등). 신고 상태는 바꾸지 않는다. */
+  async confirmTeam(id: string) {
+    const [updated] = await this.db
+      .update(teams)
+      .set({ adminReviewedAt: new Date() })
+      .where(eq(teams.id, id))
+      .returning({ id: teams.id });
+    if (!updated) throw new NotFoundException('팀을 찾을 수 없습니다.');
+    return { id: updated.id, confirmed: true };
+  }
+
+  async confirmChallenge(id: string) {
+    const [updated] = await this.db
+      .update(challenges)
+      .set({ adminReviewedAt: new Date() })
+      .where(eq(challenges.id, id))
+      .returning({ id: challenges.id });
+    if (!updated) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    return { id: updated.id, confirmed: true };
+  }
+
   /** 콘텐츠 상세 페이지용 — 팀 모집글 전체 내용, 팀원, 접수된 신고. */
   async getTeamDetail(id: string) {
     const [row] = await this.db
@@ -1039,12 +1061,12 @@ export class AdminService {
     const [teamsTotal] = await this.db
       .select({ count: countRows })
       .from(teams)
-      .where(ne(teams.status, 'rejected'));
+      .where(and(ne(teams.status, 'rejected'), isNull(teams.adminReviewedAt)));
     const teamRows = await this.db
       .select({ team: teams, challengeTitle: challenges.title })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
-      .where(ne(teams.status, 'rejected'))
+      .where(and(ne(teams.status, 'rejected'), isNull(teams.adminReviewedAt)))
       .orderBy(desc(teams.createdAt))
       .limit(teamsLimit);
 
@@ -1066,11 +1088,11 @@ export class AdminService {
     const [contestsTotal] = await this.db
       .select({ count: countRows })
       .from(challenges)
-      .where(ne(challenges.status, 'rejected'));
+      .where(and(ne(challenges.status, 'rejected'), isNull(challenges.adminReviewedAt)));
     const contestRows = await this.db
       .select()
       .from(challenges)
-      .where(ne(challenges.status, 'rejected'))
+      .where(and(ne(challenges.status, 'rejected'), isNull(challenges.adminReviewedAt)))
       .orderBy(desc(challenges.createdAt))
       .limit(contestsLimit);
     const challengeIds = contestRows.map((row) => row.id);

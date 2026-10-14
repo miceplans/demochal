@@ -152,3 +152,24 @@ describe('AdminService — content detail', () => {
     await expect(missing.getChallengeDetail('x')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('AdminService — confirm', () => {
+  it('stamps adminReviewedAt on a team/challenge and 404s when missing', async () => {
+    const team = createDbStub({ update: [[{ id: 't1' }]] });
+    await expect(createService(team.db).service.confirmTeam('t1')).resolves.toEqual({
+      id: 't1',
+      confirmed: true,
+    });
+    expect(team.setCalls[0]?.[0]).toHaveProperty('adminReviewedAt');
+
+    const challenge = createDbStub({ update: [[{ id: 'c1' }]] });
+    await expect(createService(challenge.db).service.confirmChallenge('c1')).resolves.toEqual({
+      id: 'c1',
+      confirmed: true,
+    });
+
+    const missing = createService(createDbStub({ update: [[]] }).db).service;
+    await expect(missing.confirmTeam('x')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(missing.confirmChallenge('x')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});

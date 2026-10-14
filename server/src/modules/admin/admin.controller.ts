@@ -121,6 +121,16 @@ export class AdminController {
     return this.adminService.getChallengeDetail(id);
   }
 
+  @Post('teams/:id/confirm')
+  confirmTeam(@Param('id') id: string) {
+    return this.adminService.confirmTeam(id);
+  }
+
+  @Post('challenges/:id/confirm')
+  confirmChallenge(@Param('id') id: string) {
+    return this.adminService.confirmChallenge(id);
+  }
+
   @Post('challenges/:id/reject')
   rejectChallenge(@Param('id') id: string, @Body() dto: RejectContentDto) {
     return this.adminService.rejectChallenge(id, dto);

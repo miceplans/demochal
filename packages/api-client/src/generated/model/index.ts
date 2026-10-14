@@ -28,6 +28,7 @@ export * from './adminAutomatedEmail';
 export * from './adminAutomatedEmailStatus';
 export * from './adminChallengeDetail';
 export * from './adminChallengeDetailTeamsItem';
+export * from './adminConfirmResult';
 export * from './adminContestCard';
 export * from './adminDashboard';
 export * from './adminEmailAttachment';

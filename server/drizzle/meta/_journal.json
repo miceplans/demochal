@@ -245,6 +245,13 @@
       "when": 1791873222309,
       "tag": "0035_users_email_lower_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791960000000,
+      "tag": "0036_content_admin_reviewed",
+      "breakpoints": true
     }
   ]
 }
