@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
-import { keepPreviousData } from '@tanstack/react-query';
+import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -11,6 +12,8 @@ import {
   AdminInlineNotice,
   AdminPageTitle,
   AdminSectionTitle,
+  ApproveButton,
+  RejectButton,
   FilterBar,
   SearchFilter,
   SelectFilter,
@@ -28,6 +31,8 @@ const CardGrid = styled.div({
 });
 const TeamCard = styled.article({
   position: 'relative',
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.gray300 },
   flex: '0 0 calc((100% - 48px) / 4)',
   border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
@@ -73,6 +78,8 @@ const RoleBadge = styled.span<{ active?: boolean }>(({ active }) => ({
 
 const ContestCard = styled.article({
   position: 'relative',
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.gray300 },
   flex: '0 0 calc((100% - 48px) / 4)',
   border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
@@ -123,6 +130,40 @@ const MoreButton = styled.button({
   '&:disabled': { cursor: 'wait' },
 });
 
+/* ---------- preview 모달 ---------- */
+
+const Backdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 24, 39, .46)',
+});
+const PreviewModal = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 20,
+  width: 'min(100%, 360px)',
+  padding: 24,
+  borderRadius: 12,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+});
+const PreviewTitle = styled.h2({ margin: 0, ...textStyle.h2_2, color: c.gray900 });
+const PreviewActions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
+
+// 카드를 키보드로도 열 수 있게 하는 공통 속성.
+const openOnKey = (open: () => void) => (event: KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    open();
+  }
+};
+
+type Preview = { kind: 'team'; id: string } | { kind: 'contest'; id: string };
+
 /* ---------- 신고 테이블 ---------- */
 
 // '더보기'는 섹션 limit을 한 페이지씩 늘려 다시 조회한다 (서버 상한 50).
@@ -155,6 +196,45 @@ type ContestCardRow = {
   unread: boolean;
 };
 
+const teamCardContent = (team: TeamCardRow) => (
+  <>
+    {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+    <TeamCover />
+    <TeamBody>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TeamName>{team.name}</TeamName>
+        <TeamChallenge>{team.challenge}</TeamChallenge>
+      </div>
+      <RoleBadges>
+        {team.roles.map((role) => (
+          <RoleBadge key={role} active>
+            {role}
+          </RoleBadge>
+        ))}
+        {team.otherRoles.map((role) => (
+          <RoleBadge key={role}>{role}</RoleBadge>
+        ))}
+      </RoleBadges>
+      <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
+    </TeamBody>
+  </>
+);
+
+const contestCardContent = (contest: ContestCardRow) => (
+  <>
+    {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+    <ContestCover>공고 이미지</ContestCover>
+    <ContestBody>
+      <ContestTitle>{contest.title}</ContestTitle>
+      <TagRow>
+        <CategoryTag>{contest.category}</CategoryTag>
+        <DDay>{contest.dday}</DDay>
+        <TeamCount>{contest.teams}</TeamCount>
+      </TagRow>
+    </ContestBody>
+  </>
+);
+
 export function AdminContentsScreen() {
   const [teamsLimit, setTeamsLimit] = useState(PAGE_SIZE);
   const [contestsLimit, setContestsLimit] = useState(PAGE_SIZE);
@@ -173,6 +253,31 @@ export function AdminContentsScreen() {
   );
   const refetchContents = contentsQuery.refetch;
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const [preview, setPreview] = useState<Preview | null>(null);
+
+  const onRejected = () => {
+    toast.success('반려했어요.');
+    setPreview(null);
+    void queryClient.invalidateQueries({ queryKey: generated.getListAdminContentsQueryKey() });
+  };
+  const onRejectError = () => toast.error('반려에 실패했어요', '잠시 후 다시 시도해주세요');
+  const rejectTeam = generated.useRejectAdminTeam({
+    mutation: { onSuccess: onRejected, onError: onRejectError },
+  });
+  const rejectChallenge = generated.useRejectAdminChallenge({
+    mutation: { onSuccess: onRejected, onError: onRejectError },
+  });
+  const rejecting = rejectTeam.isPending || rejectChallenge.isPending;
+
+  useEffect(() => {
+    if (!preview) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') setPreview(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [preview]);
 
   useEffect(() => {
     if (!contentsQuery.isError) return;
@@ -209,6 +314,11 @@ export function AdminContentsScreen() {
     [contentsQuery.data],
   );
 
+  const previewTeam =
+    preview?.kind === 'team' ? adminTeams.find((team) => team.id === preview.id) : undefined;
+  const previewContest =
+    preview?.kind === 'contest' ? adminContests.find((row) => row.id === preview.id) : undefined;
+
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
@@ -229,26 +339,15 @@ export function AdminContentsScreen() {
         <CardGrid>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminTeams.map((team) => (
-            <TeamCard key={team.id}>
-              {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <TeamCover />
-              <TeamBody>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TeamName>{team.name}</TeamName>
-                  <TeamChallenge>{team.challenge}</TeamChallenge>
-                </div>
-                <RoleBadges>
-                  {team.roles.map((role) => (
-                    <RoleBadge key={role} active>
-                      {role}
-                    </RoleBadge>
-                  ))}
-                  {team.otherRoles.map((role) => (
-                    <RoleBadge key={role}>{role}</RoleBadge>
-                  ))}
-                </RoleBadges>
-                <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
-              </TeamBody>
+            <TeamCard
+              key={team.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`${team.name} 미리보기`}
+              onClick={() => setPreview({ kind: 'team', id: team.id })}
+              onKeyDown={openOnKey(() => setPreview({ kind: 'team', id: team.id }))}
+            >
+              {teamCardContent(team)}
             </TeamCard>
           ))}
         </CardGrid>
@@ -270,17 +369,15 @@ export function AdminContentsScreen() {
         <CardGrid>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminContests.map((contest) => (
-            <ContestCard key={contest.id}>
-              {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <ContestCover>공고 이미지</ContestCover>
-              <ContestBody>
-                <ContestTitle>{contest.title}</ContestTitle>
-                <TagRow>
-                  <CategoryTag>{contest.category}</CategoryTag>
-                  <DDay>{contest.dday}</DDay>
-                  <TeamCount>{contest.teams}</TeamCount>
-                </TagRow>
-              </ContestBody>
+            <ContestCard
+              key={contest.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`${contest.title} 미리보기`}
+              onClick={() => setPreview({ kind: 'contest', id: contest.id })}
+              onKeyDown={openOnKey(() => setPreview({ kind: 'contest', id: contest.id }))}
+            >
+              {contestCardContent(contest)}
             </ContestCard>
           ))}
         </CardGrid>
@@ -303,6 +400,51 @@ export function AdminContentsScreen() {
         </FilterBar>
         <ReportLogTable params={reportParams} />
       </section>
+
+      {preview &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <Backdrop role="presentation" onMouseDown={() => setPreview(null)}>
+            <PreviewModal
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="content-preview-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <PreviewTitle id="content-preview-title">
+                {preview.kind === 'team' ? '팀 미리보기' : '챌린지 미리보기'}
+              </PreviewTitle>
+              {preview.kind === 'team' ? (
+                previewTeam ? (
+                  <TeamCard as="div" style={{ flex: 'none', cursor: 'default' }}>
+                    {teamCardContent(previewTeam)}
+                  </TeamCard>
+                ) : null
+              ) : previewContest ? (
+                <ContestCard as="div" style={{ flex: 'none', cursor: 'default' }}>
+                  {contestCardContent(previewContest)}
+                </ContestCard>
+              ) : null}
+              <PreviewActions>
+                <RejectButton type="button" onClick={() => setPreview(null)}>
+                  이전
+                </RejectButton>
+                <ApproveButton
+                  type="button"
+                  disabled={rejecting}
+                  onClick={() =>
+                    preview.kind === 'team'
+                      ? rejectTeam.mutate({ id: preview.id })
+                      : rejectChallenge.mutate({ id: preview.id })
+                  }
+                >
+                  {rejecting ? '처리 중…' : '반려하기'}
+                </ApproveButton>
+              </PreviewActions>
+            </PreviewModal>
+          </Backdrop>,
+          document.body,
+        )}
     </>
   );
 }

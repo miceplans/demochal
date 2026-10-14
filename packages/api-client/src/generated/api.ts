@@ -53,6 +53,7 @@ import type {
   AdminEmailMessage,
   AdminEmailThread,
   AdminEmailThreadDetail,
+  AdminRejectResult,
   AdminSettings,
   AdminUserEntry,
   AdminUserPage,
@@ -11787,6 +11788,204 @@ export function useListAdminContents<TData = Awaited<ReturnType<typeof listAdmin
 
 
 
+
+export type rejectAdminChallengeResponse200 = {
+  data: AdminRejectResult
+  status: 200
+}
+
+export type rejectAdminChallengeResponse404 = {
+  data: void
+  status: 404
+}
+
+export type rejectAdminChallengeResponse409 = {
+  data: void
+  status: 409
+}
+
+export type rejectAdminChallengeResponseSuccess = (rejectAdminChallengeResponse200) & {
+  headers: Headers;
+};
+export type rejectAdminChallengeResponseError = (rejectAdminChallengeResponse404 | rejectAdminChallengeResponse409) & {
+  headers: Headers;
+};
+
+export type rejectAdminChallengeResponse = (rejectAdminChallengeResponseSuccess | rejectAdminChallengeResponseError)
+
+export const getRejectAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/reject`
+}
+
+/**
+ * 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409.
+ * @summary 챌린지 반려
+ */
+export const rejectAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminChallengeResponse> => {
+
+  return apiFetch<rejectAdminChallengeResponse>(getRejectAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRejectAdminChallengeMutationKey = () => ['rejectAdminChallenge'] as const;
+
+export const getRejectAdminChallengeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getRejectAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminChallenge>>, RejectAdminChallengeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectAdminChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminChallenge>>>
+
+    export type RejectAdminChallengeMutationError = void
+    export type RejectAdminChallengeMutationVariables = {id: string}
+
+    /**
+ * @summary 챌린지 반려
+ */
+export const useRejectAdminChallenge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAdminChallenge>>,
+        TError,
+        RejectAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectAdminChallengeMutationOptions(options), queryClient);
+    }
+
+export type rejectAdminTeamResponse200 = {
+  data: AdminRejectResult
+  status: 200
+}
+
+export type rejectAdminTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type rejectAdminTeamResponse409 = {
+  data: void
+  status: 409
+}
+
+export type rejectAdminTeamResponseSuccess = (rejectAdminTeamResponse200) & {
+  headers: Headers;
+};
+export type rejectAdminTeamResponseError = (rejectAdminTeamResponse404 | rejectAdminTeamResponse409) & {
+  headers: Headers;
+};
+
+export type rejectAdminTeamResponse = (rejectAdminTeamResponseSuccess | rejectAdminTeamResponseError)
+
+export const getRejectAdminTeamUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}/reject`
+}
+
+/**
+ * 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409.
+ * @summary 팀 모집글 반려
+ */
+export const rejectAdminTeam = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminTeamResponse> => {
+
+  return apiFetch<rejectAdminTeamResponse>(getRejectAdminTeamUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRejectAdminTeamMutationKey = () => ['rejectAdminTeam'] as const;
+
+export const getRejectAdminTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext> => {
+
+const mutationKey = getRejectAdminTeamMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminTeam>>, RejectAdminTeamMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  rejectAdminTeam(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAdminTeamMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminTeam>>>
+
+    export type RejectAdminTeamMutationError = void
+    export type RejectAdminTeamMutationVariables = {id: string}
+
+    /**
+ * @summary 팀 모집글 반려
+ */
+export const useRejectAdminTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAdminTeam>>,
+        TError,
+        RejectAdminTeamMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectAdminTeamMutationOptions(options), queryClient);
+    }
 
 export type getAdminAnalyticsResponse200 = {
   data: GetAdminAnalytics200

@@ -110,6 +110,16 @@ export class AdminController {
     return this.adminService.publishChallenge(id);
   }
 
+  @Post('challenges/:id/reject')
+  rejectChallenge(@Param('id') id: string) {
+    return this.adminService.rejectChallenge(id);
+  }
+
+  @Post('teams/:id/reject')
+  rejectTeam(@Param('id') id: string) {
+    return this.adminService.rejectTeam(id);
+  }
+
   @Post('ads/:id/pause')
   pauseAd(@Param('id') id: string) {
     return this.adminService.pauseAd(id);
