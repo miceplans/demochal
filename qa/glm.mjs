@@ -1,6 +1,6 @@
 const DEFAULT_BASE_URL = 'https://api.z.ai/api/anthropic';
 const DEFAULT_MODEL = 'glm-4.7';
-const FIELDS = [
+const DEFECT_FIELDS = [
   'kind',
   'summary',
   'scenario',
@@ -16,8 +16,20 @@ const FIELDS = [
   'sensitiveAreas',
 ];
 
-const SYSTEM_PROMPT = `You are a conservative web QA analyst. Return ONLY one valid JSON object with exactly these fields:
-kind (bug or ux), summary, scenario, environment, viewport, area, reproSteps (string[]), expected, actual, acceptanceCriteria (string[]), risk (low|medium|high|critical), confidence (number 0..1), sensitiveAreas (string[]).
+const NONE_FIELDS = ['kind', 'confidence', 'sensitiveAreas'];
+const SENSITIVE_AREAS = new Set([
+  'auth',
+  'authorization',
+  'payment',
+  'personal-data',
+  'data-deletion',
+  'security',
+  'policy',
+]);
+
+const SYSTEM_PROMPT = `You are a conservative web QA analyst. Return ONLY one valid JSON object.
+When there is no reproducible bug or UX defect, return exactly: kind (none), confidence (number 0..1), sensitiveAreas (string[]).
+When there is a defect, return exactly: kind (bug or ux), summary, scenario, environment, viewport, area, reproSteps (string[]), expected, actual, acceptanceCriteria (string[]), risk (low|medium|high|critical), confidence (number 0..1), sensitiveAreas (string[]).
 Use sensitiveAreas values only from auth, authorization, payment, personal-data, data-deletion, security, policy. Use [] when none apply.
 Do not invent a defect. If evidence is insufficient, set confidence below 0.8. If any sensitive area is involved, include it even when risk is low.`;
 
@@ -36,10 +48,22 @@ function parseJson(text) {
 export function validateJudgment(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('GLM response must be a JSON object');
-  const expectedKeys = [...FIELDS].sort();
+  const expectedKeys = [...(value.kind === 'none' ? NONE_FIELDS : DEFECT_FIELDS)].sort();
   const keys = Object.keys(value).sort();
   if (keys.length !== expectedKeys.length || keys.some((key, index) => key !== expectedKeys[index]))
     throw new Error('GLM response has an invalid schema');
+  if (value.kind === 'none') {
+    if (typeof value.confidence !== 'number' || value.confidence < 0 || value.confidence > 1)
+      throw new Error('GLM response confidence is invalid');
+    if (
+      !Array.isArray(value.sensitiveAreas) ||
+      value.sensitiveAreas.some((item) => typeof item !== 'string')
+    )
+      throw new Error('GLM response field sensitiveAreas must be a string array');
+    if (value.sensitiveAreas.some((area) => !SENSITIVE_AREAS.has(area)))
+      throw new Error('GLM response sensitiveAreas contains an unsupported value');
+    return value;
+  }
   if (
     !['bug', 'ux'].includes(value.kind) ||
     !['low', 'medium', 'high', 'critical'].includes(value.risk)
@@ -61,6 +85,8 @@ export function validateJudgment(value) {
     if (!Array.isArray(value[field]) || value[field].some((item) => typeof item !== 'string'))
       throw new Error(`GLM response field ${field} must be a string array`);
   }
+  if (value.sensitiveAreas.some((area) => !SENSITIVE_AREAS.has(area)))
+    throw new Error('GLM response sensitiveAreas contains an unsupported value');
   if (typeof value.confidence !== 'number' || value.confidence < 0 || value.confidence > 1)
     throw new Error('GLM response confidence is invalid');
   return value;

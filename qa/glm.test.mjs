@@ -33,6 +33,20 @@ test('GLM client parses Anthropic-compatible JSON response', async () => {
 
 test('GLM judgment rejects missing or unknown fields', () => {
   assert.throws(() => validateJudgment({ kind: 'bug' }), /invalid schema/);
+  assert.throws(
+    () =>
+      validateJudgment({ kind: 'none', summary: 'unexpected', confidence: 1, sensitiveAreas: [] }),
+    /invalid schema/,
+  );
+});
+
+test('GLM accepts the minimal no-issue schema', () => {
+  const result = validateJudgment({ kind: 'none', confidence: 0.95, sensitiveAreas: [] });
+  assert.equal(result.kind, 'none');
+  assert.throws(
+    () => validateJudgment({ kind: 'none', confidence: 0.95, sensitiveAreas: ['not-allowed'] }),
+    /unsupported value/,
+  );
 });
 
 test('GLM client rejects non-success responses', async () => {
