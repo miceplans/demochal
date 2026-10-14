@@ -60,7 +60,7 @@ runner는 GitHub `repository_dispatch`의 `qa-report` event로 다음 형태의 
 
 ## 실제 브라우저 runner 실행
 
-저장소의 `qa/runner.mjs`는 Playwright로 Chromium을 실행하고, GLM은 관찰 결과를 QA report JSON으로 판정한다. GLM은 브라우저 도구를 직접 호출하지 않는다.
+저장소의 `qa/runner.mjs`는 Playwright로 Chromium을 실행하고, GLM은 관찰 결과를 QA report JSON으로 판정한다. GLM은 브라우저 도구를 직접 호출하지 않는다. 재현 가능한 결함이 없으면 GLM은 최소 `{ "kind": "none", "confidence": 0.95, "sensitiveAreas": [] }` 판정을 반환한다. 이 경우 runner는 `judgment.json`만 저장하고 GitHub dispatch나 Issue 생성을 하지 않으며 CLI는 `status: "no_issue"`를 출력한다.
 
 ```bash
 pnpm install --frozen-lockfile

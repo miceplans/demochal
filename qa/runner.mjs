@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { basename, resolve } from 'node:path';
+import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
+import { basename, isAbsolute, relative, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { validateReport, sanitizeText, sanitizeUrl } from '../scripts/qa-report.mjs';
 import { validateScenario } from './scenario.mjs';
-import { judgeWithGlm } from './glm.mjs';
+import { judgeWithGlm, validateJudgment } from './glm.mjs';
 
 function arg(name) {
   const index = process.argv.indexOf(name);
@@ -13,6 +13,42 @@ function arg(name) {
 
 function redact(value) {
   return sanitizeText(value, 2000);
+}
+
+function sanitizeObservation(observation) {
+  return {
+    url: observation.url ? sanitizeUrl(observation.url) : '',
+    title: redact(observation.title),
+    domSummary: redact(observation.domSummary),
+    stepResults: (observation.stepResults ?? []).map((step) => ({
+      ...step,
+      label: redact(step.label),
+      error: step.error === undefined ? undefined : redact(step.error),
+    })),
+    consoleErrors: (observation.consoleErrors ?? []).map(redact),
+    networkFailures: (observation.networkFailures ?? []).map(redact),
+    screenshots: (observation.screenshots ?? []).map(redact),
+    executionError: observation.executionError ? redact(observation.executionError) : null,
+  };
+}
+
+async function removeNoIssueArtifacts(outputDir, screenshots) {
+  const outputRoot = resolve(outputDir);
+  const paths = [resolve(outputDir, 'report.json'), resolve(outputDir, 'observation.json')];
+  for (const screenshot of screenshots) {
+    const path = resolve(screenshot);
+    const pathWithinOutput = relative(outputRoot, path);
+    if (pathWithinOutput && !pathWithinOutput.startsWith('..') && !isAbsolute(pathWithinOutput)) {
+      paths.push(path);
+    }
+  }
+  await Promise.all(
+    paths.map((path) =>
+      unlink(path).catch((error) => {
+        if (error.code !== 'ENOENT') throw error;
+      }),
+    ),
+  );
 }
 
 export function formatHttpFailure({ method, url, status }) {
@@ -153,24 +189,34 @@ export async function runQa({
   submit = submitReport,
 }) {
   await mkdir(outputDir, { recursive: true });
-  const observation = await execute(scenario, outputDir);
-  await writeFile(resolve(outputDir, 'observation.json'), JSON.stringify(observation, null, 2));
-  if (observation.executionError)
+  const rawObservation = await execute(scenario, outputDir);
+  const observation = sanitizeObservation(rawObservation);
+  if (observation.executionError) {
+    await writeFile(resolve(outputDir, 'observation.json'), JSON.stringify(observation, null, 2));
     throw new Error(
       `browser execution failed; report not submitted: ${observation.executionError}`,
     );
-  const judgment = await judge({
-    observation: {
-      scenario: {
-        name: redact(scenario.name),
-        targetUrl: sanitizeUrl(scenario.targetUrl),
-        environment: redact(scenario.environment),
-        viewport: scenario.viewport,
-        steps: scenario.steps.map((step) => ({ action: step.action, label: redact(step.label) })),
+  }
+  const judgment = validateJudgment(
+    await judge({
+      observation: {
+        scenario: {
+          name: redact(scenario.name),
+          targetUrl: sanitizeUrl(scenario.targetUrl),
+          environment: redact(scenario.environment),
+          viewport: scenario.viewport,
+          steps: scenario.steps.map((step) => ({ action: step.action, label: redact(step.label) })),
+        },
+        observation,
       },
-      observation,
-    },
-  });
+    }),
+  );
+  if (judgment.kind === 'none') {
+    await removeNoIssueArtifacts(outputDir, rawObservation.screenshots ?? []);
+    await writeFile(resolve(outputDir, 'judgment.json'), JSON.stringify(judgment, null, 2));
+    return { status: 'no_issue', judgment };
+  }
+  await writeFile(resolve(outputDir, 'observation.json'), JSON.stringify(observation, null, 2));
   const report = validateReport({
     ...judgment,
     url: observation.url,
@@ -185,18 +231,18 @@ export async function runQa({
   });
   await writeFile(resolve(outputDir, 'report.json'), JSON.stringify(report, null, 2));
   if (!dryRun) await submit(report);
-  return report;
+  return { status: 'ok', report };
 }
 
 if (process.argv[1]?.endsWith('/runner.mjs')) {
   const scenarioPath = arg('--scenario') ?? process.env.QA_SCENARIO_FILE;
   if (!scenarioPath) throw new Error('--scenario or QA_SCENARIO_FILE is required');
   const scenario = validateScenario(JSON.parse(await readFile(resolve(scenarioPath), 'utf8')));
-  const report = await runQa({ scenario, dryRun: process.argv.includes('--dry-run') });
+  const result = await runQa({ scenario, dryRun: process.argv.includes('--dry-run') });
   console.log(
     JSON.stringify({
-      status: 'ok',
-      fingerprint: report.fingerprint,
+      status: result.status,
+      ...(result.report ? { fingerprint: result.report.fingerprint } : {}),
       dryRun: process.argv.includes('--dry-run'),
     }),
   );
