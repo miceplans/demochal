@@ -196,9 +196,8 @@ const MiniTag = styled.span<{ blue?: boolean }>(({ blue }) => ({
 }));
 const MiniDday = styled.span({ fontSize: 10, fontWeight: 700, color: c.primary });
 
-/* ---------- 하단 이전 / 반려하기 ---------- */
+/* ---------- 반려 사유 · 하단 반려 / 확인 ---------- */
 
-const RejectSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 12 });
 const LabelFor = styled.label({ ...textStyle.metaText, color: c.gray500 });
 const ReasonTextarea = styled.textarea({
   width: '100%',
@@ -331,47 +330,59 @@ function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: 
   );
 }
 
-/** 하단 `이전` / `반려하기` — 반려 사유는 필수이며 작성자에게 알림·이메일로 전달된다. */
-function RejectBar({
+/** 우측 `신고` 박스 위의 반려 사유 입력 — 작성자에게 알림·이메일로 전달된다. */
+function ReasonField({
+  value,
+  onChange,
+  hidden,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  hidden: boolean;
+}) {
+  if (hidden) return null;
+  return (
+    <SideSection>
+      <LabelFor htmlFor="content-reject-reason">반려 사유</LabelFor>
+      <ReasonTextarea
+        id="content-reject-reason"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="반려 사유를 입력해주세요 (작성자에게 알림과 이메일로 전달돼요)"
+        maxLength={500}
+        rows={4}
+      />
+    </SideSection>
+  );
+}
+
+/** 하단 `반려` / `확인` — 반려는 사유가 필요하고, 확인은 검토를 마치고 목록으로 돌아간다. */
+function ActionBar({
   rejected,
   pending,
+  reason,
   onReject,
 }: {
   rejected: boolean;
   pending: boolean;
+  reason: string;
   onReject: (reason: string) => void;
 }) {
   const router = useRouter();
   const hrefOf = useAdminHref();
-  const [reason, setReason] = useState('');
   return (
-    <RejectSection>
-      {rejected ? null : (
-        <>
-          <LabelFor htmlFor="content-reject-reason">반려 사유</LabelFor>
-          <ReasonTextarea
-            id="content-reject-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="반려 사유를 입력해주세요 (작성자에게 알림과 이메일로 전달돼요)"
-            maxLength={500}
-            rows={4}
-          />
-        </>
-      )}
-      <Actions>
-        <RejectButton type="button" onClick={() => router.push(hrefOf('/contents'))}>
-          이전
-        </RejectButton>
-        <ApproveButton
-          type="button"
-          disabled={rejected || pending || !reason.trim()}
-          onClick={() => onReject(reason.trim())}
-        >
-          {rejected ? '반려됨' : pending ? '처리 중…' : '반려하기'}
-        </ApproveButton>
-      </Actions>
-    </RejectSection>
+    <Actions>
+      <RejectButton
+        type="button"
+        disabled={rejected || pending || !reason.trim()}
+        onClick={() => onReject(reason.trim())}
+      >
+        {rejected ? '반려됨' : pending ? '처리 중…' : '반려'}
+      </RejectButton>
+      <ApproveButton type="button" onClick={() => router.push(hrefOf('/contents'))}>
+        확인
+      </ApproveButton>
+    </Actions>
   );
 }
 
@@ -395,6 +406,7 @@ function useRejectHandlers() {
 export function AdminChallengeDetailScreen({ id }: { id: string }) {
   const hrefOf = useAdminHref();
   const [tab, setTab] = useState<'info' | 'teams'>('info');
+  const [reason, setReason] = useState('');
   // D-day 기준 시각은 마운트 시 한 번만 잡는다.
   const [now] = useState(() => Date.now());
   const query = generated.useGetAdminChallengeDetail(id, {
@@ -516,14 +528,16 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
             )}
           </div>
 
-          <RejectBar
+          <ActionBar
             rejected={rejected}
             pending={reject.isPending}
-            onReject={(reason) => reject.mutate({ id, data: { reason } })}
+            reason={reason}
+            onReject={(value) => reject.mutate({ id, data: { reason: value } })}
           />
         </Body>
       </Main>
       <Side>
+        <ReasonField value={reason} onChange={setReason} hidden={rejected} />
         <ReportsBox title="이 공모전에 들어온 신고" reports={challenge.reports ?? []} />
         <NextList kind="challenge" currentId={id} />
       </Side>
@@ -534,6 +548,7 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
 /* ---------- 팀 상세 (챌린지 상세와 같은 구성) ---------- */
 
 export function AdminTeamDetailScreen({ id }: { id: string }) {
+  const [reason, setReason] = useState('');
   const query = generated.useGetAdminTeamDetail(id, {
     query: { meta: LOCAL_ERROR_TOAST_META },
   });
@@ -604,14 +619,16 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
             </Body>
           </div>
 
-          <RejectBar
+          <ActionBar
             rejected={rejected}
             pending={reject.isPending}
-            onReject={(reason) => reject.mutate({ id, data: { reason } })}
+            reason={reason}
+            onReject={(value) => reject.mutate({ id, data: { reason: value } })}
           />
         </Body>
       </Main>
       <Side>
+        <ReasonField value={reason} onChange={setReason} hidden={rejected} />
         <ReportsBox title="이 팀에 들어온 신고" reports={team.reports ?? []} />
         <NextList kind="team" currentId={id} />
       </Side>
