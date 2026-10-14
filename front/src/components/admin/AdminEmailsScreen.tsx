@@ -13,7 +13,6 @@ import {
   Badge,
   ApproveButton,
   FilterBar,
-  RejectButton,
   SearchFilter,
   SelectFilter,
   FieldLabel as AdminFieldLabel,
@@ -147,11 +146,6 @@ function AutomatedMailbox() {
           value={query}
           onChange={setQuery}
         />
-        {query ? (
-          <RejectButton type="button" onClick={() => setQuery('')}>
-            필터 초기화
-          </RejectButton>
-        ) : null}
         <ListSummary>최근 200건 기준 · {rows.length}건</ListSummary>
       </FilterBar>
       {list.isPending ? (
@@ -244,17 +238,6 @@ function SupportMailbox() {
             </StatusChip>
           ))}
         </ChipRow>
-        {query || status ? (
-          <RejectButton
-            type="button"
-            onClick={() => {
-              setQuery('');
-              setStatus('');
-            }}
-          >
-            필터 초기화
-          </RejectButton>
-        ) : null}
       </ToolRow>
       {list.isPending ? <AdminInlineNotice>메일을 불러오는 중이에요.</AdminInlineNotice> : null}
       {list.isError ? (
