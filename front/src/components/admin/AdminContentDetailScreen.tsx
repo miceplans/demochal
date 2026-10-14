@@ -400,7 +400,7 @@ function ActionBar({
   );
 }
 
-function useConfirmHandlers() {
+function useConfirmHandlers(id: string) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -408,6 +408,12 @@ function useConfirmHandlers() {
   return {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: generated.getListAdminContentsQueryKey() });
+      // 확인하면 이 콘텐츠의 대기 신고가 처리됨으로 바뀌므로 신고 로그·상세도 다시 불러온다.
+      void queryClient.invalidateQueries({ queryKey: generated.getListAdminReportsQueryKey() });
+      void queryClient.invalidateQueries({ queryKey: generated.getGetAdminTeamDetailQueryKey(id) });
+      void queryClient.invalidateQueries({
+        queryKey: generated.getGetAdminChallengeDetailQueryKey(id),
+      });
       router.push(hrefOf('/contents'));
     },
     onError: () => toast.error('확인 처리에 실패했어요', '잠시 후 다시 시도해주세요'),
@@ -441,7 +447,7 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
     query: { meta: LOCAL_ERROR_TOAST_META },
   });
   const reject = generated.useRejectAdminChallenge({ mutation: useRejectHandlers() });
-  const confirm = generated.useConfirmAdminChallenge({ mutation: useConfirmHandlers() });
+  const confirm = generated.useConfirmAdminChallenge({ mutation: useConfirmHandlers(id) });
   const challenge = query.data?.status === 200 ? query.data.data : undefined;
 
   if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
@@ -584,7 +590,7 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
     query: { meta: LOCAL_ERROR_TOAST_META },
   });
   const reject = generated.useRejectAdminTeam({ mutation: useRejectHandlers() });
-  const confirm = generated.useConfirmAdminTeam({ mutation: useConfirmHandlers() });
+  const confirm = generated.useConfirmAdminTeam({ mutation: useConfirmHandlers(id) });
   const team = query.data?.status === 200 ? query.data.data : undefined;
 
   if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
