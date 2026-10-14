@@ -7,7 +7,21 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { adToday } from '../ads/ad-period.js';
-import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -592,6 +606,40 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
+  /** 관리자 챌린지 반려 — 이미 반려된 공고가 아니면 rejected로 전이한다(공개 목록은 published/closed만 노출). */
+  async rejectChallenge(id: string) {
+    const [updated] = await this.db
+      .update(challenges)
+      .set({ status: 'rejected' })
+      .where(and(eq(challenges.id, id), ne(challenges.status, 'rejected')))
+      .returning({ id: challenges.id, status: challenges.status });
+    if (updated) return updated;
+    const [existing] = await this.db
+      .select({ id: challenges.id })
+      .from(challenges)
+      .where(eq(challenges.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    throw new ConflictException('이미 반려된 공고입니다.');
+  }
+
+  /** 관리자 팀 모집글 반려 — 이미 반려된 팀이 아니면 rejected로 전이한다. */
+  async rejectTeam(id: string) {
+    const [updated] = await this.db
+      .update(teams)
+      .set({ status: 'rejected' })
+      .where(and(eq(teams.id, id), ne(teams.status, 'rejected')))
+      .returning({ id: teams.id, status: teams.status });
+    if (updated) return updated;
+    const [existing] = await this.db
+      .select({ id: teams.id })
+      .from(teams)
+      .where(eq(teams.id, id))
+      .limit(1);
+    if (!existing) throw new NotFoundException('팀을 찾을 수 없습니다.');
+    throw new ConflictException('이미 반려된 팀입니다.');
+  }
+
   /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */
   async pauseAd(id: string) {
     const [updated] = await this.db
@@ -842,11 +890,15 @@ export class AdminService {
     const teamsLimit = clampContentsLimit(teamsLimitParam);
     const contestsLimit = clampContentsLimit(contestsLimitParam);
 
-    const [teamsTotal] = await this.db.select({ count: countRows }).from(teams);
+    const [teamsTotal] = await this.db
+      .select({ count: countRows })
+      .from(teams)
+      .where(ne(teams.status, 'rejected'));
     const teamRows = await this.db
       .select({ team: teams, challengeTitle: challenges.title })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .where(ne(teams.status, 'rejected'))
       .orderBy(desc(teams.createdAt))
       .limit(teamsLimit);
 
@@ -865,10 +917,14 @@ export class AdminService {
       acceptedByTeam.set(row.teamId, byRole);
     }
 
-    const [contestsTotal] = await this.db.select({ count: countRows }).from(challenges);
+    const [contestsTotal] = await this.db
+      .select({ count: countRows })
+      .from(challenges)
+      .where(ne(challenges.status, 'rejected'));
     const contestRows = await this.db
       .select()
       .from(challenges)
+      .where(ne(challenges.status, 'rejected'))
       .orderBy(desc(challenges.createdAt))
       .limit(contestsLimit);
     const challengeIds = contestRows.map((row) => row.id);

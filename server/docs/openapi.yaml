@@ -2609,6 +2609,40 @@ paths:
                     { type: array, items: { $ref: '#/components/schemas/AdminContestCard' } }
                   contestsTotal: { type: integer }
                   reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+  /admin/challenges/{id}/reject:
+    post:
+      tags: [Admin]
+      summary: 챌린지 반려
+      operationId: rejectAdminChallenge
+      x-impl-status: implemented
+      description: 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 반려됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminRejectResult' }
+        '404': { description: 공고 없음 }
+        '409': { description: 이미 반려됨 }
+  /admin/teams/{id}/reject:
+    post:
+      tags: [Admin]
+      summary: 팀 모집글 반려
+      operationId: rejectAdminTeam
+      x-impl-status: implemented
+      description: 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 반려됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminRejectResult' }
+        '404': { description: 팀 없음 }
+        '409': { description: 이미 반려됨 }
   /admin/analytics:
     get:
       tags: [Admin]
@@ -3787,6 +3821,11 @@ components:
           }
         otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
         unread: { type: boolean, description: 처리되지 않은(open) 신고가 있으면 true }
+    AdminRejectResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [rejected] }
     AdminContestCard:
       type: object
       description: 콘텐츠 모니터링 '확인해야하는 챌린지' 카드 (AdminContestCard)

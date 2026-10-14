@@ -34,6 +34,8 @@ export * from './adminEmailMessageDirection';
 export * from './adminEmailThread';
 export * from './adminEmailThreadDetail';
 export * from './adminEmailThreadStatus';
+export * from './adminRejectResult';
+export * from './adminRejectResultStatus';
 export * from './adminSettings';
 export * from './adminSettingsGroupsItem';
 export * from './adminSettingsGroupsItemRowsItem';
