@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -63,6 +63,24 @@ export function updateCachedEmailStatus<T>(
     return { ...response, data: { ...response.data, status } } as T;
   }
   return cached;
+}
+
+const READ_KEY = 'admin-emails-read';
+
+/** 스레드를 연 시각을 브라우저에 기록해 읽음 여부를 판단한다(관리자 개인 편의, 서버 저장 없음). */
+function readReadMap(): Record<string, number> {
+  try {
+    return JSON.parse(window.localStorage.getItem(READ_KEY) ?? '{}') as Record<string, number>;
+  } catch {
+    return {};
+  }
+}
+function markThreadRead(id: string) {
+  try {
+    window.localStorage.setItem(READ_KEY, JSON.stringify({ ...readReadMap(), [id]: Date.now() }));
+  } catch {
+    // 저장소를 쓸 수 없으면 읽음 표시만 생략한다.
+  }
 }
 
 function formatTime(value?: string) {
@@ -193,30 +211,39 @@ function SupportMailbox() {
     [overviewRows],
   );
   const tableRows = rows.filter((row): row is typeof row & { id: string } => Boolean(row.id));
+  // 목록은 비동기로 채워지므로 초기 렌더에서 localStorage를 읽어도 하이드레이션 불일치가 없다.
+  const [readMap] = useState<Record<string, number>>(() =>
+    typeof window === 'undefined' ? {} : readReadMap(),
+  );
+  const isUnread = (row: (typeof tableRows)[number]) => {
+    if (row.status !== 'open') return false;
+    const readAt = readMap[row.id];
+    return !readAt || new Date(row.lastMessageAt ?? 0).getTime() > readAt;
+  };
 
   return (
     <>
-      <ChipRow role="group" aria-label="상태 필터">
-        {STATUS_FILTERS.map((filter) => (
-          <StatusChip
-            key={filter.key || 'all'}
-            type="button"
-            aria-pressed={status === filter.key}
-            active={status === filter.key}
-            onClick={() => setStatus(filter.key)}
-          >
-            {filter.label}
-            <ChipCount>{counts[filter.key]}</ChipCount>
-          </StatusChip>
-        ))}
-      </ChipRow>
-      <FilterBar>
+      <ToolRow>
         <SearchFilter
           placeholder="제목 또는 고객 이메일 검색"
           label="제목 또는 고객 이메일 검색"
           value={query}
           onChange={setQuery}
         />
+        <ChipRow role="group" aria-label="상태 필터">
+          {STATUS_FILTERS.map((filter) => (
+            <StatusChip
+              key={filter.key || 'all'}
+              type="button"
+              aria-pressed={status === filter.key}
+              active={status === filter.key}
+              onClick={() => setStatus(filter.key)}
+            >
+              {filter.label}
+              <ChipCount>{counts[filter.key]}</ChipCount>
+            </StatusChip>
+          ))}
+        </ChipRow>
         {query || status ? (
           <RejectButton
             type="button"
@@ -228,7 +255,7 @@ function SupportMailbox() {
             필터 초기화
           </RejectButton>
         ) : null}
-      </FilterBar>
+      </ToolRow>
       {list.isPending ? <AdminInlineNotice>메일을 불러오는 중이에요.</AdminInlineNotice> : null}
       {list.isError ? (
         <AdminInlineNotice role="alert">
@@ -241,7 +268,7 @@ function SupportMailbox() {
             <MailItem key={row.id} role="listitem">
               <MailRow
                 type="button"
-                unread={row.status === 'open'}
+                unread={isUnread(row)}
                 onClick={() => router.push(`/admin/emails/${row.id}`)}
               >
                 <StatusDot tone={row.status ?? 'open'} aria-hidden />
@@ -305,7 +332,15 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const detail = generated.useGetAdminEmail(id, { query: { enabled: true } });
-  const reply = generated.useSendAdminEmailReply();
+  const reply = generated.useSendAdminEmailReply({
+    mutation: {
+      // 서버가 답장 시 상태를 처리중으로 바꾸므로 상세·목록을 다시 불러온다.
+      onSettled: () => {
+        void queryClient.invalidateQueries({ queryKey: generated.getGetAdminEmailQueryKey(id) });
+        void queryClient.invalidateQueries({ queryKey: generated.getListAdminEmailsQueryKey() });
+      },
+    },
+  });
   const statusMutation = generated.useUpdateAdminEmailStatus({
     mutation: {
       onMutate: async ({ id: threadId, data }) => {
@@ -349,6 +384,10 @@ export function AdminEmailThreadScreen({ id }: { id: string }) {
     },
   });
   const selected = detail.data?.status === 200 ? detail.data.data : undefined;
+  const loaded = Boolean(selected);
+  useEffect(() => {
+    if (loaded) markThreadRead(id);
+  }, [loaded, id]);
   const [copied, setCopied] = useState(false);
   return (
     <Screen>
@@ -663,6 +702,7 @@ const BackGlyph = styled.button({
   fontSize: 28,
   lineHeight: 1,
 });
+const ToolRow = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 });
 const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const StatusChip = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
   active: boolean;
