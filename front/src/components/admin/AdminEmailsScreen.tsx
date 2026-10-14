@@ -696,11 +696,11 @@ const StatusChip = styled('button', { shouldForwardProp: (prop) => prop !== 'act
   padding: '7px 14px',
   border: `0.5px solid ${active ? c.primary : c.gray200}`,
   borderRadius: 999,
-  background: active ? c.lightBlue : c.white,
-  color: active ? c.primary : c.gray700,
+  background: active ? c.primary : c.white,
+  color: active ? c.white : c.gray700,
   cursor: 'pointer',
   ...textStyle.subtitle,
-  '&:hover': { background: active ? c.lightBlue : c.gray50 },
+  '&:hover': { background: active ? c.primaryDark : c.gray50 },
 }));
 const ChipCount = styled.span({ ...textStyle.metaText, color: 'inherit' });
 const ListSummary = styled.span({
