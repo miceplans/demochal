@@ -19,11 +19,14 @@ const Textarea = styled.textarea({
   width: '100%',
   height: 118,
   resize: 'none',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 10,
+  border: `0.5px solid ${c.gray300}`,
+  borderRadius: 8,
   padding: '12px 14px',
+  background: c.white,
+  color: c.gray900,
   ...textStyle.caption,
-  '&:focus': { outline: `2px solid ${c.primary}`, outlineOffset: 0 },
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
 });
 const Dot = styled.span<{ used: boolean }>(({ used }) => ({
   width: 8,

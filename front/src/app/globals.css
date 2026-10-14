@@ -67,6 +67,69 @@ select {
   font-family: inherit;
 }
 
+/* 전역 스크롤바 — 얇게, 디자인 톤(토큰)에 맞춰. 숨김 처리된 요소(레일 등)의
+   scrollbarWidth: none / display: none 규칙이 더 높은 명시도로 유지된다. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-gray-300) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gray-500);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background: var(--color-semo);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* textarea 베이스 — 디자인 톤의 입력 스타일(회색 볼더, 8px radius,
+   포커스 브랜드 블루)을 전역 기본값으로. styled.textarea가 있는 화면은
+   자체 값으로 덮어쓴다. */
+textarea {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--color-gray-900);
+  background: var(--background);
+  border: 0.5px solid var(--color-gray-300);
+  border-radius: 8px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+textarea::placeholder {
+  color: var(--color-gray-500);
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--color-semo);
+}
+
+textarea:disabled {
+  background: var(--color-gray-100);
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
