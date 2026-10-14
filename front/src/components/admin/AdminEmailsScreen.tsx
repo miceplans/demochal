@@ -781,9 +781,9 @@ const ComposeFooter = styled.div({
 const CharacterCount = styled.span({ color: c.gray500, fontSize: 12 });
 const Detail = styled.section({
   border: `0.5px solid ${c.gray200}`,
-  borderRadius: 12,
+  borderRadius: 8,
   background: c.white,
-  padding: 28,
+  padding: 24,
   minWidth: 0,
   overflow: 'auto',
 });
@@ -792,8 +792,6 @@ const ThreadHeader = styled.div({
   alignItems: 'flex-start',
   justifyContent: 'space-between',
   gap: 20,
-  paddingBottom: 20,
-  borderBottom: `0.5px solid ${c.gray200}`,
   '@media (max-width: 700px)': { flexDirection: 'column' },
 });
 const Eyebrow = styled.span({
@@ -825,17 +823,13 @@ const Timeline = styled.div({
   flexDirection: 'column',
   gap: 14,
   marginTop: 24,
-  padding: 16,
-  borderRadius: 8,
-  background: c.gray50,
 });
 const Message = styled.article<{ outbound?: boolean }>(({ outbound }) => ({
   alignSelf: outbound ? 'flex-end' : 'flex-start',
   width: 'min(90%, 640px)',
   padding: '14px 16px',
-  border: `0.5px solid ${outbound ? c.primary : c.gray200}`,
-  borderRadius: outbound ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
-  background: outbound ? c.lightBlue : c.white,
+  borderRadius: 8,
+  background: outbound ? c.lightBlue : c.gray50,
 }));
 const MessageMeta = styled.div({
   display: 'flex',
@@ -863,8 +857,6 @@ const ReplyBox = styled.div({
   flexDirection: 'column',
   gap: 10,
   marginTop: 24,
-  paddingTop: 20,
-  borderTop: `0.5px solid ${c.gray200}`,
 });
 const ReplyActions = styled.div({ display: 'flex', justifyContent: 'flex-end' });
 const Error = styled.p({ margin: 0, color: c.red, ...textStyle.caption2 });
