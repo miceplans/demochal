@@ -8,7 +8,9 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
+  type AdminColumn,
   AdminInlineNotice,
+  AdminTable,
   AdminPageTitle,
   Badge,
   ApproveButton,
@@ -137,6 +139,30 @@ function AutomatedMailbox() {
   const rows = (list.data?.status === 200 ? list.data.data : []).filter(
     (row): row is typeof row & { id: string } => Boolean(row.id),
   );
+  const columns: AdminColumn<(typeof rows)[number]>[] = [
+    {
+      key: 'subject',
+      header: '메일',
+      render: (row) => (
+        <MailCell>
+          <MailIcon aria-hidden>✉</MailIcon>
+          <MailCopy>
+            <MailSubject>{row.subject || '(제목 없음)'}</MailSubject>
+            <MailCustomer>
+              {(row.type && automatedTypeLabel[row.type]) || row.type || '알림'}
+            </MailCustomer>
+          </MailCopy>
+        </MailCell>
+      ),
+    },
+    { key: 'recipient', header: '수신자', render: (row) => row.recipient || '-' },
+    {
+      key: 'sentAt',
+      header: '발송 시각',
+      render: (row) => <TimeCell>{formatTime(row.sentAt ?? undefined)}</TimeCell>,
+    },
+    { key: 'status', header: '상태', render: () => <Badge tone="green">발송 완료</Badge> },
+  ];
   return (
     <>
       <FilterBar>
@@ -156,26 +182,7 @@ function AutomatedMailbox() {
           발송 내역을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      {rows.length ? (
-        <MailList role="list">
-          {rows.map((row) => (
-            <MailItem key={row.id} role="listitem">
-              <MailRow as="div">
-                <StatusDot tone="done" aria-hidden />
-                <Sender>{row.recipient || '-'}</Sender>
-                <Summary>
-                  <Subject>{row.subject || '(제목 없음)'}</Subject>
-                  <TypeTag>
-                    {(row.type && automatedTypeLabel[row.type]) || row.type || '알림'}
-                  </TypeTag>
-                </Summary>
-                <Badge tone="green">발송 완료</Badge>
-                <TimeCell>{formatTime(row.sentAt ?? undefined)}</TimeCell>
-              </MailRow>
-            </MailItem>
-          ))}
-        </MailList>
-      ) : null}
+      <AdminTable columns={columns} rows={rows} />
     </>
   );
 }
@@ -215,6 +222,41 @@ function SupportMailbox() {
     return !readAt || new Date(row.lastMessageAt ?? 0).getTime() > readAt;
   };
 
+  const columns: AdminColumn<(typeof tableRows)[number]>[] = [
+    {
+      key: 'subject',
+      header: '메일',
+      render: (row) => (
+        <MailCell>
+          <MailIcon aria-hidden>✉</MailIcon>
+          <MailCopy>
+            <MailSubject unread={isUnread(row)}>{row.subject || '(제목 없음)'}</MailSubject>
+            <MailCustomer>{row.customerEmail || '고객 주소 없음'}</MailCustomer>
+          </MailCopy>
+        </MailCell>
+      ),
+    },
+    {
+      key: 'lastMessage',
+      header: '마지막 메시지',
+      render: (row) => <PreviewCell>{row.lastMessage || '-'}</PreviewCell>,
+    },
+    {
+      key: 'lastMessageAt',
+      header: '최근 시각',
+      render: (row) => <TimeCell>{formatTime(row.lastMessageAt)}</TimeCell>,
+    },
+    {
+      key: 'status',
+      header: '상태',
+      render: (row) => (
+        <Badge tone={statusTone[row.status ?? 'open'] ?? 'gray'}>
+          {row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}
+        </Badge>
+      ),
+    },
+  ];
+
   return (
     <>
       <ToolRow>
@@ -245,30 +287,11 @@ function SupportMailbox() {
           메일을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
         </AdminInlineNotice>
       ) : null}
-      {tableRows.length ? (
-        <MailList role="list">
-          {tableRows.map((row) => (
-            <MailItem key={row.id} role="listitem">
-              <MailRow
-                type="button"
-                unread={isUnread(row)}
-                onClick={() => router.push(`/admin/emails/${row.id}`)}
-              >
-                <StatusDot tone={row.status ?? 'open'} aria-hidden />
-                <Sender>{row.customerEmail || '고객 주소 없음'}</Sender>
-                <Summary>
-                  <Subject>{row.subject || '(제목 없음)'}</Subject>
-                  <Preview>{row.lastMessage || ''}</Preview>
-                </Summary>
-                <Badge tone={statusTone[row.status ?? 'open'] ?? 'gray'}>
-                  {row.status ? (statusLabel[row.status] ?? row.status) : '미처리'}
-                </Badge>
-                <TimeCell>{formatTime(row.lastMessageAt)}</TimeCell>
-              </MailRow>
-            </MailItem>
-          ))}
-        </MailList>
-      ) : null}
+      <AdminTable
+        columns={columns}
+        rows={tableRows}
+        onRowClick={(row) => router.push(`/admin/emails/${row.id}`)}
+      />
     </>
   );
 }
@@ -585,7 +608,7 @@ function ThreadDetail({
                 <HeadLabel>보낸 사람</HeadLabel>
                 <HeadValue>
                   {outbound ? 'help@semochall.com' : message.fromAddress}
-                  <DirectionTag outbound={outbound}>{outbound ? '발신' : '수신'}</DirectionTag>
+                  <Badge tone={outbound ? 'blue' : 'gray'}>{outbound ? '발신' : '수신'}</Badge>
                 </HeadValue>
                 {message.toAddresses?.length ? (
                   <>
@@ -685,7 +708,7 @@ const BackGlyph = styled.button({
   fontSize: 28,
   lineHeight: 1,
 });
-const ToolRow = styled.div({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16 });
+const ToolRow = styled(FilterBar)({ alignItems: 'center', gap: 16 });
 const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const StatusChip = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
   active: boolean;
@@ -693,102 +716,56 @@ const StatusChip = styled('button', { shouldForwardProp: (prop) => prop !== 'act
   display: 'inline-flex',
   alignItems: 'center',
   gap: 6,
-  padding: '7px 14px',
+  height: 42,
+  padding: '0 14px',
   border: `0.5px solid ${active ? c.primary : c.gray200}`,
-  borderRadius: 999,
+  borderRadius: 10,
   background: active ? c.lightBlue : c.white,
-  color: active ? c.primary : c.gray700,
+  color: active ? c.primary : c.gray900,
   cursor: 'pointer',
-  ...textStyle.subtitle,
+  ...textStyle.body,
   '&:hover': { background: active ? c.lightBlue : c.gray50 },
 }));
 const ChipCount = styled.span({ ...textStyle.metaText, color: 'inherit' });
-const ListSummary = styled.span({
-  alignSelf: 'center',
-  marginLeft: 'auto',
+const ListSummary = styled.span({ alignSelf: 'center', color: c.gray500, fontSize: 12 });
+const MailCell = styled.div({ display: 'flex', alignItems: 'center', gap: 10, minWidth: 220 });
+const MailIcon = styled.span({
+  display: 'grid',
+  placeItems: 'center',
+  width: 32,
+  height: 32,
+  borderRadius: 4,
+  background: c.lightBlue,
+  color: c.primary,
+  fontSize: 16,
+});
+const MailCopy = styled.div({ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 });
+const MailSubject = styled('strong', { shouldForwardProp: (prop) => prop !== 'unread' })<{
+  unread?: boolean;
+}>(({ unread }) => ({
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+  color: c.gray900,
+  ...textStyle.subtitle,
+  fontWeight: unread === false ? 400 : undefined,
+}));
+const MailCustomer = styled.span({
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
   color: c.gray500,
   fontSize: 12,
 });
-const MailList = styled.ul({
-  margin: 0,
-  padding: 0,
-  listStyle: 'none',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  overflow: 'hidden',
-  background: c.white,
-});
-const MailItem = styled.li({ '& + &': { borderTop: `0.5px solid ${c.gray200}` } });
-const MailRow = styled('button', { shouldForwardProp: (prop) => prop !== 'unread' })<{
-  unread?: boolean;
-}>(({ unread }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 14,
-  width: '100%',
-  padding: '14px 16px',
-  border: 0,
-  background: unread ? c.white : c.gray50,
-  color: c.gray900,
-  textAlign: 'left',
-  font: 'inherit',
-  cursor: 'pointer',
-  fontWeight: unread ? 700 : 400,
-  transition: 'background-color 160ms ease',
-  'div&': { cursor: 'default' },
-  '&:hover': { background: c.paleBlue },
-  '@media (max-width: 700px)': { flexWrap: 'wrap', gap: 8 },
-}));
-const dotColor: Record<string, string> = {
-  open: c.red,
-  pending: c.primary,
-  resolved: c.gray300,
-  done: c.green,
-};
-const StatusDot = styled.span<{ tone: string }>(({ tone }) => ({
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  background: dotColor[tone] ?? c.gray300,
-  flexShrink: 0,
-}));
-const Sender = styled.span({
-  width: 200,
-  flexShrink: 0,
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  fontSize: 14,
-  fontWeight: 'inherit',
-  '@media (max-width: 700px)': { width: 'auto', flex: 1 },
-});
-const Summary = styled.span({
-  display: 'flex',
-  alignItems: 'baseline',
-  gap: 8,
-  flex: 1,
-  minWidth: 0,
-  '@media (max-width: 700px)': { flexBasis: '100%', order: 3 },
-});
-const Subject = styled.span({
-  flexShrink: 0,
-  maxWidth: '55%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  fontSize: 14,
-  fontWeight: 'inherit',
-});
-const Preview = styled.span({
-  minWidth: 0,
+const PreviewCell = styled.span({
+  display: 'block',
+  maxWidth: 340,
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
   color: c.gray500,
   fontSize: 13,
-  fontWeight: 400,
 });
-const TypeTag = styled.span({ color: c.gray500, fontSize: 12, fontWeight: 400, flexShrink: 0 });
 const TimeCell = styled.span({ color: c.gray500, whiteSpace: 'nowrap', fontSize: 12 });
 const TitleRow = styled.div({
   display: 'flex',
@@ -899,15 +876,6 @@ const HeadValue = styled.span({
   color: c.gray900,
   overflowWrap: 'anywhere',
 });
-const DirectionTag = styled.span<{ outbound?: boolean }>(({ outbound }) => ({
-  padding: '1px 8px',
-  borderRadius: 999,
-  background: outbound ? c.lightBlue : c.gray100,
-  color: outbound ? c.primary : c.gray700,
-  fontSize: 11,
-  fontWeight: 700,
-  flexShrink: 0,
-}));
 const ReplyField = styled.label({ display: 'flex', flexDirection: 'column', gap: 7 });
 const MessageBody = styled.div({
   whiteSpace: 'pre-wrap',
