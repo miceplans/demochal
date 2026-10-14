@@ -22,6 +22,9 @@ import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
 import { daysUntil } from '@/lib/date';
 
+// 홈 '마감임박' 섹션 노출 기준(일).
+const DEADLINE_SOON_DAYS = 7;
+
 const noopSubscribe = () => () => {};
 const getAdPreviewPriceSnapshot = () => new URLSearchParams(window.location.search).get('adPrice');
 const getAdPreviewPriceServerSnapshot = () => null;
@@ -84,16 +87,17 @@ export function HomePage() {
   const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
   );
-  // 마감 임박순으로 최대 4개 — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외한다.
+  // 마감 임박순으로 최대 6개(3열 2줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외하고, D-7 이내만 노출한다.
   const { data: deadlineList } = generated.useListChallenges({
     sort: 'deadline',
     includeClosed: false,
-    limit: 4,
+    limit: 6,
   });
   const liveDeadlineContests = (deadlineList?.data.items ?? [])
     .filter((challenge) => Boolean(challenge.endDate))
-    .slice(0, 4)
-    .map((challenge) => challengeToContest(challenge, now));
+    .map((challenge) => challengeToContest(challenge, now))
+    .filter((contest) => contest.days <= DEADLINE_SOON_DAYS)
+    .slice(0, 6);
   const { recommendationContests, deadlineContests, teams, isFallbackTeamList } =
     getHomeFallbackData({
       recommendationContests: liveRecommendationContests,
@@ -165,7 +169,7 @@ export function HomePage() {
                 <div style={{ height: 16 }} />
                 <DesktopOnly>
                   <Rail>
-                    {recommendationContests.slice(0, 4).map((contest) => (
+                    {recommendationContests.slice(0, 6).map((contest) => (
                       <ContestCard
                         key={contest.id}
                         contest={contest}
@@ -176,7 +180,7 @@ export function HomePage() {
                 </DesktopOnly>
                 <MobileOnly>
                   <Rail>
-                    {recommendationContests.slice(0, 2).map((contest) => (
+                    {recommendationContests.slice(0, 4).map((contest) => (
                       <ContestCard
                         key={contest.id}
                         contest={contest}
@@ -192,7 +196,7 @@ export function HomePage() {
               <section>
                 <DesktopOnly>
                   <SectionHeader
-                    title={`마감임박 D-${Math.min(...deadlineContests.map((contest) => contest.days))}`}
+                    title={`마감임박 D-${DEADLINE_SOON_DAYS}`}
                     action={<More href="/explore">더보기 →</More>}
                   />
                   <div style={{ height: 16 }} />
@@ -298,18 +302,12 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   gap: 60,
   [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
 }));
+// 데스크톱 3열 × 2줄(최대 6개), 모바일 2열.
 const Rail = styled.div({
-  display: 'flex',
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
   gap: 16,
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
-  '& > article': { flex: '0 0 416px' },
-  [mobile]: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    gap: 8,
-    '& > article': { flex: 'none' },
-  },
+  [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
 });
 const TeamRail = styled.div({
   display: 'flex',
