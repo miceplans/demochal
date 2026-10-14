@@ -16,7 +16,6 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { AdminTeamCardOpenRolesItem } from './adminTeamCardOpenRolesItem';
 
 /**
  * 콘텐츠 모니터링 '확인해야하는 팀' 카드 (AdminTeamCard)
@@ -34,17 +33,4 @@ export interface AdminTeamCard {
   otherRoles?: string[];
   /** 처리되지 않은(open) 신고가 있으면 true */
   unread?: boolean;
-  /** preview용 — 팀장 이름 */
-  leaderName?: string;
-  leaderRole?: string;
-  region?: string;
-  /** 팀 소개 */
-  introduction?: string;
-  /** 우대사항 */
-  preferred?: string;
-  /** 기타 */
-  etc?: string;
-  /** 모집 역할과 인원 */
-  openRoles?: AdminTeamCardOpenRolesItem[];
-  createdAt?: string;
 }

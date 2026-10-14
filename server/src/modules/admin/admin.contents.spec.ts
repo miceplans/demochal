@@ -5,12 +5,6 @@ describe('AdminService — contents', () => {
   const team = {
     id: 't1',
     title: '세모팀',
-    leaderRole: '기획',
-    region: '서울',
-    introduction: '같이 해요',
-    preferred: '열정',
-    etc: null,
-    createdAt: new Date('2026-10-01T00:00:00.000Z'),
     openRoles: [
       { role: '프론트엔드', count: 1 },
       { role: '백엔드', count: 2 },
@@ -20,15 +14,6 @@ describe('AdminService — contents', () => {
     id: 'ch1',
     title: 'AI 챌린지',
     category: 'IT',
-    summary: null,
-    description: '공고 본문',
-    startDate: new Date('2026-10-01T00:00:00.000Z'),
-    price: 0,
-    capacity: 10,
-    prizeAmount: 500,
-    targets: ['대학생'],
-    hashtags: ['ai'],
-    status: 'published',
     endDate: new Date(Date.now() + 3 * 86_400_000),
   };
 
@@ -36,7 +21,7 @@ describe('AdminService — contents', () => {
     const { db } = createDbStub({
       select: [
         [{ count: 12 }], // teams total
-        [{ team, challengeTitle: 'AI 챌린지', leaderName: '김팀장' }],
+        [{ team, challengeTitle: 'AI 챌린지' }],
         [
           { teamId: 't1', role: '프론트엔드', count: 1 },
           { teamId: 't1', role: '백엔드', count: 1 },
@@ -61,24 +46,9 @@ describe('AdminService — contents', () => {
         otherRoles: ['백엔드'],
         members: '2/4명 참여중',
         unread: false,
-        leaderName: '김팀장',
-        leaderRole: '기획',
-        region: '서울',
-        introduction: '같이 해요',
-        preferred: '열정',
-        etc: '',
-        openRoles: team.openRoles,
-        createdAt: '2026-10-01T00:00:00.000Z',
       },
     ]);
-    expect(result.contests[0]).toMatchObject({
-      id: 'ch1',
-      teams: '팀 모집 1건',
-      unread: true,
-      description: '공고 본문',
-      prizeAmount: 500,
-      status: 'published',
-    });
+    expect(result.contests[0]).toMatchObject({ id: 'ch1', teams: '팀 모집 1건', unread: true });
     expect(result.teamsTotal).toBe(12);
     expect(result.contestsTotal).toBe(30);
   });
