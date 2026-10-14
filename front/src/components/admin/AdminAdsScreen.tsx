@@ -94,15 +94,12 @@ export function AdminAdsScreen() {
     },
     { query: { meta: LOCAL_ERROR_TOAST_META } },
   );
-  const refetchAds = adsQuery.refetch;
 
   useEffect(() => {
     if (!adsQuery.isError) return;
-    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
-      action: { label: '다시 시도', onClick: () => void refetchAds() },
-    });
+    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.');
     // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
-  }, [adsQuery.isError, adsQuery.errorUpdatedAt, refetchAds, toast]);
+  }, [adsQuery.isError, adsQuery.errorUpdatedAt, toast]);
 
   const rows = useMemo<AdRow[]>(
     () =>

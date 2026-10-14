@@ -343,17 +343,14 @@ export function AdminAdPricingScreen() {
   const hrefOf = useAdminHref();
 
   const pricingQuery = generated.useGetAdPricing({ query: { meta: LOCAL_ERROR_TOAST_META } });
-  const refetchPricing = pricingQuery.refetch;
   const hero = pricingQuery.data?.data.find((item) => item.slot === 'hero');
   const dailyPrice = hero?.dailyPrice ?? 0;
 
   useEffect(() => {
     if (!pricingQuery.isError) return;
-    toast.error('단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
-      action: { label: '다시 시도', onClick: () => void refetchPricing() },
-    });
+    toast.error('단가를 불러올 수 없어요. 잠시 후 다시 시도해주세요.');
     // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
-  }, [pricingQuery.isError, pricingQuery.errorUpdatedAt, refetchPricing, toast]);
+  }, [pricingQuery.isError, pricingQuery.errorUpdatedAt, toast]);
 
   const updatePricingMutation = generated.useUpdateAdPricing({
     mutation: {
