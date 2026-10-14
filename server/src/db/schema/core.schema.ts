@@ -116,6 +116,8 @@ export const challenges = pgTable('challenges', {
   endDate: timestamp('end_date').notNull(),
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 챌린지' 목록에서 제외한다.
+  adminReviewedAt: timestamp('admin_reviewed_at'),
   category: varchar('category', { length: 100 }),
   viewCount: integer('view_count').notNull().default(0),
   // Valid values: seMOchall | external. Challenges recruiting through the
@@ -168,6 +170,8 @@ export const teams = pgTable('teams', {
   etc: varchar('etc', { length: 200 }),
   status: varchar('status', { length: 20 }).notNull().default('recruiting'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 팀' 목록에서 제외한다.
+  adminReviewedAt: timestamp('admin_reviewed_at'),
 });
 export const teamMembers = pgTable('team_members', {
   id: uuid('id').defaultRandom().primaryKey(),

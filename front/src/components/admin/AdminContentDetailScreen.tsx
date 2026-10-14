@@ -194,6 +194,8 @@ const MiniTag = styled.span<{ blue?: boolean }>(({ blue }) => ({
   background: blue ? c.lightBlue : c.gray100,
   color: blue ? c.primary : c.gray700,
 }));
+const NextSub = styled.span({ display: 'block', ...textStyle.metaText, color: c.gray500 });
+const MiniTags = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 4 });
 const MiniDday = styled.span({ fontSize: 10, fontWeight: 700, color: c.primary });
 
 /* ---------- 반려 사유 · 하단 반려 / 확인 ---------- */
@@ -278,7 +280,7 @@ function ReportsBox({ title, reports }: { title: string; reports: ReportEntry[] 
   );
 }
 
-/** 우측 "확인해야할 공모전/팀" — 처리되지 않은 신고가 걸린(unread) 다른 콘텐츠. */
+/** 우측 "확인해야할 공모전/팀" — 콘텐츠 모니터링 목록과 같은 항목(확인·반려된 것은 서버가 제외). */
 function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: string }) {
   const hrefOf = useAdminHref();
   const query = generated.useListAdminContents(
@@ -289,23 +291,33 @@ function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: 
   const items =
     kind === 'team'
       ? (data?.teams ?? [])
-          .filter((team) => team.unread && team.id !== currentId)
-          .slice(0, 5)
+          .filter((team) => team.id !== currentId)
           .map((team) => (
             <NextItem key={team.id} href={hrefOf(`/contents/teams/${team.id}`)}>
               <NextThumb />
               <NextBody>
-                <NextTitle>{team.name}</NextTitle>
+                <div>
+                  <NextTitle>{team.name}</NextTitle>
+                  <NextSub>{team.challenge}</NextSub>
+                </div>
                 <NextMeta>
-                  <MiniTag>{team.challenge}</MiniTag>
-                  <MiniTag blue>{team.members}</MiniTag>
+                  <MiniTags>
+                    {(team.roles ?? []).map((role) => (
+                      <MiniTag key={role} blue>
+                        {role}
+                      </MiniTag>
+                    ))}
+                    {(team.otherRoles ?? []).map((role) => (
+                      <MiniTag key={role}>{role}</MiniTag>
+                    ))}
+                  </MiniTags>
                 </NextMeta>
+                <NextSub>{team.members}</NextSub>
               </NextBody>
             </NextItem>
           ))
       : (data?.contests ?? [])
-          .filter((contest) => contest.unread && contest.id !== currentId)
-          .slice(0, 5)
+          .filter((contest) => contest.id !== currentId)
           .map((contest) => (
             <NextItem key={contest.id} href={hrefOf(`/contents/challenges/${contest.id}`)}>
               <NextThumb />
@@ -356,20 +368,22 @@ function ReasonField({
   );
 }
 
-/** 하단 `반려` / `확인` — 반려는 사유가 필요하고, 확인은 검토를 마치고 목록으로 돌아간다. */
+/** 하단 `반려` / `확인` — 반려는 사유가 필요하고, 확인하면 '확인해야하는' 목록에서 빠지고 목록으로 돌아간다. */
 function ActionBar({
   rejected,
   pending,
   reason,
   onReject,
+  onConfirm,
+  confirming,
 }: {
   rejected: boolean;
   pending: boolean;
   reason: string;
   onReject: (reason: string) => void;
+  onConfirm: () => void;
+  confirming: boolean;
 }) {
-  const router = useRouter();
-  const hrefOf = useAdminHref();
   return (
     <Actions>
       <RejectButton
@@ -379,11 +393,25 @@ function ActionBar({
       >
         {rejected ? '반려됨' : pending ? '처리 중…' : '반려'}
       </RejectButton>
-      <ApproveButton type="button" onClick={() => router.push(hrefOf('/contents'))}>
-        확인
+      <ApproveButton type="button" disabled={confirming || pending} onClick={onConfirm}>
+        {confirming ? '처리 중…' : '확인'}
       </ApproveButton>
     </Actions>
   );
+}
+
+function useConfirmHandlers() {
+  const toast = useToast();
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const hrefOf = useAdminHref();
+  return {
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: generated.getListAdminContentsQueryKey() });
+      router.push(hrefOf('/contents'));
+    },
+    onError: () => toast.error('확인 처리에 실패했어요', '잠시 후 다시 시도해주세요'),
+  };
 }
 
 function useRejectHandlers() {
@@ -413,6 +441,7 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
     query: { meta: LOCAL_ERROR_TOAST_META },
   });
   const reject = generated.useRejectAdminChallenge({ mutation: useRejectHandlers() });
+  const confirm = generated.useConfirmAdminChallenge({ mutation: useConfirmHandlers() });
   const challenge = query.data?.status === 200 ? query.data.data : undefined;
 
   if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
@@ -533,6 +562,8 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
             pending={reject.isPending}
             reason={reason}
             onReject={(value) => reject.mutate({ id, data: { reason: value } })}
+            onConfirm={() => confirm.mutate({ id })}
+            confirming={confirm.isPending}
           />
         </Body>
       </Main>
@@ -553,6 +584,7 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
     query: { meta: LOCAL_ERROR_TOAST_META },
   });
   const reject = generated.useRejectAdminTeam({ mutation: useRejectHandlers() });
+  const confirm = generated.useConfirmAdminTeam({ mutation: useConfirmHandlers() });
   const team = query.data?.status === 200 ? query.data.data : undefined;
 
   if (query.isPending) return <AdminInlineNotice>불러오는 중...</AdminInlineNotice>;
@@ -624,6 +656,8 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
             pending={reject.isPending}
             reason={reason}
             onReject={(value) => reject.mutate({ id, data: { reason: value } })}
+            onConfirm={() => confirm.mutate({ id })}
+            confirming={confirm.isPending}
           />
         </Body>
       </Main>

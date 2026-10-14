@@ -50,6 +50,7 @@ import type {
   AdminAdEntry,
   AdminAutomatedEmail,
   AdminChallengeDetail,
+  AdminConfirmResult,
   AdminDashboard,
   AdminEmailMessage,
   AdminEmailThread,
@@ -11696,6 +11697,7 @@ export const getListAdminContentsUrl = (params?: ListAdminContentsParams,) => {
 
 /**
  * 콘텐츠 모니터링(`/admin/contents`).
+ * - 관리자가 '확인' 처리했거나 반려한 팀/챌린지는 목록·건수에서 제외된다
  * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
  * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
  * - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
@@ -12034,6 +12036,194 @@ export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof get
 
 
 
+
+export type confirmAdminTeamResponse200 = {
+  data: AdminConfirmResult
+  status: 200
+}
+
+export type confirmAdminTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type confirmAdminTeamResponseSuccess = (confirmAdminTeamResponse200) & {
+  headers: Headers;
+};
+export type confirmAdminTeamResponseError = (confirmAdminTeamResponse404) & {
+  headers: Headers;
+};
+
+export type confirmAdminTeamResponse = (confirmAdminTeamResponseSuccess | confirmAdminTeamResponseError)
+
+export const getConfirmAdminTeamUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}/confirm`
+}
+
+/**
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+ * @summary 팀 확인 처리
+ */
+export const confirmAdminTeam = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminTeamResponse> => {
+
+  return apiFetch<confirmAdminTeamResponse>(getConfirmAdminTeamUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmAdminTeamMutationKey = () => ['confirmAdminTeam'] as const;
+
+export const getConfirmAdminTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAdminTeamMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAdminTeam>>, ConfirmAdminTeamMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAdminTeam(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAdminTeamMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAdminTeam>>>
+
+    export type ConfirmAdminTeamMutationError = void
+    export type ConfirmAdminTeamMutationVariables = {id: string}
+
+    /**
+ * @summary 팀 확인 처리
+ */
+export const useConfirmAdminTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAdminTeam>>,
+        TError,
+        ConfirmAdminTeamMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAdminTeamMutationOptions(options), queryClient);
+    }
+
+export type confirmAdminChallengeResponse200 = {
+  data: AdminConfirmResult
+  status: 200
+}
+
+export type confirmAdminChallengeResponse404 = {
+  data: void
+  status: 404
+}
+
+export type confirmAdminChallengeResponseSuccess = (confirmAdminChallengeResponse200) & {
+  headers: Headers;
+};
+export type confirmAdminChallengeResponseError = (confirmAdminChallengeResponse404) & {
+  headers: Headers;
+};
+
+export type confirmAdminChallengeResponse = (confirmAdminChallengeResponseSuccess | confirmAdminChallengeResponseError)
+
+export const getConfirmAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/confirm`
+}
+
+/**
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+ * @summary 챌린지 확인 처리
+ */
+export const confirmAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminChallengeResponse> => {
+
+  return apiFetch<confirmAdminChallengeResponse>(getConfirmAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmAdminChallengeMutationKey = () => ['confirmAdminChallenge'] as const;
+
+export const getConfirmAdminChallengeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAdminChallenge>>, ConfirmAdminChallengeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAdminChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAdminChallenge>>>
+
+    export type ConfirmAdminChallengeMutationError = void
+    export type ConfirmAdminChallengeMutationVariables = {id: string}
+
+    /**
+ * @summary 챌린지 확인 처리
+ */
+export const useConfirmAdminChallenge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAdminChallenge>>,
+        TError,
+        ConfirmAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAdminChallengeMutationOptions(options), queryClient);
+    }
 
 export type rejectAdminChallengeResponse200 = {
   data: AdminRejectResult

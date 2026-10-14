@@ -2583,6 +2583,7 @@ paths:
       x-impl-status: implemented
       description: |
         콘텐츠 모니터링(`/admin/contents`).
+        - 관리자가 '확인' 처리했거나 반려한 팀/챌린지는 목록·건수에서 제외된다
         - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
         - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
         - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
@@ -2640,6 +2641,38 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AdminChallengeDetail' }
+        '404': { description: 공고 없음 }
+  /admin/teams/{id}/confirm:
+    post:
+      tags: [Admin]
+      summary: 팀 확인 처리
+      operationId: confirmAdminTeam
+      x-impl-status: implemented
+      description: 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 확인됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConfirmResult' }
+        '404': { description: 팀 없음 }
+  /admin/challenges/{id}/confirm:
+    post:
+      tags: [Admin]
+      summary: 챌린지 확인 처리
+      operationId: confirmAdminChallenge
+      x-impl-status: implemented
+      description: 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외된다(멱등, 신고 상태는 변경하지 않음).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 확인됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConfirmResult' }
         '404': { description: 공고 없음 }
   /admin/challenges/{id}/reject:
     post:
@@ -3934,6 +3967,11 @@ components:
               status: { type: string }
         createdAt: { type: string, format: date-time }
         reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+    AdminConfirmResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        confirmed: { type: boolean }
     AdminRejectResult:
       type: object
       properties:
