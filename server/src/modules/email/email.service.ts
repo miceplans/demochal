@@ -312,7 +312,11 @@ export class EmailService {
         })
         .returning();
       if (!message) throw new NotFoundException('메일 메시지를 저장할 수 없습니다.');
-      await tx.update(emailThreads).set({ updatedAt: sentAt }).where(eq(emailThreads.id, threadId));
+      // 관리자가 답장하면 처리중으로 전환한다.
+      await tx
+        .update(emailThreads)
+        .set({ updatedAt: sentAt, status: 'pending' })
+        .where(eq(emailThreads.id, threadId));
       await this.outboxService.enqueue(tx, SUPPORT_EMAIL_EVENT, { messageId: message.id });
       return this.serializeMessage(message);
     });
