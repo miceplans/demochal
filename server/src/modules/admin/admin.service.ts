@@ -610,6 +610,97 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
+  /** 콘텐츠 상세 페이지용 — 팀 모집글 전체 내용, 팀원, 접수된 신고. */
+  async getTeamDetail(id: string) {
+    const [row] = await this.db
+      .select({
+        team: teams,
+        challengeTitle: challenges.title,
+        leaderName: users.name,
+      })
+      .from(teams)
+      .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .where(eq(teams.id, id))
+      .limit(1);
+    if (!row) throw new NotFoundException('팀을 찾을 수 없습니다.');
+    const { team } = row;
+
+    const memberRows = await this.db
+      .select({ name: users.name, role: teamMembers.role })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(and(eq(teamMembers.teamId, id), eq(teamMembers.status, 'accepted')));
+    const reportRows = await this.listTargetReports('team', id);
+
+    return {
+      id: team.id,
+      name: team.title,
+      status: team.status,
+      challengeId: team.challengeId,
+      challenge: row.challengeTitle,
+      leaderName: row.leaderName,
+      leaderRole: team.leaderRole ?? '',
+      region: team.region ?? '',
+      introduction: team.introduction ?? '',
+      preferred: team.preferred ?? '',
+      etc: team.etc ?? '',
+      openRoles: team.openRoles ?? [],
+      members: memberRows.map((member) => ({ name: member.name, role: member.role ?? '' })),
+      createdAt: team.createdAt.toISOString(),
+      reports: reportRows.map((report) => this.toReport(report)),
+    };
+  }
+
+  /** 콘텐츠 상세 페이지용 — 공고 전체 내용, 주최 기관, 접수된 신고. */
+  async getChallengeDetail(id: string) {
+    const [row] = await this.db
+      .select({ challenge: challenges, organization: businesses.name })
+      .from(challenges)
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(eq(challenges.id, id))
+      .limit(1);
+    if (!row) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    const { challenge } = row;
+
+    const [teamCount] = await this.db
+      .select({ count: countRows })
+      .from(teams)
+      .where(eq(teams.challengeId, id));
+    const reportRows = await this.listTargetReports('challenge', id);
+
+    return {
+      id: challenge.id,
+      title: challenge.title,
+      status: challenge.status,
+      category: challenge.category ?? '',
+      organization: row.organization ?? '',
+      summary: challenge.summary ?? '',
+      description: challenge.description,
+      startDate: challenge.startDate.toISOString(),
+      endDate: challenge.endDate.toISOString(),
+      price: challenge.price,
+      capacity: challenge.capacity,
+      prizeAmount: challenge.prizeAmount,
+      targets: challenge.targets ?? [],
+      hashtags: challenge.hashtags,
+      recruitMethod: challenge.recruitMethod,
+      recruitUrl: challenge.recruitUrl ?? '',
+      teamsCount: teamCount?.count ?? 0,
+      createdAt: challenge.createdAt.toISOString(),
+      reports: reportRows.map((report) => this.toReport(report)),
+    };
+  }
+
+  private listTargetReports(targetType: 'team' | 'challenge', targetId: string) {
+    return this.db
+      .select()
+      .from(reports)
+      .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId)))
+      .orderBy(desc(reports.createdAt))
+      .limit(20);
+  }
+
   /**
    * 관리자 챌린지 반려 — 이미 반려된 공고가 아니면 rejected로 전이한다(공개 목록은 published/closed만 노출).
    * 기관 소유자에게 사유와 함께 알림을 같은 트랜잭션에서 남긴다.

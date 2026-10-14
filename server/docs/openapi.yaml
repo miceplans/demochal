@@ -2609,6 +2609,38 @@ paths:
                     { type: array, items: { $ref: '#/components/schemas/AdminContestCard' } }
                   contestsTotal: { type: integer }
                   reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+  /admin/teams/{id}:
+    get:
+      tags: [Admin]
+      summary: 팀 모집글 상세 (콘텐츠 모니터링)
+      operationId: getAdminTeamDetail
+      x-impl-status: implemented
+      description: 팀이 작성한 모집글 전체 내용, 참여 팀원, 접수된 신고(최신 20건). 반려된 팀도 조회된다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 팀 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTeamDetail' }
+        '404': { description: 팀 없음 }
+  /admin/challenges/{id}:
+    get:
+      tags: [Admin]
+      summary: 챌린지 공고 상세 (콘텐츠 모니터링)
+      operationId: getAdminChallengeDetail
+      x-impl-status: implemented
+      description: 공고 전체 내용, 주최 기관, 접수된 신고(최신 20건). 반려된 공고도 조회된다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 챌린지 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminChallengeDetail' }
+        '404': { description: 공고 없음 }
   /admin/challenges/{id}/reject:
     post:
       tags: [Admin]
@@ -3839,6 +3871,59 @@ components:
           }
         otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
         unread: { type: boolean, description: 처리되지 않은(open) 신고가 있으면 true }
+    AdminTeamDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, description: 'recruiting 등 · 반려되면 rejected' }
+        challengeId: { type: string, format: uuid }
+        challenge: { type: string }
+        leaderName: { type: string }
+        leaderRole: { type: string }
+        region: { type: string }
+        introduction: { type: string }
+        preferred: { type: string }
+        etc: { type: string }
+        openRoles:
+          type: array
+          items:
+            type: object
+            properties:
+              role: { type: string }
+              count: { type: integer }
+        members:
+          type: array
+          description: 수락된 팀원
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              role: { type: string }
+        createdAt: { type: string, format: date-time }
+        reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+    AdminChallengeDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        status: { type: string, description: 'draft | published | closed | rejected' }
+        category: { type: string }
+        organization: { type: string, description: 주최 기관명 }
+        summary: { type: string }
+        description: { type: string }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        price: { type: integer }
+        capacity: { type: integer }
+        prizeAmount: { type: integer, nullable: true, description: 총상금(만원) }
+        targets: { type: array, items: { type: string } }
+        hashtags: { type: array, items: { type: string } }
+        recruitMethod: { type: string }
+        recruitUrl: { type: string }
+        teamsCount: { type: integer }
+        createdAt: { type: string, format: date-time }
+        reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
     AdminRejectResult:
       type: object
       properties:

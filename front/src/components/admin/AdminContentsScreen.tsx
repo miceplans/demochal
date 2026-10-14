@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
-import { keepPreviousData, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -12,13 +12,12 @@ import {
   AdminInlineNotice,
   AdminPageTitle,
   AdminSectionTitle,
-  ApproveButton,
-  RejectButton,
   FilterBar,
   SearchFilter,
   SelectFilter,
   SectionHeader,
 } from './parts';
+import { useAdminHref } from './AdminShell';
 import { ReportLogTable } from './ReportLogTable';
 
 /* ---------- 팀 카드 ---------- */
@@ -130,43 +129,6 @@ const MoreButton = styled.button({
   '&:disabled': { cursor: 'wait' },
 });
 
-/* ---------- preview 모달 ---------- */
-
-const Backdrop = styled.div({
-  position: 'fixed',
-  zIndex: 100,
-  inset: 0,
-  display: 'grid',
-  placeItems: 'center',
-  padding: 24,
-  background: 'rgba(17, 24, 39, .46)',
-});
-const PreviewModal = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 20,
-  width: 'min(100%, 360px)',
-  padding: 24,
-  borderRadius: 12,
-  background: c.white,
-  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
-});
-const PreviewTitle = styled.h2({ margin: 0, ...textStyle.h2_2, color: c.gray900 });
-const ReasonLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
-const ReasonTextarea = styled.textarea({
-  marginTop: 8,
-  width: '100%',
-  boxSizing: 'border-box',
-  resize: 'vertical',
-  padding: '10px 12px',
-  border: `0.5px solid ${c.gray300}`,
-  borderRadius: 8,
-  color: c.gray900,
-  ...textStyle.bodySmall,
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const PreviewActions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
-
 // 카드를 키보드로도 열 수 있게 하는 공통 속성.
 const openOnKey = (open: () => void) => (event: KeyboardEvent) => {
   if (event.key === 'Enter' || event.key === ' ') {
@@ -174,8 +136,6 @@ const openOnKey = (open: () => void) => (event: KeyboardEvent) => {
     open();
   }
 };
-
-type Preview = { kind: 'team'; id: string } | { kind: 'contest'; id: string };
 
 /* ---------- 신고 테이블 ---------- */
 
@@ -266,38 +226,8 @@ export function AdminContentsScreen() {
   );
   const refetchContents = contentsQuery.refetch;
   const toast = useToast();
-  const queryClient = useQueryClient();
-  const [preview, setPreview] = useState<Preview | null>(null);
-  const [reason, setReason] = useState('');
-
-  const onRejected = () => {
-    toast.success('반려하고 알림을 보냈어요.');
-    setPreview(null);
-    setReason('');
-    void queryClient.invalidateQueries({ queryKey: generated.getListAdminContentsQueryKey() });
-  };
-  const onRejectError = () => toast.error('반려에 실패했어요', '잠시 후 다시 시도해주세요');
-  const rejectTeam = generated.useRejectAdminTeam({
-    mutation: { onSuccess: onRejected, onError: onRejectError },
-  });
-  const rejectChallenge = generated.useRejectAdminChallenge({
-    mutation: { onSuccess: onRejected, onError: onRejectError },
-  });
-  const rejecting = rejectTeam.isPending || rejectChallenge.isPending;
-
-  const closePreview = () => {
-    setPreview(null);
-    setReason('');
-  };
-
-  useEffect(() => {
-    if (!preview) return;
-    const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape') closePreview();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [preview]);
+  const router = useRouter();
+  const hrefOf = useAdminHref();
 
   useEffect(() => {
     if (!contentsQuery.isError) return;
@@ -334,11 +264,6 @@ export function AdminContentsScreen() {
     [contentsQuery.data],
   );
 
-  const previewTeam =
-    preview?.kind === 'team' ? adminTeams.find((team) => team.id === preview.id) : undefined;
-  const previewContest =
-    preview?.kind === 'contest' ? adminContests.find((row) => row.id === preview.id) : undefined;
-
   return (
     <>
       <AdminPageTitle>콘텐츠 모니터링</AdminPageTitle>
@@ -363,9 +288,9 @@ export function AdminContentsScreen() {
               key={team.id}
               role="button"
               tabIndex={0}
-              aria-label={`${team.name} 미리보기`}
-              onClick={() => setPreview({ kind: 'team', id: team.id })}
-              onKeyDown={openOnKey(() => setPreview({ kind: 'team', id: team.id }))}
+              aria-label={`${team.name} 상세 보기`}
+              onClick={() => router.push(hrefOf(`/contents/teams/${team.id}`))}
+              onKeyDown={openOnKey(() => router.push(hrefOf(`/contents/teams/${team.id}`)))}
             >
               {teamCardContent(team)}
             </TeamCard>
@@ -393,9 +318,9 @@ export function AdminContentsScreen() {
               key={contest.id}
               role="button"
               tabIndex={0}
-              aria-label={`${contest.title} 미리보기`}
-              onClick={() => setPreview({ kind: 'contest', id: contest.id })}
-              onKeyDown={openOnKey(() => setPreview({ kind: 'contest', id: contest.id }))}
+              aria-label={`${contest.title} 상세 보기`}
+              onClick={() => router.push(hrefOf(`/contents/challenges/${contest.id}`))}
+              onKeyDown={openOnKey(() => router.push(hrefOf(`/contents/challenges/${contest.id}`)))}
             >
               {contestCardContent(contest)}
             </ContestCard>
@@ -420,62 +345,6 @@ export function AdminContentsScreen() {
         </FilterBar>
         <ReportLogTable params={reportParams} />
       </section>
-
-      {preview &&
-        typeof document !== 'undefined' &&
-        createPortal(
-          <Backdrop role="presentation" onMouseDown={closePreview}>
-            <PreviewModal
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="content-preview-title"
-              onMouseDown={(event) => event.stopPropagation()}
-            >
-              <PreviewTitle id="content-preview-title">
-                {preview.kind === 'team' ? '팀 미리보기' : '챌린지 미리보기'}
-              </PreviewTitle>
-              {preview.kind === 'team' ? (
-                previewTeam ? (
-                  <TeamCard as="div" style={{ flex: 'none', cursor: 'default' }}>
-                    {teamCardContent(previewTeam)}
-                  </TeamCard>
-                ) : null
-              ) : previewContest ? (
-                <ContestCard as="div" style={{ flex: 'none', cursor: 'default' }}>
-                  {contestCardContent(previewContest)}
-                </ContestCard>
-              ) : null}
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <ReasonLabel htmlFor="content-reject-reason">반려 사유</ReasonLabel>
-                <ReasonTextarea
-                  id="content-reject-reason"
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  placeholder="반려 사유를 입력해주세요 (작성자에게 알림으로 전달돼요)"
-                  maxLength={500}
-                  rows={3}
-                />
-              </div>
-              <PreviewActions>
-                <RejectButton type="button" onClick={closePreview}>
-                  이전
-                </RejectButton>
-                <ApproveButton
-                  type="button"
-                  disabled={rejecting || !reason.trim()}
-                  onClick={() =>
-                    preview.kind === 'team'
-                      ? rejectTeam.mutate({ id: preview.id, data: { reason: reason.trim() } })
-                      : rejectChallenge.mutate({ id: preview.id, data: { reason: reason.trim() } })
-                  }
-                >
-                  {rejecting ? '처리 중…' : '반려하기'}
-                </ApproveButton>
-              </PreviewActions>
-            </PreviewModal>
-          </Backdrop>,
-          document.body,
-        )}
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it } from 'vitest';
 import { createDbStub, createService } from './admin.test-helpers.js';
 
@@ -61,5 +62,89 @@ describe('AdminService — contents', () => {
 
     // teams, challenges, then the fixed 5-row report log.
     expect(limitCalls.map((args) => args[0])).toEqual([50, 8, 5]);
+  });
+});
+
+describe('AdminService — content detail', () => {
+  it('returns a team with its members and reports, 404 when missing', async () => {
+    const team = {
+      id: 't1',
+      title: '세모팀',
+      challengeId: 'ch1',
+      status: 'recruiting',
+      leaderRole: null,
+      region: null,
+      introduction: '같이 해요',
+      preferred: null,
+      etc: null,
+      openRoles: [{ role: '백엔드', count: 1 }],
+      createdAt: new Date('2026-10-01T00:00:00.000Z'),
+    };
+    const report = {
+      id: 'r1',
+      content: '세모팀',
+      targetType: 'team',
+      org: null,
+      summary: '스팸',
+      detail: null,
+      reporterName: '김*아',
+      createdAt: new Date('2026-10-02T00:00:00.000Z'),
+      status: 'open',
+    };
+    const { db } = createDbStub({
+      select: [
+        [{ team, challengeTitle: 'AI 챌린지', leaderName: '김팀장' }],
+        [{ name: '이팀원', role: '백엔드' }],
+        [report],
+      ],
+    });
+    const result = await createService(db).service.getTeamDetail('t1');
+    expect(result).toMatchObject({
+      name: '세모팀',
+      challenge: 'AI 챌린지',
+      leaderName: '김팀장',
+      introduction: '같이 해요',
+      preferred: '',
+      members: [{ name: '이팀원', role: '백엔드' }],
+    });
+    expect(result.reports).toHaveLength(1);
+
+    const missing = createService(createDbStub({ select: [[]] }).db).service;
+    await expect(missing.getTeamDetail('x')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('returns a challenge with organization and team count, 404 when missing', async () => {
+    const challenge = {
+      id: 'ch1',
+      title: 'AI 챌린지',
+      status: 'published',
+      category: null,
+      summary: null,
+      description: '본문',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-11-01T00:00:00.000Z'),
+      price: 0,
+      capacity: 10,
+      prizeAmount: null,
+      targets: null,
+      hashtags: ['ai'],
+      recruitMethod: 'external',
+      recruitUrl: null,
+      createdAt: new Date('2026-09-30T00:00:00.000Z'),
+    };
+    const { db } = createDbStub({
+      select: [[{ challenge, organization: '세모기관' }], [{ count: 3 }], []],
+    });
+    const result = await createService(db).service.getChallengeDetail('ch1');
+    expect(result).toMatchObject({
+      organization: '세모기관',
+      description: '본문',
+      teamsCount: 3,
+      targets: [],
+      reports: [],
+    });
+
+    const missing = createService(createDbStub({ select: [[]] }).db).service;
+    await expect(missing.getChallengeDetail('x')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
