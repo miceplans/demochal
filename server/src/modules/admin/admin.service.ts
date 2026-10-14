@@ -941,9 +941,10 @@ export class AdminService {
       .from(teams)
       .where(ne(teams.status, 'rejected'));
     const teamRows = await this.db
-      .select({ team: teams, challengeTitle: challenges.title })
+      .select({ team: teams, challengeTitle: challenges.title, leaderName: users.name })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
       .where(ne(teams.status, 'rejected'))
       .orderBy(desc(teams.createdAt))
       .limit(teamsLimit);
@@ -999,7 +1000,7 @@ export class AdminService {
       : [];
     const flagged = new Set(openReportRows.map((row) => row.targetId));
 
-    const teamCards = teamRows.map(({ team, challengeTitle }) => {
+    const teamCards = teamRows.map(({ team, challengeTitle, leaderName }) => {
       const acceptedByRole = acceptedByTeam.get(team.id) ?? new Map<string, number>();
       const accepted = [...acceptedByRole.values()].reduce((sum, count) => sum + count, 0);
       const openRoles = team.openRoles ?? [];
@@ -1015,6 +1016,15 @@ export class AdminService {
         otherRoles: openRoles.filter((slot) => !isFilled(slot)).map((slot) => slot.role),
         members: `${accepted}/${capacity}명 참여중`,
         unread: flagged.has(team.id),
+        // preview 모달용 상세 — 팀이 작성한 모집글 내용.
+        leaderName,
+        leaderRole: team.leaderRole ?? '',
+        region: team.region ?? '',
+        introduction: team.introduction ?? '',
+        preferred: team.preferred ?? '',
+        etc: team.etc ?? '',
+        openRoles,
+        createdAt: team.createdAt.toISOString(),
       };
     });
 
@@ -1028,6 +1038,17 @@ export class AdminService {
         dday: `D-${daysLeft}`,
         teams: `팀 모집 ${teamCountByChallenge.get(challenge.id) ?? 0}건`,
         unread: flagged.has(challenge.id),
+        // preview 모달용 상세 — 공고 내용.
+        summary: challenge.summary ?? '',
+        description: challenge.description,
+        startDate: challenge.startDate.toISOString(),
+        endDate: challenge.endDate.toISOString(),
+        price: challenge.price,
+        capacity: challenge.capacity,
+        prizeAmount: challenge.prizeAmount,
+        targets: challenge.targets ?? [],
+        hashtags: challenge.hashtags,
+        status: challenge.status,
       };
     });
 

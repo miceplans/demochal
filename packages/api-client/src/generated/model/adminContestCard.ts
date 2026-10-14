@@ -29,4 +29,20 @@ export interface AdminContestCard {
   /** '팀 모집 3건' 형태 */
   teams?: string;
   unread?: boolean;
+  /** preview용 — 한줄 소개 */
+  summary?: string;
+  /** 공고 본문 */
+  description?: string;
+  startDate?: string;
+  endDate?: string;
+  price?: number;
+  capacity?: number;
+  /**
+     * 총상금(만원)
+     * @nullable
+     */
+  prizeAmount?: number | null;
+  targets?: string[];
+  hashtags?: string[];
+  status?: string;
 }
