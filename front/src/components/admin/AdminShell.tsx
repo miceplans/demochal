@@ -11,36 +11,11 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
-import {
-  BarChartIcon,
-  BuildingIcon,
-  DashboardIcon,
-  FlagIcon,
-  GearIcon,
-  MailIcon,
-  MegaphoneIcon,
-  MonitorIcon,
-  TrophyIcon,
-  UsersIcon,
-} from './AdminIcons';
 
 const roleLabel: Record<string, string> = {
   admin: '관리자',
   business: '기업',
   user: '일반 사용자',
-};
-
-const menuIcon: Record<string, ReactNode> = {
-  '/': <DashboardIcon />,
-  '/biz-review': <BuildingIcon />,
-  '/certificates': <TrophyIcon size={18} />,
-  '/ad-pricing': <MegaphoneIcon />,
-  '/users': <UsersIcon />,
-  '/contents': <MonitorIcon />,
-  '/reports': <FlagIcon />,
-  '/emails': <MailIcon />,
-  '/analytics': <BarChartIcon />,
-  '/settings': <GearIcon size={18} />,
 };
 
 const AdminNavContext = createContext('');
@@ -110,7 +85,6 @@ function AdminSidebar() {
                 active={active || undefined}
                 aria-current={active ? 'page' : undefined}
               >
-                {menuIcon[href]}
                 {label}
               </NavItem>
             );
@@ -126,9 +100,6 @@ function AdminSidebar() {
         <LogoutButton type="button" onClick={logout}>
           로그아웃
         </LogoutButton>
-        <GearLink href={hrefOf('/settings')} aria-label="설정">
-          <GearIcon />
-        </GearLink>
       </ProfileRow>
     </SidebarBox>
   );
@@ -265,10 +236,4 @@ const Avatar = styled.span({
   alignItems: 'center',
   justifyContent: 'center',
   ...textStyle.caption2,
-});
-const GearLink = styled(Link)({
-  display: 'inline-flex',
-  marginLeft: 'auto',
-  color: c.gray500,
-  '&:hover': { color: c.gray900 },
 });
