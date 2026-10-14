@@ -3839,21 +3839,6 @@ components:
           }
         otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
         unread: { type: boolean, description: 처리되지 않은(open) 신고가 있으면 true }
-        leaderName: { type: string, description: preview용 — 팀장 이름 }
-        leaderRole: { type: string }
-        region: { type: string }
-        introduction: { type: string, description: 팀 소개 }
-        preferred: { type: string, description: 우대사항 }
-        etc: { type: string, description: 기타 }
-        openRoles:
-          type: array
-          description: 모집 역할과 인원
-          items:
-            type: object
-            properties:
-              role: { type: string }
-              count: { type: integer }
-        createdAt: { type: string, format: date-time }
     AdminRejectResult:
       type: object
       properties:
@@ -3869,16 +3854,6 @@ components:
         dday: { type: string, description: "'D-7' 형태" }
         teams: { type: string, description: "'팀 모집 3건' 형태" }
         unread: { type: boolean }
-        summary: { type: string, description: preview용 — 한줄 소개 }
-        description: { type: string, description: 공고 본문 }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time }
-        price: { type: integer }
-        capacity: { type: integer }
-        prizeAmount: { type: integer, nullable: true, description: 총상금(만원) }
-        targets: { type: array, items: { type: string } }
-        hashtags: { type: array, items: { type: string } }
-        status: { type: string }
     AdminUserPage:
       type: object
       required: [items, total, page, pageSize]
