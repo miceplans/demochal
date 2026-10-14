@@ -72,6 +72,8 @@ function compose(
  * Renders a service email from an existing notification row. Uses only the
  * notification's own display data — never registration numbers, OCR results
  * or free-text reasons — and returns null for types that are not emailed.
+ * 예외: `content.rejected`는 관리자가 작성한 반려 사유와 콘텐츠 제목을 본문에 싣는다
+ * (사용자 입력 개인정보가 아니며 HTML은 escape된다).
  */
 export function renderNotificationEmail(
   type: string,
@@ -119,6 +121,22 @@ export function renderNotificationEmail(
         origin,
       );
     }
+  }
+
+  if (type === 'content.rejected') {
+    const isTeam = payload.targetType === 'team';
+    const title = typeof payload.title === 'string' ? payload.title.trim() : '';
+    const reason = typeof payload.reason === 'string' ? payload.reason.trim() : '';
+    return compose(
+      isTeam ? '팀 모집글이 반려되었습니다' : '챌린지 공고가 반려되었습니다',
+      [
+        isTeam ? '등록하신 팀 모집글이 반려되었습니다.' : '등록하신 챌린지 공고가 반려되었습니다.',
+        ...(title ? [`대상: ${title}`] : []),
+        ...(reason ? [`반려 사유: ${reason}`] : []),
+      ],
+      origin,
+      isTeam ? 'semo' : 'biz',
+    );
   }
 
   return null;
