@@ -3921,7 +3921,17 @@ components:
         hashtags: { type: array, items: { type: string } }
         recruitMethod: { type: string }
         recruitUrl: { type: string }
-        teamsCount: { type: integer }
+        posterUrl: { type: string, nullable: true, description: 공개 포스터 URL(없으면 null) }
+        teams:
+          type: array
+          description: 이 챌린지에 등록된 팀 모집글
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              leaderName: { type: string }
+              status: { type: string }
         createdAt: { type: string, format: date-time }
         reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
     AdminRejectResult:

@@ -108,6 +108,7 @@ export function createAdsStub(report: unknown = zeroAdReport): { getReportForAdm
 export function createFilesStub() {
   return {
     getPrivateReadUrl: vi.fn(async (key: string) => `https://signed.example/${key}`),
+    resolvePublicUrl: vi.fn(async () => null),
   };
 }
 
