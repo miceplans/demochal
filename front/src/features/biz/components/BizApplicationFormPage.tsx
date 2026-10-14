@@ -225,6 +225,7 @@ const PreviewTextarea = styled.textarea({
   background: c.gray50,
   color: c.gray500,
   resize: 'vertical',
+  '&:disabled': { background: c.gray50, cursor: 'default' },
 });
 const PreviewUpload = styled.div({
   display: 'flex',
