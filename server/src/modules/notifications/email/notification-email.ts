@@ -8,6 +8,7 @@ export const NOTIFICATION_EMAIL_EVENT = 'notification.email';
 export const EMAIL_NOTIFICATION_TYPES: ReadonlySet<string> = new Set([
   'verification.result',
   'team_matching',
+  'content.rejected',
 ]);
 
 /**
