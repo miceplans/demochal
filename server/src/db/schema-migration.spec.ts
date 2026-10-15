@@ -499,10 +499,10 @@ describe('0035_users_email_lower_unique migration', () => {
   });
 });
 
-describe('0036_privileged_account_mfa migration', () => {
+describe('0037_privileged_account_mfa migration', () => {
   it('creates the 2FA tables (TOTP·패스키·복구 코드·challenge) without destructive DDL', () => {
-    const tag = journal.entries[36]?.tag;
-    expect(tag).toBe('0036_privileged_account_mfa');
+    const tag = journal.entries[37]?.tag;
+    expect(tag).toBe('0037_privileged_account_mfa');
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     for (const table of [
       'user_totp_credentials',
