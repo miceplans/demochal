@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -14,14 +14,18 @@ const mocks = vi.hoisted(() => {
   }
   return {
     register: vi.fn(),
+    registerBusiness: vi.fn(),
+    requestPresignedUpload: vi.fn(),
+    submitVerification: vi.fn(),
     replace: vi.fn(),
+    push: vi.fn(),
     toastError: vi.fn(),
     MockApiError,
   };
 });
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: mocks.replace, push: vi.fn() }),
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
 }));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => (
@@ -44,7 +48,12 @@ vi.mock('@/components/common/Toast', () => ({
 }));
 vi.mock('@semochal/api-client', () => ({
   ApiError: mocks.MockApiError,
-  generated: { register: mocks.register },
+  generated: {
+    register: mocks.register,
+    registerBusiness: mocks.registerBusiness,
+    requestPresignedUpload: mocks.requestPresignedUpload,
+    submitVerification: mocks.submitVerification,
+  },
 }));
 
 function renderSignup() {
@@ -87,7 +96,7 @@ describe('BizSignupFlow', () => {
     expect(styleText).toContain('prefers-reduced-motion');
   });
 
-  it('injects micro-interaction styles for checkboxes, action buttons, and the upload box', () => {
+  it('injects micro-interaction styles for checkboxes and action buttons', () => {
     renderSignup();
 
     const styleText = Array.from(document.querySelectorAll('style'))
@@ -120,12 +129,39 @@ describe('BizSignupFlow', () => {
     await setValue('passwordConfirm', 'password123');
     await user.click(screen.getByRole('button', { name: '다음' }));
 
-    const fileInput = container.querySelector('input[type="file"]') as HTMLInputElement;
-    fireEvent.change(fileInput, {
-      target: { files: [new File(['proof'], 'proof.pdf', { type: 'application/pdf' })] },
-    });
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));
+  });
+
+  it('completes signup without any document upload or verification request', async () => {
+    mocks.register.mockResolvedValue({});
+    mocks.registerBusiness.mockResolvedValue({ data: { id: 'biz-1' } });
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
+    await user.click(agreementBoxes[0]);
+    await user.click(agreementBoxes[1]);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    for (const [name, value] of [
+      ['name', '기업 담당자'],
+      ['email', 'biz@semochal.kr'],
+      ['username', 'biz_owner'],
+      ['password', 'password123'],
+      ['passwordConfirm', 'password123'],
+    ]) {
+      await user.type(container.querySelector(`input[name="${name}"]`) as HTMLInputElement, value);
+    }
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/biz/dashboard'));
+    expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' });
+    expect(mocks.requestPresignedUpload).not.toHaveBeenCalled();
+    expect(mocks.submitVerification).not.toHaveBeenCalled();
   });
 });

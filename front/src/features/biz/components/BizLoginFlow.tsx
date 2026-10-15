@@ -18,7 +18,7 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 
-const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
+const stepLabels = ['약관 동의', '계정 정보', '기관 정보'];
 
 const agreements = [
   { value: 'privacy', label: '개인정보처리방침' },
@@ -27,17 +27,12 @@ const agreements = [
 type AgreementKey = (typeof agreements)[number]['value'];
 
 const orgTypes = [
-  { value: '기업', label: '일반 기업', uploadLabel: '사업자 등록증을 업로드 해 주세요' },
-  { value: '학교', label: '학교', uploadLabel: '관련 서류를 업로드해주세요' },
-  { value: '비영리', label: '비영리 단체', uploadLabel: '관련 서류를 업로드해주세요' },
-  { value: '협회', label: '협회', uploadLabel: '관련 서류를 업로드해주세요' },
+  { value: '기업', label: '일반 기업' },
+  { value: '학교', label: '학교' },
+  { value: '비영리', label: '비영리 단체' },
+  { value: '협회', label: '협회' },
 ] as const;
 type OrgType = (typeof orgTypes)[number]['value'];
-
-// server/src/modules/files/dto/request-upload.dto.ts와 동일한 제약
-const UPLOAD_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] as const;
-type UploadType = (typeof UPLOAD_TYPES)[number];
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/;
@@ -56,7 +51,6 @@ export function BizSignupFlow() {
     passwordConfirm: '',
   });
   const [orgType, setOrgType] = useState<OrgType>('기업');
-  const [docFile, setDocFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
   const [registered, setRegistered] = useState(false);
@@ -79,7 +73,7 @@ export function BizSignupFlow() {
     if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
     return null;
   };
-  const goToVerificationStep = () => {
+  const goToOrgStep = () => {
     const error = validateAccount();
     if (error) {
       toast.error(error);
@@ -88,45 +82,7 @@ export function BizSignupFlow() {
     setStep(2);
   };
 
-  const pickDoc = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = '';
-    if (!file) return;
-    if (!UPLOAD_TYPES.includes(file.type as UploadType)) {
-      toast.error('JPG, PNG, WEBP, PDF 파일만 올릴 수 있어요.');
-      return;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error('10MB 이하 파일만 올릴 수 있어요.');
-      return;
-    }
-    setDocFile(file);
-  };
-
-  const uploadDocument = async (file: File) => {
-    const { data: presigned } = await generated.requestPresignedUpload({
-      bucket: 'private',
-      contentType: file.type as UploadType,
-      fileName: file.name,
-      sizeBytes: file.size,
-    });
-    if (!presigned.uploadUrl || !presigned.fileId) throw new Error('presign failed');
-    // S3 presigned URL로 직접 PUT — API 호출이 아니므로 api-client를 거치지 않는다.
-    const uploaded = await fetch(presigned.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': file.type },
-      body: file,
-    });
-    if (!uploaded.ok) throw new Error('upload failed');
-    await generated.finalizeUpload(presigned.fileId);
-    return presigned.fileId;
-  };
-
   const submit = async () => {
-    if (!docFile) {
-      toast.error('서류를 첨부해주세요.');
-      return;
-    }
     setSubmitting(true);
     try {
       if (!registered) {
@@ -148,16 +104,12 @@ export function BizSignupFlow() {
         }
         setRegistered(true);
       }
-      let ownedBusinessId = businessId;
-      if (!ownedBusinessId) {
+      if (!businessId) {
         const { data: business } = await generated.registerBusiness({ type: orgType });
         if (!business.id) throw new Error('business registration failed');
-        ownedBusinessId = business.id;
-        setBusinessId(ownedBusinessId);
+        setBusinessId(business.id);
       }
-      const documentFileId = await uploadDocument(docFile);
-      await generated.submitVerification({ businessId: ownedBusinessId, documentFileId });
-      toast.success('가입이 완료됐어요.', '기관 인증 결과는 알림으로 알려드릴게요.');
+      toast.success('가입이 완료됐어요.');
       router.push(hrefOf('/dashboard'));
     } catch (error) {
       toast.error(
@@ -168,8 +120,6 @@ export function BizSignupFlow() {
       setSubmitting(false);
     }
   };
-
-  const uploadLabel = orgTypes.find((o) => o.value === orgType)?.uploadLabel ?? '';
 
   return (
     <Wrap>
@@ -251,7 +201,7 @@ export function BizSignupFlow() {
               </Form>
             )}
             {step === 2 && (
-              <Form aria-label="기관 인증">
+              <Form aria-label="기관 정보">
                 <Dropdown
                   aria-label="기관 유형"
                   options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
@@ -259,14 +209,6 @@ export function BizSignupFlow() {
                   disabled={!!businessId}
                   onChange={(value) => setOrgType(value as OrgType)}
                 />
-                <FieldBox>
-                  <FieldLabel>{uploadLabel}</FieldLabel>
-                  <UploadBox>
-                    <HiddenInput type="file" accept={UPLOAD_TYPES.join(',')} onChange={pickDoc} />
-                    <UploadIcon src="/assets/icons/biz-upload-cloud.svg" alt="" aria-hidden />
-                    <UploadText>{docFile?.name ?? '파일 찾기'}</UploadText>
-                  </UploadBox>
-                </FieldBox>
               </Form>
             )}
           </StepBody>
@@ -287,7 +229,7 @@ export function BizSignupFlow() {
             </ActionPrimary>
           )}
           {step === 1 && (
-            <ActionPrimary type="button" onClick={goToVerificationStep}>
+            <ActionPrimary type="button" onClick={goToOrgStep}>
               다음
             </ActionPrimary>
           )}
@@ -414,32 +356,6 @@ const TextInput = styled.input({
   color: c.gray900,
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
-});
-const UploadBox = styled.label({
-  position: 'relative',
-  height: 160,
-  padding: 8,
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 4,
-  border: `2px dashed ${c.lightBlue}`,
-  borderRadius: 20,
-  background: c.surface,
-  cursor: 'pointer',
-  transition: 'border-color 150ms ease, background 150ms ease',
-  '&:hover': { borderColor: c.primary },
-  '&:focus-within': { boxShadow: s.focus },
-});
-const UploadIcon = styled.img({ width: 57.3223, height: 36 });
-const UploadText = styled.span({
-  ...textStyle.mInfoText,
-  color: c.gray500,
-  maxWidth: '100%',
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
 });
 const Actions = styled('div', { shouldForwardProp: (prop) => prop !== 'single' })<{
   single: boolean;
