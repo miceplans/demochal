@@ -27,7 +27,10 @@ import { Public } from '../public.decorator.js';
 import { CurrentUser } from '../current-user.decorator.js';
 import type { AuthenticatedUser } from '../jwt-auth.guard.js';
 import { AUTH_COOKIE_NAME, authCookieOptions } from '../auth.cookie.js';
-import { AUTH_THROTTLE, LoginAttemptThrottlerGuard } from '../../../common/throttling/throttling.js';
+import {
+  AUTH_THROTTLE,
+  LoginAttemptThrottlerGuard,
+} from '../../../common/throttling/throttling.js';
 import { SkipInputSecurity } from '../../../common/security/skip-input-security.decorator.js';
 
 /**
@@ -43,12 +46,14 @@ export class MfaController {
   // ---------------------------------------------------------- 수단 관리·등록
 
   @Post('totp/setup')
+  @HttpCode(200)
   @MfaFlow('enroll')
   setupTotp(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mfaService.setupTotp(user);
   }
 
   @Post('totp/confirm')
+  @HttpCode(200)
   @MfaFlow('enroll')
   async confirmTotp(
     @Body() dto: ConfirmTotpDto,
@@ -68,6 +73,7 @@ export class MfaController {
   }
 
   @Post('passkeys/register-options')
+  @HttpCode(200)
   @MfaFlow('enroll')
   registerOptions(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mfaService.beginPasskeyRegistration(user);
@@ -78,6 +84,7 @@ export class MfaController {
   // (OAuth 콜백의 @SkipInputSecurity와 같은 사유).
   @SkipInputSecurity()
   @Post('passkeys/register-verify')
+  @HttpCode(200)
   @MfaFlow('enroll')
   async registerVerify(
     @Body() dto: PasskeyRegisterVerifyDto,
@@ -111,11 +118,9 @@ export class MfaController {
   }
 
   @Post('recovery-codes/regenerate')
+  @HttpCode(200)
   @MfaFlow('manage')
-  async regenerate(
-    @Body() dto: PasswordConfirmDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
+  async regenerate(@Body() dto: PasswordConfirmDto, @CurrentUser() user: AuthenticatedUser) {
     const recoveryCodes = await this.mfaService.regenerateRecoveryCodes(user.id, dto.password);
     return { recoveryCodes };
   }
@@ -123,6 +128,7 @@ export class MfaController {
   // ------------------------------------------------------------ 로그인 검증
 
   @Post('verify/totp')
+  @HttpCode(200)
   @MfaFlow('pending')
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
@@ -137,6 +143,7 @@ export class MfaController {
   }
 
   @Post('passkeys/auth-options')
+  @HttpCode(200)
   @MfaFlow('pending')
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
@@ -147,6 +154,7 @@ export class MfaController {
   // credential JSON도 register-verify와 같은 사유로 입력 검사를 생략한다.
   @SkipInputSecurity()
   @Post('verify/passkey')
+  @HttpCode(200)
   @MfaFlow('pending')
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
@@ -161,6 +169,7 @@ export class MfaController {
   }
 
   @Post('verify/recovery')
+  @HttpCode(200)
   @MfaFlow('pending')
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
