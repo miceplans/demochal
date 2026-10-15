@@ -12,6 +12,7 @@ import { BizContent, PrimaryButton, useBizHref } from '@/components/biz/BizShell
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/lib/api-error';
+import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
 async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
   if (!fileId) return null;
@@ -116,6 +117,7 @@ export function BizProfilePage() {
           </Row>
         </List>
       </section>
+      <MfaSettingsCard />
       <BizOrgProfile
         bannerUrl={images.banner}
         logoUrl={images.logo}

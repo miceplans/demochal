@@ -15,6 +15,7 @@ import {
   gte,
   ilike,
   inArray,
+  isNotNull,
   isNull,
   lt,
   lte,
@@ -38,6 +39,8 @@ import {
   reports,
   teamMembers,
   teams,
+  userPasskeyCredentials,
+  userTotpCredentials,
   users,
   verifications,
   type reports as reportsTable,
@@ -1347,14 +1350,28 @@ export class AdminService {
   // ------------------------------------------------------------------ settings
 
   async getSettings(user: AuthenticatedUser) {
+    // 2FA 여부는 실제 verified 수단(TOTP·패스키) 존재 여부로 계산한다 — pending 상태나
+    // 복구 코드 잔량만으로는 켜진 것으로 보지 않는다.
+    const [verifiedTotp, passkey] = await Promise.all([
+      this.db
+        .select({ userId: userTotpCredentials.userId })
+        .from(userTotpCredentials)
+        .where(
+          and(eq(userTotpCredentials.userId, user.id), isNotNull(userTotpCredentials.verifiedAt)),
+        )
+        .limit(1),
+      this.db
+        .select({ id: userPasskeyCredentials.id })
+        .from(userPasskeyCredentials)
+        .where(eq(userPasskeyCredentials.userId, user.id))
+        .limit(1),
+    ]);
     return {
       profile: {
         name: user.name,
         role: ADMIN_ROLE_LABELS[user.role] ?? user.role,
         email: user.email,
-        // TODO: 관리자 2단계 인증은 미구현 — 도입 시 users에 TOTP 시크릿/활성 플래그를 추가한다.
-        // https://datatracker.ietf.org/doc/html/rfc6238
-        twoFactorEnabled: false,
+        twoFactorEnabled: Boolean(verifiedTotp[0]) || Boolean(passkey[0]),
       },
       ...(await this.adminSettingsService.get()),
     };

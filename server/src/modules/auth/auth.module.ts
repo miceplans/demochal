@@ -7,6 +7,9 @@ import { ContactVerificationsService } from './contact-verifications.service.js'
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { MfaController } from './mfa/mfa.controller.js';
+import { MfaService } from './mfa/mfa.service.js';
+import { MfaAuthGuard } from './mfa/mfa-auth.guard.js';
 
 @Module({
   imports: [
@@ -17,8 +20,8 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  controllers: [AuthController],
-  providers: [AuthService, ContactVerificationsService, JwtAuthGuard],
+  controllers: [AuthController, MfaController],
+  providers: [AuthService, ContactVerificationsService, JwtAuthGuard, MfaService, MfaAuthGuard],
   exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}

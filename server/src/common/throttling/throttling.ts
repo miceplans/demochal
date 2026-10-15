@@ -26,10 +26,14 @@ export class LoginAttemptThrottlerGuard extends ThrottlerGuard {
   protected override getTracker(req: Record<string, any>): Promise<string> {
     const body = (req.body ?? {}) as { email?: unknown; username?: unknown };
     const identifier = body.email ?? body.username;
+    // 2차 인증 검증은 body에 이메일이 없으므로, 앞선 MfaAuthGuard가 채운 사용자 기준으로 계정 단위 제한을 건다.
+    const userId = (req.user as { id?: unknown } | undefined)?.id;
     return Promise.resolve(
       typeof identifier === 'string' && identifier
         ? `login:${identifier.trim().toLowerCase()}`
-        : `login-ip:${String(req.ip)}`,
+        : typeof userId === 'string' && userId
+          ? `login-user:${userId}`
+          : `login-ip:${String(req.ip)}`,
     );
   }
 }

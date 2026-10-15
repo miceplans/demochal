@@ -73,6 +73,12 @@ const envSchema = z
       .string()
       .url()
       .default('http://localhost:3001/auth/social/kakao/callback'),
+
+    // WebAuthn(패스키) RP 설정. RP ID는 패스키가 유효한 도메인 — production에서는
+    // 서비스 도메인(예: semochall.com)으로 반드시 바꿔야 한다.
+    WEBAUTHN_RP_ID: z.string().default('localhost'),
+    WEBAUTHN_RP_ORIGIN: z.string().url().default('http://localhost:3000'),
+    WEBAUTHN_RP_NAME: z.string().default('Semochal'),
   })
   .superRefine((value, ctx) => {
     // HS256 key: anything shorter than 32 bytes is brute-forceable offline from one issued token.
@@ -168,4 +174,8 @@ export const env = {
   kakaoClientId: raw.KAKAO_CLIENT_ID,
   kakaoClientSecret: raw.KAKAO_CLIENT_SECRET,
   kakaoRedirectUri: raw.KAKAO_REDIRECT_URI,
+
+  webauthnRpId: raw.WEBAUTHN_RP_ID,
+  webauthnRpOrigin: raw.WEBAUTHN_RP_ORIGIN,
+  webauthnRpName: raw.WEBAUTHN_RP_NAME,
 };
