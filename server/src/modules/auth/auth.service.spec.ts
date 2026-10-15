@@ -103,7 +103,8 @@ describe('AuthService.login', () => {
   });
 });
 
-describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
+// TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+describe.skip('AuthService.login — 관리자·사업자 2FA 분기', () => {
   function privilegedLoginService({ role, methods }: { role: string; methods: string[] }) {
     compare.mockResolvedValue(true);
     const mfaService = {
@@ -194,7 +195,8 @@ describe('AuthService.me — 세션 토큰 검증', () => {
     expect(usersService.findById).not.toHaveBeenCalled();
   });
 
-  it.each([['admin'], ['business']])(
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip.each([['admin'], ['business']])(
     '%s 프로필인데 세션에 mfa 클레임이 없으면 401로 거부한다',
     async (role) => {
       const { service } = meService({

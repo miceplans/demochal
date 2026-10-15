@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+// import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import styled from '@emotion/styled';
@@ -10,9 +10,9 @@ import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
 import { generated } from '@semochal/api-client';
 import { apiErrorMessage } from '@/lib/api-error';
-import { MfaStep } from './MfaStep';
+// import { MfaStep } from './MfaStep';
 import { loginSchema, type LoginFormValues } from '../schema';
-import type { MfaChallenge, MfaUser } from '../mfa-types';
+import type { /* MfaChallenge, */ MfaUser } from '../mfa-types';
 
 const Form = styled.form`
   display: flex;
@@ -24,7 +24,8 @@ const Form = styled.form`
 export function AdminLoginForm() {
   const router = useRouter();
   const toast = useToast();
-  const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 주석 해제.
+  // const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
 
   const {
     register,
@@ -39,7 +40,6 @@ export function AdminLoginForm() {
   const enter = async (user: MfaUser) => {
     if (user.role !== 'admin') {
       await generated.logout().catch(() => undefined);
-      setChallenge(null);
       toast.error('관리자 계정이 아닙니다.');
       return;
     }
@@ -50,30 +50,30 @@ export function AdminLoginForm() {
     try {
       const response = await generated.login(values);
       if (response.status !== 200) throw new Error('admin login failed');
-      if ('mfaToken' in response.data) {
-        // 비관리자는 2FA 단계로 보내지 않는다(세션이 아직 없으므로 로그아웃도 불필요).
-        if (response.data.user.role !== 'admin') {
-          toast.error('관리자 계정이 아닙니다.');
-          return;
-        }
-        setChallenge(response.data);
-        return;
-      }
+      // if ('mfaToken' in response.data) {
+      //   // 비관리자는 2FA 단계로 보내지 않는다(세션이 아직 없으므로 로그아웃도 불필요).
+      //   if (response.data.user.role !== 'admin') {
+      //     toast.error('관리자 계정이 아닙니다.');
+      //     return;
+      //   }
+      //   setChallenge(response.data);
+      //   return;
+      // }
       await enter(response.data.user);
     } catch (error) {
       toast.error(apiErrorMessage(error, '이메일 또는 비밀번호를 확인해 주세요.'));
     }
   };
 
-  if (challenge) {
-    return (
-      <MfaStep
-        challenge={challenge}
-        onAuthenticated={(user) => void enter(user)}
-        onCancel={() => setChallenge(null)}
-      />
-    );
-  }
+  // if (challenge) {
+  //   return (
+  //     <MfaStep
+  //       challenge={challenge}
+  //       onAuthenticated={(user) => void enter(user)}
+  //       onCancel={() => setChallenge(null)}
+  //     />
+  //   );
+  // }
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)} noValidate>
