@@ -13,6 +13,8 @@ declare module '@emotion/react' {
       green: string;
       lightRed: string;
       red: string;
+      lightAmber: string;
+      amber: string;
       gray: {
         50: string;
         100: string;
@@ -49,6 +51,8 @@ export const theme = {
     green: '#22c55e',
     lightRed: '#fff0eb',
     red: '#ff4d00',
+    lightAmber: '#fef3c7',
+    amber: '#f59e0b',
     gray: {
       50: '#fdfdfd',
       100: '#f4f4f4',

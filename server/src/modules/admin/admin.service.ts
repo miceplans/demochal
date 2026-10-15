@@ -366,9 +366,9 @@ export class AdminService {
     }
 
     const stats: AdminStatCard[] = [
-      { label: '전체 신청', value: String(totalRow?.count ?? 0), meta: '전체', dot: '#0877FF' },
+      { label: '전체 신청', value: String(totalRow?.count ?? 0), meta: '전체', dot: '#006FFF' },
       { label: '승인', value: String(approvedRow?.count ?? 0), meta: '누적 승인', dot: '#22C55E' },
-      { label: '거부', value: String(rejectedRow?.count ?? 0), meta: '누적 거부', dot: '#EF4444' },
+      { label: '거부', value: String(rejectedRow?.count ?? 0), meta: '누적 거부', dot: '#FF4D00' },
       { label: '대기', value: String(pendingRow?.count ?? 0), meta: '심사 대기', dot: '#F59E0B' },
     ];
 
