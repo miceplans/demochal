@@ -114,15 +114,23 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-    const { accessToken, user } = await this.authService.login(
-      dto.email ?? dto.username ?? '',
-      dto.password,
-    );
-    response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
-    return { user };
+    const result = await this.authService.login(dto.email ?? dto.username ?? '', dto.password);
+    // 관리자·사업자 2FA가 남아 있으면 세션 쿠키 없이 mfa 토큰만 낸다(컨트롤러가 쿠키를 세팅하지 않음).
+    if (result.accessToken) {
+      response.cookie(AUTH_COOKIE_NAME, result.accessToken, authCookieOptions);
+    }
+    if (!result.mfa) return { user: result.user };
+    return {
+      user: result.user,
+      mfaRequired: result.mfa.required,
+      mfaEnrollmentRequired: result.mfa.enrollmentRequired,
+      mfaToken: result.mfa.token,
+      methods: result.mfa.methods,
+    };
   }
 
   @Get('me')

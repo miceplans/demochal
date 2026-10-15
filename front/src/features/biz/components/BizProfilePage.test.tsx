@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizProfilePage } from './BizProfilePage';
 
 const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn(), success: vi.fn(), error: vi.fn() }));
+vi.mock('@/features/auth/components/MfaSettingsCard', () => ({ MfaSettingsCard: () => null }));
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {

@@ -245,6 +245,20 @@
       "when": 1791873222309,
       "tag": "0035_users_email_lower_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1791960000000,
+      "tag": "0036_content_admin_reviewed",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792037567747,
+      "tag": "0037_privileged_account_mfa",
+      "breakpoints": true
     }
   ]
 }

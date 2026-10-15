@@ -25,8 +25,8 @@ import { CloseIcon } from './AdminIcons';
 // 승인/거부 API는 기관 id가 아니라 최신 인증 요청 id를 받는다(없으면 심사 불가).
 type BizReviewRow = BizRow & { verificationId: string | null };
 
-const statusBadge: Record<BizRow['status'], 'blue' | 'green' | 'red'> = {
-  대기: 'blue',
+const statusBadge: Record<BizRow['status'], 'amber' | 'green' | 'red'> = {
+  대기: 'amber',
   승인: 'green',
   거부: 'red',
 };

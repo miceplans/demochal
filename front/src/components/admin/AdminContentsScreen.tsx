@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { keepPreviousData } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -16,6 +17,7 @@ import {
   SelectFilter,
   SectionHeader,
 } from './parts';
+import { useAdminHref } from './AdminShell';
 import { ReportLogTable } from './ReportLogTable';
 import { ScrollRail } from '@/components/ui/ScrollRail';
 
@@ -29,6 +31,8 @@ const CardGrid = styled.div({
 });
 const TeamCard = styled.article({
   position: 'relative',
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.gray300 },
   flex: '0 0 calc((100% - 48px) / 4)',
   border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
@@ -74,6 +78,8 @@ const RoleBadge = styled.span<{ active?: boolean }>(({ active }) => ({
 
 const ContestCard = styled.article({
   position: 'relative',
+  cursor: 'pointer',
+  '&:hover': { borderColor: c.gray300 },
   flex: '0 0 calc((100% - 48px) / 4)',
   border: `0.5px solid ${c.gray200}`,
   borderRadius: 12,
@@ -124,6 +130,14 @@ const MoreButton = styled.button({
   '&:disabled': { cursor: 'wait' },
 });
 
+// 카드를 키보드로도 열 수 있게 하는 공통 속성.
+const openOnKey = (open: () => void) => (event: KeyboardEvent) => {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    open();
+  }
+};
+
 /* ---------- 신고 테이블 ---------- */
 
 // '더보기'는 섹션 limit을 한 페이지씩 늘려 다시 조회한다 (서버 상한 50).
@@ -156,6 +170,45 @@ type ContestCardRow = {
   unread: boolean;
 };
 
+const teamCardContent = (team: TeamCardRow) => (
+  <>
+    {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+    <TeamCover />
+    <TeamBody>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TeamName>{team.name}</TeamName>
+        <TeamChallenge>{team.challenge}</TeamChallenge>
+      </div>
+      <RoleBadges>
+        {team.roles.map((role) => (
+          <RoleBadge key={role} active>
+            {role}
+          </RoleBadge>
+        ))}
+        {team.otherRoles.map((role) => (
+          <RoleBadge key={role}>{role}</RoleBadge>
+        ))}
+      </RoleBadges>
+      <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
+    </TeamBody>
+  </>
+);
+
+const contestCardContent = (contest: ContestCardRow) => (
+  <>
+    {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
+    <ContestCover>공고 이미지</ContestCover>
+    <ContestBody>
+      <ContestTitle>{contest.title}</ContestTitle>
+      <TagRow>
+        <CategoryTag>{contest.category}</CategoryTag>
+        <DDay>{contest.dday}</DDay>
+        <TeamCount>{contest.teams}</TeamCount>
+      </TagRow>
+    </ContestBody>
+  </>
+);
+
 export function AdminContentsScreen() {
   const [teamsLimit, setTeamsLimit] = useState(PAGE_SIZE);
   const [contestsLimit, setContestsLimit] = useState(PAGE_SIZE);
@@ -172,16 +225,15 @@ export function AdminContentsScreen() {
     () => ({ q: reportQuery || undefined, targetType: kindOptionToTargetType[kind] }),
     [reportQuery, kind],
   );
-  const refetchContents = contentsQuery.refetch;
   const toast = useToast();
+  const router = useRouter();
+  const hrefOf = useAdminHref();
 
   useEffect(() => {
     if (!contentsQuery.isError) return;
-    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
-      action: { label: '다시 시도', onClick: () => void refetchContents() },
-    });
+    toast.error('콘텐츠를 불러올 수 없어요. 잠시 후 다시 시도해주세요.');
     // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
-  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, refetchContents, toast]);
+  }, [contentsQuery.isError, contentsQuery.errorUpdatedAt, toast]);
 
   const adminTeams = useMemo<TeamCardRow[]>(
     () =>
@@ -230,26 +282,15 @@ export function AdminContentsScreen() {
         <ScrollRail as={CardGrid}>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminTeams.map((team) => (
-            <TeamCard key={team.id}>
-              {team.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <TeamCover />
-              <TeamBody>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  <TeamName>{team.name}</TeamName>
-                  <TeamChallenge>{team.challenge}</TeamChallenge>
-                </div>
-                <RoleBadges>
-                  {team.roles.map((role) => (
-                    <RoleBadge key={role} active>
-                      {role}
-                    </RoleBadge>
-                  ))}
-                  {team.otherRoles.map((role) => (
-                    <RoleBadge key={role}>{role}</RoleBadge>
-                  ))}
-                </RoleBadges>
-                <span style={{ ...textStyle.mInfoText, color: c.gray700 }}>{team.members}</span>
-              </TeamBody>
+            <TeamCard
+              key={team.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`${team.name} 상세 보기`}
+              onClick={() => router.push(hrefOf(`/contents/teams/${team.id}`))}
+              onKeyDown={openOnKey(() => router.push(hrefOf(`/contents/teams/${team.id}`)))}
+            >
+              {teamCardContent(team)}
             </TeamCard>
           ))}
         </ScrollRail>
@@ -271,17 +312,15 @@ export function AdminContentsScreen() {
         <ScrollRail as={CardGrid}>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminContests.map((contest) => (
-            <ContestCard key={contest.id}>
-              {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-              <ContestCover>공고 이미지</ContestCover>
-              <ContestBody>
-                <ContestTitle>{contest.title}</ContestTitle>
-                <TagRow>
-                  <CategoryTag>{contest.category}</CategoryTag>
-                  <DDay>{contest.dday}</DDay>
-                  <TeamCount>{contest.teams}</TeamCount>
-                </TagRow>
-              </ContestBody>
+            <ContestCard
+              key={contest.id}
+              role="button"
+              tabIndex={0}
+              aria-label={`${contest.title} 상세 보기`}
+              onClick={() => router.push(hrefOf(`/contents/challenges/${contest.id}`))}
+              onKeyDown={openOnKey(() => router.push(hrefOf(`/contents/challenges/${contest.id}`)))}
+            >
+              {contestCardContent(contest)}
             </ContestCard>
           ))}
         </ScrollRail>

@@ -85,7 +85,7 @@ describe('JwtAuthGuard', () => {
   it('forbids suspended users even with a valid token', async () => {
     const { guard } = createGuard(
       createDbStub([{ suspended: true, suspendedReason: '정지 사유' }]),
-      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin' }),
+      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin', mfa: true }),
     );
 
     await expect(
@@ -97,7 +97,7 @@ describe('JwtAuthGuard', () => {
     const request: Record<string, unknown> = { headers: cookieHeader('valid.jwt') };
     const { guard, verifyAsync } = createGuard(
       createDbStub([{ name: '관리자', role: 'admin', suspended: false, suspendedReason: null }]),
-      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin' }),
+      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin', mfa: true }),
     );
 
     await expect(guard.canActivate(httpContext(request))).resolves.toBe(true);
@@ -110,11 +110,49 @@ describe('JwtAuthGuard', () => {
     });
   });
 
+  it('rejects MFA tokens (purpose claim) used as a session cookie', async () => {
+    const { guard } = createGuard(
+      createDbStub([{ name: '관리자', role: 'admin', suspended: false, suspendedReason: null }]),
+      vi.fn().mockResolvedValue({
+        sub: 'u1',
+        email: 'u@semochal.kr',
+        role: 'admin',
+        purpose: 'mfa-pending',
+      }),
+    );
+
+    await expect(
+      guard.canActivate(httpContext({ headers: cookieHeader('mfa.jwt') })),
+    ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('rejects admin/business sessions that did not complete 2FA', async () => {
+    for (const role of ['admin', 'business']) {
+      const { guard } = createGuard(
+        createDbStub([{ name: 'x', role, suspended: false, suspendedReason: null }]),
+        vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role }),
+      );
+      await expect(
+        guard.canActivate(httpContext({ headers: cookieHeader('nomfa.jwt') })),
+      ).rejects.toThrow(UnauthorizedException);
+    }
+  });
+
+  it('does not require the mfa claim for regular users', async () => {
+    const { guard } = createGuard(
+      createDbStub([{ name: '회원', role: 'user', suspended: false, suspendedReason: null }]),
+      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'user' }),
+    );
+    await expect(
+      guard.canActivate(httpContext({ headers: cookieHeader('user.jwt') })),
+    ).resolves.toBe(true);
+  });
+
   it('takes the role from the DB so a demoted admin loses access before the token expires', async () => {
     const request: Record<string, unknown> = { headers: cookieHeader('valid.jwt') };
     const { guard } = createGuard(
       createDbStub([{ name: '전 관리자', role: 'user', suspended: false, suspendedReason: null }]),
-      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin' }),
+      vi.fn().mockResolvedValue({ sub: 'u1', email: 'u@semochal.kr', role: 'admin', mfa: true }),
     );
 
     await expect(guard.canActivate(httpContext(request))).resolves.toBe(true);

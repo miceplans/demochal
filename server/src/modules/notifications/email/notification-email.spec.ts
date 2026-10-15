@@ -72,6 +72,25 @@ describe('renderNotificationEmail', () => {
     expect(email?.html).not.toContain('123-45-67890');
   });
 
+  it('renders content.rejected with the title and admin reason, escaped', () => {
+    const team = renderNotificationEmail(
+      'content.rejected',
+      { targetType: 'team', title: '팀 A', reason: '<b>부적절</b>' },
+      origin,
+    );
+    expect(team?.subject).toContain('팀 모집글이 반려');
+    expect(team?.text).toContain('반려 사유: <b>부적절</b>');
+    expect(team?.html).toContain('&lt;b&gt;부적절&lt;/b&gt;');
+    expect(team?.html).toContain('assets/SEMO.png');
+    const challenge = renderNotificationEmail(
+      'content.rejected',
+      { targetType: 'challenge', title: '공고', reason: '사유' },
+      origin,
+    );
+    expect(challenge?.subject).toContain('챌린지 공고가 반려');
+    expect(challenge?.html).toContain('assets/SEMOBIZ.png');
+  });
+
   it('escapes the link in HTML', () => {
     const email = renderNotificationEmail('team_matching', { status: 'accepted' }, 'https://x/"a');
     expect(email?.html).toContain('https://x/&quot;a/notifications');
