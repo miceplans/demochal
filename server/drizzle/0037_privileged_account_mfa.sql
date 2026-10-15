@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS "user_totp_credentials" (
   "user_id" uuid PRIMARY KEY NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "secret_ciphertext" text NOT NULL,
   "verified_at" timestamp,
+  "last_used_step" bigint,
   "created_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint

@@ -131,7 +131,10 @@ describe('MfaService TOTP 등록', () => {
     for (const row of savedHashes) {
       expect(result.recoveryCodes?.some((c) => hashRecoveryCode(c) === row.codeHash)).toBe(true);
     }
-    expect(update.set).toHaveBeenCalledWith({ verifiedAt: expect.any(Date) });
+    expect(update.set).toHaveBeenCalledWith({
+      verifiedAt: expect.any(Date),
+      lastUsedStep: Math.floor(Date.now() / 1000 / 30),
+    });
   });
 
   it('confirm은 틀린 코드·등록 전 상태·이미 완료된 상태를 거부한다', async () => {
@@ -447,15 +450,34 @@ describe('MfaService 로그인 검증', () => {
         { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() },
       ]),
     );
-    const { service, jwtService } = makeService(db);
+    const update = updateChain([{ userId: admin.id }]);
+    const { service, jwtService } = makeService({ ...db, ...update });
 
     const session = await service.verifyTotpCode(admin, code);
+    expect(update.set).toHaveBeenCalledWith({ lastUsedStep: expect.any(Number) });
 
     expect(session.accessToken).toBe('signed-token');
     expect(jwtService.signAsync).toHaveBeenCalledWith(
       expect.objectContaining({ sub: admin.id, role: 'admin', mfa: true }),
     );
     expect(session.user).toEqual({ id: admin.id, role: 'admin' });
+  });
+
+  it('verifyTotpCode는 이미 사용한 time-step의 코드 재사용을 거부한다', async () => {
+    const secret = generateSecret();
+    const code = generateSync({ secret });
+    const db = dbWithSelect(
+      selectChain([
+        { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() },
+      ]),
+    );
+    // 조건부 UPDATE(last_used_step < step)가 0행이면 이미 소비된 코드다.
+    const { service, jwtService } = makeService({ ...db, ...updateChain([]) });
+
+    await expect(service.verifyTotpCode(admin, code)).rejects.toThrow(
+      new UnauthorizedException('이미 사용된 인증 코드입니다. 다음 코드를 입력해 주세요.'),
+    );
+    expect(jwtService.signAsync).not.toHaveBeenCalled();
   });
 
   it('verifyTotpCode는 틀린 코드와 미등록 상태를 거부한다', async () => {

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -80,6 +81,8 @@ export const userTotpCredentials = pgTable('user_totp_credentials', {
     .references(() => users.id, { onDelete: 'cascade' }),
   secretCiphertext: text('secret_ciphertext').notNull(),
   verifiedAt: timestamp('verified_at'),
+  // 마지막으로 수락한 TOTP time-step(30초 단위). 같은 코드의 재사용을 막는다.
+  lastUsedStep: bigint('last_used_step', { mode: 'number' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

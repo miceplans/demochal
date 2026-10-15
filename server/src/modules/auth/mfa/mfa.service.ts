@@ -17,7 +17,7 @@ import {
 } from '@simplewebauthn/server';
 import { compare } from 'bcryptjs';
 import { createHash, randomInt } from 'node:crypto';
-import { and, desc, eq, gt, isNotNull, isNull, lte } from 'drizzle-orm';
+import { and, desc, eq, gt, isNotNull, isNull, lt, lte, or } from 'drizzle-orm';
 import { env } from '../../../config/env.js';
 import { DRIZZLE, type Database } from '../../../db/drizzle.provider.js';
 import {
@@ -37,6 +37,7 @@ export type MfaChallengeType = 'webauthn-register' | 'webauthn-auth';
 
 // window ±1(30초) — 시계 어긋남 한 단계까지만 허용한다.
 const TOTP_EPOCH_TOLERANCE_SECONDS = 30;
+const TOTP_PERIOD_SECONDS = 30;
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const RECOVERY_CODE_COUNT = 10;
 const RECOVERY_CODE_GROUP_LENGTH = 4;
@@ -137,7 +138,7 @@ export class MfaService {
       .values({ userId: user.id, secretCiphertext, verifiedAt: null })
       .onConflictDoUpdate({
         target: userTotpCredentials.userId,
-        set: { secretCiphertext, verifiedAt: null },
+        set: { secretCiphertext, verifiedAt: null, lastUsedStep: null },
       });
     return {
       secret,
@@ -160,12 +161,13 @@ export class MfaService {
     if (row.verifiedAt) throw new BadRequestException('이미 등록이 완료된 TOTP입니다.');
 
     const secret = decryptString(row.secretCiphertext);
-    if (!verifyTotpCode(secret, code)) {
+    const step = verifyTotpStep(secret, code);
+    if (step === null) {
       throw new BadRequestException('인증 코드가 올바르지 않습니다.');
     }
     await this.db
       .update(userTotpCredentials)
-      .set({ verifiedAt: new Date() })
+      .set({ verifiedAt: new Date(), lastUsedStep: step })
       .where(eq(userTotpCredentials.userId, user.id));
 
     const firstMethod = !(await this.hasVerifiedPasskey(user.id));
@@ -300,8 +302,23 @@ export class MfaService {
       .limit(1);
     if (!row) throw new BadRequestException('등록된 TOTP가 없습니다.');
     const secret = decryptString(row.secretCiphertext);
-    if (!verifyTotpCode(secret, code)) {
+    const step = verifyTotpStep(secret, code);
+    if (step === null) {
       throw new UnauthorizedException('인증 코드가 올바르지 않습니다.');
+    }
+    // 같은(또는 이전) time-step의 코드는 재사용으로 보고 거부한다. 조건부 UPDATE라 동시 요청에도 한 번만 통과한다.
+    const accepted = await this.db
+      .update(userTotpCredentials)
+      .set({ lastUsedStep: step })
+      .where(
+        and(
+          eq(userTotpCredentials.userId, user.id),
+          or(isNull(userTotpCredentials.lastUsedStep), lt(userTotpCredentials.lastUsedStep, step)),
+        ),
+      )
+      .returning({ userId: userTotpCredentials.userId });
+    if (accepted.length === 0) {
+      throw new UnauthorizedException('이미 사용된 인증 코드입니다. 다음 코드를 입력해 주세요.');
     }
     return this.issueSession(user);
   }
@@ -488,10 +505,16 @@ export class MfaService {
   }
 }
 
-function verifyTotpCode(secret: string, code: string): boolean {
+/** 코드가 유효하면 일치한 time-step(30초 단위)을, 아니면 null을 반환한다. */
+function verifyTotpStep(secret: string, code: string): number | null {
   try {
-    return verifySync({ secret, token: code, epochTolerance: TOTP_EPOCH_TOLERANCE_SECONDS }).valid;
+    const result = verifySync({
+      secret,
+      token: code,
+      epochTolerance: TOTP_EPOCH_TOLERANCE_SECONDS,
+    });
+    return result.valid ? Math.floor(Date.now() / 1000 / TOTP_PERIOD_SECONDS) + result.delta : null;
   } catch {
-    return false;
+    return null;
   }
 }
