@@ -374,7 +374,7 @@ export class ChallengesService {
   /**
    * 공고 내용 부분 수정. 소유 비즈니스 또는 admin만 가능하며, 권한이 없으면 존재 여부를
    * 노출하지 않도록 404로 응답한다(updateStatus와 동일).
-   * 신청자가 있으면 참가비 변경과 접수 인원 미만으로의 정원 축소를 막는다.
+   * 신청자가 있어도 참가비·정원을 포함해 수정할 수 있다(별도 제한 없음).
    */
   async update(id: string, dto: UpdateChallengeDto, user: { id: string; role: string }) {
     const ownership =
@@ -386,7 +386,6 @@ export class ChallengesService {
         startDate: challenges.startDate,
         endDate: challenges.endDate,
         recruitMethod: challenges.recruitMethod,
-        price: challenges.price,
       })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
@@ -400,29 +399,6 @@ export class ChallengesService {
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
     if (endDate.getTime() < startDate.getTime()) {
       throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
-    }
-
-    // 신청자가 생긴 뒤에는 참가비를 바꿀 수 없고(미결제 pending 주문 금액과 어긋나지 않게 전체 신청 기준),
-    // 정원은 이미 접수된 인원 아래로 줄일 수 없다.
-    if (dto.price !== undefined && dto.price !== current.price) {
-      const [any] = await this.db
-        .select({ id: applications.id })
-        .from(applications)
-        .where(eq(applications.challengeId, id))
-        .limit(1);
-      if (any) throw new ConflictException('신청자가 있는 공고의 참가비는 변경할 수 없습니다.');
-    }
-    if (dto.capacity !== undefined) {
-      const [{ total = 0 } = {}] = await this.db
-        .select({ total: count() })
-        .from(applications)
-        .where(and(eq(applications.challengeId, id), effectiveApplicationCondition));
-      const accepted = Number(total);
-      if (dto.capacity < accepted) {
-        throw new ConflictException(
-          `이미 ${accepted}명이 접수되어 정원을 그 아래로 줄일 수 없습니다.`,
-        );
-      }
     }
 
     const patch = {
