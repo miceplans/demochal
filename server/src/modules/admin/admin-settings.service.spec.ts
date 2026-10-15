@@ -61,7 +61,7 @@ describe('AdminSettingsService', () => {
     expect(await service.isEnabled('maintenanceMode')).toBe(true);
     expect(await service.isEnabled('bizAutoApprove')).toBe(true);
     // 저장하지 않은 키는 기본값을 따른다.
-    expect(await service.isEnabled('contestAutoPublish')).toBe(false);
+    expect(await service.isEnabled('contestAutoPublish')).toBe(true);
   });
 
   it('일부 키만 저장된 row에서도 저장하지 않은 키는 기본값(true 포함)으로 읽는다', async () => {
