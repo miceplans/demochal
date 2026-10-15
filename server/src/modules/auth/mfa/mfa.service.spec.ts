@@ -453,7 +453,7 @@ describe('MfaService 로그인 검증', () => {
 
     expect(session.accessToken).toBe('signed-token');
     expect(jwtService.signAsync).toHaveBeenCalledWith(
-      expect.objectContaining({ sub: admin.id, role: 'admin' }),
+      expect.objectContaining({ sub: admin.id, role: 'admin', mfa: true }),
     );
     expect(session.user).toEqual({ id: admin.id, role: 'admin' });
   });

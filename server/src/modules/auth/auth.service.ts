@@ -50,6 +50,8 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  purpose?: string;
+  mfa?: boolean;
 }
 
 /** 관리자·사업자 로그인 시 발급되는 2단계 인증 상태. 둘 다 참이면 안 된다(수단 유무가 배타적). */
@@ -529,6 +531,7 @@ export class AuthService {
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+      if (payload.purpose) throw new Error('MFA token is not a session token');
     } catch {
       throw new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.');
     }
@@ -543,6 +546,9 @@ export class AuthService {
       throw new ForbiddenException(profile.suspendedReason ?? '정지된 계정입니다.');
     }
     if (profile.withdrawnAt) throw new UnauthorizedException('존재하지 않는 계정입니다.');
+    if ((profile.role === 'admin' || profile.role === 'business') && payload.mfa !== true) {
+      throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
+    }
     return profile;
   }
 

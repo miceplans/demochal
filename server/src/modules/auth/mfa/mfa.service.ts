@@ -120,6 +120,7 @@ export class MfaService {
       sub: user.id,
       email: user.email,
       role: user.role,
+      mfa: true,
     });
     const publicUser = await this.usersService.findById(user.id);
     return { accessToken, user: publicUser };
@@ -372,6 +373,7 @@ export class MfaService {
       .from(userMfaRecoveryCodes)
       .where(
         and(
+          eq(userMfaRecoveryCodes.userId, user.id),
           eq(userMfaRecoveryCodes.codeHash, hashRecoveryCode(code)),
           isNull(userMfaRecoveryCodes.usedAt),
         ),
@@ -381,7 +383,13 @@ export class MfaService {
     const consumed = await this.db
       .update(userMfaRecoveryCodes)
       .set({ usedAt: new Date() })
-      .where(and(eq(userMfaRecoveryCodes.id, row.id), isNull(userMfaRecoveryCodes.usedAt)))
+      .where(
+        and(
+          eq(userMfaRecoveryCodes.id, row.id),
+          eq(userMfaRecoveryCodes.userId, user.id),
+          isNull(userMfaRecoveryCodes.usedAt),
+        ),
+      )
       .returning({ id: userMfaRecoveryCodes.id });
     if (consumed.length === 0) {
       throw new UnauthorizedException('복구 코드가 이미 사용되었습니다.');

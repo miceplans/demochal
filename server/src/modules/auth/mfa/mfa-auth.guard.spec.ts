@@ -67,7 +67,12 @@ describe('MfaAuthGuard manage 흐름', () => {
   it('admin 세션은 사용자를 부착하고 통과시킨다', async () => {
     const { guard } = guardWith({
       flow: 'manage',
-      verifyAsync: async () => ({ sub: 'a1', email: 'admin@semochal.kr', role: 'admin' }),
+      verifyAsync: async () => ({
+        sub: 'a1',
+        email: 'admin@semochal.kr',
+        role: 'admin',
+        mfa: true,
+      }),
       limitRows: [[{ name: '관리자', role: 'admin', suspended: false, withdrawnAt: null }]],
     });
     const request = cookieHeader('session-token');
