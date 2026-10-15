@@ -50,7 +50,7 @@ export interface UpdateChallengeRequest {
   visibility?: UpdateChallengeRequestVisibility;
   /** @maxLength 200 */
   title?: string;
-  /** @maxLength 20000 */
+  /** @maxLength 100000 */
   description?: string;
   /** @minimum 0 */
   price?: number;

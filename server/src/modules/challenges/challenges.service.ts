@@ -23,6 +23,7 @@ import {
   sql,
   type SQL,
 } from 'drizzle-orm';
+import { sanitizeDescription } from './rich-text.js';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
   applications,
@@ -346,7 +347,7 @@ export class ChallengesService {
       .values({
         businessId: dto.businessId,
         title: dto.title,
-        description: dto.description,
+        description: sanitizeDescription(dto.description),
         price: dto.price,
         capacity: dto.capacity,
         startDate: new Date(dto.startDate),
@@ -402,7 +403,7 @@ export class ChallengesService {
 
     const patch = {
       ...(dto.title !== undefined && { title: dto.title }),
-      ...(dto.description !== undefined && { description: dto.description }),
+      ...(dto.description !== undefined && { description: sanitizeDescription(dto.description) }),
       ...(dto.price !== undefined && { price: dto.price }),
       ...(dto.capacity !== undefined && { capacity: dto.capacity }),
       ...(dto.startDate !== undefined && { startDate }),
