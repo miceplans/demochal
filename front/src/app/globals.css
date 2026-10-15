@@ -68,10 +68,14 @@ select {
 }
 
 /* 전역 스크롤바 — 얇게, 디자인 톤(토큰)에 맞춰. 숨김 처리된 요소(레일 등)의
-   scrollbarWidth: none / display: none 규칙이 더 높은 명시도로 유지된다. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-gray-300) transparent;
+   scrollbarWidth: none / display: none 규칙이 더 높은 명시도로 유지된다.
+   Chrome 121+는 scrollbar-width/color가 하나라도 있으면 ::-webkit-scrollbar를
+   무시하므로, 표준 속성은 webkit 미지원 브라우저(Firefox)에만 적용한다. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-gray-300) transparent;
+  }
 }
 
 *::-webkit-scrollbar {
