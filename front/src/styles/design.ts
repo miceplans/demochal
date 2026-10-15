@@ -11,6 +11,8 @@ export const colors = {
   lightGreen: theme.colors.lightGreen,
   red: theme.colors.red,
   lightRed: theme.colors.lightRed,
+  amber: theme.colors.amber,
+  lightAmber: theme.colors.lightAmber,
   gray50: theme.colors.gray[50],
   gray100: theme.colors.gray[100],
   gray200: theme.colors.gray[200],
