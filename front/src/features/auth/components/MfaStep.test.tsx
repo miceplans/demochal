@@ -146,7 +146,7 @@ describe('MfaStep', () => {
   it('enrolls TOTP, shows recovery codes once and proceeds only after they are acknowledged', async () => {
     mocks.setupMfaTotp.mockResolvedValue({
       status: 200,
-      data: { secret: 'JBSWY3DP', otpauthUrl: 'otpauth://totp/x' },
+      data: { secret: 'seed', otpauthUrl: 'otpauth://totp/x' },
     });
     mocks.qrToDataURL.mockResolvedValue('data:image/png;base64,qrcode');
     mocks.confirmMfaTotp.mockResolvedValue({

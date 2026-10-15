@@ -78,7 +78,7 @@ describe('AuthController cookie session flow', () => {
     const { controller, service } = createController();
     service.login.mockResolvedValue({
       user,
-      mfa: { token: 'enroll.jwt', required: false, enrollmentRequired: true, methods: [] },
+      mfa: { token: 'enr-jwt', required: false, enrollmentRequired: true, methods: [] },
     });
     const res = response();
 
@@ -88,7 +88,7 @@ describe('AuthController cookie session flow', () => {
       user,
       mfaRequired: false,
       mfaEnrollmentRequired: true,
-      mfaToken: 'enroll.jwt',
+      mfaToken: 'enr-jwt',
       methods: [],
     });
     expect(res.cookie).not.toHaveBeenCalled();

@@ -118,7 +118,7 @@ describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
       describeLoginState: vi
         .fn()
         .mockResolvedValue({ methods, recoveryCodesRemaining: methods.length }),
-      signMfaToken: vi.fn().mockResolvedValue('mfa-token'),
+      signMfaToken: vi.fn().mockResolvedValue('mfa-jwt'),
     };
     const service = new AuthService(
       dbSelecting([
@@ -139,7 +139,7 @@ describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
 
       await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
         user: { id: 'p1', role },
-        mfa: { token: 'mfa-token', required: false, enrollmentRequired: true, methods: [] },
+        mfa: { token: 'mfa-jwt', required: false, enrollmentRequired: true, methods: [] },
       });
       expect(mfaService.signMfaToken).toHaveBeenCalledWith(
         expect.objectContaining({ id: 'p1', role }),
@@ -158,7 +158,7 @@ describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
     await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
       user: { id: 'p1', role: 'admin' },
       mfa: {
-        token: 'mfa-token',
+        token: 'mfa-jwt',
         required: true,
         enrollmentRequired: false,
         methods: ['totp', 'recovery'],
