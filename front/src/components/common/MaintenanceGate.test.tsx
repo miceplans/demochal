@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { ToastProvider } from './Toast';
 import { MaintenanceGate } from './MaintenanceGate';
@@ -31,6 +31,19 @@ function QueryPage({ error }: { error: Error }) {
   return <div data-testid="page-content">{String(data)}</div>;
 }
 
+function MutationPage({ error }: { error: Error }) {
+  const mutation = useMutation({
+    mutationFn: async () => {
+      throw error;
+    },
+  });
+  return (
+    <button type="button" onClick={() => mutation.mutate()}>
+      저장
+    </button>
+  );
+}
+
 function renderGate(children: ReactNode) {
   return render(
     <ToastProvider>
@@ -53,6 +66,25 @@ describe('MaintenanceGate', () => {
 
     expect(await screen.findByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
     expect(screen.queryByTestId('page-content')).toBeNull();
+    expect(screen.queryByText('요청이 실패했어요')).toBeNull();
+  });
+
+  it('래핑되어 ApiError 인스턴스가 아닌 503도 점검 화면으로 전환한다', async () => {
+    listChallengesMock.mockRejectedValue(new ApiError(503, { message: '점검 중' }));
+    const wrapped503 = Object.assign(new Error('upstream unavailable'), { status: 503 });
+    renderGate(<QueryPage error={wrapped503} />);
+
+    expect(await screen.findByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
+    expect(screen.queryByText('요청이 실패했어요')).toBeNull();
+  });
+
+  it('503 뮤테이션 실패도 점검 화면으로 전환하고 토스트를 띄우지 않는다', async () => {
+    listChallengesMock.mockRejectedValue(new ApiError(503, { message: '점검 중' }));
+    renderGate(<MutationPage error={new ApiError(503, { message: '점검 중' })} />);
+
+    screen.getByRole('button', { name: '저장' }).click();
+
+    expect(await screen.findByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
     expect(screen.queryByText('요청이 실패했어요')).toBeNull();
   });
 

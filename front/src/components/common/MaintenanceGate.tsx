@@ -10,9 +10,29 @@ import { MaintenanceScreen } from './MaintenanceScreen';
 // 점검 해제 확인 주기(ms) — 점검 화면 노출 중에만 동작한다.
 const MAINTENANCE_PROBE_INTERVAL_MS = 15_000;
 
+/**
+ * HTTP 오류의 상태 코드를 안전하게 읽는다.
+ *
+ * ApiError는 정상적인 브라우저 요청에서 사용되지만, 번들 경계나 오류 래핑을 거친
+ * 오류는 다른 ApiError 생성자를 가질 수 있다. 점검 감지는 오류 클래스의 동일성보다
+ * 서버가 보낸 503 상태 코드가 기준이어야 한다.
+ */
+function getHttpStatus(error: unknown): number | undefined {
+  if (error instanceof ApiError) return error.status;
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'status' in error &&
+    typeof (error as { status?: unknown }).status === 'number'
+  ) {
+    return (error as { status: number }).status;
+  }
+  return undefined;
+}
+
 /** 서버 MaintenanceGuard가 내리는 ServiceUnavailable — 점검 모드 신호로만 쓴다. */
 function isMaintenanceError(error: unknown): boolean {
-  return error instanceof ApiError && error.status === 503;
+  return getHttpStatus(error) === 503;
 }
 
 /** 서버가 알려준 원인이 있으면 그 메시지를, 없으면 네트워크 문제인지 구분해 안내한다. */
@@ -40,11 +60,12 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
           // meta.localErrorToast 쿼리는 화면이 직접 액션 토스트로 알리므로 전역 토스트에서 제외
           // meta.silentError 쿼리(예: 홈 광고)는 실패해도 기본 광고가 있어 방문자에게 알리지 않는다
           onError: (error, query) => {
+            const status = getHttpStatus(error);
             if (isMaintenanceError(error)) {
               setMaintenance(true);
               return;
             }
-            if (error instanceof ApiError && error.status === 401) return;
+            if (status === 401) return;
             if (query.meta?.localErrorToast) return;
             if (query.meta?.silentError) return;
             toast.error('요청이 실패했어요', apiErrorDescription(error));
@@ -56,18 +77,14 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
           // (예: 온보딩 설문 409 = 이미 완료).
           // mutation 단위 onError가 있으면 그 화면이 이미 안내 중이므로 이중 토스트를 피한다
           onError: (error, _variables, _onMutateResult, mutation) => {
+            const status = getHttpStatus(error);
             if (isMaintenanceError(error)) {
               setMaintenance(true);
               return;
             }
-            if (error instanceof ApiError && error.status === 401) return;
+            if (status === 401) return;
             const handled = mutation.meta?.handledErrorStatuses;
-            if (
-              error instanceof ApiError &&
-              Array.isArray(handled) &&
-              handled.includes(error.status)
-            )
-              return;
+            if (status !== undefined && Array.isArray(handled) && handled.includes(status)) return;
             if (mutation.options.onError) return;
             toast.error('요청이 실패했어요', apiErrorDescription(error));
           },
