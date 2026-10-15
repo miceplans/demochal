@@ -49,11 +49,15 @@ import type {
   AdSlotPricing,
   AdminAdEntry,
   AdminAutomatedEmail,
+  AdminChallengeDetail,
+  AdminConfirmResult,
   AdminDashboard,
   AdminEmailMessage,
   AdminEmailThread,
   AdminEmailThreadDetail,
+  AdminRejectResult,
   AdminSettings,
+  AdminTeamDetail,
   AdminUserEntry,
   AdminUserPage,
   Application,
@@ -133,6 +137,8 @@ import type {
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
+  RejectAdminChallengeBody,
+  RejectAdminTeamBody,
   RejectVerificationBody,
   Report,
   RequestContactVerification201,
@@ -11691,6 +11697,7 @@ export const getListAdminContentsUrl = (params?: ListAdminContentsParams,) => {
 
 /**
  * 콘텐츠 모니터링(`/admin/contents`).
+ * - 관리자가 '확인' 처리했거나 반려한 팀/챌린지는 목록·건수에서 제외된다
  * - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
  * - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
  * - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
@@ -11787,6 +11794,664 @@ export function useListAdminContents<TData = Awaited<ReturnType<typeof listAdmin
 
 
 
+
+export type getAdminTeamDetailResponse200 = {
+  data: AdminTeamDetail
+  status: 200
+}
+
+export type getAdminTeamDetailResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getAdminTeamDetailResponseSuccess = (getAdminTeamDetailResponse200) & {
+  headers: Headers;
+};
+export type getAdminTeamDetailResponseError = (getAdminTeamDetailResponse404) & {
+  headers: Headers;
+};
+
+export type getAdminTeamDetailResponse = (getAdminTeamDetailResponseSuccess | getAdminTeamDetailResponseError)
+
+export const getGetAdminTeamDetailUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}`
+}
+
+/**
+ * 팀이 작성한 모집글 전체 내용, 참여 팀원, 접수된 신고(최신 20건). 반려된 팀도 조회된다.
+ * @summary 팀 모집글 상세 (콘텐츠 모니터링)
+ */
+export const getAdminTeamDetail = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getAdminTeamDetailResponse> => {
+
+  return apiFetch<getAdminTeamDetailResponse>(getGetAdminTeamDetailUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminTeamDetailQueryKey = (id: string,) => {
+    return [
+    `/admin/teams/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminTeamDetailQueryOptions = <TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminTeamDetailQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminTeamDetail>>> = ({ signal }) => getAdminTeamDetail(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminTeamDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminTeamDetail>>>
+export type GetAdminTeamDetailQueryError = void
+
+
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminTeamDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminTeamDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminTeamDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminTeamDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 팀 모집글 상세 (콘텐츠 모니터링)
+ */
+
+export function useGetAdminTeamDetail<TData = Awaited<ReturnType<typeof getAdminTeamDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminTeamDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminTeamDetailQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getAdminChallengeDetailResponse200 = {
+  data: AdminChallengeDetail
+  status: 200
+}
+
+export type getAdminChallengeDetailResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getAdminChallengeDetailResponseSuccess = (getAdminChallengeDetailResponse200) & {
+  headers: Headers;
+};
+export type getAdminChallengeDetailResponseError = (getAdminChallengeDetailResponse404) & {
+  headers: Headers;
+};
+
+export type getAdminChallengeDetailResponse = (getAdminChallengeDetailResponseSuccess | getAdminChallengeDetailResponseError)
+
+export const getGetAdminChallengeDetailUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}`
+}
+
+/**
+ * 공고 전체 내용, 주최 기관, 접수된 신고(최신 20건). 반려된 공고도 조회된다.
+ * @summary 챌린지 공고 상세 (콘텐츠 모니터링)
+ */
+export const getAdminChallengeDetail = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getAdminChallengeDetailResponse> => {
+
+  return apiFetch<getAdminChallengeDetailResponse>(getGetAdminChallengeDetailUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAdminChallengeDetailQueryKey = (id: string,) => {
+    return [
+    `/admin/challenges/${id}`
+    ] as const;
+    }
+
+
+export const getGetAdminChallengeDetailQueryOptions = <TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAdminChallengeDetailQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminChallengeDetail>>> = ({ signal }) => getAdminChallengeDetail(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetAdminChallengeDetailQueryResult = NonNullable<Awaited<ReturnType<typeof getAdminChallengeDetail>>>
+export type GetAdminChallengeDetailQueryError = void
+
+
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>,
+          TError,
+          Awaited<ReturnType<typeof getAdminChallengeDetail>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 챌린지 공고 상세 (콘텐츠 모니터링)
+ */
+
+export function useGetAdminChallengeDetail<TData = Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError = void>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getAdminChallengeDetail>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetAdminChallengeDetailQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type confirmAdminTeamResponse200 = {
+  data: AdminConfirmResult
+  status: 200
+}
+
+export type confirmAdminTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type confirmAdminTeamResponseSuccess = (confirmAdminTeamResponse200) & {
+  headers: Headers;
+};
+export type confirmAdminTeamResponseError = (confirmAdminTeamResponse404) & {
+  headers: Headers;
+};
+
+export type confirmAdminTeamResponse = (confirmAdminTeamResponseSuccess | confirmAdminTeamResponseError)
+
+export const getConfirmAdminTeamUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}/confirm`
+}
+
+/**
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
+ * @summary 팀 확인 처리
+ */
+export const confirmAdminTeam = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminTeamResponse> => {
+
+  return apiFetch<confirmAdminTeamResponse>(getConfirmAdminTeamUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmAdminTeamMutationKey = () => ['confirmAdminTeam'] as const;
+
+export const getConfirmAdminTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAdminTeamMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAdminTeam>>, ConfirmAdminTeamMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAdminTeam(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAdminTeamMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAdminTeam>>>
+
+    export type ConfirmAdminTeamMutationError = void
+    export type ConfirmAdminTeamMutationVariables = {id: string}
+
+    /**
+ * @summary 팀 확인 처리
+ */
+export const useConfirmAdminTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminTeam>>, TError,ConfirmAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAdminTeam>>,
+        TError,
+        ConfirmAdminTeamMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAdminTeamMutationOptions(options), queryClient);
+    }
+
+export type confirmAdminChallengeResponse200 = {
+  data: AdminConfirmResult
+  status: 200
+}
+
+export type confirmAdminChallengeResponse404 = {
+  data: void
+  status: 404
+}
+
+export type confirmAdminChallengeResponseSuccess = (confirmAdminChallengeResponse200) & {
+  headers: Headers;
+};
+export type confirmAdminChallengeResponseError = (confirmAdminChallengeResponse404) & {
+  headers: Headers;
+};
+
+export type confirmAdminChallengeResponse = (confirmAdminChallengeResponseSuccess | confirmAdminChallengeResponseError)
+
+export const getConfirmAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/confirm`
+}
+
+/**
+ * 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
+ * @summary 챌린지 확인 처리
+ */
+export const confirmAdminChallenge = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<confirmAdminChallengeResponse> => {
+
+  return apiFetch<confirmAdminChallengeResponse>(getConfirmAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmAdminChallengeMutationKey = () => ['confirmAdminChallenge'] as const;
+
+export const getConfirmAdminChallengeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getConfirmAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmAdminChallenge>>, ConfirmAdminChallengeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmAdminChallenge(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof confirmAdminChallenge>>>
+
+    export type ConfirmAdminChallengeMutationError = void
+    export type ConfirmAdminChallengeMutationVariables = {id: string}
+
+    /**
+ * @summary 챌린지 확인 처리
+ */
+export const useConfirmAdminChallenge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmAdminChallenge>>, TError,ConfirmAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmAdminChallenge>>,
+        TError,
+        ConfirmAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmAdminChallengeMutationOptions(options), queryClient);
+    }
+
+export type rejectAdminChallengeResponse200 = {
+  data: AdminRejectResult
+  status: 200
+}
+
+export type rejectAdminChallengeResponse404 = {
+  data: void
+  status: 404
+}
+
+export type rejectAdminChallengeResponse409 = {
+  data: void
+  status: 409
+}
+
+export type rejectAdminChallengeResponseSuccess = (rejectAdminChallengeResponse200) & {
+  headers: Headers;
+};
+export type rejectAdminChallengeResponseError = (rejectAdminChallengeResponse404 | rejectAdminChallengeResponse409) & {
+  headers: Headers;
+};
+
+export type rejectAdminChallengeResponse = (rejectAdminChallengeResponseSuccess | rejectAdminChallengeResponseError)
+
+export const getRejectAdminChallengeUrl = (id: string,) => {
+
+
+
+
+  return `/admin/challenges/${id}/reject`
+}
+
+/**
+ * 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409. 기관 소유자에게 사유와 함께 `content.rejected` 알림을 보낸다.
+ * @summary 챌린지 반려
+ */
+export const rejectAdminChallenge = async (id: string,
+    rejectAdminChallengeBody: RejectAdminChallengeBody, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminChallengeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<rejectAdminChallengeResponse>(getRejectAdminChallengeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectAdminChallengeBody)
+  }
+);}
+
+
+
+
+
+export const getRejectAdminChallengeMutationKey = () => ['rejectAdminChallenge'] as const;
+
+export const getRejectAdminChallengeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getRejectAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminChallenge>>, RejectAdminChallengeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rejectAdminChallenge(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminChallenge>>>
+    export type RejectAdminChallengeMutationBody = RejectAdminChallengeBody
+    export type RejectAdminChallengeMutationError = void
+    export type RejectAdminChallengeMutationVariables = {id: string;data: RejectAdminChallengeBody}
+
+    /**
+ * @summary 챌린지 반려
+ */
+export const useRejectAdminChallenge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminChallenge>>, TError,RejectAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAdminChallenge>>,
+        TError,
+        RejectAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectAdminChallengeMutationOptions(options), queryClient);
+    }
+
+export type rejectAdminTeamResponse200 = {
+  data: AdminRejectResult
+  status: 200
+}
+
+export type rejectAdminTeamResponse404 = {
+  data: void
+  status: 404
+}
+
+export type rejectAdminTeamResponse409 = {
+  data: void
+  status: 409
+}
+
+export type rejectAdminTeamResponseSuccess = (rejectAdminTeamResponse200) & {
+  headers: Headers;
+};
+export type rejectAdminTeamResponseError = (rejectAdminTeamResponse404 | rejectAdminTeamResponse409) & {
+  headers: Headers;
+};
+
+export type rejectAdminTeamResponse = (rejectAdminTeamResponseSuccess | rejectAdminTeamResponseError)
+
+export const getRejectAdminTeamUrl = (id: string,) => {
+
+
+
+
+  return `/admin/teams/${id}/reject`
+}
+
+/**
+ * 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409. 팀장에게 사유와 함께 `content.rejected` 알림을 보낸다.
+ * @summary 팀 모집글 반려
+ */
+export const rejectAdminTeam = async (id: string,
+    rejectAdminTeamBody: RejectAdminTeamBody, options?: Parameters<typeof apiFetch>[1]): Promise<rejectAdminTeamResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<rejectAdminTeamResponse>(getRejectAdminTeamUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectAdminTeamBody)
+  }
+);}
+
+
+
+
+
+export const getRejectAdminTeamMutationKey = () => ['rejectAdminTeam'] as const;
+
+export const getRejectAdminTeamMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext> => {
+
+const mutationKey = getRejectAdminTeamMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectAdminTeam>>, RejectAdminTeamMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rejectAdminTeam(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectAdminTeamMutationResult = NonNullable<Awaited<ReturnType<typeof rejectAdminTeam>>>
+    export type RejectAdminTeamMutationBody = RejectAdminTeamBody
+    export type RejectAdminTeamMutationError = void
+    export type RejectAdminTeamMutationVariables = {id: string;data: RejectAdminTeamBody}
+
+    /**
+ * @summary 팀 모집글 반려
+ */
+export const useRejectAdminTeam = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectAdminTeam>>, TError,RejectAdminTeamMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rejectAdminTeam>>,
+        TError,
+        RejectAdminTeamMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectAdminTeamMutationOptions(options), queryClient);
+    }
 
 export type getAdminAnalyticsResponse200 = {
   data: GetAdminAnalytics200

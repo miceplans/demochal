@@ -63,7 +63,7 @@ export class TeamsService {
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
       .innerJoin(users, eq(teams.leaderUserId, users.id))
-      .where(eq(challenges.visibility, 'public'))
+      .where(and(eq(challenges.visibility, 'public'), ne(teams.status, 'rejected')))
       .orderBy(desc(teams.createdAt));
     const q = filters.q?.toLowerCase();
     const regionList = splitList(filters.region);

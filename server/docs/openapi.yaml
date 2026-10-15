@@ -2583,6 +2583,7 @@ paths:
       x-impl-status: implemented
       description: |
         콘텐츠 모니터링(`/admin/contents`).
+        - 관리자가 '확인' 처리했거나 반려한 팀/챌린지는 목록·건수에서 제외된다
         - `teams`: '확인해야하는 팀' 카드(팀명/챌린지/역할 뱃지/참여 인원, 미확인 도트) — 최신순 `teamsLimit`개
         - `contests`: '확인해야하는 챌린지' 카드(카테고리/D-day/팀 모집 건수, 미확인 도트) — 최신순 `contestsLimit`개
         - `teamsTotal`/`contestsTotal`: 전체 건수 ('더보기'는 limit을 늘려 다시 조회)
@@ -2609,6 +2610,122 @@ paths:
                     { type: array, items: { $ref: '#/components/schemas/AdminContestCard' } }
                   contestsTotal: { type: integer }
                   reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+  /admin/teams/{id}:
+    get:
+      tags: [Admin]
+      summary: 팀 모집글 상세 (콘텐츠 모니터링)
+      operationId: getAdminTeamDetail
+      x-impl-status: implemented
+      description: 팀이 작성한 모집글 전체 내용, 참여 팀원, 접수된 신고(최신 20건). 반려된 팀도 조회된다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 팀 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminTeamDetail' }
+        '404': { description: 팀 없음 }
+  /admin/challenges/{id}:
+    get:
+      tags: [Admin]
+      summary: 챌린지 공고 상세 (콘텐츠 모니터링)
+      operationId: getAdminChallengeDetail
+      x-impl-status: implemented
+      description: 공고 전체 내용, 주최 기관, 접수된 신고(최신 20건). 반려된 공고도 조회된다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 챌린지 상세
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminChallengeDetail' }
+        '404': { description: 공고 없음 }
+  /admin/teams/{id}/confirm:
+    post:
+      tags: [Admin]
+      summary: 팀 확인 처리
+      operationId: confirmAdminTeam
+      x-impl-status: implemented
+      description: 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 확인됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConfirmResult' }
+        '404': { description: 팀 없음 }
+  /admin/challenges/{id}/confirm:
+    post:
+      tags: [Admin]
+      summary: 챌린지 확인 처리
+      operationId: confirmAdminChallenge
+      x-impl-status: implemented
+      description: 콘텐츠 모니터링에서 '확인' 처리한다. 이후 '확인해야하는' 목록에서 제외되고, 이 콘텐츠에 걸린 대기(open) 신고는 모두 처리됨(resolved)으로 바뀐다(멱등).
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: 확인됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminConfirmResult' }
+        '404': { description: 공고 없음 }
+  /admin/challenges/{id}/reject:
+    post:
+      tags: [Admin]
+      summary: 챌린지 반려
+      operationId: rejectAdminChallenge
+      x-impl-status: implemented
+      description: 챌린지 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 공고는 409. 기관 소유자에게 사유와 함께 `content.rejected` 알림을 보낸다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500, description: 반려 사유 }
+      responses:
+        '200':
+          description: 반려됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminRejectResult' }
+        '404': { description: 공고 없음 }
+        '409': { description: 이미 반려됨 }
+  /admin/teams/{id}/reject:
+    post:
+      tags: [Admin]
+      summary: 팀 모집글 반려
+      operationId: rejectAdminTeam
+      x-impl-status: implemented
+      description: 팀 status를 rejected로 바꿔 공개·모니터링 목록에서 제외한다. 이미 반려된 팀은 409. 팀장에게 사유와 함께 `content.rejected` 알림을 보낸다.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 500, description: 반려 사유 }
+      responses:
+        '200':
+          description: 반려됨
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminRejectResult' }
+        '404': { description: 팀 없음 }
+        '409': { description: 이미 반려됨 }
   /admin/analytics:
     get:
       tags: [Admin]
@@ -3787,6 +3904,80 @@ components:
           }
         otherRoles: { type: array, items: { type: string }, description: 모집 중인 역할 뱃지 }
         unread: { type: boolean, description: 처리되지 않은(open) 신고가 있으면 true }
+    AdminTeamDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, description: 'recruiting 등 · 반려되면 rejected' }
+        challengeId: { type: string, format: uuid }
+        challenge: { type: string }
+        leaderName: { type: string }
+        leaderRole: { type: string }
+        region: { type: string }
+        introduction: { type: string }
+        preferred: { type: string }
+        etc: { type: string }
+        openRoles:
+          type: array
+          items:
+            type: object
+            properties:
+              role: { type: string }
+              count: { type: integer }
+        members:
+          type: array
+          description: 수락된 팀원
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              role: { type: string }
+        createdAt: { type: string, format: date-time }
+        reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+    AdminChallengeDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        status: { type: string, description: 'draft | published | closed | rejected' }
+        category: { type: string }
+        organization: { type: string, description: 주최 기관명 }
+        summary: { type: string }
+        description: { type: string }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        price: { type: integer }
+        capacity: { type: integer }
+        prizeAmount: { type: integer, nullable: true, description: 총상금(만원) }
+        targets: { type: array, items: { type: string } }
+        hashtags: { type: array, items: { type: string } }
+        recruitMethod: { type: string }
+        recruitUrl: { type: string }
+        posterUrl: { type: string, nullable: true, description: 공개 포스터 URL(없으면 null) }
+        teams:
+          type: array
+          description: 이 챌린지에 등록된 팀 모집글
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              leaderName: { type: string }
+              status: { type: string }
+        createdAt: { type: string, format: date-time }
+        reports: { type: array, items: { $ref: '#/components/schemas/Report' } }
+    AdminConfirmResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        confirmed: { type: boolean }
+        resolvedReports: { type: integer, description: 이번 확인으로 처리됨으로 바뀐 신고 수 }
+    AdminRejectResult:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [rejected] }
     AdminContestCard:
       type: object
       description: 콘텐츠 모니터링 '확인해야하는 챌린지' 카드 (AdminContestCard)

@@ -7,7 +7,22 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { adToday } from '../ads/ad-period.js';
-import { and, asc, desc, eq, gte, ilike, inArray, lt, lte, or, sql, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  isNull,
+  lt,
+  lte,
+  ne,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 import type { PgColumn } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import {
@@ -33,6 +48,7 @@ import { FilesService } from '../files/files.service.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import { AdsService } from '../ads/ads.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
+import type { RejectContentDto } from './dto/reject-content.dto.js';
 import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { ResolveReportDto } from './dto/resolve-report.dto.js';
 import type { SuspendUserDto } from './dto/suspend-user.dto.js';
@@ -137,6 +153,9 @@ export function niceMax(max: number) {
   const step = [1, 2, 5, 10].find((factor) => factor * magnitude >= max) ?? 10;
   return step * magnitude;
 }
+
+/** 관리자 콘텐츠 반려 알림 타입. payload: targetType(team|challenge), targetId, title, reason. */
+const CONTENT_REJECTED_NOTIFICATION = 'content.rejected';
 
 /** `GET /admin/contents` section page size: default 8 cards, "더보기" grows it, capped at 50. */
 const CONTENTS_PAGE_SIZE = 8;
@@ -592,6 +611,231 @@ export class AdminService {
     throw new ConflictException('draft 상태의 공고만 게시 승인할 수 있습니다.');
   }
 
+  /**
+   * 관리자 '확인' 처리 — 모니터링 목록에서 제외하고, 이 콘텐츠에 걸린 대기(open) 신고를 모두
+   * 처리됨(resolved)으로 바꾼다. 멱등(이미 처리된 신고는 건드리지 않는다).
+   */
+  async confirmTeam(id: string) {
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(teams)
+        .set({ adminReviewedAt: new Date() })
+        .where(eq(teams.id, id))
+        .returning({ id: teams.id });
+      if (!updated) throw new NotFoundException('팀을 찾을 수 없습니다.');
+      const resolved = await this.resolveOpenReports(tx, 'team', id);
+      return { id: updated.id, confirmed: true, resolvedReports: resolved };
+    });
+  }
+
+  async confirmChallenge(id: string) {
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(challenges)
+        .set({ adminReviewedAt: new Date() })
+        .where(eq(challenges.id, id))
+        .returning({ id: challenges.id });
+      if (!updated) throw new NotFoundException('공고를 찾을 수 없습니다.');
+      const resolved = await this.resolveOpenReports(tx, 'challenge', id);
+      return { id: updated.id, confirmed: true, resolvedReports: resolved };
+    });
+  }
+
+  private async resolveOpenReports(
+    executor: Pick<Database, 'update'>,
+    targetType: 'team' | 'challenge',
+    targetId: string,
+  ) {
+    const rows = await executor
+      .update(reports)
+      .set({ status: 'resolved', resolvedAt: new Date() })
+      .where(
+        and(
+          eq(reports.targetType, targetType),
+          eq(reports.targetId, targetId),
+          eq(reports.status, 'open'),
+        ),
+      )
+      .returning({ id: reports.id });
+    return rows.length;
+  }
+
+  /** 콘텐츠 상세 페이지용 — 팀 모집글 전체 내용, 팀원, 접수된 신고. */
+  async getTeamDetail(id: string) {
+    const [row] = await this.db
+      .select({
+        team: teams,
+        challengeTitle: challenges.title,
+        leaderName: users.name,
+      })
+      .from(teams)
+      .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .where(eq(teams.id, id))
+      .limit(1);
+    if (!row) throw new NotFoundException('팀을 찾을 수 없습니다.');
+    const { team } = row;
+
+    const memberRows = await this.db
+      .select({ name: users.name, role: teamMembers.role })
+      .from(teamMembers)
+      .innerJoin(users, eq(teamMembers.userId, users.id))
+      .where(and(eq(teamMembers.teamId, id), eq(teamMembers.status, 'accepted')));
+    const reportRows = await this.listTargetReports('team', id);
+
+    return {
+      id: team.id,
+      name: team.title,
+      status: team.status,
+      challengeId: team.challengeId,
+      challenge: row.challengeTitle,
+      leaderName: row.leaderName,
+      leaderRole: team.leaderRole ?? '',
+      region: team.region ?? '',
+      introduction: team.introduction ?? '',
+      preferred: team.preferred ?? '',
+      etc: team.etc ?? '',
+      openRoles: team.openRoles ?? [],
+      members: memberRows.map((member) => ({ name: member.name, role: member.role ?? '' })),
+      createdAt: team.createdAt.toISOString(),
+      reports: reportRows.map((report) => this.toReport(report)),
+    };
+  }
+
+  /** 콘텐츠 상세 페이지용 — 공고 전체 내용, 주최 기관, 접수된 신고. */
+  async getChallengeDetail(id: string) {
+    const [row] = await this.db
+      .select({ challenge: challenges, organization: businesses.name })
+      .from(challenges)
+      .innerJoin(businesses, eq(challenges.businessId, businesses.id))
+      .where(eq(challenges.id, id))
+      .limit(1);
+    if (!row) throw new NotFoundException('공고를 찾을 수 없습니다.');
+    const { challenge } = row;
+
+    const teamRows = await this.db
+      .select({ id: teams.id, title: teams.title, status: teams.status, leaderName: users.name })
+      .from(teams)
+      .innerJoin(users, eq(teams.leaderUserId, users.id))
+      .where(eq(teams.challengeId, id))
+      .orderBy(desc(teams.createdAt));
+    const reportRows = await this.listTargetReports('challenge', id);
+    const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+
+    return {
+      id: challenge.id,
+      title: challenge.title,
+      status: challenge.status,
+      category: challenge.category ?? '',
+      organization: row.organization ?? '',
+      summary: challenge.summary ?? '',
+      description: challenge.description,
+      startDate: challenge.startDate.toISOString(),
+      endDate: challenge.endDate.toISOString(),
+      price: challenge.price,
+      capacity: challenge.capacity,
+      prizeAmount: challenge.prizeAmount,
+      targets: challenge.targets ?? [],
+      hashtags: challenge.hashtags,
+      recruitMethod: challenge.recruitMethod,
+      recruitUrl: challenge.recruitUrl ?? '',
+      posterUrl,
+      teams: teamRows.map((team) => ({
+        id: team.id,
+        name: team.title,
+        leaderName: team.leaderName,
+        status: team.status,
+      })),
+      createdAt: challenge.createdAt.toISOString(),
+      reports: reportRows.map((report) => this.toReport(report)),
+    };
+  }
+
+  private listTargetReports(targetType: 'team' | 'challenge', targetId: string) {
+    return this.db
+      .select()
+      .from(reports)
+      .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId)))
+      .orderBy(desc(reports.createdAt))
+      .limit(20);
+  }
+
+  /**
+   * 관리자 챌린지 반려 — 이미 반려된 공고가 아니면 rejected로 전이한다(공개 목록은 published/closed만 노출).
+   * 기관 소유자에게 사유와 함께 알림을 같은 트랜잭션에서 남긴다.
+   */
+  async rejectChallenge(id: string, dto: RejectContentDto) {
+    const reason = dto.reason.trim();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(challenges)
+        .set({ status: 'rejected' })
+        .where(and(eq(challenges.id, id), ne(challenges.status, 'rejected')))
+        .returning({
+          id: challenges.id,
+          status: challenges.status,
+          title: challenges.title,
+          businessId: challenges.businessId,
+        });
+      if (!updated) {
+        const [existing] = await tx
+          .select({ id: challenges.id })
+          .from(challenges)
+          .where(eq(challenges.id, id))
+          .limit(1);
+        if (!existing) throw new NotFoundException('공고를 찾을 수 없습니다.');
+        throw new ConflictException('이미 반려된 공고입니다.');
+      }
+      const [business] = await tx
+        .select({ ownerUserId: businesses.ownerUserId })
+        .from(businesses)
+        .where(eq(businesses.id, updated.businessId))
+        .limit(1);
+      if (business?.ownerUserId) {
+        await this.notificationsService.create(
+          business.ownerUserId,
+          CONTENT_REJECTED_NOTIFICATION,
+          { targetType: 'challenge', targetId: id, title: updated.title, reason },
+          tx,
+        );
+      }
+      return { id: updated.id, status: updated.status };
+    });
+  }
+
+  /** 관리자 팀 모집글 반려 — 이미 반려된 팀이 아니면 rejected로 전이하고 팀장에게 사유를 알린다. */
+  async rejectTeam(id: string, dto: RejectContentDto) {
+    const reason = dto.reason.trim();
+    return this.db.transaction(async (tx) => {
+      const [updated] = await tx
+        .update(teams)
+        .set({ status: 'rejected' })
+        .where(and(eq(teams.id, id), ne(teams.status, 'rejected')))
+        .returning({
+          id: teams.id,
+          status: teams.status,
+          title: teams.title,
+          leaderUserId: teams.leaderUserId,
+        });
+      if (!updated) {
+        const [existing] = await tx
+          .select({ id: teams.id })
+          .from(teams)
+          .where(eq(teams.id, id))
+          .limit(1);
+        if (!existing) throw new NotFoundException('팀을 찾을 수 없습니다.');
+        throw new ConflictException('이미 반려된 팀입니다.');
+      }
+      await this.notificationsService.create(
+        updated.leaderUserId,
+        CONTENT_REJECTED_NOTIFICATION,
+        { targetType: 'team', targetId: id, title: updated.title, reason },
+        tx,
+      );
+      return { id: updated.id, status: updated.status };
+    });
+  }
+
   /** 관리자 광고 중단 — 진행중(active) 광고만 paused로 전이한다. 원자적 조건부 UPDATE. */
   async pauseAd(id: string) {
     const [updated] = await this.db
@@ -842,11 +1086,15 @@ export class AdminService {
     const teamsLimit = clampContentsLimit(teamsLimitParam);
     const contestsLimit = clampContentsLimit(contestsLimitParam);
 
-    const [teamsTotal] = await this.db.select({ count: countRows }).from(teams);
+    const [teamsTotal] = await this.db
+      .select({ count: countRows })
+      .from(teams)
+      .where(and(ne(teams.status, 'rejected'), isNull(teams.adminReviewedAt)));
     const teamRows = await this.db
       .select({ team: teams, challengeTitle: challenges.title })
       .from(teams)
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
+      .where(and(ne(teams.status, 'rejected'), isNull(teams.adminReviewedAt)))
       .orderBy(desc(teams.createdAt))
       .limit(teamsLimit);
 
@@ -865,10 +1113,14 @@ export class AdminService {
       acceptedByTeam.set(row.teamId, byRole);
     }
 
-    const [contestsTotal] = await this.db.select({ count: countRows }).from(challenges);
+    const [contestsTotal] = await this.db
+      .select({ count: countRows })
+      .from(challenges)
+      .where(and(ne(challenges.status, 'rejected'), isNull(challenges.adminReviewedAt)));
     const contestRows = await this.db
       .select()
       .from(challenges)
+      .where(and(ne(challenges.status, 'rejected'), isNull(challenges.adminReviewedAt)))
       .orderBy(desc(challenges.createdAt))
       .limit(contestsLimit);
     const challengeIds = contestRows.map((row) => row.id);

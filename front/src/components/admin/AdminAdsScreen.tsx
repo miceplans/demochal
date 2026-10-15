@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
@@ -30,24 +31,26 @@ const Page = styled.div({
 const Preview = styled.div({
   position: 'relative',
   width: '100%',
-  height: 495,
+  aspectRatio: '2440 / 990',
   overflow: 'hidden',
 });
 const PricingLink = styled(Link)({
   position: 'absolute',
   zIndex: 1,
-  top: 83,
-  left: 561,
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 98,
   height: 37,
   borderRadius: 6,
-  padding: '10px 12px',
+  padding: '0 16px',
   background: c.primary,
   color: c.white,
   textDecoration: 'none',
+  whiteSpace: 'nowrap',
+  ...textStyle.mFeatureTitle,
 });
 
 type AdRow = {
@@ -94,15 +97,12 @@ export function AdminAdsScreen() {
     },
     { query: { meta: LOCAL_ERROR_TOAST_META } },
   );
-  const refetchAds = adsQuery.refetch;
 
   useEffect(() => {
     if (!adsQuery.isError) return;
-    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.', undefined, {
-      action: { label: '다시 시도', onClick: () => void refetchAds() },
-    });
+    toast.error('광고 목록을 불러올 수 없어요. 잠시 후 다시 시도해주세요.');
     // isError는 재시도 후에도 true로 유지되므로, 실패마다 갱신되는 errorUpdatedAt으로 재실패 시 재알림
-  }, [adsQuery.isError, adsQuery.errorUpdatedAt, refetchAds, toast]);
+  }, [adsQuery.isError, adsQuery.errorUpdatedAt, toast]);
 
   const rows = useMemo<AdRow[]>(
     () =>
