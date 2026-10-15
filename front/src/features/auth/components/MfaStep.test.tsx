@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
   verifyMfaPasskey: vi.fn(),
   setupMfaTotp: vi.fn(),
   confirmMfaTotp: vi.fn(),
+  getMfaPasskeyRegisterOptions: vi.fn(),
+  verifyMfaPasskeyRegistration: vi.fn(),
   startAuthentication: vi.fn(),
+  startRegistration: vi.fn(),
   qrToDataURL: vi.fn(),
   toastError: vi.fn(),
 }));
@@ -26,11 +29,13 @@ vi.mock('@semochal/api-client', () => ({
     verifyMfaPasskey: mocks.verifyMfaPasskey,
     setupMfaTotp: mocks.setupMfaTotp,
     confirmMfaTotp: mocks.confirmMfaTotp,
+    getMfaPasskeyRegisterOptions: mocks.getMfaPasskeyRegisterOptions,
+    verifyMfaPasskeyRegistration: mocks.verifyMfaPasskeyRegistration,
   },
 }));
 vi.mock('@simplewebauthn/browser', () => ({
   startAuthentication: mocks.startAuthentication,
-  startRegistration: vi.fn(),
+  startRegistration: mocks.startRegistration,
 }));
 vi.mock('qrcode', () => ({ toDataURL: mocks.qrToDataURL }));
 vi.mock('@/components/common/Toast', () => ({ useToast: () => ({ error: mocks.toastError }) }));
@@ -178,5 +183,72 @@ describe('MfaStep', () => {
     await user.click(screen.getByRole('checkbox'));
     await user.click(next);
     expect(onAuthenticated).toHaveBeenCalledWith(adminUser);
+  });
+
+  it('enrolls a passkey during enrollment and shows the recovery codes panel', async () => {
+    mocks.getMfaPasskeyRegisterOptions.mockResolvedValue({
+      status: 200,
+      data: { options: { challenge: 'reg-challenge' } },
+    });
+    mocks.startRegistration.mockResolvedValue({ id: 'cred-reg' });
+    mocks.verifyMfaPasskeyRegistration.mockResolvedValue({
+      status: 200,
+      data: { recoveryCodes: ['AAAA-1111', 'BBBB-2222'] },
+    });
+    const onAuthenticated = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <MfaStep challenge={enrollChallenge} onAuthenticated={onAuthenticated} onCancel={vi.fn()} />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '패스키로 등록' }));
+
+    expect(await screen.findByText('AAAA-1111')).toBeTruthy();
+    expect(mocks.getMfaPasskeyRegisterOptions).toHaveBeenCalledWith({ mfaToken: 'enroll-tok' });
+    expect(mocks.verifyMfaPasskeyRegistration).toHaveBeenCalledWith({
+      mfaToken: 'enroll-tok',
+      credential: { id: 'cred-reg' },
+    });
+    // 복구 코드를 확인하기 전에는 인증 완료 콜백이 호출되지 않는다.
+    expect(onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('shows an error toast when the passkey assertion is rejected', async () => {
+    mocks.getMfaPasskeyAuthOptions.mockResolvedValue({
+      status: 200,
+      data: { options: { challenge: 'c' } },
+    });
+    mocks.startAuthentication.mockRejectedValue(new Error('cancelled'));
+    const onAuthenticated = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <MfaStep
+        challenge={verifyChallenge(['passkey'])}
+        onAuthenticated={onAuthenticated}
+        onCancel={vi.fn()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '패스키로 인증' }));
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledOnce());
+    expect(onAuthenticated).not.toHaveBeenCalled();
+    expect(mocks.verifyMfaPasskey).not.toHaveBeenCalled();
+  });
+
+  it('calls onCancel when the user goes back to the first step', async () => {
+    const onCancel = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <MfaStep
+        challenge={verifyChallenge(['totp'])}
+        onAuthenticated={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '처음으로 돌아가기' }));
+
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 });
