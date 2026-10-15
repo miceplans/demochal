@@ -18,7 +18,6 @@ const Layout = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 32 }
 const Main = styled.div({
   flex: '1 1 0',
   minWidth: 0,
-  maxWidth: 720,
   display: 'flex',
   flexDirection: 'column',
 });
