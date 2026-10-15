@@ -743,6 +743,26 @@ describe('ChallengesService.update', () => {
     expect(db.update).not.toHaveBeenCalled();
   });
 
+  it('신청자가 있으면 참가비 변경과 접수 인원 미만 정원 축소를 거절한다', async () => {
+    const { service, db } = createUpdateService([{ ...current, price: 1000 }]);
+    const first = db.select();
+    const withRows = (rows: unknown[]) =>
+      vi
+        .fn()
+        .mockReturnValueOnce(first)
+        .mockReturnValue({
+          from: () => ({
+            where: () =>
+              Object.assign(Promise.resolve(rows), { limit: () => Promise.resolve(rows) }),
+          }),
+        });
+    db.select = withRows([{ id: 'app-1', total: 3 }]);
+    await expect(service.update('ch-1', { capacity: 2 }, owner)).rejects.toThrow('정원');
+    db.select = withRows([{ id: 'app-1', total: 3 }]);
+    await expect(service.update('ch-1', { price: 2000 }, owner)).rejects.toThrow('참가비');
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
   it('rejects an empty patch', async () => {
     const { service } = createUpdateService([current]);
     await expect(service.update('ch-1', {}, owner)).rejects.toThrow('수정할 항목이 없습니다');
