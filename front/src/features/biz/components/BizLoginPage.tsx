@@ -12,11 +12,13 @@ import { MfaStep } from '@/features/auth/components/MfaStep';
 import { BizGlobalStyles, Logo, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import type { MfaChallenge, MfaUser } from '@/features/auth/mfa-types';
 
+const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
+
 export function BizLoginPage() {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
@@ -25,7 +27,7 @@ export function BizLoginPage() {
     if (user.role !== 'business') {
       await generated.logout().catch(() => undefined);
       setChallenge(null);
-      toast.error('기업 계정의 이메일 또는 아이디와 비밀번호를 확인해주세요.');
+      toast.error('기업 계정의 이메일과 비밀번호를 확인해주세요.');
       return;
     }
     router.replace(hrefOf('/dashboard'));
@@ -33,19 +35,19 @@ export function BizLoginPage() {
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const normalizedIdentifier = identifier.trim();
-    if (!normalizedIdentifier || !password) {
-      toast.error('이메일 또는 아이디와 비밀번호를 입력해주세요.');
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail || !password) {
+      toast.error('이메일과 비밀번호를 입력해주세요.');
+      return;
+    }
+    if (!EMAIL_PATTERN.test(normalizedEmail)) {
+      toast.error('이메일을 확인해주세요.');
       return;
     }
 
     setSubmitting(true);
     try {
-      const response = await generated.login(
-        normalizedIdentifier.includes('@')
-          ? { email: normalizedIdentifier, password }
-          : { username: normalizedIdentifier, password },
-      );
+      const response = await generated.login({ email: normalizedEmail, password });
       if (response.status !== 200) throw new Error('business login failed');
       if ('mfaToken' in response.data) {
         if (response.data.user.role !== 'business') throw new Error('business login failed');
@@ -58,7 +60,7 @@ export function BizLoginPage() {
       }
       router.replace(hrefOf('/dashboard'));
     } catch {
-      toast.error('기업 계정의 이메일 또는 아이디와 비밀번호를 확인해주세요.');
+      toast.error('기업 계정의 이메일과 비밀번호를 확인해주세요.');
     } finally {
       setSubmitting(false);
     }
@@ -81,12 +83,13 @@ export function BizLoginPage() {
         ) : (
           <Form onSubmit={onSubmit} noValidate>
             <Field>
-              <Label htmlFor="biz-identifier">이메일 또는 아이디</Label>
+              <Label htmlFor="biz-email">이메일</Label>
               <Input
-                id="biz-identifier"
-                autoComplete="username"
-                value={identifier}
-                onChange={(event) => setIdentifier(event.target.value)}
+                id="biz-email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
               />
             </Field>
             <Field>
