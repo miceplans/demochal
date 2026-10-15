@@ -2,7 +2,7 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:cr
 import { env } from '../../config/env.js';
 
 // TOTP 시크릿 저장용 AEAD 키. 세션 서명 키와 분리하기 위해 JWT 비밀에서 HKDF로 파생한다
-// (contact-verification-code HMAC 키와 같은 패턴, env.ts 참조).
+// (oauthStateSecret과 같은 패턴, env.ts 참조).
 const TOTP_AEAD_KEY = Buffer.from(hkdfSync('sha256', env.jwtSecret, '', 'semochal/mfa-totp', 32));
 
 const CIPHER = 'aes-256-gcm';

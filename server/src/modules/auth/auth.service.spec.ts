@@ -25,13 +25,7 @@ function dbSelecting(rows: unknown[]) {
 }
 
 function serviceWith(rows: unknown[]) {
-  return new AuthService(
-    dbSelecting(rows) as never,
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-  );
+  return new AuthService(dbSelecting(rows) as never, {} as never, {} as never, {} as never);
 }
 
 function containsLowerEmailComparison(value: unknown, seen = new WeakSet<object>()): boolean {
@@ -80,7 +74,6 @@ describe('AuthService.login', () => {
       jwtService as never,
       usersService as never,
       {} as never,
-      {} as never,
     );
 
     await expect(service.login('Member@SemoChal.kr', testPassword)).resolves.toEqual({
@@ -99,7 +92,6 @@ describe('AuthService.login', () => {
       ]) as never,
       { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
       { findById: vi.fn().mockResolvedValue({ id: 'u1' }) } as never,
-      {} as never,
       mfaService as never,
     );
 
@@ -126,7 +118,6 @@ describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
       ]) as never,
       { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
       { findById: vi.fn().mockResolvedValue({ id: 'p1', role }) } as never,
-      {} as never,
       mfaService as never,
     );
     return { service, mfaService };
@@ -186,7 +177,6 @@ describe('AuthService.me — 세션 토큰 검증', () => {
       {} as never,
       jwtService as never,
       usersService as never,
-      {} as never,
       {} as never,
     );
     return { service, jwtService, usersService };
@@ -273,7 +263,6 @@ describe('AuthService.register', () => {
       jwtService as never,
       usersService as never,
       {} as never,
-      {} as never,
     );
 
     await service.register({
@@ -301,7 +290,7 @@ describe('AuthService.changePassword', () => {
       update: vi.fn(() => ({ set })),
     };
     return {
-      service: new AuthService(db as never, {} as never, {} as never, {} as never, {} as never),
+      service: new AuthService(db as never, {} as never, {} as never, {} as never),
       db,
       set,
     };
@@ -372,7 +361,6 @@ describe('AuthService.loginWithGoogle', () => {
         jwtService as never,
         usersService as never,
         {} as never,
-        {} as never,
       ),
     };
   }
@@ -441,7 +429,6 @@ describe('AuthService 소셜 로그인 — privileged 계정 현 동작', () => 
       db as never,
       jwtService as never,
       usersService as never,
-      {} as never,
       mfaService as never,
     );
     return { service, jwtService, mfaService };

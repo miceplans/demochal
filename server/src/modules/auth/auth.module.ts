@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { env } from '../../config/env.js';
 import { UsersModule } from '../users/users.module.js';
 import { OutboxModule } from '../../outbox/outbox.module.js';
-import { ContactVerificationsService } from './contact-verifications.service.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
@@ -21,7 +20,7 @@ import { MfaAuthGuard } from './mfa/mfa-auth.guard.js';
     }),
   ],
   controllers: [AuthController, MfaController],
-  providers: [AuthService, ContactVerificationsService, JwtAuthGuard, MfaService, MfaAuthGuard],
+  providers: [AuthService, JwtAuthGuard, MfaService, MfaAuthGuard],
   exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
