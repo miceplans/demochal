@@ -114,6 +114,7 @@ export class AuthController {
   }
 
   @Post('login')
+  @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {

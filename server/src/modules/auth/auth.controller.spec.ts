@@ -459,3 +459,9 @@ describe('AuthController Kakao callback', () => {
     );
   });
 });
+
+describe('AuthController login status code', () => {
+  it('POST /auth/login은 OpenAPI·생성 클라이언트가 기대하는 200을 반환한다 (기본 201이면 admin/biz 로그인이 항상 실패)', () => {
+    expect(Reflect.getMetadata('__httpCode__', AuthController.prototype.login)).toBe(200);
+  });
+});
