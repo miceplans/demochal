@@ -172,6 +172,73 @@ describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
   });
 });
 
+describe('AuthService.me — 세션 토큰 검증', () => {
+  function meService({
+    payload,
+    profile,
+  }: {
+    payload: Record<string, unknown>;
+    profile: Record<string, unknown>;
+  }) {
+    const jwtService = { verifyAsync: vi.fn().mockResolvedValue(payload) };
+    const usersService = { findById: vi.fn().mockResolvedValue(profile) };
+    const service = new AuthService(
+      {} as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+      {} as never,
+    );
+    return { service, jwtService, usersService };
+  }
+
+  it('MFA 목적(mfa-pending) 클레임이 있는 토큰은 세션 토큰으로 받지 않는다', async () => {
+    const { service, usersService } = meService({
+      payload: { sub: 'a1', email: 'admin@semochal.kr', role: 'admin', purpose: 'mfa-pending' },
+      profile: { id: 'a1', role: 'admin' },
+    });
+
+    await expect(service.me('mfa-token')).rejects.toThrow(
+      new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.'),
+    );
+    expect(usersService.findById).not.toHaveBeenCalled();
+  });
+
+  it.each([['admin'], ['business']])(
+    '%s 프로필인데 세션에 mfa 클레임이 없으면 401로 거부한다',
+    async (role) => {
+      const { service } = meService({
+        payload: { sub: 'p1', email: 'privileged@semochal.kr', role },
+        profile: { id: 'p1', role },
+      });
+
+      await expect(service.me('session-token')).rejects.toThrow(
+        new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.'),
+      );
+    },
+  );
+
+  it('mfa: true 클레임이 있는 admin 세션은 프로필을 그대로 반환한다', async () => {
+    const profile = { id: 'a1', role: 'admin', name: '관리자' };
+    const { service } = meService({
+      payload: { sub: 'a1', email: 'admin@semochal.kr', role: 'admin', mfa: true },
+      profile,
+    });
+
+    await expect(service.me('session-token')).resolves.toEqual(profile);
+  });
+
+  it('일반 user 세션은 mfa 클레임 없이도 통과한다', async () => {
+    const profile = { id: 'u1', role: 'user', name: '회원' };
+    const { service } = meService({
+      payload: { sub: 'u1', email: 'user@semochal.kr', role: 'user' },
+      profile,
+    });
+
+    await expect(service.me('session-token')).resolves.toEqual(profile);
+  });
+});
+
 describe('AuthService.register', () => {
   it.each([
     ['email', { email: 'taken@semochal.kr', username: 'fresh' }],
@@ -355,5 +422,94 @@ describe('AuthService.loginWithGoogle', () => {
       }),
     ).resolves.toEqual({ accessToken: 'access-token', user: { id: 'u1' } });
     expect(db.select).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe('AuthService 소셜 로그인 — privileged 계정 현 동작', () => {
+  // 현재 소셜 로그인은 MFA 분기 없이 즉시 세션을 발급한다 — 관리자·사업자여도 토큰에 mfa 클레임이 없음을 고정한다.
+  function foundBySubjectService(userRow: Record<string, unknown>) {
+    const limit = vi.fn().mockResolvedValue([userRow]);
+    const db = {
+      select: vi.fn(() => ({ from: () => ({ where: () => ({ limit }) }) })),
+    };
+    const jwtService = { signAsync: vi.fn().mockResolvedValue('access-token') };
+    const usersService = {
+      findById: vi.fn().mockResolvedValue({ id: userRow.id, role: userRow.role }),
+    };
+    const mfaService = { describeLoginState: vi.fn(), signMfaToken: vi.fn() };
+    const service = new AuthService(
+      db as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+      mfaService as never,
+    );
+    return { service, jwtService, mfaService };
+  }
+
+  it.each([['admin'], ['business']])(
+    'Google 로그인의 %s 계정은 즉시 세션을 발급하고 토큰에 mfa 클레임을 붙이지 않는다',
+    async (role) => {
+      const userRow = {
+        id: 'p1',
+        email: `${role}@semochal.kr`,
+        passwordHash: '$2b$10$hash',
+        role,
+        googleSubject: 'google-subject',
+      };
+      const { service, jwtService, mfaService } = foundBySubjectService(userRow);
+
+      await expect(
+        service.loginWithGoogle({
+          subject: 'google-subject',
+          email: userRow.email,
+          name: 'Social Login',
+        }),
+      ).resolves.toEqual({ accessToken: 'access-token', user: { id: 'p1', role } });
+
+      const payload = jwtService.signAsync.mock.calls[0]?.[0] as Record<string, unknown>;
+      expect(payload).toMatchObject({ sub: 'p1', role });
+      expect(payload.mfa).toBeUndefined();
+      expect(mfaService.describeLoginState).not.toHaveBeenCalled();
+      expect(mfaService.signMfaToken).not.toHaveBeenCalled();
+    },
+  );
+
+  it('Naver 로그인의 business 계정도 즉시 세션을 발급하고 토큰에 mfa 클레임이 없다', async () => {
+    const userRow = {
+      id: 'b1',
+      email: 'biz@semochal.kr',
+      passwordHash: '$2b$10$hash',
+      role: 'business',
+      naverSubject: 'naver-subject',
+    };
+    const { service, jwtService, mfaService } = foundBySubjectService(userRow);
+
+    await expect(
+      service.loginWithNaver({ subject: 'naver-subject', email: userRow.email, name: 'Biz Owner' }),
+    ).resolves.toEqual({ accessToken: 'access-token', user: { id: 'b1', role: 'business' } });
+
+    const payload = jwtService.signAsync.mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(payload).toMatchObject({ sub: 'b1', role: 'business' });
+    expect(payload.mfa).toBeUndefined();
+    expect(mfaService.describeLoginState).not.toHaveBeenCalled();
+  });
+
+  it('일반 user의 Google 로그인은 기존처럼 세션을 발급하고 mfa 클레임을 붙이지 않는다(회귀)', async () => {
+    const userRow = {
+      id: 'u1',
+      email: 'user@semochal.kr',
+      passwordHash: '$2b$10$hash',
+      role: 'user',
+      googleSubject: 'google-subject',
+    };
+    const { service, jwtService, mfaService } = foundBySubjectService(userRow);
+
+    await expect(
+      service.loginWithGoogle({ subject: 'google-subject', email: userRow.email, name: 'Member' }),
+    ).resolves.toEqual({ accessToken: 'access-token', user: { id: 'u1', role: 'user' } });
+
+    expect(jwtService.signAsync.mock.calls[0]?.[0]).toMatchObject({ sub: 'u1', role: 'user' });
+    expect(mfaService.signMfaToken).not.toHaveBeenCalled();
   });
 });

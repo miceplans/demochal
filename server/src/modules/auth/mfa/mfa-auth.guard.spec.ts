@@ -171,6 +171,18 @@ describe('MfaAuthGuard pending 흐름', () => {
     expect(request).toHaveProperty('user.role', 'admin');
   });
 
+  it('mfa-enroll 토큰으로 로그인 검증(pending)을 거부한다', async () => {
+    // enroll 전용 토큰을 검증 단계에 쓰면 안 된다 — enroll 흐름의 반대 방향 오용.
+    const { guard } = guardWith({
+      flow: 'pending',
+      verifyAsync: async () => ({ sub: 'a1', purpose: 'mfa-enroll' }),
+    });
+
+    await expect(
+      guard.canActivate(contextFor(bodyRequest({ mfaToken: 'enroll-token', code: '123456' }))),
+    ).rejects.toThrow(new UnauthorizedException('이 요청에 사용할 수 없는 MFA 토큰입니다.'));
+  });
+
   it('토큰이 없거나 위조되면 거부한다', async () => {
     const missing = guardWith({ flow: 'pending', verifyAsync: async () => ({}) });
     await expect(
