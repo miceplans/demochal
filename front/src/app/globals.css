@@ -67,20 +67,25 @@ select {
   font-family: inherit;
 }
 
-/* 전역 스크롤바 — 얇게, 디자인 톤(토큰)에 맞춰. 숨김 처리된 요소(레일 등)의
-   scrollbarWidth: none / display: none 규칙이 더 높은 명시도로 유지된다.
-   Chrome 121+는 scrollbar-width/color가 하나라도 있으면 ::-webkit-scrollbar를
+/* 전역 스크롤바 — 평소엔 숨기고(투명), 호버/포커스 시에만 얇게(4px) 보인다.
+   숨김 처리된 요소(레일 등)의 scrollbarWidth: none / display: none 규칙이 더 높은
+   명시도로 유지된다. Chrome 121+는 scrollbar-width/color가 있으면 ::-webkit-scrollbar를
    무시하므로, 표준 속성은 webkit 미지원 브라우저(Firefox)에만 적용한다. */
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover,
+  *:focus-within {
     scrollbar-color: var(--color-gray-300) transparent;
   }
 }
 
 *::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 *::-webkit-scrollbar-track {
@@ -88,8 +93,13 @@ select {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: var(--color-gray-300);
+  background: transparent;
   border-radius: 999px;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background: var(--color-gray-300);
 }
 
 *::-webkit-scrollbar-thumb:hover {
