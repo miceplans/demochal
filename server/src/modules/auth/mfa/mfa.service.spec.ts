@@ -86,7 +86,7 @@ describe('MfaService TOTP 등록', () => {
 
   it('setup은 평문 대신 암호문을 저장하고 otpauth URL을 함께 반환한다', async () => {
     const { insert, values, onConflictDoUpdate } = insertChain();
-    const db = { insert };
+    const db = { insert, ...dbWithSelect(selectChain([]), selectManyChain([])) }; // 미등록 계정
     const { service } = makeService(db);
 
     const result = await service.setupTotp(admin);
@@ -102,6 +102,25 @@ describe('MfaService TOTP 등록', () => {
       }),
     );
     expect(onConflictDoUpdate).toHaveBeenCalled();
+  });
+
+  it('이미 수단이 있는 계정은 비밀번호 없이 TOTP·패스키 등록을 시작할 수 없다', async () => {
+    const enrolled = () => dbWithSelect(selectChain([{ userId: admin.id }]));
+    await expect(makeService(enrolled()).service.setupTotp(admin)).rejects.toThrow(
+      new UnauthorizedException('비밀번호 확인이 필요합니다.'),
+    );
+    await expect(makeService(enrolled()).service.beginPasskeyRegistration(admin)).rejects.toThrow(
+      new UnauthorizedException('비밀번호 확인이 필요합니다.'),
+    );
+
+    compare.mockResolvedValue(false);
+    const wrong = dbWithSelect(
+      selectChain([{ userId: admin.id }]),
+      selectChain([{ passwordHash: '$2b$10$hash' }]),
+    );
+    await expect(makeService(wrong).service.setupTotp(admin, 'bad')).rejects.toThrow(
+      new UnauthorizedException('비밀번호가 올바르지 않습니다.'),
+    );
   });
 
   it('confirm은 저장된 시크릿으로 코드를 검증해 verifiedAt을 찍고 첫 수단이면 복구 코드 10개를 발급한다', async () => {
@@ -273,13 +292,19 @@ describe('MfaService 패스키 등록', () => {
     generateRegistrationOptions.mockResolvedValue({ challenge: 'reg-challenge', pubKey: {} });
     const challengeInsert = insertChain();
     const db = {
-      ...dbWithSelect(selectManyChain([{ credentialId: 'cred-1', transports: ['usb', 'nfc'] }])),
+      ...dbWithSelect(
+        selectChain([]), // hasVerifiedTotp
+        selectManyChain([{ id: 'pk-1' }]), // countPasskeys: 이미 패스키가 있어 비밀번호 확인 필요
+        selectChain([{ passwordHash: '$2b$10$hash' }]), // assertPassword
+        selectManyChain([{ credentialId: 'cred-1', transports: ['usb', 'nfc'] }]),
+      ),
       ...deleteChain(undefined),
       ...challengeInsert,
     };
+    compare.mockResolvedValue(true);
     const { service } = makeService(db);
 
-    const result = await service.beginPasskeyRegistration(admin);
+    const result = await service.beginPasskeyRegistration(admin, 'pw');
 
     expect(result.options.challenge).toBe('reg-challenge');
     expect(generateRegistrationOptions).toHaveBeenCalledWith(
@@ -331,7 +356,7 @@ describe('MfaService 패스키 등록', () => {
         expectedChallenge: 'reg-challenge',
         expectedOrigin: 'http://localhost:3000',
         expectedRPID: 'localhost',
-        requireUserVerification: false,
+        requireUserVerification: true,
       }),
     );
     expect(result.id).toBe('pk-new');
@@ -512,7 +537,7 @@ describe('MfaService 로그인 검증', () => {
       expect.objectContaining({
         rpID: 'localhost',
         allowCredentials: [{ id: 'cred-1', transports: undefined }],
-        userVerification: 'preferred',
+        userVerification: 'required',
       }),
     );
 
@@ -547,6 +572,7 @@ describe('MfaService 로그인 검증', () => {
     expect(verifyAuthenticationResponse).toHaveBeenCalledWith(
       expect.objectContaining({
         expectedChallenge: 'auth-challenge',
+        requireUserVerification: true,
         credential: expect.objectContaining({ id: 'cred-id', counter: 1 }),
       }),
     );

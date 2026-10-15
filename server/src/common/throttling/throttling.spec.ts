@@ -24,5 +24,8 @@ describe('LoginAttemptThrottlerGuard', () => {
 
   it('falls back to the client IP when no identifier is sent', async () => {
     await expect(guard.track({ ip: '1.1.1.1', body: {} })).resolves.toBe('login-ip:1.1.1.1');
+    await expect(guard.track({ ip: '1.1.1.1', body: {}, user: { id: 'u1' } })).resolves.toBe(
+      'login-user:u1',
+    );
   });
 });

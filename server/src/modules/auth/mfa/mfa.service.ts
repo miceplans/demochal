@@ -130,7 +130,8 @@ export class MfaService {
   // --------------------------------------------------------- 수단 관리·등록
 
   /** 새 TOTP 시크릿을 발급해 pending 상태로 저장한다. 평문 시크릿은 이 응답에만 한 번 노출된다. */
-  async setupTotp(user: AuthenticatedUser) {
+  async setupTotp(user: AuthenticatedUser, password?: string) {
+    await this.requirePasswordIfEnrolled(user.id, password);
     const secret = generateSecret();
     const secretCiphertext = encryptString(secret);
     await this.db
@@ -202,7 +203,8 @@ export class MfaService {
     };
   }
 
-  async beginPasskeyRegistration(user: AuthenticatedUser) {
+  async beginPasskeyRegistration(user: AuthenticatedUser, password?: string) {
+    await this.requirePasswordIfEnrolled(user.id, password);
     const existing = await this.db
       .select({
         credentialId: userPasskeyCredentials.credentialId,
@@ -216,7 +218,7 @@ export class MfaService {
       userID: Buffer.from(user.id, 'utf8'),
       userName: user.email,
       attestationType: 'none',
-      authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+      authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' },
       excludeCredentials: existing.map((credential) => ({
         id: credential.credentialId,
         transports: credential.transports ?? undefined,
@@ -238,7 +240,7 @@ export class MfaService {
         expectedChallenge,
         expectedOrigin: env.webauthnRpOrigin,
         expectedRPID: env.webauthnRpId,
-        requireUserVerification: false,
+        requireUserVerification: true,
       });
       if (!result.verified) throw new Error('registration not verified');
       registrationInfo = result.registrationInfo;
@@ -335,7 +337,7 @@ export class MfaService {
         id: credential.credentialId,
         transports: credential.transports ?? undefined,
       })),
-      userVerification: 'preferred',
+      userVerification: 'required',
     });
     await this.storeChallenge(user.id, 'webauthn-auth', options.challenge);
     return { options };
@@ -368,7 +370,7 @@ export class MfaService {
           counter: stored.counter,
           transports: stored.transports ?? undefined,
         },
-        requireUserVerification: false,
+        requireUserVerification: true,
       });
       if (!result.verified) throw new Error('authentication not verified');
       authenticationInfo = result.authenticationInfo;
@@ -415,6 +417,14 @@ export class MfaService {
   }
 
   // ---------------------------------------------------------------- helpers
+
+  /** 이미 수단이 있는 계정의 수단 추가·교체는 비밀번호 재확인이 필요하다(첫 등록은 로그인 직후라 면제). */
+  private async requirePasswordIfEnrolled(userId: string, password: string | undefined) {
+    const enrolled = (await this.hasVerifiedTotp(userId)) || (await this.countPasskeys(userId)) > 0;
+    if (!enrolled) return;
+    if (!password) throw new UnauthorizedException('비밀번호 확인이 필요합니다.');
+    await this.assertPassword(userId, password);
+  }
 
   private async assertPassword(userId: string, password: string) {
     const [user] = await this.db

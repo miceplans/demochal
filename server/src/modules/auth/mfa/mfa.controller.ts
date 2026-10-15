@@ -48,8 +48,8 @@ export class MfaController {
   @Post('totp/setup')
   @HttpCode(200)
   @MfaFlow('enroll')
-  setupTotp(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.mfaService.setupTotp(user);
+  setupTotp(@Body() dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mfaService.setupTotp(user, dto.password);
   }
 
   @Post('totp/confirm')
@@ -75,8 +75,8 @@ export class MfaController {
   @Post('passkeys/register-options')
   @HttpCode(200)
   @MfaFlow('enroll')
-  registerOptions(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.mfaService.beginPasskeyRegistration(user);
+  registerOptions(@Body() dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.mfaService.beginPasskeyRegistration(user, dto.password);
   }
 
   // WebAuthn credential JSON은 base64url 값이라 `--` 같은 deny-list 시퀀스를 포함할 수 있다.

@@ -20,4 +20,9 @@
 export type SetupMfaTotpBody = {
   /** 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 */
   mfaToken?: string;
+  /**
+     * 이미 2FA 수단이 있는 계정이 수단을 추가·교체할 때 비밀번호 재확인
+     * @maxLength 128
+     */
+  password?: string;
 };

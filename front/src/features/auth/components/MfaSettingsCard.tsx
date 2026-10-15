@@ -23,7 +23,11 @@ import {
 } from './MfaStep';
 
 type PendingAction =
-  { kind: 'delete-totp' } | { kind: 'delete-passkey'; id: string } | { kind: 'regenerate' };
+  | { kind: 'delete-totp' }
+  | { kind: 'delete-passkey'; id: string }
+  | { kind: 'regenerate' }
+  | { kind: 'add-totp' }
+  | { kind: 'add-passkey' };
 
 /** 로그인한 관리자·사업자가 2FA 수단을 확인·추가·삭제하고 복구 코드를 재발급하는 설정 카드. */
 export function MfaSettingsCard() {
@@ -56,9 +60,9 @@ export function MfaSettingsCard() {
     }
   };
 
-  const startTotp = () =>
+  const startTotp = (passwordValue: string) =>
     guarded(async () => {
-      const res = await generated.setupMfaTotp();
+      const res = await generated.setupMfaTotp({ password: passwordValue });
       if (res.status !== 200) throw new Error('totp setup failed');
       setSetup(res.data);
     }, '인증 앱 등록을 시작하지 못했어요.');
@@ -76,9 +80,9 @@ export function MfaSettingsCard() {
     }, '코드가 올바르지 않아요.');
   };
 
-  const addPasskey = () =>
+  const addPasskey = (passwordValue: string) =>
     guarded(async () => {
-      const optionsRes = await generated.getMfaPasskeyRegisterOptions();
+      const optionsRes = await generated.getMfaPasskeyRegisterOptions({ password: passwordValue });
       if (optionsRes.status !== 200) throw new Error('passkey options failed');
       const credential = await startRegistration({
         optionsJSON: optionsRes.data.options as unknown as PublicKeyCredentialCreationOptionsJSON,
@@ -96,6 +100,14 @@ export function MfaSettingsCard() {
     event.preventDefault();
     if (!pending || !password) return;
     const action = pending;
+    // 수단 추가는 등록 절차(코드 입력·패스키 생성)가 이어지므로 비밀번호 확인 폼만 닫고 시작한다.
+    if (action.kind === 'add-totp' || action.kind === 'add-passkey') {
+      const confirmed = password;
+      setPending(null);
+      setPassword('');
+      void (action.kind === 'add-totp' ? startTotp(confirmed) : addPasskey(confirmed));
+      return;
+    }
     void guarded(async () => {
       if (action.kind === 'delete-totp') {
         await generated.deleteMfaTotp({ password });
@@ -138,7 +150,11 @@ export function MfaSettingsCard() {
             삭제
           </LinkButton>
         ) : (
-          <SecondaryButton type="button" disabled={busy} onClick={() => void startTotp()}>
+          <SecondaryButton
+            type="button"
+            disabled={busy}
+            onClick={() => setPending({ kind: 'add-totp' })}
+          >
             등록
           </SecondaryButton>
         )}
@@ -176,7 +192,11 @@ export function MfaSettingsCard() {
       ))}
       <Row>
         <span>패스키 추가</span>
-        <SecondaryButton type="button" disabled={busy} onClick={() => void addPasskey()}>
+        <SecondaryButton
+          type="button"
+          disabled={busy}
+          onClick={() => setPending({ kind: 'add-passkey' })}
+        >
           추가
         </SecondaryButton>
       </Row>
