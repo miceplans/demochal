@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import {
   AdminInlineNotice,
@@ -30,24 +31,26 @@ const Page = styled.div({
 const Preview = styled.div({
   position: 'relative',
   width: '100%',
-  height: 495,
+  aspectRatio: '2440 / 990',
   overflow: 'hidden',
 });
 const PricingLink = styled(Link)({
   position: 'absolute',
   zIndex: 1,
-  top: 83,
-  left: 561,
+  top: '50%',
+  left: '50%',
+  transform: 'translate(-50%, -50%)',
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
-  width: 98,
   height: 37,
   borderRadius: 6,
-  padding: '10px 12px',
+  padding: '0 16px',
   background: c.primary,
   color: c.white,
   textDecoration: 'none',
+  whiteSpace: 'nowrap',
+  ...textStyle.mFeatureTitle,
 });
 
 type AdRow = {

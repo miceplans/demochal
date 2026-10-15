@@ -24,20 +24,31 @@ const AD_INTERVAL = 5000;
 const PC_HERO_CARD = 1043;
 const PC_HERO_GAP = 60;
 const PC_HERO_STEP = PC_HERO_CARD + PC_HERO_GAP;
-const PC_HERO_CENTER = 1220 / 2;
 const PC_GALLERY_ITEM = 298;
 const PC_GALLERY_GAP = 32;
 const PC_GALLERY_STEP = PC_GALLERY_ITEM + PC_GALLERY_GAP;
-const PC_GALLERY_CENTER = 1200 / 2;
 const MOBILE_GALLERY_ITEM = 122;
 const MOBILE_GALLERY_GAP = 12;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_ITEM + MOBILE_GALLERY_GAP;
-const MOBILE_GALLERY_CENTER = 358 / 2;
 
-const Screen = styled.div({ display: 'flex', flexDirection: 'column', gap: 32, width: '100%' });
+const Screen = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 32,
+  width: '100%',
+});
+const Notice = styled.p({
+  alignSelf: 'center',
+  width: 'min(100%, 1220px)',
+  margin: 0,
+  ...textStyle.caption,
+  color: c.gray500,
+});
 
 const ViewSwitch = styled.div({
   display: 'flex',
+  width: 'min(100%, 1220px)',
   justifyContent: 'flex-end',
 });
 const ViewSwitchGroup = styled.div({
@@ -87,20 +98,19 @@ const CenterRail = styled('div', {
     prop !== 'animate' &&
     prop !== 'step' &&
     prop !== 'itemWidth' &&
-    prop !== 'center' &&
     prop !== 'gap',
 })<{
   index: number;
   animate: boolean;
   step: number;
   itemWidth: number;
-  center: number;
   gap: number;
-}>(({ index, animate, step, itemWidth, center, gap }) => ({
+}>(({ index, animate, step, itemWidth, gap }) => ({
   display: 'flex',
   gap,
+  marginLeft: '50%',
   '& > *': { flex: `0 0 ${itemWidth}px` },
-  transform: `translateX(${center - index * step - itemWidth / 2}px)`,
+  transform: `translateX(${-index * step - itemWidth / 2}px)`,
   transition: animate ? 'transform 420ms ease' : 'none',
 }));
 const MobileHeroRail = styled('div', {
@@ -438,10 +448,10 @@ export function AdminAdPricingScreen() {
 
   return (
     <Screen>
-      <p>
+      <Notice>
         기존 광고 계약의 금액과 기간은 유지됩니다. 단가 변경 시 기존 계약자에게 안내하며, 변경된
         금액은 새 계약부터 적용됩니다.
-      </p>
+      </Notice>
       <ViewSwitch>
         <ViewSwitchGroup role="tablist" aria-label="미리보기 화면 전환">
           <ViewButton
@@ -484,7 +494,6 @@ export function AdminAdPricingScreen() {
                       animate={shouldAnimate}
                       step={PC_HERO_STEP}
                       itemWidth={PC_HERO_CARD}
-                      center={PC_HERO_CENTER}
                       gap={PC_HERO_GAP}
                       onTransitionEnd={handleTransitionEnd}
                     >
@@ -533,8 +542,8 @@ export function AdminAdPricingScreen() {
                     />
                   </FilterRow>
                   <Section>
-                    <SectionHeading title="맞춤 AI 추천" />
-                    <Rail aria-label="맞춤 AI 추천 목록">
+                    <SectionHeading title="지영님에게 맞는 AI 추천" />
+                    <Rail aria-label="지영님에게 맞는 AI 추천 목록">
                       {desktopContests.slice(0, 6).map((contest) => (
                         <ContestCard key={contest.id} contest={contest} />
                       ))}
@@ -570,7 +579,6 @@ export function AdminAdPricingScreen() {
                         animate={shouldAnimate}
                         step={PC_GALLERY_STEP}
                         itemWidth={PC_GALLERY_ITEM}
-                        center={PC_GALLERY_CENTER}
                         gap={PC_GALLERY_GAP}
                         onTransitionEnd={handleTransitionEnd}
                       >
@@ -660,7 +668,6 @@ export function AdminAdPricingScreen() {
                         animate={shouldAnimate}
                         step={MOBILE_GALLERY_STEP}
                         itemWidth={MOBILE_GALLERY_ITEM}
-                        center={MOBILE_GALLERY_CENTER}
                         gap={MOBILE_GALLERY_GAP}
                         onTransitionEnd={handleTransitionEnd}
                       >
