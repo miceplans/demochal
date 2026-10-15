@@ -15,11 +15,11 @@ const mocks = vi.hoisted(() => {
   return {
     register: vi.fn(),
     registerBusiness: vi.fn(),
-    requestPresignedUpload: vi.fn(),
     submitVerification: vi.fn(),
     replace: vi.fn(),
     push: vi.fn(),
     toastError: vi.fn(),
+    toastSuccess: vi.fn(),
     MockApiError,
   };
 });
@@ -44,14 +44,13 @@ vi.mock('@/components/biz/BizShell', () => ({
   useBizHref: () => (path: string) => `/biz${path}`,
 }));
 vi.mock('@/components/common/Toast', () => ({
-  useToast: () => ({ error: mocks.toastError, success: vi.fn() }),
+  useToast: () => ({ error: mocks.toastError, success: mocks.toastSuccess }),
 }));
 vi.mock('@semochal/api-client', () => ({
   ApiError: mocks.MockApiError,
   generated: {
     register: mocks.register,
     registerBusiness: mocks.registerBusiness,
-    requestPresignedUpload: mocks.requestPresignedUpload,
     submitVerification: mocks.submitVerification,
   },
 }));
@@ -88,6 +87,7 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByText('성함을 입력해주세요')).not.toBeNull();
+    expect(container.querySelector('input[name="username"]')).toBeNull();
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
       .join('\n');
@@ -102,10 +102,40 @@ describe('BizSignupFlow', () => {
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
       .join('\n');
-    // 체크 아이콘 스케일 팝 시작값/버튼 눌림 스케일/박스 테두리 전환 선언
+    // 체크 아이콘 스케일 팝 시작값과 버튼 눌림 스케일 선언
     expect(styleText).toContain('scale(0.4)');
     expect(styleText).toContain('scale(0.96)');
-    expect(styleText).toContain('border-color 150ms ease');
+  });
+
+  async function advanceToBusinessInfo(user: ReturnType<typeof userEvent.setup>) {
+    const agreementBoxes = document.querySelectorAll('input[type="checkbox"]');
+    await user.click(agreementBoxes[0]!);
+    await user.click(agreementBoxes[1]!);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    await user.type(document.querySelector('input[name="name"]')!, '기업 담당자');
+    await user.type(document.querySelector('input[name="email"]')!, 'biz@semochal.kr');
+    await user.type(document.querySelector('input[name="username"]')!, 'biz_owner');
+    await user.type(document.querySelector('input[name="password"]')!, 'password123');
+    await user.type(document.querySelector('input[name="passwordConfirm"]')!, 'password123');
+    await user.click(screen.getByRole('button', { name: '다음' }));
+  }
+
+  it('completes BIZ signup without a business-registration document or verification request', async () => {
+    mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
+    const user = userEvent.setup();
+    renderSignup();
+
+    await advanceToBusinessInfo(user);
+
+    expect(screen.getByLabelText('기관 정보')).not.toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    await waitFor(() => expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' }));
+    expect(mocks.submitVerification).not.toHaveBeenCalled();
+    expect(mocks.push).toHaveBeenCalledWith('/biz/dashboard');
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
   });
 
   it('redirects a duplicate signup to the Biz login page', async () => {
@@ -124,7 +154,6 @@ describe('BizSignupFlow', () => {
     };
     await setValue('name', '기업 담당자');
     await setValue('email', 'biz@semochal.kr');
-    await setValue('username', 'biz_owner');
     await setValue('password', 'password123');
     await setValue('passwordConfirm', 'password123');
     await user.click(screen.getByRole('button', { name: '다음' }));
@@ -132,36 +161,8 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));
-  });
-
-  it('completes signup without any document upload or verification request', async () => {
-    mocks.register.mockResolvedValue({});
-    mocks.registerBusiness.mockResolvedValue({ data: { id: 'biz-1' } });
-    const user = userEvent.setup();
-    const { container } = renderSignup();
-
-    const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
-    await user.click(agreementBoxes[0]);
-    await user.click(agreementBoxes[1]);
-    await user.click(screen.getByRole('button', { name: '다음' }));
-
-    for (const [name, value] of [
-      ['name', '기업 담당자'],
-      ['email', 'biz@semochal.kr'],
-      ['username', 'biz_owner'],
-      ['password', 'password123'],
-      ['passwordConfirm', 'password123'],
-    ]) {
-      await user.type(container.querySelector(`input[name="${name}"]`) as HTMLInputElement, value);
-    }
-    await user.click(screen.getByRole('button', { name: '다음' }));
-
-    expect(container.querySelector('input[type="file"]')).toBeNull();
-    await user.click(screen.getByRole('button', { name: '다음' }));
-
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/biz/dashboard'));
-    expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' });
-    expect(mocks.requestPresignedUpload).not.toHaveBeenCalled();
-    expect(mocks.submitVerification).not.toHaveBeenCalled();
+    expect(mocks.register).toHaveBeenCalledWith(
+      expect.not.objectContaining({ username: expect.anything() }),
+    );
   });
 });

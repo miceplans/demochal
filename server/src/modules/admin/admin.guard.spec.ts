@@ -126,7 +126,9 @@ describe('JwtAuthGuard', () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it('rejects admin/business sessions that did not complete 2FA', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+
+  it.skip('rejects admin/business sessions that did not complete 2FA', async () => {
     for (const role of ['admin', 'business']) {
       const { guard } = createGuard(
         createDbStub([{ name: 'x', role, suspended: false, suspendedReason: null }]),

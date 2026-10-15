@@ -35,7 +35,6 @@ const orgTypes = [
 type OrgType = (typeof orgTypes)[number]['value'];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/;
 
 export function BizSignupFlow() {
   const router = useRouter();
@@ -46,7 +45,6 @@ export function BizSignupFlow() {
   const [account, setAccount] = useState({
     name: '',
     email: '',
-    username: '',
     password: '',
     passwordConfirm: '',
   });
@@ -66,9 +64,6 @@ export function BizSignupFlow() {
   const validateAccount = () => {
     if (!account.name.trim()) return '성함을 입력해주세요.';
     if (!EMAIL_PATTERN.test(account.email.trim())) return '이메일을 확인해주세요.';
-    if (!USERNAME_PATTERN.test(account.username)) {
-      return '아이디는 영문 소문자·숫자·_ 4~20자로 입력해주세요.';
-    }
     if (account.password.length < 8) return '비밀번호는 8자 이상 입력해주세요.';
     if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
     return null;
@@ -91,12 +86,11 @@ export function BizSignupFlow() {
             name: account.name.trim(),
             email: account.email.trim(),
             password: account.password,
-            username: account.username,
             agreements: agreed,
           });
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
-            toast.error('이미 가입된 이메일 또는 아이디예요. 로그인 페이지로 이동할게요.');
+            toast.error('이미 가입된 이메일이에요. 로그인 페이지로 이동할게요.');
             router.replace(hrefOf('/login'));
             return;
           }
@@ -170,15 +164,6 @@ export function BizSignupFlow() {
                     onChange={setField('email')}
                   />
                 </FormField>
-                <FormField label="아이디를 입력해주세요">
-                  <TextInput
-                    name="username"
-                    autoComplete="username"
-                    placeholder="아이디입력"
-                    value={account.username}
-                    onChange={setField('username')}
-                  />
-                </FormField>
                 <FormField label="비밀번호를 입력해주세요">
                   <TextInput
                     type="password"
@@ -213,8 +198,8 @@ export function BizSignupFlow() {
             )}
           </StepBody>
         </Content>
-        <Actions single={step === 0 || (step === 2 && registered)}>
-          {step > 0 && !(step === 2 && registered) && (
+        <Actions single={step === 0}>
+          {step > 0 && (
             <ActionOutline type="button" onClick={() => setStep((v) => v - 1)}>
               이전
             </ActionOutline>

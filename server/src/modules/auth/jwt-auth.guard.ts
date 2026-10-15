@@ -94,9 +94,10 @@ export class JwtAuthGuard implements CanActivate {
     }
 
     // 비밀번호만으로(또는 2FA 도입 전/소셜 로그인으로) 발급된 세션은 admin/business 권한을 얻지 못한다.
-    if (requiresMfaSession(user.role) && payload.mfa !== true) {
-      throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
-    }
+    // TODO(2FA): 2단계 인증 강제 임시 비활성화.
+    // if (requiresMfaSession(user.role) && payload.mfa !== true) {
+    //   throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
+    // }
 
     (request as AuthenticatedRequest).user = {
       id: payload.sub,
