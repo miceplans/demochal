@@ -5,7 +5,6 @@ import type { Request, Response } from 'express';
 import { AuthController } from './auth.controller.js';
 import { AUTH_COOKIE_NAME, authCookieOptions } from './auth.cookie.js';
 import type { AuthService } from './auth.service.js';
-import type { ContactVerificationsService } from './contact-verifications.service.js';
 import { SKIP_INPUT_SECURITY_KEY } from '../../common/security/skip-input-security.decorator.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 
@@ -27,10 +26,7 @@ function createController() {
     changePassword: vi.fn().mockResolvedValue(undefined),
   };
   return {
-    controller: new AuthController(
-      service as unknown as AuthService,
-      {} as unknown as ContactVerificationsService,
-    ),
+    controller: new AuthController(service as unknown as AuthService),
     service,
   };
 }
@@ -186,10 +182,7 @@ describe('AuthController Google callback input-security opt-out', () => {
     const mockedFetchJson = vi.mocked(fetchJsonMock);
 
     const service = { loginWithGoogle: vi.fn() };
-    const controller = new FreshController(
-      service as unknown as AuthService,
-      {} as unknown as ContactVerificationsService,
-    );
+    const controller = new FreshController(service as unknown as AuthService);
     const res = response();
     const request = { headers: { cookie: 'semochal_google_oauth_state=nonce-value' } } as Request;
 
@@ -226,10 +219,7 @@ describe('AuthController Google callback input-security opt-out', () => {
         user: { ...user, onboardingSurvey: true },
       }),
     };
-    const controller = new FreshController(
-      service as unknown as AuthService,
-      {} as unknown as ContactVerificationsService,
-    );
+    const controller = new FreshController(service as unknown as AuthService);
     const res = response();
     const request = { headers: { cookie: `semochal_google_oauth_state=${nonce}` } } as Request;
 
@@ -288,10 +278,7 @@ describe('AuthController Naver callback', () => {
         user: { ...user, onboardingSurvey: true },
       }),
     };
-    const controller = new FreshController(
-      service as unknown as AuthService,
-      {} as unknown as ContactVerificationsService,
-    );
+    const controller = new FreshController(service as unknown as AuthService);
     const request = { headers: { cookie: `semochal_naver_oauth_state=${nonce}` } } as Request;
     return { controller, service, mockedFetchJson, request, state: `${nonce}.${signature}` };
   }
@@ -362,10 +349,7 @@ describe('AuthController Kakao callback', () => {
         user: { ...user, onboardingSurvey: null },
       }),
     };
-    const controller = new FreshController(
-      service as unknown as AuthService,
-      {} as unknown as ContactVerificationsService,
-    );
+    const controller = new FreshController(service as unknown as AuthService);
     const request = { headers: { cookie: `semochal_kakao_oauth_state=${nonce}` } } as Request;
     return { controller, service, mockedFetchJson, request, state: `${nonce}.${signature}` };
   }

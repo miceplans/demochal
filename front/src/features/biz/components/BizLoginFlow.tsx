@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ChangeEvent, type ComponentProps, type ReactNode } from 'react';
+import { useState, type ChangeEvent, type ReactNode } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -41,16 +41,6 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_PATTERN = /^[a-z0-9_]{4,20}$/;
-const PHONE_PATTERN = /^01\d{8,9}$/;
-
-type Channel = 'email' | 'phone';
-interface ContactVerification {
-  id: string | null;
-  code: string;
-  verified: boolean;
-  busy: boolean;
-}
-const emptyVerification: ContactVerification = { id: null, code: '', verified: false, busy: false };
 
 export function BizSignupFlow() {
   const router = useRouter();
@@ -61,14 +51,9 @@ export function BizSignupFlow() {
   const [account, setAccount] = useState({
     name: '',
     email: '',
-    phone: '',
     username: '',
     password: '',
     passwordConfirm: '',
-  });
-  const [verification, setVerification] = useState<Record<Channel, ContactVerification>>({
-    email: emptyVerification,
-    phone: emptyVerification,
   });
   const [orgType, setOrgType] = useState<OrgType>('기업');
   const [docFile, setDocFile] = useState<File | null>(null);
@@ -82,64 +67,11 @@ export function BizSignupFlow() {
   const setField = (key: keyof typeof account) => (e: ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAccount((prev) => ({ ...prev, [key]: value }));
-    // 인증한 뒤 값을 바꾸면 인증을 다시 받아야 한다.
-    if (key === 'email' || key === 'phone') {
-      setVerification((prev) => ({ ...prev, [key]: emptyVerification }));
-    }
-  };
-  const patchVerification = (channel: Channel, patch: Partial<ContactVerification>) =>
-    setVerification((prev) => ({ ...prev, [channel]: { ...prev[channel], ...patch } }));
-
-  const contactTarget = (channel: Channel) =>
-    channel === 'email' ? account.email.trim() : account.phone.replace(/\D/g, '');
-
-  const requestVerification = async (channel: Channel) => {
-    const target = contactTarget(channel);
-    if (channel === 'email' ? !EMAIL_PATTERN.test(target) : !PHONE_PATTERN.test(target)) {
-      toast.error(channel === 'email' ? '이메일을 확인해주세요.' : '휴대폰 번호를 확인해주세요.');
-      return;
-    }
-    patchVerification(channel, { busy: true });
-    try {
-      const res = await generated.requestContactVerification({ channel, target });
-      if (res.status !== 201) throw new Error('verification request failed');
-      const { data } = res;
-      patchVerification(channel, { id: data.id, code: '', verified: false });
-      toast.success(
-        '인증번호를 보냈어요.',
-        data.devCode ? `개발 환경 인증번호: ${data.devCode}` : '5분 안에 입력해주세요.',
-      );
-    } catch (error) {
-      toast.error(apiErrorMessage(error, '인증번호를 보내지 못했어요.'));
-    } finally {
-      patchVerification(channel, { busy: false });
-    }
-  };
-
-  const confirmVerification = async (channel: Channel) => {
-    const { id, code } = verification[channel];
-    if (!id || !/^\d{6}$/.test(code)) {
-      toast.error('인증번호 6자리를 입력해주세요.');
-      return;
-    }
-    patchVerification(channel, { busy: true });
-    try {
-      await generated.confirmContactVerification(id, { code });
-      patchVerification(channel, { verified: true });
-      toast.success(
-        channel === 'email' ? '이메일 인증이 완료됐어요.' : '휴대폰 인증이 완료됐어요.',
-      );
-    } catch (error) {
-      toast.error(apiErrorMessage(error, '인증에 실패했어요.'));
-    } finally {
-      patchVerification(channel, { busy: false });
-    }
   };
 
   const validateAccount = () => {
     if (!account.name.trim()) return '성함을 입력해주세요.';
     if (!EMAIL_PATTERN.test(account.email.trim())) return '이메일을 확인해주세요.';
-    if (!PHONE_PATTERN.test(account.phone.replace(/\D/g, ''))) return '휴대폰 번호를 확인해주세요.';
     if (!USERNAME_PATTERN.test(account.username)) {
       return '아이디는 영문 소문자·숫자·_ 4~20자로 입력해주세요.';
     }
@@ -204,14 +136,7 @@ export function BizSignupFlow() {
             email: account.email.trim(),
             password: account.password,
             username: account.username,
-            phone: account.phone.replace(/\D/g, ''),
             agreements: agreed,
-            ...(verification.email.verified && verification.email.id
-              ? { emailVerificationId: verification.email.id }
-              : {}),
-            ...(verification.phone.verified && verification.phone.id
-              ? { phoneVerificationId: verification.phone.id }
-              : {}),
           });
         } catch (error) {
           if (error instanceof ApiError && error.status === 409) {
@@ -286,32 +211,13 @@ export function BizSignupFlow() {
                   />
                 </FormField>
                 <FormField label="이메일을 입력해주세요">
-                  <ContactInput
-                    channel="email"
+                  <TextInput
                     type="email"
+                    name="email"
                     autoComplete="email"
                     placeholder="이메일을 입력해주세요"
                     value={account.email}
                     onChange={setField('email')}
-                    state={verification.email}
-                    onRequest={() => void requestVerification('email')}
-                    onCodeChange={(code) => patchVerification('email', { code })}
-                    onConfirm={() => void confirmVerification('email')}
-                  />
-                </FormField>
-                <FormField label="전화번호를 입력해주세요">
-                  <ContactInput
-                    channel="phone"
-                    type="tel"
-                    autoComplete="tel"
-                    inputMode="tel"
-                    placeholder="전화번호 인증하기"
-                    value={account.phone}
-                    onChange={setField('phone')}
-                    state={verification.phone}
-                    onRequest={() => void requestVerification('phone')}
-                    onCodeChange={(code) => patchVerification('phone', { code })}
-                    onConfirm={() => void confirmVerification('phone')}
                   />
                 </FormField>
                 <FormField label="아이디를 입력해주세요">
@@ -409,48 +315,6 @@ function FormField({ label, children }: { label: string; children: ReactNode }) 
   );
 }
 
-function ContactInput({
-  channel,
-  state,
-  onRequest,
-  onCodeChange,
-  onConfirm,
-  ...inputProps
-}: {
-  channel: Channel;
-  state: ContactVerification;
-  onRequest: () => void;
-  onCodeChange: (code: string) => void;
-  onConfirm: () => void;
-} & ComponentProps<typeof TextInput>) {
-  return (
-    <>
-      <InputRow>
-        <TextInput name={channel} {...inputProps} />
-        <VerifyButton type="button" disabled={state.busy || state.verified} onClick={onRequest}>
-          {state.verified ? '인증 완료' : state.id ? '재전송' : '인증하기'}
-        </VerifyButton>
-      </InputRow>
-      {state.id && !state.verified && (
-        <InputRow>
-          <TextInput
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            maxLength={6}
-            placeholder="인증번호 6자리"
-            aria-label={channel === 'email' ? '이메일 인증번호' : '휴대폰 인증번호'}
-            value={state.code}
-            onChange={(e) => onCodeChange(e.target.value.replace(/\D/g, ''))}
-          />
-          <VerifyButton type="button" disabled={state.busy} onClick={onConfirm}>
-            확인
-          </VerifyButton>
-        </InputRow>
-      )}
-    </>
-  );
-}
-
 const Wrap = styled.div({
   minHeight: '100vh',
   display: 'flex',
@@ -537,7 +401,6 @@ const CheckRow = styled.label({
 const Form = styled.div({ display: 'flex', flexDirection: 'column', gap: 32 });
 const FieldBox = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
 const FieldLabel = styled.p({ margin: 0, ...textStyle.mBodyText, color: c.gray900 });
-const InputRow = styled.div({ display: 'flex', gap: 8, '& > input': { flex: 1 } });
 const TextInput = styled.input({
   width: '100%',
   minWidth: 0,
@@ -551,11 +414,6 @@ const TextInput = styled.input({
   color: c.gray900,
   '&::placeholder': { color: c.gray500 },
   '&:focus': { outline: 'none', boxShadow: s.focus },
-});
-const VerifyButton = styled(PrimaryButton)({
-  width: 94,
-  flexShrink: 0,
-  ...textStyle.mFeatureTitle,
 });
 const UploadBox = styled.label({
   position: 'relative',

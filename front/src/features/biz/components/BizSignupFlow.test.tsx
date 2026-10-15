@@ -115,7 +115,6 @@ describe('BizSignupFlow', () => {
     };
     await setValue('name', '기업 담당자');
     await setValue('email', 'biz@semochal.kr');
-    await setValue('phone', '01012345678');
     await setValue('username', 'biz_owner');
     await setValue('password', 'password123');
     await setValue('passwordConfirm', 'password123');

@@ -22,7 +22,6 @@ import {
   users,
 } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
-import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
 import { isPrivilegedRole, MfaService, type MfaMethod } from './mfa/mfa.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
@@ -74,7 +73,6 @@ export class AuthService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
-    private readonly contactVerifications: ContactVerificationsService,
     private readonly mfaService: MfaService,
   ) {}
 
@@ -92,7 +90,7 @@ export class AuthService {
       .limit(1);
     // One message for both collisions so signup can't be used to tell which of an
     // email/username pair exists.
-    // TODO: 409 자체가 가입 여부를 드러낸다 — 이메일 인증 필수화 후에는 "인증 메일 발송"으로 통일한다.
+    // TODO: 409 자체가 가입 여부를 드러낸다 — 이메일 인증을 도입하면 "인증 메일 발송"으로 통일한다.
     // https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html#authentication-and-error-messages
     if (existing) throw new ConflictException(DUPLICATE_ACCOUNT_MESSAGE);
 
@@ -101,24 +99,6 @@ export class AuthService {
     let user: typeof users.$inferSelect | undefined;
     try {
       user = await this.db.transaction(async (tx) => {
-        const emailVerifiedAt = dto.emailVerificationId
-          ? await this.contactVerifications.consume(
-              tx,
-              dto.emailVerificationId,
-              'email',
-              normalizedEmail,
-            )
-          : null;
-        // TODO: 발송 relay가 붙으면 기업 가입에서 휴대폰/이메일 인증을 필수로 전환한다.
-        const phoneVerifiedAt =
-          dto.phoneVerificationId && dto.phone
-            ? await this.contactVerifications.consume(
-                tx,
-                dto.phoneVerificationId,
-                'phone',
-                dto.phone,
-              )
-            : null;
         const [created] = await tx
           .insert(users)
           .values({
@@ -126,9 +106,6 @@ export class AuthService {
             name,
             passwordHash,
             username: username ?? null,
-            phone: dto.phone ? normalizeContact('phone', dto.phone) : null,
-            emailVerifiedAt,
-            phoneVerifiedAt,
             termsAgreements: dto.agreements?.length
               ? Object.fromEntries(dto.agreements.map((key) => [key, now]))
               : null,

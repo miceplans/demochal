@@ -152,11 +152,6 @@ export const env = {
   jwtSecret,
   // OAuth state HMAC key, derived (HKDF) so it never equals the session-signing key.
   oauthStateSecret: Buffer.from(hkdfSync('sha256', jwtSecret, '', 'semochal/oauth-state', 32)),
-  // 이메일/휴대폰 인증번호 HMAC 키. 코드가 6자리 숫자라 무솔트 다이제스트는 DB 유출 시
-  // 오프라인 복구가 쉬워 서버 비밀에서 HKDF로 떼어낸 별도 키로 HMAC한다.
-  contactVerificationCodeSecret: Buffer.from(
-    hkdfSync('sha256', jwtSecret, '', 'semochal/contact-verification-code', 32),
-  ),
   frontendOrigins: raw.FRONTEND_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),

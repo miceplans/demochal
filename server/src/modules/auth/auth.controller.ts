@@ -4,8 +4,6 @@ import {
   Get,
   HttpCode,
   Patch,
-  Param,
-  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -26,11 +24,6 @@ import {
 } from './auth.cookie.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
-import {
-  ConfirmContactVerificationDto,
-  RequestContactVerificationDto,
-} from './dto/contact-verification.dto.js';
-import { ContactVerificationsService } from './contact-verifications.service.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
@@ -82,35 +75,16 @@ const KAKAO_USERINFO_URL = 'https://kapi.kakao.com/v2/user/me';
 @Public()
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly contactVerifications: ContactVerificationsService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
-  // Email/password signup; the biz signup (`/biz/login`) also sends username,
-  // phone, contact verification ids and terms agreements.
+  // Email/password signup; the biz signup (`/biz/login`) also sends username
+  // and terms agreements.
   @Post('register')
   @Throttle(AUTH_THROTTLE)
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
     const { accessToken, user } = await this.authService.register(dto);
     response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
     return { user };
-  }
-
-  @Post('contact-verifications')
-  @Throttle(AUTH_THROTTLE)
-  requestContactVerification(@Body() dto: RequestContactVerificationDto) {
-    return this.contactVerifications.request(dto.channel, dto.target);
-  }
-
-  @Post('contact-verifications/:id/confirm')
-  @HttpCode(200)
-  @Throttle(AUTH_THROTTLE)
-  confirmContactVerification(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ConfirmContactVerificationDto,
-  ) {
-    return this.contactVerifications.confirm(id, dto.code);
   }
 
   @Post('login')
