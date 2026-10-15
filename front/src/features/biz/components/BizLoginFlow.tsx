@@ -68,7 +68,7 @@ export function BizSignupFlow() {
     if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
     return null;
   };
-  const goToVerificationStep = () => {
+  const goToOrgStep = () => {
     const error = validateAccount();
     if (error) {
       toast.error(error);
@@ -98,12 +98,10 @@ export function BizSignupFlow() {
         }
         setRegistered(true);
       }
-      let ownedBusinessId = businessId;
-      if (!ownedBusinessId) {
+      if (!businessId) {
         const { data: business } = await generated.registerBusiness({ type: orgType });
         if (!business.id) throw new Error('business registration failed');
-        ownedBusinessId = business.id;
-        setBusinessId(ownedBusinessId);
+        setBusinessId(business.id);
       }
       toast.success('가입이 완료됐어요.');
       router.push(hrefOf('/dashboard'));
@@ -216,7 +214,7 @@ export function BizSignupFlow() {
             </ActionPrimary>
           )}
           {step === 1 && (
-            <ActionPrimary type="button" onClick={goToVerificationStep}>
+            <ActionPrimary type="button" onClick={goToOrgStep}>
               다음
             </ActionPrimary>
           )}

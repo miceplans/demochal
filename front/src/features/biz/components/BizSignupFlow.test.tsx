@@ -87,7 +87,6 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByText('성함을 입력해주세요')).not.toBeNull();
-    expect(container.querySelector('input[name="username"]')).toBeNull();
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
       .join('\n');
@@ -115,7 +114,6 @@ describe('BizSignupFlow', () => {
 
     await user.type(document.querySelector('input[name="name"]')!, '기업 담당자');
     await user.type(document.querySelector('input[name="email"]')!, 'biz@semochal.kr');
-    await user.type(document.querySelector('input[name="username"]')!, 'biz_owner');
     await user.type(document.querySelector('input[name="password"]')!, 'password123');
     await user.type(document.querySelector('input[name="passwordConfirm"]')!, 'password123');
     await user.click(screen.getByRole('button', { name: '다음' }));
