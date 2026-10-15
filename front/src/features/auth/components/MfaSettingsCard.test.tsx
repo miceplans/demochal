@@ -56,11 +56,11 @@ describe('MfaSettingsCard', () => {
     await userEvent.click(screen.getByRole('button', { name: '등록' }));
     expect(mocks.setupMfaTotp).not.toHaveBeenCalled();
 
-    await userEvent.type(screen.getByLabelText('비밀번호 확인'), 'my-password');
+    await userEvent.type(screen.getByLabelText('비밀번호 확인'), 'test-key-password');
     await userEvent.click(screen.getByRole('button', { name: '확인' }));
 
     await waitFor(() =>
-      expect(mocks.setupMfaTotp).toHaveBeenCalledWith({ password: 'my-password' }),
+      expect(mocks.setupMfaTotp).toHaveBeenCalledWith({ password: 'test-key-password' }),
     );
   });
 });
