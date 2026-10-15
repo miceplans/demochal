@@ -49,7 +49,7 @@ export const SETTINGS_GROUPS = [
 // reportAlert/newBusinessAlert는 AdminAlertsService가 신고 접수/기관 등록 시 읽어 알림을 보낸다.
 export const DEFAULT_VALUES: Record<string, boolean> = {
   bizAutoApprove: false,
-  contestAutoPublish: false,
+  contestAutoPublish: true,
   maintenanceMode: false,
   reportAlert: true,
   newBusinessAlert: false,
