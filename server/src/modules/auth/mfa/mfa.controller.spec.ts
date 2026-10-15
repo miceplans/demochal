@@ -80,9 +80,7 @@ describe('MfaController 등록·관리', () => {
 
   it('수단 삭제와 복구 코드 재발급은 서비스에 위임한다', async () => {
     const { controller, service } = createController();
-    await expect(
-      controller.removeTotp({ password: 'pw' }, admin),
-    ).resolves.toBeUndefined();
+    await expect(controller.removeTotp({ password: 'pw' }, admin)).resolves.toBeUndefined();
     expect(service.deleteTotp).toHaveBeenCalledWith(admin.id, 'pw');
 
     await expect(
@@ -111,7 +109,9 @@ describe('MfaController 등록·관리', () => {
     await expect(controller.status(admin)).resolves.toEqual({
       totp: { status: 'pending', verifiedAt: null },
     });
-    await expect(controller.registerOptions({}, admin)).resolves.toEqual({ options: { challenge: 'c' } });
+    await expect(controller.registerOptions({}, admin)).resolves.toEqual({
+      options: { challenge: 'c' },
+    });
     await expect(controller.authOptions({ mfaToken: 't' }, admin)).resolves.toEqual({
       options: { challenge: 'a' },
     });
@@ -123,33 +123,40 @@ describe('MfaController 로그인 검증', () => {
     ['verifyTotp', 'verifyTotpCode'],
     ['verifyPasskey', 'verifyPasskey'],
     ['verifyRecovery', 'verifyRecoveryCode'],
-  ] as const)('%s는 성공 시 세션 쿠키를 발급하고 공개 프로필을 반환한다', async (handler, serviceMethod) => {
-    const { controller, service } = createController();
-    service[serviceMethod].mockResolvedValue({ accessToken: 'session-token', user: admin });
-    service.verifyPasskey.mockResolvedValue({ accessToken: 'session-token', user: admin });
-    service.verifyRecoveryCode.mockResolvedValue({ accessToken: 'session-token', user: admin });
-    service.verifyTotpCode.mockResolvedValue({ accessToken: 'session-token', user: admin });
-    const res = response();
+  ] as const)(
+    '%s는 성공 시 세션 쿠키를 발급하고 공개 프로필을 반환한다',
+    async (handler, serviceMethod) => {
+      const { controller, service } = createController();
+      service[serviceMethod].mockResolvedValue({ accessToken: 'session-token', user: admin });
+      service.verifyPasskey.mockResolvedValue({ accessToken: 'session-token', user: admin });
+      service.verifyRecoveryCode.mockResolvedValue({ accessToken: 'session-token', user: admin });
+      service.verifyTotpCode.mockResolvedValue({ accessToken: 'session-token', user: admin });
+      const res = response();
 
-    const result =
-      handler === 'verifyTotp'
-        ? await controller.verifyTotp({ mfaToken: 't', code: '123456' }, admin, res)
-        : handler === 'verifyPasskey'
-          ? await controller.verifyPasskey({ mfaToken: 't', credential: {} as never }, admin, res)
-          : await controller.verifyRecovery({ mfaToken: 't', code: 'AAAA-BBBB-CCCC' }, admin, res);
+      const result =
+        handler === 'verifyTotp'
+          ? await controller.verifyTotp({ mfaToken: 't', code: '123456' }, admin, res)
+          : handler === 'verifyPasskey'
+            ? await controller.verifyPasskey({ mfaToken: 't', credential: {} as never }, admin, res)
+            : await controller.verifyRecovery(
+                { mfaToken: 't', code: 'AAAA-BBBB-CCCC' },
+                admin,
+                res,
+              );
 
-    expect(result).toEqual({ user: admin });
-    expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'session-token', authCookieOptions);
-  });
+      expect(result).toEqual({ user: admin });
+      expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'session-token', authCookieOptions);
+    },
+  );
 });
 
 describe('MfaController 보안 메타데이터', () => {
   const reflector = new Reflector();
 
   it('WebAuthn credential을 받는 엔드포인트만 입력 보안 검사를 생략한다', () => {
-    expect(
-      reflector.get(SKIP_INPUT_SECURITY_KEY, MfaController.prototype.registerVerify),
-    ).toBe(true);
+    expect(reflector.get(SKIP_INPUT_SECURITY_KEY, MfaController.prototype.registerVerify)).toBe(
+      true,
+    );
     expect(reflector.get(SKIP_INPUT_SECURITY_KEY, MfaController.prototype.verifyPasskey)).toBe(
       true,
     );

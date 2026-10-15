@@ -108,7 +108,9 @@ describe('MfaService TOTP 등록', () => {
     const secret = generateSecret();
     const code = generateSync({ secret });
     const db = dbWithSelect(
-      selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null }]),
+      selectChain([
+        { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null },
+      ]),
       selectChain([]), // hasVerifiedPasskey
     );
     const update = updateChain();
@@ -138,7 +140,9 @@ describe('MfaService TOTP 등록', () => {
 
     const wrong = makeService(
       dbWithSelect(
-        selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null }]),
+        selectChain([
+          { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null },
+        ]),
       ),
     );
     await expect(wrong.service.confirmTotp(admin, wrongCode)).rejects.toThrow(
@@ -152,7 +156,9 @@ describe('MfaService TOTP 등록', () => {
 
     const already = makeService(
       dbWithSelect(
-        selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() }]),
+        selectChain([
+          { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() },
+        ]),
       ),
     );
     await expect(already.service.confirmTotp(admin, '123456')).rejects.toThrow(
@@ -164,7 +170,9 @@ describe('MfaService TOTP 등록', () => {
     const secret = generateSecret();
     const code = generateSync({ secret });
     const db = dbWithSelect(
-      selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null }]),
+      selectChain([
+        { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: null },
+      ]),
       selectManyChain([{ id: 'pk-1' }]), // hasVerifiedPasskey
     );
     const fullDb = { ...db, ...updateChain(), ...insertChain() };
@@ -180,7 +188,13 @@ describe('MfaService TOTP 등록', () => {
 describe('MfaService 상태 조회', () => {
   it('totp 상태·패스키 목록·복구 코드 잔량을 함께 반환한다', async () => {
     const db = dbWithSelect(
-      selectChain([{ userId: admin.id, secretCiphertext: 'v1:x', verifiedAt: new Date('2026-10-01T00:00:00Z') }]),
+      selectChain([
+        {
+          userId: admin.id,
+          secretCiphertext: 'v1:x',
+          verifiedAt: new Date('2026-10-01T00:00:00Z'),
+        },
+      ]),
       selectManyChain([{ id: 'pk-1', createdAt: new Date('2026-10-02T00:00:00Z') }]),
       selectManyChain([{ usedAt: null }, { usedAt: new Date() }]),
     );
@@ -194,7 +208,9 @@ describe('MfaService 상태 조회', () => {
   });
 
   it('등록하지 않았으면 unenrolled, 확인 전이면 pending을 반환한다', async () => {
-    const unenrolled = makeService(dbWithSelect(selectChain([]), selectManyChain([]), selectManyChain([])));
+    const unenrolled = makeService(
+      dbWithSelect(selectChain([]), selectManyChain([]), selectManyChain([])),
+    );
     await expect(unenrolled.service.getStatus(admin.id)).resolves.toMatchObject({
       totp: { status: 'unenrolled', verifiedAt: null },
     });
@@ -286,7 +302,12 @@ describe('MfaService 패스키 등록', () => {
     verifyRegistrationResponse.mockResolvedValue({
       verified: true,
       registrationInfo: {
-        credential: { id: 'cred-id', publicKey: new Uint8Array([1, 2, 3]), counter: 0, transports: ['internal'] },
+        credential: {
+          id: 'cred-id',
+          publicKey: new Uint8Array([1, 2, 3]),
+          counter: 0,
+          transports: ['internal'],
+        },
       },
     });
     const db = dbWithSelect(
@@ -320,9 +341,9 @@ describe('MfaService 패스키 등록', () => {
     const expired = makeService(
       dbWithSelect(selectChain([]), selectManyChain([]), selectChain([])),
     );
-    await expect(
-      expired.service.completePasskeyRegistration(admin, {} as never),
-    ).rejects.toThrow(BadRequestException);
+    await expect(expired.service.completePasskeyRegistration(admin, {} as never)).rejects.toThrow(
+      BadRequestException,
+    );
 
     // 사용 중인 challenge 경쟁 상태(업데이트가 0행)
     verifyRegistrationResponse.mockResolvedValue({ verified: true });
@@ -346,7 +367,9 @@ describe('MfaService 패스키 등록', () => {
     const failedDb = { ...failed, ...updateChain([{ id: 'ch-1' }]), ...insertChain() };
     await expect(
       makeService(failedDb).service.completePasskeyRegistration(admin, {} as never),
-    ).rejects.toThrow(new BadRequestException('패스키 등록을 확인하지 못했습니다. 다시 시도해 주세요.'));
+    ).rejects.toThrow(
+      new BadRequestException('패스키 등록을 확인하지 못했습니다. 다시 시도해 주세요.'),
+    );
   });
 });
 
@@ -420,7 +443,9 @@ describe('MfaService 로그인 검증', () => {
     const secret = generateSecret();
     const code = generateSync({ secret });
     const db = dbWithSelect(
-      selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() }]),
+      selectChain([
+        { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() },
+      ]),
     );
     const { service, jwtService } = makeService(db);
 
@@ -437,7 +462,9 @@ describe('MfaService 로그인 검증', () => {
     const secret = generateSecret();
     const stale = generateSync({ secret, epoch: Math.floor(Date.now() / 1000) - 120 });
     const db = dbWithSelect(
-      selectChain([{ userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() }]),
+      selectChain([
+        { userId: admin.id, secretCiphertext: encryptString(secret), verifiedAt: new Date() },
+      ]),
     );
     const { service } = makeService(db);
 
@@ -530,12 +557,16 @@ describe('MfaService 로그인 검증', () => {
     const failedDb = { ...failed, ...updateChain([{ id: 'ch-1' }]) };
     await expect(
       makeService(failedDb).service.verifyPasskey(admin, { id: 'cred-id' } as never),
-    ).rejects.toThrow(new UnauthorizedException('패스키 인증을 확인하지 못했습니다. 다시 시도해 주세요.'));
+    ).rejects.toThrow(
+      new UnauthorizedException('패스키 인증을 확인하지 못했습니다. 다시 시도해 주세요.'),
+    );
   });
 
   it('verifyRecoveryCode는 코드를 즉시 폐기하고 재사용을 거부한다', async () => {
     const code = generateRecoveryCode();
-    const db = dbWithSelect(selectChain([{ id: 'rc-1', codeHash: hashRecoveryCode(code), usedAt: null }]));
+    const db = dbWithSelect(
+      selectChain([{ id: 'rc-1', codeHash: hashRecoveryCode(code), usedAt: null }]),
+    );
     const update = updateChain([{ id: 'rc-1' }]);
     const fullDb = { ...db, ...update };
     const { service } = makeService(fullDb);
@@ -546,7 +577,9 @@ describe('MfaService 로그인 검증', () => {
 
     // 경쟁 상태로 이미 사용된 코드는 거부한다.
     const raced = {
-      ...dbWithSelect(selectChain([{ id: 'rc-1', codeHash: hashRecoveryCode(code), usedAt: null }])),
+      ...dbWithSelect(
+        selectChain([{ id: 'rc-1', codeHash: hashRecoveryCode(code), usedAt: null }]),
+      ),
       ...updateChain([]),
     };
     await expect(makeService(raced).service.verifyRecoveryCode(admin, code)).rejects.toThrow(
@@ -555,8 +588,8 @@ describe('MfaService 로그인 검증', () => {
 
     // 존재하지 않는 코드.
     const unknown = dbWithSelect(selectChain([]));
-    await expect(makeService(unknown).service.verifyRecoveryCode(admin, 'AAAA-BBBB-CCCC')).rejects.toThrow(
-      new UnauthorizedException('복구 코드가 올바르지 않습니다.'),
-    );
+    await expect(
+      makeService(unknown).service.verifyRecoveryCode(admin, 'AAAA-BBBB-CCCC'),
+    ).rejects.toThrow(new UnauthorizedException('복구 코드가 올바르지 않습니다.'));
   });
 });

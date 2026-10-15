@@ -18,7 +18,12 @@ export function encryptString(plaintext: string): string {
   const cipher = createCipheriv(CIPHER, TOTP_AEAD_KEY, iv);
   const data = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  return [VERSION_PREFIX, iv.toString('base64'), tag.toString('base64'), data.toString('base64')].join(':');
+  return [
+    VERSION_PREFIX,
+    iv.toString('base64'),
+    tag.toString('base64'),
+    data.toString('base64'),
+  ].join(':');
 }
 
 /** encryptString의 역함수. 포맷이 올바르지 않거나 인증에 실패하면 throw한다. */
@@ -29,5 +34,7 @@ export function decryptString(ciphertext: string): string {
   }
   const decipher = createDecipheriv(CIPHER, TOTP_AEAD_KEY, Buffer.from(iv, 'base64'));
   decipher.setAuthTag(Buffer.from(tag, 'base64'));
-  return Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString('utf8');
+  return Buffer.concat([decipher.update(Buffer.from(data, 'base64')), decipher.final()]).toString(
+    'utf8',
+  );
 }

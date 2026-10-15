@@ -31,6 +31,8 @@ describe('aead encryptString/decryptString', () => {
     const [version, iv, tag, data] = ciphertext.split(':');
     const tamperedData = Buffer.from(data!, 'base64');
     tamperedData[0] = tamperedData[0]! ^ 0xff;
-    expect(() => decryptString([version, iv, tag, tamperedData.toString('base64')].join(':'))).toThrow();
+    expect(() =>
+      decryptString([version, iv, tag, tamperedData.toString('base64')].join(':')),
+    ).toThrow();
   });
 });

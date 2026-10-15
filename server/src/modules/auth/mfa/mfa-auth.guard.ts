@@ -11,9 +11,18 @@ import { Reflector } from '@nestjs/core';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import type { Request } from 'express';
 import { DRIZZLE, type Database } from '../../../db/drizzle.provider.js';
-import { userMfaRecoveryCodes, userPasskeyCredentials, userTotpCredentials, users } from '../../../db/schema.js';
+import {
+  userMfaRecoveryCodes,
+  userPasskeyCredentials,
+  userTotpCredentials,
+  users,
+} from '../../../db/schema.js';
 import { getAuthToken } from '../auth.cookie.js';
-import { JwtAuthGuard, type AuthenticatedRequest, type AuthenticatedUser } from '../jwt-auth.guard.js';
+import {
+  JwtAuthGuard,
+  type AuthenticatedRequest,
+  type AuthenticatedUser,
+} from '../jwt-auth.guard.js';
 import { isPrivilegedRole, type MfaTokenPurpose } from './mfa.service.js';
 import { MFA_FLOW_KEY, type MfaFlowKind } from './mfa-flow.decorator.js';
 
@@ -82,7 +91,9 @@ export class MfaAuthGuard extends JwtAuthGuard {
     try {
       payload = await this.mfaJwtService.verifyAsync<MfaTokenPayload>(token);
     } catch {
-      throw new UnauthorizedException('MFA 토큰이 만료되었거나 올바르지 않습니다. 다시 로그인해 주세요.');
+      throw new UnauthorizedException(
+        'MFA 토큰이 만료되었거나 올바르지 않습니다. 다시 로그인해 주세요.',
+      );
     }
     if (!payload.sub || payload.purpose !== expectedPurpose) {
       throw new UnauthorizedException('이 요청에 사용할 수 없는 MFA 토큰입니다.');
@@ -122,7 +133,9 @@ export class MfaAuthGuard extends JwtAuthGuard {
       this.mfaDb
         .select({ userId: userTotpCredentials.userId })
         .from(userTotpCredentials)
-        .where(and(eq(userTotpCredentials.userId, userId), isNotNull(userTotpCredentials.verifiedAt)))
+        .where(
+          and(eq(userTotpCredentials.userId, userId), isNotNull(userTotpCredentials.verifiedAt)),
+        )
         .limit(1),
       this.mfaDb
         .select({ id: userPasskeyCredentials.id })

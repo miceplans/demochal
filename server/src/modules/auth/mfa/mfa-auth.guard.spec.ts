@@ -59,9 +59,9 @@ describe('MfaAuthGuard manage 흐름', () => {
       limitRows: [[{ name: '회원', role: 'user', suspended: false, withdrawnAt: null }]],
     });
 
-    await expect(
-      guard.canActivate(contextFor(cookieHeader('session-token'))),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(guard.canActivate(contextFor(cookieHeader('session-token')))).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('admin 세션은 사용자를 부착하고 통과시킨다', async () => {
@@ -87,7 +87,17 @@ describe('MfaAuthGuard enroll 흐름', () => {
     const { guard } = guardWith({
       flow: 'enroll',
       verifyAsync: async () => ({ sub: 'b1', purpose: 'mfa-enroll' }),
-      limitRows: [[{ email: 'biz@semochal.kr', name: '사업자', role: 'business', suspended: false, withdrawnAt: null }]],
+      limitRows: [
+        [
+          {
+            email: 'biz@semochal.kr',
+            name: '사업자',
+            role: 'business',
+            suspended: false,
+            withdrawnAt: null,
+          },
+        ],
+      ],
     });
     const request = bodyRequest({ mfaToken: 'enroll-token' });
 
@@ -111,7 +121,17 @@ describe('MfaAuthGuard enroll 흐름', () => {
     const { guard } = guardWith({
       flow: 'enroll',
       verifyAsync: async () => ({ sub: 'u1', role: 'admin', purpose: 'mfa-enroll' }),
-      limitRows: [[{ email: 'user@semochal.kr', name: '회원', role: 'user', suspended: false, withdrawnAt: null }]],
+      limitRows: [
+        [
+          {
+            email: 'user@semochal.kr',
+            name: '회원',
+            role: 'user',
+            suspended: false,
+            withdrawnAt: null,
+          },
+        ],
+      ],
     });
 
     await expect(
@@ -121,7 +141,13 @@ describe('MfaAuthGuard enroll 흐름', () => {
 });
 
 describe('MfaAuthGuard pending 흐름', () => {
-  const dbUser = { email: 'admin@semochal.kr', name: '관리자', role: 'admin', suspended: false, withdrawnAt: null };
+  const dbUser = {
+    email: 'admin@semochal.kr',
+    name: '관리자',
+    role: 'admin',
+    suspended: false,
+    withdrawnAt: null,
+  };
   const usableMethods = [
     [{ userId: 'a1' }], // verified totp
     [], // passkey

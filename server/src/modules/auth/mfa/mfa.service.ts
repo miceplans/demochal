@@ -154,7 +154,8 @@ export class MfaService {
       .from(userTotpCredentials)
       .where(eq(userTotpCredentials.userId, user.id))
       .limit(1);
-    if (!row) throw new BadRequestException('등록 중인 TOTP가 없습니다. 먼저 등록을 시작해 주세요.');
+    if (!row)
+      throw new BadRequestException('등록 중인 TOTP가 없습니다. 먼저 등록을 시작해 주세요.');
     if (row.verifiedAt) throw new BadRequestException('이미 등록이 완료된 TOTP입니다.');
 
     const secret = decryptString(row.secretCiphertext);
@@ -200,7 +201,10 @@ export class MfaService {
 
   async beginPasskeyRegistration(user: AuthenticatedUser) {
     const existing = await this.db
-      .select({ credentialId: userPasskeyCredentials.credentialId, transports: userPasskeyCredentials.transports })
+      .select({
+        credentialId: userPasskeyCredentials.credentialId,
+        transports: userPasskeyCredentials.transports,
+      })
       .from(userPasskeyCredentials)
       .where(eq(userPasskeyCredentials.userId, user.id));
     const options = await generateRegistrationOptions({
@@ -266,7 +270,9 @@ export class MfaService {
     await this.assertPassword(userId, password);
     const deleted = await this.db
       .delete(userPasskeyCredentials)
-      .where(and(eq(userPasskeyCredentials.id, passkeyId), eq(userPasskeyCredentials.userId, userId)))
+      .where(
+        and(eq(userPasskeyCredentials.id, passkeyId), eq(userPasskeyCredentials.userId, userId)),
+      )
       .returning({ id: userPasskeyCredentials.id });
     if (deleted.length === 0) throw new NotFoundException('패스키를 찾을 수 없습니다.');
   }
@@ -288,10 +294,7 @@ export class MfaService {
       .select()
       .from(userTotpCredentials)
       .where(
-        and(
-          eq(userTotpCredentials.userId, user.id),
-          isNotNull(userTotpCredentials.verifiedAt),
-        ),
+        and(eq(userTotpCredentials.userId, user.id), isNotNull(userTotpCredentials.verifiedAt)),
       )
       .limit(1);
     if (!row) throw new BadRequestException('등록된 TOTP가 없습니다.');
