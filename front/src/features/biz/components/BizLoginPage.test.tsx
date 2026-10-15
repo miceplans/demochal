@@ -100,7 +100,8 @@ describe('BizLoginPage', () => {
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it('moves to the second-factor step instead of entering the console when 2FA is required', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip('moves to the second-factor step instead of entering the console when 2FA is required', async () => {
     mocks.login.mockResolvedValue({
       status: 200,
       data: {
@@ -122,7 +123,8 @@ describe('BizLoginPage', () => {
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it('moves to the enrollment step when 2FA registration is required', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip('moves to the enrollment step when 2FA registration is required', async () => {
     mocks.login.mockResolvedValue({
       status: 200,
       data: {
@@ -144,7 +146,8 @@ describe('BizLoginPage', () => {
     expect(mocks.replace).not.toHaveBeenCalled();
   });
 
-  it('rejects an MFA challenge issued for a non-business account', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip('rejects an MFA challenge issued for a non-business account', async () => {
     mocks.login.mockResolvedValue({
       status: 200,
       data: {

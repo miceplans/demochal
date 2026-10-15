@@ -22,7 +22,8 @@ import {
   users,
 } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
-import { isPrivilegedRole, MfaService, type MfaMethod } from './mfa/mfa.service.js';
+// TODO(2FA): 재활성화 시 isPrivilegedRole import 복구.
+import { /* isPrivilegedRole, */ MfaService, type MfaMethod } from './mfa/mfa.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
 import type { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -150,21 +151,22 @@ export class AuthService {
 
     const publicUser = await this.usersService.findById(user.id);
 
-    // 관리자·사업자는 2FA가 필수다. 검증 가능한 수단이 있으면 인증(pending)을, 없으면
-    // 등록(enroll)용 토큰을 내주고 세션은 발급하지 않는다 — 컨트롤러가 쿠키를 억제한다.
-    if (isPrivilegedRole(user.role)) {
-      const { methods } = await this.mfaService.describeLoginState(user.id);
-      const required = methods.length > 0;
-      const mfaToken = await this.mfaService.signMfaToken(
-        user,
-        required ? 'mfa-pending' : 'mfa-enroll',
-        methods,
-      );
-      return {
-        user: publicUser,
-        mfa: { token: mfaToken, required, enrollmentRequired: !required, methods },
-      };
-    }
+    // TODO(2FA): 2단계 인증 강제를 임시로 비활성화했다. 재활성화 시 아래 주석을 해제한다.
+    // // 관리자·사업자는 2FA가 필수다. 검증 가능한 수단이 있으면 인증(pending)을, 없으면
+    // // 등록(enroll)용 토큰을 내주고 세션은 발급하지 않는다 — 컨트롤러가 쿠키를 억제한다.
+    // if (isPrivilegedRole(user.role)) {
+    //   const { methods } = await this.mfaService.describeLoginState(user.id);
+    //   const required = methods.length > 0;
+    //   const mfaToken = await this.mfaService.signMfaToken(
+    //     user,
+    //     required ? 'mfa-pending' : 'mfa-enroll',
+    //     methods,
+    //   );
+    //   return {
+    //     user: publicUser,
+    //     mfa: { token: mfaToken, required, enrollmentRequired: !required, methods },
+    //   };
+    // }
 
     const accessToken = await this.issueToken(user);
     return { accessToken, user: publicUser };
@@ -523,9 +525,10 @@ export class AuthService {
       throw new ForbiddenException(profile.suspendedReason ?? '정지된 계정입니다.');
     }
     if (profile.withdrawnAt) throw new UnauthorizedException('존재하지 않는 계정입니다.');
-    if ((profile.role === 'admin' || profile.role === 'business') && payload.mfa !== true) {
-      throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
-    }
+    // TODO(2FA): 2단계 인증 강제 임시 비활성화.
+    // if ((profile.role === 'admin' || profile.role === 'business') && payload.mfa !== true) {
+    //   throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
+    // }
     return profile;
   }
 

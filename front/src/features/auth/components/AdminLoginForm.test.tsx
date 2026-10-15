@@ -86,7 +86,8 @@ describe('AdminLoginForm', () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
-  it('renders the MFA step instead of redirecting when the login responds with an mfaToken', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip('renders the MFA step instead of redirecting when the login responds with an mfaToken', async () => {
     mocks.login.mockResolvedValue({
       status: 200,
       data: {
@@ -106,7 +107,8 @@ describe('AdminLoginForm', () => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
-  it('logs out and shows an error toast when the post-MFA user is not an admin', async () => {
+  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
+  it.skip('logs out and shows an error toast when the post-MFA user is not an admin', async () => {
     mocks.login.mockResolvedValue({
       status: 200,
       data: {
