@@ -22,13 +22,15 @@ function signPutUrl(client: S3Client): Promise<string> {
 
 describe('buildS3ClientConfig', () => {
   it('uses the default AWS endpoint when no override is set', () => {
-    expect(buildS3ClientConfig('ap-northeast-2')).toEqual({ region: 'ap-northeast-2' });
-    expect(buildS3ClientConfig('ap-northeast-2', '')).toEqual({ region: 'ap-northeast-2' });
+    const base = { region: 'ap-northeast-2', requestChecksumCalculation: 'WHEN_REQUIRED' };
+    expect(buildS3ClientConfig('ap-northeast-2')).toEqual(base);
+    expect(buildS3ClientConfig('ap-northeast-2', '')).toEqual(base);
   });
 
   it('points the client at the override endpoint with path-style URLs', () => {
     expect(buildS3ClientConfig('ap-northeast-2', 'http://localhost:4566')).toEqual({
       region: 'ap-northeast-2',
+      requestChecksumCalculation: 'WHEN_REQUIRED',
       endpoint: 'http://localhost:4566',
       forcePathStyle: true,
     });
@@ -36,6 +38,12 @@ describe('buildS3ClientConfig', () => {
 });
 
 describe('presigned upload URL shape', () => {
+  it('does not bake an empty-body checksum into the presigned PUT URL', async () => {
+    const url = await signPutUrl(clientWithOverride());
+    expect(url).not.toContain('x-amz-checksum');
+    expect(url).not.toContain('x-amz-sdk-checksum-algorithm');
+  });
+
   it('signs a path-style URL against the override endpoint', async () => {
     const url = await signPutUrl(clientWithOverride('http://localhost:4566'));
     expect(url.startsWith('http://localhost:4566/semochal-private-dev/pending/a.png?')).toBe(true);
