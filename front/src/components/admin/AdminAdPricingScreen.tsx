@@ -14,6 +14,7 @@ import { TeamCard } from '@/components/teams/TeamCard';
 import { MovingAds } from '@/components/ads/MovingAds';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { useAdminHref } from './AdminShell';
+import { ScrollRail } from '@/components/ui/ScrollRail';
 
 type PreviewView = 'mobile' | 'pc';
 
@@ -537,19 +538,19 @@ export function AdminAdPricingScreen() {
                   </FilterRow>
                   <Section>
                     <SectionHeading title="맞춤 AI 추천" />
-                    <Rail aria-label="맞춤 AI 추천 목록">
+                    <ScrollRail as={Rail} aria-label="맞춤 AI 추천 목록">
                       {desktopContests.slice(0, 6).map((contest) => (
                         <ContestCard key={contest.id} contest={contest} />
                       ))}
-                    </Rail>
+                    </ScrollRail>
                   </Section>
                   <Section>
                     <SectionHeading title="마감임박 D-7" />
-                    <Rail aria-label="마감임박 목록">
+                    <ScrollRail as={Rail} aria-label="마감임박 목록">
                       {desktopContests.slice(0, 6).map((contest) => (
                         <ContestCard key={`closing-${contest.id}`} contest={contest} />
                       ))}
-                    </Rail>
+                    </ScrollRail>
                   </Section>
                 </SectionStack>
               </StaticContent>
@@ -628,19 +629,19 @@ export function AdminAdPricingScreen() {
               <StaticContent>
                 <Section>
                   <SectionHeading title="지영님에게 맞는 AI 추천" />
-                  <MobileRail aria-label="지영님에게 맞는 AI 추천 목록">
+                  <ScrollRail as={MobileRail} aria-label="지영님에게 맞는 AI 추천 목록">
                     {desktopContests.slice(0, 6).map((contest) => (
                       <ContestCard key={contest.id} contest={contest} />
                     ))}
-                  </MobileRail>
+                  </ScrollRail>
                 </Section>
                 <Section>
                   <SectionHeading title="마감임박 D-7" />
-                  <MobileRail aria-label="마감임박 목록">
+                  <ScrollRail as={MobileRail} aria-label="마감임박 목록">
                     {desktopContests.slice(0, 6).map((contest) => (
                       <ContestCard key={`closing-${contest.id}`} contest={contest} />
                     ))}
-                  </MobileRail>
+                  </ScrollRail>
                 </Section>
               </StaticContent>
               <MovingAds
