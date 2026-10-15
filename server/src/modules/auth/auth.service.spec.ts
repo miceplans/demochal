@@ -243,7 +243,7 @@ describe('AuthService.register', () => {
     ).rejects.toThrow(new ConflictException('이미 등록된 이메일 또는 아이디입니다.'));
   });
 
-  it('stores new email signups in lowercase', async () => {
+  it('stores new email signups in lowercase without a username', async () => {
     const limit = vi.fn().mockResolvedValue([]);
     const values = vi.fn(() => ({
       returning: vi
@@ -271,7 +271,9 @@ describe('AuthService.register', () => {
       password: testPassword,
     });
 
-    expect(values).toHaveBeenCalledWith(expect.objectContaining({ email: 'member@semochal.kr' }));
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'member@semochal.kr', username: null }),
+    );
   });
 });
 

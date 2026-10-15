@@ -68,17 +68,20 @@ describe('BizLoginPage', () => {
     vi.clearAllMocks();
   });
 
-  it('logs in with a username and redirects business accounts to the Biz dashboard', async () => {
+  it('logs in with an email and redirects business accounts to the Biz dashboard', async () => {
     mocks.login.mockResolvedValue({ status: 200, data: { user: { role: 'business' } } });
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'biz_owner');
+    await user.type(screen.getByLabelText('이메일'), 'biz@semochal.kr');
     await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
     await waitFor(() =>
-      expect(mocks.login).toHaveBeenCalledWith({ username: 'biz_owner', password: TEST_PASSWORD }),
+      expect(mocks.login).toHaveBeenCalledWith({
+        email: 'biz@semochal.kr',
+        password: TEST_PASSWORD,
+      }),
     );
     expect(mocks.replace).toHaveBeenCalledWith('/biz/dashboard');
   });
@@ -89,7 +92,7 @@ describe('BizLoginPage', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'member@semochal.kr');
+    await user.type(screen.getByLabelText('이메일'), 'member@semochal.kr');
     await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
@@ -111,7 +114,7 @@ describe('BizLoginPage', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'biz_owner');
+    await user.type(screen.getByLabelText('이메일'), 'biz@semochal.kr');
     await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
@@ -133,7 +136,7 @@ describe('BizLoginPage', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'biz_owner');
+    await user.type(screen.getByLabelText('이메일'), 'biz@semochal.kr');
     await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
@@ -155,14 +158,12 @@ describe('BizLoginPage', () => {
     const user = userEvent.setup();
     renderLogin();
 
-    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'member@semochal.kr');
+    await user.type(screen.getByLabelText('이메일'), 'member@semochal.kr');
     await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
     await user.click(screen.getByRole('button', { name: '로그인' }));
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledOnce());
-    expect(mocks.toastError).toHaveBeenCalledWith(
-      '기업 계정의 이메일 또는 아이디와 비밀번호를 확인해주세요.',
-    );
+    expect(mocks.toastError).toHaveBeenCalledWith('기업 계정의 이메일과 비밀번호를 확인해주세요.');
     // 2FA 단계로 넘어가지 않고 콘솔 진입도 없다. 이 분기는 세션 쿠키 발급 전이라 정리할 로그아웃도 없다.
     expect(screen.queryByText('2단계 인증')).toBeNull();
     expect(mocks.replace).not.toHaveBeenCalled();
