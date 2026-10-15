@@ -106,7 +106,16 @@ const TabButton = styled.button<{ active: boolean }>(({ active }) => ({
   fontWeight: active ? 600 : 400,
   color: active ? c.primary : c.gray500,
 }));
-const Poster = styled.img({ width: '100%', display: 'block', objectFit: 'cover' });
+const InfoRow = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 32 });
+const InfoBody = styled.div({ flex: '1 1 0', minWidth: 0 });
+const Poster = styled.img({
+  flex: '0 0 360px',
+  width: 360,
+  maxWidth: '45%',
+  display: 'block',
+  objectFit: 'cover',
+  borderRadius: 8,
+});
 const SectionBlock = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
 const SectionTitle = styled.p({ margin: 0, ...textStyle.h2, fontSize: 15, color: c.gray900 });
 const SectionText = styled.p({
@@ -516,34 +525,36 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
               </TabButton>
             </Tabs>
             {tab === 'info' ? (
-              <SectionBlock style={{ gap: 20 }}>
+              <InfoRow>
                 {challenge.posterUrl ? <Poster src={challenge.posterUrl} alt="" /> : null}
-                <Body style={{ padding: 0 }}>
-                  <Section title="자격 / 대상">
-                    {[
-                      (challenge.targets ?? []).join(', '),
-                      `모집 인원 ${challenge.capacity ?? 0}명`,
-                    ]
-                      .filter(Boolean)
-                      .join('\n')}
-                  </Section>
-                  <Section title="일정">{`접수기간: ${period}`}</Section>
-                  <Section title="상금">{prize}</Section>
-                  <Section title="참가비 · 지원 방식">
-                    {[
-                      fee,
-                      challenge.recruitMethod === 'external'
-                        ? `외부 링크 ${challenge.recruitUrl ?? ''}`.trim()
-                        : '세모챌 신청서',
-                    ].join('\n')}
-                  </Section>
-                  <Section title="한줄 소개">{challenge.summary}</Section>
-                  <Section title="공고 내용">{challenge.description}</Section>
-                  <Section title="해시태그">
-                    {(challenge.hashtags ?? []).map((tag) => `#${tag}`).join(' ')}
-                  </Section>
-                </Body>
-              </SectionBlock>
+                <InfoBody>
+                  <Body style={{ padding: 0 }}>
+                    <Section title="자격 / 대상">
+                      {[
+                        (challenge.targets ?? []).join(', '),
+                        `모집 인원 ${challenge.capacity ?? 0}명`,
+                      ]
+                        .filter(Boolean)
+                        .join('\n')}
+                    </Section>
+                    <Section title="일정">{`접수기간: ${period}`}</Section>
+                    <Section title="상금">{prize}</Section>
+                    <Section title="참가비 · 지원 방식">
+                      {[
+                        fee,
+                        challenge.recruitMethod === 'external'
+                          ? `외부 링크 ${challenge.recruitUrl ?? ''}`.trim()
+                          : '세모챌 신청서',
+                      ].join('\n')}
+                    </Section>
+                    <Section title="한줄 소개">{challenge.summary}</Section>
+                    <Section title="공고 내용">{challenge.description}</Section>
+                    <Section title="해시태그">
+                      {(challenge.hashtags ?? []).map((tag) => `#${tag}`).join(' ')}
+                    </Section>
+                  </Body>
+                </InfoBody>
+              </InfoRow>
             ) : teams.length === 0 ? (
               <SectionText>등록된 팀 모집글이 없어요.</SectionText>
             ) : (
