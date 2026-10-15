@@ -959,6 +959,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'public'"
+        },
+        "admin_reviewed_at": {
+          "name": "admin_reviewed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -2395,6 +2401,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "admin_reviewed_at": {
+          "name": "admin_reviewed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
