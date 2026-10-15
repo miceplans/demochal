@@ -19,6 +19,7 @@ import { ConfirmTotpDto } from './dto/totp-confirm.dto.js';
 import { VerifyTotpDto } from './dto/verify-totp.dto.js';
 import { VerifyRecoveryDto } from './dto/verify-recovery.dto.js';
 import { PasswordConfirmDto } from './dto/password-confirm.dto.js';
+import { EnrollTokenDto } from './dto/enroll-token.dto.js';
 import { MfaTokenDto } from './dto/mfa-token.dto.js';
 import { PasskeyRegisterVerifyDto } from './dto/passkey-register-verify.dto.js';
 import { PasskeyAuthVerifyDto } from './dto/passkey-auth-verify.dto.js';
@@ -43,7 +44,7 @@ export class MfaController {
 
   @Post('totp/setup')
   @MfaFlow('enroll')
-  setupTotp(@CurrentUser() user: AuthenticatedUser) {
+  setupTotp(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mfaService.setupTotp(user);
   }
 
@@ -68,7 +69,7 @@ export class MfaController {
 
   @Post('passkeys/register-options')
   @MfaFlow('enroll')
-  registerOptions(@CurrentUser() user: AuthenticatedUser) {
+  registerOptions(@Body() _dto: EnrollTokenDto, @CurrentUser() user: AuthenticatedUser) {
     return this.mfaService.beginPasskeyRegistration(user);
   }
 

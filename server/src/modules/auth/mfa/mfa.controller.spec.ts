@@ -104,14 +104,14 @@ describe('MfaController 등록·관리', () => {
     service.beginPasskeyAuthentication.mockResolvedValue({ options: { challenge: 'a' } });
     service.verifyTotpCode.mockResolvedValue({ accessToken: 't', user: admin });
 
-    await expect(controller.setupTotp(admin)).resolves.toEqual({
+    await expect(controller.setupTotp({}, admin)).resolves.toEqual({
       secret: 's',
       otpauthUrl: 'otpauth://x',
     });
     await expect(controller.status(admin)).resolves.toEqual({
       totp: { status: 'pending', verifiedAt: null },
     });
-    await expect(controller.registerOptions(admin)).resolves.toEqual({ options: { challenge: 'c' } });
+    await expect(controller.registerOptions({}, admin)).resolves.toEqual({ options: { challenge: 'c' } });
     await expect(controller.authOptions({ mfaToken: 't' }, admin)).resolves.toEqual({
       options: { challenge: 'a' },
     });

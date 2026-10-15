@@ -96,6 +96,7 @@ import type {
   GetBillingCustomerKey200,
   GetInterests200,
   GetMfaPasskeyAuthOptionsBody,
+  GetMfaPasskeyRegisterOptionsBody,
   HandleTossWebhook200,
   InviteTeamRequest,
   IssueBillingAuthorizationBody,
@@ -163,6 +164,7 @@ import type {
   SaveNotificationSettingsBody,
   ScoutQuota,
   SendAdminEmailReply,
+  SetupMfaTotpBody,
   SocialLogin200,
   SocialLoginBody,
   SubmitOperationsInquiry201,
@@ -1254,14 +1256,28 @@ export const getSetupMfaTotpUrl = () => {
  * 로그인 세션 쿠키 또는 등록용(mfa-enroll) mfaToken으로 인증한다.
  * @summary TOTP 등록 시작 (시크릿 발급)
  */
-export const setupMfaTotp = async ( options?: Parameters<typeof apiFetch>[1]): Promise<setupMfaTotpResponse> => {
+export const setupMfaTotp = async (setupMfaTotpBody?: SetupMfaTotpBody, options?: Parameters<typeof apiFetch>[1]): Promise<setupMfaTotpResponse> => {
 
-  return apiFetch<setupMfaTotpResponse>(getSetupMfaTotpUrl(),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<setupMfaTotpResponse>(getSetupMfaTotpUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setupMfaTotpBody)
   }
 );}
 
@@ -1272,8 +1288,8 @@ export const setupMfaTotp = async ( options?: Parameters<typeof apiFetch>[1]): P
 export const getSetupMfaTotpMutationKey = () => ['setupMfaTotp'] as const;
 
 export const getSetupMfaTotpMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext> => {
 
 const mutationKey = getSetupMfaTotpMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1285,10 +1301,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupMfaTotp>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupMfaTotp>>, SetupMfaTotpMutationVariables> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  setupMfaTotp(requestOptions)
+          return  setupMfaTotp(data,requestOptions)
         }
 
 
@@ -1299,19 +1315,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SetupMfaTotpMutationResult = NonNullable<Awaited<ReturnType<typeof setupMfaTotp>>>
-
+    export type SetupMfaTotpMutationBody = SetupMfaTotpBody | undefined
     export type SetupMfaTotpMutationError = UnauthorizedResponse | ForbiddenResponse
-
+    export type SetupMfaTotpMutationVariables = {data?: SetupMfaTotpBody}
 
     /**
  * @summary TOTP 등록 시작 (시크릿 발급)
  */
 export const useSetupMfaTotp = <TError = UnauthorizedResponse | ForbiddenResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof setupMfaTotp>>,
         TError,
-        void,
+        SetupMfaTotpMutationVariables,
         TContext
       > => {
       return useMutation(getSetupMfaTotpMutationOptions(options), queryClient);
@@ -1602,14 +1618,28 @@ export const getGetMfaPasskeyRegisterOptionsUrl = () => {
  * 이미 등록된 패스키는 excludeCredentials로 제외한다. 로그인 세션 쿠키 또는 mfa-enroll 토큰으로 인증한다.
  * @summary 패스키 등록 옵션 발급 (WebAuthn)
  */
-export const getMfaPasskeyRegisterOptions = async ( options?: Parameters<typeof apiFetch>[1]): Promise<getMfaPasskeyRegisterOptionsResponse> => {
+export const getMfaPasskeyRegisterOptions = async (getMfaPasskeyRegisterOptionsBody?: GetMfaPasskeyRegisterOptionsBody, options?: Parameters<typeof apiFetch>[1]): Promise<getMfaPasskeyRegisterOptionsResponse> => {
 
-  return apiFetch<getMfaPasskeyRegisterOptionsResponse>(getGetMfaPasskeyRegisterOptionsUrl(),
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<getMfaPasskeyRegisterOptionsResponse>(getGetMfaPasskeyRegisterOptionsUrl(),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(getMfaPasskeyRegisterOptionsBody)
   }
 );}
 
@@ -1620,8 +1650,8 @@ export const getMfaPasskeyRegisterOptions = async ( options?: Parameters<typeof 
 export const getGetMfaPasskeyRegisterOptionsMutationKey = () => ['getMfaPasskeyRegisterOptions'] as const;
 
 export const getGetMfaPasskeyRegisterOptionsMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,void, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext> => {
 
 const mutationKey = getGetMfaPasskeyRegisterOptionsMutationKey();
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -1633,10 +1663,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, void> = () => {
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, GetMfaPasskeyRegisterOptionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
 
-
-          return  getMfaPasskeyRegisterOptions(requestOptions)
+          return  getMfaPasskeyRegisterOptions(data,requestOptions)
         }
 
 
@@ -1647,19 +1677,19 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type GetMfaPasskeyRegisterOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>>
-
+    export type GetMfaPasskeyRegisterOptionsMutationBody = GetMfaPasskeyRegisterOptionsBody | undefined
     export type GetMfaPasskeyRegisterOptionsMutationError = UnauthorizedResponse | ForbiddenResponse
-
+    export type GetMfaPasskeyRegisterOptionsMutationVariables = {data?: GetMfaPasskeyRegisterOptionsBody}
 
     /**
  * @summary 패스키 등록 옵션 발급 (WebAuthn)
  */
 export const useGetMfaPasskeyRegisterOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>,
         TError,
-        void,
+        GetMfaPasskeyRegisterOptionsMutationVariables,
         TContext
       > => {
       return useMutation(getGetMfaPasskeyRegisterOptionsMutationOptions(options), queryClient);

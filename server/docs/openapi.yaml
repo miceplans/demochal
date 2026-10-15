@@ -351,6 +351,15 @@ paths:
         이미 등록된 TOTP가 있어도 미검증(pending) 상태로 덮어쓴다. 관리자·사업자 계정 전용.
         로그인 세션 쿠키 또는 등록용(mfa-enroll) mfaToken으로 인증한다.
       security: [{ cookieAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
       responses:
         '200':
           description: 시크릿 발급 완료
@@ -420,6 +429,15 @@ paths:
         패스키 등록용 `PublicKeyCredentialCreationOptionsJSON`을 발급하고 챌린지를 서버에 저장한다.
         이미 등록된 패스키는 excludeCredentials로 제외한다. 로그인 세션 쿠키 또는 mfa-enroll 토큰으로 인증한다.
       security: [{ cookieAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
       responses:
         '200':
           description: 등록 옵션 (navigator.credentials.create() 인자)
