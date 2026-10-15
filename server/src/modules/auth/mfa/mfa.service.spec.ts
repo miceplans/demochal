@@ -641,3 +641,74 @@ describe('MfaService 로그인 검증', () => {
     ).rejects.toThrow(new UnauthorizedException('복구 코드가 올바르지 않습니다.'));
   });
 });
+
+describe('MfaService TOTP time-step 경계', () => {
+  // step 경계(30초 배수)에서 벗어난 고정 시간 — 코드 생성 epoch과 허용 window를 정확히 통제한다.
+  const fixedTime = new Date('2026-10-15T00:00:15Z');
+  const epochSeconds = Math.floor(fixedTime.getTime() / 1000);
+  const currentStep = Math.floor(epochSeconds / 30);
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(fixedTime);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function totpService(lastUsedStep: number | null, updateRows: unknown[]) {
+    const secret = generateSecret();
+    const update = updateChain(updateRows);
+    const db = {
+      ...dbWithSelect(
+        selectChain([
+          {
+            userId: admin.id,
+            secretCiphertext: encryptString(secret),
+            verifiedAt: new Date(),
+            lastUsedStep,
+          },
+        ]),
+      ),
+      ...update,
+    };
+    const { service, jwtService } = makeService(db);
+    return { service, jwtService, update, secret };
+  }
+
+  it('직전 time-step(N-1)의 코드는 lastUsedStep이 없을 때 최초 한 번 수용한다', async () => {
+    const { service, jwtService, update, secret } = totpService(null, [{ userId: admin.id }]);
+    const previousStepCode = generateSync({ secret, epoch: epochSeconds - 30 });
+
+    await expect(service.verifyTotpCode(admin, previousStepCode)).resolves.toMatchObject({
+      accessToken: 'signed-token',
+    });
+
+    expect(update.set).toHaveBeenCalledWith({ lastUsedStep: currentStep - 1 });
+    expect(jwtService.signAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ sub: admin.id, role: 'admin', mfa: true }),
+    );
+  });
+
+  it('같은 time-step의 코드를 다시 제출하면 이미 사용됐다고 거부한다', async () => {
+    const { service, jwtService, update, secret } = totpService(currentStep - 1, []);
+    const previousStepCode = generateSync({ secret, epoch: epochSeconds - 30 });
+
+    await expect(service.verifyTotpCode(admin, previousStepCode)).rejects.toThrow(
+      new UnauthorizedException('이미 사용된 인증 코드입니다. 다음 코드를 입력해 주세요.'),
+    );
+    expect(jwtService.signAsync).not.toHaveBeenCalled();
+    expect(update.returning).toHaveBeenCalled();
+  });
+
+  it('N-2 time-step의 코드는 허용 window(±1 step)를 벗어나 거부한다', async () => {
+    const { service, jwtService, update, secret } = totpService(null, [{ userId: admin.id }]);
+    const twoStepsBackCode = generateSync({ secret, epoch: epochSeconds - 60 });
+
+    await expect(service.verifyTotpCode(admin, twoStepsBackCode)).rejects.toThrow(
+      new UnauthorizedException('인증 코드가 올바르지 않습니다.'),
+    );
+    expect(update.update).not.toHaveBeenCalled();
+    expect(jwtService.signAsync).not.toHaveBeenCalled();
+  });
+});
