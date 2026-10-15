@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   setupMfaTotp: vi.fn(),
   confirmMfaTotp: vi.fn(),
   startAuthentication: vi.fn(),
+  qrToDataURL: vi.fn(),
   toastError: vi.fn(),
 }));
 
@@ -31,6 +32,7 @@ vi.mock('@simplewebauthn/browser', () => ({
   startAuthentication: mocks.startAuthentication,
   startRegistration: vi.fn(),
 }));
+vi.mock('qrcode', () => ({ toDataURL: mocks.qrToDataURL }));
 vi.mock('@/components/common/Toast', () => ({ useToast: () => ({ error: mocks.toastError }) }));
 
 const adminUser = { id: 'u1', role: 'admin' } as MfaChallenge['user'];
@@ -146,6 +148,7 @@ describe('MfaStep', () => {
       status: 200,
       data: { secret: 'JBSWY3DP', otpauthUrl: 'otpauth://totp/x' },
     });
+    mocks.qrToDataURL.mockResolvedValue('data:image/png;base64,qrcode');
     mocks.confirmMfaTotp.mockResolvedValue({
       status: 200,
       data: { recoveryCodes: ['AAAA-1111', 'BBBB-2222'] },
@@ -158,7 +161,12 @@ describe('MfaStep', () => {
 
     await user.click(screen.getByRole('button', { name: '인증 앱(TOTP)으로 등록' }));
     expect(mocks.setupMfaTotp).toHaveBeenCalledWith({ mfaToken: 'enroll-tok' });
-    await user.type(await screen.findByLabelText('6자리 코드'), '654321');
+    const codeInput = await screen.findByLabelText('6자리 코드');
+    expect(mocks.qrToDataURL).toHaveBeenCalledWith('otpauth://totp/x', { margin: 1, width: 180 });
+    expect((await screen.findByAltText('TOTP 등록 QR 코드')).getAttribute('src')).toBe(
+      'data:image/png;base64,qrcode',
+    );
+    await user.type(codeInput, '654321');
     await user.click(screen.getByRole('button', { name: '등록 완료' }));
 
     expect(await screen.findByText('AAAA-1111')).toBeTruthy();

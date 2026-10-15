@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import styled from '@emotion/styled';
+import { toDataURL } from 'qrcode';
 import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
 import type {
   PublicKeyCredentialCreationOptionsJSON,
@@ -226,12 +227,11 @@ function Enrollment({ challenge, onAuthenticated, onCancel }: MfaStepProps) {
       <Wrap>
         <Heading>인증 앱 등록</Heading>
         <Hint>
-          인증 앱(Google Authenticator 등)에서 아래 키를 직접 입력하거나 링크로 계정을 추가한 뒤,
+          인증 앱(Google Authenticator 등)에서 QR 코드를 스캔하거나 아래 키를 직접 입력한 뒤,
           표시되는 6자리 코드를 입력해 주세요.
         </Hint>
-        {/* TODO: QR 코드 이미지 렌더링 — QR 라이브러리 도입 승인 후 otpauthUrl로 생성한다. */}
+        <TotpQr otpauthUrl={setup.otpauthUrl} />
         <SecretBox aria-label="TOTP 시크릿">{setup.secret}</SecretBox>
-        <a href={setup.otpauthUrl}>인증 앱에서 열기</a>
         <form onSubmit={(event) => void confirmTotp(event)} noValidate>
           <Field>
             <Label htmlFor="mfa-totp-code">6자리 코드</Label>
@@ -272,6 +272,24 @@ function Enrollment({ challenge, onAuthenticated, onCancel }: MfaStepProps) {
       </LinkButton>
     </Wrap>
   );
+}
+
+/** otpauth URL을 QR 이미지로 렌더링한다. 생성에 실패하면 수동 입력 안낧만 남는다. */
+function TotpQr({ otpauthUrl }: { otpauthUrl: string }) {
+  const [dataUrl, setDataUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let alive = true;
+    toDataURL(otpauthUrl, { margin: 1, width: 180 })
+      .then((url) => {
+        if (alive) setDataUrl(url);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [otpauthUrl]);
+  if (!dataUrl) return null;
+  return <QrImage src={dataUrl} alt="TOTP 등록 QR 코드" />;
 }
 
 /** 복구 코드는 발급 시 한 번만 보여 주므로, 저장했음을 확인해야 다음 단계로 넘어간다. */
@@ -371,6 +389,11 @@ const SecretBox = styled.code({
   background: c.gray100,
   color: c.gray900,
   wordBreak: 'break-all',
+});
+const QrImage = styled.img({
+  width: 180,
+  height: 180,
+  alignSelf: 'center',
 });
 const CodeGrid = styled.ul({
   display: 'grid',
