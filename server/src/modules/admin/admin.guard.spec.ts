@@ -113,14 +113,12 @@ describe('JwtAuthGuard', () => {
   it('rejects MFA tokens (purpose claim) used as a session cookie', async () => {
     const { guard } = createGuard(
       createDbStub([{ name: '관리자', role: 'admin', suspended: false, suspendedReason: null }]),
-      vi
-        .fn()
-        .mockResolvedValue({
-          sub: 'u1',
-          email: 'u@semochal.kr',
-          role: 'admin',
-          purpose: 'mfa-pending',
-        }),
+      vi.fn().mockResolvedValue({
+        sub: 'u1',
+        email: 'u@semochal.kr',
+        role: 'admin',
+        purpose: 'mfa-pending',
+      }),
     );
 
     await expect(
