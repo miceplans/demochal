@@ -14,6 +14,8 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
+import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
+import { richContentStyles } from '@/components/common/RichDescription';
 
 const ICON = '/assets/icons';
 
@@ -208,8 +210,8 @@ const EMPTY_POSTING: PostingInput = {
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
-// TODO: 툴팁 중 정렬/색상/텍스트 스타일/링크/이미지/인용/코드/구분선은 서식 저장 API(현재 description은 평문)가
-// 생긴 뒤 연결한다. https://developer.mozilla.org/docs/Web/API/Document/execCommand
+// 상세정보는 정화된 HTML로 저장한다(서버가 저장 시 한 번 더 정화). 아직 연결하지 않은 서식은 정렬/색상/텍스트 스타일이다.
+// TODO: https://developer.mozilla.org/docs/Web/API/Document/execCommand
 const EDITOR_COMMANDS = {
   undo: 'undo',
   redo: 'redo',
@@ -220,8 +222,18 @@ const EDITOR_COMMANDS = {
   clear: 'removeFormat',
   bullet: 'insertUnorderedList',
   number: 'insertOrderedList',
+  quote: 'formatBlock',
+  rule: 'insertHorizontalRule',
 } as const;
-type EditorCommand = keyof typeof EDITOR_COMMANDS;
+type EditorCommand = keyof typeof EDITOR_COMMANDS | 'link' | 'image' | 'code';
+
+type TextSize = 'h2' | 'h3' | 'p' | 'small';
+const TEXT_SIZES: { value: TextSize; label: string }[] = [
+  { value: 'h2', label: '제목 (크게)' },
+  { value: 'h3', label: '소제목 (중간)' },
+  { value: 'p', label: '본문 (기본)' },
+  { value: 'small', label: '작게' },
+];
 
 function ToolBtn({
   label,
@@ -277,6 +289,8 @@ function PostingForm({
   const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [uploadingPoster, setUploadingPoster] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const posterObjectUrl = useRef<string | null>(null);
   const [recruit, setRecruit] = useState<'semo' | 'external'>(
     initial.recruitMethod === 'external' ? 'external' : 'semo',
@@ -299,7 +313,11 @@ function PostingForm({
       : categoryDropdownOptions;
 
   useEffect(() => {
-    if (editorRef.current) editorRef.current.innerText = initial.description;
+    const editor = editorRef.current;
+    if (!editor) return;
+    // 서식 저장 도입 전의 평문 공고는 텍스트로, 이후 공고는 정화한 HTML로 불러온다.
+    if (isRichHtml(initial.description)) editor.innerHTML = sanitizeRichHtml(initial.description);
+    else editor.innerText = initial.description;
   }, [initial.description]);
   useEffect(
     () => () => {
@@ -312,9 +330,90 @@ function PostingForm({
     setTopics((s) => (s.includes(topic) ? s.filter((x) => x !== topic) : [...s, topic]));
   const toggleTarget = (target: (typeof challengeTargets)[number]) =>
     setTargets((s) => (s.includes(target) ? s.filter((x) => x !== target) : [...s, target]));
+  // 크기 드롭다운이 포커스를 가져가면 에디터 선택이 풀리므로, 마지막 선택 영역을 기억했다가 복원한다.
+  const savedRange = useRef<Range | null>(null);
+  useEffect(() => {
+    const remember = () => {
+      const selection = window.getSelection();
+      const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
+      if (range && editorRef.current?.contains(range.commonAncestorContainer))
+        savedRange.current = range.cloneRange();
+    };
+    document.addEventListener('selectionchange', remember);
+    return () => document.removeEventListener('selectionchange', remember);
+  }, []);
+  const applyTextSize = (size: TextSize) => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    if (savedRange.current) {
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(savedRange.current);
+    }
+    if (size === 'small') {
+      const selected = window.getSelection()?.toString() ?? '';
+      if (selected)
+        document.execCommand('insertHTML', false, `<small>${escapeHtml(selected)}</small>`);
+      return;
+    }
+    document.execCommand('formatBlock', false, size);
+  };
   const runCommand = (command: EditorCommand) => {
     editorRef.current?.focus();
+    if (command === 'image') return imageInputRef.current?.click();
+    if (command === 'link') {
+      const url = window.prompt('링크 주소(https://…)를 입력해 주세요.')?.trim();
+      if (!url) return;
+      if (!isHttpUrl(url)) return setError('링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
+      return void document.execCommand('createLink', false, url);
+    }
+    if (command === 'code') {
+      const selected = window.getSelection()?.toString() ?? '';
+      if (!selected) return;
+      return void document.execCommand('insertHTML', false, `<code>${escapeHtml(selected)}</code>`);
+    }
+    if (command === 'quote') return void document.execCommand('formatBlock', false, 'blockquote');
     document.execCommand(EDITOR_COMMANDS[command]);
+  };
+
+  // 파일 선택 창이 열리면 에디터 선택 영역이 사라지므로 미리 기억했다가 이미지를 그 자리에 넣는다.
+  const insertImage = async (file: File) => {
+    if (uploadingImage) return;
+    const selection = window.getSelection();
+    const range = selection?.rangeCount ? selection.getRangeAt(0).cloneRange() : null;
+    setUploadingImage(true);
+    let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
+    try {
+      image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
+      const presigned = await adApi.files.requestUpload({
+        bucket: 'public',
+        contentType: image.file.type,
+        fileName: image.file.name,
+        sizeBytes: image.file.size,
+      });
+      const response = await fetch(presigned.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
+      const finalized = await adApi.files.finalizeUpload(presigned.fileId);
+      if (!finalized.url) throw new globalThis.Error('이미지 주소를 받지 못했습니다.');
+      const editor = editorRef.current;
+      if (!editor) return;
+      editor.focus();
+      if (range && editor.contains(range.commonAncestorContainer)) {
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('insertImage', false, finalized.url);
+    } catch {
+      setError('이미지 업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      setUploadingImage(false);
+    }
   };
 
   const uploadPoster = async (file: File) => {
@@ -349,7 +448,9 @@ function PostingForm({
 
   async function submit() {
     setError('');
-    const description = (editorRef.current?.innerText ?? '').trim();
+    const editor = editorRef.current;
+    const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
+    const description = hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '';
     const parsedCapacity = Number(capacity);
     const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
     if (!title.trim() || !description || !startDate || !endDate)
@@ -371,6 +472,13 @@ function PostingForm({
           .filter(Boolean),
       ),
     ];
+    // 서버 DTO 한도(description 100,000자(서식 포함) / hashtags 20개·각 50자)를 미리 검사해 이해 가능한 문구로 안내한다.
+    if (description.length > 100_000)
+      return setError('상세정보가 너무 깁니다. 내용을 줄여 주세요.');
+    if (normalizedHashtags.length > 20)
+      return setError('해시태그는 최대 20개까지 입력할 수 있습니다.');
+    if (normalizedHashtags.some((tag) => tag.length > 50))
+      return setError('해시태그는 각 50자 이하로 입력해 주세요.');
     if (recruit === 'external') {
       if (!trimmedRecruitUrl) return setError('외부 지원 링크 URL을 입력해 주세요.');
       if (!isHttpUrl(trimmedRecruitUrl))
@@ -498,6 +606,22 @@ function PostingForm({
             <EditorBox>
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
                 <ToolGroup>
+                  <TextSizeSelect
+                    aria-label="텍스트 크기"
+                    value=""
+                    onChange={(event) => {
+                      if (event.target.value) applyTextSize(event.target.value as TextSize);
+                    }}
+                  >
+                    <option value="">텍스트 크기</option>
+                    {TEXT_SIZES.map(({ value, label }) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </TextSizeSelect>
+                </ToolGroup>
+                <ToolGroup>
                   <ToolBtn
                     onRun={runCommand}
                     label="되돌리기"
@@ -531,7 +655,12 @@ function PostingForm({
                     icon="figma-strike.svg"
                     command="strike"
                   />
-                  <ToolBtn onRun={runCommand} label="인라인 코드" icon="figma-code.svg" />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="인라인 코드"
+                    icon="figma-code.svg"
+                    command="code"
+                  />
                   <ToolBtn
                     onRun={runCommand}
                     label="서식 지우기"
@@ -554,14 +683,45 @@ function PostingForm({
                   />
                 </ToolGroup>
                 <ToolGroup>
-                  <ToolBtn onRun={runCommand} label="링크" icon="figma-link.svg" />
-                  <ToolBtn onRun={runCommand} label="이미지" icon="figma-image.svg" />
-                  <ToolBtn onRun={runCommand} label="인용" icon="figma-quote.svg" />
-                  <ToolBtn onRun={runCommand} label="구분선" icon="figma-rule.svg" />
+                  <ToolBtn onRun={runCommand} label="링크" icon="figma-link.svg" command="link" />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="이미지"
+                    icon="figma-image.svg"
+                    command="image"
+                  />
+                  <ToolBtn onRun={runCommand} label="인용" icon="figma-quote.svg" command="quote" />
+                  <ToolBtn onRun={runCommand} label="구분선" icon="figma-rule.svg" command="rule" />
                 </ToolGroup>
               </MenuBar>
+              <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                aria-label="본문 이미지 선택"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.target.value = '';
+                  if (file) void insertImage(file);
+                }}
+              />
               <ContentsArea
                 ref={editorRef}
+                onPaste={(event) => {
+                  // 외부 서식·이미지가 섞여 들어오지 않게 텍스트만 붙여 넣는다.
+                  event.preventDefault();
+                  document.execCommand(
+                    'insertText',
+                    false,
+                    event.clipboardData.getData('text/plain'),
+                  );
+                }}
+                onInput={(event) => {
+                  // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
+                  const el = event.currentTarget;
+                  if (!el.innerText.trim() && !el.querySelector('img,hr')) el.innerHTML = '';
+                }}
                 contentEditable
                 suppressContentEditableWarning
                 role="textbox"
@@ -749,7 +909,7 @@ function PostingForm({
         </CancelButton>
         <PublishButton
           type="button"
-          disabled={disabled || submitting || uploadingPoster}
+          disabled={disabled || submitting || uploadingPoster || uploadingImage}
           onClick={() => void submit()}
         >
           {submitting ? submittingLabel : submitLabel}
@@ -899,6 +1059,15 @@ const ToolButton = styled.button({
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
 });
+const TextSizeSelect = styled.select({
+  height: 28,
+  border: 0,
+  background: 'transparent',
+  color: c.gray900,
+  fontSize: 13,
+  cursor: 'pointer',
+  '&:focus': { outline: 'none' },
+});
 const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
 const ContentsArea = styled.div({
   padding: '12px 16px 16px',
@@ -906,10 +1075,8 @@ const ContentsArea = styled.div({
   minHeight: 320,
   cursor: 'text',
   '& h1': { fontSize: 24, fontWeight: 700, lineHeight: 1.25 },
-  '& h2': { fontSize: 18, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
-  '& h3': { fontSize: 16, fontWeight: 700, lineHeight: 1.25, marginTop: 10 },
   '& p': { fontSize: 15, lineHeight: 1.6, marginTop: 10 },
-  '& img': { width: '100%', height: 507, objectFit: 'contain', marginTop: 12 },
+  ...richContentStyles,
   '&:empty::before': { content: 'attr(data-placeholder)', color: c.gray300 },
 });
 
@@ -1014,6 +1181,10 @@ const PublishButton = styled.button({
 
 function toDateInput(value: string | undefined) {
   return value ? toDateKey(new Date(value)) : '';
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 function isHttpUrl(value: string) {

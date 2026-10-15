@@ -1,4 +1,5 @@
 'use client';
+import { RichDescription } from '@/components/common/RichDescription';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
@@ -89,11 +90,13 @@ export function ContestDetailPage({
         deadline: formatDate(challenge.endDate) || '-',
         teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
         sections: [
-          ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
+          ...(challenge.summary ? [{ title: '소개', body: challenge.summary, rich: false }] : []),
           ...((challenge.hashtags ?? []).length
             ? [{ title: '해시태그', body: (challenge.hashtags ?? []).join(' ') }]
             : []),
-          ...(challenge.description ? [{ title: '상세 안내', body: challenge.description }] : []),
+          ...(challenge.description
+            ? [{ title: '상세 안내', body: challenge.description, rich: true as boolean }]
+            : []),
           ...(challenge.inquiryContact
             ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
             : []),
@@ -251,12 +254,22 @@ export function ContestDetailPage({
             ) : (
               <Stack gap={28}>
                 <MobileOnly>{summaryBox}</MobileOnly>
-                {detail.sections.map(({ title, body }) => (
-                  <section key={title}>
-                    <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
-                    <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
-                  </section>
-                ))}
+                {detail.sections.map((section) => {
+                  const { title, body } = section;
+                  const rich = 'rich' in section && section.rich;
+                  return (
+                    <section key={title}>
+                      <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
+                      {rich ? (
+                        <Muted as="div">
+                          <RichDescription value={body} />
+                        </Muted>
+                      ) : (
+                        <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
+                      )}
+                    </section>
+                  );
+                })}
                 {external ? (
                   <a href={external} target="_blank" rel="noopener noreferrer" ref={applyRef}>
                     <Button as="span" fullWidth>
