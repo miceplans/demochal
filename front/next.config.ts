@@ -22,7 +22,17 @@ if (process.env.NODE_ENV !== 'production') {
 }
 scriptSrc.push('https://js.tosspayments.com');
 
-const connectSrc = ["'self'", 'https://*.tosspayments.com'];
+// - 파일 업로드: 브라우저가 서버가 내려준 presigned URL로 S3에 직접 PUT한다(리전은 서버 AWS_REGION과 같다).
+const connectSrc = [
+  "'self'",
+  'https://*.tosspayments.com',
+  'https://s3.ap-northeast-2.amazonaws.com',
+  'https://*.s3.ap-northeast-2.amazonaws.com',
+];
+if (process.env.NODE_ENV !== 'production') {
+  // docker-compose의 LocalStack(S3_ENDPOINT) — 개발 전용.
+  connectSrc.push('http://localhost:4566');
+}
 const publicApiUrl = process.env.NEXT_PUBLIC_API_URL;
 if (publicApiUrl?.startsWith('http')) {
   connectSrc.push(new URL(publicApiUrl).origin);
@@ -33,6 +43,8 @@ const contentSecurityPolicy = [
   `script-src ${scriptSrc.join(' ')}`,
   `connect-src ${connectSrc.join(' ')}`,
   "img-src 'self' data: blob: https:",
+  // 이미지 압축(browser-image-compression)이 blob: 워커를 쓴다.
+  "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   'frame-src https://*.tosspayments.com',
