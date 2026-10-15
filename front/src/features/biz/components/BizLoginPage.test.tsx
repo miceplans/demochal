@@ -79,4 +79,26 @@ describe('BizLoginPage', () => {
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledOnce());
     expect(mocks.replace).not.toHaveBeenCalled();
   });
+
+  it('moves to the second-factor step instead of entering the console when 2FA is required', async () => {
+    mocks.login.mockResolvedValue({
+      status: 200,
+      data: {
+        user: { role: 'business' },
+        mfaRequired: true,
+        mfaEnrollmentRequired: false,
+        mfaToken: 'tok',
+        methods: ['totp'],
+      },
+    });
+    const user = userEvent.setup();
+    renderLogin();
+
+    await user.type(screen.getByLabelText('이메일 또는 아이디'), 'biz_owner');
+    await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
+    await user.click(screen.getByRole('button', { name: '로그인' }));
+
+    expect(await screen.findByText('2단계 인증')).toBeTruthy();
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
 });
