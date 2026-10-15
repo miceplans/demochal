@@ -25,7 +25,13 @@ function dbSelecting(rows: unknown[]) {
 }
 
 function serviceWith(rows: unknown[]) {
-  return new AuthService(dbSelecting(rows) as never, {} as never, {} as never, {} as never);
+  return new AuthService(
+    dbSelecting(rows) as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
 }
 
 function containsLowerEmailComparison(value: unknown, seen = new WeakSet<object>()): boolean {
@@ -74,6 +80,7 @@ describe('AuthService.login', () => {
       jwtService as never,
       usersService as never,
       {} as never,
+      {} as never,
     );
 
     await expect(service.login('Member@SemoChal.kr', testPassword)).resolves.toEqual({
@@ -81,6 +88,87 @@ describe('AuthService.login', () => {
       user: { id: 'u1' },
     });
     expect(containsLowerEmailComparison(db.where.mock.calls[0]?.[0])).toBe(true);
+  });
+
+  it('일반 user 로그인은 기존처럼 accessToken을 발급하고 MFA 서비스를 거치지 않는다', async () => {
+    compare.mockResolvedValue(true);
+    const mfaService = { describeLoginState: vi.fn(), signMfaToken: vi.fn() };
+    const service = new AuthService(
+      dbSelecting([
+        { id: 'u1', email: 'u@semochal.kr', passwordHash: '$2b$10$hash', role: 'user' },
+      ]) as never,
+      { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
+      { findById: vi.fn().mockResolvedValue({ id: 'u1' }) } as never,
+      {} as never,
+      mfaService as never,
+    );
+
+    await expect(service.login('u@semochal.kr', testPassword)).resolves.toEqual({
+      accessToken: 'access-token',
+      user: { id: 'u1' },
+    });
+    expect(mfaService.describeLoginState).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
+  function privilegedLoginService({ role, methods }: { role: string; methods: string[] }) {
+    compare.mockResolvedValue(true);
+    const mfaService = {
+      describeLoginState: vi
+        .fn()
+        .mockResolvedValue({ methods, recoveryCodesRemaining: methods.length }),
+      signMfaToken: vi.fn().mockResolvedValue('mfa-token'),
+    };
+    const service = new AuthService(
+      dbSelecting([
+        { id: 'p1', email: 'privileged@semochal.kr', passwordHash: '$2b$10$hash', role },
+      ]) as never,
+      { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
+      { findById: vi.fn().mockResolvedValue({ id: 'p1', role }) } as never,
+      {} as never,
+      mfaService as never,
+    );
+    return { service, mfaService };
+  }
+
+  it.each([['admin'], ['business']])(
+    '%s는 검증 가능한 수단이 없으면 enrollmentRequired 토큰만 내주고 세션은 발급하지 않는다',
+    async (role) => {
+      const { service, mfaService } = privilegedLoginService({ role, methods: [] });
+
+      await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
+        user: { id: 'p1', role },
+        mfa: { token: 'mfa-token', required: false, enrollmentRequired: true, methods: [] },
+      });
+      expect(mfaService.signMfaToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'p1', role }),
+        'mfa-enroll',
+        [],
+      );
+    },
+  );
+
+  it('수단이 있으면 required 토큰(purpose mfa-pending)을 내주고 methods를 함께 반환한다', async () => {
+    const { service, mfaService } = privilegedLoginService({
+      role: 'admin',
+      methods: ['totp', 'recovery'],
+    });
+
+    await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
+      user: { id: 'p1', role: 'admin' },
+      mfa: {
+        token: 'mfa-token',
+        required: true,
+        enrollmentRequired: false,
+        methods: ['totp', 'recovery'],
+      },
+    });
+    expect(mfaService.signMfaToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1', role: 'admin' }),
+      'mfa-pending',
+      ['totp', 'recovery'],
+    );
   });
 });
 
@@ -118,6 +206,7 @@ describe('AuthService.register', () => {
       jwtService as never,
       usersService as never,
       {} as never,
+      {} as never,
     );
 
     await service.register({
@@ -145,7 +234,7 @@ describe('AuthService.changePassword', () => {
       update: vi.fn(() => ({ set })),
     };
     return {
-      service: new AuthService(db as never, {} as never, {} as never, {} as never),
+      service: new AuthService(db as never, {} as never, {} as never, {} as never, {} as never),
       db,
       set,
     };
@@ -215,6 +304,7 @@ describe('AuthService.loginWithGoogle', () => {
         db as never,
         jwtService as never,
         usersService as never,
+        {} as never,
         {} as never,
       ),
     };

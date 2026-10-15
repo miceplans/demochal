@@ -49,6 +49,51 @@ describe('AuthController cookie session flow', () => {
     expect(res.cookie).toHaveBeenCalledWith(AUTH_COOKIE_NAME, 'signed.jwt', authCookieOptions);
   });
 
+  it('2FA가 남은 관리자 로그인은 쿠키 없이 mfa 상태를 flatten해 반환한다', async () => {
+    const { controller, service } = createController();
+    service.login.mockResolvedValue({
+      user: { ...user, role: 'admin' },
+      mfa: {
+        token: 'mfa.jwt',
+        required: true,
+        enrollmentRequired: false,
+        methods: ['totp', 'recovery'],
+      },
+    });
+    const res = response();
+
+    await expect(
+      controller.login({ email: user.email, password: testPassword }, res),
+    ).resolves.toEqual({
+      user: { ...user, role: 'admin' },
+      mfaRequired: true,
+      mfaEnrollmentRequired: false,
+      mfaToken: 'mfa.jwt',
+      methods: ['totp', 'recovery'],
+    });
+    expect(res.cookie).not.toHaveBeenCalled();
+  });
+
+  it('2FA 미등록 사업자 로그인은 enrollmentRequired와 토큰만 반환한다', async () => {
+    const { controller, service } = createController();
+    service.login.mockResolvedValue({
+      user,
+      mfa: { token: 'enroll.jwt', required: false, enrollmentRequired: true, methods: [] },
+    });
+    const res = response();
+
+    await expect(
+      controller.login({ username: 'bizid', password: testPassword }, res),
+    ).resolves.toEqual({
+      user,
+      mfaRequired: false,
+      mfaEnrollmentRequired: true,
+      mfaToken: 'enroll.jwt',
+      methods: [],
+    });
+    expect(res.cookie).not.toHaveBeenCalled();
+  });
+
   it('uses the session cookie to identify the current user', async () => {
     const { controller, service } = createController();
     const request = {

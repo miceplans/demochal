@@ -23,6 +23,7 @@ import {
 } from '../../db/schema.js';
 import { UsersService } from '../users/users.service.js';
 import { ContactVerificationsService, normalizeContact } from './contact-verifications.service.js';
+import { isPrivilegedRole, MfaService, type MfaMethod } from './mfa/mfa.service.js';
 import type { RegisterDto } from './dto/register.dto.js';
 import type { WithdrawAccountDto } from './dto/withdraw-account.dto.js';
 import type { ChangePasswordDto } from './dto/change-password.dto.js';
@@ -51,6 +52,20 @@ interface JwtPayload {
   role: string;
 }
 
+/** 관리자·사업자 로그인 시 발급되는 2단계 인증 상태. 둘 다 참이면 안 된다(수단 유무가 배타적). */
+export interface MfaLoginChallenge {
+  token: string;
+  required: boolean;
+  enrollmentRequired: boolean;
+  methods: MfaMethod[];
+}
+
+export type LoginResult = {
+  user: Awaited<ReturnType<UsersService['findById']>>;
+  accessToken?: string;
+  mfa?: MfaLoginChallenge;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -58,6 +73,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly contactVerifications: ContactVerificationsService,
+    private readonly mfaService: MfaService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -133,7 +149,7 @@ export class AuthService {
   }
 
   /** `identifier` is an email, or a biz account's username when it has no `@`. */
-  async login(identifier: string, password: string) {
+  async login(identifier: string, password: string): Promise<LoginResult> {
     const [user] = await this.db
       .select()
       .from(users)
@@ -153,10 +169,25 @@ export class AuthService {
 
     if (user.suspended) throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
 
-    const [accessToken, publicUser] = await Promise.all([
-      this.issueToken(user),
-      this.usersService.findById(user.id),
-    ]);
+    const publicUser = await this.usersService.findById(user.id);
+
+    // 관리자·사업자는 2FA가 필수다. 검증 가능한 수단이 있으면 인증(pending)을, 없으면
+    // 등록(enroll)용 토큰을 내주고 세션은 발급하지 않는다 — 컨트롤러가 쿠키를 억제한다.
+    if (isPrivilegedRole(user.role)) {
+      const { methods } = await this.mfaService.describeLoginState(user.id);
+      const required = methods.length > 0;
+      const mfaToken = await this.mfaService.signMfaToken(
+        user,
+        required ? 'mfa-pending' : 'mfa-enroll',
+        methods,
+      );
+      return {
+        user: publicUser,
+        mfa: { token: mfaToken, required, enrollmentRequired: !required, methods },
+      };
+    }
+
+    const accessToken = await this.issueToken(user);
     return { accessToken, user: publicUser };
   }
 

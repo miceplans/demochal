@@ -499,6 +499,28 @@ describe('0035_users_email_lower_unique migration', () => {
   });
 });
 
+describe('0036_privileged_account_mfa migration', () => {
+  it('creates the 2FA tables (TOTP·패스키·복구 코드·challenge) without destructive DDL', () => {
+    const tag = journal.entries[36]?.tag;
+    expect(tag).toBe('0036_privileged_account_mfa');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    for (const table of [
+      'user_totp_credentials',
+      'user_passkey_credentials',
+      'user_mfa_recovery_codes',
+      'user_mfa_challenges',
+    ]) {
+      expect(sql).toContain(`CREATE TABLE IF NOT EXISTS "${table}"`);
+    }
+    // TOTP 시크릿은 암호문만 저장하고 복구 코드는 해시만 저장한다(평문 컬럼 없음).
+    expect(sql).toContain('"secret_ciphertext" text NOT NULL');
+    expect(sql).toContain('"code_hash" text NOT NULL');
+    expect(sql).toContain('"user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "user_mfa_challenges_user_id_idx"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
 describe('0023_challenge_filter_meta migration', () => {
   it('adds the explore filter columns without destructive DDL', () => {
     const tag = journal.entries[23]?.tag;
