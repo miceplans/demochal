@@ -2,7 +2,7 @@
 
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
-import { ApiError, generated, getApiErrorMessage } from '@semochal/api-client';
+import { API_ERROR_EVENT, ApiError, generated, getApiErrorMessage } from '@semochal/api-client';
 import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
 import { useToast } from './Toast';
 import { MaintenanceScreen } from './MaintenanceScreen';
@@ -98,6 +98,17 @@ export function MaintenanceGate({ children }: { children: ReactNode }) {
         },
       }),
   );
+
+  // HTTP 클라이언트에서 바로 받은 503도 감지한다. React Query의 재시도나 캐시 오류
+  // 콜백을 거치지 않는 호출까지 점검 화면으로 전환하기 위한 주 경로다.
+  useEffect(() => {
+    const handleApiError = (event: Event) => {
+      const status = (event as CustomEvent<{ status?: unknown }>).detail?.status;
+      if (status === 503) setMaintenance(true);
+    };
+    window.addEventListener(API_ERROR_EVENT, handleApiError);
+    return () => window.removeEventListener(API_ERROR_EVENT, handleApiError);
+  }, []);
 
   // 점검 화면 노출 중에는 가벼운 공개 API로 점검 종료를 주기적으로 확인한다.
   // 진입 직후 1회 탐침은 점검과 무관한 일시적 503로 잘못 전환된 경우 즉시 복귀시킨다.

@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ApiError, generated } from '@semochal/api-client';
+import { API_ERROR_EVENT, ApiError, generated } from '@semochal/api-client';
 import { ToastProvider } from './Toast';
 import { MaintenanceGate } from './MaintenanceGate';
 
@@ -86,6 +86,15 @@ describe('MaintenanceGate', () => {
 
     expect(await screen.findByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
     expect(screen.queryByText('요청이 실패했어요')).toBeNull();
+  });
+
+  it('HTTP 클라이언트가 발생시킨 503 이벤트로 즉시 점검 화면으로 전환한다', async () => {
+    renderGate(<div data-testid="page-content">정상 화면</div>);
+
+    window.dispatchEvent(new CustomEvent(API_ERROR_EVENT, { detail: { status: 503 } }));
+
+    expect(await screen.findByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
+    expect(screen.queryByTestId('page-content')).toBeNull();
   });
 
   it('503이 아닌 쿼리 실패(500)에서는 점검 화면으로 전환하지 않고 토스트로 안내한다', async () => {

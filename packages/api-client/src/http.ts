@@ -2,6 +2,14 @@ export interface HttpClientOptions {
   baseUrl: string;
 }
 
+/** Browser clients emit this when an API response is unsuccessful. */
+export const API_ERROR_EVENT = 'semochal:api-error';
+
+function notifyApiError(status: number) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(API_ERROR_EVENT, { detail: { status } }));
+}
+
 export class ApiError extends Error {
   constructor(
     public readonly status: number,
@@ -33,6 +41,7 @@ export class HttpClient {
 
     if (!res.ok) {
       const body = await res.json().catch(() => undefined);
+      notifyApiError(res.status);
       throw new ApiError(res.status, body);
     }
 
