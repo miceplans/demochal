@@ -401,6 +401,103 @@ function AlignGlyph({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' })
 
 const keepEditorFocus = (event: React.MouseEvent) => event.preventDefault();
 
+// 본문 글자에 칠하는 사용자 콘텐츠 색이라 디자인 토큰과 별개의 고정 팔레트를 쓴다.
+const TEXT_COLORS = [
+  '#000000',
+  '#6b7280',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#0ea5e9',
+  '#2563eb',
+  '#8b5cf6',
+  '#ec4899',
+];
+const HIGHLIGHT_COLORS = [
+  '#fef08a',
+  '#bbf7d0',
+  '#bae6fd',
+  '#fbcfe8',
+  '#fed7aa',
+  '#e9d5ff',
+  '#e5e7eb',
+  'transparent',
+];
+
+/**
+ * 글자색·배경색 팔레트. 브라우저 기본 색상 선택 팝업은 창 포커스를 가져가 에디터에 서식이 적용되지 않으므로,
+ * 페이지 안의 버튼으로 고르고 마우스다운의 포커스 이동을 막아 에디터 선택 영역을 유지한다.
+ */
+function ColorPalette({
+  label,
+  mark,
+  colors,
+  current,
+  onPick,
+}: {
+  label: string;
+  mark: string;
+  colors: string[];
+  current: string;
+  onPick: (color: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const isHighlight = mark === '가';
+  return (
+    <Tip label={label}>
+      <PaletteRoot ref={rootRef} onMouseDown={keepEditorFocus}>
+        <PaletteTrigger
+          type="button"
+          aria-label={label}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <ColorMark
+            style={
+              isHighlight
+                ? { background: current === 'transparent' ? undefined : current }
+                : { borderBottomColor: current }
+            }
+          >
+            {mark}
+          </ColorMark>
+        </PaletteTrigger>
+        {open && (
+          <PaletteGrid role="listbox" aria-label={`${label} 선택`}>
+            {colors.map((color) => (
+              <Swatch
+                key={color}
+                type="button"
+                role="option"
+                aria-selected={color === current}
+                aria-label={color === 'transparent' ? `${label} 없음` : `${label} ${color}`}
+                title={color === 'transparent' ? '없음' : undefined}
+                none={color === 'transparent'}
+                selected={color === current}
+                style={{ background: color === 'transparent' ? undefined : color }}
+                onClick={() => {
+                  onPick(color);
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </PaletteGrid>
+        )}
+      </PaletteRoot>
+    </Tip>
+  );
+}
+
 const HOURS: DropdownOption[] = Array.from({ length: 24 }, (_, h) => ({
   value: String(h).padStart(2, '0'),
   label: `${String(h).padStart(2, '0')}시`,
@@ -540,7 +637,7 @@ function PostingForm({
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [textColor, setTextColor] = useState('#000000');
-  const [highlightColor, setHighlightColor] = useState('#ffff00');
+  const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0]!);
   const [category, setCategory] = useState(initial.category);
   const [targets, setTargets] = useState(initial.targets);
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
@@ -1060,34 +1157,26 @@ function PostingForm({
                     glyph={<ScriptGlyph>x₂</ScriptGlyph>}
                     command="subscript"
                   />
-                  <Tip label="글자 색">
-                    <ColorLabel>
-                      <ColorMark style={{ borderBottomColor: textColor }}>A</ColorMark>
-                      <ColorInput
-                        type="color"
-                        aria-label="글자 색"
-                        value={textColor}
-                        onChange={(event) => {
-                          setTextColor(event.target.value);
-                          applyColor('foreColor', event.target.value);
-                        }}
-                      />
-                    </ColorLabel>
-                  </Tip>
-                  <Tip label="배경(형광펜) 색">
-                    <ColorLabel>
-                      <ColorMark style={{ background: highlightColor }}>가</ColorMark>
-                      <ColorInput
-                        type="color"
-                        aria-label="배경 색"
-                        value={highlightColor}
-                        onChange={(event) => {
-                          setHighlightColor(event.target.value);
-                          applyColor('hiliteColor', event.target.value);
-                        }}
-                      />
-                    </ColorLabel>
-                  </Tip>
+                  <ColorPalette
+                    label="글자 색"
+                    mark="A"
+                    colors={TEXT_COLORS}
+                    current={textColor}
+                    onPick={(color) => {
+                      setTextColor(color);
+                      applyColor('foreColor', color);
+                    }}
+                  />
+                  <ColorPalette
+                    label="배경(형광펜) 색"
+                    mark="가"
+                    colors={HIGHLIGHT_COLORS}
+                    current={highlightColor}
+                    onPick={(color) => {
+                      setHighlightColor(color);
+                      applyColor('hiliteColor', color);
+                    }}
+                  />
                 </ToolGroup>
                 <ToolGroup>
                   <ToolBtn
@@ -1696,17 +1785,46 @@ const TipWrap = styled.span({
   '&:hover::after': { opacity: 1 },
 });
 const ScriptGlyph = styled.span({ fontSize: 13, fontWeight: 600, color: c.gray900 });
-const ColorLabel = styled.label({
-  position: 'relative',
+const PaletteRoot = styled.div({ position: 'relative', display: 'flex' });
+const PaletteTrigger = styled.button({
   width: 28,
   height: 28,
+  border: 0,
+  borderRadius: 4,
+  background: 'transparent',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  borderRadius: 4,
-  cursor: 'pointer',
-  '&:hover': { background: c.gray100 },
+  '&:hover, &[aria-expanded=true]': { background: c.gray100 },
 });
+const PaletteGrid = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(5, 24px)',
+  gap: 6,
+  padding: 10,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const Swatch = styled('button', {
+  shouldForwardProp: (prop) => prop !== 'selected' && prop !== 'none',
+})<{ selected: boolean; none: boolean }>(({ selected, none }) => ({
+  width: 24,
+  height: 24,
+  borderRadius: '50%',
+  border: selected ? `2px solid ${c.primary}` : `1px solid ${c.gray300}`,
+  // '없음'은 대각선으로 지운 칸으로 표시한다.
+  backgroundImage: none
+    ? `linear-gradient(135deg, transparent 45%, ${c.red} 45%, ${c.red} 55%, transparent 55%)`
+    : undefined,
+  backgroundColor: none ? c.white : undefined,
+  cursor: 'pointer',
+}));
 const ColorMark = styled.span({
   fontSize: 13,
   fontWeight: 700,
@@ -1714,14 +1832,6 @@ const ColorMark = styled.span({
   padding: '0 3px',
   color: c.gray900,
   borderBottom: '3px solid transparent',
-});
-const ColorInput = styled.input({
-  position: 'absolute',
-  inset: 0,
-  width: '100%',
-  height: '100%',
-  opacity: 0,
-  cursor: 'pointer',
 });
 const AttachButton = styled.button({
   alignSelf: 'flex-start',

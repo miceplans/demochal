@@ -40,4 +40,10 @@ describe('sanitizeDescription', () => {
     );
     expect(out).not.toMatch(/font-size|url|color|font-family/);
   });
+
+  it('배경색 transparent(형광펜 없음)는 허용한다', () => {
+    expect(sanitizeDescription('<span style="background-color:transparent">a</span>')).toContain(
+      'background-color:transparent',
+    );
+  });
 });

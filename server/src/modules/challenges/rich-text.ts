@@ -2,6 +2,7 @@ import sanitizeHtml from 'sanitize-html';
 import { env } from '../../config/env.js';
 
 const COLOR_VALUE = [
+  /^transparent$/,
   /^#[0-9a-f]{3,8}$/i,
   /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)$/i,
 ];

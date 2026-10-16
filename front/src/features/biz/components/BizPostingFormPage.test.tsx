@@ -181,6 +181,21 @@ describe('BizPostingFormPage', () => {
       expect(screen.getByLabelText(label).closest('[data-tip]')).toBeTruthy();
   });
 
+  it('글자색·배경색은 팔레트에서 골라 에디터에 적용한다', () => {
+    const exec = vi.fn(() => true);
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: exec });
+    renderForm();
+    fireEvent.click(screen.getByLabelText('글자 색'));
+    fireEvent.click(screen.getByRole('option', { name: '글자 색 #ef4444' }));
+    expect(exec).toHaveBeenCalledWith('styleWithCSS', false, 'true');
+    expect(exec).toHaveBeenCalledWith('foreColor', false, '#ef4444');
+    expect(screen.queryByRole('listbox', { name: '글자 색 선택' })).toBeNull();
+
+    fireEvent.click(screen.getByLabelText('배경(형광펜) 색'));
+    fireEvent.click(screen.getByRole('option', { name: '배경(형광펜) 색 없음' }));
+    expect(exec).toHaveBeenCalledWith('hiliteColor', false, 'transparent');
+  });
+
   it('해시태그·기타 입력란에는 예시 문구가 없다', () => {
     renderForm();
     expect(screen.getByLabelText('해시태그').getAttribute('placeholder')).toBeNull();

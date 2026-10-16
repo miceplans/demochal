@@ -39,6 +39,7 @@ export function isRichHtml(value: string) {
 
 // 서버 `ALLOWED_STYLES`와 같은 허용 목록 — 글자 크기·색·글꼴·정렬 외의 style 선언은 버린다.
 const COLOR_VALUE = [
+  /^transparent$/,
   /^#[0-9a-f]{3,8}$/i,
   /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(?:,\s*(?:0|1|0?\.\d+)\s*)?\)$/i,
 ];
