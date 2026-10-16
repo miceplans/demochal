@@ -533,7 +533,7 @@ describe('ChallengesService.create', () => {
     title: '타이틀',
     description: '설명',
     price: 1000,
-    capacity: 10,
+    host: '세모챌',
     startDate: '2029-01-01T00:00:00Z',
     endDate: '2029-02-01T00:00:00Z',
   };
@@ -550,6 +550,55 @@ describe('ChallengesService.create', () => {
 
     expect(valuesCalls[0]).toMatchObject({ recruitMethod: 'seMOchall' });
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
+  });
+
+  it('저장 시 주최·주관·행사 기간과 대상 기타 입력을 함께 기록한다', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create(
+      {
+        ...baseDto,
+        recruitUrl: 'https://example.com/apply',
+        host: ' 주최사 ',
+        supervisor: '주관사',
+        sponsor: '  ',
+        eventStartDate: '2029-03-01T00:00:00Z',
+        eventEndDate: '2029-03-02T00:00:00Z',
+        targets: ['기타'],
+        targetOther: '서울 거주자',
+      } as any,
+      'user-1',
+    );
+
+    expect(valuesCalls[0]).toMatchObject({
+      host: '주최사',
+      supervisor: '주관사',
+      sponsor: null,
+      supporter: null,
+      targetOther: '서울 거주자',
+      eventStartDate: new Date('2029-03-01T00:00:00Z'),
+      eventEndDate: new Date('2029-03-02T00:00:00Z'),
+      attachments: [],
+    });
+  });
+
+  it('행사 기간은 시작·종료를 함께 보내야 하고 종료가 앞서면 거절한다', async () => {
+    const service = createCapturingService([]);
+    const dto = { ...baseDto, recruitUrl: 'https://example.com/apply' };
+    await expect(
+      service.create({ ...dto, eventStartDate: '2029-03-01T00:00:00Z' } as any, 'user-1'),
+    ).rejects.toThrow('행사 기간');
+    await expect(
+      service.create(
+        {
+          ...dto,
+          eventStartDate: '2029-03-02T00:00:00Z',
+          eventEndDate: '2029-03-01T00:00:00Z',
+        } as any,
+        'user-1',
+      ),
+    ).rejects.toThrow('행사 종료일');
   });
 
   it('keeps owner-requested published as draft until an admin approves when auto publish is off', async () => {
@@ -759,11 +808,11 @@ describe('ChallengesService.update', () => {
     const { service, db } = createUpdateService([current]);
     await expect(
       service.update('ch-1', { endDate: '2029-12-31T00:00:00Z' }, owner),
-    ).rejects.toThrow('종료일은 시작일 이후여야 합니다');
+    ).rejects.toThrow('접수 종료 시각은 시작 시각 이후여야 합니다');
     expect(db.update).not.toHaveBeenCalled();
   });
 
-  it('신청자가 있으면 참가비 변경과 접수 인원 미만 정원 축소를 거절한다', async () => {
+  it('신청자가 있으면 참가비 변경을 거절한다', async () => {
     const { service, db } = createUpdateService([{ ...current, price: 1000 }]);
     const first = db.select();
     const withRows = (rows: unknown[]) =>
@@ -776,8 +825,6 @@ describe('ChallengesService.update', () => {
               Object.assign(Promise.resolve(rows), { limit: () => Promise.resolve(rows) }),
           }),
         });
-    db.select = withRows([{ id: 'app-1', total: 3 }]);
-    await expect(service.update('ch-1', { capacity: 2 }, owner)).rejects.toThrow('정원');
     db.select = withRows([{ id: 'app-1', total: 3 }]);
     await expect(service.update('ch-1', { price: 2000 }, owner)).rejects.toThrow('참가비');
     expect(db.update).not.toHaveBeenCalled();

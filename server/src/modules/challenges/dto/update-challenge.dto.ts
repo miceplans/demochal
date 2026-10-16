@@ -6,8 +6,8 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
-  IsPositive,
   IsUrl,
   IsString,
   IsUUID,
@@ -17,6 +17,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
+import { ChallengeAttachmentDto, MAX_CHALLENGE_ATTACHMENTS } from './challenge-attachment.dto.js';
 import { ApplicationFormQuestionDto } from './application-form-question.dto.js';
 
 /** 공고 부분 수정. businessId/status는 바꿀 수 없다(상태는 PATCH /challenges/:id/status). */
@@ -37,17 +38,55 @@ export class UpdateChallengeDto {
   price?: number;
 
   @IsOptional()
-  @IsInt()
-  @IsPositive()
-  capacity?: number;
-
-  @IsOptional()
   @IsDateString()
   startDate?: string;
 
   @IsOptional()
   @IsDateString()
   endDate?: string;
+
+  // null이면 행사 기간을 비운다.
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsDateString()
+  eventStartDate?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsDateString()
+  eventEndDate?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  host?: string;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(200)
+  supervisor?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(200)
+  sponsor?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(200)
+  supporter?: string | null;
+
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsString()
+  @MaxLength(100)
+  targetOther?: string | null;
+
+  // 첨부파일 목록 전체 교체. 빈 배열이면 모두 제거한다.
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_CHALLENGE_ATTACHMENTS)
+  @ValidateNested({ each: true })
+  @Type(() => ChallengeAttachmentDto)
+  attachments?: ChallengeAttachmentDto[];
 
   // null이면 카테고리를 비운다.
   @ValidateIf((_, value) => value !== null && value !== undefined)

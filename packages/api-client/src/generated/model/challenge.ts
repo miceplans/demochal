@@ -17,6 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { ApplicationFormQuestion } from './applicationFormQuestion';
+import type { ChallengeAttachment } from './challengeAttachment';
 import type { ChallengeOrganizerType } from './challengeOrganizerType';
 import type { ChallengeRecruitMethod } from './challengeRecruitMethod';
 import type { ChallengeStatus } from './challengeStatus';
@@ -43,10 +44,56 @@ export interface Challenge {
   visibility?: ChallengeVisibility;
   /** 참가비 (원) */
   price?: number;
-  /** 모집 인원 */
-  capacity: number;
+  /**
+     * 정원(입력 폼에서 제거됨 — 기존 공고만 값 보유)
+     * @nullable
+     */
+  capacity?: number | null;
+  /** 접수 시작 시각 */
   startDate: string;
+  /** 접수 종료 시각 */
   endDate: string;
+  /**
+     * 행사 시작
+     * @nullable
+     */
+  eventStartDate?: string | null;
+  /**
+     * 행사 종료
+     * @nullable
+     */
+  eventEndDate?: string | null;
+  /**
+     * 주최
+     * @maxLength 200
+     * @nullable
+     */
+  host?: string | null;
+  /**
+     * 주관
+     * @maxLength 200
+     * @nullable
+     */
+  supervisor?: string | null;
+  /**
+     * 협찬
+     * @maxLength 200
+     * @nullable
+     */
+  sponsor?: string | null;
+  /**
+     * 후원
+     * @maxLength 200
+     * @nullable
+     */
+  supporter?: string | null;
+  /**
+     * 대상 '기타' 직접 입력
+     * @maxLength 100
+     * @nullable
+     */
+  targetOther?: string | null;
+  attachments?: ChallengeAttachment[];
   /** 등록 시 draft */
   status: ChallengeStatus;
   createdAt?: string;

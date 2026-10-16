@@ -937,6 +937,35 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
 
+  /challenges/{id}/attachments/{fileId}/download:
+    get:
+      tags: [Challenges]
+      summary: 공고 첨부파일 다운로드 URL
+      operationId: getChallengeAttachmentDownload
+      x-impl-status: implemented
+      description: 공개 공고의 첨부파일을 내려받는 5분짜리 presigned URL. private 버킷은 이 경로로만 연다.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 다운로드 URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, format: uri }
+        '404': { description: 공고 또는 첨부파일 없음 }
+
   # ---------------------------------------------------------------- Teams
   /teams:
     get:
@@ -3451,7 +3480,7 @@ components:
         challengeTypes: { type: array, items: { type: string }, description: 4단계 도전 유형 Chip }
     Challenge:
       type: object
-      required: [id, title, startDate, endDate, status, capacity]
+      required: [id, title, startDate, endDate, status]
       properties:
         id: { type: string, format: uuid }
         businessId: { type: string, format: uuid }
@@ -3462,9 +3491,25 @@ components:
         inquiryContact: { type: string, nullable: true, maxLength: 200 }
         visibility: { type: string, enum: [public, private], default: public }
         price: { type: integer, description: 참가비 (원) }
-        capacity: { type: integer, description: 모집 인원 }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time }
+        capacity:
+          {
+            type: integer,
+            nullable: true,
+            description: 정원(입력 폼에서 제거됨 — 기존 공고만 값 보유),
+          }
+        startDate: { type: string, format: date-time, description: 접수 시작 시각 }
+        endDate: { type: string, format: date-time, description: 접수 종료 시각 }
+        eventStartDate: { type: string, format: date-time, nullable: true, description: 행사 시작 }
+        eventEndDate: { type: string, format: date-time, nullable: true, description: 행사 종료 }
+        host: { type: string, nullable: true, maxLength: 200, description: 주최 }
+        supervisor: { type: string, nullable: true, maxLength: 200, description: 주관 }
+        sponsor: { type: string, nullable: true, maxLength: 200, description: 협찬 }
+        supporter: { type: string, nullable: true, maxLength: 200, description: 후원 }
+        targetOther:
+          { type: string, nullable: true, maxLength: 100, description: 대상 '기타' 직접 입력 }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         status: { type: string, enum: [draft, published, closed], description: 등록 시 draft }
         createdAt: { type: string, format: date-time }
         category:
@@ -3486,6 +3531,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -3565,9 +3611,16 @@ components:
             description: '선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)',
           }
         required: { type: boolean, description: 필수 질문 여부 }
+    ChallengeAttachment:
+      type: object
+      required: [fileId, name, size]
+      properties:
+        fileId: { type: string, format: uuid, description: private 버킷의 ready 파일 ID }
+        name: { type: string, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 10485760 }
     CreateChallengeRequest:
       type: object
-      required: [businessId, title, description, price, capacity, startDate, endDate]
+      required: [businessId, title, description, price, host, startDate, endDate]
       properties:
         businessId: { type: string, format: uuid }
         summary: { type: string, maxLength: 300 }
@@ -3580,9 +3633,20 @@ components:
         title: { type: string }
         description: { type: string }
         price: { type: integer, minimum: 1 }
-        capacity: { type: integer, minimum: 1 }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time }
+        startDate: { type: string, format: date-time, description: 접수 시작 시각 }
+        endDate: { type: string, format: date-time, description: 접수 종료 시각 }
+        eventStartDate:
+          { type: string, format: date-time, description: 행사 시작(종료와 함께 보낸다) }
+        eventEndDate: { type: string, format: date-time, description: 행사 종료 }
+        host: { type: string, minLength: 1, maxLength: 200, description: 주최 }
+        supervisor: { type: string, maxLength: 200, description: 주관 }
+        sponsor: { type: string, maxLength: 200, description: 협찬 }
+        supporter: { type: string, maxLength: 200, description: 후원 }
+        targetOther: { type: string, maxLength: 100, description: 대상 '기타' 직접 입력 }
+        attachments:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         category:
           {
             type: string,
@@ -3604,6 +3668,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -3667,9 +3732,20 @@ components:
         title: { type: string, maxLength: 200 }
         description: { type: string, maxLength: 100000 }
         price: { type: integer, minimum: 0 }
-        capacity: { type: integer, minimum: 1 }
         startDate: { type: string, format: date-time }
         endDate: { type: string, format: date-time }
+        eventStartDate: { type: string, format: date-time, nullable: true }
+        eventEndDate: { type: string, format: date-time, nullable: true }
+        host: { type: string, minLength: 1, maxLength: 200 }
+        supervisor: { type: string, nullable: true, maxLength: 200 }
+        sponsor: { type: string, nullable: true, maxLength: 200 }
+        supporter: { type: string, nullable: true, maxLength: 200 }
+        targetOther: { type: string, nullable: true, maxLength: 100 }
+        attachments:
+          type: array
+          maxItems: 10
+          description: 첨부파일 목록 전체 교체. 빈 배열이면 모두 제거한다.
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         category:
           { type: string, nullable: true, maxLength: 100, description: null이면 카테고리를 비운다 }
         recruitUrl:
@@ -3695,6 +3771,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -4045,7 +4122,29 @@ components:
       required: [bucket, contentType, fileName, sizeBytes]
       properties:
         bucket: { type: string, enum: [public, private] }
-        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, application/pdf] }
+        purpose:
+          {
+            type: string,
+            enum: [poster],
+            description: "'poster'면 공개 버킷에 JPG/PNG/WebP 원본을 변환 없이 올린다(공고 포스터 전용)",
+          }
+        contentType:
+          {
+            type: string,
+            enum:
+              [
+                image/jpeg,
+                image/png,
+                image/webp,
+                application/pdf,
+                application/zip,
+                application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+                application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+                application/vnd.openxmlformats-officedocument.presentationml.presentation,
+                application/x-hwp,
+                application/hwp+zip,
+              ],
+          }
         fileName: { type: string, maxLength: 255, description: '경로 구분자(슬래시·역슬래시) 불가' }
         sizeBytes: { type: integer, minimum: 1, maximum: 10485760, description: 최대 10MB }
     Order:

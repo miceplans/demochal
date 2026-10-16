@@ -73,7 +73,7 @@ export class ApplicationsService {
         throw new BadRequestException('외부 접수 챌린지는 앱에서 신청할 수 없습니다.');
       }
       // 정원은 실제 접수된 신청(무료 접수 + 결제 완료) 기준으로 센다.
-      if (challenge.capacity !== undefined) {
+      if (challenge.capacity !== null && challenge.capacity !== undefined) {
         const [accepted] = await tx
           .select({ total: count() })
           .from(applications)

@@ -86,6 +86,12 @@ export class ChallengesController {
     return this.challengesService.getStatsForOwner(id, user.id);
   }
 
+  @Get(':id/attachments/:fileId/download')
+  @Public()
+  getAttachmentDownload(@Param('id') id: string, @Param('fileId') fileId: string) {
+    return this.challengesService.getAttachmentDownloadUrl(id, fileId);
+  }
+
   @Get(':id/similar')
   @Public()
   listSimilar(@Param('id') id: string) {

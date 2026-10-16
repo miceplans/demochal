@@ -7,14 +7,18 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
+import { DayPicker } from 'react-day-picker';
+import { ko } from 'react-day-picker/locale';
+import 'react-day-picker/style.css';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { adApi, adError } from '@/lib/ad-api';
 import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
-import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
+import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
+import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
 import { richContentStyles } from '@/components/common/RichDescription';
 
 const ICON = '/assets/icons';
@@ -70,6 +74,12 @@ export function BizPostingFormPage() {
             businessId,
             ...values,
             category: values.category ?? undefined,
+            eventStartDate: values.eventStartDate ?? undefined,
+            eventEndDate: values.eventEndDate ?? undefined,
+            supervisor: values.supervisor ?? undefined,
+            sponsor: values.sponsor ?? undefined,
+            supporter: values.supporter ?? undefined,
+            targetOther: values.targetOther ?? undefined,
             targets: values.targets ?? undefined,
             organizerType: values.organizerType ?? undefined,
             prizeAmount: values.prizeAmount ?? undefined,
@@ -122,9 +132,16 @@ export function BizPostingEditPage() {
         title: challenge.title ?? '',
         description: challenge.description ?? '',
         price: challenge.price ?? 0,
-        capacity: String(challenge.capacity ?? 1),
-        startDate: toDateInput(challenge.startDate),
-        endDate: toDateInput(challenge.endDate),
+        startDate: toDateTimeInput(challenge.startDate),
+        endDate: toDateTimeInput(challenge.endDate),
+        eventStartDate: toDateInput(challenge.eventStartDate ?? undefined),
+        eventEndDate: toDateInput(challenge.eventEndDate ?? undefined),
+        host: challenge.host ?? '',
+        supervisor: challenge.supervisor ?? '',
+        sponsor: challenge.sponsor ?? '',
+        supporter: challenge.supporter ?? '',
+        targetOther: challenge.targetOther ?? '',
+        attachments: challenge.attachments ?? [],
         category: challenge.category ?? '',
         posterUrl: challenge.posterUrl ?? null,
         targets: challenge.targets ?? [],
@@ -153,14 +170,25 @@ export function BizPostingEditPage() {
   );
 }
 
+type Attachment = { fileId: string; name: string; size: number };
+
 type PostingInput = {
   title: string;
   description: string;
   /** Figma 폼에는 참가비 입력이 없어 신규는 0, 수정은 기존 값을 그대로 보존한다. */
   price: number;
-  capacity: string;
+  /** 접수 기간 — datetime-local 값(YYYY-MM-DDTHH:mm). */
   startDate: string;
   endDate: string;
+  /** 행사 기간 — date 값(YYYY-MM-DD). 비우면 미정. */
+  eventStartDate: string;
+  eventEndDate: string;
+  host: string;
+  supervisor: string;
+  sponsor: string;
+  supporter: string;
+  targetOther: string;
+  attachments: Attachment[];
   category: string;
   posterUrl?: string | null;
   targets: NonNullable<generated.UpdateChallengeMutationBody['targets']>;
@@ -180,9 +208,16 @@ type PostingValues = generated.UpdateChallengeMutationBody & {
   title: string;
   description: string;
   price: number;
-  capacity: number;
   startDate: string;
   endDate: string;
+  host: string;
+  supervisor?: string | null;
+  sponsor?: string | null;
+  supporter?: string | null;
+  targetOther?: string | null;
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  attachments: Attachment[];
   category: string | null;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
@@ -197,9 +232,16 @@ const EMPTY_POSTING: PostingInput = {
   title: '',
   description: '',
   price: 0,
-  capacity: '1',
   startDate: '',
   endDate: '',
+  eventStartDate: '',
+  eventEndDate: '',
+  host: '',
+  supervisor: '',
+  sponsor: '',
+  supporter: '',
+  targetOther: '',
+  attachments: [],
   category: '',
   targets: [],
   organizerType: null,
@@ -210,7 +252,7 @@ const EMPTY_POSTING: PostingInput = {
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
-// 상세정보는 정화된 HTML로 저장한다(서버가 저장 시 한 번 더 정화). 아직 연결하지 않은 서식은 정렬/색상/텍스트 스타일이다.
+// 상세정보는 정화된 HTML로 저장한다(서버가 저장 시 한 번 더 정화). 글자 크기·색·글꼴·정렬은 허용된 style 값으로만 저장된다.
 // TODO: https://developer.mozilla.org/docs/Web/API/Document/execCommand
 const EDITOR_COMMANDS = {
   undo: 'undo',
@@ -219,43 +261,513 @@ const EDITOR_COMMANDS = {
   italic: 'italic',
   underline: 'underline',
   strike: 'strikeThrough',
+  superscript: 'superscript',
+  subscript: 'subscript',
   clear: 'removeFormat',
   bullet: 'insertUnorderedList',
   number: 'insertOrderedList',
+  alignLeft: 'justifyLeft',
+  alignCenter: 'justifyCenter',
+  alignRight: 'justifyRight',
+  alignJustify: 'justifyFull',
   quote: 'formatBlock',
   rule: 'insertHorizontalRule',
 } as const;
-type EditorCommand = keyof typeof EDITOR_COMMANDS | 'link' | 'image' | 'code';
+type EditorCommand = keyof typeof EDITOR_COMMANDS | 'image' | 'code';
+// execCommand가 인라인 style(text-align 등)로 결과를 만들어야 하는 명령. 나머지는 b/i/u 같은 태그로 만든다.
+const STYLE_COMMANDS = new Set<string>([
+  'justifyLeft',
+  'justifyCenter',
+  'justifyRight',
+  'justifyFull',
+]);
 
-type TextSize = 'h2' | 'h3' | 'p' | 'small';
-const TEXT_SIZES: { value: TextSize; label: string }[] = [
-  { value: 'h2', label: '제목 (크게)' },
-  { value: 'h3', label: '소제목 (중간)' },
-  { value: 'p', label: '본문 (기본)' },
-  { value: 'small', label: '작게' },
+type ParagraphStyle = 'p' | 'h2' | 'h3';
+const PARAGRAPH_STYLES: { value: ParagraphStyle; label: string }[] = [
+  { value: 'p', label: '본문' },
+  { value: 'h2', label: '제목' },
+  { value: 'h3', label: '소제목' },
 ];
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+const FONT_FAMILIES = [
+  { value: '', label: '기본 글꼴' },
+  { value: "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", label: '고딕' },
+  { value: "'Nanum Myeongjo', Batang, serif", label: '명조' },
+  { value: "'Nanum Pen Script', cursive", label: '손글씨' },
+  { value: "'Courier New', monospace", label: '고정폭' },
+];
+
+const ATTACHMENT_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  zip: 'application/zip',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  hwp: 'application/x-hwp',
+  hwpx: 'application/hwp+zip',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES)
+  .map((ext) => `.${ext}`)
+  .join(',');
+const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_ATTACHMENTS = 10;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+function attachmentContentType(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return ATTACHMENT_TYPES[ext];
+}
+
+/** 호버(또는 키보드 포커스)하면 이름을 말풍선으로 보여준다. */
+function Tip({ label, children }: { label: string; children: React.ReactNode }) {
+  return <TipWrap data-tip={label}>{children}</TipWrap>;
+}
 
 function ToolBtn({
   label,
   icon,
+  glyph,
   command,
   onRun,
 }: {
   label: string;
-  icon: string;
+  icon?: string;
+  glyph?: React.ReactNode;
   command?: EditorCommand;
   onRun: (command: EditorCommand) => void;
 }) {
   return (
-    <ToolButton
-      type="button"
-      aria-label={label}
-      disabled={!command}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => command && onRun(command)}
-    >
-      <ToolIcon src={`${ICON}/${icon}`} alt="" />
-    </ToolButton>
+    <Tip label={label}>
+      <ToolButton
+        type="button"
+        aria-label={label}
+        disabled={!command}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => command && onRun(command)}
+      >
+        {icon ? <ToolIcon src={`${ICON}/${icon}`} alt="" /> : glyph}
+      </ToolButton>
+    </Tip>
+  );
+}
+
+function AlignGlyph({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' }) {
+  const lines: [number, number][] = {
+    left: [
+      [3, 17],
+      [3, 11],
+      [3, 17],
+      [3, 8],
+    ],
+    center: [
+      [3, 17],
+      [6, 14],
+      [3, 17],
+      [7, 13],
+    ],
+    right: [
+      [3, 17],
+      [9, 17],
+      [3, 17],
+      [12, 17],
+    ],
+    justify: [
+      [3, 17],
+      [3, 17],
+      [3, 17],
+      [3, 17],
+    ],
+  }[kind] as [number, number][];
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+      {lines.map(([x1, x2], i) => (
+        <line
+          key={i}
+          x1={x1}
+          x2={x2}
+          y1={5 + i * 3.5}
+          y2={5 + i * 3.5}
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
+  );
+}
+
+const keepEditorFocus = (event: React.MouseEvent) => event.preventDefault();
+
+// 본문 글자에 칠하는 사용자 콘텐츠 색이라 디자인 토큰과 별개의 고정 팔레트를 쓴다.
+const TEXT_COLORS = [
+  '#000000',
+  '#6b7280',
+  '#ef4444',
+  '#f97316',
+  '#eab308',
+  '#22c55e',
+  '#0ea5e9',
+  '#2563eb',
+  '#8b5cf6',
+  '#ec4899',
+];
+const HIGHLIGHT_COLORS = [
+  '#fef08a',
+  '#bbf7d0',
+  '#bae6fd',
+  '#fbcfe8',
+  '#fed7aa',
+  '#e9d5ff',
+  '#e5e7eb',
+  'transparent',
+];
+
+/**
+ * 글자색·배경색 팔레트. 브라우저 기본 색상 선택 팝업은 창 포커스를 가져가 에디터에 서식이 적용되지 않으므로,
+ * 페이지 안의 버튼으로 고르고 마우스다운의 포커스 이동을 막아 에디터 선택 영역을 유지한다.
+ */
+function ColorPalette({
+  label,
+  mark,
+  colors,
+  current,
+  onPick,
+}: {
+  label: string;
+  mark: string;
+  colors: string[];
+  current: string;
+  onPick: (color: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+  const isHighlight = mark === '가';
+  return (
+    <Tip label={label}>
+      <PaletteRoot ref={rootRef} onMouseDown={keepEditorFocus}>
+        <PaletteTrigger
+          type="button"
+          aria-label={label}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <ColorMark
+            style={
+              isHighlight
+                ? { background: current === 'transparent' ? undefined : current }
+                : { borderBottomColor: current }
+            }
+          >
+            {mark}
+          </ColorMark>
+        </PaletteTrigger>
+        {open && (
+          <PaletteGrid role="listbox" aria-label={`${label} 선택`}>
+            {colors.map((color) => (
+              <Swatch
+                key={color}
+                type="button"
+                role="option"
+                aria-selected={color === current}
+                aria-label={color === 'transparent' ? `${label} 없음` : `${label} ${color}`}
+                title={color === 'transparent' ? '없음' : undefined}
+                none={color === 'transparent'}
+                selected={color === current}
+                style={{ background: color === 'transparent' ? undefined : color }}
+                onClick={() => {
+                  onPick(color);
+                  setOpen(false);
+                }}
+              />
+            ))}
+          </PaletteGrid>
+        )}
+      </PaletteRoot>
+    </Tip>
+  );
+}
+
+const HOURS: DropdownOption[] = Array.from({ length: 24 }, (_, h) => ({
+  value: String(h).padStart(2, '0'),
+  label: `${String(h).padStart(2, '0')}시`,
+}));
+const MINUTES: DropdownOption[] = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i * 5).padStart(2, '0'),
+  label: `${String(i * 5).padStart(2, '0')}분`,
+}));
+
+/** 날짜(선택 시 시각까지) 입력. 값은 `YYYY-MM-DD` 또는 `YYYY-MM-DDTHH:mm`(비어 있으면 ''). */
+function DatePickerField({
+  value,
+  onChange,
+  withTime = false,
+  defaultTime = '00:00',
+  'aria-label': ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  withTime?: boolean;
+  defaultTime?: string;
+  'aria-label': string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const datePart = value.slice(0, 10);
+  const timePart = value.length > 10 ? value.slice(11, 16) : defaultTime;
+  const [hour = '00', minute = '00'] = timePart.split(':');
+  const selected = datePart ? new Date(`${datePart}T00:00:00`) : undefined;
+  const [viewMonth, setViewMonth] = useState<Date>(() => selected ?? new Date());
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const emit = (date: string, time: string) => onChange(withTime ? `${date}T${time}` : date);
+  const label = datePart
+    ? `${datePart.replaceAll('-', '.')}${withTime ? ` ${hour}:${minute}` : ''}`
+    : '날짜 선택';
+
+  return (
+    <PickerRoot ref={rootRef}>
+      <PickerTrigger
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        hasValue={Boolean(datePart)}
+        onClick={() => {
+          if (!open) setViewMonth(selected ?? new Date());
+          setOpen((v) => !v);
+        }}
+      >
+        {label}
+      </PickerTrigger>
+      {open && (
+        <PickerPopover role="dialog" aria-label={`${ariaLabel} 달력`}>
+          <PickerDayPicker
+            mode="single"
+            locale={ko}
+            navLayout="around"
+            selected={selected}
+            month={viewMonth}
+            onMonthChange={setViewMonth}
+            onSelect={(date) => {
+              if (!date) return;
+              emit(toDateKey(date), `${hour}:${minute}`);
+              if (!withTime) setOpen(false);
+            }}
+          />
+          {withTime && (
+            <PickerTime>
+              <Dropdown
+                size="S"
+                width={92}
+                aria-label={`${ariaLabel} 시`}
+                options={HOURS}
+                value={hour}
+                onChange={(h) => datePart && emit(datePart, `${h}:${minute}`)}
+                disabled={!datePart}
+              />
+              <Dropdown
+                size="S"
+                width={92}
+                aria-label={`${ariaLabel} 분`}
+                options={MINUTES}
+                value={MINUTES.some((m) => m.value === minute) ? minute : undefined}
+                placeholder={`${minute}분`}
+                onChange={(m) => datePart && emit(datePart, `${hour}:${m}`)}
+                disabled={!datePart}
+              />
+              <PickerDone type="button" onClick={() => setOpen(false)}>
+                확인
+              </PickerDone>
+            </PickerTime>
+          )}
+        </PickerPopover>
+      )}
+    </PickerRoot>
+  );
+}
+
+/**
+ * 한글 등 IME 조합 중의 Enter는 글자 확정용이다. 이때 적용하면 팝오버가 닫히며 조합 중이던 마지막 글자가
+ * 에디터에 한 번 더 들어가므로, 조합이 끝난 뒤의 Enter만 적용으로 처리한다.
+ */
+const isPlainEnter = (event: React.KeyboardEvent) =>
+  event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229;
+
+/** 주소에 스킴이 없으면 https://를 붙여 http(s) URL로 정규화한다. 올바르지 않으면 null. */
+function normalizeLinkUrl(raw: string) {
+  const value = raw.trim();
+  if (!value) return null;
+  const url = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : `https://${value}`;
+  return isHttpUrl(url) ? url : null;
+}
+
+/**
+ * 링크 버튼 + 팝오버. 선택한 글자에 링크를 걸거나(선택이 없으면 표시 글자와 함께 삽입),
+ * 커서가 링크 안이면 주소를 고치거나 해제한다. 입력창이 포커스를 가져가므로 기억해 둔 선택 영역을 복원해 적용한다.
+ */
+function LinkTool({
+  savedRange,
+  withEditorSelection,
+}: {
+  savedRange: React.RefObject<Range | null>;
+  withEditorSelection: (apply: () => void) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const [existing, setExisting] = useState<HTMLAnchorElement | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    urlRef.current?.focus();
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const toggle = () => {
+    if (open) return setOpen(false);
+    const range = savedRange.current;
+    const node = range?.commonAncestorContainer;
+    const anchor = (node instanceof Element ? node : node?.parentElement)?.closest('a') ?? null;
+    setExisting(anchor);
+    setHasSelection(Boolean(range && !range.collapsed));
+    setUrl(anchor?.getAttribute('href') ?? '');
+    setText('');
+    setError('');
+    setOpen(true);
+  };
+
+  const apply = () => {
+    const normalized = normalizeLinkUrl(url);
+    if (!normalized) return setError('http(s)://로 시작하는 올바른 주소를 입력해 주세요.');
+    if (existing) existing.setAttribute('href', normalized);
+    else
+      withEditorSelection(() => {
+        if (hasSelection) document.execCommand('createLink', false, normalized);
+        else
+          document.execCommand(
+            'insertHTML',
+            false,
+            `<a href="${escapeHtml(normalized).replace(/"/g, '&quot;')}">${escapeHtml(text.trim() || normalized)}</a>`,
+          );
+      });
+    setOpen(false);
+  };
+
+  const remove = () => {
+    withEditorSelection(() => {
+      if (existing) {
+        const range = document.createRange();
+        range.selectNodeContents(existing);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('unlink');
+    });
+    setOpen(false);
+  };
+
+  return (
+    <LinkRoot ref={rootRef}>
+      <Tip label="링크">
+        <ToolButton
+          type="button"
+          aria-label="링크"
+          aria-expanded={open}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={toggle}
+        >
+          <ToolIcon src={`${ICON}/figma-link.svg`} alt="" />
+        </ToolButton>
+      </Tip>
+      {open && (
+        <LinkPopover
+          role="dialog"
+          aria-label="링크 편집"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setOpen(false);
+          }}
+        >
+          <LinkField>
+            <LinkLabel htmlFor="link-url">링크 주소</LinkLabel>
+            <LinkInputBox
+              id="link-url"
+              ref={urlRef}
+              value={url}
+              placeholder="https://"
+              aria-invalid={Boolean(error)}
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setError('');
+              }}
+              onKeyDown={(event) => {
+                if (isPlainEnter(event)) {
+                  event.preventDefault();
+                  apply();
+                }
+              }}
+            />
+          </LinkField>
+          {!existing && !hasSelection && (
+            <LinkField>
+              <LinkLabel htmlFor="link-text">표시할 글자 (선택)</LinkLabel>
+              <LinkInputBox
+                id="link-text"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (isPlainEnter(event)) {
+                    event.preventDefault();
+                    apply();
+                  }
+                }}
+              />
+            </LinkField>
+          )}
+          {error && <LinkError role="alert">{error}</LinkError>}
+          <LinkActions>
+            {existing && (
+              <LinkGhost type="button" onClick={remove}>
+                링크 해제
+              </LinkGhost>
+            )}
+            <LinkGhost type="button" onClick={() => setOpen(false)}>
+              취소
+            </LinkGhost>
+            <LinkApply type="button" onClick={apply}>
+              {existing ? '수정' : '적용'}
+            </LinkApply>
+          </LinkActions>
+        </LinkPopover>
+      )}
+    </LinkRoot>
   );
 }
 
@@ -279,14 +791,26 @@ function PostingForm({
   const router = useRouter();
   const editorRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initial.title);
-  const [capacity, setCapacity] = useState(initial.capacity);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
+  const [eventStartDate, setEventStartDate] = useState(initial.eventStartDate);
+  const [eventEndDate, setEventEndDate] = useState(initial.eventEndDate);
+  const [host, setHost] = useState(initial.host);
+  const [supervisor, setSupervisor] = useState(initial.supervisor);
+  const [sponsor, setSponsor] = useState(initial.sponsor);
+  const [supporter, setSupporter] = useState(initial.supporter);
+  const [targetOther, setTargetOther] = useState(initial.targetOther);
+  const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
+  const [preview, setPreview] = useState<PostingPreview | null>(null);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [textColor, setTextColor] = useState('#000000');
+  const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0]!);
   const [category, setCategory] = useState(initial.category);
   const [targets, setTargets] = useState(initial.targets);
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
   const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
-  const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
+  const [poster, setPoster] = useState<{ fileId: string | null; previewUrl: string } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -342,7 +866,8 @@ function PostingForm({
     document.addEventListener('selectionchange', remember);
     return () => document.removeEventListener('selectionchange', remember);
   }, []);
-  const applyTextSize = (size: TextSize) => {
+  // 드롭다운·색상 선택이 포커스를 가져가 선택 영역이 풀리므로, 기억해 둔 영역을 되살린 뒤 서식을 적용한다.
+  const withEditorSelection = (apply: () => void) => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -351,30 +876,48 @@ function PostingForm({
       selection?.removeAllRanges();
       selection?.addRange(savedRange.current);
     }
-    if (size === 'small') {
-      const selected = window.getSelection()?.toString() ?? '';
-      if (selected)
-        document.execCommand('insertHTML', false, `<small>${escapeHtml(selected)}</small>`);
-      return;
-    }
-    document.execCommand('formatBlock', false, size);
+    apply();
   };
+  const applyStyled = (command: string, value?: string) => {
+    // style 속성으로 결과를 만들어야 하는 명령만 잠깐 켠다(굵게 등은 b/i/u 태그를 유지).
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand(command, false, value);
+    document.execCommand('styleWithCSS', false, 'false');
+  };
+  const applyParagraphStyle = (style: ParagraphStyle) =>
+    withEditorSelection(() => void document.execCommand('formatBlock', false, style));
+  const applyFontFamily = (family: string) =>
+    withEditorSelection(() => {
+      if (family) applyStyled('fontName', family);
+      else document.execCommand('removeFormat');
+    });
+  const applyColor = (command: 'foreColor' | 'hiliteColor', color: string) =>
+    withEditorSelection(() => applyStyled(command, color));
+  // execCommand는 1~7단계 크기만 지원하므로, 최대 단계(7)로 감싼 뒤 고른 px 값의 span으로 바꾼다.
+  const applyFontSize = (px: number) =>
+    withEditorSelection(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      document.execCommand('fontSize', false, '7');
+      editor.querySelectorAll('font[size="7"]').forEach((node) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${px}px`;
+        span.append(...node.childNodes);
+        node.replaceWith(span);
+      });
+    });
   const runCommand = (command: EditorCommand) => {
-    editorRef.current?.focus();
+    withEditorSelection(() => {});
     if (command === 'image') return imageInputRef.current?.click();
-    if (command === 'link') {
-      const url = window.prompt('링크 주소(https://…)를 입력해 주세요.')?.trim();
-      if (!url) return;
-      if (!isHttpUrl(url)) return setError('링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
-      return void document.execCommand('createLink', false, url);
-    }
     if (command === 'code') {
       const selected = window.getSelection()?.toString() ?? '';
       if (!selected) return;
       return void document.execCommand('insertHTML', false, `<code>${escapeHtml(selected)}</code>`);
     }
     if (command === 'quote') return void document.execCommand('formatBlock', false, 'blockquote');
-    document.execCommand(EDITOR_COMMANDS[command]);
+    const native = EDITOR_COMMANDS[command];
+    if (STYLE_COMMANDS.has(native)) return applyStyled(native);
+    document.execCommand(native);
   };
 
   // 파일 선택 창이 열리면 에디터 선택 영역이 사라지므로 미리 기억했다가 이미지를 그 자리에 넣는다.
@@ -416,34 +959,116 @@ function PostingForm({
     }
   };
 
+  // 포스터는 압축·리사이즈·변환 없이 원본 파일 그대로 올린다(서버가 purpose=poster일 때만 원본을 보존).
   const uploadPoster = async (file: File) => {
     if (uploadingPoster) return;
+    if (!POSTER_TYPES.includes(file.type))
+      return setError('포스터는 JPG, PNG, WebP 이미지만 올릴 수 있습니다.');
+    if (file.size > MAX_ATTACHMENT_BYTES) return setError('포스터는 10MB 이하만 올릴 수 있습니다.');
+    setError('');
     setUploadingPoster(true);
-    let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
+    const previewUrl = URL.createObjectURL(file);
+    // 업로드가 끝나기 전에도 선택 즉시 원본 프리뷰를 보여준다.
+    const previous = poster;
+    if (posterObjectUrl.current && posterObjectUrl.current !== previous?.previewUrl)
+      URL.revokeObjectURL(posterObjectUrl.current);
+    posterObjectUrl.current = previewUrl;
+    setPoster({ fileId: null, previewUrl });
     try {
-      image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
       const presigned = await adApi.files.requestUpload({
         bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
+        purpose: 'poster',
+        contentType: file.type,
+        fileName: file.name,
+        sizeBytes: file.size,
       });
       const response = await fetch(presigned.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
+        headers: { 'Content-Type': file.type },
+        body: file,
       });
       if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
       await adApi.files.finalizeUpload(presigned.fileId);
-      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
-      posterObjectUrl.current = image.previewUrl;
-      setPoster({ fileId: presigned.fileId, previewUrl: image.previewUrl });
+      if (previous && previous.previewUrl !== previewUrl) URL.revokeObjectURL(previous.previewUrl);
+      setPoster({ fileId: presigned.fileId, previewUrl });
     } catch {
-      if (image) URL.revokeObjectURL(image.previewUrl);
+      URL.revokeObjectURL(previewUrl);
+      posterObjectUrl.current = previous?.previewUrl ?? null;
+      setPoster(previous);
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setUploadingPoster(false);
     }
+  };
+
+  const uploadAttachments = async (selected: File[]) => {
+    if (uploadingAttachments || selected.length === 0) return;
+    if (attachments.length + selected.length > MAX_ATTACHMENTS)
+      return setError(`첨부파일은 최대 ${MAX_ATTACHMENTS}개까지 올릴 수 있습니다.`);
+    const rejected = selected.find((file) => !attachmentContentType(file));
+    if (rejected)
+      return setError(`${rejected.name}: 지원하지 않는 파일 형식입니다. (PDF, 문서, 압축, 이미지)`);
+    const oversized = selected.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (oversized) return setError(`${oversized.name}: 파일은 10MB 이하만 올릴 수 있습니다.`);
+    setError('');
+    setUploadingAttachments(true);
+    try {
+      const uploaded: Attachment[] = [];
+      for (const file of selected) {
+        const contentType = attachmentContentType(file)!;
+        const presigned = await adApi.files.requestUpload({
+          bucket: 'private',
+          contentType,
+          fileName: file.name,
+          sizeBytes: file.size,
+        });
+        const response = await fetch(presigned.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body: file,
+        });
+        if (!response.ok) throw new globalThis.Error('파일 업로드에 실패했습니다.');
+        await adApi.files.finalizeUpload(presigned.fileId);
+        uploaded.push({ fileId: presigned.fileId, name: file.name, size: file.size });
+      }
+      setAttachments((current) => [...current, ...uploaded]);
+    } catch {
+      setError('첨부파일 업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setUploadingAttachments(false);
+    }
+  };
+
+  // 현재 입력값으로 상세 페이지 미리보기를 만든다(저장 없음). 본문은 게시 때와 같이 정화한다.
+  const openPreview = () => {
+    const editor = editorRef.current;
+    const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
+    setPreview({
+      posterUrl: poster?.previewUrl ?? existingPosterUrl,
+      title: title.trim(),
+      host: host.trim(),
+      supervisor: supervisor.trim(),
+      sponsor: sponsor.trim(),
+      supporter: supporter.trim(),
+      eligibility: targets
+        .map((target) => (target === '기타' && targetOther.trim() ? targetOther.trim() : target))
+        .join(', '),
+      category,
+      topics,
+      startDate,
+      endDate,
+      eventStartDate,
+      eventEndDate,
+      summary: summary.trim(),
+      hashtags: hashtags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      descriptionHtml: hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '',
+      attachments,
+      inquiryContact: inquiryContact.trim(),
+      externalUrl: recruit === 'external' ? recruitUrl.trim() || null : null,
+    });
   };
 
   async function submit() {
@@ -451,18 +1076,20 @@ function PostingForm({
     const editor = editorRef.current;
     const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
     const description = hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '';
-    const parsedCapacity = Number(capacity);
     const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
     if (!title.trim() || !description || !startDate || !endDate)
       return setError('제목, 상세정보, 접수 기간을 입력해 주세요.');
-    if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
-      return setError('모집 인원은 1명 이상으로 입력해 주세요.');
+    if (!host.trim()) return setError('주최를 입력해 주세요.');
+    if (Boolean(eventStartDate) !== Boolean(eventEndDate))
+      return setError('행사 기간은 시작일과 종료일을 함께 입력해 주세요.');
+    if (eventStartDate && eventEndDate < eventStartDate)
+      return setError('행사 종료일은 시작일 이후여야 합니다.');
     if (
       parsedPrizeAmount !== null &&
       (!Number.isInteger(parsedPrizeAmount) || parsedPrizeAmount < 0)
     )
       return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
-    if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
+    if (endDate < startDate) return setError('접수 종료 시각은 시작 시각 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
     const normalizedHashtags = [
       ...new Set(
@@ -490,14 +1117,21 @@ function PostingForm({
         title: title.trim(),
         description,
         price: initial.price,
-        capacity: parsedCapacity,
-        startDate: toLocalBoundary(startDate, false),
-        endDate: toLocalBoundary(endDate, true),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        eventStartDate: eventStartDate ? toLocalBoundary(eventStartDate, false) : null,
+        eventEndDate: eventEndDate ? toLocalBoundary(eventEndDate, true) : null,
+        host: host.trim(),
+        supervisor: supervisor.trim() || null,
+        sponsor: sponsor.trim() || null,
+        supporter: supporter.trim() || null,
+        targetOther: targets.includes('기타') ? targetOther.trim() || null : null,
+        attachments,
         category: category || null,
         targets,
         organizerType: organizerType || null,
         prizeAmount: parsedPrizeAmount,
-        ...(poster ? { posterFileId: poster.fileId } : {}),
+        ...(poster?.fileId ? { posterFileId: poster.fileId } : {}),
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
@@ -530,10 +1164,13 @@ function PostingForm({
           }}
         />
         {poster?.previewUrl || existingPosterUrl ? (
-          <PosterPreview
-            src={poster?.previewUrl ?? existingPosterUrl ?? ''}
-            alt="포스터 미리보기"
-          />
+          <>
+            <PosterPreview
+              src={poster?.previewUrl ?? existingPosterUrl ?? ''}
+              alt="포스터 미리보기"
+            />
+            <UploadText>원본 비율 그대로 표시됩니다 · 클릭해서 다른 이미지로 바꾸기</UploadText>
+          </>
         ) : (
           <>
             <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
@@ -552,31 +1189,37 @@ function PostingForm({
             maxLength={200}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <Roles aria-label="접수 기간과 모집 인원">
+          <Roles aria-label="접수 기간과 행사 기간">
             <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
-              <RoleInput
-                type="date"
+              <RoleLabel>접수 기간</RoleLabel>
+              <DatePickerField
+                withTime
+                defaultTime="00:00"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                aria-label="접수 시작일"
+                onChange={setStartDate}
+                aria-label="접수 시작 일시"
               />
-              <RoleInput
-                type="date"
+              <RangeTilde>~</RangeTilde>
+              <DatePickerField
+                withTime
+                defaultTime="23:59"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                aria-label="접수 종료일"
+                onChange={setEndDate}
+                aria-label="접수 종료 일시"
               />
             </RoleRow>
             <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-people.svg`} alt="" />
-              <RoleInput
-                type="number"
-                min={1}
-                step={1}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                aria-label="모집 인원"
+              <RoleLabel>행사 기간</RoleLabel>
+              <DatePickerField
+                value={eventStartDate}
+                onChange={setEventStartDate}
+                aria-label="행사 시작일"
+              />
+              <RangeTilde>~</RangeTilde>
+              <DatePickerField
+                value={eventEndDate}
+                onChange={setEventEndDate}
+                aria-label="행사 종료일"
               />
             </RoleRow>
           </Roles>
@@ -598,28 +1241,55 @@ function PostingForm({
               aria-label="해시태그"
               value={hashtags}
               onChange={(e) => setHashtags(e.target.value)}
-              placeholder="#태그, #태그"
             />
           </FieldBlock>
           <FieldBlock>
             <FieldLabel>상세정보를 적어주세요.</FieldLabel>
             <EditorBox>
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
-                <ToolGroup>
-                  <TextSizeSelect
-                    aria-label="텍스트 크기"
-                    value=""
-                    onChange={(event) => {
-                      if (event.target.value) applyTextSize(event.target.value as TextSize);
-                    }}
-                  >
-                    <option value="">텍스트 크기</option>
-                    {TEXT_SIZES.map(({ value, label }) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </TextSizeSelect>
+                <ToolGroup borderless>
+                  <Tip label="문단 스타일">
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={88}
+                        aria-label="문단 스타일"
+                        value=""
+                        placeholder="문단"
+                        options={PARAGRAPH_STYLES}
+                        onChange={(value) => applyParagraphStyle(value as ParagraphStyle)}
+                      />
+                    </ToolDrop>
+                  </Tip>
+                  <Tip label="글꼴">
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={104}
+                        aria-label="글꼴"
+                        value=""
+                        placeholder="글꼴"
+                        options={FONT_FAMILIES.map(({ label }) => ({ value: label, label }))}
+                        onChange={(value) => {
+                          const family = FONT_FAMILIES.find((f) => f.label === value);
+                          if (family) applyFontFamily(family.value);
+                        }}
+                      />
+                    </ToolDrop>
+                  </Tip>
+                  <Tip label="글자 크기">
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={88}
+                        aria-label="글자 크기"
+                        value=""
+                        placeholder="크기"
+                        options={FONT_SIZES.map((px) => ({ value: String(px), label: `${px}px` }))}
+                        onChange={(value) => applyFontSize(Number(value))}
+                      />
+                    </ToolDrop>
+                  </Tip>
                 </ToolGroup>
                 <ToolGroup>
                   <ToolBtn
@@ -671,6 +1341,66 @@ function PostingForm({
                 <ToolGroup>
                   <ToolBtn
                     onRun={runCommand}
+                    label="위 첨자"
+                    glyph={<ScriptGlyph>x²</ScriptGlyph>}
+                    command="superscript"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="아래 첨자"
+                    glyph={<ScriptGlyph>x₂</ScriptGlyph>}
+                    command="subscript"
+                  />
+                  <ColorPalette
+                    label="글자 색"
+                    mark="A"
+                    colors={TEXT_COLORS}
+                    current={textColor}
+                    onPick={(color) => {
+                      setTextColor(color);
+                      applyColor('foreColor', color);
+                    }}
+                  />
+                  <ColorPalette
+                    label="배경(형광펜) 색"
+                    mark="가"
+                    colors={HIGHLIGHT_COLORS}
+                    current={highlightColor}
+                    onPick={(color) => {
+                      setHighlightColor(color);
+                      applyColor('hiliteColor', color);
+                    }}
+                  />
+                </ToolGroup>
+                <ToolGroup>
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="왼쪽 정렬"
+                    glyph={<AlignGlyph kind="left" />}
+                    command="alignLeft"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="가운데 정렬"
+                    glyph={<AlignGlyph kind="center" />}
+                    command="alignCenter"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="오른쪽 정렬"
+                    glyph={<AlignGlyph kind="right" />}
+                    command="alignRight"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="양쪽 정렬"
+                    glyph={<AlignGlyph kind="justify" />}
+                    command="alignJustify"
+                  />
+                </ToolGroup>
+                <ToolGroup>
+                  <ToolBtn
+                    onRun={runCommand}
                     label="글머리 기호 목록"
                     icon="figma-bullet-list.svg"
                     command="bullet"
@@ -683,7 +1413,7 @@ function PostingForm({
                   />
                 </ToolGroup>
                 <ToolGroup>
-                  <ToolBtn onRun={runCommand} label="링크" icon="figma-link.svg" command="link" />
+                  <LinkTool savedRange={savedRange} withEditorSelection={withEditorSelection} />
                   <ToolBtn
                     onRun={runCommand}
                     label="이미지"
@@ -783,17 +1513,67 @@ function PostingForm({
                 ))}
               </ChipRow>
             </Chips>
+            {targets.includes('기타') && (
+              <LineInput
+                aria-label="대상 기타 내용"
+                value={targetOther}
+                maxLength={100}
+                onChange={(e) => setTargetOther(e.target.value)}
+              />
+            )}
           </FieldBlock>
 
           <TwoCol>
+            <FieldBlock>
+              <FieldLabel>주최 (필수)</FieldLabel>
+              <LineInput
+                aria-label="주최"
+                value={host}
+                maxLength={200}
+                required
+                onChange={(e) => setHost(e.target.value)}
+              />
+            </FieldBlock>
+            <FieldBlock>
+              <FieldLabel>주관</FieldLabel>
+              <LineInput
+                aria-label="주관"
+                value={supervisor}
+                maxLength={200}
+                onChange={(e) => setSupervisor(e.target.value)}
+              />
+            </FieldBlock>
+          </TwoCol>
+          <TwoCol>
+            <FieldBlock>
+              <FieldLabel>협찬</FieldLabel>
+              <LineInput
+                aria-label="협찬"
+                value={sponsor}
+                maxLength={200}
+                onChange={(e) => setSponsor(e.target.value)}
+              />
+            </FieldBlock>
+            <FieldBlock>
+              <FieldLabel>후원</FieldLabel>
+              <LineInput
+                aria-label="후원"
+                value={supporter}
+                maxLength={200}
+                onChange={(e) => setSupporter(e.target.value)}
+              />
+            </FieldBlock>
+          </TwoCol>
+
+          <TwoCol>
             <CategoryBlock>
-              <FieldLabel>주최기관</FieldLabel>
+              <FieldLabel>주최기관 유형</FieldLabel>
               <Dropdown
                 options={organizerTypeOptions}
                 value={organizerType || undefined}
                 placeholder="선택 안 함"
                 size="L"
-                aria-label="주최기관"
+                aria-label="주최기관 유형"
                 onChange={(value) => setOrganizerType(value as (typeof organizerTypes)[number])}
               />
             </CategoryBlock>
@@ -865,6 +1645,53 @@ function PostingForm({
           )}
 
           <FieldBlock>
+            <FieldLabel>첨부파일</FieldLabel>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              multiple
+              accept={ATTACHMENT_ACCEPT}
+              style={{ display: 'none' }}
+              aria-label="첨부파일 선택"
+              onChange={(event) => {
+                const selected = Array.from(event.target.files ?? []);
+                event.target.value = '';
+                void uploadAttachments(selected);
+              }}
+            />
+            <AttachButton
+              type="button"
+              disabled={uploadingAttachments || attachments.length >= MAX_ATTACHMENTS}
+              onClick={() => attachmentInputRef.current?.click()}
+            >
+              {uploadingAttachments ? '업로드 중…' : '파일 첨부'}
+            </AttachButton>
+            <AttachHint>
+              PDF·한글·워드·엑셀·PPT·압축·이미지, 파일당 10MB 이하, 최대 {MAX_ATTACHMENTS}개
+            </AttachHint>
+            {attachments.length > 0 && (
+              <AttachList aria-label="첨부파일 목록">
+                {attachments.map((file) => (
+                  <AttachItem key={file.fileId}>
+                    <span>
+                      {file.name} <small>({formatBytes(file.size)})</small>
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`${file.name} 삭제`}
+                      onClick={() =>
+                        setAttachments((list) => list.filter((x) => x.fileId !== file.fileId))
+                      }
+                    >
+                      삭제
+                    </button>
+                  </AttachItem>
+                ))}
+              </AttachList>
+            )}
+          </FieldBlock>
+
+          <FieldBlock>
             <FieldLabel>문의연락처</FieldLabel>
             <ContactInput
               aria-label="문의연락처"
@@ -907,24 +1734,145 @@ function PostingForm({
         <CancelButton type="button" onClick={() => router.back()}>
           취소하기
         </CancelButton>
+        <CancelButton type="button" onClick={openPreview}>
+          미리보기
+        </CancelButton>
         <PublishButton
           type="button"
-          disabled={disabled || submitting || uploadingPoster || uploadingImage}
+          disabled={
+            disabled || submitting || uploadingPoster || uploadingImage || uploadingAttachments
+          }
           onClick={() => void submit()}
         >
           {submitting ? submittingLabel : submitLabel}
         </PublishButton>
       </Actions>
+      {preview && <PostingPreviewModal data={preview} onClose={() => setPreview(null)} />}
     </FormWrap>
   );
 }
 
+const PickerRoot = styled.div({ position: 'relative', flex: 1, minWidth: 0 });
+const PickerTrigger = styled('button', { shouldForwardProp: (prop) => prop !== 'hasValue' })<{
+  hasValue: boolean;
+}>(({ hasValue }) => ({
+  width: '100%',
+  height: 32,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  background: c.white,
+  color: hasValue ? c.gray900 : c.gray500,
+  textAlign: 'left',
+  cursor: 'pointer',
+  '&:hover, &[aria-expanded=true]': { borderColor: c.primary },
+}));
+const PickerPopover = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 'max-content',
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const PickerDayPicker = styled(DayPicker)({
+  '--rdp-accent-color': c.primary,
+  '--rdp-accent-background-color': c.lightBlue,
+  '--rdp-today-color': c.primary,
+  '--rdp-day-width': '34px',
+  '--rdp-day-height': '34px',
+  '--rdp-day_button-width': '32px',
+  '--rdp-day_button-height': '32px',
+  '--rdp-day_button-border': 'none',
+  '--rdp-selected-border': 'none',
+  '--rdp-nav_button-width': '24px',
+  '--rdp-nav_button-height': '24px',
+  '--rdp-nav-height': '28px',
+  '--rdp-weekday-opacity': 1,
+  fontFamily: textStyle.metaText.fontFamily,
+  '.rdp-month_caption': { ...textStyle.subtitle, color: c.gray900, justifyContent: 'center' },
+  '.rdp-weekday': { ...textStyle.label, color: c.gray500 },
+  '.rdp-day_button': { ...textStyle.metaText, color: c.gray900 },
+  // 단일 선택은 기본 스타일에 배경이 없어, 테두리를 없앤 만큼 파란 원 배경을 직접 입힌다.
+  '.rdp-selected': { fontSize: 'inherit', fontWeight: 600 },
+  '.rdp-selected .rdp-day_button': { background: c.primary, color: c.white },
+  '.rdp-today:not(.rdp-selected):not(.rdp-outside) .rdp-day_button': { fontWeight: 700 },
+  '.rdp-chevron': { fill: c.gray700 },
+});
+const PickerTime = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginTop: 10,
+  paddingTop: 10,
+  borderTop: `0.5px solid ${c.gray200}`,
+});
+const PickerDone = styled.button({
+  marginLeft: 'auto',
+  height: 36,
+  padding: '0 14px',
+  border: 0,
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
+
+const LinkRoot = styled.div({ position: 'relative', display: 'flex' });
+const LinkPopover = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 300,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const LinkField = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 });
+const LinkLabel = styled.label({ fontSize: 12, color: c.gray700 });
+const LinkInputBox = styled.input({
+  height: 36,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 12px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+  '&[aria-invalid=true]': { borderColor: c.red },
+});
+const LinkError = styled.p({ margin: 0, fontSize: 12, color: c.red });
+const LinkActions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 6 });
+const LinkGhost = styled.button({
+  height: 32,
+  padding: '0 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  '&:hover': { background: c.gray50 },
+});
+const LinkApply = styled.button({
+  height: 32,
+  padding: '0 14px',
+  border: 0,
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
 const Message = styled.p({ color: c.gray700, margin: 0 });
+// 포스터는 잘라내지 않고 원본 비율 그대로 보여준다.
 const PosterPreview = styled.img({
   width: '100%',
-  height: '100%',
-  objectFit: 'cover',
+  maxHeight: 640,
+  objectFit: 'contain',
   borderRadius: 14,
 });
 
@@ -949,7 +1897,7 @@ const Uploader = styled.label({
   justifyContent: 'center',
   alignItems: 'center',
   gap: 4,
-  height: 282,
+  minHeight: 282,
   padding: 8,
   background: '#f8f8f8',
   border: `2px dashed ${c.lightBlue}`,
@@ -973,35 +1921,16 @@ const Roles = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  width: 592,
+  width: 760,
   maxWidth: '100%',
 });
+const RoleLabel = styled.span({
+  ...textStyle.mInfoText,
+  color: c.gray700,
+  width: 64,
+  flexShrink: 0,
+});
 const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
-const RoleInput = styled.input({
-  flex: 1,
-  minWidth: 0,
-  height: 32,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  background: c.white,
-  color: c.gray900,
-  fontFamily: 'inherit',
-  colorScheme: 'light',
-  '&::-webkit-calendar-picker-indicator': { cursor: 'pointer' },
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const AddRoleButton = styled.button({
-  width: 24,
-  height: 24,
-  padding: 0,
-  border: 0,
-  background: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-});
 
 /* ---------- 입력 필드 ---------- */
 const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
@@ -1030,7 +1959,7 @@ const EditorBox = styled.div({
   border: '1px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
-  overflow: 'hidden',
+  // 툴팁이 박스 밖으로 나가도 잘리지 않게 overflow를 숨기지 않는다.
 });
 const MenuBar = styled.div({
   display: 'flex',
@@ -1040,14 +1969,16 @@ const MenuBar = styled.div({
   padding: 8,
   flexWrap: 'wrap',
 });
-const ToolGroup = styled.div({
+const ToolGroup = styled('div', { shouldForwardProp: (prop) => prop !== 'borderless' })<{
+  borderless?: boolean;
+}>(({ borderless }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 2,
+  gap: borderless ? 6 : 2,
   padding: 2,
-  border: '1px solid #e9ecef',
+  border: borderless ? 0 : '1px solid #e9ecef',
   borderRadius: 4,
-});
+}));
 const ToolButton = styled.button({
   width: 28,
   height: 28,
@@ -1059,14 +1990,110 @@ const ToolButton = styled.button({
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
 });
-const TextSizeSelect = styled.select({
+// 드롭다운 클릭이 에디터의 선택 영역을 풀지 않게 포커스 이동을 막는다.
+const ToolDrop = styled.div({ display: 'flex' });
+const RangeTilde = styled.span({ color: c.gray500, flexShrink: 0 });
+const TipWrap = styled.span({
+  position: 'relative',
+  display: 'inline-flex',
+  '&::after': {
+    content: 'attr(data-tip)',
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '4px 8px',
+    borderRadius: 4,
+    background: c.gray900,
+    color: c.white,
+    fontSize: 11,
+    whiteSpace: 'nowrap',
+    opacity: 0,
+    pointerEvents: 'none',
+    transition: 'opacity 0.12s',
+    zIndex: 20,
+  },
+  '&:hover::after': { opacity: 1 },
+});
+const ScriptGlyph = styled.span({ fontSize: 13, fontWeight: 600, color: c.gray900 });
+const PaletteRoot = styled.div({ position: 'relative', display: 'flex' });
+const PaletteTrigger = styled.button({
+  width: 28,
   height: 28,
   border: 0,
+  borderRadius: 4,
   background: 'transparent',
-  color: c.gray900,
-  fontSize: 13,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  '&:hover, &[aria-expanded=true]': { background: c.gray100 },
+});
+const PaletteGrid = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(5, 24px)',
+  gap: 6,
+  padding: 10,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const Swatch = styled('button', {
+  shouldForwardProp: (prop) => prop !== 'selected' && prop !== 'none',
+})<{ selected: boolean; none: boolean }>(({ selected, none }) => ({
+  width: 24,
+  height: 24,
+  borderRadius: '50%',
+  border: selected ? `2px solid ${c.primary}` : `1px solid ${c.gray300}`,
+  // '없음'은 대각선으로 지운 칸으로 표시한다.
+  backgroundImage: none
+    ? `linear-gradient(135deg, transparent 45%, ${c.red} 45%, ${c.red} 55%, transparent 55%)`
+    : undefined,
+  backgroundColor: none ? c.white : undefined,
   cursor: 'pointer',
-  '&:focus': { outline: 'none' },
+}));
+const ColorMark = styled.span({
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: '16px',
+  padding: '0 3px',
+  color: c.gray900,
+  borderBottom: '3px solid transparent',
+});
+const AttachButton = styled.button({
+  alignSelf: 'flex-start',
+  height: 36,
+  padding: '0 16px',
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  '&:hover': { borderColor: c.primary },
+  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+});
+const AttachHint = styled.span({ fontSize: 12, color: c.gray500 });
+const AttachList = styled.ul({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+});
+const AttachItem = styled.li({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  padding: '8px 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  fontSize: 14,
+  '& button': { border: 0, background: 'none', color: c.red, cursor: 'pointer' },
 });
 const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
 const ContentsArea = styled.div({
@@ -1181,6 +2208,14 @@ const PublishButton = styled.button({
 
 function toDateInput(value: string | undefined) {
   return value ? toDateKey(new Date(value)) : '';
+}
+
+/** datetime-local 입력용 로컬 시각(YYYY-MM-DDTHH:mm). */
+function toDateTimeInput(value: string | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${toDateKey(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function escapeHtml(value: string) {

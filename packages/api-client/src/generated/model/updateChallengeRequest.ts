@@ -17,6 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { ApplicationFormQuestion } from './applicationFormQuestion';
+import type { ChallengeAttachment } from './challengeAttachment';
 import type { UpdateChallengeRequestOrganizerType } from './updateChallengeRequestOrganizerType';
 import type { UpdateChallengeRequestTargetsItem } from './updateChallengeRequestTargetsItem';
 import type { UpdateChallengeRequestVisibility } from './updateChallengeRequestVisibility';
@@ -54,10 +55,42 @@ export interface UpdateChallengeRequest {
   description?: string;
   /** @minimum 0 */
   price?: number;
-  /** @minimum 1 */
-  capacity?: number;
   startDate?: string;
   endDate?: string;
+  /** @nullable */
+  eventStartDate?: string | null;
+  /** @nullable */
+  eventEndDate?: string | null;
+  /**
+     * @minLength 1
+     * @maxLength 200
+     */
+  host?: string;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  supervisor?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  sponsor?: string | null;
+  /**
+     * @maxLength 200
+     * @nullable
+     */
+  supporter?: string | null;
+  /**
+     * @maxLength 100
+     * @nullable
+     */
+  targetOther?: string | null;
+  /**
+     * 첨부파일 목록 전체 교체. 빈 배열이면 모두 제거한다.
+     * @maxItems 10
+     */
+  attachments?: ChallengeAttachment[];
   /**
      * null이면 카테고리를 비운다
      * @maxLength 100
