@@ -155,21 +155,19 @@ export function BizSignupFlow() {
               <CheckList aria-label="약관 동의">
                 {agreements.map(({ value, label, href }) => (
                   <CheckRow key={value}>
-                    <HiddenInput
-                      type="checkbox"
-                      checked={agreed.includes(value)}
-                      onChange={() => toggle(value)}
-                    />
-                    <CheckBox aria-hidden>
-                      <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
-                    </CheckBox>
-                    {href ? (
-                      <ConsentLink href={hrefOf(href)} onClick={(e) => e.stopPropagation()}>
-                        {label}
-                      </ConsentLink>
-                    ) : (
-                      label
-                    )}
+                    <CheckLabel>
+                      <HiddenInput
+                        type="checkbox"
+                        aria-label={href ? label : undefined}
+                        checked={agreed.includes(value)}
+                        onChange={() => toggle(value)}
+                      />
+                      <CheckBox aria-hidden>
+                        <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
+                      </CheckBox>
+                      {!href && label}
+                    </CheckLabel>
+                    {href && <ConsentLink href={hrefOf(href)}>{label}</ConsentLink>}
                   </CheckRow>
                 ))}
               </CheckList>
@@ -369,14 +367,19 @@ const CheckIcon = styled.img({
   transform: 'scale(0.4)',
   transition: 'opacity 140ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1)',
 });
-const CheckRow = styled.label({
-  position: 'relative',
+const CheckRow = styled.div({
   display: 'flex',
   alignItems: 'center',
   gap: 8,
   width: 'fit-content',
   ...textStyle.mBodyDetail,
   color: c.gray700,
+});
+const CheckLabel = styled.label({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
   cursor: 'pointer',
   'input:checked + span': { background: c.primary, borderColor: c.primary },
   'input:checked + span img': { opacity: 1, transform: 'scale(1)' },

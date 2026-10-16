@@ -77,6 +77,43 @@ describe('BizSignupFlow', () => {
     expect(screen.getByRole('link', { name: '로그인' }).getAttribute('href')).toBe('/biz/login');
   });
 
+  it('renders the consent items as links to the BIZ legal pages', () => {
+    renderSignup();
+
+    expect(screen.getByRole('link', { name: '이용약관 동의' }).getAttribute('href')).toBe(
+      '/biz/terms',
+    );
+    expect(screen.getByRole('link', { name: '개인정보처리방침 동의' }).getAttribute('href')).toBe(
+      '/biz/privacy',
+    );
+  });
+
+  it('does not toggle the checkbox when a consent link is clicked', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    await user.click(screen.getByRole('link', { name: '이용약관 동의' }));
+
+    const box = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const next = screen.getByRole('button', { name: '다음' }) as HTMLButtonElement;
+    expect(box.checked).toBe(false);
+    expect(next.disabled).toBe(true);
+  });
+
+  it('keeps the next button disabled until all three agreements are checked', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
+    await user.click(agreementBoxes[0]);
+    await user.click(agreementBoxes[1]);
+    expect((screen.getByRole('button', { name: '다음' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(agreementBoxes[2]);
+    expect((screen.getByRole('button', { name: '다음' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
   it('applies the BIZ landing reveal animation when entering the next step', async () => {
     const user = userEvent.setup();
     const { container } = renderSignup();
@@ -148,6 +185,9 @@ describe('BizSignupFlow', () => {
       }),
     );
     expect(mocks.submitVerification).not.toHaveBeenCalled();
+    expect(mocks.register).toHaveBeenCalledWith(
+      expect.objectContaining({ agreements: ['terms', 'privacy', 'business'] }),
+    );
     expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
     expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
