@@ -244,6 +244,28 @@ describe('BizPostingFormPage', () => {
     });
   });
 
+  it('미리보기 버튼은 저장 없이 입력한 내용을 상세 화면 형태로 보여준다', async () => {
+    renderForm();
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+    fireEvent.change(screen.getByLabelText('설명문구'), { target: { value: '한 줄 소개' } });
+    fireEvent.click(within(screen.getByRole('group', { name: '대상' })).getByText('기타'));
+    fireEvent.change(screen.getByLabelText('대상 기타 내용'), { target: { value: '서울 거주' } });
+
+    fireEvent.click(screen.getByText('미리보기'));
+
+    const dialog = screen.getByRole('dialog', { name: '공고 미리보기' });
+    expect(within(dialog).getByText('해커톤')).toBeTruthy();
+    expect(within(dialog).getByText(/주최 세모챌/)).toBeTruthy();
+    expect(within(dialog).getByText('서울 거주')).toBeTruthy();
+    expect(within(dialog).getByText('한 줄 소개')).toBeTruthy();
+    expect(within(dialog).getByText(/\.01 09:00 ~ .*\.20 23:59/)).toBeTruthy();
+    expect(mocks.create).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: '공고 미리보기' })).toBeNull();
+  });
+
   it('해시태그·기타 입력란에는 예시 문구가 없다', () => {
     renderForm();
     expect(screen.getByLabelText('해시태그').getAttribute('placeholder')).toBeNull();

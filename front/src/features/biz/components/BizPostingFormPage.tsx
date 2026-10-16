@@ -18,6 +18,7 @@ import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
+import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
 import { richContentStyles } from '@/components/common/RichDescription';
 
 const ICON = '/assets/icons';
@@ -793,6 +794,7 @@ function PostingForm({
   const [supporter, setSupporter] = useState(initial.supporter);
   const [targetOther, setTargetOther] = useState(initial.targetOther);
   const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
+  const [preview, setPreview] = useState<PostingPreview | null>(null);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [textColor, setTextColor] = useState('#000000');
@@ -1028,6 +1030,38 @@ function PostingForm({
     } finally {
       setUploadingAttachments(false);
     }
+  };
+
+  // 현재 입력값으로 상세 페이지 미리보기를 만든다(저장 없음). 본문은 게시 때와 같이 정화한다.
+  const openPreview = () => {
+    const editor = editorRef.current;
+    const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
+    setPreview({
+      posterUrl: poster?.previewUrl ?? existingPosterUrl,
+      title: title.trim(),
+      host: host.trim(),
+      supervisor: supervisor.trim(),
+      sponsor: sponsor.trim(),
+      supporter: supporter.trim(),
+      eligibility: targets
+        .map((target) => (target === '기타' && targetOther.trim() ? targetOther.trim() : target))
+        .join(', '),
+      category,
+      topics,
+      startDate,
+      endDate,
+      eventStartDate,
+      eventEndDate,
+      summary: summary.trim(),
+      hashtags: hashtags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      descriptionHtml: hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '',
+      attachments,
+      inquiryContact: inquiryContact.trim(),
+      externalUrl: recruit === 'external' ? recruitUrl.trim() || null : null,
+    });
   };
 
   async function submit() {
@@ -1693,6 +1727,9 @@ function PostingForm({
         <CancelButton type="button" onClick={() => router.back()}>
           취소하기
         </CancelButton>
+        <CancelButton type="button" onClick={openPreview}>
+          미리보기
+        </CancelButton>
         <PublishButton
           type="button"
           disabled={
@@ -1703,6 +1740,7 @@ function PostingForm({
           {submitting ? submittingLabel : submitLabel}
         </PublishButton>
       </Actions>
+      {preview && <PostingPreviewModal data={preview} onClose={() => setPreview(null)} />}
     </FormWrap>
   );
 }
