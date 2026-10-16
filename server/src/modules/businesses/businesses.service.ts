@@ -14,6 +14,7 @@ import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { FilesService } from '../files/files.service.js';
 
 const LIST_MAX_LIMIT = 100;
 
@@ -22,6 +23,7 @@ export class BusinessesService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly adminAlerts: AdminAlertsService,
+    private readonly filesService: FilesService,
   ) {}
 
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
@@ -110,7 +112,16 @@ export class BusinessesService {
       .limit(pageSize + 1);
     const hasMore = rows.length > pageSize;
     const items = rows.slice(0, pageSize).map(({ challenge }) => challenge);
-    return { items, nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null };
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      items.map((item) => item.posterFileId),
+    );
+    return {
+      items: items.map((item) => ({
+        ...item,
+        posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
+      })),
+      nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null,
+    };
   }
 
   async update(id: string, dto: UpdateBusinessDto, ownerUserId: string) {
