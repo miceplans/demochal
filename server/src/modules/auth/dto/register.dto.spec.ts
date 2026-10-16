@@ -5,7 +5,7 @@ import { RegisterDto } from './register.dto.js';
 
 const baseInput = {
   email: 'biz@semochal.kr',
-  password: 'password123',
+  password: 'pw'.repeat(8),
   name: '기업 담당자',
 };
 
