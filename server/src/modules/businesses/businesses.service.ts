@@ -37,6 +37,8 @@ export class BusinessesService {
         .values({
           name: dto.name ?? null,
           registrationNumber: dto.registrationNumber ?? null,
+          phone: dto.phone ?? null,
+          email: dto.email ?? null,
           type: dto.type,
           ownerUserId,
         })

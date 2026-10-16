@@ -25,4 +25,14 @@ export interface RegisterBusinessRequest {
   name?: string;
   /** @pattern ^\d{10}$ */
   registrationNumber?: string;
+  /**
+     * 문의 번호
+     * @maxLength 30
+     */
+  phone?: string;
+  /**
+     * 문의 이메일
+     * @maxLength 255
+     */
+  email?: string;
 }
