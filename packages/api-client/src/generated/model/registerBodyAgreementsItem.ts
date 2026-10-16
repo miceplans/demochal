@@ -21,6 +21,7 @@ export type RegisterBodyAgreementsItem = typeof RegisterBodyAgreementsItem[keyof
 
 
 export const RegisterBodyAgreementsItem = {
+  terms: 'terms',
   privacy: 'privacy',
   business: 'business',
 } as const;

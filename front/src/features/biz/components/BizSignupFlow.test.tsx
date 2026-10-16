@@ -77,6 +77,43 @@ describe('BizSignupFlow', () => {
     expect(screen.getByRole('link', { name: '로그인' }).getAttribute('href')).toBe('/biz/login');
   });
 
+  it('renders the consent items as links to the BIZ legal pages', () => {
+    renderSignup();
+
+    expect(screen.getByRole('link', { name: '이용약관 동의' }).getAttribute('href')).toBe(
+      '/biz/terms',
+    );
+    expect(screen.getByRole('link', { name: '개인정보처리방침 동의' }).getAttribute('href')).toBe(
+      '/biz/privacy',
+    );
+  });
+
+  it('does not toggle the checkbox when a consent link is clicked', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    await user.click(screen.getByRole('link', { name: '이용약관 동의' }));
+
+    const box = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
+    const next = screen.getByRole('button', { name: '다음' }) as HTMLButtonElement;
+    expect(box.checked).toBe(false);
+    expect(next.disabled).toBe(true);
+  });
+
+  it('keeps the next button disabled until all three agreements are checked', async () => {
+    const user = userEvent.setup();
+    const { container } = renderSignup();
+
+    const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
+    await user.click(agreementBoxes[0]);
+    await user.click(agreementBoxes[1]);
+    expect((screen.getByRole('button', { name: '다음' }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(agreementBoxes[2]);
+    expect((screen.getByRole('button', { name: '다음' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
   it('applies the BIZ landing reveal animation when entering the next step', async () => {
     const user = userEvent.setup();
     const { container } = renderSignup();
@@ -84,6 +121,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]);
     await user.click(agreementBoxes[1]);
+    await user.click(agreementBoxes[2]);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByText('성함을 입력해주세요')).not.toBeNull();
@@ -110,6 +148,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = document.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]!);
     await user.click(agreementBoxes[1]!);
+    await user.click(agreementBoxes[2]!);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await user.type(document.querySelector('input[name="name"]')!, '기업 담당자');
@@ -119,7 +158,13 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
   }
 
-  it('completes BIZ signup without a business-registration document or verification request', async () => {
+  async function fillOrgInfo(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(document.querySelector('input[name="orgName"]')!, '세모컴퍼니');
+    await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
+    await user.type(document.querySelector('input[name="orgEmail"]')!, 'contact@semochal.kr');
+  }
+
+  it('redirects completed BIZ signup to the login page without a business-registration document or verification request', async () => {
     mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
     const user = userEvent.setup();
     renderSignup();
@@ -128,12 +173,35 @@ describe('BizSignupFlow', () => {
 
     expect(screen.getByLabelText('기관 정보')).not.toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
+    await fillOrgInfo(user);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
-    await waitFor(() => expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' }));
+    await waitFor(() =>
+      expect(mocks.registerBusiness).toHaveBeenCalledWith({
+        type: '기업',
+        name: '세모컴퍼니',
+        phone: '02-1234-5678',
+        email: 'contact@semochal.kr',
+      }),
+    );
     expect(mocks.submitVerification).not.toHaveBeenCalled();
-    expect(mocks.push).toHaveBeenCalledWith('/biz/dashboard');
+    expect(mocks.register).toHaveBeenCalledWith(
+      expect.objectContaining({ agreements: ['terms', 'privacy', 'business'] }),
+    );
+    expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
+    expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
+  });
+
+  it('requires the organization fields before registering', async () => {
+    const user = userEvent.setup();
+    renderSignup();
+
+    await advanceToBusinessInfo(user);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith('사명/단체명을 입력해주세요.');
+    expect(mocks.register).not.toHaveBeenCalled();
   });
 
   it('redirects a duplicate signup to the Biz login page', async () => {
@@ -144,6 +212,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]);
     await user.click(agreementBoxes[1]);
+    await user.click(agreementBoxes[2]);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     const setValue = async (name: string, value: string) => {
@@ -156,6 +225,7 @@ describe('BizSignupFlow', () => {
     await setValue('passwordConfirm', 'password123');
     await user.click(screen.getByRole('button', { name: '다음' }));
 
+    await fillOrgInfo(user);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));

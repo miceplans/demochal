@@ -144,6 +144,22 @@ describe('FilesService.resolvePublicUrls', () => {
 });
 
 describe('FilesService.requestUpload', () => {
+  it('rejects non-image types for a public poster upload', async () => {
+    const { service } = createService([]);
+    await expect(
+      service.requestUpload(
+        {
+          bucket: 'public',
+          contentType: 'application/pdf',
+          fileName: 'a',
+          sizeBytes: 1,
+          purpose: 'poster',
+        },
+        'user-1',
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it.each(['image/png', 'image/jpeg'] as const)(
     'rejects %s for the public bucket',
     async (contentType) => {
@@ -208,7 +224,7 @@ describe('FilesService.finalizeUpload', () => {
         return send(cmd);
       }),
     };
-    return { service, order };
+    return { service, order, db };
   }
 
   it('turns a missing uploaded object into a 404 instead of a 500', async () => {
@@ -270,5 +286,23 @@ describe('FilesService.finalizeUpload', () => {
 
     expect(sharpMock).toHaveBeenCalledWith(Buffer.from(png));
     expect(result).toMatchObject({ key: 'uploads/file-1.webp', contentType: 'image/webp' });
+  });
+
+  it('keeps a poster PNG as the original (no WebP conversion) when preserveOriginal is set', async () => {
+    sharpMock.mockClear();
+    const { service, order, db } = setup([[{ ...pending, preserveOriginal: true }]], (cmd) => {
+      if (cmd.constructor.name === 'HeadObjectCommand') {
+        return { ContentType: 'image/png', ContentLength: png.length };
+      }
+      return { Body: { transformToByteArray: async () => png } };
+    });
+
+    await service.finalizeUpload('file-1', 'user-1');
+
+    expect(sharpMock).not.toHaveBeenCalled();
+    expect(order).toContain('CopyObjectCommand');
+    expect(db.update().set).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'uploads/file-1.png', contentType: 'image/png' }),
+    );
   });
 });

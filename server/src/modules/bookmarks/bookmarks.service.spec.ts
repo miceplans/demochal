@@ -19,26 +19,39 @@ function createDbStub() {
   } as any;
 }
 
-const challengeRows = [{ challenge: { id: 'challenge-1', title: 'AI 챌린지' } }];
+const challengeRows = [
+  { challenge: { id: 'challenge-1', title: 'AI 챌린지', posterFileId: 'file-1' } },
+];
+const filesStub = () =>
+  ({
+    resolvePublicUrls: vi.fn().mockResolvedValue(new Map([['file-1', 'https://cdn/p.webp']])),
+  }) as any;
 
 describe('BookmarksService', () => {
   it('list maps sort=deadline to endDate ascending and returns challenge rows', async () => {
     const db = createDbStub();
     const chain = listChain(challengeRows);
     db.select.mockReturnValue(chain);
-    const service = new BookmarksService(db);
+    const service = new BookmarksService(db, filesStub());
 
     const result = await service.list('user-1', 'deadline');
 
     expect(chain.orderBy).toHaveBeenCalledWith(asc(challenges.endDate));
-    expect(result).toEqual([{ id: 'challenge-1', title: 'AI 챌린지' }]);
+    expect(result).toEqual([
+      {
+        id: 'challenge-1',
+        title: 'AI 챌린지',
+        posterFileId: 'file-1',
+        posterUrl: 'https://cdn/p.webp',
+      },
+    ]);
   });
 
   it('list maps sort=latest to bookmark createdAt descending', async () => {
     const db = createDbStub();
     const chain = listChain(challengeRows);
     db.select.mockReturnValue(chain);
-    const service = new BookmarksService(db);
+    const service = new BookmarksService(db, filesStub());
 
     await service.list('user-1', 'latest');
 
@@ -49,7 +62,7 @@ describe('BookmarksService', () => {
     const db = createDbStub();
     const chain = listChain(challengeRows);
     db.select.mockReturnValue(chain);
-    const service = new BookmarksService(db);
+    const service = new BookmarksService(db, filesStub());
 
     await service.list('user-1', 'popular');
 
@@ -61,7 +74,7 @@ describe('BookmarksService', () => {
     const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
     const values = vi.fn().mockReturnValue({ onConflictDoNothing });
     db.insert = vi.fn().mockReturnValue({ values });
-    const service = new BookmarksService(db);
+    const service = new BookmarksService(db, filesStub());
 
     const result = await service.toggle('user-1', 'challenge-1', true);
 
@@ -76,7 +89,7 @@ describe('BookmarksService', () => {
     const db = createDbStub();
     const where = vi.fn().mockResolvedValue(undefined);
     db.delete = vi.fn().mockReturnValue({ where });
-    const service = new BookmarksService(db);
+    const service = new BookmarksService(db, filesStub());
 
     const result = await service.toggle('user-1', 'challenge-1', false);
 

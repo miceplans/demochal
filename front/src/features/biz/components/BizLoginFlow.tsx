@@ -18,13 +18,14 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 
-const stepLabels = ['약관 동의', '계정 정보', '기관 정보'];
+const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
-const agreements = [
-  { value: 'privacy', label: '개인정보처리방침' },
+type AgreementKey = 'terms' | 'privacy' | 'business';
+const agreements: { value: AgreementKey; label: string; href?: string }[] = [
+  { value: 'terms', label: '이용약관 동의', href: '/terms' },
+  { value: 'privacy', label: '개인정보처리방침 동의', href: '/privacy' },
   { value: 'business', label: '사업자 이용정보 동의' },
-] as const;
-type AgreementKey = (typeof agreements)[number]['value'];
+];
 
 const orgTypes = [
   { value: '기업', label: '일반 기업' },
@@ -48,6 +49,7 @@ export function BizSignupFlow() {
     password: '',
     passwordConfirm: '',
   });
+  const [org, setOrg] = useState({ name: '', phone: '', email: '' });
   const [orgType, setOrgType] = useState<OrgType>('기업');
   const [submitting, setSubmitting] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
@@ -68,6 +70,16 @@ export function BizSignupFlow() {
     if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
     return null;
   };
+  const setOrgField = (key: keyof typeof org) => (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOrg((prev) => ({ ...prev, [key]: value }));
+  };
+  const validateOrg = () => {
+    if (!org.name.trim()) return '사명/단체명을 입력해주세요.';
+    if (!org.phone.trim()) return '문의 번호를 입력해주세요.';
+    if (!EMAIL_PATTERN.test(org.email.trim())) return '문의 이메일을 확인해주세요.';
+    return null;
+  };
   const goToOrgStep = () => {
     const error = validateAccount();
     if (error) {
@@ -78,6 +90,13 @@ export function BizSignupFlow() {
   };
 
   const submit = async () => {
+    if (!businessId) {
+      const error = validateOrg();
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       if (!registered) {
@@ -99,12 +118,17 @@ export function BizSignupFlow() {
         setRegistered(true);
       }
       if (!businessId) {
-        const { data: business } = await generated.registerBusiness({ type: orgType });
+        const { data: business } = await generated.registerBusiness({
+          type: orgType,
+          name: org.name.trim(),
+          phone: org.phone.trim(),
+          email: org.email.trim(),
+        });
         if (!business.id) throw new Error('business registration failed');
         setBusinessId(business.id);
       }
       toast.success('가입이 완료됐어요.');
-      router.push(hrefOf('/dashboard'));
+      router.replace(hrefOf('/login'));
     } catch (error) {
       toast.error(
         apiErrorMessage(error, '가입을 완료하지 못했어요.'),
@@ -129,17 +153,21 @@ export function BizSignupFlow() {
           <StepBody key={step}>
             {step === 0 && (
               <CheckList aria-label="약관 동의">
-                {agreements.map(({ value, label }) => (
+                {agreements.map(({ value, label, href }) => (
                   <CheckRow key={value}>
-                    <HiddenInput
-                      type="checkbox"
-                      checked={agreed.includes(value)}
-                      onChange={() => toggle(value)}
-                    />
-                    <CheckBox aria-hidden>
-                      <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
-                    </CheckBox>
-                    {label}
+                    <CheckLabel>
+                      <HiddenInput
+                        type="checkbox"
+                        aria-label={href ? label : undefined}
+                        checked={agreed.includes(value)}
+                        onChange={() => toggle(value)}
+                      />
+                      <CheckBox aria-hidden>
+                        <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
+                      </CheckBox>
+                      {!href && label}
+                    </CheckLabel>
+                    {href && <ConsentLink href={hrefOf(href)}>{label}</ConsentLink>}
                   </CheckRow>
                 ))}
               </CheckList>
@@ -187,13 +215,43 @@ export function BizSignupFlow() {
             )}
             {step === 2 && (
               <Form aria-label="기관 정보">
-                <Dropdown
-                  aria-label="기관 유형"
-                  options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
-                  value={orgType}
-                  disabled={!!businessId}
-                  onChange={(value) => setOrgType(value as OrgType)}
-                />
+                <FormField label="사명/단체명">
+                  <TextInput
+                    name="orgName"
+                    autoComplete="organization"
+                    disabled={!!businessId}
+                    value={org.name}
+                    onChange={setOrgField('name')}
+                  />
+                </FormField>
+                <FormField label="유형">
+                  <Dropdown
+                    aria-label="기관 유형"
+                    options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
+                    value={orgType}
+                    disabled={!!businessId}
+                    onChange={(value) => setOrgType(value as OrgType)}
+                  />
+                </FormField>
+                <FormField label="문의 번호">
+                  <TextInput
+                    type="tel"
+                    name="orgPhone"
+                    autoComplete="tel"
+                    disabled={!!businessId}
+                    value={org.phone}
+                    onChange={setOrgField('phone')}
+                  />
+                </FormField>
+                <FormField label="이메일">
+                  <TextInput
+                    type="email"
+                    name="orgEmail"
+                    disabled={!!businessId}
+                    value={org.email}
+                    onChange={setOrgField('email')}
+                  />
+                </FormField>
               </Form>
             )}
           </StepBody>
@@ -309,14 +367,19 @@ const CheckIcon = styled.img({
   transform: 'scale(0.4)',
   transition: 'opacity 140ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1)',
 });
-const CheckRow = styled.label({
-  position: 'relative',
+const CheckRow = styled.div({
   display: 'flex',
   alignItems: 'center',
   gap: 8,
   width: 'fit-content',
   ...textStyle.mBodyDetail,
   color: c.gray700,
+});
+const CheckLabel = styled.label({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
   cursor: 'pointer',
   'input:checked + span': { background: c.primary, borderColor: c.primary },
   'input:checked + span img': { opacity: 1, transform: 'scale(1)' },
@@ -367,6 +430,12 @@ const ExistingAccount = styled.p({
   textAlign: 'center',
   ...textStyle.mInfoText,
   color: c.gray700,
+});
+const ConsentLink = styled(Link)({
+  color: 'inherit',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+  '&:hover': { color: c.gray900 },
 });
 const ExistingAccountLink = styled(Link)({
   color: c.primary,

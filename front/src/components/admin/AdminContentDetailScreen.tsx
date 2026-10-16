@@ -531,14 +531,7 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
                 {challenge.posterUrl ? <Poster src={challenge.posterUrl} alt="" /> : null}
                 <InfoBody>
                   <Body style={{ padding: 0 }}>
-                    <Section title="자격 / 대상">
-                      {[
-                        (challenge.targets ?? []).join(', '),
-                        `모집 인원 ${challenge.capacity ?? 0}명`,
-                      ]
-                        .filter(Boolean)
-                        .join('\n')}
-                    </Section>
+                    <Section title="자격 / 대상">{(challenge.targets ?? []).join(', ')}</Section>
                     <Section title="일정">{`접수기간: ${period}`}</Section>
                     <Section title="상금">{prize}</Section>
                     <Section title="참가비 · 지원 방식">

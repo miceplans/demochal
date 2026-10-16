@@ -1,4 +1,5 @@
 import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
 import { CreateChallengeDto } from './create-challenge.dto.js';
@@ -8,7 +9,7 @@ const base = {
   title: '공고 제목',
   description: '공고 설명',
   price: 1000,
-  capacity: 10,
+  host: '주최사',
   startDate: '2029-01-01T00:00:00Z',
   endDate: '2029-02-01T00:00:00Z',
 };
@@ -82,5 +83,29 @@ describe('CreateChallengeDto', () => {
     const errors = await validate(dto);
 
     expect(errors.map((error) => error.property)).toEqual(['recruitUrl']);
+  });
+
+  it('주최는 필수이고 비어 있으면 거절한다', async () => {
+    for (const host of [undefined, '']) {
+      const dto = Object.assign(new CreateChallengeDto(), { ...base, host });
+      const errors = await validate(dto);
+      expect(errors.map((error) => error.property)).toContain('host');
+    }
+  });
+
+  it('주관·협찬·후원과 행사 기간은 생략할 수 있다', async () => {
+    const dto = Object.assign(new CreateChallengeDto(), base);
+    expect(await validate(dto)).toEqual([]);
+  });
+
+  it('첨부파일은 10개까지, 각 항목은 fileId·이름·크기를 갖춰야 한다', async () => {
+    const item = { fileId: '123e4567-e89b-42d3-a456-426614174001', name: 'a.pdf', size: 10 };
+    const ok = plainToInstance(CreateChallengeDto, { ...base, attachments: [item] });
+    expect(await validate(ok)).toEqual([]);
+    const tooMany = plainToInstance(CreateChallengeDto, {
+      ...base,
+      attachments: Array.from({ length: 11 }, () => item),
+    });
+    expect((await validate(tooMany)).map((error) => error.property)).toContain('attachments');
   });
 });

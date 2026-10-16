@@ -37,9 +37,11 @@ function createService(
     .mockReturnValueOnce(candidatesQuery)
     .mockReturnValueOnce(viewsQuery)
     .mockReturnValueOnce(bookmarksQuery);
+  const files = createFilesStub();
   return {
-    service: new ChallengesService(db, {} as any, createFilesStub() as any),
+    service: new ChallengesService(db, {} as any, files as any),
     candidatesQuery,
+    files,
   };
 }
 
@@ -48,6 +50,7 @@ function createFilesStub(overrides: Record<string, unknown> = {}) {
   return {
     assertReadyPublic: vi.fn().mockResolvedValue({ id: 'file-1' }),
     resolvePublicUrl: vi.fn().mockResolvedValue(null),
+    resolvePublicUrls: vi.fn().mockResolvedValue(new Map()),
     ...overrides,
   };
 }
@@ -95,6 +98,23 @@ describe('ChallengesService.listRecommended', () => {
     const result = await service.listRecommended('user-1');
 
     expect(result.items.map((item) => item.id)).toEqual(['matching', 'popular']);
+  });
+
+  it('attaches the public poster URL to each recommended item', async () => {
+    const withPoster = {
+      ...challenge('with-poster', 'IT/SW', '2029-01-01'),
+      posterFileId: 'file-p',
+    };
+    const withoutPoster = { ...challenge('no-poster', '디자인', '2029-01-02'), posterFileId: null };
+    const { service, files } = createService({ interests: [] }, [withPoster, withoutPoster]);
+    files.resolvePublicUrls.mockResolvedValue(
+      new Map([['file-p', 'https://cdn.example.com/p.webp']]),
+    );
+
+    const result = await service.listRecommended('user-1');
+
+    const urls = Object.fromEntries(result.items.map((item) => [item.id, item.posterUrl]));
+    expect(urls).toEqual({ 'with-poster': 'https://cdn.example.com/p.webp', 'no-poster': null });
   });
 
   it('does not match short ASCII interest tokens as substrings of unrelated categories', async () => {
@@ -513,7 +533,7 @@ describe('ChallengesService.create', () => {
     title: '타이틀',
     description: '설명',
     price: 1000,
-    capacity: 10,
+    host: '세모챌',
     startDate: '2029-01-01T00:00:00Z',
     endDate: '2029-02-01T00:00:00Z',
   };
@@ -530,6 +550,55 @@ describe('ChallengesService.create', () => {
 
     expect(valuesCalls[0]).toMatchObject({ recruitMethod: 'seMOchall' });
     expect(valuesCalls[1]).toMatchObject({ recruitMethod: 'external' });
+  });
+
+  it('저장 시 주최·주관·행사 기간과 대상 기타 입력을 함께 기록한다', async () => {
+    const valuesCalls: Record<string, unknown>[] = [];
+    const service = createCapturingService(valuesCalls);
+
+    await service.create(
+      {
+        ...baseDto,
+        recruitUrl: 'https://example.com/apply',
+        host: ' 주최사 ',
+        supervisor: '주관사',
+        sponsor: '  ',
+        eventStartDate: '2029-03-01T00:00:00Z',
+        eventEndDate: '2029-03-02T00:00:00Z',
+        targets: ['기타'],
+        targetOther: '서울 거주자',
+      } as any,
+      'user-1',
+    );
+
+    expect(valuesCalls[0]).toMatchObject({
+      host: '주최사',
+      supervisor: '주관사',
+      sponsor: null,
+      supporter: null,
+      targetOther: '서울 거주자',
+      eventStartDate: new Date('2029-03-01T00:00:00Z'),
+      eventEndDate: new Date('2029-03-02T00:00:00Z'),
+      attachments: [],
+    });
+  });
+
+  it('행사 기간은 시작·종료를 함께 보내야 하고 종료가 앞서면 거절한다', async () => {
+    const service = createCapturingService([]);
+    const dto = { ...baseDto, recruitUrl: 'https://example.com/apply' };
+    await expect(
+      service.create({ ...dto, eventStartDate: '2029-03-01T00:00:00Z' } as any, 'user-1'),
+    ).rejects.toThrow('행사 기간');
+    await expect(
+      service.create(
+        {
+          ...dto,
+          eventStartDate: '2029-03-02T00:00:00Z',
+          eventEndDate: '2029-03-01T00:00:00Z',
+        } as any,
+        'user-1',
+      ),
+    ).rejects.toThrow('행사 종료일');
   });
 
   it('keeps owner-requested published as draft until an admin approves when auto publish is off', async () => {
@@ -739,7 +808,7 @@ describe('ChallengesService.update', () => {
     const { service, db } = createUpdateService([current]);
     await expect(
       service.update('ch-1', { endDate: '2029-12-31T00:00:00Z' }, owner),
-    ).rejects.toThrow('종료일은 시작일 이후여야 합니다');
+    ).rejects.toThrow('접수 종료 시각은 시작 시각 이후여야 합니다');
     expect(db.update).not.toHaveBeenCalled();
   });
 
@@ -895,6 +964,21 @@ describe('ChallengesService.findById', () => {
       posterUrl: 'https://cdn.example.com/uploads/poster.webp',
     });
     expect(files.resolvePublicUrl).toHaveBeenCalledWith('file-poster');
+  });
+
+  it('attaches the organizing business name as organizer', async () => {
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select
+      .mockImplementationOnce(() =>
+        queryChain([{ id: 'ch-1', businessId: 'biz-1', posterFileId: null }]),
+      )
+      .mockImplementationOnce(() => queryChain([{ name: '세모기관' }]));
+    db.insert.mockImplementation(() => ({ values: vi.fn().mockResolvedValue(undefined) }));
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.organizer).toBe('세모기관');
   });
 
   it('falls back to a null posterUrl when the file is missing or not public-ready', async () => {

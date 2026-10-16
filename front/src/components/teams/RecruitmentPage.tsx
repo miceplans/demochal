@@ -15,6 +15,7 @@ import {
   Title,
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ChallengeSearch } from '@/components/contests/ChallengeSearch';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { roles } from '@/data/user-design';
@@ -77,12 +78,7 @@ function RecruitmentForm() {
   // 역할 슬롯도 draft에 함께 저장해 페이지를 나갔다 와도 유지한다.
   const slots = draft.slots ?? [];
   const setSlots = (next: typeof slots) => setDraft({ ...draft, slots: next });
-  const challengesQuery = generated.useListChallenges({ limit: 50 });
-  const challengeOptions = challengesQuery.data?.data.items ?? [];
-  // draft.challenge에는 챌린지 id를 저장한다(레이블은 Dropdown이 옵션에서 찍는다).
-  const challengeSelectOptions = challengeOptions
-    .filter((x) => Boolean(x.id))
-    .map((x) => ({ value: x.id ?? '', label: x.title ?? '제목 없음' }));
+  // draft.challenge에는 챌린지 id를 저장하고, 이름 표시/검색은 ChallengeSearch가 담당한다.
   // 챌린지 상세 → "이 챌린지 팀 구하기" 진입 시 ?challengeId=<uuid>로 미리 선택해준다.
   useEffect(() => {
     const preset = searchParams.get('challengeId');
@@ -112,8 +108,8 @@ function RecruitmentForm() {
         onSubmit={(e) => {
           e.preventDefault();
           const challengeId = draft.challenge;
-          if (!challengeOptions.some((x) => x.id === challengeId)) {
-            toast.error('챌린지를 선택해주세요', '목록에서 챌린지를 골라주세요');
+          if (!challengeId) {
+            toast.error('챌린지를 선택해주세요', '검색에서 챌린지를 골라주세요');
             return;
           }
           const openRoles = slots.map(({ role, count }) => ({ role: normalizeRole(role), count }));
@@ -163,13 +159,12 @@ function RecruitmentForm() {
           <StepLabel number={1} completed={!!draft.challenge}>
             챌린지 선택
           </StepLabel>
-          <Dropdown
-            aria-label="챌린지 선택"
-            placeholder="챌린지를 선택하세요"
+          <ChallengeSearch
             value={draft.challenge}
             onChange={(value) => setDraft({ ...draft, challenge: value })}
-            options={challengeSelectOptions}
-            disabled={challengesQuery.isPending}
+            includeClosed={false}
+            placeholder="챌린지를 검색하세요"
+            fullWidth
           />
         </Stack>
         <Stack gap={10}>
@@ -327,11 +322,7 @@ function RecruitmentForm() {
             onChange={(e) => setDraft({ ...draft, etc: e.target.value })}
           />
         </Stack>
-        <Button
-          type="submit"
-          fullWidth
-          disabled={!slots.length || createTeam.isPending || challengesQuery.isPending}
-        >
+        <Button type="submit" fullWidth disabled={!slots.length || createTeam.isPending}>
           게시하기
         </Button>
       </FormContainer>

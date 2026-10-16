@@ -18,6 +18,7 @@ import {
 } from '@/components/biz/BizShell';
 import { Icon } from '@/components/common/Primitives';
 import { apiErrorMessage } from '@/lib/api-error';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 const daysLeft = (endDate: string) =>
@@ -61,7 +62,9 @@ export function BizPostingsPage() {
         <>
           <section aria-label="공고 성과 요약">
             <HeaderRow>
-              <Thumb aria-hidden />
+              <Thumb aria-hidden>
+                {latest.posterUrl && <PosterImg src={latest.posterUrl} alt="" />}
+              </Thumb>
               <HeaderInfo>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -71,7 +74,7 @@ export function BizPostingsPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <Badge>
                       <BadgeLabel>자격 / 대상</BadgeLabel>
-                      <BadgeValue>{latest.eligibility}</BadgeValue>
+                      <BadgeValue>{challengeEligibility(latest)}</BadgeValue>
                     </Badge>
                     <Badge>
                       <BadgeLabel>접수기간</BadgeLabel>
@@ -132,6 +135,7 @@ export function BizPostingsPage() {
                 return (
                   <CardBox key={item.id} href={`/postings/${item.id}`}>
                     <CardThumb closed={closed}>
+                      {item.posterUrl && <PosterImg src={item.posterUrl} alt="" />}
                       {closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
                     </CardThumb>
                     <CardBody>
@@ -162,7 +166,16 @@ const HeaderRow = styled.div({
   alignItems: 'stretch',
   width: '100%',
 });
+const PosterImg = styled.img({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+});
 const Thumb = styled.div({
+  position: 'relative',
+  overflow: 'hidden',
   flex: '1 0 0',
   minWidth: 0,
   minHeight: 354,
@@ -248,6 +261,7 @@ const CardBox = styled(BizLink)({
 });
 const CardThumb = styled.div<{ closed?: boolean }>(({ closed }) => ({
   position: 'relative',
+  overflow: 'hidden',
   height: 189,
   display: 'flex',
   alignItems: 'center',

@@ -24,6 +24,24 @@ const ICON_SOURCES: Record<string, string> = {
   imgImage1: '/assets/oauth/google-logo.png',
   imgImage3: '/assets/oauth/naver-logo.png',
 };
+/** 북마크 하트. 저장(filled)이면 색을 채우고, 아니면 외곽선만 그린다. */
+export function HeartIcon({ filled, size = 18 }: { filled: boolean; size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill={filled ? c.red : 'none'}
+      stroke={filled ? c.red : c.gray500}
+      strokeWidth={2}
+      strokeLinejoin="round"
+    >
+      <path d="M12 21s-7.5-4.6-9.6-9.2C.9 8.3 3 5 6.3 5c2 0 3.7 1.1 4.7 2.7h2C14 6.1 15.7 5 17.7 5 21 5 23.1 8.3 21.6 11.8 19.5 16.400 12 21 12 21z" />
+    </svg>
+  );
+}
+
 export function Icon({
   name,
   size = 20,
