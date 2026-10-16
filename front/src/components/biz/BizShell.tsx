@@ -166,7 +166,7 @@ export function BizLandingHeader() {
     <LandingHeaderBar progress={progress} width={width}>
       <Logo size={26} />
       <HeaderCtas>
-        <HeaderJoin href="/#inquiry">챌린지 문의하기</HeaderJoin>
+        <HeaderJoin href="/login">챌린지 문의하기</HeaderJoin>
         <HeaderSignup href="/login">가입하기</HeaderSignup>
       </HeaderCtas>
     </LandingHeaderBar>
