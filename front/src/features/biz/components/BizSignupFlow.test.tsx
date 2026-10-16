@@ -84,6 +84,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]);
     await user.click(agreementBoxes[1]);
+    await user.click(agreementBoxes[2]);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     expect(screen.getByText('성함을 입력해주세요')).not.toBeNull();
@@ -110,6 +111,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = document.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]!);
     await user.click(agreementBoxes[1]!);
+    await user.click(agreementBoxes[2]!);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await user.type(document.querySelector('input[name="name"]')!, '기업 담당자');
@@ -170,6 +172,7 @@ describe('BizSignupFlow', () => {
     const agreementBoxes = container.querySelectorAll('input[type="checkbox"]');
     await user.click(agreementBoxes[0]);
     await user.click(agreementBoxes[1]);
+    await user.click(agreementBoxes[2]);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     const setValue = async (name: string, value: string) => {

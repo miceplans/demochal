@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { PrimaryButton, useBizHref } from './BizShell';
+import { PrimaryButton, OutlineButton, useBizHref } from './BizShell';
 
 export function BizAccessCover({ children }: { children: ReactNode }) {
   const hrefOf = useBizHref();
@@ -20,11 +20,18 @@ export function BizAccessCover({ children }: { children: ReactNode }) {
       <Cover>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/assets/SEMOBIZ.png" alt="SEMO.BIZ" style={{ height: 26, width: 'auto' }} />
-        <Link href={hrefOf('/signup')}>
-          <PrimaryButton as="span" style={{ width: 130, textAlign: 'center' }}>
-            회원가입 하기
-          </PrimaryButton>
-        </Link>
+        <CoverActions>
+          <Link href={hrefOf('/login')}>
+            <PrimaryButton as="span" style={{ width: 130, textAlign: 'center' }}>
+              로그인
+            </PrimaryButton>
+          </Link>
+          <Link href={hrefOf('/signup')}>
+            <OutlineButton as="span" style={{ width: 130, textAlign: 'center' }}>
+              회원가입 하기
+            </OutlineButton>
+          </Link>
+        </CoverActions>
       </Cover>
     );
   }
@@ -44,6 +51,11 @@ const Cover = styled.div({
   background: 'rgba(255,255,255,0.65)',
   backdropFilter: 'blur(3px)',
   WebkitBackdropFilter: 'blur(3px)',
+});
+
+const CoverActions = styled.div({
+  display: 'flex',
+  gap: 12,
 });
 
 const LoadingView = styled.div({

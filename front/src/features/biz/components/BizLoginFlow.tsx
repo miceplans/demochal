@@ -20,11 +20,12 @@ import {
 
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
-const agreements = [
-  { value: 'privacy', label: '개인정보처리방침' },
+type AgreementKey = 'terms' | 'privacy' | 'business';
+const agreements: { value: AgreementKey; label: string; href?: string }[] = [
+  { value: 'terms', label: '이용약관 동의', href: '/terms' },
+  { value: 'privacy', label: '개인정보처리방침 동의', href: '/privacy' },
   { value: 'business', label: '사업자 이용정보 동의' },
-] as const;
-type AgreementKey = (typeof agreements)[number]['value'];
+];
 
 const orgTypes = [
   { value: '기업', label: '일반 기업' },
@@ -152,7 +153,7 @@ export function BizSignupFlow() {
           <StepBody key={step}>
             {step === 0 && (
               <CheckList aria-label="약관 동의">
-                {agreements.map(({ value, label }) => (
+                {agreements.map(({ value, label, href }) => (
                   <CheckRow key={value}>
                     <HiddenInput
                       type="checkbox"
@@ -162,7 +163,13 @@ export function BizSignupFlow() {
                     <CheckBox aria-hidden>
                       <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
                     </CheckBox>
-                    {label}
+                    {href ? (
+                      <ConsentLink href={hrefOf(href)} onClick={(e) => e.stopPropagation()}>
+                        {label}
+                      </ConsentLink>
+                    ) : (
+                      label
+                    )}
                   </CheckRow>
                 ))}
               </CheckList>
@@ -420,6 +427,12 @@ const ExistingAccount = styled.p({
   textAlign: 'center',
   ...textStyle.mInfoText,
   color: c.gray700,
+});
+const ConsentLink = styled(Link)({
+  color: 'inherit',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+  '&:hover': { color: c.gray900 },
 });
 const ExistingAccountLink = styled(Link)({
   color: c.primary,
