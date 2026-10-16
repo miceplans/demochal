@@ -111,10 +111,6 @@ export function BizProfilePage() {
               재설정
             </ResetButton>
           </Row>
-          <Row style={{ alignItems: 'flex-start' }}>
-            <Label>인증 서류</Label>
-            <Document aria-hidden />
-          </Row>
         </List>
       </section>
       {/* TODO(2FA): 임시 비활성화 */}
@@ -260,11 +256,4 @@ const PasswordActions = styled.div({
   justifyContent: 'flex-end',
   gap: 8,
   '& button:first-of-type': { background: c.gray100, color: c.gray700 },
-});
-// 사업자등록증 원본은 private 버킷 문서라 화면에는 흐림 처리된 자리표시만 둔다.
-const Document = styled.div({
-  width: 100,
-  height: 144,
-  background: c.gray100,
-  filter: 'blur(1.2px)',
 });

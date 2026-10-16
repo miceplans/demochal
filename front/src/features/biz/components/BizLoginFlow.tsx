@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -36,6 +36,12 @@ type OrgType = (typeof orgTypes)[number]['value'];
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// 사업자등록번호는 숫자 10자리(000-00-00000)로 표시하고, 서버에는 숫자만 보낸다.
+const formatRegistrationNumber = (value: string) => {
+  const d = value.replace(/\D/g, '').slice(0, 10);
+  return [d.slice(0, 3), d.slice(3, 5), d.slice(5)].filter(Boolean).join('-');
+};
+
 export function BizSignupFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
@@ -48,12 +54,36 @@ export function BizSignupFlow() {
     password: '',
     passwordConfirm: '',
   });
-  const [org, setOrg] = useState({ name: '', phone: '', email: '' });
+  const [org, setOrg] = useState({ name: '', registrationNumber: '', phone: '', email: '' });
   const [orgType, setOrgType] = useState<OrgType>('기업');
   const [submitting, setSubmitting] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
   const [registered, setRegistered] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  // 이미 로그인된 계정에 등록된 기관이 있으면(가입 도중 이탈 후 재진입 등) 기관 인증 단계를 그 정보로 채운다.
+  // 비로그인(401)·기관 없음(403)은 정상 흐름이므로 재시도·전역 토스트 없이 조용히 넘긴다.
+  const businessQuery = generated.useFindMyBusiness({
+    query: { enabled: step === 2 && !businessId, retry: false, meta: { silentError: true } },
+  });
+  const existingBusiness = businessQuery.data?.status === 200 ? businessQuery.data.data : undefined;
+  useEffect(() => {
+    if (!existingBusiness || businessId) return;
+    // 외부 API 응답을 폼 상태에 한 번 동기화한다(이후 businessId가 설정돼 재실행되지 않는다).
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setOrg({
+      name: existingBusiness.name ?? '',
+      registrationNumber: formatRegistrationNumber(existingBusiness.registrationNumber ?? ''),
+      phone: existingBusiness.phone ?? '',
+      email: existingBusiness.email ?? '',
+    });
+    const type = orgTypes.find((o) => o.value === existingBusiness.type);
+    if (type) setOrgType(type.value);
+    // 계정과 기관이 이미 있으므로 제출 시 가입/기관 등록 호출을 건너뛴다.
+    setRegistered(true);
+    setBusinessId(existingBusiness.id);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [existingBusiness, businessId]);
 
   const toggle = (v: AgreementKey) =>
     setAgreed((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
@@ -75,6 +105,8 @@ export function BizSignupFlow() {
   };
   const validateOrg = () => {
     if (!org.name.trim()) return '사명/단체명을 입력해주세요.';
+    if (org.registrationNumber.replace(/\D/g, '').length !== 10)
+      return '사업자 등록 번호 10자리를 입력해주세요.';
     if (!org.phone.trim()) return '문의 번호를 입력해주세요.';
     if (!EMAIL_PATTERN.test(org.email.trim())) return '문의 이메일을 확인해주세요.';
     return null;
@@ -120,6 +152,7 @@ export function BizSignupFlow() {
         const { data: business } = await generated.registerBusiness({
           type: orgType,
           name: org.name.trim(),
+          registrationNumber: org.registrationNumber.replace(/\D/g, ''),
           phone: org.phone.trim(),
           email: org.email.trim(),
         });
@@ -217,6 +250,21 @@ export function BizSignupFlow() {
                     disabled={!!businessId}
                     value={org.name}
                     onChange={setOrgField('name')}
+                  />
+                </FormField>
+                <FormField label="사업자 등록 번호">
+                  <TextInput
+                    name="orgRegistrationNumber"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    disabled={!!businessId}
+                    value={org.registrationNumber}
+                    onChange={(e) =>
+                      setOrg((prev) => ({
+                        ...prev,
+                        registrationNumber: formatRegistrationNumber(e.target.value),
+                      }))
+                    }
                   />
                 </FormField>
                 <FormField label="유형">
