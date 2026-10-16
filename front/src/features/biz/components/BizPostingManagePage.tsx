@@ -91,7 +91,12 @@ export function BizPostingManagePage() {
     <BizContent>
       <Top>
         <Main>
-          <Thumb aria-hidden />
+          <Thumb aria-hidden>
+            {challenge.posterUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={challenge.posterUrl} alt="" />
+            )}
+          </Thumb>
           <Info>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <PostingTitle>{challenge.title}</PostingTitle>
@@ -100,7 +105,7 @@ export function BizPostingManagePage() {
             <Facts>
               <Fact>
                 <strong>자격 / 대상</strong>
-                <span>{challenge.eligibility ?? '—'}</span>
+                <span>{challenge.eligibility ?? (challenge.targets?.join(', ') || '—')}</span>
               </Fact>
               <Fact>
                 <strong>접수기간</strong>
@@ -156,7 +161,13 @@ const Main = styled.div({
   flexDirection: 'column',
   gap: 24,
 });
-const Thumb = styled.div({ height: 247, borderRadius: 18, background: c.gray100 });
+const Thumb = styled.div({
+  height: 247,
+  borderRadius: 18,
+  background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
 const Info = styled.div({ display: 'flex', justifyContent: 'space-between', gap: 24 });
 const PostingTitle = styled.h1({ margin: 0, fontSize: 22, fontWeight: 700, color: c.gray900 });
 const PostingOrg = styled.span({ ...textStyle.body, color: c.gray700 });
