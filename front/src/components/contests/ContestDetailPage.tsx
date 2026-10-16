@@ -29,6 +29,7 @@ import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 import { daysUntil, formatDateDot, formatDateTimeDot } from '@/lib/date';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 const formatDateTime = (value?: string) => (value ? formatDateTimeDot(value) : '');
@@ -93,14 +94,7 @@ export function ContestDetailPage({
     ? {
         title: challenge.title ?? '',
         org: challenge.host || challenge.organizer || '',
-        eligibility:
-          challenge.eligibility ||
-          (challenge.targets ?? [])
-            .map((target) =>
-              target === '기타' && challenge.targetOther ? challenge.targetOther : target,
-            )
-            .join(', ') ||
-          '-',
+        eligibility: challengeEligibility(challenge, '-'),
         period: [formatDateTime(challenge.startDate), formatDateTime(challenge.endDate)]
           .filter(Boolean)
           .join(' ~ '),

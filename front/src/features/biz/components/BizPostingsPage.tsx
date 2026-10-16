@@ -18,6 +18,7 @@ import {
 } from '@/components/biz/BizShell';
 import { Icon } from '@/components/common/Primitives';
 import { apiErrorMessage } from '@/lib/api-error';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 const daysLeft = (endDate: string) =>
@@ -73,7 +74,7 @@ export function BizPostingsPage() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                     <Badge>
                       <BadgeLabel>자격 / 대상</BadgeLabel>
-                      <BadgeValue>{latest.eligibility}</BadgeValue>
+                      <BadgeValue>{challengeEligibility(latest)}</BadgeValue>
                     </Badge>
                     <Badge>
                       <BadgeLabel>접수기간</BadgeLabel>

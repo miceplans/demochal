@@ -715,7 +715,6 @@ const TableHead = styled(TableRow)({
 const CurrentBanner = styled.div({
   height: 236,
   borderRadius: 12,
-  background: c.gray100,
   overflow: 'hidden',
   '& > img': { width: '100%', height: '100%', objectFit: 'cover' },
 });
