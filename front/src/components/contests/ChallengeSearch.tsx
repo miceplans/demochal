@@ -51,7 +51,8 @@ export function ChallengeSearch({
   const preset = generated.useGetChallenge(value, {
     query: { enabled: Boolean(value) && !current },
   });
-  const presetTitle = preset.data?.status === 200 ? (preset.data.data.title ?? '제목 없음') : undefined;
+  const presetTitle =
+    preset.data?.status === 200 ? (preset.data.data.title ?? '제목 없음') : undefined;
   let shown: Selected | null = current;
   if (!shown && value) {
     if (presetTitle) shown = { id: value, title: presetTitle };

@@ -322,11 +322,7 @@ function RecruitmentForm() {
             onChange={(e) => setDraft({ ...draft, etc: e.target.value })}
           />
         </Stack>
-        <Button
-          type="submit"
-          fullWidth
-          disabled={!slots.length || createTeam.isPending}
-        >
+        <Button type="submit" fullWidth disabled={!slots.length || createTeam.isPending}>
           게시하기
         </Button>
       </FormContainer>

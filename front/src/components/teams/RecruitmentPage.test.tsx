@@ -110,9 +110,7 @@ describe('RecruitmentPage', () => {
     h.search = 'challengeId=challenge-9';
     render(<RecruitmentPage />);
     await waitFor(() =>
-      expect(screen.getByTestId('challenge-search').getAttribute('data-value')).toBe(
-        'challenge-9',
-      ),
+      expect(screen.getByTestId('challenge-search').getAttribute('data-value')).toBe('challenge-9'),
     );
   });
 
