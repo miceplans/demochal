@@ -937,6 +937,21 @@ describe('ChallengesService.findById', () => {
     expect(files.resolvePublicUrl).toHaveBeenCalledWith('file-poster');
   });
 
+  it('attaches the organizing business name as organizer', async () => {
+    const db = { select: vi.fn(), insert: vi.fn() } as any;
+    db.select
+      .mockImplementationOnce(() =>
+        queryChain([{ id: 'ch-1', businessId: 'biz-1', posterFileId: null }]),
+      )
+      .mockImplementationOnce(() => queryChain([{ name: '세모기관' }]));
+    db.insert.mockImplementation(() => ({ values: vi.fn().mockResolvedValue(undefined) }));
+    const service = new ChallengesService(db, {} as any, createFilesStub() as any);
+
+    const result = await service.findById('ch-1');
+
+    expect(result.organizer).toBe('세모기관');
+  });
+
   it('falls back to a null posterUrl when the file is missing or not public-ready', async () => {
     const service = createDetailService([{ id: 'ch-1', posterFileId: null }], createFilesStub());
 
