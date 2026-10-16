@@ -157,7 +157,17 @@ export class ChallengesService {
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
     const nextCursor = hasMore && last ? this.encodeCursor(sort, last) : null;
-    return { items, nextCursor };
+    // 목록 카드도 포스터를 보여주므로 공개 URL을 함께 내린다(한 번의 조회로 일괄 해석).
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      items.map((item) => item.posterFileId),
+    );
+    return {
+      items: items.map((item) => ({
+        ...item,
+        posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
+      })),
+      nextCursor,
+    };
   }
 
   private parseSort(sort: string): ChallengeSort {

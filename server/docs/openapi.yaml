@@ -3518,7 +3518,7 @@ components:
           {
             type: string,
             nullable: true,
-            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세·목록 응답에 포함. 클라이언트는 이 URL로 직접 렌더,
           }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }

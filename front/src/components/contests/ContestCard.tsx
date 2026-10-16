@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { type Contest } from '@/data/user-design';
-import { Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
+import { HeartIcon, Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 
 const CategoryTag = styled(Tag)({
@@ -22,7 +22,7 @@ const ScrapButton = styled(IconButton, {
   borderRadius: 999,
   ...($saved
     ? {
-        background: c.lightBlue,
+        background: c.lightRed,
         animation: 'semo-scrap-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
         '@keyframes semo-scrap-pop': {
           '0%': { transform: 'scale(0.8)' },
@@ -40,7 +40,13 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   background: c.white,
   transition: 'box-shadow 0.2s ease, transform 0.2s ease',
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
-  '.artwork': { height: 188, background: c.gray100, borderRadius: '12px 12px 0 0' },
+  '.artwork': {
+    height: 188,
+    background: c.gray100,
+    borderRadius: '12px 12px 0 0',
+    overflow: 'hidden',
+  },
+  '.artwork img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   '.dday': { color: c.primary, ...textStyle.overline },
@@ -124,13 +130,15 @@ export function ContestCard({
       title={bookmarkable ? undefined : '서버 챌린지 ID가 없어 북마크할 수 없어요'}
       onClick={() => toggleBookmark(contest.id)}
     >
-      <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
+      <HeartIcon filled={saved} size={16} />
     </ScrapButton>
   );
   return (
     <Card horizontal={horizontal} row={row} data-component="contest-card">
       <Link href={href} aria-label={`${contest.title} 상세`}>
-        <div className="artwork" />
+        <div className="artwork">
+          {contest.posterUrl ? <img src={contest.posterUrl} alt="" /> : null}
+        </div>
       </Link>
       <div className="card-body">
         <Link href={href}>

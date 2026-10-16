@@ -73,7 +73,7 @@ export interface Challenge {
      */
   posterFileId?: string | null;
   /**
-     * 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더
+     * 챌린지 포스터 공개 URL (public+ready 파일). 상세·목록 응답에 포함. 클라이언트는 이 URL로 직접 렌더
      * @nullable
      */
   posterUrl?: string | null;

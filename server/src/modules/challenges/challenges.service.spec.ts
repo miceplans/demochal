@@ -48,6 +48,7 @@ function createFilesStub(overrides: Record<string, unknown> = {}) {
   return {
     assertReadyPublic: vi.fn().mockResolvedValue({ id: 'file-1' }),
     resolvePublicUrl: vi.fn().mockResolvedValue(null),
+    resolvePublicUrls: vi.fn().mockResolvedValue(new Map()),
     ...overrides,
   };
 }
