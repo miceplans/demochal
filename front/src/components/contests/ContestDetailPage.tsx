@@ -13,6 +13,7 @@ import {
   Muted,
   Title,
   Tag,
+  HeartIcon,
   Icon,
   IconButton,
   SectionHeader,
@@ -216,7 +217,7 @@ export function ContestDetailPage({
                 title={bookmarkId ? undefined : '데모 챌린지는 북마크할 수 없어요'}
                 onClick={() => toggleBookmark(bookmarkId)}
               >
-                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+                <HeartIcon filled={saved} size={18} />
               </IconButton>
               <Button small tone="plain" onClick={share}>
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
