@@ -157,17 +157,18 @@ export class ChallengesService {
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
     const nextCursor = hasMore && last ? this.encodeCursor(sort, last) : null;
-    // 목록 카드도 포스터를 보여주므로 공개 URL을 함께 내린다(한 번의 조회로 일괄 해석).
+    return { items: await this.withPosterUrls(items), nextCursor };
+  }
+
+  /** 카드 목록 응답에 포스터 공개 URL을 붙인다(한 번의 조회로 일괄 해석). */
+  private async withPosterUrls<T extends { posterFileId: string | null }>(items: T[]) {
     const posterUrls = await this.filesService.resolvePublicUrls(
       items.map((item) => item.posterFileId),
     );
-    return {
-      items: items.map((item) => ({
-        ...item,
-        posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
-      })),
-      nextCursor,
-    };
+    return items.map((item) => ({
+      ...item,
+      posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
+    }));
   }
 
   private parseSort(sort: string): ChallengeSort {
@@ -524,7 +525,7 @@ export class ChallengesService {
           .orderBy(desc(challenges.createdAt))
           .limit(3)
       : [];
-    if (byCategory.length >= 3) return byCategory;
+    if (byCategory.length >= 3) return this.withPosterUrls(byCategory);
 
     const excludeIds = new Set([id, ...byCategory.map((c) => c.id)]);
     const fallback = await this.db
@@ -541,7 +542,7 @@ export class ChallengesService {
       .limit(3 + excludeIds.size);
 
     const backfill = fallback.filter((c) => !excludeIds.has(c.id)).slice(0, 3 - byCategory.length);
-    return [...byCategory, ...backfill];
+    return this.withPosterUrls([...byCategory, ...backfill]);
   }
 
   async listRecommended(userId: string, requestedLimit?: number) {
@@ -588,27 +589,25 @@ export class ChallengesService {
     const views = new Map(viewRows.map((row) => [row.challengeId, Number(row.total)]));
     const bookmarkCounts = new Map(bookmarkRows.map((row) => [row.challengeId, Number(row.total)]));
 
-    return {
-      items: candidates
-        .map((challenge) => {
-          const interestScore =
-            interests.filter((interest) => interestsMatch(interest, challenge.category)).length *
-            100;
-          const popularityScore =
-            Math.min(views.get(challenge.id) ?? 0, 50) +
-            3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
-          const semoFormBoost = challenge.recruitMethod === 'seMOchall' ? SEMO_FORM_BOOST : 0;
-          return { challenge, score: interestScore + popularityScore + semoFormBoost };
-        })
-        .sort(
-          (left, right) =>
-            right.score - left.score ||
-            right.challenge.createdAt.getTime() - left.challenge.createdAt.getTime() ||
-            left.challenge.id.localeCompare(right.challenge.id),
-        )
-        .slice(0, limit)
-        .map(({ challenge }) => challenge),
-    };
+    const ranked = candidates
+      .map((challenge) => {
+        const interestScore =
+          interests.filter((interest) => interestsMatch(interest, challenge.category)).length * 100;
+        const popularityScore =
+          Math.min(views.get(challenge.id) ?? 0, 50) +
+          3 * Math.min(bookmarkCounts.get(challenge.id) ?? 0, 20);
+        const semoFormBoost = challenge.recruitMethod === 'seMOchall' ? SEMO_FORM_BOOST : 0;
+        return { challenge, score: interestScore + popularityScore + semoFormBoost };
+      })
+      .sort(
+        (left, right) =>
+          right.score - left.score ||
+          right.challenge.createdAt.getTime() - left.challenge.createdAt.getTime() ||
+          left.challenge.id.localeCompare(right.challenge.id),
+      )
+      .slice(0, limit)
+      .map(({ challenge }) => challenge);
+    return { items: await this.withPosterUrls(ranked) };
   }
 
   private surveyInterests(survey: unknown): string[] {

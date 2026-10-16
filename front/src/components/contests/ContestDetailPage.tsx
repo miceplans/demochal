@@ -72,6 +72,7 @@ export function ContestDetailPage({
       title: item.title ?? '',
       category: item.category ?? '',
       days: daysUntil(item.endDate, now),
+      posterUrl: item.posterUrl ?? null,
     }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;

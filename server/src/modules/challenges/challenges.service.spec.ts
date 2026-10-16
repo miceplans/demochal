@@ -37,9 +37,11 @@ function createService(
     .mockReturnValueOnce(candidatesQuery)
     .mockReturnValueOnce(viewsQuery)
     .mockReturnValueOnce(bookmarksQuery);
+  const files = createFilesStub();
   return {
-    service: new ChallengesService(db, {} as any, createFilesStub() as any),
+    service: new ChallengesService(db, {} as any, files as any),
     candidatesQuery,
+    files,
   };
 }
 
@@ -96,6 +98,23 @@ describe('ChallengesService.listRecommended', () => {
     const result = await service.listRecommended('user-1');
 
     expect(result.items.map((item) => item.id)).toEqual(['matching', 'popular']);
+  });
+
+  it('attaches the public poster URL to each recommended item', async () => {
+    const withPoster = {
+      ...challenge('with-poster', 'IT/SW', '2029-01-01'),
+      posterFileId: 'file-p',
+    };
+    const withoutPoster = { ...challenge('no-poster', '디자인', '2029-01-02'), posterFileId: null };
+    const { service, files } = createService({ interests: [] }, [withPoster, withoutPoster]);
+    files.resolvePublicUrls.mockResolvedValue(
+      new Map([['file-p', 'https://cdn.example.com/p.webp']]),
+    );
+
+    const result = await service.listRecommended('user-1');
+
+    const urls = Object.fromEntries(result.items.map((item) => [item.id, item.posterUrl]));
+    expect(urls).toEqual({ 'with-poster': 'https://cdn.example.com/p.webp', 'no-poster': null });
   });
 
   it('does not match short ASCII interest tokens as substrings of unrelated categories', async () => {
