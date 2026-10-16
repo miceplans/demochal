@@ -1053,7 +1053,7 @@ function PostingForm({
             <FieldLabel>상세정보를 적어주세요.</FieldLabel>
             <EditorBox>
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
-                <ToolGroup>
+                <ToolGroup borderless>
                   <Tip label="문단 스타일">
                     <ToolDrop onMouseDown={keepEditorFocus}>
                       <Dropdown
@@ -1740,14 +1740,16 @@ const MenuBar = styled.div({
   padding: 8,
   flexWrap: 'wrap',
 });
-const ToolGroup = styled.div({
+const ToolGroup = styled('div', { shouldForwardProp: (prop) => prop !== 'borderless' })<{
+  borderless?: boolean;
+}>(({ borderless }) => ({
   display: 'flex',
   alignItems: 'center',
-  gap: 2,
+  gap: borderless ? 6 : 2,
   padding: 2,
-  border: '1px solid #e9ecef',
+  border: borderless ? 0 : '1px solid #e9ecef',
   borderRadius: 4,
-});
+}));
 const ToolButton = styled.button({
   width: 28,
   height: 28,
