@@ -119,6 +119,12 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
   }
 
+  async function fillOrgInfo(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(document.querySelector('input[name="orgName"]')!, '세모컴퍼니');
+    await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
+    await user.type(document.querySelector('input[name="orgEmail"]')!, 'contact@semochal.kr');
+  }
+
   it('redirects completed BIZ signup to the login page without a business-registration document or verification request', async () => {
     mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
     const user = userEvent.setup();
@@ -128,13 +134,32 @@ describe('BizSignupFlow', () => {
 
     expect(screen.getByLabelText('기관 정보')).not.toBeNull();
     expect(document.querySelector('input[type="file"]')).toBeNull();
+    await fillOrgInfo(user);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
-    await waitFor(() => expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' }));
+    await waitFor(() =>
+      expect(mocks.registerBusiness).toHaveBeenCalledWith({
+        type: '기업',
+        name: '세모컴퍼니',
+        phone: '02-1234-5678',
+        email: 'contact@semochal.kr',
+      }),
+    );
     expect(mocks.submitVerification).not.toHaveBeenCalled();
     expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
     expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
+  });
+
+  it('requires the organization fields before registering', async () => {
+    const user = userEvent.setup();
+    renderSignup();
+
+    await advanceToBusinessInfo(user);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(mocks.toastError).toHaveBeenCalledWith('사명/단체명을 입력해주세요.');
+    expect(mocks.register).not.toHaveBeenCalled();
   });
 
   it('redirects a duplicate signup to the Biz login page', async () => {
@@ -157,6 +182,7 @@ describe('BizSignupFlow', () => {
     await setValue('passwordConfirm', 'password123');
     await user.click(screen.getByRole('button', { name: '다음' }));
 
+    await fillOrgInfo(user);
     await user.click(screen.getByRole('button', { name: '다음' }));
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));

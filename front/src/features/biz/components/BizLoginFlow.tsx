@@ -18,7 +18,7 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 
-const stepLabels = ['약관 동의', '계정 정보', '기관 정보'];
+const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
 const agreements = [
   { value: 'privacy', label: '개인정보처리방침' },
@@ -48,6 +48,7 @@ export function BizSignupFlow() {
     password: '',
     passwordConfirm: '',
   });
+  const [org, setOrg] = useState({ name: '', phone: '', email: '' });
   const [orgType, setOrgType] = useState<OrgType>('기업');
   const [submitting, setSubmitting] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
@@ -68,6 +69,16 @@ export function BizSignupFlow() {
     if (account.password !== account.passwordConfirm) return '비밀번호가 일치하지 않아요.';
     return null;
   };
+  const setOrgField = (key: keyof typeof org) => (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setOrg((prev) => ({ ...prev, [key]: value }));
+  };
+  const validateOrg = () => {
+    if (!org.name.trim()) return '사명/단체명을 입력해주세요.';
+    if (!org.phone.trim()) return '문의 번호를 입력해주세요.';
+    if (!EMAIL_PATTERN.test(org.email.trim())) return '문의 이메일을 확인해주세요.';
+    return null;
+  };
   const goToOrgStep = () => {
     const error = validateAccount();
     if (error) {
@@ -78,6 +89,13 @@ export function BizSignupFlow() {
   };
 
   const submit = async () => {
+    if (!businessId) {
+      const error = validateOrg();
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       if (!registered) {
@@ -99,7 +117,12 @@ export function BizSignupFlow() {
         setRegistered(true);
       }
       if (!businessId) {
-        const { data: business } = await generated.registerBusiness({ type: orgType });
+        const { data: business } = await generated.registerBusiness({
+          type: orgType,
+          name: org.name.trim(),
+          phone: org.phone.trim(),
+          email: org.email.trim(),
+        });
         if (!business.id) throw new Error('business registration failed');
         setBusinessId(business.id);
       }
@@ -187,13 +210,43 @@ export function BizSignupFlow() {
             )}
             {step === 2 && (
               <Form aria-label="기관 정보">
-                <Dropdown
-                  aria-label="기관 유형"
-                  options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
-                  value={orgType}
-                  disabled={!!businessId}
-                  onChange={(value) => setOrgType(value as OrgType)}
-                />
+                <FormField label="사명/단체명">
+                  <TextInput
+                    name="orgName"
+                    autoComplete="organization"
+                    disabled={!!businessId}
+                    value={org.name}
+                    onChange={setOrgField('name')}
+                  />
+                </FormField>
+                <FormField label="유형">
+                  <Dropdown
+                    aria-label="기관 유형"
+                    options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
+                    value={orgType}
+                    disabled={!!businessId}
+                    onChange={(value) => setOrgType(value as OrgType)}
+                  />
+                </FormField>
+                <FormField label="문의 번호">
+                  <TextInput
+                    type="tel"
+                    name="orgPhone"
+                    autoComplete="tel"
+                    disabled={!!businessId}
+                    value={org.phone}
+                    onChange={setOrgField('phone')}
+                  />
+                </FormField>
+                <FormField label="이메일">
+                  <TextInput
+                    type="email"
+                    name="orgEmail"
+                    disabled={!!businessId}
+                    value={org.email}
+                    onChange={setOrgField('email')}
+                  />
+                </FormField>
               </Form>
             )}
           </StepBody>
