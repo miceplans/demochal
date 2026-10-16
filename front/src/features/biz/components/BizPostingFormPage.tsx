@@ -272,7 +272,7 @@ const EDITOR_COMMANDS = {
   quote: 'formatBlock',
   rule: 'insertHorizontalRule',
 } as const;
-type EditorCommand = keyof typeof EDITOR_COMMANDS | 'link' | 'image' | 'code';
+type EditorCommand = keyof typeof EDITOR_COMMANDS | 'image' | 'code';
 // execCommand가 인라인 style(text-align 등)로 결과를 만들어야 하는 명령. 나머지는 b/i/u 같은 태그로 만든다.
 const STYLE_COMMANDS = new Set<string>([
   'justifyLeft',
@@ -604,6 +604,165 @@ function DatePickerField({
   );
 }
 
+/** 주소에 스킴이 없으면 https://를 붙여 http(s) URL로 정규화한다. 올바르지 않으면 null. */
+function normalizeLinkUrl(raw: string) {
+  const value = raw.trim();
+  if (!value) return null;
+  const url = /^[a-z][a-z\d+.-]*:/i.test(value) ? value : `https://${value}`;
+  return isHttpUrl(url) ? url : null;
+}
+
+/**
+ * 링크 버튼 + 팝오버. 선택한 글자에 링크를 걸거나(선택이 없으면 표시 글자와 함께 삽입),
+ * 커서가 링크 안이면 주소를 고치거나 해제한다. 입력창이 포커스를 가져가므로 기억해 둔 선택 영역을 복원해 적용한다.
+ */
+function LinkTool({
+  savedRange,
+  withEditorSelection,
+}: {
+  savedRange: React.RefObject<Range | null>;
+  withEditorSelection: (apply: () => void) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [text, setText] = useState('');
+  const [error, setError] = useState('');
+  const [existing, setExisting] = useState<HTMLAnchorElement | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const urlRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    urlRef.current?.focus();
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const toggle = () => {
+    if (open) return setOpen(false);
+    const range = savedRange.current;
+    const node = range?.commonAncestorContainer;
+    const anchor = (node instanceof Element ? node : node?.parentElement)?.closest('a') ?? null;
+    setExisting(anchor);
+    setHasSelection(Boolean(range && !range.collapsed));
+    setUrl(anchor?.getAttribute('href') ?? '');
+    setText('');
+    setError('');
+    setOpen(true);
+  };
+
+  const apply = () => {
+    const normalized = normalizeLinkUrl(url);
+    if (!normalized) return setError('http(s)://로 시작하는 올바른 주소를 입력해 주세요.');
+    if (existing) existing.setAttribute('href', normalized);
+    else
+      withEditorSelection(() => {
+        if (hasSelection) document.execCommand('createLink', false, normalized);
+        else
+          document.execCommand(
+            'insertHTML',
+            false,
+            `<a href="${escapeHtml(normalized).replace(/"/g, '&quot;')}">${escapeHtml(text.trim() || normalized)}</a>`,
+          );
+      });
+    setOpen(false);
+  };
+
+  const remove = () => {
+    withEditorSelection(() => {
+      if (existing) {
+        const range = document.createRange();
+        range.selectNodeContents(existing);
+        const selection = window.getSelection();
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+      }
+      document.execCommand('unlink');
+    });
+    setOpen(false);
+  };
+
+  return (
+    <LinkRoot ref={rootRef}>
+      <Tip label="링크">
+        <ToolButton
+          type="button"
+          aria-label="링크"
+          aria-expanded={open}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={toggle}
+        >
+          <ToolIcon src={`${ICON}/figma-link.svg`} alt="" />
+        </ToolButton>
+      </Tip>
+      {open && (
+        <LinkPopover
+          role="dialog"
+          aria-label="링크 편집"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setOpen(false);
+          }}
+        >
+          <LinkField>
+            <LinkLabel htmlFor="link-url">링크 주소</LinkLabel>
+            <LinkInputBox
+              id="link-url"
+              ref={urlRef}
+              value={url}
+              placeholder="https://"
+              aria-invalid={Boolean(error)}
+              onChange={(event) => {
+                setUrl(event.target.value);
+                setError('');
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  apply();
+                }
+              }}
+            />
+          </LinkField>
+          {!existing && !hasSelection && (
+            <LinkField>
+              <LinkLabel htmlFor="link-text">표시할 글자 (선택)</LinkLabel>
+              <LinkInputBox
+                id="link-text"
+                value={text}
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    apply();
+                  }
+                }}
+              />
+            </LinkField>
+          )}
+          {error && <LinkError role="alert">{error}</LinkError>}
+          <LinkActions>
+            {existing && (
+              <LinkGhost type="button" onClick={remove}>
+                링크 해제
+              </LinkGhost>
+            )}
+            <LinkGhost type="button" onClick={() => setOpen(false)}>
+              취소
+            </LinkGhost>
+            <LinkApply type="button" onClick={apply}>
+              {existing ? '수정' : '적용'}
+            </LinkApply>
+          </LinkActions>
+        </LinkPopover>
+      )}
+    </LinkRoot>
+  );
+}
+
 function PostingForm({
   initial,
   submitLabel,
@@ -741,12 +900,6 @@ function PostingForm({
   const runCommand = (command: EditorCommand) => {
     withEditorSelection(() => {});
     if (command === 'image') return imageInputRef.current?.click();
-    if (command === 'link') {
-      const url = window.prompt('링크 주소(https://…)를 입력해 주세요.')?.trim();
-      if (!url) return;
-      if (!isHttpUrl(url)) return setError('링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
-      return void document.execCommand('createLink', false, url);
-    }
     if (command === 'code') {
       const selected = window.getSelection()?.toString() ?? '';
       if (!selected) return;
@@ -1219,7 +1372,7 @@ function PostingForm({
                   />
                 </ToolGroup>
                 <ToolGroup>
-                  <ToolBtn onRun={runCommand} label="링크" icon="figma-link.svg" command="link" />
+                  <LinkTool savedRange={savedRange} withEditorSelection={withEditorSelection} />
                   <ToolBtn
                     onRun={runCommand}
                     label="이미지"
@@ -1623,6 +1776,51 @@ const PickerDone = styled.button({
   color: c.white,
 });
 
+const LinkRoot = styled.div({ position: 'relative', display: 'flex' });
+const LinkPopover = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 300,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const LinkField = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 });
+const LinkLabel = styled.label({ fontSize: 12, color: c.gray700 });
+const LinkInputBox = styled.input({
+  height: 36,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 12px',
+  '&:focus': { outline: 'none', borderColor: c.primary },
+  '&[aria-invalid=true]': { borderColor: c.red },
+});
+const LinkError = styled.p({ margin: 0, fontSize: 12, color: c.red });
+const LinkActions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 6 });
+const LinkGhost = styled.button({
+  height: 32,
+  padding: '0 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  '&:hover': { background: c.gray50 },
+});
+const LinkApply = styled.button({
+  height: 32,
+  padding: '0 14px',
+  border: 0,
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
 const Message = styled.p({ color: c.gray700, margin: 0 });
 // 포스터는 잘라내지 않고 원본 비율 그대로 보여준다.

@@ -196,6 +196,54 @@ describe('BizPostingFormPage', () => {
     expect(exec).toHaveBeenCalledWith('hiliteColor', false, 'transparent');
   });
 
+  describe('링크', () => {
+    const exec = vi.fn(() => true);
+    beforeEach(() => {
+      exec.mockClear();
+      Object.defineProperty(document, 'execCommand', { configurable: true, value: exec });
+    });
+
+    it('prompt 대신 팝오버로 주소를 받고, 선택 글자가 없으면 표시 글자와 함께 삽입한다', () => {
+      const prompt = vi.spyOn(window, 'prompt');
+      renderForm();
+      fireEvent.click(screen.getByLabelText('링크'));
+      const dialog = screen.getByRole('dialog', { name: '링크 편집' });
+      fireEvent.change(within(dialog).getByLabelText('링크 주소'), {
+        target: { value: 'example.com/a' },
+      });
+      fireEvent.change(within(dialog).getByLabelText('표시할 글자 (선택)'), {
+        target: { value: '신청 페이지' },
+      });
+      fireEvent.click(within(dialog).getByText('적용'));
+      expect(prompt).not.toHaveBeenCalled();
+      expect(exec).toHaveBeenCalledWith(
+        'insertHTML',
+        false,
+        '<a href="https://example.com/a">신청 페이지</a>',
+      );
+      expect(screen.queryByRole('dialog', { name: '링크 편집' })).toBeNull();
+    });
+
+    it('올바르지 않은 주소는 팝오버 안에서 오류를 보여주고 닫지 않는다', () => {
+      renderForm();
+      fireEvent.click(screen.getByLabelText('링크'));
+      const dialog = screen.getByRole('dialog', { name: '링크 편집' });
+      fireEvent.change(within(dialog).getByLabelText('링크 주소'), {
+        target: { value: 'javascript:alert(1)' },
+      });
+      fireEvent.click(within(dialog).getByText('적용'));
+      expect(within(dialog).getByRole('alert').textContent).toContain('http(s)://');
+      expect(exec).not.toHaveBeenCalledWith('insertHTML', false, expect.anything());
+    });
+
+    it('Esc로 닫는다', () => {
+      renderForm();
+      fireEvent.click(screen.getByLabelText('링크'));
+      fireEvent.keyDown(screen.getByLabelText('링크 주소'), { key: 'Escape' });
+      expect(screen.queryByRole('dialog', { name: '링크 편집' })).toBeNull();
+    });
+  });
+
   it('해시태그·기타 입력란에는 예시 문구가 없다', () => {
     renderForm();
     expect(screen.getByLabelText('해시태그').getAttribute('placeholder')).toBeNull();
