@@ -1510,7 +1510,10 @@ const PickerDayPicker = styled(DayPicker)({
   '.rdp-month_caption': { ...textStyle.subtitle, color: c.gray900, justifyContent: 'center' },
   '.rdp-weekday': { ...textStyle.label, color: c.gray500 },
   '.rdp-day_button': { ...textStyle.metaText, color: c.gray900 },
-  '.rdp-selected .rdp-day_button': { color: c.white },
+  // 단일 선택은 기본 스타일에 배경이 없어, 테두리를 없앤 만큼 파란 원 배경을 직접 입힌다.
+  '.rdp-selected': { fontSize: 'inherit', fontWeight: 600 },
+  '.rdp-selected .rdp-day_button': { background: c.primary, color: c.white },
+  '.rdp-today:not(.rdp-selected):not(.rdp-outside) .rdp-day_button': { fontWeight: 700 },
   '.rdp-chevron': { fill: c.gray700 },
 });
 const PickerTime = styled.div({
