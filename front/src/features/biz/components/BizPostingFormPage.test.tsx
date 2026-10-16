@@ -41,14 +41,28 @@ vi.mock('@semochal/api-client', () => ({
   },
 }));
 
+// 달력 팝오버를 열어 현재 보이는 달의 day일을 고른다.
+function pickDay(label: string, day: number) {
+  fireEvent.click(screen.getByLabelText(label));
+  const dialog = screen.getByRole('dialog', { name: `${label} 달력` });
+  fireEvent.click(
+    within(dialog)
+      .getAllByRole('button')
+      .find((button) => button.textContent === String(day))!,
+  );
+}
+const monthKey = (day: number, time = '') => {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(day)}${time}`;
+};
+
 async function fillRequired() {
   fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '해커톤' } });
-  fireEvent.change(screen.getByLabelText('접수 시작 일시'), {
-    target: { value: '2029-01-01T09:30' },
-  });
-  fireEvent.change(screen.getByLabelText('접수 종료 일시'), {
-    target: { value: '2029-01-31T18:00' },
-  });
+  pickDay('접수 시작 일시', 1);
+  fireEvent.click(screen.getByLabelText('접수 시작 일시 시'));
+  fireEvent.click(screen.getByRole('option', { name: '09시' }));
+  pickDay('접수 종료 일시', 20);
   const editor = screen.getByLabelText('상세정보 본문');
   editor.innerHTML = '<p>내용</p>';
 }
@@ -78,10 +92,12 @@ describe('BizPostingFormPage', () => {
   });
 
   it('인원 제한 입력이 없고, 접수 기간은 시각까지·행사 기간은 따로 입력한다', async () => {
-    renderForm();
+    const { container } = renderForm();
     expect(screen.queryByLabelText('모집 인원')).toBeNull();
-    expect(screen.getByLabelText('접수 시작 일시')).toHaveProperty('type', 'datetime-local');
-    expect(screen.getByLabelText('행사 시작일')).toHaveProperty('type', 'date');
+    expect(screen.getByLabelText('접수 시작 일시').textContent).toBe('날짜 선택');
+    expect(screen.getByText('접수 기간')).toBeTruthy();
+    expect(screen.getByText('행사 기간')).toBeTruthy();
+    expect(container.querySelector('img[src*="role-calendar"]')).toBeNull();
   });
 
   it('대상 칩은 제한없음이 맨 앞이고, 기타를 고르면 직접 입력란이 열린다', () => {
@@ -108,8 +124,8 @@ describe('BizPostingFormPage', () => {
     await fillRequired();
     fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
     fireEvent.change(screen.getByLabelText('주관'), { target: { value: '주관사' } });
-    fireEvent.change(screen.getByLabelText('행사 시작일'), { target: { value: '2029-02-10' } });
-    fireEvent.change(screen.getByLabelText('행사 종료일'), { target: { value: '2029-02-11' } });
+    pickDay('행사 시작일', 10);
+    pickDay('행사 종료일', 11);
     fireEvent.click(within(screen.getByRole('group', { name: '대상' })).getByText('기타'));
     fireEvent.change(screen.getByLabelText('대상 기타 내용'), { target: { value: '서울 거주' } });
     await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
@@ -126,7 +142,8 @@ describe('BizPostingFormPage', () => {
     });
     expect(data).not.toHaveProperty('capacity');
     expect(data.sponsor).toBeUndefined();
-    expect(data.startDate).toBe(new Date('2029-01-01T09:30').toISOString());
+    expect(data.startDate).toBe(new Date(monthKey(1, 'T09:00')).toISOString());
+    expect(data.endDate).toBe(new Date(monthKey(20, 'T23:59')).toISOString());
     expect(new Date(data.eventStartDate).getDate()).toBe(10);
     expect(new Date(data.eventEndDate).getDate()).toBe(11);
   });
@@ -156,11 +173,33 @@ describe('BizPostingFormPage', () => {
     renderForm();
     const bold = screen.getByLabelText('굵게');
     expect(bold.parentElement?.getAttribute('data-tip')).toBe('굵게');
-    const size = screen.getByLabelText('글자 크기') as HTMLSelectElement;
-    expect(size.parentElement?.getAttribute('data-tip')).toBe('글자 크기');
-    expect(Array.from(size.options).map((o) => o.text)).toContain('24px');
+    const size = screen.getByLabelText('글자 크기');
+    expect(size.closest('[data-tip]')?.getAttribute('data-tip')).toBe('글자 크기');
+    fireEvent.click(size);
+    expect(screen.getByRole('option', { name: '24px' })).toBeTruthy();
     for (const label of ['글꼴', '글자 색', '가운데 정렬', '위 첨자'])
       expect(screen.getByLabelText(label).closest('[data-tip]')).toBeTruthy();
+  });
+
+  it('해시태그·기타 입력란에는 예시 문구가 없다', () => {
+    renderForm();
+    expect(screen.getByLabelText('해시태그').getAttribute('placeholder')).toBeNull();
+    fireEvent.click(within(screen.getByRole('group', { name: '대상' })).getByText('기타'));
+    expect(screen.getByLabelText('대상 기타 내용').getAttribute('placeholder')).toBeNull();
+  });
+
+  it('업로드가 실패해도 선택한 포스터 프리뷰는 먼저 보이고, 실패하면 되돌린다', async () => {
+    URL.createObjectURL = vi.fn(() => 'blob:poster');
+    URL.revokeObjectURL = vi.fn();
+    mocks.requestUpload.mockRejectedValue(new Error('boom'));
+    const { container } = renderForm();
+    const input = container.querySelector('input[accept="image/*"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'p.png', { type: 'image/png' })] },
+    });
+    expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:poster');
+    expect((await screen.findByRole('alert')).textContent).toContain('포스터 업로드에 실패');
+    expect(screen.queryByAltText('포스터 미리보기')).toBeNull();
   });
 
   it('포스터는 변환 없이 원본 파일 그대로 올리고 그 파일로 미리보기를 만든다', async () => {

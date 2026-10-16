@@ -7,6 +7,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
+import { DayPicker } from 'react-day-picker';
+import { ko } from 'react-day-picker/locale';
+import 'react-day-picker/style.css';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { adApi, adError } from '@/lib/ad-api';
 import { toDateKey } from '@/lib/date';
@@ -396,6 +399,114 @@ function AlignGlyph({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' })
   );
 }
 
+const keepEditorFocus = (event: React.MouseEvent) => event.preventDefault();
+
+const HOURS: DropdownOption[] = Array.from({ length: 24 }, (_, h) => ({
+  value: String(h).padStart(2, '0'),
+  label: `${String(h).padStart(2, '0')}시`,
+}));
+const MINUTES: DropdownOption[] = Array.from({ length: 12 }, (_, i) => ({
+  value: String(i * 5).padStart(2, '0'),
+  label: `${String(i * 5).padStart(2, '0')}분`,
+}));
+
+/** 날짜(선택 시 시각까지) 입력. 값은 `YYYY-MM-DD` 또는 `YYYY-MM-DDTHH:mm`(비어 있으면 ''). */
+function DatePickerField({
+  value,
+  onChange,
+  withTime = false,
+  defaultTime = '00:00',
+  'aria-label': ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  withTime?: boolean;
+  defaultTime?: string;
+  'aria-label': string;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const datePart = value.slice(0, 10);
+  const timePart = value.length > 10 ? value.slice(11, 16) : defaultTime;
+  const [hour = '00', minute = '00'] = timePart.split(':');
+  const selected = datePart ? new Date(`${datePart}T00:00:00`) : undefined;
+  const [viewMonth, setViewMonth] = useState<Date>(() => selected ?? new Date());
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  const emit = (date: string, time: string) => onChange(withTime ? `${date}T${time}` : date);
+  const label = datePart
+    ? `${datePart.replaceAll('-', '.')}${withTime ? ` ${hour}:${minute}` : ''}`
+    : '날짜 선택';
+
+  return (
+    <PickerRoot ref={rootRef}>
+      <PickerTrigger
+        type="button"
+        aria-label={ariaLabel}
+        aria-expanded={open}
+        hasValue={Boolean(datePart)}
+        onClick={() => {
+          if (!open) setViewMonth(selected ?? new Date());
+          setOpen((v) => !v);
+        }}
+      >
+        {label}
+      </PickerTrigger>
+      {open && (
+        <PickerPopover role="dialog" aria-label={`${ariaLabel} 달력`}>
+          <PickerDayPicker
+            mode="single"
+            locale={ko}
+            navLayout="around"
+            selected={selected}
+            month={viewMonth}
+            onMonthChange={setViewMonth}
+            onSelect={(date) => {
+              if (!date) return;
+              emit(toDateKey(date), `${hour}:${minute}`);
+              if (!withTime) setOpen(false);
+            }}
+          />
+          {withTime && (
+            <PickerTime>
+              <Dropdown
+                size="S"
+                width={92}
+                aria-label={`${ariaLabel} 시`}
+                options={HOURS}
+                value={hour}
+                onChange={(h) => datePart && emit(datePart, `${h}:${minute}`)}
+                disabled={!datePart}
+              />
+              <Dropdown
+                size="S"
+                width={92}
+                aria-label={`${ariaLabel} 분`}
+                options={MINUTES}
+                value={MINUTES.some((m) => m.value === minute) ? minute : undefined}
+                placeholder={`${minute}분`}
+                onChange={(m) => datePart && emit(datePart, `${hour}:${m}`)}
+                disabled={!datePart}
+              />
+              <PickerDone type="button" onClick={() => setOpen(false)}>
+                확인
+              </PickerDone>
+            </PickerTime>
+          )}
+        </PickerPopover>
+      )}
+    </PickerRoot>
+  );
+}
+
 function PostingForm({
   initial,
   submitLabel,
@@ -434,7 +545,7 @@ function PostingForm({
   const [targets, setTargets] = useState(initial.targets);
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
   const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
-  const [poster, setPoster] = useState<{ fileId: string; previewUrl: string } | null>(null);
+  const [poster, setPoster] = useState<{ fileId: string | null; previewUrl: string } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -598,6 +709,12 @@ function PostingForm({
     setError('');
     setUploadingPoster(true);
     const previewUrl = URL.createObjectURL(file);
+    // 업로드가 끝나기 전에도 선택 즉시 원본 프리뷰를 보여준다.
+    const previous = poster;
+    if (posterObjectUrl.current && posterObjectUrl.current !== previous?.previewUrl)
+      URL.revokeObjectURL(posterObjectUrl.current);
+    posterObjectUrl.current = previewUrl;
+    setPoster({ fileId: null, previewUrl });
     try {
       const presigned = await adApi.files.requestUpload({
         bucket: 'public',
@@ -613,11 +730,12 @@ function PostingForm({
       });
       if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
       await adApi.files.finalizeUpload(presigned.fileId);
-      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
-      posterObjectUrl.current = previewUrl;
+      if (previous && previous.previewUrl !== previewUrl) URL.revokeObjectURL(previous.previewUrl);
       setPoster({ fileId: presigned.fileId, previewUrl });
     } catch {
       URL.revokeObjectURL(previewUrl);
+      posterObjectUrl.current = previous?.previewUrl ?? null;
+      setPoster(previous);
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setUploadingPoster(false);
@@ -722,7 +840,7 @@ function PostingForm({
         targets,
         organizerType: organizerType || null,
         prizeAmount: parsedPrizeAmount,
-        ...(poster ? { posterFileId: poster.fileId } : {}),
+        ...(poster?.fileId ? { posterFileId: poster.fileId } : {}),
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
@@ -782,34 +900,34 @@ function PostingForm({
           />
           <Roles aria-label="접수 기간과 행사 기간">
             <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
               <RoleLabel>접수 기간</RoleLabel>
-              <RoleInput
-                type="datetime-local"
+              <DatePickerField
+                withTime
+                defaultTime="00:00"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={setStartDate}
                 aria-label="접수 시작 일시"
               />
-              <RoleInput
-                type="datetime-local"
+              <RangeTilde>~</RangeTilde>
+              <DatePickerField
+                withTime
+                defaultTime="23:59"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={setEndDate}
                 aria-label="접수 종료 일시"
               />
             </RoleRow>
             <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
               <RoleLabel>행사 기간</RoleLabel>
-              <RoleInput
-                type="date"
+              <DatePickerField
                 value={eventStartDate}
-                onChange={(e) => setEventStartDate(e.target.value)}
+                onChange={setEventStartDate}
                 aria-label="행사 시작일"
               />
-              <RoleInput
-                type="date"
+              <RangeTilde>~</RangeTilde>
+              <DatePickerField
                 value={eventEndDate}
-                onChange={(e) => setEventEndDate(e.target.value)}
+                onChange={setEventEndDate}
                 aria-label="행사 종료일"
               />
             </RoleRow>
@@ -832,7 +950,6 @@ function PostingForm({
               aria-label="해시태그"
               value={hashtags}
               onChange={(e) => setHashtags(e.target.value)}
-              placeholder="#태그, #태그"
             />
           </FieldBlock>
           <FieldBlock>
@@ -841,54 +958,46 @@ function PostingForm({
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
                 <ToolGroup>
                   <Tip label="문단 스타일">
-                    <ToolSelect
-                      aria-label="문단 스타일"
-                      value=""
-                      onChange={(event) => {
-                        if (event.target.value)
-                          applyParagraphStyle(event.target.value as ParagraphStyle);
-                      }}
-                    >
-                      <option value="">문단</option>
-                      {PARAGRAPH_STYLES.map(({ value, label }) => (
-                        <option key={value} value={value}>
-                          {label}
-                        </option>
-                      ))}
-                    </ToolSelect>
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={88}
+                        aria-label="문단 스타일"
+                        value=""
+                        placeholder="문단"
+                        options={PARAGRAPH_STYLES}
+                        onChange={(value) => applyParagraphStyle(value as ParagraphStyle)}
+                      />
+                    </ToolDrop>
                   </Tip>
                   <Tip label="글꼴">
-                    <ToolSelect
-                      aria-label="글꼴"
-                      value=""
-                      onChange={(event) => {
-                        const family = FONT_FAMILIES.find((f) => f.label === event.target.value);
-                        if (family) applyFontFamily(family.value);
-                      }}
-                    >
-                      <option value="">글꼴</option>
-                      {FONT_FAMILIES.map(({ label }) => (
-                        <option key={label} value={label}>
-                          {label}
-                        </option>
-                      ))}
-                    </ToolSelect>
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={104}
+                        aria-label="글꼴"
+                        value=""
+                        placeholder="글꼴"
+                        options={FONT_FAMILIES.map(({ label }) => ({ value: label, label }))}
+                        onChange={(value) => {
+                          const family = FONT_FAMILIES.find((f) => f.label === value);
+                          if (family) applyFontFamily(family.value);
+                        }}
+                      />
+                    </ToolDrop>
                   </Tip>
                   <Tip label="글자 크기">
-                    <ToolSelect
-                      aria-label="글자 크기"
-                      value=""
-                      onChange={(event) => {
-                        if (event.target.value) applyFontSize(Number(event.target.value));
-                      }}
-                    >
-                      <option value="">크기</option>
-                      {FONT_SIZES.map((px) => (
-                        <option key={px} value={px}>
-                          {px}px
-                        </option>
-                      ))}
-                    </ToolSelect>
+                    <ToolDrop onMouseDown={keepEditorFocus}>
+                      <Dropdown
+                        size="S"
+                        width={88}
+                        aria-label="글자 크기"
+                        value=""
+                        placeholder="크기"
+                        options={FONT_SIZES.map((px) => ({ value: String(px), label: `${px}px` }))}
+                        onChange={(value) => applyFontSize(Number(value))}
+                      />
+                    </ToolDrop>
                   </Tip>
                 </ToolGroup>
                 <ToolGroup>
@@ -1126,7 +1235,6 @@ function PostingForm({
                 aria-label="대상 기타 내용"
                 value={targetOther}
                 maxLength={100}
-                placeholder="기타 대상을 직접 입력해 주세요 (예: 서울 거주자)"
                 onChange={(e) => setTargetOther(e.target.value)}
               />
             )}
@@ -1357,6 +1465,72 @@ function PostingForm({
   );
 }
 
+const PickerRoot = styled.div({ position: 'relative', flex: 1, minWidth: 0 });
+const PickerTrigger = styled('button', { shouldForwardProp: (prop) => prop !== 'hasValue' })<{
+  hasValue: boolean;
+}>(({ hasValue }) => ({
+  width: '100%',
+  height: 32,
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  padding: '0 14px',
+  background: c.white,
+  color: hasValue ? c.gray900 : c.gray500,
+  textAlign: 'left',
+  cursor: 'pointer',
+  '&:hover, &[aria-expanded=true]': { borderColor: c.primary },
+}));
+const PickerPopover = styled.div({
+  position: 'absolute',
+  zIndex: 30,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 'max-content',
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const PickerDayPicker = styled(DayPicker)({
+  '--rdp-accent-color': c.primary,
+  '--rdp-accent-background-color': c.lightBlue,
+  '--rdp-today-color': c.primary,
+  '--rdp-day-width': '34px',
+  '--rdp-day-height': '34px',
+  '--rdp-day_button-width': '32px',
+  '--rdp-day_button-height': '32px',
+  '--rdp-day_button-border': 'none',
+  '--rdp-selected-border': 'none',
+  '--rdp-nav_button-width': '24px',
+  '--rdp-nav_button-height': '24px',
+  '--rdp-nav-height': '28px',
+  '--rdp-weekday-opacity': 1,
+  fontFamily: textStyle.metaText.fontFamily,
+  '.rdp-month_caption': { ...textStyle.subtitle, color: c.gray900, justifyContent: 'center' },
+  '.rdp-weekday': { ...textStyle.label, color: c.gray500 },
+  '.rdp-day_button': { ...textStyle.metaText, color: c.gray900 },
+  '.rdp-selected .rdp-day_button': { color: c.white },
+  '.rdp-chevron': { fill: c.gray700 },
+});
+const PickerTime = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  marginTop: 10,
+  paddingTop: 10,
+  borderTop: `0.5px solid ${c.gray200}`,
+});
+const PickerDone = styled.button({
+  marginLeft: 'auto',
+  height: 36,
+  padding: '0 14px',
+  border: 0,
+  borderRadius: 8,
+  background: c.primary,
+  color: c.white,
+});
+
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
 const Message = styled.p({ color: c.gray700, margin: 0 });
 // 포스터는 잘라내지 않고 원본 비율 그대로 보여준다.
@@ -1422,7 +1596,6 @@ const RoleLabel = styled.span({
   flexShrink: 0,
 });
 const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
 const RoleInput = styled.input({
   flex: 1,
   minWidth: 0,
@@ -1436,16 +1609,6 @@ const RoleInput = styled.input({
   colorScheme: 'light',
   '&::-webkit-calendar-picker-indicator': { cursor: 'pointer' },
   '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const AddRoleButton = styled.button({
-  width: 24,
-  height: 24,
-  padding: 0,
-  border: 0,
-  background: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
 });
 
 /* ---------- 입력 필드 ---------- */
@@ -1504,15 +1667,9 @@ const ToolButton = styled.button({
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
 });
-const ToolSelect = styled.select({
-  height: 28,
-  border: 0,
-  background: 'transparent',
-  color: c.gray900,
-  fontSize: 13,
-  cursor: 'pointer',
-  '&:focus': { outline: 'none' },
-});
+// 드롭다운 클릭이 에디터의 선택 영역을 풀지 않게 포커스 이동을 막는다.
+const ToolDrop = styled.div({ display: 'flex' });
+const RangeTilde = styled.span({ color: c.gray500, flexShrink: 0 });
 const TipWrap = styled.span({
   position: 'relative',
   display: 'inline-flex',
