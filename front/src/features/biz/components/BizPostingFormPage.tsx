@@ -1924,20 +1924,6 @@ const RoleLabel = styled.span({
   flexShrink: 0,
 });
 const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
-const RoleInput = styled.input({
-  flex: 1,
-  minWidth: 0,
-  height: 32,
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  padding: '0 14px',
-  background: c.white,
-  color: c.gray900,
-  fontFamily: 'inherit',
-  colorScheme: 'light',
-  '&::-webkit-calendar-picker-indicator': { cursor: 'pointer' },
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
 
 /* ---------- 입력 필드 ---------- */
 const Fields = styled.div({ display: 'flex', flexDirection: 'column', gap: 20 });
