@@ -104,7 +104,7 @@ export function BizSignupFlow() {
         setBusinessId(business.id);
       }
       toast.success('가입이 완료됐어요.');
-      router.push(hrefOf('/dashboard'));
+      router.replace(hrefOf('/login'));
     } catch (error) {
       toast.error(
         apiErrorMessage(error, '가입을 완료하지 못했어요.'),
