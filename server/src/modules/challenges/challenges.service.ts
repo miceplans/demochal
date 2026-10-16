@@ -34,6 +34,8 @@ import {
   challenges,
   users,
 } from '../../db/schema.js';
+import type { ChallengeAttachment } from '../../db/schema.js';
+import type { ChallengeAttachmentDto } from './dto/challenge-attachment.dto.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
@@ -79,6 +81,19 @@ type ParsedCursor =
   | { kind: 'latest'; createdAt: Date; id: string | null }
   | { kind: 'deadline'; endDate: Date; id: string | null }
   | { kind: 'popular'; viewCount: number; id: string | null };
+
+/** 행사 기간은 시작·종료를 함께 두거나(둘 다 null이면 미정) 함께 비운다. */
+function resolveEventPeriod(start?: string | null, end?: string | null) {
+  if (Boolean(start) !== Boolean(end)) {
+    throw new BadRequestException('행사 기간은 시작일과 종료일을 함께 입력해 주세요.');
+  }
+  const eventStartDate = start ? new Date(start) : null;
+  const eventEndDate = end ? new Date(end) : null;
+  if (eventStartDate && eventEndDate && eventEndDate.getTime() < eventStartDate.getTime()) {
+    throw new BadRequestException('행사 종료일은 시작일 이후여야 합니다.');
+  }
+  return { eventStartDate, eventEndDate };
+}
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -294,6 +309,35 @@ export class ChallengesService {
     return { ...challenge, posterUrl, organizer: business?.name ?? undefined };
   }
 
+  /**
+   * 첨부파일 목록을 검증해 저장 형태로 만든다. 이미 저장돼 있던 파일은 그대로 두고,
+   * 새로 붙는 파일만 업로더 본인의 ready private 파일인지 확인한다(남의 파일 첨부 방지).
+   */
+  private async resolveAttachments(
+    items: ChallengeAttachmentDto[],
+    userId: string,
+    existing: ChallengeAttachment[],
+  ): Promise<ChallengeAttachment[]> {
+    const known = new Set(existing.map((item) => item.fileId));
+    const result: ChallengeAttachment[] = [];
+    for (const item of items) {
+      if (result.some((entry) => entry.fileId === item.fileId)) continue;
+      if (!known.has(item.fileId))
+        await this.filesService.assertOwnedReadyPrivate(item.fileId, userId);
+      result.push({ fileId: item.fileId, name: item.name, size: item.size });
+    }
+    return result;
+  }
+
+  /** 공개 공고의 첨부파일을 내려받는 5분짜리 presigned URL. 비공개 버킷은 이 경로로만 연다. */
+  async getAttachmentDownloadUrl(id: string, fileId: string) {
+    const challenge = await this.getPublicOrThrow(id);
+    const attachment = challenge.attachments.find((item) => item.fileId === fileId);
+    if (!attachment) throw new NotFoundException('첨부파일을 찾을 수 없습니다.');
+    const url = await this.filesService.getDownloadUrl(fileId, attachment.name);
+    return { url };
+  }
+
   async stats(id: string) {
     await this.getPublicOrThrow(id);
     const [views] = await this.db
@@ -348,6 +392,16 @@ export class ChallengesService {
       .limit(1);
     if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
+    const startDate = new Date(dto.startDate);
+    const endDate = new Date(dto.endDate);
+    if (endDate.getTime() < startDate.getTime()) {
+      throw new BadRequestException('접수 종료 시각은 시작 시각 이후여야 합니다.');
+    }
+    const { eventStartDate, eventEndDate } = resolveEventPeriod(
+      dto.eventStartDate,
+      dto.eventEndDate,
+    );
+    const attachments = await this.resolveAttachments(dto.attachments ?? [], ownerUserId, []);
 
     const recruitMethod = dto.recruitMethod ?? 'external';
     if (recruitMethod === 'external' && !dto.recruitUrl) {
@@ -367,9 +421,16 @@ export class ChallengesService {
         title: dto.title,
         description: sanitizeDescription(dto.description),
         price: dto.price,
-        capacity: dto.capacity,
-        startDate: new Date(dto.startDate),
-        endDate: new Date(dto.endDate),
+        startDate,
+        endDate,
+        eventStartDate,
+        eventEndDate,
+        host: dto.host.trim(),
+        supervisor: dto.supervisor?.trim() || null,
+        sponsor: dto.sponsor?.trim() || null,
+        supporter: dto.supporter?.trim() || null,
+        targetOther: dto.targets?.includes('기타') ? dto.targetOther?.trim() || null : null,
+        attachments,
         category: dto.category,
         targets: dto.targets,
         organizerType: dto.organizerType,
@@ -402,6 +463,10 @@ export class ChallengesService {
       .select({
         startDate: challenges.startDate,
         endDate: challenges.endDate,
+        eventStartDate: challenges.eventStartDate,
+        eventEndDate: challenges.eventEndDate,
+        attachments: challenges.attachments,
+        targets: challenges.targets,
         recruitMethod: challenges.recruitMethod,
         price: challenges.price,
       })
@@ -416,8 +481,21 @@ export class ChallengesService {
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
     if (endDate.getTime() < startDate.getTime()) {
-      throw new BadRequestException('종료일은 시작일 이후여야 합니다.');
+      throw new BadRequestException('접수 종료 시각은 시작 시각 이후여야 합니다.');
     }
+    const eventPeriod =
+      dto.eventStartDate !== undefined || dto.eventEndDate !== undefined
+        ? resolveEventPeriod(
+            dto.eventStartDate === undefined
+              ? current.eventStartDate?.toISOString()
+              : dto.eventStartDate,
+            dto.eventEndDate === undefined ? current.eventEndDate?.toISOString() : dto.eventEndDate,
+          )
+        : null;
+    const attachments =
+      dto.attachments !== undefined
+        ? await this.resolveAttachments(dto.attachments, user.id, current.attachments)
+        : undefined;
 
     // 신청자가 생긴 뒤에는 참가비를 바꿀 수 없고(미결제 pending 주문 금액과 어긋나지 않게 전체 신청 기준),
     // 정원은 이미 접수된 인원 아래로 줄일 수 없다.
@@ -429,26 +507,24 @@ export class ChallengesService {
         .limit(1);
       if (any) throw new ConflictException('신청자가 있는 공고의 참가비는 변경할 수 없습니다.');
     }
-    if (dto.capacity !== undefined) {
-      const [{ total = 0 } = {}] = await this.db
-        .select({ total: count() })
-        .from(applications)
-        .where(and(eq(applications.challengeId, id), effectiveApplicationCondition));
-      const accepted = Number(total);
-      if (dto.capacity < accepted) {
-        throw new ConflictException(
-          `이미 ${accepted}명이 접수되어 정원을 그 아래로 줄일 수 없습니다.`,
-        );
-      }
-    }
 
     const patch = {
       ...(dto.title !== undefined && { title: dto.title }),
       ...(dto.description !== undefined && { description: sanitizeDescription(dto.description) }),
       ...(dto.price !== undefined && { price: dto.price }),
-      ...(dto.capacity !== undefined && { capacity: dto.capacity }),
       ...(dto.startDate !== undefined && { startDate }),
       ...(dto.endDate !== undefined && { endDate }),
+      ...eventPeriod,
+      ...(dto.host !== undefined && { host: dto.host.trim() }),
+      ...(dto.supervisor !== undefined && { supervisor: dto.supervisor?.trim() || null }),
+      ...(dto.sponsor !== undefined && { sponsor: dto.sponsor?.trim() || null }),
+      ...(dto.supporter !== undefined && { supporter: dto.supporter?.trim() || null }),
+      ...((dto.targetOther !== undefined || dto.targets !== undefined) && {
+        targetOther: (dto.targets ?? current.targets ?? []).includes('기타')
+          ? dto.targetOther?.trim() || null
+          : null,
+      }),
+      ...(attachments && { attachments }),
       ...(dto.category !== undefined && { category: dto.category }),
       ...(dto.recruitUrl !== undefined &&
         current.recruitMethod === 'external' && { recruitUrl: dto.recruitUrl }),

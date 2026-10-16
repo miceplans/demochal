@@ -22,6 +22,7 @@ export type ApplicationFormQuestion = {
   options: string[];
   required: boolean;
 };
+export type ChallengeAttachment = { fileId: string; name: string; size: number };
 export const users = pgTable(
   'users',
   {
@@ -179,9 +180,14 @@ export const challenges = pgTable('challenges', {
   title: varchar('title', { length: 200 }).notNull(),
   description: text('description').notNull(),
   price: integer('price').notNull(),
-  capacity: integer('capacity').notNull(),
+  // 인원 제한 입력은 폼에서 제거됐다. null이면 정원 제한 없음(기존 공고는 값 유지).
+  capacity: integer('capacity'),
+  // 접수 기간(시각 포함). 행사 기간은 아래 eventStartDate/eventEndDate로 분리한다.
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
+  // 행사 기간. 둘 다 null이면 미정.
+  eventStartDate: timestamp('event_start_date'),
+  eventEndDate: timestamp('event_end_date'),
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 챌린지' 목록에서 제외한다.
@@ -207,6 +213,15 @@ export const challenges = pgTable('challenges', {
   // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
   // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
   applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
+  // 주최(신규 공고는 필수 — 기존 공고 호환을 위해 DB는 nullable), 주관·협찬·후원(선택).
+  host: varchar('host', { length: 200 }),
+  supervisor: varchar('supervisor', { length: 200 }),
+  sponsor: varchar('sponsor', { length: 200 }),
+  supporter: varchar('supporter', { length: 200 }),
+  // 대상에 '기타'를 고른 경우 직접 입력한 내용.
+  targetOther: varchar('target_other', { length: 100 }),
+  // 첨부파일. 개인 파일과 같이 private 버킷에만 두고 다운로드는 presigned GET으로만 연다.
+  attachments: jsonb('attachments').$type<ChallengeAttachment[]>().notNull().default([]),
   summary: varchar('summary', { length: 300 }),
   hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
   topics: jsonb('topics').$type<string[]>().notNull().default([]),
@@ -369,6 +384,8 @@ export const files = pgTable('files', {
   key: text('key').notNull(),
   contentType: varchar('content_type', { length: 100 }).notNull(),
   uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
+  // 공고 포스터처럼 원본(JPG/PNG/WebP)을 변환 없이 공개 버킷에 올리는 파일. 그 외 공개 이미지는 WebP로 강제한다.
+  preserveOriginal: boolean('preserve_original').notNull().default(false),
   uploaderUserId: uuid('uploader_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

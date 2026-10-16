@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(38);
+    expect(journal.entries).toHaveLength(39);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -565,5 +565,29 @@ describe('0032_payments_refund_retry migration', () => {
     );
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "refund_retried_at" timestamp');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0038_challenge_posting_fields migration', () => {
+  it('relaxes capacity and adds posting columns without destructive DDL', () => {
+    const tag = journal.entries[38]?.tag;
+    expect(tag).toBe('0038_challenge_posting_fields');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ALTER COLUMN "capacity" DROP NOT NULL');
+    for (const column of [
+      'event_start_date',
+      'event_end_date',
+      'host',
+      'supervisor',
+      'sponsor',
+      'supporter',
+      'target_other',
+      'attachments',
+      'preserve_original',
+    ]) {
+      expect(sql).toContain(`ADD COLUMN IF NOT EXISTS "${column}"`);
+    }
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[38]!.when).toBeGreaterThan(journal.entries[37]!.when);
   });
 });

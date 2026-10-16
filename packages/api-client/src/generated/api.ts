@@ -92,6 +92,7 @@ import type {
   GetAdminDashboardParams,
   GetApplicationAttachment200,
   GetBillingCustomerKey200,
+  GetChallengeAttachmentDownload200,
   GetInterests200,
   GetMfaPasskeyAuthOptionsBody,
   GetMfaPasskeyRegisterOptionsBody,
@@ -3759,6 +3760,135 @@ export function useListSimilarChallenges<TData = Awaited<ReturnType<typeof listS
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListSimilarChallengesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getChallengeAttachmentDownloadResponse200 = {
+  data: GetChallengeAttachmentDownload200
+  status: 200
+}
+
+export type getChallengeAttachmentDownloadResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getChallengeAttachmentDownloadResponseSuccess = (getChallengeAttachmentDownloadResponse200) & {
+  headers: Headers;
+};
+export type getChallengeAttachmentDownloadResponseError = (getChallengeAttachmentDownloadResponse404) & {
+  headers: Headers;
+};
+
+export type getChallengeAttachmentDownloadResponse = (getChallengeAttachmentDownloadResponseSuccess | getChallengeAttachmentDownloadResponseError)
+
+export const getGetChallengeAttachmentDownloadUrl = (id: string,
+    fileId: string,) => {
+
+
+
+
+  return `/challenges/${id}/attachments/${fileId}/download`
+}
+
+/**
+ * 공개 공고의 첨부파일을 내려받는 5분짜리 presigned URL. private 버킷은 이 경로로만 연다.
+ * @summary 공고 첨부파일 다운로드 URL
+ */
+export const getChallengeAttachmentDownload = async (id: string,
+    fileId: string, options?: Parameters<typeof apiFetch>[1]): Promise<getChallengeAttachmentDownloadResponse> => {
+
+  return apiFetch<getChallengeAttachmentDownloadResponse>(getGetChallengeAttachmentDownloadUrl(id,fileId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChallengeAttachmentDownloadQueryKey = (id: string,
+    fileId: string,) => {
+    return [
+    `/challenges/${id}/attachments/${fileId}/download`
+    ] as const;
+    }
+
+
+export const getGetChallengeAttachmentDownloadQueryOptions = <TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChallengeAttachmentDownloadQueryKey(id,fileId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>> = ({ signal }) => getChallengeAttachmentDownload(id,fileId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && fileId !== null && fileId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetChallengeAttachmentDownloadQueryResult = NonNullable<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>>
+export type GetChallengeAttachmentDownloadQueryError = void
+
+
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>,
+          TError,
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>,
+          TError,
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 공고 첨부파일 다운로드 URL
+ */
+
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetChallengeAttachmentDownloadQueryOptions(id,fileId,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

@@ -106,16 +106,16 @@ export const categories = [
   '해외',
 ];
 export const challengeTargets: NonNullable<generated.UpdateChallengeMutationBody['targets']> = [
+  '제한없음',
   '어린이',
   '초등학생',
   '중학생',
   '고등학생',
   '대학생',
   '대학원생',
-  '제한없음',
-  '지역제한',
   '일반인',
   '기업',
+  '기타',
 ];
 export const organizerTypes: NonNullable<generated.UpdateChallengeMutationBody['organizerType']>[] =
   [

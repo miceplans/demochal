@@ -30,7 +30,6 @@ const columns: ColumnDef<Challenge, unknown>[] = [
     header: '가격',
     cell: (info) => `${(info.getValue() as number).toLocaleString()}원`,
   },
-  { accessorKey: 'capacity', header: '수용 인원' },
   {
     accessorKey: 'startDate',
     header: '시작일',

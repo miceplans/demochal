@@ -25,4 +25,10 @@ export const PresignedUploadRequestContentType = {
   'image/png': 'image/png',
   'image/webp': 'image/webp',
   'application/pdf': 'application/pdf',
+  'application/zip': 'application/zip',
+  'application/vndopenxmlformats-officedocumentwordprocessingmldocument': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vndopenxmlformats-officedocumentspreadsheetmlsheet': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vndopenxmlformats-officedocumentpresentationmlpresentation': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/x-hwp': 'application/x-hwp',
+  'application/hwp+zip': 'application/hwp+zip',
 } as const;

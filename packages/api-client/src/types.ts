@@ -345,6 +345,8 @@ export interface PresignedUploadRequest {
   contentType: string;
   fileName: string;
   sizeBytes: number;
+  /** 'poster'면 공개 버킷에 원본 이미지를 변환 없이 올린다. */
+  purpose?: 'poster';
 }
 
 export interface PresignedUploadResponse {

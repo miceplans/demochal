@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ChallengeAttachment } from './challengeAttachment';
 import type { CreateChallengeRequestOrganizerType } from './createChallengeRequestOrganizerType';
 import type { CreateChallengeRequestRecruitMethod } from './createChallengeRequestRecruitMethod';
 import type { CreateChallengeRequestStatus } from './createChallengeRequestStatus';
@@ -43,10 +44,42 @@ export interface CreateChallengeRequest {
   description: string;
   /** @minimum 1 */
   price: number;
-  /** @minimum 1 */
-  capacity: number;
+  /** 접수 시작 시각 */
   startDate: string;
+  /** 접수 종료 시각 */
   endDate: string;
+  /** 행사 시작(종료와 함께 보낸다) */
+  eventStartDate?: string;
+  /** 행사 종료 */
+  eventEndDate?: string;
+  /**
+     * 주최
+     * @minLength 1
+     * @maxLength 200
+     */
+  host: string;
+  /**
+     * 주관
+     * @maxLength 200
+     */
+  supervisor?: string;
+  /**
+     * 협찬
+     * @maxLength 200
+     */
+  sponsor?: string;
+  /**
+     * 후원
+     * @maxLength 200
+     */
+  supporter?: string;
+  /**
+     * 대상 '기타' 직접 입력
+     * @maxLength 100
+     */
+  targetOther?: string;
+  /** @maxItems 10 */
+  attachments?: ChallengeAttachment[];
   /** 유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 분류 필드. */
   category?: string;
   targets?: CreateChallengeRequestTargetsItem[];

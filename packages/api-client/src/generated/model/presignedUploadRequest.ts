@@ -18,9 +18,12 @@
  */
 import type { PresignedUploadRequestBucket } from './presignedUploadRequestBucket';
 import type { PresignedUploadRequestContentType } from './presignedUploadRequestContentType';
+import type { PresignedUploadRequestPurpose } from './presignedUploadRequestPurpose';
 
 export interface PresignedUploadRequest {
   bucket: PresignedUploadRequestBucket;
+  /** 'poster'면 공개 버킷에 JPG/PNG/WebP 원본을 변환 없이 올린다(공고 포스터 전용) */
+  purpose?: PresignedUploadRequestPurpose;
   contentType: PresignedUploadRequestContentType;
   /**
      * 경로 구분자(슬래시·역슬래시) 불가

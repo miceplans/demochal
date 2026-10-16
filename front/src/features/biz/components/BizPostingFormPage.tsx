@@ -13,7 +13,7 @@ import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
-import { AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
+import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
 import { richContentStyles } from '@/components/common/RichDescription';
 
@@ -70,6 +70,12 @@ export function BizPostingFormPage() {
             businessId,
             ...values,
             category: values.category ?? undefined,
+            eventStartDate: values.eventStartDate ?? undefined,
+            eventEndDate: values.eventEndDate ?? undefined,
+            supervisor: values.supervisor ?? undefined,
+            sponsor: values.sponsor ?? undefined,
+            supporter: values.supporter ?? undefined,
+            targetOther: values.targetOther ?? undefined,
             targets: values.targets ?? undefined,
             organizerType: values.organizerType ?? undefined,
             prizeAmount: values.prizeAmount ?? undefined,
@@ -122,9 +128,16 @@ export function BizPostingEditPage() {
         title: challenge.title ?? '',
         description: challenge.description ?? '',
         price: challenge.price ?? 0,
-        capacity: String(challenge.capacity ?? 1),
-        startDate: toDateInput(challenge.startDate),
-        endDate: toDateInput(challenge.endDate),
+        startDate: toDateTimeInput(challenge.startDate),
+        endDate: toDateTimeInput(challenge.endDate),
+        eventStartDate: toDateInput(challenge.eventStartDate ?? undefined),
+        eventEndDate: toDateInput(challenge.eventEndDate ?? undefined),
+        host: challenge.host ?? '',
+        supervisor: challenge.supervisor ?? '',
+        sponsor: challenge.sponsor ?? '',
+        supporter: challenge.supporter ?? '',
+        targetOther: challenge.targetOther ?? '',
+        attachments: challenge.attachments ?? [],
         category: challenge.category ?? '',
         posterUrl: challenge.posterUrl ?? null,
         targets: challenge.targets ?? [],
@@ -153,14 +166,25 @@ export function BizPostingEditPage() {
   );
 }
 
+type Attachment = { fileId: string; name: string; size: number };
+
 type PostingInput = {
   title: string;
   description: string;
   /** Figma 폼에는 참가비 입력이 없어 신규는 0, 수정은 기존 값을 그대로 보존한다. */
   price: number;
-  capacity: string;
+  /** 접수 기간 — datetime-local 값(YYYY-MM-DDTHH:mm). */
   startDate: string;
   endDate: string;
+  /** 행사 기간 — date 값(YYYY-MM-DD). 비우면 미정. */
+  eventStartDate: string;
+  eventEndDate: string;
+  host: string;
+  supervisor: string;
+  sponsor: string;
+  supporter: string;
+  targetOther: string;
+  attachments: Attachment[];
   category: string;
   posterUrl?: string | null;
   targets: NonNullable<generated.UpdateChallengeMutationBody['targets']>;
@@ -180,9 +204,16 @@ type PostingValues = generated.UpdateChallengeMutationBody & {
   title: string;
   description: string;
   price: number;
-  capacity: number;
   startDate: string;
   endDate: string;
+  host: string;
+  supervisor?: string | null;
+  sponsor?: string | null;
+  supporter?: string | null;
+  targetOther?: string | null;
+  eventStartDate?: string | null;
+  eventEndDate?: string | null;
+  attachments: Attachment[];
   category: string | null;
   recruitMethod?: 'seMOchall' | 'external';
   recruitUrl?: string;
@@ -197,9 +228,16 @@ const EMPTY_POSTING: PostingInput = {
   title: '',
   description: '',
   price: 0,
-  capacity: '1',
   startDate: '',
   endDate: '',
+  eventStartDate: '',
+  eventEndDate: '',
+  host: '',
+  supervisor: '',
+  sponsor: '',
+  supporter: '',
+  targetOther: '',
+  attachments: [],
   category: '',
   targets: [],
   organizerType: null,
@@ -210,7 +248,7 @@ const EMPTY_POSTING: PostingInput = {
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
-// 상세정보는 정화된 HTML로 저장한다(서버가 저장 시 한 번 더 정화). 아직 연결하지 않은 서식은 정렬/색상/텍스트 스타일이다.
+// 상세정보는 정화된 HTML로 저장한다(서버가 저장 시 한 번 더 정화). 글자 크기·색·글꼴·정렬은 허용된 style 값으로만 저장된다.
 // TODO: https://developer.mozilla.org/docs/Web/API/Document/execCommand
 const EDITOR_COMMANDS = {
   undo: 'undo',
@@ -219,43 +257,142 @@ const EDITOR_COMMANDS = {
   italic: 'italic',
   underline: 'underline',
   strike: 'strikeThrough',
+  superscript: 'superscript',
+  subscript: 'subscript',
   clear: 'removeFormat',
   bullet: 'insertUnorderedList',
   number: 'insertOrderedList',
+  alignLeft: 'justifyLeft',
+  alignCenter: 'justifyCenter',
+  alignRight: 'justifyRight',
+  alignJustify: 'justifyFull',
   quote: 'formatBlock',
   rule: 'insertHorizontalRule',
 } as const;
 type EditorCommand = keyof typeof EDITOR_COMMANDS | 'link' | 'image' | 'code';
+// execCommand가 인라인 style(text-align 등)로 결과를 만들어야 하는 명령. 나머지는 b/i/u 같은 태그로 만든다.
+const STYLE_COMMANDS = new Set<string>([
+  'justifyLeft',
+  'justifyCenter',
+  'justifyRight',
+  'justifyFull',
+]);
 
-type TextSize = 'h2' | 'h3' | 'p' | 'small';
-const TEXT_SIZES: { value: TextSize; label: string }[] = [
-  { value: 'h2', label: '제목 (크게)' },
-  { value: 'h3', label: '소제목 (중간)' },
-  { value: 'p', label: '본문 (기본)' },
-  { value: 'small', label: '작게' },
+type ParagraphStyle = 'p' | 'h2' | 'h3';
+const PARAGRAPH_STYLES: { value: ParagraphStyle; label: string }[] = [
+  { value: 'p', label: '본문' },
+  { value: 'h2', label: '제목' },
+  { value: 'h3', label: '소제목' },
 ];
+const FONT_SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48];
+const FONT_FAMILIES = [
+  { value: '', label: '기본 글꼴' },
+  { value: "'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif", label: '고딕' },
+  { value: "'Nanum Myeongjo', Batang, serif", label: '명조' },
+  { value: "'Nanum Pen Script', cursive", label: '손글씨' },
+  { value: "'Courier New', monospace", label: '고정폭' },
+];
+
+const ATTACHMENT_TYPES: Record<string, string> = {
+  pdf: 'application/pdf',
+  zip: 'application/zip',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  hwp: 'application/x-hwp',
+  hwpx: 'application/hwp+zip',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  webp: 'image/webp',
+};
+const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES)
+  .map((ext) => `.${ext}`)
+  .join(',');
+const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_ATTACHMENTS = 10;
+const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
+
+function attachmentContentType(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+  return ATTACHMENT_TYPES[ext];
+}
+
+/** 호버(또는 키보드 포커스)하면 이름을 말풍선으로 보여준다. */
+function Tip({ label, children }: { label: string; children: React.ReactNode }) {
+  return <TipWrap data-tip={label}>{children}</TipWrap>;
+}
 
 function ToolBtn({
   label,
   icon,
+  glyph,
   command,
   onRun,
 }: {
   label: string;
-  icon: string;
+  icon?: string;
+  glyph?: React.ReactNode;
   command?: EditorCommand;
   onRun: (command: EditorCommand) => void;
 }) {
   return (
-    <ToolButton
-      type="button"
-      aria-label={label}
-      disabled={!command}
-      onMouseDown={(event) => event.preventDefault()}
-      onClick={() => command && onRun(command)}
-    >
-      <ToolIcon src={`${ICON}/${icon}`} alt="" />
-    </ToolButton>
+    <Tip label={label}>
+      <ToolButton
+        type="button"
+        aria-label={label}
+        disabled={!command}
+        onMouseDown={(event) => event.preventDefault()}
+        onClick={() => command && onRun(command)}
+      >
+        {icon ? <ToolIcon src={`${ICON}/${icon}`} alt="" /> : glyph}
+      </ToolButton>
+    </Tip>
+  );
+}
+
+function AlignGlyph({ kind }: { kind: 'left' | 'center' | 'right' | 'justify' }) {
+  const lines: [number, number][] = {
+    left: [
+      [3, 17],
+      [3, 11],
+      [3, 17],
+      [3, 8],
+    ],
+    center: [
+      [3, 17],
+      [6, 14],
+      [3, 17],
+      [7, 13],
+    ],
+    right: [
+      [3, 17],
+      [9, 17],
+      [3, 17],
+      [12, 17],
+    ],
+    justify: [
+      [3, 17],
+      [3, 17],
+      [3, 17],
+      [3, 17],
+    ],
+  }[kind] as [number, number][];
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true">
+      {lines.map(([x1, x2], i) => (
+        <line
+          key={i}
+          x1={x1}
+          x2={x2}
+          y1={5 + i * 3.5}
+          y2={5 + i * 3.5}
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+        />
+      ))}
+    </svg>
   );
 }
 
@@ -279,9 +416,20 @@ function PostingForm({
   const router = useRouter();
   const editorRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initial.title);
-  const [capacity, setCapacity] = useState(initial.capacity);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
+  const [eventStartDate, setEventStartDate] = useState(initial.eventStartDate);
+  const [eventEndDate, setEventEndDate] = useState(initial.eventEndDate);
+  const [host, setHost] = useState(initial.host);
+  const [supervisor, setSupervisor] = useState(initial.supervisor);
+  const [sponsor, setSponsor] = useState(initial.sponsor);
+  const [supporter, setSupporter] = useState(initial.supporter);
+  const [targetOther, setTargetOther] = useState(initial.targetOther);
+  const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
+  const [uploadingAttachments, setUploadingAttachments] = useState(false);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [textColor, setTextColor] = useState('#000000');
+  const [highlightColor, setHighlightColor] = useState('#ffff00');
   const [category, setCategory] = useState(initial.category);
   const [targets, setTargets] = useState(initial.targets);
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
@@ -342,7 +490,8 @@ function PostingForm({
     document.addEventListener('selectionchange', remember);
     return () => document.removeEventListener('selectionchange', remember);
   }, []);
-  const applyTextSize = (size: TextSize) => {
+  // 드롭다운·색상 선택이 포커스를 가져가 선택 영역이 풀리므로, 기억해 둔 영역을 되살린 뒤 서식을 적용한다.
+  const withEditorSelection = (apply: () => void) => {
     const editor = editorRef.current;
     if (!editor) return;
     editor.focus();
@@ -351,16 +500,38 @@ function PostingForm({
       selection?.removeAllRanges();
       selection?.addRange(savedRange.current);
     }
-    if (size === 'small') {
-      const selected = window.getSelection()?.toString() ?? '';
-      if (selected)
-        document.execCommand('insertHTML', false, `<small>${escapeHtml(selected)}</small>`);
-      return;
-    }
-    document.execCommand('formatBlock', false, size);
+    apply();
   };
+  const applyStyled = (command: string, value?: string) => {
+    // style 속성으로 결과를 만들어야 하는 명령만 잠깐 켠다(굵게 등은 b/i/u 태그를 유지).
+    document.execCommand('styleWithCSS', false, 'true');
+    document.execCommand(command, false, value);
+    document.execCommand('styleWithCSS', false, 'false');
+  };
+  const applyParagraphStyle = (style: ParagraphStyle) =>
+    withEditorSelection(() => void document.execCommand('formatBlock', false, style));
+  const applyFontFamily = (family: string) =>
+    withEditorSelection(() => {
+      if (family) applyStyled('fontName', family);
+      else document.execCommand('removeFormat');
+    });
+  const applyColor = (command: 'foreColor' | 'hiliteColor', color: string) =>
+    withEditorSelection(() => applyStyled(command, color));
+  // execCommand는 1~7단계 크기만 지원하므로, 최대 단계(7)로 감싼 뒤 고른 px 값의 span으로 바꾼다.
+  const applyFontSize = (px: number) =>
+    withEditorSelection(() => {
+      const editor = editorRef.current;
+      if (!editor) return;
+      document.execCommand('fontSize', false, '7');
+      editor.querySelectorAll('font[size="7"]').forEach((node) => {
+        const span = document.createElement('span');
+        span.style.fontSize = `${px}px`;
+        span.append(...node.childNodes);
+        node.replaceWith(span);
+      });
+    });
   const runCommand = (command: EditorCommand) => {
-    editorRef.current?.focus();
+    withEditorSelection(() => {});
     if (command === 'image') return imageInputRef.current?.click();
     if (command === 'link') {
       const url = window.prompt('링크 주소(https://…)를 입력해 주세요.')?.trim();
@@ -374,7 +545,9 @@ function PostingForm({
       return void document.execCommand('insertHTML', false, `<code>${escapeHtml(selected)}</code>`);
     }
     if (command === 'quote') return void document.execCommand('formatBlock', false, 'blockquote');
-    document.execCommand(EDITOR_COMMANDS[command]);
+    const native = EDITOR_COMMANDS[command];
+    if (STYLE_COMMANDS.has(native)) return applyStyled(native);
+    document.execCommand(native);
   };
 
   // 파일 선택 창이 열리면 에디터 선택 영역이 사라지므로 미리 기억했다가 이미지를 그 자리에 넣는다.
@@ -416,33 +589,76 @@ function PostingForm({
     }
   };
 
+  // 포스터는 압축·리사이즈·변환 없이 원본 파일 그대로 올린다(서버가 purpose=poster일 때만 원본을 보존).
   const uploadPoster = async (file: File) => {
     if (uploadingPoster) return;
+    if (!POSTER_TYPES.includes(file.type))
+      return setError('포스터는 JPG, PNG, WebP 이미지만 올릴 수 있습니다.');
+    if (file.size > MAX_ATTACHMENT_BYTES) return setError('포스터는 10MB 이하만 올릴 수 있습니다.');
+    setError('');
     setUploadingPoster(true);
-    let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
+    const previewUrl = URL.createObjectURL(file);
     try {
-      image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
       const presigned = await adApi.files.requestUpload({
         bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
+        purpose: 'poster',
+        contentType: file.type,
+        fileName: file.name,
+        sizeBytes: file.size,
       });
       const response = await fetch(presigned.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
+        headers: { 'Content-Type': file.type },
+        body: file,
       });
       if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
       await adApi.files.finalizeUpload(presigned.fileId);
       if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
-      posterObjectUrl.current = image.previewUrl;
-      setPoster({ fileId: presigned.fileId, previewUrl: image.previewUrl });
+      posterObjectUrl.current = previewUrl;
+      setPoster({ fileId: presigned.fileId, previewUrl });
     } catch {
-      if (image) URL.revokeObjectURL(image.previewUrl);
+      URL.revokeObjectURL(previewUrl);
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setUploadingPoster(false);
+    }
+  };
+
+  const uploadAttachments = async (selected: File[]) => {
+    if (uploadingAttachments || selected.length === 0) return;
+    if (attachments.length + selected.length > MAX_ATTACHMENTS)
+      return setError(`첨부파일은 최대 ${MAX_ATTACHMENTS}개까지 올릴 수 있습니다.`);
+    const rejected = selected.find((file) => !attachmentContentType(file));
+    if (rejected)
+      return setError(`${rejected.name}: 지원하지 않는 파일 형식입니다. (PDF, 문서, 압축, 이미지)`);
+    const oversized = selected.find((file) => file.size > MAX_ATTACHMENT_BYTES);
+    if (oversized) return setError(`${oversized.name}: 파일은 10MB 이하만 올릴 수 있습니다.`);
+    setError('');
+    setUploadingAttachments(true);
+    try {
+      const uploaded: Attachment[] = [];
+      for (const file of selected) {
+        const contentType = attachmentContentType(file)!;
+        const presigned = await adApi.files.requestUpload({
+          bucket: 'private',
+          contentType,
+          fileName: file.name,
+          sizeBytes: file.size,
+        });
+        const response = await fetch(presigned.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body: file,
+        });
+        if (!response.ok) throw new globalThis.Error('파일 업로드에 실패했습니다.');
+        await adApi.files.finalizeUpload(presigned.fileId);
+        uploaded.push({ fileId: presigned.fileId, name: file.name, size: file.size });
+      }
+      setAttachments((current) => [...current, ...uploaded]);
+    } catch {
+      setError('첨부파일 업로드에 실패했습니다. 다시 시도해주세요.');
+    } finally {
+      setUploadingAttachments(false);
     }
   };
 
@@ -451,18 +667,20 @@ function PostingForm({
     const editor = editorRef.current;
     const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
     const description = hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '';
-    const parsedCapacity = Number(capacity);
     const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
     if (!title.trim() || !description || !startDate || !endDate)
       return setError('제목, 상세정보, 접수 기간을 입력해 주세요.');
-    if (!Number.isInteger(parsedCapacity) || parsedCapacity < 1)
-      return setError('모집 인원은 1명 이상으로 입력해 주세요.');
+    if (!host.trim()) return setError('주최를 입력해 주세요.');
+    if (Boolean(eventStartDate) !== Boolean(eventEndDate))
+      return setError('행사 기간은 시작일과 종료일을 함께 입력해 주세요.');
+    if (eventStartDate && eventEndDate < eventStartDate)
+      return setError('행사 종료일은 시작일 이후여야 합니다.');
     if (
       parsedPrizeAmount !== null &&
       (!Number.isInteger(parsedPrizeAmount) || parsedPrizeAmount < 0)
     )
       return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
-    if (endDate < startDate) return setError('종료일은 시작일 이후여야 합니다.');
+    if (endDate < startDate) return setError('접수 종료 시각은 시작 시각 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
     const normalizedHashtags = [
       ...new Set(
@@ -490,9 +708,16 @@ function PostingForm({
         title: title.trim(),
         description,
         price: initial.price,
-        capacity: parsedCapacity,
-        startDate: toLocalBoundary(startDate, false),
-        endDate: toLocalBoundary(endDate, true),
+        startDate: new Date(startDate).toISOString(),
+        endDate: new Date(endDate).toISOString(),
+        eventStartDate: eventStartDate ? toLocalBoundary(eventStartDate, false) : null,
+        eventEndDate: eventEndDate ? toLocalBoundary(eventEndDate, true) : null,
+        host: host.trim(),
+        supervisor: supervisor.trim() || null,
+        sponsor: sponsor.trim() || null,
+        supporter: supporter.trim() || null,
+        targetOther: targets.includes('기타') ? targetOther.trim() || null : null,
+        attachments,
         category: category || null,
         targets,
         organizerType: organizerType || null,
@@ -530,10 +755,13 @@ function PostingForm({
           }}
         />
         {poster?.previewUrl || existingPosterUrl ? (
-          <PosterPreview
-            src={poster?.previewUrl ?? existingPosterUrl ?? ''}
-            alt="포스터 미리보기"
-          />
+          <>
+            <PosterPreview
+              src={poster?.previewUrl ?? existingPosterUrl ?? ''}
+              alt="포스터 미리보기"
+            />
+            <UploadText>원본 비율 그대로 표시됩니다 · 클릭해서 다른 이미지로 바꾸기</UploadText>
+          </>
         ) : (
           <>
             <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
@@ -552,31 +780,37 @@ function PostingForm({
             maxLength={200}
             onChange={(e) => setTitle(e.target.value)}
           />
-          <Roles aria-label="접수 기간과 모집 인원">
+          <Roles aria-label="접수 기간과 행사 기간">
             <RoleRow>
               <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
+              <RoleLabel>접수 기간</RoleLabel>
               <RoleInput
-                type="date"
+                type="datetime-local"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                aria-label="접수 시작일"
+                aria-label="접수 시작 일시"
               />
               <RoleInput
-                type="date"
+                type="datetime-local"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                aria-label="접수 종료일"
+                aria-label="접수 종료 일시"
               />
             </RoleRow>
             <RoleRow>
-              <RoleIcon src={`${ICON}/figma-role-people.svg`} alt="" />
+              <RoleIcon src={`${ICON}/figma-role-calendar.svg`} alt="" />
+              <RoleLabel>행사 기간</RoleLabel>
               <RoleInput
-                type="number"
-                min={1}
-                step={1}
-                value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
-                aria-label="모집 인원"
+                type="date"
+                value={eventStartDate}
+                onChange={(e) => setEventStartDate(e.target.value)}
+                aria-label="행사 시작일"
+              />
+              <RoleInput
+                type="date"
+                value={eventEndDate}
+                onChange={(e) => setEventEndDate(e.target.value)}
+                aria-label="행사 종료일"
               />
             </RoleRow>
           </Roles>
@@ -606,20 +840,56 @@ function PostingForm({
             <EditorBox>
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
                 <ToolGroup>
-                  <TextSizeSelect
-                    aria-label="텍스트 크기"
-                    value=""
-                    onChange={(event) => {
-                      if (event.target.value) applyTextSize(event.target.value as TextSize);
-                    }}
-                  >
-                    <option value="">텍스트 크기</option>
-                    {TEXT_SIZES.map(({ value, label }) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </TextSizeSelect>
+                  <Tip label="문단 스타일">
+                    <ToolSelect
+                      aria-label="문단 스타일"
+                      value=""
+                      onChange={(event) => {
+                        if (event.target.value)
+                          applyParagraphStyle(event.target.value as ParagraphStyle);
+                      }}
+                    >
+                      <option value="">문단</option>
+                      {PARAGRAPH_STYLES.map(({ value, label }) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </ToolSelect>
+                  </Tip>
+                  <Tip label="글꼴">
+                    <ToolSelect
+                      aria-label="글꼴"
+                      value=""
+                      onChange={(event) => {
+                        const family = FONT_FAMILIES.find((f) => f.label === event.target.value);
+                        if (family) applyFontFamily(family.value);
+                      }}
+                    >
+                      <option value="">글꼴</option>
+                      {FONT_FAMILIES.map(({ label }) => (
+                        <option key={label} value={label}>
+                          {label}
+                        </option>
+                      ))}
+                    </ToolSelect>
+                  </Tip>
+                  <Tip label="글자 크기">
+                    <ToolSelect
+                      aria-label="글자 크기"
+                      value=""
+                      onChange={(event) => {
+                        if (event.target.value) applyFontSize(Number(event.target.value));
+                      }}
+                    >
+                      <option value="">크기</option>
+                      {FONT_SIZES.map((px) => (
+                        <option key={px} value={px}>
+                          {px}px
+                        </option>
+                      ))}
+                    </ToolSelect>
+                  </Tip>
                 </ToolGroup>
                 <ToolGroup>
                   <ToolBtn
@@ -666,6 +936,74 @@ function PostingForm({
                     label="서식 지우기"
                     icon="figma-clear-format.svg"
                     command="clear"
+                  />
+                </ToolGroup>
+                <ToolGroup>
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="위 첨자"
+                    glyph={<ScriptGlyph>x²</ScriptGlyph>}
+                    command="superscript"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="아래 첨자"
+                    glyph={<ScriptGlyph>x₂</ScriptGlyph>}
+                    command="subscript"
+                  />
+                  <Tip label="글자 색">
+                    <ColorLabel>
+                      <ColorMark style={{ borderBottomColor: textColor }}>A</ColorMark>
+                      <ColorInput
+                        type="color"
+                        aria-label="글자 색"
+                        value={textColor}
+                        onChange={(event) => {
+                          setTextColor(event.target.value);
+                          applyColor('foreColor', event.target.value);
+                        }}
+                      />
+                    </ColorLabel>
+                  </Tip>
+                  <Tip label="배경(형광펜) 색">
+                    <ColorLabel>
+                      <ColorMark style={{ background: highlightColor }}>가</ColorMark>
+                      <ColorInput
+                        type="color"
+                        aria-label="배경 색"
+                        value={highlightColor}
+                        onChange={(event) => {
+                          setHighlightColor(event.target.value);
+                          applyColor('hiliteColor', event.target.value);
+                        }}
+                      />
+                    </ColorLabel>
+                  </Tip>
+                </ToolGroup>
+                <ToolGroup>
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="왼쪽 정렬"
+                    glyph={<AlignGlyph kind="left" />}
+                    command="alignLeft"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="가운데 정렬"
+                    glyph={<AlignGlyph kind="center" />}
+                    command="alignCenter"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="오른쪽 정렬"
+                    glyph={<AlignGlyph kind="right" />}
+                    command="alignRight"
+                  />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="양쪽 정렬"
+                    glyph={<AlignGlyph kind="justify" />}
+                    command="alignJustify"
                   />
                 </ToolGroup>
                 <ToolGroup>
@@ -783,17 +1121,68 @@ function PostingForm({
                 ))}
               </ChipRow>
             </Chips>
+            {targets.includes('기타') && (
+              <LineInput
+                aria-label="대상 기타 내용"
+                value={targetOther}
+                maxLength={100}
+                placeholder="기타 대상을 직접 입력해 주세요 (예: 서울 거주자)"
+                onChange={(e) => setTargetOther(e.target.value)}
+              />
+            )}
           </FieldBlock>
 
           <TwoCol>
+            <FieldBlock>
+              <FieldLabel>주최 (필수)</FieldLabel>
+              <LineInput
+                aria-label="주최"
+                value={host}
+                maxLength={200}
+                required
+                onChange={(e) => setHost(e.target.value)}
+              />
+            </FieldBlock>
+            <FieldBlock>
+              <FieldLabel>주관</FieldLabel>
+              <LineInput
+                aria-label="주관"
+                value={supervisor}
+                maxLength={200}
+                onChange={(e) => setSupervisor(e.target.value)}
+              />
+            </FieldBlock>
+          </TwoCol>
+          <TwoCol>
+            <FieldBlock>
+              <FieldLabel>협찬</FieldLabel>
+              <LineInput
+                aria-label="협찬"
+                value={sponsor}
+                maxLength={200}
+                onChange={(e) => setSponsor(e.target.value)}
+              />
+            </FieldBlock>
+            <FieldBlock>
+              <FieldLabel>후원</FieldLabel>
+              <LineInput
+                aria-label="후원"
+                value={supporter}
+                maxLength={200}
+                onChange={(e) => setSupporter(e.target.value)}
+              />
+            </FieldBlock>
+          </TwoCol>
+
+          <TwoCol>
             <CategoryBlock>
-              <FieldLabel>주최기관</FieldLabel>
+              <FieldLabel>주최기관 유형</FieldLabel>
               <Dropdown
                 options={organizerTypeOptions}
                 value={organizerType || undefined}
                 placeholder="선택 안 함"
                 size="L"
-                aria-label="주최기관"
+                aria-label="주최기관 유형"
                 onChange={(value) => setOrganizerType(value as (typeof organizerTypes)[number])}
               />
             </CategoryBlock>
@@ -865,6 +1254,53 @@ function PostingForm({
           )}
 
           <FieldBlock>
+            <FieldLabel>첨부파일</FieldLabel>
+            <input
+              ref={attachmentInputRef}
+              type="file"
+              multiple
+              accept={ATTACHMENT_ACCEPT}
+              style={{ display: 'none' }}
+              aria-label="첨부파일 선택"
+              onChange={(event) => {
+                const selected = Array.from(event.target.files ?? []);
+                event.target.value = '';
+                void uploadAttachments(selected);
+              }}
+            />
+            <AttachButton
+              type="button"
+              disabled={uploadingAttachments || attachments.length >= MAX_ATTACHMENTS}
+              onClick={() => attachmentInputRef.current?.click()}
+            >
+              {uploadingAttachments ? '업로드 중…' : '파일 첨부'}
+            </AttachButton>
+            <AttachHint>
+              PDF·한글·워드·엑셀·PPT·압축·이미지, 파일당 10MB 이하, 최대 {MAX_ATTACHMENTS}개
+            </AttachHint>
+            {attachments.length > 0 && (
+              <AttachList aria-label="첨부파일 목록">
+                {attachments.map((file) => (
+                  <AttachItem key={file.fileId}>
+                    <span>
+                      {file.name} <small>({formatBytes(file.size)})</small>
+                    </span>
+                    <button
+                      type="button"
+                      aria-label={`${file.name} 삭제`}
+                      onClick={() =>
+                        setAttachments((list) => list.filter((x) => x.fileId !== file.fileId))
+                      }
+                    >
+                      삭제
+                    </button>
+                  </AttachItem>
+                ))}
+              </AttachList>
+            )}
+          </FieldBlock>
+
+          <FieldBlock>
             <FieldLabel>문의연락처</FieldLabel>
             <ContactInput
               aria-label="문의연락처"
@@ -909,7 +1345,9 @@ function PostingForm({
         </CancelButton>
         <PublishButton
           type="button"
-          disabled={disabled || submitting || uploadingPoster || uploadingImage}
+          disabled={
+            disabled || submitting || uploadingPoster || uploadingImage || uploadingAttachments
+          }
           onClick={() => void submit()}
         >
           {submitting ? submittingLabel : submitLabel}
@@ -921,10 +1359,11 @@ function PostingForm({
 
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
 const Message = styled.p({ color: c.gray700, margin: 0 });
+// 포스터는 잘라내지 않고 원본 비율 그대로 보여준다.
 const PosterPreview = styled.img({
   width: '100%',
-  height: '100%',
-  objectFit: 'cover',
+  maxHeight: 640,
+  objectFit: 'contain',
   borderRadius: 14,
 });
 
@@ -949,7 +1388,7 @@ const Uploader = styled.label({
   justifyContent: 'center',
   alignItems: 'center',
   gap: 4,
-  height: 282,
+  minHeight: 282,
   padding: 8,
   background: '#f8f8f8',
   border: `2px dashed ${c.lightBlue}`,
@@ -973,8 +1412,14 @@ const Roles = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 8,
-  width: 592,
+  width: 760,
   maxWidth: '100%',
+});
+const RoleLabel = styled.span({
+  ...textStyle.mInfoText,
+  color: c.gray700,
+  width: 64,
+  flexShrink: 0,
 });
 const RoleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
 const RoleIcon = styled.img({ width: 24, height: 24, objectFit: 'contain', flexShrink: 0 });
@@ -1030,7 +1475,7 @@ const EditorBox = styled.div({
   border: '1px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
-  overflow: 'hidden',
+  // 툴팁이 박스 밖으로 나가도 잘리지 않게 overflow를 숨기지 않는다.
 });
 const MenuBar = styled.div({
   display: 'flex',
@@ -1059,7 +1504,7 @@ const ToolButton = styled.button({
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
 });
-const TextSizeSelect = styled.select({
+const ToolSelect = styled.select({
   height: 28,
   border: 0,
   background: 'transparent',
@@ -1067,6 +1512,87 @@ const TextSizeSelect = styled.select({
   fontSize: 13,
   cursor: 'pointer',
   '&:focus': { outline: 'none' },
+});
+const TipWrap = styled.span({
+  position: 'relative',
+  display: 'inline-flex',
+  '&::after': {
+    content: 'attr(data-tip)',
+    position: 'absolute',
+    top: 'calc(100% + 6px)',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '4px 8px',
+    borderRadius: 4,
+    background: c.gray900,
+    color: c.white,
+    fontSize: 11,
+    whiteSpace: 'nowrap',
+    opacity: 0,
+    pointerEvents: 'none',
+    transition: 'opacity 0.12s',
+    zIndex: 20,
+  },
+  '&:hover::after': { opacity: 1 },
+});
+const ScriptGlyph = styled.span({ fontSize: 13, fontWeight: 600, color: c.gray900 });
+const ColorLabel = styled.label({
+  position: 'relative',
+  width: 28,
+  height: 28,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  borderRadius: 4,
+  cursor: 'pointer',
+  '&:hover': { background: c.gray100 },
+});
+const ColorMark = styled.span({
+  fontSize: 13,
+  fontWeight: 700,
+  lineHeight: '16px',
+  padding: '0 3px',
+  color: c.gray900,
+  borderBottom: '3px solid transparent',
+});
+const ColorInput = styled.input({
+  position: 'absolute',
+  inset: 0,
+  width: '100%',
+  height: '100%',
+  opacity: 0,
+  cursor: 'pointer',
+});
+const AttachButton = styled.button({
+  alignSelf: 'flex-start',
+  height: 36,
+  padding: '0 16px',
+  border: `1px solid ${c.gray300}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  '&:hover': { borderColor: c.primary },
+  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
+});
+const AttachHint = styled.span({ fontSize: 12, color: c.gray500 });
+const AttachList = styled.ul({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  margin: 0,
+  padding: 0,
+  listStyle: 'none',
+});
+const AttachItem = styled.li({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: 12,
+  padding: '8px 12px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  fontSize: 14,
+  '& button': { border: 0, background: 'none', color: c.red, cursor: 'pointer' },
 });
 const ToolIcon = styled.img({ width: 20, height: 20, objectFit: 'contain' });
 const ContentsArea = styled.div({
@@ -1181,6 +1707,14 @@ const PublishButton = styled.button({
 
 function toDateInput(value: string | undefined) {
   return value ? toDateKey(new Date(value)) : '';
+}
+
+/** datetime-local 입력용 로컬 시각(YYYY-MM-DDTHH:mm). */
+function toDateTimeInput(value: string | undefined) {
+  if (!value) return '';
+  const date = new Date(value);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${toDateKey(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 function escapeHtml(value: string) {
