@@ -51,6 +51,7 @@ vi.mock('@semochal/api-client', () => ({
   generated: {
     useListChallenges: vi.fn(),
     useListTeams: vi.fn(),
+    useGetChallenge: vi.fn(),
   },
 }));
 
@@ -78,6 +79,10 @@ function setQueries({
     isPending: teamsPending,
     isSuccess: teamsSuccess,
     data: { data: teamItems },
+  } as never);
+  vi.mocked(generated.useGetChallenge).mockReturnValue({
+    isPending: false,
+    data: undefined,
   } as never);
 }
 
