@@ -9,7 +9,7 @@ import {
   MinLength,
 } from 'class-validator';
 
-export const TERMS_KEYS = ['privacy', 'business'] as const;
+export const TERMS_KEYS = ['terms', 'privacy', 'business'] as const;
 export type TermsKey = (typeof TERMS_KEYS)[number];
 
 export class RegisterDto {

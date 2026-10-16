@@ -20,11 +20,12 @@ import {
 
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 
-const agreements = [
-  { value: 'privacy', label: '개인정보처리방침' },
+type AgreementKey = 'terms' | 'privacy' | 'business';
+const agreements: { value: AgreementKey; label: string; href?: string }[] = [
+  { value: 'terms', label: '이용약관 동의', href: '/terms' },
+  { value: 'privacy', label: '개인정보처리방침 동의', href: '/privacy' },
   { value: 'business', label: '사업자 이용정보 동의' },
-] as const;
-type AgreementKey = (typeof agreements)[number]['value'];
+];
 
 const orgTypes = [
   { value: '기업', label: '일반 기업' },
@@ -152,17 +153,21 @@ export function BizSignupFlow() {
           <StepBody key={step}>
             {step === 0 && (
               <CheckList aria-label="약관 동의">
-                {agreements.map(({ value, label }) => (
+                {agreements.map(({ value, label, href }) => (
                   <CheckRow key={value}>
-                    <HiddenInput
-                      type="checkbox"
-                      checked={agreed.includes(value)}
-                      onChange={() => toggle(value)}
-                    />
-                    <CheckBox aria-hidden>
-                      <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
-                    </CheckBox>
-                    {label}
+                    <CheckLabel>
+                      <HiddenInput
+                        type="checkbox"
+                        aria-label={href ? label : undefined}
+                        checked={agreed.includes(value)}
+                        onChange={() => toggle(value)}
+                      />
+                      <CheckBox aria-hidden>
+                        <CheckIcon src="/assets/icons/biz-checkbox-check.svg" alt="" />
+                      </CheckBox>
+                      {!href && label}
+                    </CheckLabel>
+                    {href && <ConsentLink href={hrefOf(href)}>{label}</ConsentLink>}
                   </CheckRow>
                 ))}
               </CheckList>
@@ -362,14 +367,19 @@ const CheckIcon = styled.img({
   transform: 'scale(0.4)',
   transition: 'opacity 140ms ease, transform 240ms cubic-bezier(0.22, 1, 0.36, 1)',
 });
-const CheckRow = styled.label({
-  position: 'relative',
+const CheckRow = styled.div({
   display: 'flex',
   alignItems: 'center',
   gap: 8,
   width: 'fit-content',
   ...textStyle.mBodyDetail,
   color: c.gray700,
+});
+const CheckLabel = styled.label({
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
   cursor: 'pointer',
   'input:checked + span': { background: c.primary, borderColor: c.primary },
   'input:checked + span img': { opacity: 1, transform: 'scale(1)' },
@@ -420,6 +430,12 @@ const ExistingAccount = styled.p({
   textAlign: 'center',
   ...textStyle.mInfoText,
   color: c.gray700,
+});
+const ConsentLink = styled(Link)({
+  color: 'inherit',
+  textDecoration: 'underline',
+  textUnderlineOffset: 3,
+  '&:hover': { color: c.gray900 },
 });
 const ExistingAccountLink = styled(Link)({
   color: c.primary,

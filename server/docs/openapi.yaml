@@ -118,7 +118,7 @@ paths:
                   description: 로그인 아이디 (이메일 대신 로그인 가능)
                 agreements:
                   type: array
-                  items: { type: string, enum: [privacy, business] }
+                  items: { type: string, enum: [terms, privacy, business] }
                   description: 동의한 약관 키 (동의 시각과 함께 저장)
       responses:
         '201':
