@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useId, useState } from 'react';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -48,15 +48,18 @@ export function ChallengeSearch({
   // 부모가 값을 비운 경우(필터 초기화 등) 표시용 선택 항목도 함께 비운다.
   const current = value && selected?.id === value ? selected : null;
   // 부모가 id만 미리 지정한 경우(모집글 작성의 ?challengeId= 진입 등) 상세 조회로 이름을 찍는다.
+  // 조회 실패는 이 화면이 직접 표시하므로 전역 에러 토스트는 끈다.
   const preset = generated.useGetChallenge(value, {
-    query: { enabled: Boolean(value) && !current },
+    query: { enabled: Boolean(value) && !current, meta: { localErrorToast: true } },
   });
+  // HttpClient는 non-2xx를 ApiError로 던지므로 404는 data가 아니라 error 상태로 온다.
+  const presetNotFound = preset.error instanceof ApiError && preset.error.status === 404;
   const presetTitle =
     preset.data?.status === 200 ? (preset.data.data.title ?? '제목 없음') : undefined;
   let shown: Selected | null = current;
   if (!shown && value) {
     if (presetTitle) shown = { id: value, title: presetTitle };
-    else if (preset.data?.status === 404) shown = { id: value, title: '알 수 없는 챌린지' };
+    else if (presetNotFound) shown = { id: value, title: '알 수 없는 챌린지' };
     else if (preset.isPending) shown = { id: value, title: '챌린지 불러오는 중…' };
   }
 

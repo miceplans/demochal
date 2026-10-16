@@ -1,14 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
 import { ChallengeSearch } from './ChallengeSearch';
 
-vi.mock('@semochal/api-client', () => ({
-  generated: {
-    useListChallenges: vi.fn(),
-    useGetChallenge: vi.fn(),
-  },
-}));
+vi.mock('@semochal/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@semochal/api-client')>();
+  return {
+    ...actual,
+    generated: {
+      useListChallenges: vi.fn(),
+      useGetChallenge: vi.fn(),
+    },
+  };
+});
 
 function mockChallenges(items: unknown[] = []) {
   vi.mocked(generated.useListChallenges).mockReturnValue({
@@ -85,7 +89,12 @@ describe('ChallengeSearch', () => {
   });
 
   it('존재하지 않는 id면 알 수 없는 챌린지로 표시한다', () => {
-    mockPreset({ status: 404, data: { message: 'not found' } });
+    // HttpClient는 non-2xx를 ApiError로 던지므로 404는 error 상태로 들어온다.
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      isPending: false,
+      data: undefined,
+      error: new ApiError(404, undefined),
+    } as never);
     render(<ChallengeSearch value="gone" onChange={vi.fn()} />);
     expect(screen.getByText('알 수 없는 챌린지')).toBeTruthy();
   });

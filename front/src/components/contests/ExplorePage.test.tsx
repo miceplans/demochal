@@ -47,13 +47,17 @@ vi.mock('@/components/teams/TeamCard', () => ({
   ),
   TeamGrid: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
-vi.mock('@semochal/api-client', () => ({
-  generated: {
-    useListChallenges: vi.fn(),
-    useListTeams: vi.fn(),
-    useGetChallenge: vi.fn(),
-  },
-}));
+vi.mock('@semochal/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@semochal/api-client')>();
+  return {
+    ...actual,
+    generated: {
+      useListChallenges: vi.fn(),
+      useListTeams: vi.fn(),
+      useGetChallenge: vi.fn(),
+    },
+  };
+});
 
 function setQueries({
   challengesPending = false,
