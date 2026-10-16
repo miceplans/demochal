@@ -119,7 +119,7 @@ describe('BizSignupFlow', () => {
     await user.click(screen.getByRole('button', { name: '다음' }));
   }
 
-  it('completes BIZ signup without a business-registration document or verification request', async () => {
+  it('redirects completed BIZ signup to the login page without a business-registration document or verification request', async () => {
     mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
     const user = userEvent.setup();
     renderSignup();
@@ -132,7 +132,8 @@ describe('BizSignupFlow', () => {
 
     await waitFor(() => expect(mocks.registerBusiness).toHaveBeenCalledWith({ type: '기업' }));
     expect(mocks.submitVerification).not.toHaveBeenCalled();
-    expect(mocks.push).toHaveBeenCalledWith('/biz/dashboard');
+    expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
+    expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
   });
 
