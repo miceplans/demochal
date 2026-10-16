@@ -347,8 +347,16 @@ export function BizAdsPage() {
             </span>
           </HeaderRow>
           <CurrentBanner>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {currentAd?.imageUrl ? <img src={currentAd.imageUrl} alt={currentAd.title} /> : null}
+            {currentAd?.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={currentAd.imageUrl} alt={currentAd.title} />
+            ) : (
+              <CurrentBannerEmpty>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/empty-contents.png" alt="" />
+                <p>광고가 없어요</p>
+              </CurrentBannerEmpty>
+            )}
           </CurrentBanner>
         </section>
         <ManageSection aria-labelledby="ad-management-title">
@@ -709,7 +717,17 @@ const CurrentBanner = styled.div({
   borderRadius: 12,
   background: c.gray100,
   overflow: 'hidden',
-  '& img': { width: '100%', height: '100%', objectFit: 'cover' },
+  '& > img': { width: '100%', height: '100%', objectFit: 'cover' },
+});
+const CurrentBannerEmpty = styled.div({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 4,
+  '& img': { width: 140, height: 'auto', objectFit: 'contain' },
+  '& p': { margin: 0, color: c.gray500, ...textStyle.body },
 });
 const StatusCell = styled.span<{ ended: boolean }>(({ ended }) => ({
   justifySelf: 'end',
