@@ -285,7 +285,13 @@ export class ChallengesService {
     await this.db.insert(challengeViews).values({ challengeId: id });
     // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
     const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
-    return { ...challenge, posterUrl };
+    // 상세 화면의 주최 단체명 — businesses.name이 비어 있으면(OCR/프로필 미입력) 필드를 생략한다.
+    const [business] = await this.db
+      .select({ name: businesses.name })
+      .from(businesses)
+      .where(eq(businesses.id, challenge.businessId))
+      .limit(1);
+    return { ...challenge, posterUrl, organizer: business?.name ?? undefined };
   }
 
   async stats(id: string) {
