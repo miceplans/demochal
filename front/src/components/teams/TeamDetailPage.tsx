@@ -6,7 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
-import { Button, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
+import { Button, HeartIcon, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
@@ -173,7 +173,7 @@ export function TeamDetailPage() {
                   toggleBookmark(bookmarkId);
                 }}
               >
-                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+                <HeartIcon filled={saved} size={18} />
               </BookmarkButton>
               <Button small tone="plain" onClick={share}>
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
@@ -299,7 +299,7 @@ const RolePicker = styled.div({
   '& .label': { ...textStyle.caption, color: c.gray500 },
 });
 const BookmarkButton = styled(IconButton)({
-  '&[aria-pressed="true"], &[aria-pressed="true"]:hover': { background: c.lightBlue },
+  '&[aria-pressed="true"], &[aria-pressed="true"]:hover': { background: c.lightRed },
 });
 const IconLink = styled(Link)({
   display: 'inline-flex',
