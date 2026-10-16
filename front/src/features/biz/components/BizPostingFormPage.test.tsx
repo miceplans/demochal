@@ -236,6 +236,28 @@ describe('BizPostingFormPage', () => {
       expect(exec).not.toHaveBeenCalledWith('insertHTML', false, expect.anything());
     });
 
+    it('IME 조합 중 Enter는 적용하지 않고, 조합이 끝난 Enter만 적용한다', () => {
+      renderForm();
+      fireEvent.click(screen.getByLabelText('링크'));
+      const dialog = screen.getByRole('dialog', { name: '링크 편집' });
+      fireEvent.change(within(dialog).getByLabelText('링크 주소'), {
+        target: { value: 'https://example.com' },
+      });
+      const text = within(dialog).getByLabelText('표시할 글자 (선택)');
+      fireEvent.change(text, { target: { value: '신청' } });
+
+      fireEvent.keyDown(text, { key: 'Enter', isComposing: true });
+      expect(exec).not.toHaveBeenCalled();
+      expect(screen.getByRole('dialog', { name: '링크 편집' })).toBeTruthy();
+
+      fireEvent.keyDown(text, { key: 'Enter' });
+      expect(exec).toHaveBeenCalledWith(
+        'insertHTML',
+        false,
+        '<a href="https://example.com">신청</a>',
+      );
+    });
+
     it('Esc로 닫는다', () => {
       renderForm();
       fireEvent.click(screen.getByLabelText('링크'));

@@ -605,6 +605,13 @@ function DatePickerField({
   );
 }
 
+/**
+ * 한글 등 IME 조합 중의 Enter는 글자 확정용이다. 이때 적용하면 팝오버가 닫히며 조합 중이던 마지막 글자가
+ * 에디터에 한 번 더 들어가므로, 조합이 끝난 뒤의 Enter만 적용으로 처리한다.
+ */
+const isPlainEnter = (event: React.KeyboardEvent) =>
+  event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229;
+
 /** 주소에 스킴이 없으면 https://를 붙여 http(s) URL로 정규화한다. 올바르지 않으면 null. */
 function normalizeLinkUrl(raw: string) {
   const value = raw.trim();
@@ -721,7 +728,7 @@ function LinkTool({
                 setError('');
               }}
               onKeyDown={(event) => {
-                if (event.key === 'Enter') {
+                if (isPlainEnter(event)) {
                   event.preventDefault();
                   apply();
                 }
@@ -736,7 +743,7 @@ function LinkTool({
                 value={text}
                 onChange={(event) => setText(event.target.value)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
+                  if (isPlainEnter(event)) {
                     event.preventDefault();
                     apply();
                   }
