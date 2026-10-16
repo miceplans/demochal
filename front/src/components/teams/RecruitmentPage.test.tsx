@@ -74,10 +74,15 @@ vi.mock('@/components/ui/Dropdown', () => ({
   ),
 }));
 
-// ChallengeSearch 자체는 단위 테스트로 커버하고, 이 페이지 테스트에서는 id 전달 계약만 본다.
+// ChallengeSearch 자체는 단위 테스트로 커버하고, 이 페이지 테스트에서는 전달 계약(value/id, 옵션)만 본다.
 vi.mock('@/components/contests/ChallengeSearch', () => ({
-  ChallengeSearch: ({ value }: { value: string }) => (
-    <div data-testid="challenge-search" data-value={value} />
+  ChallengeSearch: (props: { value: string; includeClosed?: boolean; placeholder?: string }) => (
+    <div
+      data-testid="challenge-search"
+      data-value={props.value}
+      data-include-closed={String(props.includeClosed)}
+      data-placeholder={props.placeholder}
+    />
   ),
 }));
 
@@ -112,6 +117,13 @@ describe('RecruitmentPage', () => {
     await waitFor(() =>
       expect(screen.getByTestId('challenge-search').getAttribute('data-value')).toBe('challenge-9'),
     );
+  });
+
+  it('챌린지 검색에는 종료 챌린지를 제외하는 옵션을 전달한다', () => {
+    render(<RecruitmentPage />);
+    const search = screen.getByTestId('challenge-search');
+    expect(search.getAttribute('data-include-closed')).toBe('false');
+    expect(search.getAttribute('data-placeholder')).toBe('챌린지를 검색하세요');
   });
 
   it('게시하면 선택한 챌린지 id로 팀 생성을 요청한다', () => {
