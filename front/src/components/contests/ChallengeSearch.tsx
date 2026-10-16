@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useId, useState } from 'react';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
+import { ApiError, generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
@@ -14,14 +14,20 @@ interface Selected {
 }
 
 // 팀 탐색의 챌린지 필터: 드롭다운 대신 이름으로 검색해 하나를 고른다. 비어 있으면 전체 챌린지.
+// 모집글 작성 등에서도 재사용하며, 외부에서 id만 미리 지정한 경우 상세 조회로 이름을 표시한다.
 export function ChallengeSearch({
   value,
   onChange,
   fullWidth = false,
+  includeClosed = true,
+  placeholder = '전체 챌린지 (검색)',
 }: {
   value: string;
   onChange: (id: string) => void;
   fullWidth?: boolean;
+  /** 검색 결과에 종료된 챌린지를 포함한다. 팀 생성처럼 진행 중 챌린지만 골라야 하는 곳에서는 false로 둔다. */
+  includeClosed?: boolean;
+  placeholder?: string;
 }) {
   const [text, setText] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -35,12 +41,27 @@ export function ChallengeSearch({
   }, [text]);
 
   const suggestions = generated.useListChallenges(
-    { limit: SUGGESTION_LIMIT, q: debounced || undefined, includeClosed: true },
+    { limit: SUGGESTION_LIMIT, q: debounced || undefined, includeClosed },
     { query: { enabled: open } },
   );
   const items = suggestions.data?.data.items ?? [];
   // 부모가 값을 비운 경우(필터 초기화 등) 표시용 선택 항목도 함께 비운다.
   const current = value && selected?.id === value ? selected : null;
+  // 부모가 id만 미리 지정한 경우(모집글 작성의 ?challengeId= 진입 등) 상세 조회로 이름을 찍는다.
+  // 조회 실패는 이 화면이 직접 표시하므로 전역 에러 토스트는 끈다.
+  const preset = generated.useGetChallenge(value, {
+    query: { enabled: Boolean(value) && !current, meta: { localErrorToast: true } },
+  });
+  // HttpClient는 non-2xx를 ApiError로 던지므로 404는 data가 아니라 error 상태로 온다.
+  const presetNotFound = preset.error instanceof ApiError && preset.error.status === 404;
+  const presetTitle =
+    preset.data?.status === 200 ? (preset.data.data.title ?? '제목 없음') : undefined;
+  let shown: Selected | null = current;
+  if (!shown && value) {
+    if (presetTitle) shown = { id: value, title: presetTitle };
+    else if (presetNotFound) shown = { id: value, title: '알 수 없는 챌린지' };
+    else if (preset.isPending) shown = { id: value, title: '챌린지 불러오는 중…' };
+  }
 
   const pick = (item: Selected) => {
     setSelected(item);
@@ -56,9 +77,9 @@ export function ChallengeSearch({
 
   return (
     <Root $full={fullWidth}>
-      {current ? (
+      {shown ? (
         <Chosen>
-          <span>{current.title}</span>
+          <span>{shown.title}</span>
           <button type="button" aria-label="챌린지 선택 해제" onClick={clear}>
             ×
           </button>
@@ -71,14 +92,14 @@ export function ChallengeSearch({
           aria-expanded={open}
           aria-controls={listId}
           aria-autocomplete="list"
-          placeholder="전체 챌린지 (검색)"
+          placeholder={placeholder}
           value={text}
           onChange={(e) => setText(e.target.value)}
           onFocus={() => setOpen(true)}
           onBlur={() => setOpen(false)}
         />
       )}
-      {open && !current ? (
+      {open && !shown ? (
         <List id={listId} role="listbox" aria-label="챌린지 검색 결과">
           {items.length === 0 ? (
             <Empty>{suggestions.isLoading ? '검색 중…' : '검색 결과가 없어요'}</Empty>
