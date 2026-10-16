@@ -18,11 +18,16 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(h.search),
 }));
 
-vi.mock('@semochal/api-client', () => ({
-  generated: {
-    useCreateTeam: vi.fn(),
-  },
-}));
+vi.mock('@semochal/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@semochal/api-client')>();
+  return {
+    ...actual,
+    generated: {
+      useCreateTeam: vi.fn(),
+      useGetChallenge: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -106,6 +111,10 @@ describe('RecruitmentPage', () => {
       mutate: h.mutate,
       isPending: false,
     } as never);
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      isPending: false,
+      data: undefined,
+    } as never);
     useUserStore.setState({ recruitment: { ...initialRecruitment } });
   });
 
@@ -124,6 +133,45 @@ describe('RecruitmentPage', () => {
     const search = screen.getByTestId('challenge-search');
     expect(search.getAttribute('data-include-closed')).toBe('false');
     expect(search.getAttribute('data-placeholder')).toBe('챌린지를 검색하세요');
+  });
+
+  it('종료된 공모전 프리셓이면 종료 안내를 표시한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      isPending: false,
+      data: {
+        status: 200,
+        data: { title: '지난 공모전', status: 'closed', endDate: '2026-01-01' },
+      },
+    } as never);
+    useUserStore.setState({ recruitment: { ...initialRecruitment, challenge: 'closed-1' } });
+    render(<RecruitmentPage />);
+    expect(screen.getByText('종료된 공모전입니다.')).toBeTruthy();
+  });
+
+  it('마감일이 지난 프리셓도 종료 안내를 표시한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      isPending: false,
+      data: {
+        status: 200,
+        data: { title: '마감 지남', status: 'published', endDate: '2020-01-01' },
+      },
+    } as never);
+    useUserStore.setState({ recruitment: { ...initialRecruitment, challenge: 'ended-1' } });
+    render(<RecruitmentPage />);
+    expect(screen.getByText('종료된 공모전입니다.')).toBeTruthy();
+  });
+
+  it('진행 중 챌린지를 고륾면 종료 안내가 없다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      isPending: false,
+      data: {
+        status: 200,
+        data: { title: '진행 중', status: 'published', endDate: '2999-01-01' },
+      },
+    } as never);
+    useUserStore.setState({ recruitment: { ...initialRecruitment, challenge: 'open-1' } });
+    render(<RecruitmentPage />);
+    expect(screen.queryByText('종료된 공모전입니다.')).toBeNull();
   });
 
   it('게시하면 선택한 챌린지 id로 팀 생성을 요청한다', () => {

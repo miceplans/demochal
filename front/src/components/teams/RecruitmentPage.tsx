@@ -69,6 +69,14 @@ const ROLE_OPTIONS = [...PRESET_ROLES, CUSTOM_ROLE].map((x) => ({ value: x, labe
 const CUSTOM_ROLE_MAX = 20;
 const normalizeRole = (value: string) => value.trim().replace(/\s+/g, ' ');
 
+// 서버는 status가 published여도 마감일이 지난 공고를 종료로 취급한다(challenges.service의
+// includeClosed=false 조건과 동일). render 본문에서 Date.now를 직접 부르지 않도록 모듈 레벨에 둔다.
+function isClosedChallenge(challenge: { status: string; endDate?: string }): boolean {
+  if (challenge.status === 'closed') return true;
+  if (!challenge.endDate) return false;
+  return new Date(challenge.endDate).getTime() <= Date.now();
+}
+
 function RecruitmentForm() {
   const draft = useUserStore((s) => s.recruitment);
   const setDraft = useUserStore((s) => s.setRecruitment);
@@ -86,6 +94,13 @@ function RecruitmentForm() {
     const current = useUserStore.getState().recruitment;
     if (current.challenge !== preset) setDraft({ ...current, challenge: preset });
   }, [searchParams, setDraft]);
+  // 프리셓 챌린지의 종료 여부를 본다. ChallengeSearch의 상세 조회와 같은 쿼리 키라 캐시를 공유한다.
+  // 조회 실패 안내는 ChallengeSearch가 직접 하므로 전역 에러 토스트는 끈다.
+  const presetChallenge = generated.useGetChallenge(draft.challenge, {
+    query: { enabled: Boolean(draft.challenge), meta: { localErrorToast: true } },
+  });
+  const presetClosed =
+    presetChallenge.data?.status === 200 && isClosedChallenge(presetChallenge.data.data);
   const createTeam = generated.useCreateTeam({
     mutation: {
       onSuccess: (result) => {
@@ -156,7 +171,7 @@ function RecruitmentForm() {
           <Title>모집글 작성</Title>
         </DesktopOnly>
         <Stack gap={10}>
-          <StepLabel number={1} completed={!!draft.challenge}>
+          <StepLabel number={1} completed={Boolean(draft.challenge) && !presetClosed}>
             챌린지 선택
           </StepLabel>
           <ChallengeSearch
@@ -166,6 +181,7 @@ function RecruitmentForm() {
             placeholder="챌린지를 검색하세요"
             fullWidth
           />
+          {presetClosed && <ClosedNotice>종료된 공모전입니다.</ClosedNotice>}
         </Stack>
         <Stack gap={10}>
           <StepLabel number={2} completed={!!draft.introduction}>
@@ -339,4 +355,10 @@ export const FormContainer = styled.form({
   flexDirection: 'column',
   gap: 32,
   [mobile]: { padding: '24px 0', gap: 32 },
+});
+
+const ClosedNotice = styled.p({
+  margin: 0,
+  ...textStyle.caption,
+  color: c.gray500,
 });
