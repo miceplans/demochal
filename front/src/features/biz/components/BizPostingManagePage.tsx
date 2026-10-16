@@ -17,6 +17,7 @@ import {
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApplicationTable, type ApplicationPatch } from './ApplicationTable';
+import { challengeEligibility } from '@/lib/challenge';
 
 export function BizPostingManagePage() {
   const { id } = useParams<{ id: string }>();
@@ -105,7 +106,7 @@ export function BizPostingManagePage() {
             <Facts>
               <Fact>
                 <strong>자격 / 대상</strong>
-                <span>{challenge.eligibility ?? (challenge.targets?.join(', ') || '—')}</span>
+                <span>{challengeEligibility(challenge)}</span>
               </Fact>
               <Fact>
                 <strong>접수기간</strong>

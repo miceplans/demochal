@@ -12,6 +12,7 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
+import { challengeEligibility } from '@/lib/challenge';
 
 const REPORT_REASONS = ['비방', '스팸/도배', '사기 또는 허위 정보', '저작권 침해', '기타'];
 
@@ -68,7 +69,7 @@ function ReportFormContent() {
       title: challenge.title ?? '챌린지',
       org: challenge.organizer,
       meta: [
-        { label: '자격 / 대상', value: challenge.eligibility ?? '-' },
+        { label: '자격 / 대상', value: challengeEligibility(challenge, '-') },
         {
           label: '접수기간',
           value: `${formatDate(challenge.startDate)} ~ ${formatDate(challenge.endDate)}`,

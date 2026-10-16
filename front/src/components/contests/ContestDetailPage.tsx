@@ -29,6 +29,7 @@ import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 import { daysUntil, formatDateDot } from '@/lib/date';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 
@@ -84,7 +85,7 @@ export function ContestDetailPage({
     ? {
         title: challenge.title ?? '',
         org: challenge.organizer ?? '',
-        eligibility: challenge.eligibility ?? '-',
+        eligibility: challengeEligibility(challenge, '-'),
         period: [formatDate(challenge.startDate), formatDate(challenge.endDate)]
           .filter(Boolean)
           .join(' ~ '),

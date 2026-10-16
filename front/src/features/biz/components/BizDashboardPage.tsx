@@ -16,6 +16,7 @@ import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/lib/api-error';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
 const formatDelta = (stat?: { deltaPercent?: number }) => {
@@ -220,7 +221,7 @@ export function BizDashboardPage() {
                 <Facts>
                   <Fact>
                     <FactLabel>자격 / 대상</FactLabel>
-                    <FactValue>{posting.eligibility}</FactValue>
+                    <FactValue>{challengeEligibility(posting)}</FactValue>
                   </Fact>
                   <Fact>
                     <FactLabel>접수기간</FactLabel>
