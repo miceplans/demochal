@@ -18,10 +18,12 @@ function createDeps(overrides: {
   history?: { items: unknown[]; total: number };
   activeAds?: unknown[];
   monthlyAdExposure?: { label: string; value: number }[];
+  posterUrl?: string | null;
 }) {
   return {
     businessesService: { findByOwner: vi.fn().mockResolvedValue(overrides.business) },
     challengesService: { getStatsForOwner: vi.fn().mockResolvedValue(overrides.stats) },
+    filesService: { resolvePublicUrl: vi.fn().mockResolvedValue(overrides.posterUrl ?? null) },
     billingHistoryService: {
       forBusiness: vi.fn().mockResolvedValue(overrides.history ?? { items: [], total: 0 }),
     },
@@ -42,6 +44,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -49,6 +52,7 @@ describe('BizService', () => {
     const dashboard = await service.dashboard(OWNER.id);
 
     expect(dashboard.recentPosting).toBeNull();
+    expect(deps.filesService.resolvePublicUrl).not.toHaveBeenCalled();
     expect(dashboard.stats).toBeNull();
     expect(deps.challengesService.getStatsForOwner).not.toHaveBeenCalled();
     expect(dashboard.monthlyAdExposure).toEqual([]);
@@ -57,8 +61,27 @@ describe('BizService', () => {
     expect(dashboard.activeAds).toEqual([]);
   });
 
+  it.each([null, 'not-ready-file'])(
+    'returns null posterUrl for missing or unavailable poster %s',
+    async (posterFileId) => {
+      const { db } = createDbStub({ id: 'ch-1', posterFileId });
+      const deps = createDeps({ business: { id: 'biz-1' } });
+      const service = new BizService(
+        db,
+        deps.businessesService as any,
+        deps.challengesService as any,
+        deps.filesService as any,
+        deps.billingHistoryService as any,
+        deps.adsService as any,
+      );
+
+      expect((await service.dashboard(OWNER.id)).recentPosting?.posterUrl).toBeNull();
+      expect(deps.filesService.resolvePublicUrl).toHaveBeenCalledWith(posterFileId);
+    },
+  );
+
   it('builds the dashboard from the latest challenge, history, and active ads', async () => {
-    const recent = { id: 'ch-1', title: '신규 공고' };
+    const recent = { id: 'ch-1', title: '신규 공고', posterFileId: 'poster-1' };
     const { db } = createDbStub(recent);
     const stats = { clicks: { value: 42, deltaPercent: 0 } };
     const historyItems = [
@@ -74,18 +97,24 @@ describe('BizService', () => {
       history: { items: historyItems, total: -100 },
       activeAds,
       monthlyAdExposure: [{ label: '9월', value: 42 }],
+      posterUrl: 'https://cdn.example.com/uploads/poster-1.webp',
     });
     const service = new BizService(
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
 
     const dashboard = await service.dashboard(OWNER.id);
 
-    expect(dashboard.recentPosting).toEqual(recent);
+    expect(dashboard.recentPosting).toEqual({
+      ...recent,
+      posterUrl: 'https://cdn.example.com/uploads/poster-1.webp',
+    });
+    expect(deps.filesService.resolvePublicUrl).toHaveBeenCalledWith('poster-1');
     expect(deps.challengesService.getStatsForOwner).toHaveBeenCalledWith('ch-1', OWNER.id);
     expect(dashboard.stats).toEqual(stats);
     expect(deps.billingHistoryService.forBusiness).toHaveBeenCalledWith('biz-1', {});
@@ -108,6 +137,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -123,6 +153,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -137,6 +168,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -158,6 +190,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -176,6 +209,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );
@@ -197,6 +231,7 @@ describe('BizService', () => {
       db,
       deps.businessesService as any,
       deps.challengesService as any,
+      deps.filesService as any,
       deps.billingHistoryService as any,
       deps.adsService as any,
     );

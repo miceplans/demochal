@@ -54,7 +54,7 @@ export interface Team {
   /** 목록·상세 응답에 포함 */
   challengeTitle?: string;
   /**
-     * 목록·상세 응답의 챌린지 포스터 파일 ID
+     * 목록·상세·내가 관리하는 팀 응답의 챌린지 포스터 파일 ID
      * @nullable
      */
   challengePosterFileId?: string | null;
