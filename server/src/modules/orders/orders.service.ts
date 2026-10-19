@@ -1,12 +1,16 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
-import { ads, orders } from '../../db/schema.js';
+import { ads, applications, challenges, orders } from '../../db/schema.js';
 import { adToday } from '../ads/ad-period.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
 export class OrdersService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async findById(id: string, userId: string) {
     const [order] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
@@ -52,6 +56,24 @@ export class OrdersService {
 
     if (order?.adId) {
       await tx.update(ads).set({ status: 'active' }).where(eq(ads.id, order.adId));
+    }
+
+    // 유료 챌린지 신청은 결제 확정 시점에 접수 완료 알림을 보낸다(무료는 ApplicationsService.apply).
+    if (order?.applicationId) {
+      const [target] = await tx
+        .select({ challengeId: challenges.id, challengeTitle: challenges.title })
+        .from(applications)
+        .innerJoin(challenges, eq(challenges.id, applications.challengeId))
+        .where(eq(applications.id, order.applicationId))
+        .limit(1);
+      if (target) {
+        await this.notificationsService.create(
+          order.userId,
+          'application.submitted',
+          { applicationId: order.applicationId, ...target },
+          tx,
+        );
+      }
     }
 
     return order;

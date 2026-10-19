@@ -1529,7 +1529,7 @@ const NotificationBody = styled.div({
   flexDirection: 'column',
   gap: 4,
 });
-// 서버는 team_matching, verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지), content.rejected(관리자 반려) 알림을 생성한다.
+// 서버는 team_matching, application.submitted(챌린지 신청 접수), verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지), content.rejected(관리자 반려) 알림을 생성한다.
 // 매핑되지 않은 유형은 '전체'에서만 보인다.
 const notificationTabs = ['전체', '팀매칭', '공고'] as const;
 type NotificationTab = (typeof notificationTabs)[number];
@@ -1564,6 +1564,10 @@ function describeNotification(type: string, payload: Record<string, unknown>) {
   }
   if (type === 'content.rejected') {
     return payload.targetType === 'team' ? '팀 모집글이 반려됐어요' : '챌린지 공고가 반려됐어요';
+  }
+  if (type === 'application.submitted') {
+    const title = typeof payload.challengeTitle === 'string' ? payload.challengeTitle : '';
+    return title ? `'${title}' 참가 신청이 접수됐어요` : '챌린지 참가 신청이 접수됐어요';
   }
   if (type === 'deadline') {
     const daysLeft = typeof payload.daysLeft === 'number' ? payload.daysLeft : undefined;

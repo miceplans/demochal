@@ -97,7 +97,7 @@ describe('ApplicationsService.apply', () => {
       ownedFiles: [{ id: fileId }],
       application: { id: 'app-1' },
     });
-    await new ApplicationsService(db).apply(
+    await new ApplicationsService(db, { create: vi.fn() } as never).apply(
       {
         ...dto,
         formAnswers: [
@@ -120,7 +120,7 @@ describe('ApplicationsService.apply', () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 1000, title: 'Form', applicationForm },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
     await expect(
       service.apply(
@@ -144,7 +144,7 @@ describe('ApplicationsService.apply', () => {
       challenge: { id: 'challenge-1', price: 0, title: 'Form', applicationForm },
       existingApplication: { id: 'app-1', formAnswers: original },
     });
-    const result = await new ApplicationsService(db).apply(
+    const result = await new ApplicationsService(db, { create: vi.fn() } as never).apply(
       { ...dto, formAnswers: [{ questionId: 'unknown', value: 'Replacement' }] },
       'user-1',
     );
@@ -157,7 +157,7 @@ describe('ApplicationsService.apply', () => {
       application: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
       order: { id: 'order-1', amount: 10000 },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -170,7 +170,7 @@ describe('ApplicationsService.apply', () => {
       challenge: { id: 'challenge-1', price: 0, title: 'Free Challenge' },
       application: { id: 'app-2', challengeId: 'challenge-1', userId: 'user-1' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -182,14 +182,14 @@ describe('ApplicationsService.apply', () => {
       challenge: { id: 'challenge-1', price: 10000, title: '유료 챌린지' },
       application: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow('Failed to create order');
   });
 
   it('throws NotFoundException for a missing challenge', async () => {
     const db = createDbStub({});
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(NotFoundException);
   });
@@ -203,7 +203,7 @@ describe('ApplicationsService.apply', () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: 'unavailable', ...patch },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
     expect(db.insert).not.toHaveBeenCalled();
@@ -213,9 +213,9 @@ describe('ApplicationsService.apply', () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 0, title: 'Ext', recruitMethod: 'external' },
     });
-    await expect(new ApplicationsService(db).apply(dto, 'user-1')).rejects.toThrow(
-      '외부 접수 챌린지',
-    );
+    await expect(
+      new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1'),
+    ).rejects.toThrow('외부 접수 챌린지');
     expect(db.values).not.toHaveBeenCalled();
   });
 
@@ -224,8 +224,36 @@ describe('ApplicationsService.apply', () => {
       challenge: { id: 'challenge-1', price: 0, title: 'Full', capacity: 2 },
       acceptedCount: 2,
     });
-    await expect(new ApplicationsService(db).apply(dto, 'user-1')).rejects.toThrow('정원');
+    await expect(
+      new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1'),
+    ).rejects.toThrow('정원');
     expect(db.values).not.toHaveBeenCalled();
+  });
+
+  it('notifies the applicant in the same transaction for a free application', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Free' },
+      application: { id: 'app-1' },
+    });
+    const notifications = { create: vi.fn() };
+    await new ApplicationsService(db, notifications as never).apply(dto, 'user-1');
+    expect(notifications.create).toHaveBeenCalledWith(
+      'user-1',
+      'application.submitted',
+      { applicationId: 'app-1', challengeId: 'challenge-1', challengeTitle: 'Free' },
+      db,
+    );
+  });
+
+  it('defers the notification until payment for a paid application', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 1000, title: 'Paid' },
+      application: { id: 'app-1' },
+      order: { id: 'order-1' },
+    });
+    const notifications = { create: vi.fn() };
+    await new ApplicationsService(db, notifications as never).apply(dto, 'user-1');
+    expect(notifications.create).not.toHaveBeenCalled();
   });
 
   it('accepts a new application while seats remain', async () => {
@@ -234,7 +262,9 @@ describe('ApplicationsService.apply', () => {
       acceptedCount: 1,
       application: { id: 'app-1' },
     });
-    await expect(new ApplicationsService(db).apply(dto, 'user-1')).resolves.toMatchObject({
+    await expect(
+      new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1'),
+    ).resolves.toMatchObject({
       id: 'app-1',
     });
   });
@@ -243,7 +273,7 @@ describe('ApplicationsService.apply', () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 10000, title: 'private', visibility: 'private' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
     expect(db.insert).not.toHaveBeenCalled();
@@ -255,7 +285,7 @@ describe('ApplicationsService.apply', () => {
       existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
       latestOrder: { id: 'old-order', amount: 10000, status: 'canceled' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     await expect(service.apply(dto, 'user-1')).rejects.toThrow(BadRequestException);
     expect(db.insert).not.toHaveBeenCalled();
@@ -272,7 +302,7 @@ describe('ApplicationsService.apply', () => {
         existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
         latestOrder: { id: 'order-1', amount: 10000, status: 'pending' },
       });
-      const service = new ApplicationsService(db);
+      const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
       const result = await service.apply(dto, 'user-1');
 
@@ -289,7 +319,7 @@ describe('ApplicationsService.apply', () => {
       application: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
       order: { id: 'order-1', amount: 10000 },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -303,7 +333,7 @@ describe('ApplicationsService.apply', () => {
       existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
       latestOrder: { id: 'order-1', amount: 10000, status: 'pending' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -319,7 +349,7 @@ describe('ApplicationsService.apply', () => {
       latestOrder: { id: 'order-1', amount: 10000, status: 'canceled' },
       order: { id: 'order-2', amount: 10000 },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -332,7 +362,7 @@ describe('ApplicationsService.apply', () => {
       existingApplication: { id: 'app-1', challengeId: 'challenge-1', userId: 'user-1' },
       latestOrder: { id: 'order-1', amount: 10000, status: 'paid' },
     });
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.apply(dto, 'user-1');
 
@@ -369,7 +399,7 @@ describe('ApplicationsService.listForUser', () => {
         from: vi.fn().mockReturnValue({ innerJoin: joinTarget.innerJoin }),
       }),
     };
-    const service = new ApplicationsService(db);
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
 
     const result = await service.listForUser('user-1');
 
