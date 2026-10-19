@@ -160,7 +160,7 @@ const QuestionTitleInput = styled.input({
   outline: 'none',
   fontSize: 24,
   fontWeight: 600,
-  color: c.gray500,
+  color: c.gray900,
   '&::placeholder': { color: c.gray500 },
 });
 
