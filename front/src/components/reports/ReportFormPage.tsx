@@ -5,8 +5,8 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { UserShell } from '@/components/common/UserShell';
-import { Button, EmptyArtwork, Muted, Title } from '@/components/common/Primitives';
+import { UserShell, Content } from '@/components/common/UserShell';
+import { Button, Muted, Title } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
@@ -25,7 +25,7 @@ function isReportType(value: string | null): value is ReportType {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type PreviewMeta = { label: string; value: string };
-type Preview = { title: string; org?: string; meta: PreviewMeta[] };
+type Preview = { title: string; org?: string; meta: PreviewMeta[]; image?: string | null };
 
 function ReportFormContent() {
   const router = useRouter();
@@ -68,6 +68,7 @@ function ReportFormContent() {
     preview = {
       title: challenge.title ?? '챌린지',
       org: challenge.organizer,
+      image: challenge.posterUrl ?? null,
       meta: [
         { label: '자격 / 대상', value: challengeEligibility(challenge, '-') },
         {
@@ -80,6 +81,7 @@ function ReportFormContent() {
     preview = {
       title: team.title ?? '팀 모집글',
       org: team.challengeTitle,
+      image: team.challengePosterUrl ?? null,
       meta: [
         {
           label: '모집 역할',
@@ -96,6 +98,7 @@ function ReportFormContent() {
     preview = {
       title: user.name ?? '사용자',
       org: user.position,
+      image: user.profileImageUrl ?? null,
       meta: [
         { label: '활동 지역', value: user.region ?? '-' },
         { label: '가입일', value: formatDate(user.createdAt) },
@@ -107,6 +110,8 @@ function ReportFormContent() {
 
   const [reason, setReason] = useState('');
   const [detail, setDetail] = useState('');
+  // 대상 이미지 로드에 실패하면 placeholder로 되돌린다.
+  const [imageFailed, setImageFailed] = useState(false);
 
   const createReport = generated.useCreateReport({
     mutation: {
@@ -138,7 +143,7 @@ function ReportFormContent() {
 
   return (
     <UserShell compact navigation={false} footer={false}>
-      <Form>
+      <Form size="narrow">
         <Title>신고하기</Title>
         {targetPending ? (
           <LoadingState label="신고 대상을 불러오는 중이에요…" />
@@ -146,7 +151,11 @@ function ReportFormContent() {
           <Muted>신고 대상을 찾을 수 없어요. 대상 링크를 다시 확인해주세요.</Muted>
         ) : (
           <PreviewHeader>
-            <EmptyArtwork style={{ width: 223, height: 156, flexShrink: 0 }} />
+            <PreviewArtwork>
+              {preview.image && !imageFailed ? (
+                <img src={preview.image} alt="" onError={() => setImageFailed(true)} />
+              ) : null}
+            </PreviewArtwork>
             <PreviewBody>
               <div>
                 <p className="preview-title">{preview.title}</p>
@@ -203,15 +212,11 @@ export function ReportFormPage() {
   );
 }
 
-const Form = styled.div({
-  width: 640,
-  maxWidth: 'calc(100% - 32px)',
-  margin: '0 auto',
-  padding: '40px 0',
+const Form = styled(Content)({
   display: 'flex',
   flexDirection: 'column',
   gap: 32,
-  [mobile]: { padding: '24px 0 110px' },
+  [mobile]: { padding: '24px 16px 110px' },
 });
 
 const PreviewHeader = styled.div({
@@ -219,6 +224,16 @@ const PreviewHeader = styled.div({
   gap: 24,
   alignItems: 'flex-end',
   [mobile]: { flexDirection: 'column', alignItems: 'stretch' },
+});
+
+const PreviewArtwork = styled.div({
+  width: 223,
+  height: 156,
+  flexShrink: 0,
+  background: c.gray100,
+  borderRadius: 12,
+  overflow: 'hidden',
+  img: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
 });
 
 const PreviewBody = styled.div({

@@ -4,13 +4,14 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { MyPage, MyProfileEditPage } from './MyPages';
+import { MyPage, MyProfileEditPage, MyTeamsPage } from './MyPages';
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
   meLoaded: true,
+  managedTeams: [] as Array<Record<string, unknown>>,
   me: { name: '홍길동', bio: '안녕하세요' } as {
     name: string;
     bio: string;
@@ -40,9 +41,48 @@ vi.mock('@semochal/api-client', () => ({
       isPending: false,
       isError: false,
     }),
+    useListManagedTeams: () => ({
+      data: { status: 200, data: mocks.managedTeams },
+      isPending: false,
+      isError: false,
+    }),
     getGetMyAuthInfoQueryKey: () => ['myAuthInfo'],
   },
 }));
+
+describe('MyTeamsPage 포스터', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.managedTeams = [];
+  });
+
+  it('관리 팀 응답의 포스터를 표시하고 없는 팀은 플레이스홀더를 표시한다', () => {
+    mocks.managedTeams = [
+      {
+        id: 'team-1',
+        title: '첫 팀',
+        challengeTitle: '첫 공고',
+        challengePosterUrl: 'https://cdn.example.com/poster.webp',
+        openRoles: [],
+        members: [],
+      },
+      {
+        id: 'team-2',
+        title: '둘째 팀',
+        challengeTitle: '둘째 공고',
+        challengePosterUrl: null,
+        openRoles: [],
+        members: [],
+      },
+    ];
+    const { container } = render(<MyTeamsPage />);
+
+    expect(
+      container.querySelector('img[src="https://cdn.example.com/poster.webp"]'),
+    ).not.toBeNull();
+    expect(screen.getByRole('img', { name: '둘째 공고 대표 이미지' })).toBeTruthy();
+  });
+});
 
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

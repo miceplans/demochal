@@ -1,9 +1,8 @@
 'use client';
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { UserShell } from '@/components/common/UserShell';
+import { UserShell, FormContent } from '@/components/common/UserShell';
 import {
   Button,
   Input,
@@ -16,7 +15,7 @@ import {
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ChallengeSearch } from '@/components/contests/ChallengeSearch';
-import { colors as c, mobile } from '@/styles/design';
+import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { roles } from '@/data/user-design';
 import { useUserStore } from '@/stores/useUserStore';
@@ -104,7 +103,8 @@ function RecruitmentForm() {
   });
   return (
     <UserShell title="모집글 작성" back="/teams" footer={false}>
-      <FormContainer
+      <FormContent
+        size="narrow"
         onSubmit={(e) => {
           e.preventDefault();
           const challengeId = draft.challenge;
@@ -325,18 +325,7 @@ function RecruitmentForm() {
         <Button type="submit" fullWidth disabled={!slots.length || createTeam.isPending}>
           게시하기
         </Button>
-      </FormContainer>
+      </FormContent>
     </UserShell>
   );
 }
-
-export const FormContainer = styled.form({
-  width: 640,
-  maxWidth: 'calc(100% - 32px)',
-  margin: '0 auto',
-  padding: '40px 0',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 32,
-  [mobile]: { padding: '24px 0', gap: 32 },
-});

@@ -4276,6 +4276,7 @@ export const getListManagedTeamsUrl = () => {
 
 /**
  * 팀 지원자 관리 화면(`/my/teams/public-data`). 내가 리더인 팀과 그 지원자 목록(팀장 본인 행 제외).
+ * 각 팀에 연결된 챌린지의 공개 포스터 URL을 포함한다(없거나 공개 준비 상태가 아니면 null).
  * 지원자별 합격/불합격 결정은 `PATCH /teams/{id}/members/{memberId}`로 저장한다.
  * @summary 내가 리더인 팀과 지원자 목록 조회
  */
