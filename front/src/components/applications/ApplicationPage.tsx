@@ -3,7 +3,7 @@
 import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { UserShell } from '@/components/common/UserShell';
+import { UserShell, FormContent } from '@/components/common/UserShell';
 import { Button, IconButton, Input } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { roles } from '@/data/user-design';
@@ -16,17 +16,10 @@ import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 import { ApplicationQuestions, isAnswerValid, type Answers } from './ApplicationQuestions';
 
-const Form = styled.form({
-  display: 'flex',
-  flexDirection: 'column',
+const Form = styled(FormContent)({
   gap: 60,
-  width: '100%',
-  minWidth: 0,
-  boxSizing: 'border-box',
-  padding: '60px 120px',
   minHeight: 724,
-  '@media (max-width: 900px)': { padding: '48px clamp(32px, 8vw, 80px)' },
-  [mobile]: { minHeight: 'calc(100dvh - 44px)', gap: 28, padding: '20px 16px 32px' },
+  [mobile]: { gap: 28, minHeight: 'calc(100dvh - 44px)', padding: '20px 16px 32px' },
 });
 const FormTitle = styled.h1({
   display: 'flex',

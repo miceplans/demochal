@@ -5,7 +5,7 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { UserShell } from '@/components/common/UserShell';
+import { UserShell, Content } from '@/components/common/UserShell';
 import { Button, Muted, Title } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
@@ -143,7 +143,7 @@ function ReportFormContent() {
 
   return (
     <UserShell compact navigation={false} footer={false}>
-      <Form>
+      <Form size="narrow">
         <Title>신고하기</Title>
         {targetPending ? (
           <LoadingState label="신고 대상을 불러오는 중이에요…" />
@@ -212,15 +212,11 @@ export function ReportFormPage() {
   );
 }
 
-const Form = styled.div({
-  width: 640,
-  maxWidth: 'calc(100% - 32px)',
-  margin: '0 auto',
-  padding: '40px 0',
+const Form = styled(Content)({
   display: 'flex',
   flexDirection: 'column',
   gap: 32,
-  [mobile]: { padding: '24px 0 110px' },
+  [mobile]: { padding: '24px 16px 110px' },
 });
 
 const PreviewHeader = styled.div({
