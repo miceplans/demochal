@@ -3,8 +3,7 @@ import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
-import { SectionHeader, Row, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
-import { Dropdown } from '@/components/ui/Dropdown';
+import { SectionHeader, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
 import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
@@ -132,42 +131,6 @@ export function HomePage() {
           <Sections>
             {recommendationContests.length > 0 && (
               <section>
-                <DesktopOnly style={{ margin: '28px 0' }}>
-                  <Row gap={16}>
-                    <Dropdown
-                      aria-label="분야"
-                      size="S"
-                      width={104}
-                      placeholder="분야"
-                      options={[
-                        { value: '분야', label: '분야' },
-                        { value: 'IT/SW', label: 'IT/SW' },
-                        { value: '디자인', label: '디자인' },
-                      ]}
-                    />
-                    <Dropdown
-                      aria-label="연도"
-                      size="S"
-                      width={104}
-                      placeholder="2025년"
-                      options={[
-                        { value: '2025년', label: '2025년' },
-                        { value: '2024년', label: '2024년' },
-                      ]}
-                    />
-                    <Dropdown
-                      aria-label="수상등급"
-                      size="S"
-                      width={104}
-                      placeholder="수상등급"
-                      options={[
-                        { value: '수상등급', label: '수상등급' },
-                        { value: '대상', label: '대상' },
-                        { value: '우수상', label: '우수상' },
-                      ]}
-                    />
-                  </Row>
-                </DesktopOnly>
                 <SectionHeader
                   title={userName ? `${userName}님에게 맞는 AI 추천` : '회원님에게 맞는 AI 추천'}
                   action={<More href="/explore">더보기 →</More>}
