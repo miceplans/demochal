@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BusinessesController } from './businesses.controller.js';
+import { GUARDS_METADATA } from '@nestjs/common/constants';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
 import type { BusinessesService } from './businesses.service.js';
 
 const user = { id: 'user-1', email: 'biz@semochal.kr', name: '사업자', role: 'business' };
@@ -17,6 +19,11 @@ function createController() {
 }
 
 describe('BusinessesController', () => {
+  it('protects business registration with the JWT guard', () => {
+    expect(Reflect.getMetadata(GUARDS_METADATA, BusinessesController.prototype.register)).toContain(
+      JwtAuthGuard,
+    );
+  });
   it('returns the current owner business', async () => {
     const { controller, businessesService } = createController();
     businessesService.findByOwnerOrThrow.mockResolvedValue({ id: 'biz-1', name: '주식회사 새모' });

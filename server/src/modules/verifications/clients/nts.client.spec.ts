@@ -51,3 +51,42 @@ describe('NtsClient', () => {
     });
   });
 });
+
+describe('NtsClient.lookupRegistration', () => {
+  afterEach(() => fetchMock.mockReset());
+
+  it('reports HTTP errors and network failures as lookup failures', async () => {
+    respondWith({}, 503);
+    await expect(new NtsClient().lookupRegistration('1234567890')).rejects.toThrow();
+    fetchMock.mockRejectedValue(new Error('network failure'));
+    await expect(new NtsClient().lookupRegistration('1234567890')).rejects.toThrow();
+  });
+
+  it.each(['01', '02', '03'])('accepts registered status %s', async (code) => {
+    respondWith({ data: [{ b_no: '1234567890', b_stt_cd: code }] });
+    await expect(new NtsClient().lookupRegistration('1234567890')).resolves.toBe('registered');
+  });
+
+  it('recognizes the official unregistered response', async () => {
+    respondWith({
+      data: [
+        {
+          b_no: '1234567890',
+          b_stt_cd: '',
+          tax_type: '국세청에 등록되지 않은 사업자등록번호입니다.',
+        },
+      ],
+    });
+    await expect(new NtsClient().lookupRegistration('1234567890')).resolves.toBe('unregistered');
+  });
+
+  it.each([
+    {},
+    { data: [] },
+    { data: [{ b_no: '0000000000', b_stt_cd: '01' }] },
+    { data: [{ b_no: '1234567890', b_stt_cd: '99' }] },
+  ])('treats malformed or mismatched responses as an outage', async (body) => {
+    respondWith(body);
+    await expect(new NtsClient().lookupRegistration('1234567890')).rejects.toThrow();
+  });
+});

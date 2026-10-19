@@ -106,7 +106,8 @@ export function BizSignupFlow() {
   };
   const validateOrg = () => {
     if (!org.name.trim()) return '사명/단체명을 입력해주세요.';
-    if (org.registrationNumber.replace(/\D/g, '').length !== 10)
+    const number = org.registrationNumber.replace(/\D/g, '');
+    if ((orgType === '기업' || number.length > 0) && number.length !== 10)
       return '사업자 등록 번호 10자리를 입력해주세요.';
     if (!org.phone.trim()) return '문의 번호를 입력해주세요.';
     if (!EMAIL_PATTERN.test(org.email.trim())) return '문의 이메일을 확인해주세요.';
@@ -130,6 +131,7 @@ export function BizSignupFlow() {
       }
     }
     setSubmitting(true);
+    let lookupUnavailable = false;
     try {
       if (!registered) {
         try {
@@ -153,14 +155,19 @@ export function BizSignupFlow() {
         const { data: business } = await generated.registerBusiness({
           type: orgType,
           name: org.name.trim(),
-          registrationNumber: org.registrationNumber.replace(/\D/g, ''),
+          registrationNumber: org.registrationNumber.replace(/\D/g, '') || undefined,
           phone: org.phone.trim(),
           email: org.email.trim(),
         });
         if (!business.id) throw new Error('business registration failed');
+        lookupUnavailable = business.registrationLookupUnavailable === true;
         setBusinessId(business.id);
       }
-      toast.success('가입이 완료됐어요.');
+      toast.success(
+        lookupUnavailable
+          ? '가입이 완료됐어요. 사업자번호 조회는 일시적으로 이용할 수 없었어요.'
+          : '가입이 완료됐어요.',
+      );
       router.replace(hrefOf('/login'));
     } catch (error) {
       toast.error(
@@ -248,6 +255,15 @@ export function BizSignupFlow() {
             )}
             {step === 2 && (
               <Form aria-label="기관 정보">
+                <FormField label="유형">
+                  <Dropdown
+                    aria-label="기관 유형"
+                    options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
+                    value={orgType}
+                    disabled={!!businessId}
+                    onChange={(value) => setOrgType(value as OrgType)}
+                  />
+                </FormField>
                 <FormField label="사명/단체명">
                   <TextInput
                     name="orgName"
@@ -257,7 +273,9 @@ export function BizSignupFlow() {
                     onChange={setOrgField('name')}
                   />
                 </FormField>
-                <FormField label="사업자 등록 번호">
+                <FormField
+                  label={orgType === '기업' ? '사업자 등록 번호' : '사업자 등록 번호 (선택)'}
+                >
                   <TextInput
                     name="orgRegistrationNumber"
                     inputMode="numeric"
@@ -270,15 +288,6 @@ export function BizSignupFlow() {
                         registrationNumber: formatRegistrationNumber(e.target.value),
                       }))
                     }
-                  />
-                </FormField>
-                <FormField label="유형">
-                  <Dropdown
-                    aria-label="기관 유형"
-                    options={orgTypes.map((o) => ({ value: o.value, label: o.label }))}
-                    value={orgType}
-                    disabled={!!businessId}
-                    onChange={(value) => setOrgType(value as OrgType)}
                   />
                 </FormField>
                 <FormField label="문의 번호">

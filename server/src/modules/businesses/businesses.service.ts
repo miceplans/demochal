@@ -15,6 +15,7 @@ import type { UpdateBusinessDto } from './dto/update-business.dto.js';
 import { verificationStatusPresentation } from '../verifications/verifications.service.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { FilesService } from '../files/files.service.js';
+import { NtsClient } from '../verifications/clients/nts.client.js';
 
 const LIST_MAX_LIMIT = 100;
 
@@ -24,12 +25,30 @@ export class BusinessesService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly adminAlerts: AdminAlertsService,
     private readonly filesService: FilesService,
+    private readonly ntsClient: NtsClient,
   ) {}
 
   async register(dto: RegisterBusinessDto, ownerUserId: string) {
     // One business per owner — findByOwner and the biz console assume it.
     if (await this.findByOwner(ownerUserId)) {
       throw new ConflictException('이미 등록된 기업 정보가 있습니다.');
+    }
+    let registrationLookupUnavailable = false;
+    if (dto.type === '기업') {
+      if (!dto.registrationNumber || !/^\d{10}$/.test(dto.registrationNumber)) {
+        throw new BadRequestException('사업자등록번호 10자리를 입력해주세요.');
+      }
+      // Provider failures are distinct from a confirmed unregistered number.
+      let result: 'registered' | 'unregistered' | undefined;
+      try {
+        result = await this.ntsClient.lookupRegistration(dto.registrationNumber);
+      } catch {
+        // 가입 정책에 따라 조회 장애 시 등록을 허용한다.
+        registrationLookupUnavailable = true;
+      }
+      if (result === 'unregistered') {
+        throw new BadRequestException('국세청에 등록되지 않은 사업자등록번호입니다.');
+      }
     }
     const business = await this.db.transaction(async (tx) => {
       const [created] = await tx
@@ -55,7 +74,11 @@ export class BusinessesService {
     await this.adminAlerts.notify('newBusinessAlert', 'admin.business', {
       businessId: business!.id,
     });
-    return { ...business!, ...verificationStatusPresentation(business!.verificationStatus) };
+    return {
+      ...business!,
+      ...verificationStatusPresentation(business!.verificationStatus),
+      registrationLookupUnavailable,
+    };
   }
 
   // 사업자번호·주소·연락처 등 민감 필드를 담은 전체 행이므로 소유자나 관리자만 볼 수 있다.
