@@ -342,7 +342,6 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
         }))
       : [blankQuestion()],
   );
-  const [activeId, setActiveId] = useState<string | null>(null);
 
   const addQuestion = (type: QuestionType) => {
     setQuestions((qs) => [...qs, blankQuestion(type)]);
@@ -452,12 +451,11 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
             </DeleteQuestionButton>
             <QuestionCard>
               <QuestionHeader>
-                <NumberBadge aria-hidden active={q.id === activeId}>
+                <NumberBadge aria-hidden active={q.title.trim().length > 0}>
                   {qi + 1}
                 </NumberBadge>
                 <QuestionTitleInput
                   value={q.title}
-                  onFocus={() => setActiveId(q.id)}
                   onChange={(e) => updateQuestion(q.id, { title: e.target.value })}
                   placeholder="질문을 작성해주세요."
                   aria-label={`질문 ${qi + 1} 내용`}
