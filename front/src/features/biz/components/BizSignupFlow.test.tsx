@@ -49,6 +49,7 @@ vi.mock('@/components/common/Toast', () => ({
 }));
 vi.mock('@semochal/api-client', () => ({
   ApiError: mocks.MockApiError,
+  getApiErrorMessage: (error: unknown) => (error instanceof Error ? error.message : undefined),
   generated: {
     register: mocks.register,
     registerBusiness: mocks.registerBusiness,
@@ -196,6 +197,75 @@ describe('BizSignupFlow', () => {
     expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
     expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
+  });
+
+  it('allows a school to register without a business number', async () => {
+    mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
+    const user = userEvent.setup();
+    renderSignup();
+    await advanceToBusinessInfo(user);
+    await user.click(screen.getByRole('combobox', { name: '기관 유형' }));
+    await user.click(screen.getByRole('option', { name: '학교' }));
+    await user.type(document.querySelector('input[name="orgName"]')!, '학교');
+    await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
+    await user.type(document.querySelector('input[name="orgEmail"]')!, 'school@example.com');
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() =>
+      expect(mocks.registerBusiness).toHaveBeenCalledWith(
+        expect.objectContaining({ type: '학교', registrationNumber: undefined }),
+      ),
+    );
+  });
+
+  it('shows a warning after signup when the lookup was unavailable', async () => {
+    mocks.registerBusiness.mockResolvedValue({
+      data: { id: 'business-1', registrationLookupUnavailable: true },
+    });
+    const user = userEvent.setup();
+    renderSignup();
+    await advanceToBusinessInfo(user);
+    await fillOrgInfo(user);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith(
+        expect.stringContaining('조회는 일시적으로 이용할 수 없었어요'),
+      ),
+    );
+  });
+
+  it('rejects a company without a complete number before creating an account', async () => {
+    const user = userEvent.setup();
+    renderSignup();
+    await advanceToBusinessInfo(user);
+    await user.type(document.querySelector('input[name="orgName"]')!, '기업');
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    expect(mocks.toastError).toHaveBeenCalledWith('사업자 등록 번호 10자리를 입력해주세요.');
+    expect(mocks.register).not.toHaveBeenCalled();
+  });
+
+  it('shows a rejected number and retries business registration without creating another account', async () => {
+    mocks.registerBusiness
+      .mockRejectedValueOnce(new Error('국세청에 등록되지 않은 사업자등록번호입니다.'))
+      .mockResolvedValueOnce({ data: { id: 'business-1' } });
+    const user = userEvent.setup();
+    renderSignup();
+    await advanceToBusinessInfo(user);
+    await fillOrgInfo(user);
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        '국세청에 등록되지 않은 사업자등록번호입니다.',
+        expect.any(String),
+      ),
+    );
+    await user.clear(document.querySelector('input[name="orgRegistrationNumber"]')!);
+    await user.type(document.querySelector('input[name="orgRegistrationNumber"]')!, '9876543210');
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));
+    expect(mocks.register).toHaveBeenCalledTimes(1);
+    expect(mocks.registerBusiness).toHaveBeenLastCalledWith(
+      expect.objectContaining({ registrationNumber: '9876543210' }),
+    );
   });
 
   it('prefills the organization step from the existing business and skips registration', async () => {

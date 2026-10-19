@@ -42,6 +42,7 @@ describe('BusinessesService', () => {
       db,
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
 
     await service.update('biz-1', { name: '새 이름', bannerImageFileId: 'file-1' }, 'user-1');
@@ -72,6 +73,7 @@ describe('BusinessesService', () => {
       db,
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
 
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
@@ -106,6 +108,7 @@ describe('BusinessesService.findById access control', () => {
       createFindDb(businessRow),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
     await expect(service.findById('biz-1', owner)).resolves.toMatchObject({
       id: 'biz-1',
@@ -119,6 +122,7 @@ describe('BusinessesService.findById access control', () => {
       createFindDb(businessRow),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
     await expect(service.findById('biz-1', admin)).resolves.toMatchObject({ id: 'biz-1' });
   });
@@ -128,6 +132,7 @@ describe('BusinessesService.findById access control', () => {
       createFindDb(businessRow),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
     await expect(service.findById('biz-1', stranger)).rejects.toThrow(ForbiddenException);
   });
@@ -137,6 +142,7 @@ describe('BusinessesService.findById access control', () => {
       createFindDb(undefined),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
     await expect(service.findById('biz-x', admin)).rejects.toThrow(NotFoundException);
   });
@@ -168,6 +174,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
       createListDb([], limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
 
     await expect(service.listMyChallenges('user-1', 'not-a-date', 20)).rejects.toThrow(
@@ -182,6 +189,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
       createListDb([], limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
 
     const result = await service.listMyChallenges('user-1', undefined, Number('abc'));
@@ -198,6 +206,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
       createListDb([], limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
     );
 
     const result = await service.listMyChallenges('user-1', undefined, 5000);
@@ -222,9 +231,61 @@ describe('BusinessesService.register', () => {
     return db;
   }
 
+  it.each(['registered', 'unavailable'])('allows a company when lookup is %s', async (result) => {
+    const lookupRegistration =
+      result === 'unavailable'
+        ? vi.fn().mockRejectedValue(new Error('offline'))
+        : vi.fn().mockResolvedValue(result);
+    const service = new BusinessesService(
+      createRegisterDb([]),
+      { notify: vi.fn() } as any,
+      {} as any,
+      { lookupRegistration } as any,
+    );
+    await expect(
+      service.register({ type: '기업', registrationNumber: '1234567890' }, 'user-1'),
+    ).resolves.toMatchObject({ registrationLookupUnavailable: result === 'unavailable' });
+  });
+
+  it('rejects unregistered or missing company numbers before creating a business', async () => {
+    const db = createRegisterDb([]);
+    const transaction = vi.spyOn(db, 'transaction');
+    const service = new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      {} as any,
+      { lookupRegistration: vi.fn().mockResolvedValue('unregistered') } as any,
+    );
+    await expect(
+      service.register({ type: '기업', registrationNumber: '1234567890' }, 'user-1'),
+    ).rejects.toThrow('국세청에 등록되지 않은');
+    await expect(service.register({ type: '기업' }, 'user-1')).rejects.toThrow(BadRequestException);
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it.each(['학교', '비영리', '협회'] as const)(
+    'allows %s without a registration number',
+    async (type) => {
+      const lookupRegistration = vi.fn();
+      const service = new BusinessesService(
+        createRegisterDb([]),
+        { notify: vi.fn() } as any,
+        {} as any,
+        { lookupRegistration } as any,
+      );
+      await expect(service.register({ type }, 'user-1')).resolves.toMatchObject({ id: 'biz-new' });
+      expect(lookupRegistration).not.toHaveBeenCalled();
+    },
+  );
+
   it('raises the newBusinessAlert admin alert with the business id only', async () => {
     const alerts = { notify: vi.fn().mockResolvedValue(undefined) };
-    const service = new BusinessesService(createRegisterDb([]), alerts as any, {} as any);
+    const service = new BusinessesService(
+      createRegisterDb([]),
+      alerts as any,
+      {} as any,
+      {} as any,
+    );
 
     await service.register(
       { name: '한빛협회', registrationNumber: '123-45-67890', type: 'corp' } as any,
@@ -241,6 +302,7 @@ describe('BusinessesService.register', () => {
     const service = new BusinessesService(
       createRegisterDb([{ id: 'biz-old' }]),
       alerts as any,
+      {} as any,
       {} as any,
     );
 
