@@ -56,7 +56,7 @@ describe('application answer validation', () => {
     ['checkbox', ['unknown']],
     ['checkbox', [1]],
     ['file', 'not-a-uuid'],
-    ['file', [fileId]],
+    ['file', [1]],
   ])('rejects invalid %s answer values', (type, value) => {
     expect(() =>
       validateFormAnswers(
@@ -80,5 +80,18 @@ describe('application answer validation', () => {
     }
     expect(() => validateFormAnswers(null, [{ questionId: 'unknown', value: 'A' }])).toThrow();
     expect(validateFormAnswers(null)).toEqual([]);
+  });
+
+  it('accepts multiple unique file ids for file questions and rejects invalid lists', () => {
+    const form = [question('file')];
+    const other = '22222222-2222-4222-8222-222222222222';
+    expect(validateFormAnswers(form, [{ questionId: 'file', value: [fileId, other] }])).toEqual([
+      { questionId: 'file', title: 'Question file', type: 'file', value: [fileId, other] },
+    ]);
+    for (const value of [[], [fileId, fileId], ['not-a-uuid'], Array(11).fill(fileId)]) {
+      expect(() => validateFormAnswers(form, [{ questionId: 'file', value }])).toThrow(
+        'Invalid application form answers',
+      );
+    }
   });
 });
