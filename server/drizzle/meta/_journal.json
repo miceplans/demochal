@@ -266,6 +266,13 @@
       "when": 1792123967747,
       "tag": "0038_challenge_posting_fields",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792210367747,
+      "tag": "0039_certificate_file_ids",
+      "breakpoints": true
     }
   ]
 }

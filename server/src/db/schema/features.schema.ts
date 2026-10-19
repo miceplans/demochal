@@ -40,7 +40,8 @@ export const certificates = pgTable('certificates', {
     .references(() => users.id),
   title: varchar('title', { length: 300 }).notNull(),
   category: varchar('category', { length: 20 }).notNull(),
-  fileId: uuid('file_id').notNull(),
+  fileId: uuid('file_id').notNull(), // fileIds[0]과 같다(단일 파일 시절 호환)
+  fileIds: jsonb('file_ids').$type<string[]>().notNull().default([]),
   status: varchar('status', { length: 20 }).notNull().default('pending'),
   rejectionReason: text('rejection_reason'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

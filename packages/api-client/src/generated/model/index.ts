@@ -88,6 +88,7 @@ export * from './certificate';
 export * from './certificateCategory';
 export * from './certificateEntry';
 export * from './certificateEntryCategory';
+export * from './certificateEntryFilesItem';
 export * from './certificateEntryStatus';
 export * from './certificateStatus';
 export * from './challenge';

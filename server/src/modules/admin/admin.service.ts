@@ -496,16 +496,41 @@ export class AdminService {
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(certificates.createdAt));
 
+    // 첫 파일은 위 조인으로 이미 읽었으므로 나머지 파일만 한 번에 조회한다.
+    const extraIds = [
+      ...new Set(
+        rows.flatMap(({ certificate }) =>
+          certificate.fileIds.filter((fileId) => fileId !== certificate.fileId),
+        ),
+      ),
+    ];
+    const extraFiles = extraIds.length
+      ? await this.db.select().from(files).where(inArray(files.id, extraIds))
+      : [];
+    const extraById = new Map(extraFiles.map((extra) => [extra.id, extra]));
+
     return Promise.all(
-      rows.map(async ({ certificate, userName, file }) => ({
-        id: certificate.id,
-        user: userName,
-        award: certificate.title,
-        category: certificate.category,
-        fileId: certificate.fileId,
-        ...(await this.certificateFile(file)),
-        status: certificate.status,
-      })),
+      rows.map(async ({ certificate, userName, file }) => {
+        const primary = await this.certificateFile(file);
+        const rest = await Promise.all(
+          certificate.fileIds
+            .filter((fileId) => fileId !== certificate.fileId)
+            .map(async (fileId) => ({
+              fileId,
+              ...(await this.certificateFile(extraById.get(fileId) ?? null)),
+            })),
+        );
+        return {
+          id: certificate.id,
+          user: userName,
+          award: certificate.title,
+          category: certificate.category,
+          fileId: certificate.fileId,
+          ...primary,
+          files: [{ fileId: certificate.fileId, ...primary }, ...rest],
+          status: certificate.status,
+        };
+      }),
     );
   }
 

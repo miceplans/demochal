@@ -3,8 +3,17 @@
 import { useState } from 'react';
 import { generated, type ApplicationFormAnswer } from '@semochal/api-client';
 import { useToast } from '@/components/common/Toast';
+import { fileAnswerIds } from '@/components/applications/ApplicationQuestions';
 
-function Attachment({ applicationId, fileId }: { applicationId: string; fileId: string }) {
+function Attachment({
+  applicationId,
+  fileId,
+  label,
+}: {
+  applicationId: string;
+  fileId: string;
+  label: string;
+}) {
   const toast = useToast();
   const [pending, setPending] = useState(false);
   const openFile = async () => {
@@ -21,7 +30,7 @@ function Attachment({ applicationId, fileId }: { applicationId: string; fileId: 
   };
   return (
     <button type="button" disabled={pending} onClick={() => void openFile()}>
-      {pending ? '불러오는 중…' : '첨부파일 열기'}
+      {pending ? '불러오는 중…' : label}
     </button>
   );
 }
@@ -44,12 +53,18 @@ export function ApplicationAnswers({
             <div key={answer.questionId} style={{ marginTop: 16 }}>
               <dt>{answer.title}</dt>
               <dd style={{ margin: '8px 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
-                {answer.type === 'file' && typeof answer.value === 'string' && answer.value ? (
-                  <Attachment applicationId={applicationId} fileId={answer.value} />
-                ) : (
-                  (Array.isArray(answer.value) ? answer.value.join(', ') : answer.value) ||
-                  '답변 없음'
-                )}
+                {answer.type === 'file' && fileAnswerIds(answer.value).length > 0
+                  ? fileAnswerIds(answer.value).map((fileId, index, ids) => (
+                      <div key={fileId}>
+                        <Attachment
+                          applicationId={applicationId}
+                          fileId={fileId}
+                          label={ids.length > 1 ? `첨부파일 ${index + 1} 열기` : '첨부파일 열기'}
+                        />
+                      </div>
+                    ))
+                  : (Array.isArray(answer.value) ? answer.value.join(', ') : answer.value) ||
+                    '답변 없음'}
               </dd>
             </div>
           ))}

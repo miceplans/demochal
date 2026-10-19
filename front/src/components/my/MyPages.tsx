@@ -23,6 +23,7 @@ import {
   Icon,
 } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { FileUploader } from '@/components/ui/FileUploader';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
 import { normalizeLinkUrl } from '@/components/profile/link-model';
@@ -78,29 +79,6 @@ const Participating = styled.div({
   },
   [mobile]: { gridTemplateColumns: '1fr' },
 });
-const UploadBox = styled.label({
-  border: `2px dashed ${c.gray100}`,
-  background: c.surface,
-  borderRadius: 12,
-  padding: 8,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  '& a': {
-    padding: '16px 8px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontWeight: 600,
-    borderRadius: 8,
-    transition: 'background 0.15s ease',
-  },
-  '& a:active': { background: c.gray50 },
-  '& a:hover span': { transform: 'translateX(3px)' },
-  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `0.5px solid ${c.gray100}`,
-  paddingBottom: 24,
-});
 const HiddenInput = styled.input({
   position: 'absolute',
   width: 1,
@@ -109,7 +87,6 @@ const HiddenInput = styled.input({
   overflow: 'hidden',
   clip: 'rect(0 0 0 0)',
 });
-const UploadMark = styled.img({ width: 40, height: 26 });
 const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
 // ProfileCards.Identity는 user-design 목업 이름을 하드코딩해 실 이름을 못 쓴다.
 // 아바타 스타일만 맞춰 마이페이지에서 실 인증 정보를 직접 렌더한다.
@@ -139,6 +116,7 @@ const certificateBadges = ['자격증', '수료증', '어학성적', '수상경�
 
 const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
 const CERTIFICATE_MAX_BYTES = 10 * 1024 * 1024;
+const CERTIFICATE_MAX_FILES = 5;
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
 
 const EndRow = styled(Row)<{ $mt?: number }>(({ $mt }) => ({
@@ -153,33 +131,33 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const toast = useToast();
   const queryClient = useQueryClient();
   const [badge, setBadge] = useState<string | null>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const requestUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
   const createCertificate = generated.useCreateCertificate();
-  const pickFile = (e: ChangeEvent<HTMLInputElement>) => {
-    const picked = e.target.files?.[0];
-    // 잘못된 파일을 다시 고르면 이전 파일로 제출되지 않게 먼저 비운다.
-    setFile(null);
-    if (!picked) return;
-    if (!CERTIFICATE_CONTENT_TYPES.includes(picked.type)) {
-      toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP, PDF만 올릴 수 있어요');
-      return;
+  const pickFiles = (picked: File[]) => {
+    const valid: File[] = [];
+    for (const file of picked) {
+      if (!CERTIFICATE_CONTENT_TYPES.includes(file.type)) {
+        toast.error('지원하지 않는 파일이에요', 'JPG, PNG, WEBP, PDF만 올릴 수 있어요');
+      } else if (file.size === 0) {
+        toast.error('빈 파일은 올릴 수 없어요', '내용이 있는 파일을 선택해주세요');
+      } else if (file.size > CERTIFICATE_MAX_BYTES) {
+        toast.error('파일이 너무 커요', '10MB 이하 파일만 올릴 수 있어요');
+      } else {
+        valid.push(file);
+      }
     }
-    if (picked.size === 0) {
-      toast.error('빈 파일은 올릴 수 없어요', '내용이 있는 파일을 선택해주세요');
-      return;
+    const next = [...pickedFiles, ...valid];
+    if (next.length > CERTIFICATE_MAX_FILES) {
+      toast.error('파일이 너무 많아요', `최대 ${CERTIFICATE_MAX_FILES}개까지 올릴 수 있어요`);
     }
-    if (picked.size > CERTIFICATE_MAX_BYTES) {
-      toast.error('파일이 너무 커요', '10MB 이하 파일만 올릴 수 있어요');
-      return;
-    }
-    setFile(picked);
+    setPickedFiles(next.slice(0, CERTIFICATE_MAX_FILES));
   };
   const reset = () => {
     setBadge(null);
-    setFile(null);
+    setPickedFiles([]);
   };
   // 업로드 중에는 닫지 않는다(닫힌 뒤 요청이 끝나 새로 연 폼을 닫아버리는 것을 막는다).
   const close = () => {
@@ -190,29 +168,33 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   // 증명 문서는 개인정보라 private 버킷에만 올린다(presigned PUT 5분 → finalize 검증 → 인증 요청).
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!badge || !file || submitting) return;
+    if (!badge || pickedFiles.length === 0 || submitting) return;
     setSubmitting(true);
     try {
-      const presigned = await requestUpload.mutateAsync({
-        data: {
-          bucket: 'private',
-          contentType: file.type as UploadContentType,
-          fileName: file.name.replace(/[/\\]/g, '_'),
-          sizeBytes: file.size,
-        },
-      });
-      const { uploadUrl, fileId } = presigned.data;
-      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
-      // presigned URL은 우리 API가 아니라 S3로 직접 올리는 주소라 api-client를 거치지 않는다.
-      const uploaded = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
-      if (!uploaded.ok) throw new Error('upload failed');
-      await finalizeUpload.mutateAsync({ id: fileId });
+      const fileIds: string[] = [];
+      for (const file of pickedFiles) {
+        const presigned = await requestUpload.mutateAsync({
+          data: {
+            bucket: 'private',
+            contentType: file.type as UploadContentType,
+            fileName: file.name.replace(/[/\\]/g, '_'),
+            sizeBytes: file.size,
+          },
+        });
+        const { uploadUrl, fileId } = presigned.data;
+        if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
+        // presigned URL은 우리 API가 아니라 S3로 직접 올리는 주소라 api-client를 거치지 않는다.
+        const uploaded = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        });
+        if (!uploaded.ok) throw new Error('upload failed');
+        await finalizeUpload.mutateAsync({ id: fileId });
+        fileIds.push(fileId);
+      }
       await createCertificate.mutateAsync({
-        data: { award: badge, category: badge === '수상경력' ? 'award' : 'participation', fileId },
+        data: { award: badge, category: badge === '수상경력' ? 'award' : 'participation', fileIds },
       });
       await queryClient.invalidateQueries({
         queryKey: generated.getListMyCertificatesQueryKey(),
@@ -246,21 +228,39 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
               </Chip>
             ))}
           </Wrap>
-          <UploadBox aria-label="증명 파일 첨부">
-            <UploadMark src="/assets/icons/fileuploader.png" alt="" aria-hidden />
-            {file?.name ?? '증명 파일 첨부 (JPG, PNG, WEBP, PDF · 10MB 이하)'}
-            <HiddenInput
-              type="file"
-              accept="image/jpeg,image/png,image/webp,application/pdf"
-              onChange={pickFile}
-              required
-            />
-          </UploadBox>
+          <FileUploader
+            multiple
+            aria-label="증명 파일 첨부"
+            label={`증명 파일 첨부 (JPG, PNG, WEBP, PDF · 10MB 이하 · 최대 ${CERTIFICATE_MAX_FILES}개)`}
+            accept="image/jpeg,image/png,image/webp,application/pdf"
+            required={pickedFiles.length === 0}
+            disabled={submitting || pickedFiles.length >= CERTIFICATE_MAX_FILES}
+            onFiles={pickFiles}
+          />
+          {pickedFiles.length > 0 && (
+            <Stack gap={4} aria-label="선택한 증명 파일">
+              {pickedFiles.map((picked, index) => (
+                <Row key={`${picked.name}-${index}`} gap={8}>
+                  <Muted>{picked.name}</Muted>
+                  <Button
+                    type="button"
+                    small
+                    tone="plain"
+                    disabled={submitting}
+                    aria-label={`${picked.name} 삭제`}
+                    onClick={() => setPickedFiles((list) => list.filter((_, i) => i !== index))}
+                  >
+                    삭제
+                  </Button>
+                </Row>
+              ))}
+            </Stack>
+          )}
           <EndRow $mt={4}>
             <Button type="button" small tone="plain" onClick={close} disabled={submitting}>
               취소
             </Button>
-            <Button type="submit" small disabled={!badge || !file || submitting}>
+            <Button type="submit" small disabled={!badge || pickedFiles.length === 0 || submitting}>
               {submitting ? '요청 중…' : '인증 요청'}
             </Button>
           </EndRow>

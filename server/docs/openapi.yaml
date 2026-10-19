@@ -3989,7 +3989,7 @@ components:
           type: array
           maxItems: 100
           items: { $ref: '#/components/schemas/ApplicationAnswerInput' }
-          description: 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID.
+          description: 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID 배열(최대 10개, 기존 단일 UUID 문자열도 허용).
     ApplicationAnswerInput:
       type: object
       required: [questionId, value]
@@ -4033,17 +4033,24 @@ components:
         userId: { type: string, format: uuid }
         title: { type: string }
         category: { type: string, enum: [award, participation] }
-        fileId: { type: string, format: uuid }
+        fileId: { type: string, format: uuid, description: 첫 번째 증명 파일 }
+        fileIds: { type: array, items: { type: string, format: uuid } }
         status: { type: string, enum: [pending, verified, rejected] }
         rejectionReason: { type: string, nullable: true }
         createdAt: { type: string, format: date-time }
     CreateCertificateRequest:
       type: object
-      required: [award, category, fileId]
+      required: [award, category, fileIds]
       properties:
         award: { type: string, maxLength: 200, description: 인증 제목(뱃지 이름) }
         category: { type: string, enum: [award, participation] }
-        fileId: { type: string, format: uuid, description: finalize까지 끝난 private 파일 }
+        fileIds:
+          type: array
+          minItems: 1
+          maxItems: 5
+          uniqueItems: true
+          items: { type: string, format: uuid }
+          description: finalize까지 끝난 본인의 private 파일(최대 5개)
     Business:
       type: object
       required: [id, name, registrationNumber, verificationStatus, createdAt]
@@ -4477,6 +4484,15 @@ components:
           }
         fileContentType:
           { type: string, nullable: true, description: 'image/* 또는 application/pdf' }
+        files:
+          type: array
+          description: 첨부된 모든 증명 파일(첫 번째가 fileId/fileUrl과 같다, 목록 응답에만 포함)
+          items:
+            type: object
+            properties:
+              fileId: { type: string, format: uuid }
+              fileUrl: { type: string, nullable: true }
+              fileContentType: { type: string, nullable: true }
         status: { type: string, enum: [pending, verified, rejected], description: 미인증/인증/거부 }
     AdminTeamCard:
       type: object

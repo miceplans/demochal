@@ -11,6 +11,7 @@ import { DayPicker } from 'react-day-picker';
 import { ko } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { FileUploader } from '@/components/ui/FileUploader';
 import { adApi, adError } from '@/lib/ad-api';
 import { toDateKey } from '@/lib/date';
 import { colors as c } from '@/styles/design';
@@ -803,7 +804,6 @@ function PostingForm({
   const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
   const [preview, setPreview] = useState<PostingPreview | null>(null);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
-  const attachmentInputRef = useRef<HTMLInputElement>(null);
   const [textColor, setTextColor] = useState('#000000');
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0]!);
   const [category, setCategory] = useState(initial.category);
@@ -1646,26 +1646,14 @@ function PostingForm({
 
           <FieldBlock>
             <FieldLabel>첨부파일</FieldLabel>
-            <input
-              ref={attachmentInputRef}
-              type="file"
+            <FileUploader
               multiple
               accept={ATTACHMENT_ACCEPT}
-              style={{ display: 'none' }}
               aria-label="첨부파일 선택"
-              onChange={(event) => {
-                const selected = Array.from(event.target.files ?? []);
-                event.target.value = '';
-                void uploadAttachments(selected);
-              }}
-            />
-            <AttachButton
-              type="button"
+              label={uploadingAttachments ? '업로드 중…' : '파일을 업로드해 주세요'}
               disabled={uploadingAttachments || attachments.length >= MAX_ATTACHMENTS}
-              onClick={() => attachmentInputRef.current?.click()}
-            >
-              {uploadingAttachments ? '업로드 중…' : '파일 첨부'}
-            </AttachButton>
+              onFiles={(selected) => void uploadAttachments(selected)}
+            />
             <AttachHint>
               PDF·한글·워드·엑셀·PPT·압축·이미지, 파일당 10MB 이하, 최대 {MAX_ATTACHMENTS}개
             </AttachHint>
@@ -2063,17 +2051,6 @@ const ColorMark = styled.span({
   padding: '0 3px',
   color: c.gray900,
   borderBottom: '3px solid transparent',
-});
-const AttachButton = styled.button({
-  alignSelf: 'flex-start',
-  height: 36,
-  padding: '0 16px',
-  border: `1px solid ${c.gray300}`,
-  borderRadius: 8,
-  background: c.white,
-  color: c.gray900,
-  '&:hover': { borderColor: c.primary },
-  '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 });
 const AttachHint = styled.span({ fontSize: 12, color: c.gray500 });
 const AttachList = styled.ul({

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { FileUploader } from '@/components/ui/FileUploader';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
@@ -12,7 +13,16 @@ export type Question = NonNullable<
 >[number];
 export type Answers = Record<string, string | string[]>;
 
+export const MAX_FILE_ANSWERS = 10;
+
+/** 파일 답변은 예전 초안에 UUID 문자열 하나로 남아 있을 수 있어 배열로 맞춘다. */
+export function fileAnswerIds(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
 export function isAnswerValid(question: Question, value: string | string[] | undefined) {
+  if (question.type === 'file') return !question.required || fileAnswerIds(value).length > 0;
   if (value === undefined) return !question.required;
   if (question.type === 'checkbox') {
     return (
@@ -46,39 +56,61 @@ export function ApplicationQuestions({
 }) {
   const busy = useRef(false);
   const [uploadError, setUploadError] = useState('');
-  const upload = async (questionId: string, file: File) => {
+  const [fileNames, setFileNames] = useState<Record<string, string>>({});
+  const upload = async (questionId: string, picked: File[]) => {
     if (busy.current) return;
     const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'] as const;
-    const contentType = allowed.find((type) => type === file.type);
-    if (!contentType || file.size > 10 * 1024 * 1024 || file.size === 0) {
+    const current = fileAnswerIds(answers[questionId]);
+    const room = MAX_FILE_ANSWERS - current.length;
+    if (room <= 0) {
+      setUploadError(`파일은 최대 ${MAX_FILE_ANSWERS}개까지 첨부할 수 있습니다.`);
+      return;
+    }
+    const batch = picked.slice(0, room);
+    const invalidFile = batch.some(
+      (file) =>
+        !allowed.some((type) => type === file.type) ||
+        file.size > 10 * 1024 * 1024 ||
+        file.size === 0,
+    );
+    if (invalidFile) {
       setUploadError('PDF, JPG, PNG, WebP 파일을 10MB 이하로 선택해 주세요.');
       return;
     }
     busy.current = true;
     onUploading(true);
-    setUploadError('');
+    setUploadError(
+      picked.length > room ? `파일은 최대 ${MAX_FILE_ANSWERS}개까지 첨부할 수 있습니다.` : '',
+    );
+    const uploaded: string[] = [];
     try {
-      const response = await generated.requestPresignedUpload({
-        bucket: 'private',
-        contentType,
-        fileName: file.name,
-        sizeBytes: file.size,
-      });
-      if (response.status !== 201) throw new Error('Upload unavailable');
-      const { uploadUrl, fileId } = response.data;
-      // Presigned S3 PUT uses the existing private upload flow; API requests use the generated client.
-      const uploaded = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': contentType },
-        body: file,
-      });
-      if (!uploaded.ok) throw new Error('Upload failed');
-      const finalized = await generated.finalizeUpload(fileId);
-      if (finalized.status !== 201) throw new Error('Upload verification failed');
-      onChange(questionId, fileId);
+      for (const file of batch) {
+        const contentType = allowed.find((type) => type === file.type)!;
+        const response = await generated.requestPresignedUpload({
+          bucket: 'private',
+          contentType,
+          fileName: file.name,
+          sizeBytes: file.size,
+        });
+        if (response.status !== 201) throw new Error('Upload unavailable');
+        const { uploadUrl, fileId } = response.data;
+        // Presigned S3 PUT uses the existing private upload flow; API requests use the generated client.
+        const put = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': contentType },
+          body: file,
+        });
+        if (!put.ok) throw new Error('Upload failed');
+        const finalized = await generated.finalizeUpload(fileId);
+        if (finalized.status !== 201) throw new Error('Upload verification failed');
+        uploaded.push(fileId);
+        setFileNames((names) => ({ ...names, [fileId]: file.name }));
+      }
     } catch {
       setUploadError('첨부파일을 업로드하지 못했습니다. 다시 시도해 주세요.');
     } finally {
+      // 일부만 성공해도 검증이 끝난 파일은 답변에 남긴다.
+      if (uploaded.length > 0) onChange(questionId, [...current, ...uploaded]);
       busy.current = false;
       onUploading(false);
     }
@@ -161,23 +193,34 @@ export function ApplicationQuestions({
             )}
             {question.type === 'file' && (
               <>
-                <input
-                  type="file"
+                <FileUploader
+                  multiple
                   aria-label={question.title}
                   accept="application/pdf,image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    event.target.value = '';
-                    if (file) void upload(question.id, file);
-                  }}
+                  onFiles={(picked) => void upload(question.id, picked)}
                 />
-                <small>PDF, JPG, PNG, WebP · 최대 10MB</small>
-                {text && (
+                <small>PDF, JPG, PNG, WebP · 파일당 최대 10MB · 최대 {MAX_FILE_ANSWERS}개</small>
+                {fileAnswerIds(value).length > 0 && (
                   <div>
-                    첨부 완료{' '}
-                    <button type="button" onClick={() => onChange(question.id, '')}>
-                      첨부 삭제
-                    </button>
+                    첨부 완료
+                    <ul>
+                      {fileAnswerIds(value).map((fileId) => (
+                        <li key={fileId}>
+                          {fileNames[fileId] ?? '첨부파일'}{' '}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              onChange(
+                                question.id,
+                                fileAnswerIds(value).filter((id) => id !== fileId),
+                              )
+                            }
+                          >
+                            첨부 삭제
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
               </>

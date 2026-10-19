@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(39);
+    expect(journal.entries).toHaveLength(40);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -589,5 +589,17 @@ describe('0038_challenge_posting_fields migration', () => {
     }
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[38]!.when).toBeGreaterThan(journal.entries[37]!.when);
+  });
+});
+
+describe('0039_certificate_file_ids migration', () => {
+  it('adds file_ids and backfills it from file_id without destructive DDL', () => {
+    const tag = journal.entries[39]?.tag;
+    expect(tag).toBe('0039_certificate_file_ids');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "file_ids" jsonb');
+    expect(sql).toContain('jsonb_build_array("file_id")');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[39]!.when).toBeGreaterThan(journal.entries[38]!.when);
   });
 });

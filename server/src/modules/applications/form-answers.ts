@@ -8,6 +8,14 @@ export type FormAnswer = AnswerInput & {
   type: ApplicationFormQuestion['type'];
 };
 
+export const MAX_FILE_ANSWERS = 10;
+
+/** 파일 답변은 과거에 UUID 문자열 하나였고 지금은 UUID 배열도 받는다. 둘 다 UUID 목록으로 푼다. */
+export function fileAnswerIds(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) return value;
+  return value ? [value] : [];
+}
+
 /** Store server-derived question snapshots so later form edits do not relabel old answers. */
 export function validateFormAnswers(
   questions: ApplicationFormQuestion[] | null | undefined,
@@ -37,6 +45,16 @@ export function validateFormAnswers(
         value.length > 50 ||
         new Set(value).size !== value.length ||
         value.some((option) => typeof option !== 'string' || !question.options?.includes(option)) ||
+        (question.required && value.length === 0)
+      )
+        return invalid();
+      return { questionId: question.id, title: question.title, type: question.type, value };
+    }
+    if (question.type === 'file' && Array.isArray(value)) {
+      if (
+        value.length > MAX_FILE_ANSWERS ||
+        new Set(value).size !== value.length ||
+        value.some((id) => typeof id !== 'string' || !isUUID(id)) ||
         (question.required && value.length === 0)
       )
         return invalid();

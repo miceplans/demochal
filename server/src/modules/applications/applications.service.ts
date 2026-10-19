@@ -5,7 +5,7 @@ import { applications, businesses, challenges, files, orders } from '../../db/sc
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 import { effectiveApplicationCondition } from './effective-application.js';
-import { validateFormAnswers, type FormAnswer } from './form-answers.js';
+import { fileAnswerIds, validateFormAnswers, type FormAnswer } from './form-answers.js';
 
 // Toss orderName 상한은 100자 — 그 이상의 챌린지 제목이 checkout 오픈을 막지 않게 잘라낸다.
 function tossOrderName(title: string) {
@@ -87,8 +87,8 @@ export class ApplicationsService {
       const fileIds = [
         ...new Set(
           formAnswers
-            .filter((answer) => answer.type === 'file' && answer.value)
-            .map((answer) => answer.value as string),
+            .filter((answer) => answer.type === 'file')
+            .flatMap((answer) => fileAnswerIds(answer.value)),
         ),
       ];
       if (fileIds.length) {
@@ -241,7 +241,9 @@ export class ApplicationsService {
     const answers = application.formAnswers as FormAnswer[];
     if (
       !Array.isArray(answers) ||
-      !answers.some((answer) => answer.type === 'file' && answer.value === fileId)
+      !answers.some(
+        (answer) => answer.type === 'file' && fileAnswerIds(answer.value).includes(fileId),
+      )
     ) {
       throw new NotFoundException('File not found');
     }

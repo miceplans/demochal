@@ -120,7 +120,7 @@ describe('saved application questionnaires', () => {
             { questionId: 'dropdown', value: 'A' },
             { questionId: 'radio', value: 'B' },
             { questionId: 'checkbox', value: ['A'] },
-            { questionId: 'file', value: fileId },
+            { questionId: 'file', value: [fileId] },
           ],
         }),
       ),

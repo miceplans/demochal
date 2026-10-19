@@ -17,6 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { CertificateEntryCategory } from './certificateEntryCategory';
+import type { CertificateEntryFilesItem } from './certificateEntryFilesItem';
 import type { CertificateEntryStatus } from './certificateEntryStatus';
 
 /**
@@ -42,6 +43,8 @@ export interface CertificateEntry {
      * @nullable
      */
   fileContentType?: string | null;
+  /** 첨부된 모든 증명 파일(첫 번째가 fileId/fileUrl과 같다, 목록 응답에만 포함) */
+  files?: CertificateEntryFilesItem[];
   /** 미인증/인증/거부 */
   status?: CertificateEntryStatus;
 }
