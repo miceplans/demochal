@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => {
     push: vi.fn(),
     toastError: vi.fn(),
     toastSuccess: vi.fn(),
-    myBusiness: { current: undefined as unknown },
+    findMyBusiness: vi.fn(),
     MockApiError,
   };
 });
@@ -54,7 +54,7 @@ vi.mock('@semochal/api-client', () => ({
     register: mocks.register,
     registerBusiness: mocks.registerBusiness,
     submitVerification: mocks.submitVerification,
-    useFindMyBusiness: () => ({ data: mocks.myBusiness.current }),
+    useFindMyBusiness: mocks.findMyBusiness,
   },
 }));
 
@@ -71,7 +71,9 @@ describe('BizSignupFlow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.myBusiness.current = undefined;
+    mocks.findMyBusiness.mockReturnValue({
+      data: { status: 200, data: { id: 'old-business', type: '학교', name: '다른 기관' } },
+    });
   });
 
   it('shows the existing-account login link', () => {
@@ -199,20 +201,24 @@ describe('BizSignupFlow', () => {
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
   });
 
-  it('allows a school to register without a business number', async () => {
+  it.each([
+    ['학교', '학교'],
+    ['비영리 단체', '비영리'],
+    ['협회', '협회'],
+  ])('allows %s to register without a business number', async (label, type) => {
     mocks.registerBusiness.mockResolvedValue({ data: { id: 'business-1' } });
     const user = userEvent.setup();
     renderSignup();
     await advanceToBusinessInfo(user);
     await user.click(screen.getByRole('combobox', { name: '기관 유형' }));
-    await user.click(screen.getByRole('option', { name: '학교' }));
+    await user.click(screen.getByRole('option', { name: label }));
     await user.type(document.querySelector('input[name="orgName"]')!, '학교');
     await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
     await user.type(document.querySelector('input[name="orgEmail"]')!, 'school@example.com');
     await user.click(screen.getByRole('button', { name: '다음' }));
     await waitFor(() =>
       expect(mocks.registerBusiness).toHaveBeenCalledWith(
-        expect.objectContaining({ type: '학교', registrationNumber: undefined }),
+        expect.objectContaining({ type, registrationNumber: undefined }),
       ),
     );
   });
@@ -268,34 +274,32 @@ describe('BizSignupFlow', () => {
     );
   });
 
-  it('prefills the organization step from the existing business and skips registration', async () => {
-    mocks.myBusiness.current = {
-      status: 200,
-      data: {
-        id: 'business-1',
-        type: '학교',
-        name: '세모고등학교',
-        registrationNumber: '6181234567',
-        phone: '02-111-2222',
-        email: 'school@semochal.kr',
-      },
-    };
+  it('does not use an existing session business when registering a new account', async () => {
+    mocks.registerBusiness.mockResolvedValue({ data: { id: 'new-business' } });
     const user = userEvent.setup();
     renderSignup();
 
     await advanceToBusinessInfo(user);
-
-    const field = (name: string) =>
-      document.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
-    await waitFor(() => expect(field('orgName').value).toBe('세모고등학교'));
-    expect(field('orgRegistrationNumber').value).toBe('618-12-34567');
-    expect(field('orgPhone').value).toBe('02-111-2222');
-    expect(field('orgEmail').value).toBe('school@semochal.kr');
-
+    expect(mocks.findMyBusiness).not.toHaveBeenCalled();
+    for (const name of ['orgName', 'orgRegistrationNumber', 'orgPhone', 'orgEmail']) {
+      const input = document.querySelector(`input[name="${name}"]`) as HTMLInputElement;
+      expect(input.value).toBe('');
+      expect(input.disabled).toBe(false);
+    }
+    const type = screen.getByRole('combobox', { name: '기관 유형' }) as HTMLButtonElement;
+    expect(type.disabled).toBe(false);
+    await user.click(type);
+    await user.click(screen.getByRole('option', { name: '학교' }));
+    await user.type(document.querySelector('input[name="orgName"]')!, '새 학교');
+    await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
+    await user.type(document.querySelector('input[name="orgEmail"]')!, 'school@example.com');
     await user.click(screen.getByRole('button', { name: '다음' }));
-    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));
-    expect(mocks.register).not.toHaveBeenCalled();
-    expect(mocks.registerBusiness).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mocks.registerBusiness).toHaveBeenCalledWith(
+        expect.objectContaining({ type: '학교', name: '새 학교' }),
+      ),
+    );
+    expect(mocks.register).toHaveBeenCalledTimes(1);
   });
 
   it('requires the organization fields before registering', async () => {
