@@ -229,12 +229,12 @@ const PreviewTextarea = styled.textarea({
 const PreviewUpload = styled.div({
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  height: 56,
-  border: `0.5px dashed ${c.gray200}`,
+  gap: 8,
+  padding: '16px 10px',
+  border: `1px dashed ${c.gray200}`,
   borderRadius: 8,
-  color: c.gray500,
-  ...textStyle.finePrint,
+  color: c.gray900,
+  ...textStyle.body,
 });
 
 const RequiredRow = styled.label({
@@ -528,7 +528,12 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
               {q.type === 'long' && (
                 <PreviewTextarea disabled placeholder="장문형 텍스트" aria-hidden />
               )}
-              {q.type === 'file' && <PreviewUpload aria-hidden>파일 업로드 필드</PreviewUpload>}
+              {q.type === 'file' && (
+                <PreviewUpload aria-hidden>
+                  <Icon src="/assets/icons/upload-folder.svg" width={26} height={19} />
+                  파일을 업로드해 주세요
+                </PreviewUpload>
+              )}
 
               <RequiredRow>
                 <Toggle
