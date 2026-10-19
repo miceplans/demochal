@@ -196,6 +196,7 @@ describe('AdminService — certificates', () => {
         title: '대상',
         category: 'award',
         fileId: 'f1',
+        fileIds: ['f1'],
         status: 'pending',
       },
       userName: '김수아',
@@ -256,6 +257,35 @@ describe('AdminService — certificates', () => {
 
       expect(rows.map((row) => row.fileUrl)).toEqual([null, null]);
       expect(files.getPrivateReadUrl).not.toHaveBeenCalled();
+    });
+
+    it('lists every attached file, primary first', async () => {
+      const file = (id: string) => ({
+        id,
+        bucket: 'private',
+        key: `pending/${id}.png`,
+        uploadStatus: 'ready',
+        contentType: 'image/png',
+      });
+      const { db } = createDbStub({
+        select: [
+          [
+            {
+              ...base,
+              certificate: { ...base.certificate, fileIds: ['f1', 'f2'] },
+              file: file('f1'),
+            },
+          ],
+          [file('f2')],
+        ],
+      });
+      const files = createFilesStub();
+      const { service } = createService(db, createNotificationsStub(), undefined, files);
+
+      const [row] = await service.listCertificates();
+
+      expect(row?.files.map((item) => item.fileId)).toEqual(['f1', 'f2']);
+      expect(row?.files[1]?.fileUrl).toBe('https://signed.example/pending/f2.png');
     });
   });
 });

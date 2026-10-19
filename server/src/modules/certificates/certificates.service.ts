@@ -13,14 +13,17 @@ export class CertificatesService {
   ) {}
 
   async create(dto: CreateCertificateDto, userId: string) {
-    await this.filesService.assertOwnedReadyPrivate(dto.fileId, userId);
+    for (const fileId of dto.fileIds) {
+      await this.filesService.assertOwnedReadyPrivate(fileId, userId);
+    }
     const [certificate] = await this.db
       .insert(certificates)
       .values({
         userId,
         title: dto.award,
         category: dto.category,
-        fileId: dto.fileId,
+        fileId: dto.fileIds[0]!,
+        fileIds: dto.fileIds,
         status: 'pending',
       })
       .returning();
