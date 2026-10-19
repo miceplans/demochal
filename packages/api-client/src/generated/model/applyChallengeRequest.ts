@@ -21,6 +21,10 @@ import type { ApplicationAnswerInput } from './applicationAnswerInput';
 export interface ApplyChallengeRequest {
   challengeId: string;
   role?: string;
+  /**
+     * @maxItems 10
+     * @items.maxLength 100
+     */
   teammates?: string[];
   /**
      * 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID 배열(최대 10개, 기존 단일 UUID 문자열도 허용).

@@ -280,6 +280,8 @@ export class ApplicationsService {
       if (ApplicationsService.APPLICANT_EDIT_LOCKED_STATUSES.includes(application.status)) {
         throw new ConflictException('현재 상태에서는 지원서를 수정할 수 없습니다.');
       }
+      // TODO(needs-human): needs_revision 상태에서 지원자가 내용을 수정해도 사업주에게 재검토가 전달되지 않는다.
+      // 상태 전이(예: submitted 복귀) 또는 사업주 알림 정책은 제품 판단이 필요하므로 별도 Issue로 다룬다.
       if (dto.role === undefined && dto.teammates === undefined && dto.formAnswers === undefined) {
         return application;
       }

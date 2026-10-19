@@ -514,6 +514,12 @@ describe('ApplicationsService.update', () => {
     expect(result).toEqual({ id: 'app-1', role: '백엔드' });
   });
 
+  it('지원자 본인이 role: null로 저장된 역할을 지운다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow(), updated: { id: 'app-1', role: null } });
+    await serviceWith(db).update('app-1', { role: null }, 'user-1');
+    expect(db.updateSet).toHaveBeenCalledWith({ role: null });
+  });
+
   it('지원자 본인 요청의 심사 필드(status/evaluation/managerMemo)는 적용되지 않는다', async () => {
     const db = createUpdateDbStub({ row: applicantRow(), updated: { id: 'app-1' } });
     await serviceWith(db).update(

@@ -54,7 +54,7 @@ const questions = [
   { id: 'q2', title: '포트폴리오', type: 'file', required: false, options: [] },
 ];
 const fileId = '11111111-1111-4111-8111-111111111111';
-const application = (status: string) => ({
+const application = (status: string, overrides: Record<string, unknown> = {}) => ({
   id: 'app-1',
   challengeId: 'challenge-1',
   userId: 'user-1',
@@ -67,6 +67,7 @@ const application = (status: string) => ({
     { questionId: 'q1', title: '지원 동기', type: 'short', value: '열심히 하겠습니다' },
     { questionId: 'q2', title: '포트폴리오', type: 'file', value: [fileId] },
   ],
+  ...overrides,
 });
 const challenge = {
   title: '2026 AI 챌린지',
@@ -115,6 +116,8 @@ describe('ApplicationDetailPage', () => {
     // 수정 폼: 역할 드롭다운, 팀원 입력, 질문 답변 입력이 초기값과 함께 열린다.
     expect(screen.getByRole('combobox', { name: '지원 역할' })).toBeTruthy();
     expect(screen.getByLabelText('팀원 1 이름')).toHaveProperty('value', '홍길동');
+    // 팀원은 이름만 저장되므로 역할 드롭다운은 없다.
+    expect(screen.queryByRole('combobox', { name: '팀원 1 역할' })).toBeNull();
 
     const answerInput = screen.getByLabelText('지원 동기');
     expect(answerInput).toHaveProperty('value', '열심히 하겠습니다');
@@ -139,6 +142,28 @@ describe('ApplicationDetailPage', () => {
     // 저장 성공 후 수정 폼이 닫히고 읽기 모드로 돌아온다.
     expect(screen.queryByRole('combobox', { name: '지원 역할' })).toBeNull();
     expect(screen.getByRole('button', { name: '수정' })).toBeTruthy();
+  });
+
+  it('저장된 역할이 없으면 role: null을 보낸다', async () => {
+    const user = userEvent.setup();
+    mocks.application = application('submitted', { role: null });
+    renderPage();
+    await user.click(screen.getByRole('button', { name: '수정' }));
+    expect(screen.getByText('역할 선택(선택 안 함)')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() =>
+      expect(mocks.update).toHaveBeenCalledWith({
+        id: 'app-1',
+        data: {
+          role: null,
+          teammates: ['홍길동', '김철수'],
+          formAnswers: [
+            { questionId: 'q1', value: '열심히 하겠습니다' },
+            { questionId: 'q2', value: [fileId] },
+          ],
+        },
+      }),
+    );
   });
 
   it.each(['reviewing', 'accepted', 'rejected'])(

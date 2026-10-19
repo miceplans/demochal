@@ -1389,8 +1389,8 @@ paths:
                   { type: string, enum: [submitted, reviewing, needs_revision, accepted, rejected] }
                 evaluation: { type: string, enum: [undecided, pass, fail] }
                 managerMemo: { type: string }
-                role: { type: string, maxLength: 100 }
-                teammates: { type: array, items: { type: string } }
+                role: { type: string, maxLength: 100, nullable: true }
+                teammates: { type: array, maxItems: 10, items: { type: string, maxLength: 100 } }
                 formAnswers:
                   type: array
                   maxItems: 100
@@ -3996,7 +3996,7 @@ components:
       properties:
         challengeId: { type: string, format: uuid }
         role: { type: string }
-        teammates: { type: array, items: { type: string } }
+        teammates: { type: array, maxItems: 10, items: { type: string, maxLength: 100 } }
         formAnswers:
           type: array
           maxItems: 100

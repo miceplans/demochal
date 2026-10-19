@@ -69,7 +69,6 @@ const MemberRow = styled.div({
   gap: 12,
   [mobile]: { gap: 8 },
 });
-const MemberRole = styled.div({ width: 160, flexShrink: 0, [mobile]: { width: 110 } });
 const RoleField = styled.div({ width: 240, maxWidth: '100%' });
 const MemberName = styled(Input)({
   flex: 1,
@@ -240,23 +239,23 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
   const [editing, setEditing] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [pickedRole, setPickedRole] = useState('');
-  const [members, setMembers] = useState<{ name: string; role: string }[]>([]);
+  const [members, setMembers] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
 
   // 지원 역할 선택지 — 챌린지가 밀어낸 모집 역할(Challenge.roles)을 1순위로 쓴다(ApplyChallengeDto.role).
-  const roleOptions = (challenge?.roles?.length ? challenge.roles : presetRoles).map((item) => ({
-    value: item,
-    label: item,
-  }));
-  const fallbackRole = roleOptions[0]?.value ?? '백엔드';
-  const role = roleOptions.some((option) => option.value === pickedRole)
-    ? pickedRole
-    : fallbackRole;
-  const normalizedMembers = members.map((member) =>
-    roleOptions.some((option) => option.value === member.role)
-      ? member
-      : { ...member, role: fallbackRole },
+  const baseRoleOptions = (challenge?.roles?.length ? challenge.roles : presetRoles).map(
+    (item) => ({
+      value: item,
+      label: item,
+    }),
   );
+  // 저장된 역할이 현재 선택지에 없으면(공고 roles 변경 등) 값을 유지하기 위해 선택지에 임시로 추가한다.
+  const roleOptions =
+    pickedRole && !baseRoleOptions.some((option) => option.value === pickedRole)
+      ? [...baseRoleOptions, { value: pickedRole, label: pickedRole }]
+      : baseRoleOptions;
+  // 빈 값 = 미선택. 역할을 고르지 않았으면 저장하지 않거나(null로 본인이 선택 해제한 경우) 저장된 값을 지운다.
+  const role = roleOptions.some((option) => option.value === pickedRole) ? pickedRole : '';
 
   const canEdit =
     Boolean(application) &&
@@ -266,9 +265,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
   const startEdit = () => {
     if (!application) return;
     setPickedRole(application.role ?? '');
-    setMembers(
-      (application.teammates ?? []).map((name) => ({ name, role: application.role ?? '' })),
-    );
+    setMembers(application.teammates ?? []);
     setAnswers(answersFromSaved(application.formAnswers));
     setEditing(true);
   };
@@ -285,7 +282,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
       toast.error(`“${invalid.title}” 답변을 확인해 주세요.`);
       return;
     }
-    if (normalizedMembers.some((member) => !member.name.trim())) {
+    if (members.some((name) => !name.trim())) {
       toast.error('팀원 이름을 입력해 주세요.');
       return;
     }
@@ -293,8 +290,9 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
       const response = await updateMutation.mutateAsync({
         id: applicationId,
         data: {
-          role,
-          teammates: normalizedMembers.map((member) => member.name),
+          // 신청 생성 플로우는 role을 보내지 않으므로, 지원자가 명시적으로 고르지 않았다면 빈 값을 그대로 둔다.
+          role: role === '' ? null : role,
+          teammates: members,
           formAnswers: questions
             .filter((question) => answers[question.id] !== undefined)
             .map((question) => ({ questionId: question.id, value: answers[question.id]! })),
@@ -377,6 +375,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
               <RoleField>
                 <Dropdown
                   aria-label="지원 역할"
+                  placeholder="역할 선택(선택 안 함)"
                   value={role}
                   onChange={setPickedRole}
                   options={roleOptions}
@@ -386,32 +385,17 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
             <Section>
               <SectionTitle>팀원 구성</SectionTitle>
               <MemberList>
-                {normalizedMembers.map((member, index) => (
+                {members.map((name, index) => (
                   <MemberRow key={index}>
-                    <MemberRole>
-                      <Dropdown
-                        aria-label={`팀원 ${index + 1} 역할`}
-                        size="S"
-                        value={member.role}
-                        onChange={(value) =>
-                          setMembers(
-                            members.map((item, itemIndex) =>
-                              itemIndex === index ? { ...item, role: value } : item,
-                            ),
-                          )
-                        }
-                        options={roleOptions}
-                      />
-                    </MemberRole>
                     <MemberName
                       required
                       aria-label={`팀원 ${index + 1} 이름`}
                       placeholder="이름"
-                      value={member.name}
+                      value={name}
                       onChange={(event) =>
                         setMembers(
                           members.map((item, itemIndex) =>
-                            itemIndex === index ? { ...item, name: event.target.value } : item,
+                            itemIndex === index ? event.target.value : item,
                           ),
                         )
                       }
@@ -427,10 +411,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
                     </DeleteButton>
                   </MemberRow>
                 ))}
-                <AddMember
-                  type="button"
-                  onClick={() => setMembers([...members, { name: '', role: fallbackRole }])}
-                >
+                <AddMember type="button" onClick={() => setMembers([...members, ''])}>
                   <span aria-hidden="true">+</span>팀원 추가
                 </AddMember>
               </MemberList>

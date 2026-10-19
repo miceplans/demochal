@@ -25,14 +25,17 @@ export class UpdateApplicationDto {
   managerMemo?: string;
 
   // --- 지원자 본인 수정 필드(서비스에서 소유자별로 화이트리스트 반영) ---
+  // null은 저장된 역할 삭제(선택 해제)를 의미한다.
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  role?: string;
+  role?: string | null;
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   teammates?: string[];
 
   @IsOptional()
