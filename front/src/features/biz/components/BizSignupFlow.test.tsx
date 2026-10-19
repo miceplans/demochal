@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => {
     push: vi.fn(),
     toastError: vi.fn(),
     toastSuccess: vi.fn(),
+    myBusiness: { current: undefined as unknown },
     MockApiError,
   };
 });
@@ -52,6 +53,7 @@ vi.mock('@semochal/api-client', () => ({
     register: mocks.register,
     registerBusiness: mocks.registerBusiness,
     submitVerification: mocks.submitVerification,
+    useFindMyBusiness: () => ({ data: mocks.myBusiness.current }),
   },
 }));
 
@@ -68,6 +70,7 @@ describe('BizSignupFlow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.myBusiness.current = undefined;
   });
 
   it('shows the existing-account login link', () => {
@@ -160,6 +163,7 @@ describe('BizSignupFlow', () => {
 
   async function fillOrgInfo(user: ReturnType<typeof userEvent.setup>) {
     await user.type(document.querySelector('input[name="orgName"]')!, '세모컴퍼니');
+    await user.type(document.querySelector('input[name="orgRegistrationNumber"]')!, '6181234567');
     await user.type(document.querySelector('input[name="orgPhone"]')!, '02-1234-5678');
     await user.type(document.querySelector('input[name="orgEmail"]')!, 'contact@semochal.kr');
   }
@@ -180,6 +184,7 @@ describe('BizSignupFlow', () => {
       expect(mocks.registerBusiness).toHaveBeenCalledWith({
         type: '기업',
         name: '세모컴퍼니',
+        registrationNumber: '6181234567',
         phone: '02-1234-5678',
         email: 'contact@semochal.kr',
       }),
@@ -191,6 +196,36 @@ describe('BizSignupFlow', () => {
     expect(mocks.replace).toHaveBeenCalledWith('/biz/login');
     expect(mocks.push).not.toHaveBeenCalled();
     expect(mocks.toastSuccess).toHaveBeenCalledWith('가입이 완료됐어요.');
+  });
+
+  it('prefills the organization step from the existing business and skips registration', async () => {
+    mocks.myBusiness.current = {
+      status: 200,
+      data: {
+        id: 'business-1',
+        type: '학교',
+        name: '세모고등학교',
+        registrationNumber: '6181234567',
+        phone: '02-111-2222',
+        email: 'school@semochal.kr',
+      },
+    };
+    const user = userEvent.setup();
+    renderSignup();
+
+    await advanceToBusinessInfo(user);
+
+    const field = (name: string) =>
+      document.querySelector<HTMLInputElement>(`input[name="${name}"]`)!;
+    await waitFor(() => expect(field('orgName').value).toBe('세모고등학교'));
+    expect(field('orgRegistrationNumber').value).toBe('618-12-34567');
+    expect(field('orgPhone').value).toBe('02-111-2222');
+    expect(field('orgEmail').value).toBe('school@semochal.kr');
+
+    await user.click(screen.getByRole('button', { name: '다음' }));
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/login'));
+    expect(mocks.register).not.toHaveBeenCalled();
+    expect(mocks.registerBusiness).not.toHaveBeenCalled();
   });
 
   it('requires the organization fields before registering', async () => {
