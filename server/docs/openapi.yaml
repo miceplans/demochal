@@ -1042,6 +1042,7 @@ paths:
       x-impl-status: implemented
       description: |
         팀 지원자 관리 화면(`/my/teams/public-data`). 내가 리더인 팀과 그 지원자 목록(팀장 본인 행 제외).
+        각 팀에 연결된 챌린지의 공개 포스터 URL을 포함한다(없거나 공개 준비 상태가 아니면 null).
         지원자별 합격/불합격 결정은 `PATCH /teams/{id}/members/{memberId}`로 저장한다.
       responses:
         '200':
@@ -3831,7 +3832,7 @@ components:
             type: string,
             nullable: true,
             format: uuid,
-            description: 목록·상세 응답의 챌린지 포스터 파일 ID,
+            description: 목록·상세·내가 관리하는 팀 응답의 챌린지 포스터 파일 ID,
           }
         challengePosterUrl:
           {
@@ -4362,7 +4363,10 @@ components:
       required: [paymentTotal, activeAds]
       description: 기업 대시보드(`/biz/dashboard`) 위젯 데이터 묶음
       properties:
-        recentPosting: { $ref: '#/components/schemas/Challenge' }
+        recentPosting:
+          allOf: [{ $ref: '#/components/schemas/Challenge' }]
+          nullable: true
+          description: 최근 게시 공고. posterUrl은 공개 준비된 포스터의 URL이며 없으면 null이다.
         stats:
           type: object
           required: [clicks, bookmarks]

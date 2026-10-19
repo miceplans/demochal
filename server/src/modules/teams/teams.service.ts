@@ -227,6 +227,7 @@ export class TeamsService {
       .select({
         team: teams,
         challengeTitle: challenges.title,
+        challengePosterFileId: challenges.posterFileId,
         businessName: businesses.name,
       })
       .from(teams)
@@ -259,9 +260,16 @@ export class TeamsService {
         ),
       )
       .orderBy(desc(teamMembers.createdAt));
-    return myTeams.map(({ team, challengeTitle, businessName }) => ({
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      myTeams.map(({ challengePosterFileId }) => challengePosterFileId),
+    );
+    return myTeams.map(({ team, challengeTitle, challengePosterFileId, businessName }) => ({
       ...team,
       challengeTitle,
+      challengePosterFileId,
+      challengePosterUrl: challengePosterFileId
+        ? (posterUrls.get(challengePosterFileId) ?? null)
+        : null,
       businessName,
       members: members.filter((member) => member.teamId === team.id),
     }));

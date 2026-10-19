@@ -6,6 +6,7 @@ import { AdsService } from '../ads/ads.service.js';
 import { BillingHistoryService } from '../billing/billing-history.service.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { ChallengesService } from '../challenges/challenges.service.js';
+import { FilesService } from '../files/files.service.js';
 
 @Injectable()
 export class BizService {
@@ -13,6 +14,7 @@ export class BizService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly businessesService: BusinessesService,
     private readonly challengesService: ChallengesService,
+    private readonly filesService: FilesService,
     private readonly billingHistoryService: BillingHistoryService,
     private readonly adsService: AdsService,
   ) {}
@@ -37,7 +39,12 @@ export class BizService {
     const history = await this.billingHistoryService.forBusiness(business.id, {});
     const monthlyAdExposure = await this.adsService.monthlyExposureForBusiness(business.id);
     return {
-      recentPosting: recentPosting ?? null,
+      recentPosting: recentPosting
+        ? {
+            ...recentPosting,
+            posterUrl: await this.filesService.resolvePublicUrl(recentPosting.posterFileId),
+          }
+        : null,
       stats,
       monthlyAdExposure,
       payments: history.items.slice(0, 3),

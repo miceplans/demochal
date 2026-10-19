@@ -87,6 +87,14 @@ describe('FilesService.resolvePublicUrl', () => {
     const pending = createService([fileRow({ uploadStatus: 'pending' })]);
     await expect(pending.service.resolvePublicUrl('file-1')).resolves.toBeNull();
   });
+
+  it.each([
+    { bucket: 'private', uploadStatus: 'ready' },
+    { bucket: 'public', uploadStatus: 'rejected' },
+  ])('does not expose a $bucket/$uploadStatus file', async (state) => {
+    const { service } = createService([fileRow(state)]);
+    await expect(service.resolvePublicUrl('file-1')).resolves.toBeNull();
+  });
 });
 
 describe('FilesService.findById', () => {
@@ -140,6 +148,21 @@ describe('FilesService.resolvePublicUrls', () => {
     expect(result.get('file-1')).toBe('https://cdn.test/uploads/file-1.webp');
     expect(result.get('file-2')).toBe('https://cdn.test/uploads/file-2.webp');
     expect(result.get('file-missing')).toBeNull();
+  });
+
+  it('does not expose private, pending, or rejected files in a batch', async () => {
+    const { service, db } = createService([
+      fileRow({ id: 'ready' }),
+      fileRow({ id: 'private', bucket: 'private' }),
+      fileRow({ id: 'pending', uploadStatus: 'pending' }),
+      fileRow({ id: 'rejected', uploadStatus: 'rejected' }),
+    ]);
+    const result = await service.resolvePublicUrls(['ready', 'private', 'pending', 'rejected']);
+    expect(result.get('ready')).toBe('https://cdn.test/uploads/file-1.webp');
+    expect(result.get('private')).toBeNull();
+    expect(result.get('pending')).toBeNull();
+    expect(result.get('rejected')).toBeNull();
+    expect(db.select).toHaveBeenCalledOnce();
   });
 });
 

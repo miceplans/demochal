@@ -26,7 +26,8 @@ import type { PaymentHistoryItem } from './paymentHistoryItem';
  * 기업 대시보드(`/biz/dashboard`) 위젯 데이터 묶음
  */
 export interface BizDashboard {
-  recentPosting?: Challenge;
+  /** 최근 게시 공고. posterUrl은 공개 준비된 포스터의 URL이며 없으면 null이다. */
+  recentPosting?: Challenge | null;
   stats?: BizDashboardStats;
   /** 광고 노출수 월별 바차트 (chartMonths/chartBars와 동일 형태) */
   monthlyAdExposure?: MonthlyBar[];
