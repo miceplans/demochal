@@ -17,10 +17,8 @@ import {
 } from './parts';
 import { TrophyIcon } from './AdminIcons';
 
-type CertificateListRow = CertificateRow & {
-  fileUrl: string | null;
-  fileContentType: string | null;
-};
+type CertificateFile = { fileUrl: string | null; fileContentType: string | null };
+type CertificateListRow = CertificateRow & CertificateFile & { files: CertificateFile[] };
 
 const categoryOptionToParam: Record<string, 'award' | 'participation'> = {
   '수상 실적': 'award',
@@ -66,6 +64,10 @@ export function AdminCertificatesScreen() {
           cert.status === 'verified' ? '인증' : cert.status === 'rejected' ? '거부' : '미인증',
         fileUrl: cert.fileUrl ?? null,
         fileContentType: cert.fileContentType ?? null,
+        files: (cert.files ?? []).map((file) => ({
+          fileUrl: file.fileUrl ?? null,
+          fileContentType: file.fileContentType ?? null,
+        })),
       })),
     [certificatesQuery.data],
   );
@@ -139,7 +141,10 @@ export function AdminCertificatesScreen() {
               <MiniAvatar aria-hidden>{row.user[0]}</MiniAvatar>
               <UserInfo>
                 <UserName>{row.user}</UserName>
-                <AwardTitle>{row.award}</AwardTitle>
+                <AwardTitle>
+                  {row.award}
+                  {row.files.length > 1 ? ` (파일 ${row.files.length}개)` : ''}
+                </AwardTitle>
               </UserInfo>
               <HistoryPill>
                 <TrophyIcon />
@@ -187,7 +192,9 @@ export function AdminCertificatesScreen() {
           onClick={() => setPreviewId(null)}
         >
           <Dialog onClick={(event) => event.stopPropagation()}>
-            <CertificateOriginal row={preview} />
+            {(preview.files.length > 0 ? preview.files : [preview]).map((file, index) => (
+              <CertificateOriginal key={index} user={preview.user} file={file} />
+            ))}
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
               <RejectButton
                 onClick={() => {
@@ -255,7 +262,7 @@ export function AdminCertificatesScreen() {
   );
 }
 
-const isPdf = (row: CertificateListRow) => row.fileContentType === 'application/pdf';
+const isPdf = (row: CertificateFile) => row.fileContentType === 'application/pdf';
 
 function CertificateThumb({ row }: { row: CertificateListRow }) {
   // presigned URL 만료·네트워크 실패를 기억한다. URL이 바뀌면 자동으로 초기화된다.
@@ -272,7 +279,7 @@ function CertificateThumb({ row }: { row: CertificateListRow }) {
   );
 }
 
-function CertificateOriginal({ row }: { row: CertificateListRow }) {
+function CertificateOriginal({ user, file: row }: { user: string; file: CertificateFile }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   if (!row.fileUrl) {
     return <PreviewPlaceholder>업로드가 완료되지 않아 원본을 볼 수 없어요.</PreviewPlaceholder>;
@@ -292,7 +299,7 @@ function CertificateOriginal({ row }: { row: CertificateListRow }) {
   return (
     <PreviewImage
       src={row.fileUrl}
-      alt={`${row.user} 상장 원본`}
+      alt={`${user} 상장 원본`}
       onError={() => setFailedUrl(row.fileUrl ?? null)}
     />
   );
