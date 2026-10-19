@@ -33,7 +33,9 @@ export class ApplyChallengeDto {
 
   @IsOptional()
   @IsArray()
+  @ArrayMaxSize(10)
   @IsString({ each: true })
+  @MaxLength(100, { each: true })
   teammates?: string[];
 
   @IsOptional()

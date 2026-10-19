@@ -5886,9 +5886,12 @@ export const getUpdateApplicationUrl = (id: string,) => {
 }
 
 /**
- * 기업 지원서 관리 화면의 상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격),
- * 담당자 메모 입력, 납볍하기(엑셀 export). 팀 지원 결과 전송(채팅방 링크)도 이 흐름의 확장.
- * @summary 지원서 상태 변경 (검토중/보완요청/합격/불합격 + 담당자 메모)
+ * 지원자 본인은 pending/submitted/needs_revision 상태에서 역할(role)/팀원(teammates)/질문 답변(formAnswers)을
+ * 수정할 수 있고, reviewing/accepted/rejected 상태에서는 409를 반환한다. 지원자 본문에는 심사 필드
+ * (status/evaluation/managerMemo)가 적용되지 않는다.
+ * 사업주는 기존 심사 흐름(상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격), 담당자 메모)대로
+ * status/evaluation/managerMemo만 반영하고 내용 필드는 무시한다. 신청자도 사업주도 아니면 404다.
+ * @summary 지원서 수정 (지원자 본인: 역할/팀원/답변 · 사업주: 상태/평가/메모)
  */
 export const updateApplication = async (id: string,
     updateApplicationBody: UpdateApplicationBody, options?: Parameters<typeof apiFetch>[1]): Promise<updateApplicationResponse> => {
@@ -5955,7 +5958,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type UpdateApplicationMutationVariables = {id: string;data: UpdateApplicationBody}
 
     /**
- * @summary 지원서 상태 변경 (검토중/보완요청/합격/불합격 + 담당자 메모)
+ * @summary 지원서 수정 (지원자 본인: 역할/팀원/답변 · 사업주: 상태/평가/메모)
  */
 export const useUpdateApplication = <TError = unknown,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateApplication>>, TError,UpdateApplicationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
@@ -7176,6 +7179,8 @@ export const getRegisterBusinessUrl = () => {
 
 /**
  * 기업 회원가입 3단계(`/biz/login`: 약관 동의 → 계정 정보 → 기관 인증)의 마지막 단계.
+ * 기업은 사업자등록번호가 필수이며 국세청 조회에서 계속·휴업·폐업 상태를 허용하고 미등록 번호는 거부한다.
+ * 학교·비영리·협회는 번호가 선택 사항이다. 국세청 조회 장애 시 등록을 허용하고 응답에 `registrationLookupUnavailable=true`를 표시한다.
  * 등록 후 `verificationStatus=pending`이며, 사업자등록증 인증(`POST /verifications`)을 거쳐 승인된다.
  * @summary 기업(기관) 등록
  */

@@ -1,9 +1,10 @@
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { applications, challenges, files, type ApplicationFormQuestion } from '../../db/schema.js';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { ApplicationsService } from './applications.service.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
+import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 
 /** Chainable drizzle stub matching apply(): select projections, insert().values().returning(), and transaction pass-through. */
 function createDbStub(options: {
@@ -413,5 +414,196 @@ describe('ApplicationsService.listForUser', () => {
         businessName: '한국데이터산업진흥원',
       },
     ]);
+  });
+});
+
+/** Stub matching update(): findWithBusinessOwner (applications→innerJoin→innerJoin→where→limit),
+ * the file-ownership select on files, and update().set().where().returning() capture. */
+function createUpdateDbStub(options: {
+  row?: {
+    application: Record<string, unknown>;
+    businessOwnerId: string;
+    price: number;
+    applicationForm?: ApplicationFormQuestion[] | null;
+  };
+  updated?: Record<string, unknown>;
+  ownedFiles?: { id: string }[];
+}) {
+  const updateSet = vi.fn();
+  const update = vi.fn(() => ({
+    set: vi.fn((body: unknown) => {
+      updateSet(body);
+      return {
+        where: vi.fn(() => ({
+          returning: vi.fn().mockResolvedValue(options.updated ? [options.updated] : []),
+        })),
+      };
+    }),
+  }));
+  const limit = vi.fn().mockResolvedValue(options.row ? [options.row] : []);
+  const fromChain: {
+    innerJoin: ReturnType<typeof vi.fn>;
+    where: ReturnType<typeof vi.fn>;
+  } = {
+    innerJoin: vi.fn(),
+    where: vi.fn(() => ({ limit })),
+  };
+  fromChain.innerJoin.mockReturnValue(fromChain);
+  const selectFrom = vi.fn((table: unknown) => {
+    if (table === files) {
+      return {
+        where: vi.fn((condition: any) => {
+          const query = new PgDialect().sqlToQuery(condition);
+          expect(query.params).toContain('user-1');
+          expect(query.params).toContain('private');
+          expect(query.params).toContain('ready');
+          return Promise.resolve(options.ownedFiles ?? []);
+        }),
+      };
+    }
+    return fromChain;
+  });
+  const db: any = {
+    select: vi.fn(() => ({ from: selectFrom })),
+    update,
+    updateSet,
+  };
+  return db;
+}
+
+describe('ApplicationsService.update', () => {
+  const fileId = '11111111-1111-4111-8111-111111111111';
+  const applicationForm: ApplicationFormQuestion[] = [
+    { id: 'q1', title: '지원 동기', type: 'short', options: [], required: true },
+    { id: 'q2', title: '자료', type: 'file', options: [], required: true },
+  ];
+  const applicantRow = (status = 'pending') => ({
+    application: { id: 'app-1', userId: 'user-1', status, formAnswers: [] },
+    businessOwnerId: 'owner-1',
+    price: 0,
+    applicationForm,
+  });
+  const serviceWith = (db: any) => new ApplicationsService(db, { create: vi.fn() } as never);
+
+  it('지원자 본인이 역할/팀원/답변을 수정하면 반영된다', async () => {
+    const db = createUpdateDbStub({
+      row: applicantRow(),
+      ownedFiles: [{ id: fileId }],
+      updated: { id: 'app-1', role: '백엔드' },
+    });
+    const result = await serviceWith(db).update(
+      'app-1',
+      {
+        role: '백엔드',
+        teammates: ['홍길동'],
+        formAnswers: [
+          { questionId: 'q1', value: '지원합니다' },
+          { questionId: 'q2', value: fileId },
+        ],
+      },
+      'user-1',
+    );
+    expect(db.updateSet).toHaveBeenCalledWith({
+      role: '백엔드',
+      teammates: ['홍길동'],
+      formAnswers: [
+        { questionId: 'q1', title: '지원 동기', type: 'short', value: '지원합니다' },
+        { questionId: 'q2', title: '자료', type: 'file', value: fileId },
+      ],
+    });
+    expect(result).toEqual({ id: 'app-1', role: '백엔드' });
+  });
+
+  it('지원자 본인이 role: null로 저장된 역할을 지운다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow(), updated: { id: 'app-1', role: null } });
+    await serviceWith(db).update('app-1', { role: null }, 'user-1');
+    expect(db.updateSet).toHaveBeenCalledWith({ role: null });
+  });
+
+  it('지원자 본인 요청의 심사 필드(status/evaluation/managerMemo)는 적용되지 않는다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow(), updated: { id: 'app-1' } });
+    await serviceWith(db).update(
+      'app-1',
+      { role: '기획자', status: 'accepted', evaluation: 'pass', managerMemo: '메모' },
+      'user-1',
+    );
+    expect(db.updateSet).toHaveBeenCalledWith({ role: '기획자' });
+  });
+
+  it.each([
+    ['reviewing', 'reviewing'],
+    ['accepted', 'accepted'],
+    ['rejected', 'rejected'],
+  ])('상태가 %s인 지원서는 지원자 본인이 수정하면 409를 던진다', async (_label, status) => {
+    const db = createUpdateDbStub({ row: applicantRow(status) });
+    await expect(serviceWith(db).update('app-1', { role: '백엔드' }, 'user-1')).rejects.toThrow(
+      ConflictException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('needs_revision 상태는 지원자 본인이 수정할 수 있다', async () => {
+    const db = createUpdateDbStub({
+      row: applicantRow('needs_revision'),
+      updated: { id: 'app-1' },
+    });
+    await serviceWith(db).update('app-1', { role: '백엔드' }, 'user-1');
+    expect(db.updateSet).toHaveBeenCalledWith({ role: '백엔드' });
+  });
+
+  it('타인의 지원서는 404다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow() });
+    await expect(serviceWith(db).update('app-1', { role: '백엔드' }, 'stranger')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('사업주는 심사 필드만 반영하고 내용 필드(role/teammates/formAnswers)는 무시한다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow(), updated: { id: 'app-1' } });
+    const dto: UpdateApplicationDto = {
+      status: 'reviewing',
+      evaluation: 'pass',
+      managerMemo: '메모',
+      role: '백엔드',
+      teammates: ['홍길동'],
+      // 사업주 분기에서 검증하지 않아야 해서 일부러 유효하지 않은 질문 ID를 담는다.
+      formAnswers: [{ questionId: 'unknown', value: 'x' }],
+    };
+    await serviceWith(db).update('app-1', dto, 'owner-1');
+    expect(db.updateSet).toHaveBeenCalledWith({
+      status: 'reviewing',
+      evaluation: 'pass',
+      managerMemo: '메모',
+    });
+  });
+
+  it('지원자 본인 수정 시 본인 소유가 아닌 파일 답변은 거부한다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow(), ownedFiles: [] });
+    await expect(
+      serviceWith(db).update(
+        'app-1',
+        {
+          formAnswers: [
+            { questionId: 'q1', value: '지원합니다' },
+            { questionId: 'q2', value: fileId },
+          ],
+        },
+        'user-1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.update).not.toHaveBeenCalled();
+  });
+
+  it('지원자 본인 수정 시 저장된 질문에 없는 답변은 거부한다', async () => {
+    const db = createUpdateDbStub({ row: applicantRow() });
+    await expect(
+      serviceWith(db).update(
+        'app-1',
+        { formAnswers: [{ questionId: 'unknown', value: 'x' }] },
+        'user-1',
+      ),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.update).not.toHaveBeenCalled();
   });
 });

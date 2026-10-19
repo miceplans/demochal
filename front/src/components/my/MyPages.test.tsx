@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { MyPage, MyProfileEditPage, MyTeamsPage } from './MyPages';
+import { MyPage, MyProfileEditPage, MyTeamsPage, ApplicationsPage } from './MyPages';
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
   meLoaded: true,
   managedTeams: [] as Array<Record<string, unknown>>,
+  myApplications: [] as Array<Record<string, unknown>>,
   me: { name: '홍길동', bio: '안녕하세요' } as {
     name: string;
     bio: string;
@@ -37,7 +38,7 @@ vi.mock('@semochal/api-client', () => ({
       isError: false,
     }),
     useListMyApplications: () => ({
-      data: { status: 200, data: [] },
+      data: { status: 200, data: mocks.myApplications },
       isPending: false,
       isError: false,
     }),
@@ -55,7 +56,6 @@ describe('MyTeamsPage 포스터', () => {
     cleanup();
     mocks.managedTeams = [];
   });
-
   it('관리 팀 응답의 포스터를 표시하고 없는 팀은 플레이스홀더를 표시한다', () => {
     mocks.managedTeams = [
       {
@@ -81,6 +81,46 @@ describe('MyTeamsPage 포스터', () => {
       container.querySelector('img[src="https://cdn.example.com/poster.webp"]'),
     ).not.toBeNull();
     expect(screen.getByRole('img', { name: '둘째 공고 대표 이미지' })).toBeTruthy();
+  });
+});
+
+describe('ApplicationsPage 지원서 링크', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.myApplications = [];
+  });
+
+  it('각 챌린지 지원 행에 /my/applications/{id}로 가는 지원서 링크가 있다', () => {
+    mocks.myApplications = [
+      {
+        id: 'app-1',
+        challengeId: 'challenge-1',
+        challengeTitle: '2026 AI 챌린지',
+        businessName: '한국데이터산업진흥원',
+        status: 'submitted',
+      },
+      {
+        id: 'app-2',
+        challengeId: 'challenge-2',
+        challengeTitle: '빅데이터 공모전',
+        businessName: '세모협회',
+        status: 'reviewing',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <ApplicationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    const links = screen.getAllByRole('link', { name: '지원서 보기' });
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/my/applications/app-1',
+      '/my/applications/app-2',
+    ]);
   });
 });
 

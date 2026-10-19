@@ -1198,6 +1198,7 @@ export function ApplicationsPage() {
                 <tr>
                   <th>챌린지</th>
                   <th>협회</th>
+                  <th>지원서</th>
                   <th>결과</th>
                 </tr>
               </thead>
@@ -1216,6 +1217,9 @@ export function ApplicationsPage() {
                         )}
                       </td>
                       <td>{row.businessName ?? '-'}</td>
+                      <td>
+                        <Link href={`/my/applications/${row.id}`}>지원서 보기</Link>
+                      </td>
                       <td>
                         <Tag tone={result.tone}>{result.label}</Tag>
                       </td>

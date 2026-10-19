@@ -1,4 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, count, desc, eq, inArray } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
@@ -88,28 +94,7 @@ export class ApplicationsService {
       }
 
       const formAnswers = validateFormAnswers(challenge.applicationForm, dto.formAnswers);
-      const fileIds = [
-        ...new Set(
-          formAnswers
-            .filter((answer) => answer.type === 'file')
-            .flatMap((answer) => fileAnswerIds(answer.value)),
-        ),
-      ];
-      if (fileIds.length) {
-        const ownedFiles = await tx
-          .select({ id: files.id })
-          .from(files)
-          .where(
-            and(
-              inArray(files.id, fileIds),
-              eq(files.uploaderUserId, userId),
-              eq(files.bucket, 'private'),
-              eq(files.uploadStatus, 'ready'),
-            ),
-          );
-        if (ownedFiles.length !== fileIds.length)
-          throw new BadRequestException('A ready private file owned by the applicant is required');
-      }
+      await this.assertOwnedFileAnswers(tx, formAnswers, userId);
 
       const [application] = await tx
         .insert(applications)
@@ -278,24 +263,91 @@ export class ApplicationsService {
     return file;
   }
 
-  // Only the business that owns the challenge may review (status/evaluation/memo).
+  // 지원자 본인이 내용을 고치는 것은 심사가 시작되기 전(pending/submitted/needs_revision)까지만 허용한다.
+  private static readonly APPLICANT_EDIT_LOCKED_STATUSES = ['reviewing', 'accepted', 'rejected'];
+
+  // The applicant may edit content fields (role/teammates/formAnswers); only the
+  // business that owns the challenge may review (status/evaluation/memo). Each
+  // branch whitelists its own fields so the two never mix.
   async update(id: string, dto: UpdateApplicationDto, userId: string) {
     const row = await this.findWithBusinessOwner(id);
-    if (!row || row.businessOwnerId !== userId) {
+    if (!row) {
       throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
     }
+    const { application, businessOwnerId, applicationForm } = row;
 
-    const [application] = await this.db
-      .update(applications)
-      .set({
-        ...(dto.status !== undefined && { status: dto.status }),
-        ...(dto.evaluation !== undefined && { evaluation: dto.evaluation }),
-        ...(dto.managerMemo !== undefined && { managerMemo: dto.managerMemo }),
-      })
-      .where(eq(applications.id, id))
-      .returning();
-    if (!application) throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
-    return application;
+    if (application.userId === userId) {
+      if (ApplicationsService.APPLICANT_EDIT_LOCKED_STATUSES.includes(application.status)) {
+        throw new ConflictException('현재 상태에서는 지원서를 수정할 수 없습니다.');
+      }
+      // TODO(needs-human): needs_revision 상태에서 지원자가 내용을 수정해도 사업주에게 재검토가 전달되지 않는다.
+      // 상태 전이(예: submitted 복귀) 또는 사업주 알림 정책은 제품 판단이 필요하므로 별도 Issue로 다룬다.
+      if (dto.role === undefined && dto.teammates === undefined && dto.formAnswers === undefined) {
+        return application;
+      }
+      const formAnswers =
+        dto.formAnswers === undefined
+          ? undefined
+          : validateFormAnswers(applicationForm, dto.formAnswers);
+      if (formAnswers) await this.assertOwnedFileAnswers(this.db, formAnswers, userId);
+
+      const [updated] = await this.db
+        .update(applications)
+        .set({
+          ...(dto.role !== undefined && { role: dto.role }),
+          ...(dto.teammates !== undefined && { teammates: dto.teammates }),
+          ...(formAnswers !== undefined && { formAnswers }),
+        })
+        .where(eq(applications.id, id))
+        .returning();
+      if (!updated) throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
+      return updated;
+    }
+
+    if (businessOwnerId === userId) {
+      const [updated] = await this.db
+        .update(applications)
+        .set({
+          ...(dto.status !== undefined && { status: dto.status }),
+          ...(dto.evaluation !== undefined && { evaluation: dto.evaluation }),
+          ...(dto.managerMemo !== undefined && { managerMemo: dto.managerMemo }),
+        })
+        .where(eq(applications.id, id))
+        .returning();
+      if (!updated) throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
+      return updated;
+    }
+
+    throw new NotFoundException('신청 내역을 찾을 수 없습니다.');
+  }
+
+  // 지원서 생성·수정 경로 공통 — 파일 답변의 모든 파일은 본인 소유의 업로드 완료된 private 파일이어야 한다.
+  private async assertOwnedFileAnswers(
+    db: Database | DbTx,
+    formAnswers: FormAnswer[],
+    userId: string,
+  ) {
+    const fileIds = [
+      ...new Set(
+        formAnswers
+          .filter((answer) => answer.type === 'file')
+          .flatMap((answer) => fileAnswerIds(answer.value)),
+      ),
+    ];
+    if (!fileIds.length) return;
+    const ownedFiles = await db
+      .select({ id: files.id })
+      .from(files)
+      .where(
+        and(
+          inArray(files.id, fileIds),
+          eq(files.uploaderUserId, userId),
+          eq(files.bucket, 'private'),
+          eq(files.uploadStatus, 'ready'),
+        ),
+      );
+    if (ownedFiles.length !== fileIds.length)
+      throw new BadRequestException('A ready private file owned by the applicant is required');
   }
 
   private async findWithBusinessOwner(id: string) {
@@ -304,6 +356,8 @@ export class ApplicationsService {
         application: applications,
         businessOwnerId: businesses.ownerUserId,
         price: challenges.price,
+        // 지원자 본인 수정 경로에서 답변 유효성 검사(validateFormAnswers)의 기준 질문 목록.
+        applicationForm: challenges.applicationForm,
       })
       .from(applications)
       .innerJoin(challenges, eq(applications.challengeId, challenges.id))
