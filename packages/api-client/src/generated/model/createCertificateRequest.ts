@@ -25,6 +25,10 @@ export interface CreateCertificateRequest {
      */
   award: string;
   category: CreateCertificateRequestCategory;
-  /** finalize까지 끝난 private 파일 */
-  fileId: string;
+  /**
+     * finalize까지 끝난 본인의 private 파일(최대 5개)
+     * @minItems 1
+     * @maxItems 5
+     */
+  fileIds: string[];
 }

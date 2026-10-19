@@ -24,7 +24,9 @@ export interface Certificate {
   userId?: string;
   title?: string;
   category?: CertificateCategory;
+  /** 첫 번째 증명 파일 */
   fileId?: string;
+  fileIds?: string[];
   status?: CertificateStatus;
   /** @nullable */
   rejectionReason?: string | null;
