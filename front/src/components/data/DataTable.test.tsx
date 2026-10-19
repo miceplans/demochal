@@ -1,9 +1,14 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ColumnDef } from '@tanstack/react-table';
 import { ThemeProvider } from '@emotion/react';
 import { DataTable } from './DataTable';
 import { theme } from '@/styles/theme';
+
+class ResizeObserverMock {
+  observe() {}
+  disconnect() {}
+}
 
 type Row = { id: string; name: string };
 const columns: ColumnDef<Row, unknown>[] = [
@@ -12,8 +17,13 @@ const columns: ColumnDef<Row, unknown>[] = [
 ];
 
 describe('DataTable sort indicator', () => {
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', ResizeObserverMock);
+  });
+
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
   });
 
   it('renders no sort mark initially and keeps a single rotating mark between asc and desc', () => {
