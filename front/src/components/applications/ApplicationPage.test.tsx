@@ -88,7 +88,6 @@ describe('saved application questionnaires', () => {
     expect(
       Array.from(container.querySelectorAll('legend')).map((node) => node.textContent),
     ).toEqual(questions.map((q) => `${q.title} (필수)`));
-    await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
     await user.type(screen.getByLabelText('short'), '짧은 답변');
     await user.type(screen.getByLabelText('long'), '긴 답변');
     await user.click(screen.getByRole('combobox', { name: 'dropdown' }));
@@ -139,7 +138,6 @@ describe('saved application questionnaires', () => {
     mocks.questions = [{ ...questions[0]!, required: false }];
     const user = userEvent.setup();
     const rendered = render(<ApplicationPage />);
-    await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
     await user.click(screen.getByRole('button', { name: '제출' }));
     await waitFor(() =>
       expect(mocks.apply).toHaveBeenCalledWith(expect.objectContaining({ formAnswers: [] })),
@@ -148,7 +146,6 @@ describe('saved application questionnaires', () => {
     mocks.questions = [];
     render(<ApplicationPage />);
     expect(screen.queryAllByRole('group')).toHaveLength(0);
-    expect(screen.getByLabelText('팀원 1 이름')).toBeTruthy();
   });
 
   it('does not accept an attachment when upload verification fails', async () => {
@@ -178,7 +175,6 @@ describe('saved application questionnaires', () => {
     );
     const user = userEvent.setup();
     const { container } = render(<ApplicationPage />);
-    await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
     await user.click(screen.getByRole('button', { name: '제출' }));
 
     // 제출 중에는 문구가 바뀌고 인라인 스피너가 붙는다.
@@ -202,7 +198,6 @@ describe('saved application questionnaires', () => {
     mocks.apply.mockRejectedValueOnce(new Error('rejected'));
     const user = userEvent.setup();
     render(<ApplicationPage />);
-    await user.type(screen.getByLabelText('팀원 1 이름'), '참가자');
     await user.type(screen.getByLabelText('short'), '내 답변');
     await user.click(screen.getByRole('button', { name: '제출' }));
     await waitFor(() =>
