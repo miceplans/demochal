@@ -21,7 +21,7 @@ import type { BusinessVerificationStatus } from './businessVerificationStatus';
 import type { ContentBlock } from './contentBlock';
 
 export interface Business {
-  /** 기관 등록 시 국세청 조회를 완료하지 못한 경우 */
+  /** 기관 등록 시 국세청 조회 장애로 확인하지 못한 경우 true */
   registrationLookupUnavailable?: boolean;
   id: string;
   ownerUserId?: string;

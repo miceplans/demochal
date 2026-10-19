@@ -1364,12 +1364,15 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [Applications]
-      summary: 지원서 상태 변경 (검토중/보완요청/합격/불합격 + 담당자 메모)
+      summary: '지원서 수정 (지원자 본인: 역할/팀원/답변 · 사업주: 상태/평가/메모)'
       operationId: updateApplication
       x-impl-status: implemented
       description: |
-        기업 지원서 관리 화면의 상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격),
-        담당자 메모 입력, 납볍하기(엑셀 export). 팀 지원 결과 전송(채팅방 링크)도 이 흐름의 확장.
+        지원자 본인은 pending/submitted/needs_revision 상태에서 역할(role)/팀원(teammates)/질문 답변(formAnswers)을
+        수정할 수 있고, reviewing/accepted/rejected 상태에서는 409를 반환한다. 지원자 본문에는 심사 필드
+        (status/evaluation/managerMemo)가 적용되지 않는다.
+        사업주는 기존 심사 흐름(상태 Dropdown(제출완료/검토중/보완요청), 평가상태(미정/합격/불합격), 담당자 메모)대로
+        status/evaluation/managerMemo만 반영하고 내용 필드는 무시한다. 신청자도 사업주도 아니면 404다.
       parameters:
         - name: id
           in: path
@@ -1386,6 +1389,13 @@ paths:
                   { type: string, enum: [submitted, reviewing, needs_revision, accepted, rejected] }
                 evaluation: { type: string, enum: [undecided, pass, fail] }
                 managerMemo: { type: string }
+                role: { type: string, maxLength: 100 }
+                teammates: { type: array, items: { type: string } }
+                formAnswers:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/ApplicationAnswerInput' }
+                  description: 저장된 질문 ID와 답변. 파일 답변은 본인이 업로드 완료한 private 파일 UUID 배열(최대 10개, 기존 단일 UUID 문자열도 허용).
       responses:
         '200':
           description: 변경된 지원서
