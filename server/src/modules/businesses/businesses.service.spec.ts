@@ -38,7 +38,11 @@ function createDbStub(updated: Record<string, unknown> | undefined) {
 describe('BusinessesService', () => {
   it('scopes the update to the authenticated owner and applies only provided fields', async () => {
     const { db, set, where } = createDbStub({ id: 'biz-1', name: '새 이름' });
-    const service = new BusinessesService(db, { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
 
     await service.update('biz-1', { name: '새 이름', bannerImageFileId: 'file-1' }, 'user-1');
 
@@ -64,7 +68,11 @@ describe('BusinessesService', () => {
 
   it('rejects with NotFound when no row matches id and owner (no partial leak)', async () => {
     const { db } = createDbStub(undefined);
-    const service = new BusinessesService(db, { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
 
     await expect(service.update('biz-2', { name: '새 이름' }, 'user-1')).rejects.toThrow(
       '기업 정보를 찾을 수 없거나 조회 권한이 없습니다.',
@@ -94,7 +102,11 @@ describe('BusinessesService.findById access control', () => {
   };
 
   it('serves the full row to the owner', async () => {
-    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createFindDb(businessRow),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
     await expect(service.findById('biz-1', owner)).resolves.toMatchObject({
       id: 'biz-1',
       registrationNumber: '123-45-67890',
@@ -103,17 +115,29 @@ describe('BusinessesService.findById access control', () => {
   });
 
   it('serves the full row to an admin', async () => {
-    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createFindDb(businessRow),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
     await expect(service.findById('biz-1', admin)).resolves.toMatchObject({ id: 'biz-1' });
   });
 
   it('forbids any other authenticated user from reading the sensitive row', async () => {
-    const service = new BusinessesService(createFindDb(businessRow), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createFindDb(businessRow),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
     await expect(service.findById('biz-1', stranger)).rejects.toThrow(ForbiddenException);
   });
 
   it('returns 404 for a missing business regardless of the caller', async () => {
-    const service = new BusinessesService(createFindDb(undefined), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createFindDb(undefined),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
     await expect(service.findById('biz-x', admin)).rejects.toThrow(NotFoundException);
   });
 });
@@ -140,7 +164,11 @@ describe('BusinessesService.listMyChallenges pagination', () => {
 
   it('rejects an unparsable cursor with 400 before querying', async () => {
     const limit = vi.fn();
-    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createListDb([], limit),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
 
     await expect(service.listMyChallenges('user-1', 'not-a-date', 20)).rejects.toThrow(
       BadRequestException,
@@ -150,7 +178,11 @@ describe('BusinessesService.listMyChallenges pagination', () => {
 
   it('clamps a NaN/invalid limit to the default for LIMIT, slice, and hasMore', async () => {
     const limit = vi.fn().mockResolvedValue([challengeRow('c-1')]);
-    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createListDb([], limit),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
 
     const result = await service.listMyChallenges('user-1', undefined, Number('abc'));
 
@@ -162,7 +194,11 @@ describe('BusinessesService.listMyChallenges pagination', () => {
   it('clamps an oversized limit to 100 for LIMIT, slice, and hasMore', async () => {
     const many = Array.from({ length: 101 }, (_, i) => challengeRow(`c-${i}`));
     const limit = vi.fn().mockResolvedValue(many);
-    const service = new BusinessesService(createListDb([], limit), { notify: vi.fn() } as any);
+    const service = new BusinessesService(
+      createListDb([], limit),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+    );
 
     const result = await service.listMyChallenges('user-1', undefined, 5000);
 
@@ -188,7 +224,7 @@ describe('BusinessesService.register', () => {
 
   it('raises the newBusinessAlert admin alert with the business id only', async () => {
     const alerts = { notify: vi.fn().mockResolvedValue(undefined) };
-    const service = new BusinessesService(createRegisterDb([]), alerts as any);
+    const service = new BusinessesService(createRegisterDb([]), alerts as any, {} as any);
 
     await service.register(
       { name: '한빛협회', registrationNumber: '123-45-67890', type: 'corp' } as any,
@@ -202,7 +238,11 @@ describe('BusinessesService.register', () => {
 
   it('does not alert when the owner already has a business', async () => {
     const alerts = { notify: vi.fn() };
-    const service = new BusinessesService(createRegisterDb([{ id: 'biz-old' }]), alerts as any);
+    const service = new BusinessesService(
+      createRegisterDb([{ id: 'biz-old' }]),
+      alerts as any,
+      {} as any,
+    );
 
     await expect(service.register({ type: 'corp' } as any, 'user-1')).rejects.toThrow(
       '이미 등록된 기업 정보가 있습니다.',

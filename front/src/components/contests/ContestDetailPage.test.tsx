@@ -28,6 +28,7 @@ vi.mock('@/components/common/Primitives', () => {
     Tag: Passthrough,
     Icon: ({ src, alt }: { src: string; alt: string }) => <img src={src} alt={alt} />,
     IconButton: Passthrough,
+    HeartIcon: () => null,
     SectionHeader: ({ title }: { title: string }) => <h2>{title}</h2>,
   };
 });

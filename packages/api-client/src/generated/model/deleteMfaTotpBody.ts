@@ -17,7 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ConfirmContactVerification200 = {
-  id: string;
-  verified: boolean;
+export type DeleteMfaTotpBody = {
+  /** @maxLength 128 */
+  password: string;
 };

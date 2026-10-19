@@ -9,6 +9,8 @@ export type Contest = {
   days: number;
   /** 팀 모집 수. 알 수 없으면(API 추천 등) 생략하고 카드에서 배지를 숨긴다. */
   teams?: number;
+  /** 공개 포스터 URL. 없으면 기본 회색 영역만 보인다. */
+  posterUrl?: string | null;
 };
 export const contests: Contest[] = [
   { id: 'contest-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', days: 7, teams: 3 },
@@ -104,16 +106,16 @@ export const categories = [
   '해외',
 ];
 export const challengeTargets: NonNullable<generated.UpdateChallengeMutationBody['targets']> = [
+  '제한없음',
   '어린이',
   '초등학생',
   '중학생',
   '고등학생',
   '대학생',
   '대학원생',
-  '제한없음',
-  '지역제한',
   '일반인',
   '기업',
+  '기타',
 ];
 export const organizerTypes: NonNullable<generated.UpdateChallengeMutationBody['organizerType']>[] =
   [

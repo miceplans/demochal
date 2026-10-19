@@ -17,7 +17,12 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type ConfirmContactVerificationBody = {
-  /** @pattern ^\d{6}$ */
-  code: string;
-};
+/**
+ * TOTP 등록 시작 응답 — 평문 시크릿은 이 응답에만 한 번 노출된다
+ */
+export interface MfaTotpSetupResponse {
+  /** 평문 TOTP 시크릿 (Base32) */
+  secret: string;
+  /** otpauth:// 프로비저닝 URL (인증 앱 추가용) */
+  otpauthUrl: string;
+}

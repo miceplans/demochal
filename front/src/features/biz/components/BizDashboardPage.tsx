@@ -16,6 +16,7 @@ import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/lib/api-error';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
 const formatDelta = (stat?: { deltaPercent?: number }) => {
@@ -37,7 +38,14 @@ const ContestHeader = styled.div({
   flexDirection: 'column',
   gap: 24,
 });
-const Thumbnail = styled.div({ flex: 1, minHeight: 0, borderRadius: 19, background: c.gray100 });
+const Thumbnail = styled.div({
+  flex: 1,
+  minHeight: 0,
+  borderRadius: 19,
+  background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
 const HeaderInfo = styled.div({ display: 'flex', justifyContent: 'space-between', gap: 24 });
 const HeaderTitle = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
 const PostingTitle = styled.strong({ fontSize: 22, fontWeight: 700, color: c.gray900 });
@@ -210,7 +218,9 @@ export function BizDashboardPage() {
         <RecentMain>
           <SectionTitle>나의 가장 최근 공고</SectionTitle>
           <ContestHeader>
-            <Thumbnail aria-hidden />
+            <Thumbnail aria-hidden>
+              {posting?.posterUrl ? <img src={posting.posterUrl} alt="" /> : null}
+            </Thumbnail>
             {posting ? (
               <HeaderInfo>
                 <HeaderTitle>
@@ -220,7 +230,7 @@ export function BizDashboardPage() {
                 <Facts>
                   <Fact>
                     <FactLabel>자격 / 대상</FactLabel>
-                    <FactValue>{posting.eligibility}</FactValue>
+                    <FactValue>{challengeEligibility(posting)}</FactValue>
                   </Fact>
                   <Fact>
                     <FactLabel>접수기간</FactLabel>

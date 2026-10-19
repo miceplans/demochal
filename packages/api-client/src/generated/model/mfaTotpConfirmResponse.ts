@@ -17,10 +17,10 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type RequestContactVerificationBodyChannel = typeof RequestContactVerificationBodyChannel[keyof typeof RequestContactVerificationBodyChannel];
-
-
-export const RequestContactVerificationBodyChannel = {
-  email: 'email',
-  phone: 'phone',
-} as const;
+export interface MfaTotpConfirmResponse {
+  /**
+     * 첫 번째 수단 등록 시에만 발급되는 복구 코드 10개 (평문은 이 응답에만 노출). 이미 다른 수단이 있으면 null
+     * @nullable
+     */
+  recoveryCodes: string[] | null;
+}

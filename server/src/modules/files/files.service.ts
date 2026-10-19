@@ -25,6 +25,12 @@ const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'image/png': 'png',
   'image/webp': 'webp',
   'application/pdf': 'pdf',
+  'application/zip': 'zip',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'application/x-hwp': 'hwp',
+  'application/hwp+zip': 'hwpx',
 };
 
 function hasExpectedMagicBytes(contentType: AllowedUploadContentType, bytes: Uint8Array): boolean {
@@ -39,6 +45,16 @@ function hasExpectedMagicBytes(contentType: AllowedUploadContentType, bytes: Uin
       return startsWith(0x52, 0x49, 0x46, 0x46) && startsWithAt(bytes, 8, 0x57, 0x45, 0x42, 0x50);
     case 'application/pdf':
       return startsWith(0x25, 0x50, 0x44, 0x46, 0x2d);
+    // zip 컨테이너(zip/docx/xlsx/pptx/hwpx)는 PK 시그니처
+    case 'application/zip':
+    case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+    case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
+    case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+    case 'application/hwp+zip':
+      return startsWith(0x50, 0x4b, 0x03, 0x04);
+    // 구형 한글(hwp)은 OLE 복합 문서
+    case 'application/x-hwp':
+      return startsWith(0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1);
   }
 }
 
@@ -54,13 +70,19 @@ export class FilesService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
   async requestUpload(dto: PresignedUploadRequest, uploaderUserId: string) {
-    if (dto.bucket === 'public' && dto.contentType === 'application/pdf') {
-      throw new BadRequestException('PDF 파일은 보안 저장소에만 업로드할 수 있습니다.');
-    }
-
-    // 공개 버킷의 이미지(광고·포스터·프로필 등)는 클라이언트 변환에 의존하지 않고 서버에서 WebP로 강제한다.
-    if (dto.bucket === 'public' && dto.contentType !== 'image/webp') {
-      throw new BadRequestException('공개 이미지는 WebP 형식만 업로드할 수 있습니다.');
+    // 공개 버킷의 이미지(광고·프로필 등)는 클라이언트 변환에 의존하지 않고 서버에서 WebP로 강제한다.
+    // 공고 포스터만 원본 JPG/PNG/WebP를 그대로 올릴 수 있다(finalize에서 실제 바이트 시그니처를 검증).
+    const preserveOriginal = dto.bucket === 'public' && dto.purpose === 'poster';
+    const posterTypes: string[] = ['image/jpeg', 'image/png', 'image/webp'];
+    if (
+      dto.bucket === 'public' &&
+      !(preserveOriginal ? posterTypes.includes(dto.contentType) : dto.contentType === 'image/webp')
+    ) {
+      throw new BadRequestException(
+        preserveOriginal
+          ? '포스터는 JPG, PNG, WebP 이미지만 업로드할 수 있습니다.'
+          : '공개 이미지는 WebP 형식만 업로드할 수 있습니다.',
+      );
     }
 
     // Never write an untrusted object directly to the public bucket.  A caller
@@ -72,6 +94,7 @@ export class FilesService {
       .values({
         bucket: 'private',
         requestedBucket: dto.bucket,
+        preserveOriginal,
         key,
         contentType: dto.contentType,
         uploadStatus: 'pending',
@@ -139,7 +162,11 @@ export class FilesService {
     const targetBucket =
       file.requestedBucket === 'public' ? env.s3PublicBucket : env.s3PrivateBucket;
     let convertedWebp: Buffer | undefined;
-    if (targetBucket !== env.s3PrivateBucket && file.contentType !== 'image/webp') {
+    if (
+      targetBucket !== env.s3PrivateBucket &&
+      file.contentType !== 'image/webp' &&
+      !file.preserveOriginal
+    ) {
       try {
         const source = await this.s3.send(
           new GetObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }),
@@ -227,6 +254,24 @@ export class FilesService {
     return getSignedUrl(this.s3, new GetObjectCommand({ Bucket: env.s3PrivateBucket, Key: key }), {
       expiresIn: 60 * 5,
     });
+  }
+
+  // 공고 첨부파일처럼 공개 화면에서 내려받는 private 파일용. 다운로드 파일명을 지정하고 인라인 렌더를 막는다.
+  async getDownloadUrl(id: string, fileName: string): Promise<string> {
+    const [file] = await this.db.select().from(files).where(eq(files.id, id)).limit(1);
+    if (!file || file.uploadStatus !== 'ready' || file.bucket !== 'private') {
+      throw new NotFoundException('파일을 찾을 수 없습니다.');
+    }
+    return getSignedUrl(
+      this.s3,
+      new GetObjectCommand({
+        Bucket: env.s3PrivateBucket,
+        Key: file.key,
+        ResponseContentDisposition: `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        ResponseContentType: 'application/octet-stream',
+      }),
+      { expiresIn: 60 * 5 },
+    );
   }
 
   async assertOwnedReadyPrivate(id: string, userId: string) {

@@ -26,6 +26,15 @@ interface JwtPayload {
   sub: string;
   email: string;
   role: string;
+  /** MFA 토큰(mfa-pending/mfa-enroll)의 용도 클레임. 세션으로는 절대 받아들이지 않는다. */
+  purpose?: string;
+  /** 2단계 인증을 마친 세션에만 붙는다. admin/business 세션은 이 값이 필수다. */
+  mfa?: boolean;
+}
+
+/** 2FA가 강제되는 역할(MfaService.isPrivilegedRole과 동일). */
+export function requiresMfaSession(role: string): boolean {
+  return role === 'admin' || role === 'business';
 }
 
 export type AuthenticatedRequest = Request & { user: AuthenticatedUser };
@@ -60,6 +69,8 @@ export class JwtAuthGuard implements CanActivate {
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       if (!payload.sub || !payload.email || !payload.role) throw new Error('Invalid token payload');
+      // MFA 토큰은 같은 시크릿으로 서명되므로 용도 클레임이 있으면 세션으로 쓸 수 없다.
+      if (payload.purpose) throw new Error('MFA token is not a session token');
     } catch {
       throw new UnauthorizedException('로그인이 만료되었습니다. 다시 로그인해 주세요.');
     }
@@ -81,6 +92,12 @@ export class JwtAuthGuard implements CanActivate {
     if (user.suspended) {
       throw new ForbiddenException(user.suspendedReason ?? '정지된 계정입니다.');
     }
+
+    // 비밀번호만으로(또는 2FA 도입 전/소셜 로그인으로) 발급된 세션은 admin/business 권한을 얻지 못한다.
+    // TODO(2FA): 2단계 인증 강제 임시 비활성화.
+    // if (requiresMfaSession(user.role) && payload.mfa !== true) {
+    //   throw new UnauthorizedException('2단계 인증이 필요합니다. 다시 로그인해 주세요.');
+    // }
 
     (request as AuthenticatedRequest).user = {
       id: payload.sub,

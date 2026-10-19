@@ -16,10 +16,10 @@
  *
  * OpenAPI spec version: 0.0.1
  */
-import type { RequestContactVerificationBodyChannel } from './requestContactVerificationBodyChannel';
+import type { LoginMfaChallengeResponse } from './loginMfaChallengeResponse';
+import type { LoginSessionResponse } from './loginSessionResponse';
 
-export type RequestContactVerificationBody = {
-  channel: RequestContactVerificationBodyChannel;
-  /** @maxLength 255 */
-  target: string;
-};
+/**
+ * 일반 사용자는 세션 쿠키가 설정되고(user만 반환), 관리자·사업자는 2FA 흐름용 mfa 필드가 함께 온다.
+ */
+export type LoginResponse = LoginSessionResponse | LoginMfaChallengeResponse;

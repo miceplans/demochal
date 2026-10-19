@@ -5,14 +5,17 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsNotEmpty,
   IsOptional,
-  IsPositive,
   IsUrl,
   Min,
   IsString,
   IsUUID,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+import { ChallengeAttachmentDto, MAX_CHALLENGE_ATTACHMENTS } from './challenge-attachment.dto.js';
 import { CHALLENGE_ORGANIZER_TYPES, CHALLENGE_TARGETS } from '../challenge-filter-options.js';
 
 export class CreateChallengeDto {
@@ -24,22 +27,62 @@ export class CreateChallengeDto {
   title!: string;
 
   @IsString()
-  @MaxLength(20_000)
+  @MaxLength(100_000)
   description!: string;
 
   @IsInt()
   @Min(0)
   price!: number;
 
-  @IsInt()
-  @IsPositive()
-  capacity!: number;
-
+  // 접수 기간(시각 포함)
   @IsDateString()
   startDate!: string;
 
   @IsDateString()
   endDate!: string;
+
+  // 행사 기간(선택, 시작·종료를 함께 보낸다)
+  @IsOptional()
+  @IsDateString()
+  eventStartDate?: string;
+
+  @IsOptional()
+  @IsDateString()
+  eventEndDate?: string;
+
+  // 주최는 필수, 주관·협찬·후원은 선택
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(200)
+  host!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  supervisor?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  sponsor?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  supporter?: string;
+
+  // 대상에 '기타'를 고른 경우 직접 입력한 내용
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  targetOther?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(MAX_CHALLENGE_ATTACHMENTS)
+  @ValidateNested({ each: true })
+  @Type(() => ChallengeAttachmentDto)
+  attachments?: ChallengeAttachmentDto[];
 
   @IsOptional()
   @IsString()

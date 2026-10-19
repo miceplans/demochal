@@ -116,18 +116,9 @@ paths:
                   type: string
                   pattern: '^[a-z0-9_]{4,20}$'
                   description: 로그인 아이디 (이메일 대신 로그인 가능)
-                phone: { type: string, maxLength: 30, description: 휴대폰 번호 }
-                emailVerificationId:
-                  type: string
-                  format: uuid
-                  description: 확인 완료된 이메일 인증 ID (`/auth/contact-verifications`)
-                phoneVerificationId:
-                  type: string
-                  format: uuid
-                  description: 확인 완료된 휴대폰 인증 ID
                 agreements:
                   type: array
-                  items: { type: string, enum: [privacy, business] }
+                  items: { type: string, enum: [terms, privacy, business] }
                   description: 동의한 약관 키 (동의 시각과 함께 저장)
       responses:
         '201':
@@ -138,79 +129,8 @@ paths:
                 type: object
                 properties:
                   user: { $ref: '#/components/schemas/User' }
-        '400':
-          description: 인증 ID가 확인되지 않았거나 만료/재사용됨
         '409':
           description: 이미 가입된 이메일 또는 아이디
-  /auth/contact-verifications:
-    post:
-      tags: [Auth]
-      summary: 이메일/휴대폰 인증번호 요청
-      operationId: requestContactVerification
-      x-impl-status: implemented
-      description: |
-        6자리 인증번호(5분 유효)를 만들고 발송 이벤트를 outbox에 적재한다. 같은 대상은 60초에 1회.
-        발송 relay(SES/SMS)는 아직 없어 production에서는 503을 반환하고, 그 외 환경에서는
-        테스트용으로 `devCode`를 함께 돌려준다.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [channel, target]
-              properties:
-                channel: { type: string, enum: [email, phone] }
-                target: { type: string, maxLength: 255 }
-      responses:
-        '201':
-          description: 인증 요청 생성
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [id, expiresAt]
-                properties:
-                  id: { type: string, format: uuid }
-                  expiresAt: { type: string, format: date-time }
-                  devCode: { type: string, description: production 외 환경에서만 포함 }
-        '429':
-          description: 60초 내 재요청
-        '503':
-          description: 발송 수단 미구성
-  /auth/contact-verifications/{id}/confirm:
-    post:
-      tags: [Auth]
-      summary: 이메일/휴대폰 인증번호 확인
-      operationId: confirmContactVerification
-      x-impl-status: implemented
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [code]
-              properties:
-                code: { type: string, pattern: '^\d{6}$' }
-      responses:
-        '200':
-          description: 인증 완료
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [id, verified]
-                properties:
-                  id: { type: string, format: uuid }
-                  verified: { type: boolean }
-        '400':
-          description: 불일치/만료/시도 초과
   /auth/login:
     post:
       tags: [Auth]
@@ -221,6 +141,9 @@ paths:
         이메일(또는 기업 계정의 아이디)/비밀번호로 로그인하여 HttpOnly 세션 쿠키(JWT, 7일 유효)를 설정한다.
         bcrypt로 저장된 해시와 비교하며, 일치하지 않으면 401을 반환한다.
         실제 운영 화면은 소셜 로그인(카카오/구글/네이버)이 기본이며, `/onboarding/*` 4단계 설문 후 가입 완료.
+        관리자·사업자 계정은 2FA가 필수라 세션 쿠키 없이 `mfaToken`(10분 만료 JWT)만 발급한다 —
+        수단이 있으면 `mfaRequired`(인증 흐름), 없으면 `mfaEnrollmentRequired`(등록 흐름)가 true다.
+        프론트는 `/auth/mfa/verify/*`(또는 `/auth/mfa/totp/setup` 등록)로 이어진다.
       requestBody:
         required: true
         content:
@@ -235,13 +158,12 @@ paths:
                 password: { type: string, minLength: 8 }
       responses:
         '200':
-          description: 로그인 성공
+          description: |
+            로그인 성공. 일반 사용자는 세션 쿠키가 설정되고,
+            관리자·사업자는 쿠키 없이 MFA 토큰만 난다(`LoginResponse` oneOf 참고).
           content:
             application/json:
-              schema:
-                type: object
-                properties:
-                  user: { $ref: '#/components/schemas/User' }
+              schema: { $ref: '#/components/schemas/LoginResponse' }
         '401':
           description: 인증 실패 (이메일 없음 또는 비밀번호 불일치)
   /auth/password:
@@ -334,6 +256,373 @@ paths:
                   accessToken: { type: string }
                   isNewUser: { type: boolean }
                   user: { $ref: '#/components/schemas/User' }
+
+  # ---------------------------------------------------------------- Auth — 2FA (MFA)
+  # 관리자·사업자 계정 2단계 인증. 컨트롤러는 @Public()이라 쿠키 세션 또는 body의 mfaToken으로 인증한다
+  # (MfaAuthGuard가 흐름별로 검증: manage=쿠키 전용, enroll=쿠키 또는 mfa-enroll 토큰, pending=mfa-pending 토큰).
+  /auth/mfa/totp/setup:
+    post:
+      tags: [Auth]
+      summary: TOTP 등록 시작 (시크릿 발급)
+      operationId: setupMfaTotp
+      x-impl-status: implemented
+      description: |
+        새 TOTP 시크릿을 발급해 pending 상태로 저장하고, 평문 시크릿과 otpauth:// URL을 이 응답에 한 번만 낸다.
+        이미 등록된 TOTP가 있어도 미검증(pending) 상태로 덮어쓴다. 관리자·사업자 계정 전용.
+        로그인 세션 쿠키 또는 등록용(mfa-enroll) mfaToken으로 인증한다.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
+                password:
+                  {
+                    type: string,
+                    maxLength: 128,
+                    description: 이미 2FA 수단이 있는 계정이 수단을 추가·교체할 때 비밀번호 재확인,
+                  }
+      responses:
+        '200':
+          description: 시크릿 발급 완료
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaTotpSetupResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/totp/confirm:
+    post:
+      tags: [Auth]
+      summary: TOTP 등록 완료 (첫 코드 검증)
+      operationId: confirmMfaTotp
+      x-impl-status: implemented
+      description: |
+        등록 중인(pending) 시크릿으로 첫 6자리 코드를 검증해 TOTP를 verified 상태로 전환한다.
+        첫 번째 2FA 수단이면 복구 코드 10개를 발급해 `recoveryCodes`에 담고 세션 쿠키를 설정한다
+        (mfa-enroll 토큰으로 진입한 등록 흐름이 로그인까지 마쳤다는 뜻). 이미 다른 수단이 있으면 `recoveryCodes`는 null.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string, pattern: '^\d{6}$', description: 인증 앱의 6자리 코드 }
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
+      responses:
+        '200':
+          description: |
+            등록 완료. 첫 수단이면 `Set-Cookie`(세션)와 복구 코드 10개가 함께 온다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaTotpConfirmResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/status:
+    get:
+      tags: [Auth]
+      summary: 2FA 상태 조회
+      operationId: getMfaStatus
+      x-impl-status: implemented
+      description: |
+        로그인한 관리자·사업자 계정의 2FA 수단 상태를 조회한다 —
+        TOTP 등록 상태(unenrolled/pending/verified), 패스키 목록, 미사용 복구 코드 개수.
+        로그인 세션 쿠키 전용(manage 흐름).
+      security: [{ cookieAuth: [] }]
+      responses:
+        '200':
+          description: 현재 2FA 상태
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaStatusResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/passkeys/register-options:
+    post:
+      tags: [Auth]
+      summary: 패스키 등록 옵션 발급 (WebAuthn)
+      operationId: getMfaPasskeyRegisterOptions
+      x-impl-status: implemented
+      description: |
+        패스키 등록용 `PublicKeyCredentialCreationOptionsJSON`을 발급하고 챌린지를 서버에 저장한다.
+        이미 등록된 패스키는 excludeCredentials로 제외한다. 로그인 세션 쿠키 또는 mfa-enroll 토큰으로 인증한다.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
+                password:
+                  {
+                    type: string,
+                    maxLength: 128,
+                    description: 이미 2FA 수단이 있는 계정이 수단을 추가·교체할 때 비밀번호 재확인,
+                  }
+      responses:
+        '200':
+          description: 등록 옵션 (navigator.credentials.create() 인자)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaPasskeyRegisterOptionsResponse' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/passkeys/register-verify:
+    post:
+      tags: [Auth]
+      summary: 패스키 등록 검증 (WebAuthn)
+      operationId: verifyMfaPasskeyRegistration
+      x-impl-status: implemented
+      description: |
+        authenticator 등록 응답(`RegistrationResponseJSON`)을 검증해 패스키를 저장한다.
+        첫 번째 2FA 수단이면 복구 코드 10개를 발급하고 세션 쿠키를 설정한다(첫 수단 등록=로그인 완료).
+        WebAuthn credential JSON은 base64url 값이라 일반 입력 보안 검사(deny-list)를 적용하지 않는다 —
+        프로토콜 파라미터는 simplewebauthn이 암호학적으로 검증한다.
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credential]
+              properties:
+                credential: { $ref: '#/components/schemas/WebAuthnRegistrationCredential' }
+                mfaToken:
+                  { type: string, description: 쿠키 세션 대신 mfa-enroll 토큰으로 진입하는 경우 }
+      responses:
+        '200':
+          description: |
+            등록 완료. 첫 수단이면 `Set-Cookie`(세션)와 복구 코드 10개가 함께 온다.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaPasskeyRegisterResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/totp:
+    delete:
+      tags: [Auth]
+      summary: TOTP 삭제
+      operationId: deleteMfaTotp
+      x-impl-status: implemented
+      description: |
+        현재 비밀번호로 본인 확인 후 TOTP 수단을 삭제한다. 로그인 세션 쿠키 전용(manage 흐름).
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 128 }
+      responses:
+        '204': { description: 삭제 완료 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/passkeys/{id}:
+    delete:
+      tags: [Auth]
+      summary: 패스키 삭제
+      operationId: deleteMfaPasskey
+      x-impl-status: implemented
+      description: |
+        현재 비밀번호로 본인 확인 후 지정 패스키를 삭제한다. 로그인 세션 쿠키 전용(manage 흐름).
+      security: [{ cookieAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 128 }
+      responses:
+        '204': { description: 삭제 완료 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/recovery-codes/regenerate:
+    post:
+      tags: [Auth]
+      summary: 복구 코드 재발급
+      operationId: regenerateMfaRecoveryCodes
+      x-impl-status: implemented
+      description: |
+        현재 비밀번호로 본인 확인 후 미사용 복구 코드 10개를 새로 발급한다.
+        기존 복구 코드는 전부 무효화되며 평문은 이 응답에만 한 번 노출된다. 로그인 세션 쿠키 전용(manage 흐름).
+      security: [{ cookieAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, maxLength: 128 }
+      responses:
+        '200':
+          description: 새 복구 코드 10개
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaRecoveryCodesResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /auth/mfa/passkeys/auth-options:
+    post:
+      tags: [Auth]
+      summary: 패스키 로그인 검증 옵션 발급 (WebAuthn)
+      operationId: getMfaPasskeyAuthOptions
+      x-impl-status: implemented
+      description: |
+        로그인 2FA 검증(pending 흐름)용 `PublicKeyCredentialRequestOptionsJSON`을 발급한다.
+        body의 mfaToken(mfa-pending, 10분 만료)으로만 인증한다. 로그인 시도 횟수 제한(AUTH_THROTTLE)이 적용된다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaToken]
+              properties:
+                mfaToken: { type: string, description: 10분 만료 mfa-pending JWT }
+      responses:
+        '200':
+          description: 인증 옵션 (navigator.credentials.get() 인자)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MfaPasskeyAuthOptionsResponse' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { description: 로그인 시도 횟수 초과 }
+  /auth/mfa/verify/totp:
+    post:
+      tags: [Auth]
+      summary: 2FA 로그인 검증 — TOTP 코드
+      operationId: verifyMfaTotp
+      x-impl-status: implemented
+      description: |
+        로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 6자리 TOTP 코드로 본인을 확인하면
+        세션 쿠키(`Set-Cookie`)와 함께 공개 사용자 정보를 반환한다. 로그인 시도 횟수 제한이 적용된다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaToken, code]
+              properties:
+                mfaToken: { type: string, description: 10분 만료 mfa-pending JWT }
+                code: { type: string, pattern: '^\d{6}$', description: 인증 앱의 6자리 코드 }
+      responses:
+        '200':
+          description: 검증 성공 — 세션 쿠키 설정
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { description: 로그인 시도 횟수 초과 }
+  /auth/mfa/verify/passkey:
+    post:
+      tags: [Auth]
+      summary: 2FA 로그인 검증 — 패스키 (WebAuthn)
+      operationId: verifyMfaPasskey
+      x-impl-status: implemented
+      description: |
+        로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 authenticator 인증 응답
+        (`AuthenticationResponseJSON`)으로 본인을 확인하면 세션 쿠키와 함께 공개 사용자 정보를 반환한다.
+        로그인 시도 횟수 제한이 적용된다. credential JSON은 등록 검증과 같은 사유로 입력 보안 검사를 생략한다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaToken, credential]
+              properties:
+                mfaToken: { type: string, description: 10분 만료 mfa-pending JWT }
+                credential: { $ref: '#/components/schemas/WebAuthnAuthenticationCredential' }
+      responses:
+        '200':
+          description: 검증 성공 — 세션 쿠키 설정
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { description: 로그인 시도 횟수 초과 }
+  /auth/mfa/verify/recovery:
+    post:
+      tags: [Auth]
+      summary: 2FA 로그인 검증 — 복구 코드
+      operationId: verifyMfaRecoveryCode
+      x-impl-status: implemented
+      description: |
+        로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 미사용 복구 코드로 본인을 확인하면
+        세션 쿠키와 함께 공개 사용자 정보를 반환한다. 복구 코드는 사용 즉시 소모된다.
+        `XXXX-XXXX-XXXX`(하이픈 포함 14자)와 하이픈 없는 12자 모두 허용한다. 로그인 시도 횟수 제한이 적용된다.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mfaToken, code]
+              properties:
+                mfaToken: { type: string, description: 10분 만료 mfa-pending JWT }
+                code:
+                  type: string
+                  minLength: 4
+                  maxLength: 20
+                  description: 미사용 복구 코드 (하이픈 포함 14자 또는 12자)
+      responses:
+        '200':
+          description: 검증 성공 — 세션 쿠키 설정
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { description: 로그인 시도 횟수 초과 }
 
   # ---------------------------------------------------------------- Users
   /users/{id}:
@@ -648,6 +937,35 @@ paths:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Challenge' } }
 
+  /challenges/{id}/attachments/{fileId}/download:
+    get:
+      tags: [Challenges]
+      summary: 공고 첨부파일 다운로드 URL
+      operationId: getChallengeAttachmentDownload
+      x-impl-status: implemented
+      description: 공개 공고의 첨부파일을 내려받는 5분짜리 presigned URL. private 버킷은 이 경로로만 연다.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: fileId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 다운로드 URL
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [url]
+                properties:
+                  url: { type: string, format: uri }
+        '404': { description: 공고 또는 첨부파일 없음 }
+
   # ---------------------------------------------------------------- Teams
   /teams:
     get:
@@ -724,6 +1042,7 @@ paths:
       x-impl-status: implemented
       description: |
         팀 지원자 관리 화면(`/my/teams/public-data`). 내가 리더인 팀과 그 지원자 목록(팀장 본인 행 제외).
+        각 팀에 연결된 챌린지의 공개 포스터 URL을 포함한다(없거나 공개 준비 상태가 아니면 null).
         지원자별 합격/불합격 결정은 `PATCH /teams/{id}/members/{memberId}`로 저장한다.
       responses:
         '200':
@@ -2810,6 +3129,12 @@ components:
       bearerFormat: JWT
       description: |
         JWT 액세스 토큰(향후 도입). 현재는 `x-user-id` 헤더로 사용자를 식별하는 개발 중 상태.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: semochal_access_token
+      description: |
+        로그인 시 설정되는 HttpOnly 세션 쿠키의 JWT(7일 유효). 서버는 매 요청마다 DB의 최신 계정 상태(정지·탈퇴)를 다시 확인한다.
   responses:
     BadRequest:
       description: 요청 본문/파라미터가 유효하지 않음 (validation 실패 또는 대상 리소스 없음)
@@ -2949,6 +3274,196 @@ components:
           allOf: [{ $ref: '#/components/schemas/OnboardingSurvey' }]
           nullable: true
           description: 온보딩 설문 응답. null이면 아직 설문을 완료하지 않은 첫 가입 사용자.
+    LoginResponse:
+      oneOf:
+        - $ref: '#/components/schemas/LoginSessionResponse'
+        - $ref: '#/components/schemas/LoginMfaChallengeResponse'
+      description: |
+        일반 사용자는 세션 쿠키가 설정되고(user만 반환), 관리자·사업자는 2FA 흐름용 mfa 필드가 함께 온다.
+    LoginSessionResponse:
+      type: object
+      required: [user]
+      description: 일반 사용자 로그인 성공 — `Set-Cookie`(세션)가 설정된다
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+    LoginMfaChallengeResponse:
+      type: object
+      required: [user, mfaRequired, mfaEnrollmentRequired, mfaToken, methods]
+      description: |
+        관리자·사업자 로그인 — 세션 쿠키 없이 10분 만료 MFA 토큰만 발급한다.
+        mfaRequired(수단 있음→/auth/mfa/verify/*)와 mfaEnrollmentRequired(수단 없음→/auth/mfa/* 등록)는 배타적이다.
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        mfaRequired: { type: boolean, description: 검증 가능한 수단이 있어 2FA 인증 필요 }
+        mfaEnrollmentRequired: { type: boolean, description: 등록된 수단이 없어 2FA 등록 필요 }
+        mfaToken: { type: string, description: 10분 만료 MFA JWT (mfa-pending | mfa-enroll) }
+        methods:
+          type: array
+          items: { $ref: '#/components/schemas/MfaMethod' }
+          description: 현재 검증 가능한 수단 목록 (없으면 빈 배열)
+    MfaMethod:
+      type: string
+      enum: [totp, passkey, recovery]
+      description: 2단계 인증 수단 — TOTP | 패스키 | 복구 코드
+    MfaTotpSetupResponse:
+      type: object
+      required: [secret, otpauthUrl]
+      description: TOTP 등록 시작 응답 — 평문 시크릿은 이 응답에만 한 번 노출된다
+      properties:
+        secret: { type: string, description: 평문 TOTP 시크릿 (Base32) }
+        otpauthUrl: { type: string, description: otpauth:// 프로비저닝 URL (인증 앱 추가용) }
+    MfaTotpConfirmResponse:
+      type: object
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          nullable: true
+          items: { type: string }
+          description: 첫 번째 수단 등록 시에만 발급되는 복구 코드 10개 (평문은 이 응답에만 노출). 이미 다른 수단이 있으면 null
+    MfaStatusResponse:
+      type: object
+      required: [totp, passkeys, recoveryCodesRemaining]
+      properties:
+        totp: { $ref: '#/components/schemas/MfaTotpStatus' }
+        passkeys:
+          type: array
+          items: { $ref: '#/components/schemas/MfaPasskeySummary' }
+        recoveryCodesRemaining: { type: integer, description: 미사용 복구 코드 개수 }
+    MfaTotpStatus:
+      type: object
+      required: [status, verifiedAt]
+      properties:
+        status:
+          type: string
+          enum: [unenrolled, pending, verified]
+          description: 미등록 | 등록 진행 중(첫 코드 미검증) | 등록 완료
+        verifiedAt: { type: string, format: date-time, nullable: true }
+    MfaPasskeySummary:
+      type: object
+      required: [id, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time }
+    MfaPasskeyRegisterOptionsResponse:
+      type: object
+      required: [options]
+      properties:
+        options: { $ref: '#/components/schemas/WebAuthnCreationOptions' }
+    MfaPasskeyRegisterResponse:
+      type: object
+      required: [id, recoveryCodes]
+      properties:
+        id: { type: string, format: uuid, description: 등록된 패스키 크리덴셜 행 ID }
+        recoveryCodes:
+          type: array
+          nullable: true
+          items: { type: string }
+          description: 첫 번째 수단 등록 시에만 발급되는 복구 코드 10개. 이미 다른 수단이 있으면 null
+    MfaPasskeyAuthOptionsResponse:
+      type: object
+      required: [options]
+      properties:
+        options: { $ref: '#/components/schemas/WebAuthnRequestOptions' }
+    MfaRecoveryCodesResponse:
+      type: object
+      required: [recoveryCodes]
+      properties:
+        recoveryCodes:
+          type: array
+          items: { type: string }
+          description: 새 복구 코드 10개 (평문은 이 응답에만 한 번 노출)
+    WebAuthnCreationOptions:
+      type: object
+      required: [challenge, rp, user, pubKeyCredParams]
+      additionalProperties: true
+      description: simplewebauthn의 PublicKeyCredentialCreationOptionsJSON (navigator.credentials.create() 인자)
+      properties:
+        challenge:
+          { type: string, description: base64url 챌린지 (서버에 저장 후 register-verify에서 소모) }
+        rp:
+          type: object
+          additionalProperties: true
+          properties:
+            name: { type: string }
+            id: { type: string }
+        user:
+          type: object
+          additionalProperties: true
+          properties:
+            id: { type: string, description: base64url 인코딩된 사용자 ID }
+            name: { type: string }
+            displayName: { type: string }
+        pubKeyCredParams:
+          type: array
+          items:
+            type: object
+            required: [type, alg]
+            properties:
+              type: { type: string }
+              alg: { type: integer }
+        timeout: { type: integer }
+        excludeCredentials:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id: { type: string }
+              type: { type: string }
+              transports: { type: array, items: { type: string } }
+        authenticatorSelection: { type: object, additionalProperties: true }
+        attestation: { type: string }
+    WebAuthnRequestOptions:
+      type: object
+      required: [challenge]
+      additionalProperties: true
+      description: simplewebauthn의 PublicKeyCredentialRequestOptionsJSON (navigator.credentials.get() 인자)
+      properties:
+        challenge:
+          { type: string, description: base64url 챌린지 (서버에 저장 후 verify/passkey에서 소모) }
+        rpId: { type: string }
+        allowCredentials:
+          type: array
+          items:
+            type: object
+            required: [type, id]
+            properties:
+              type: { type: string }
+              id: { type: string }
+              transports: { type: array, items: { type: string } }
+        userVerification: { type: string, enum: [required, preferred, discouraged] }
+        timeout: { type: integer }
+    WebAuthnRegistrationCredential:
+      type: object
+      required: [id, rawId, response, type]
+      additionalProperties: true
+      description: simplewebauthn의 RegistrationResponseJSON (@simplewebauthn/browser의 startRegistration() 반환값)
+      properties:
+        id: { type: string }
+        rawId: { type: string }
+        type: { type: string, enum: [public-key] }
+        response:
+          type: object
+          additionalProperties: true
+          description: authenticator 등록 응답 (clientDataJSON, attestationObject 등)
+        clientExtensionResults: { type: object, additionalProperties: true }
+        authenticatorAttachment: { type: string }
+    WebAuthnAuthenticationCredential:
+      type: object
+      required: [id, rawId, response, type]
+      additionalProperties: true
+      description: simplewebauthn의 AuthenticationResponseJSON (@simplewebauthn/browser의 startAuthentication() 반환값)
+      properties:
+        id: { type: string }
+        rawId: { type: string }
+        type: { type: string, enum: [public-key] }
+        response:
+          type: object
+          additionalProperties: true
+          description: authenticator 인증 응답 (clientDataJSON, authenticatorData, signature 등)
+        clientExtensionResults: { type: object, additionalProperties: true }
+
     ExternalLink:
       type: object
       properties:
@@ -2971,7 +3486,7 @@ components:
         challengeTypes: { type: array, items: { type: string }, description: 4단계 도전 유형 Chip }
     Challenge:
       type: object
-      required: [id, title, startDate, endDate, status, capacity]
+      required: [id, title, startDate, endDate, status]
       properties:
         id: { type: string, format: uuid }
         businessId: { type: string, format: uuid }
@@ -2982,9 +3497,25 @@ components:
         inquiryContact: { type: string, nullable: true, maxLength: 200 }
         visibility: { type: string, enum: [public, private], default: public }
         price: { type: integer, description: 참가비 (원) }
-        capacity: { type: integer, description: 모집 인원 }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time }
+        capacity:
+          {
+            type: integer,
+            nullable: true,
+            description: 정원(입력 폼에서 제거됨 — 기존 공고만 값 보유),
+          }
+        startDate: { type: string, format: date-time, description: 접수 시작 시각 }
+        endDate: { type: string, format: date-time, description: 접수 종료 시각 }
+        eventStartDate: { type: string, format: date-time, nullable: true, description: 행사 시작 }
+        eventEndDate: { type: string, format: date-time, nullable: true, description: 행사 종료 }
+        host: { type: string, nullable: true, maxLength: 200, description: 주최 }
+        supervisor: { type: string, nullable: true, maxLength: 200, description: 주관 }
+        sponsor: { type: string, nullable: true, maxLength: 200, description: 협찬 }
+        supporter: { type: string, nullable: true, maxLength: 200, description: 후원 }
+        targetOther:
+          { type: string, nullable: true, maxLength: 100, description: 대상 '기타' 직접 입력 }
+        attachments:
+          type: array
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         status: { type: string, enum: [draft, published, closed], description: 등록 시 draft }
         createdAt: { type: string, format: date-time }
         category:
@@ -3006,6 +3537,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -3038,7 +3570,7 @@ components:
           {
             type: string,
             nullable: true,
-            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세 응답에만 포함. 클라이언트는 이 URL로 직접 렌더,
+            description: 챌린지 포스터 공개 URL (public+ready 파일). 상세·목록 응답에 포함. 클라이언트는 이 URL로 직접 렌더,
           }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
@@ -3085,9 +3617,16 @@ components:
             description: '선택형(dropdown/checkbox/radio) 질문의 옵션 목록. 다른 유형은 빈 배열. 선택 입력(최대 50개, 각 500자)',
           }
         required: { type: boolean, description: 필수 질문 여부 }
+    ChallengeAttachment:
+      type: object
+      required: [fileId, name, size]
+      properties:
+        fileId: { type: string, format: uuid, description: private 버킷의 ready 파일 ID }
+        name: { type: string, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 10485760 }
     CreateChallengeRequest:
       type: object
-      required: [businessId, title, description, price, capacity, startDate, endDate]
+      required: [businessId, title, description, price, host, startDate, endDate]
       properties:
         businessId: { type: string, format: uuid }
         summary: { type: string, maxLength: 300 }
@@ -3100,9 +3639,20 @@ components:
         title: { type: string }
         description: { type: string }
         price: { type: integer, minimum: 1 }
-        capacity: { type: integer, minimum: 1 }
-        startDate: { type: string, format: date-time }
-        endDate: { type: string, format: date-time }
+        startDate: { type: string, format: date-time, description: 접수 시작 시각 }
+        endDate: { type: string, format: date-time, description: 접수 종료 시각 }
+        eventStartDate:
+          { type: string, format: date-time, description: 행사 시작(종료와 함께 보낸다) }
+        eventEndDate: { type: string, format: date-time, description: 행사 종료 }
+        host: { type: string, minLength: 1, maxLength: 200, description: 주최 }
+        supervisor: { type: string, maxLength: 200, description: 주관 }
+        sponsor: { type: string, maxLength: 200, description: 협찬 }
+        supporter: { type: string, maxLength: 200, description: 후원 }
+        targetOther: { type: string, maxLength: 100, description: 대상 '기타' 직접 입력 }
+        attachments:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         category:
           {
             type: string,
@@ -3124,6 +3674,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -3185,11 +3736,22 @@ components:
         inquiryContact: { type: string, nullable: true, maxLength: 200 }
         visibility: { type: string, enum: [public, private] }
         title: { type: string, maxLength: 200 }
-        description: { type: string, maxLength: 20000 }
+        description: { type: string, maxLength: 100000 }
         price: { type: integer, minimum: 0 }
-        capacity: { type: integer, minimum: 1 }
         startDate: { type: string, format: date-time }
         endDate: { type: string, format: date-time }
+        eventStartDate: { type: string, format: date-time, nullable: true }
+        eventEndDate: { type: string, format: date-time, nullable: true }
+        host: { type: string, minLength: 1, maxLength: 200 }
+        supervisor: { type: string, nullable: true, maxLength: 200 }
+        sponsor: { type: string, nullable: true, maxLength: 200 }
+        supporter: { type: string, nullable: true, maxLength: 200 }
+        targetOther: { type: string, nullable: true, maxLength: 100 }
+        attachments:
+          type: array
+          maxItems: 10
+          description: 첨부파일 목록 전체 교체. 빈 배열이면 모두 제거한다.
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
         category:
           { type: string, nullable: true, maxLength: 100, description: null이면 카테고리를 비운다 }
         recruitUrl:
@@ -3215,6 +3777,7 @@ components:
                     대학원생,
                     제한없음,
                     지역제한,
+                    기타,
                     일반인,
                     기업,
                   ],
@@ -3274,7 +3837,7 @@ components:
             type: string,
             nullable: true,
             format: uuid,
-            description: 목록·상세 응답의 챌린지 포스터 파일 ID,
+            description: 목록·상세·내가 관리하는 팀 응답의 챌린지 포스터 파일 ID,
           }
         challengePosterUrl:
           {
@@ -3520,6 +4083,8 @@ components:
         type: { type: string, enum: [기업, 학교, 비영리, 협회], description: 기관 유형 }
         name: { type: string, maxLength: 200 }
         registrationNumber: { type: string, pattern: '^\d{10}$' }
+        phone: { type: string, maxLength: 30, description: 문의 번호 }
+        email: { type: string, format: email, maxLength: 255, description: 문의 이메일 }
     Verification:
       type: object
       properties:
@@ -3563,7 +4128,29 @@ components:
       required: [bucket, contentType, fileName, sizeBytes]
       properties:
         bucket: { type: string, enum: [public, private] }
-        contentType: { type: string, enum: [image/jpeg, image/png, image/webp, application/pdf] }
+        purpose:
+          {
+            type: string,
+            enum: [poster],
+            description: "'poster'면 공개 버킷에 JPG/PNG/WebP 원본을 변환 없이 올린다(공고 포스터 전용)",
+          }
+        contentType:
+          {
+            type: string,
+            enum:
+              [
+                image/jpeg,
+                image/png,
+                image/webp,
+                application/pdf,
+                application/zip,
+                application/vnd.openxmlformats-officedocument.wordprocessingml.document,
+                application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,
+                application/vnd.openxmlformats-officedocument.presentationml.presentation,
+                application/x-hwp,
+                application/hwp+zip,
+              ],
+          }
         fileName: { type: string, maxLength: 255, description: '경로 구분자(슬래시·역슬래시) 불가' }
         sizeBytes: { type: integer, minimum: 1, maximum: 10485760, description: 최대 10MB }
     Order:
@@ -3781,7 +4368,10 @@ components:
       required: [paymentTotal, activeAds]
       description: 기업 대시보드(`/biz/dashboard`) 위젯 데이터 묶음
       properties:
-        recentPosting: { $ref: '#/components/schemas/Challenge' }
+        recentPosting:
+          allOf: [{ $ref: '#/components/schemas/Challenge' }]
+          nullable: true
+          description: 최근 게시 공고. posterUrl은 공개 준비된 포스터의 URL이며 없으면 null이다.
         stats:
           type: object
           required: [clicks, bookmarks]

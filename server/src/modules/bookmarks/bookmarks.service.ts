@@ -2,12 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { bookmarks, challenges } from '../../db/schema.js';
+import { FilesService } from '../files/files.service.js';
 
 export type BookmarkSort = 'deadline' | 'latest' | 'popular';
 
 @Injectable()
 export class BookmarksService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly filesService: FilesService,
+  ) {}
 
   async list(userId: string, sort: BookmarkSort = 'latest') {
     const orderBy =
@@ -22,7 +26,13 @@ export class BookmarksService {
       .innerJoin(challenges, eq(bookmarks.challengeId, challenges.id))
       .where(eq(bookmarks.userId, userId))
       .orderBy(orderBy);
-    return rows.map((row) => row.challenge);
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      rows.map((row) => row.challenge.posterFileId),
+    );
+    return rows.map(({ challenge }) => ({
+      ...challenge,
+      posterUrl: challenge.posterFileId ? (posterUrls.get(challenge.posterFileId) ?? null) : null,
+    }));
   }
 
   async toggle(userId: string, challengeId: string, bookmarked: boolean) {

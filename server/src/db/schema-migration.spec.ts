@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(37);
+    expect(journal.entries).toHaveLength(39);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -499,6 +499,28 @@ describe('0035_users_email_lower_unique migration', () => {
   });
 });
 
+describe('0037_privileged_account_mfa migration', () => {
+  it('creates the 2FA tables (TOTP·패스키·복구 코드·challenge) without destructive DDL', () => {
+    const tag = journal.entries[37]?.tag;
+    expect(tag).toBe('0037_privileged_account_mfa');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    for (const table of [
+      'user_totp_credentials',
+      'user_passkey_credentials',
+      'user_mfa_recovery_codes',
+      'user_mfa_challenges',
+    ]) {
+      expect(sql).toContain(`CREATE TABLE IF NOT EXISTS "${table}"`);
+    }
+    // TOTP 시크릿은 암호문만 저장하고 복구 코드는 해시만 저장한다(평문 컬럼 없음).
+    expect(sql).toContain('"secret_ciphertext" text NOT NULL');
+    expect(sql).toContain('"code_hash" text NOT NULL');
+    expect(sql).toContain('"user_id" uuid NOT NULL REFERENCES "users"("id") ON DELETE CASCADE');
+    expect(sql).toContain('CREATE INDEX IF NOT EXISTS "user_mfa_challenges_user_id_idx"');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
 describe('0023_challenge_filter_meta migration', () => {
   it('adds the explore filter columns without destructive DDL', () => {
     const tag = journal.entries[23]?.tag;
@@ -543,5 +565,29 @@ describe('0032_payments_refund_retry migration', () => {
     );
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "refund_retried_at" timestamp');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+  });
+});
+
+describe('0038_challenge_posting_fields migration', () => {
+  it('relaxes capacity and adds posting columns without destructive DDL', () => {
+    const tag = journal.entries[38]?.tag;
+    expect(tag).toBe('0038_challenge_posting_fields');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ALTER COLUMN "capacity" DROP NOT NULL');
+    for (const column of [
+      'event_start_date',
+      'event_end_date',
+      'host',
+      'supervisor',
+      'sponsor',
+      'supporter',
+      'target_other',
+      'attachments',
+      'preserve_original',
+    ]) {
+      expect(sql).toContain(`ADD COLUMN IF NOT EXISTS "${column}"`);
+    }
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[38]!.when).toBeGreaterThan(journal.entries[37]!.when);
   });
 });

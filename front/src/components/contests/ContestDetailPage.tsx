@@ -1,4 +1,5 @@
 'use client';
+import { RichDescription } from '@/components/common/RichDescription';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
@@ -12,6 +13,7 @@ import {
   Muted,
   Title,
   Tag,
+  HeartIcon,
   Icon,
   IconButton,
   SectionHeader,
@@ -26,9 +28,11 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
-import { daysUntil, formatDateDot } from '@/lib/date';
+import { daysUntil, formatDateDot, formatDateTimeDot } from '@/lib/date';
+import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
+const formatDateTime = (value?: string) => (value ? formatDateTimeDot(value) : '');
 
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
@@ -70,6 +74,7 @@ export function ContestDetailPage({
       title: item.title ?? '',
       category: item.category ?? '',
       days: daysUntil(item.endDate, now),
+      posterUrl: item.posterUrl ?? null,
     }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
@@ -77,23 +82,43 @@ export function ContestDetailPage({
   const applyHref = challengeId
     ? `/applications/new?challenge=${encodeURIComponent(challengeId)}`
     : '/applications/new';
+  const eventPeriod = challenge
+    ? [
+        formatDate(challenge.eventStartDate ?? undefined),
+        formatDate(challenge.eventEndDate ?? undefined),
+      ]
+        .filter(Boolean)
+        .join(' ~ ')
+    : '';
   const detail = challenge
     ? {
         title: challenge.title ?? '',
-        org: challenge.organizer ?? '',
-        eligibility: challenge.eligibility ?? '-',
-        period: [formatDate(challenge.startDate), formatDate(challenge.endDate)]
+        org: challenge.host || challenge.organizer || '',
+        eligibility: challengeEligibility(challenge, '-'),
+        period: [formatDateTime(challenge.startDate), formatDateTime(challenge.endDate)]
           .filter(Boolean)
           .join(' ~ '),
         dday: challenge.endDate ? `D-${daysUntil(challenge.endDate, now)}` : '',
         deadline: formatDate(challenge.endDate) || '-',
-        teamSize: challenge.capacity ? `${challenge.capacity}명` : '-',
         sections: [
-          ...(challenge.summary ? [{ title: '소개', body: challenge.summary }] : []),
+          ...(challenge.summary ? [{ title: '소개', body: challenge.summary, rich: false }] : []),
           ...((challenge.hashtags ?? []).length
-            ? [{ title: '해시태그', body: (challenge.hashtags ?? []).join(' ') }]
+            ? [
+                {
+                  title: '해시태그',
+                  body: (challenge.hashtags ?? []).join(' '),
+                },
+              ]
             : []),
-          ...(challenge.description ? [{ title: '상세 안내', body: challenge.description }] : []),
+          ...(challenge.description
+            ? [
+                {
+                  title: '상세 안내',
+                  body: challenge.description,
+                  rich: true as boolean,
+                },
+              ]
+            : []),
           ...(challenge.inquiryContact
             ? [{ title: '문의 연락처', body: challenge.inquiryContact }]
             : []),
@@ -116,7 +141,10 @@ export function ContestDetailPage({
         ],
         ['분야', challenge.category ?? '-'],
         ['주제', (challenge.topics ?? []).join(', ') || '-'],
-        ['팀 구성', detail.teamSize],
+        ...(eventPeriod ? [['행사 기간', eventPeriod] as [string, string]] : []),
+        ...(challenge.supervisor ? [['주관', challenge.supervisor] as [string, string]] : []),
+        ...(challenge.sponsor ? [['협찬', challenge.sponsor] as [string, string]] : []),
+        ...(challenge.supporter ? [['후원', challenge.supporter] as [string, string]] : []),
       ]
     : [
         ['마감일', contestDetail.deadline],
@@ -124,6 +152,17 @@ export function ContestDetailPage({
         ['팀 구성', contestDetail.teamSize],
       ];
   const toast = useToast();
+  // 첨부파일은 private 버킷이라 5분짜리 presigned URL을 받아 연다.
+  const downloadAttachment = async (fileId: string) => {
+    if (!challengeId) return;
+    try {
+      const response = await generated.getChallengeAttachmentDownload(challengeId, fileId);
+      if (response.status !== 200) throw new Error('download failed');
+      window.location.assign(response.data.url);
+    } catch {
+      toast.error('첨부파일을 내려받지 못했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+  };
   const applyRef = useRef<HTMLAnchorElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
@@ -203,6 +242,12 @@ export function ContestDetailPage({
               자격 / 대상　{detail.eligibility}
               <br />
               접수기간　{detail.period}
+              {eventPeriod && (
+                <>
+                  <br />
+                  행사기간　{eventPeriod}
+                </>
+              )}
             </div>
             <Row>
               <Tag tone="blue">{detail.dday}</Tag>
@@ -213,7 +258,7 @@ export function ContestDetailPage({
                 title={bookmarkId ? undefined : '데모 챌린지는 북마크할 수 없어요'}
                 onClick={() => toggleBookmark(bookmarkId)}
               >
-                <Icon src="/assets/icons/scrap.png" size={18} alt="북마크" />
+                <HeartIcon filled={saved} size={18} />
               </IconButton>
               <Button small tone="plain" onClick={share}>
                 <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
@@ -251,12 +296,50 @@ export function ContestDetailPage({
             ) : (
               <Stack gap={28}>
                 <MobileOnly>{summaryBox}</MobileOnly>
-                {detail.sections.map(({ title, body }) => (
-                  <section key={title}>
-                    <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
-                    <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
+                {detail.sections.map((section) => {
+                  const { title, body } = section;
+                  const rich = 'rich' in section && section.rich;
+                  return (
+                    <section key={title}>
+                      <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
+                      {rich ? (
+                        <Muted as="div">
+                          <RichDescription value={body} />
+                        </Muted>
+                      ) : (
+                        <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
+                      )}
+                    </section>
+                  );
+                })}
+                {challenge && (challenge.attachments ?? []).length > 0 && (
+                  <section>
+                    <h2 style={{ fontSize: 15, marginBottom: 10 }}>첨부파일</h2>
+                    <ul
+                      style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 6,
+                        padding: 0,
+                      }}
+                    >
+                      {(challenge.attachments ?? []).map((file) => (
+                        <li key={file.fileId} style={{ listStyle: 'none' }}>
+                          <button
+                            type="button"
+                            onClick={() => void downloadAttachment(file.fileId)}
+                            style={{
+                              textDecoration: 'underline',
+                              color: c.primary,
+                            }}
+                          >
+                            {file.name}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
                   </section>
-                ))}
+                )}
                 {external ? (
                   <a href={external} target="_blank" rel="noopener noreferrer" ref={applyRef}>
                     <Button as="span" fullWidth>
@@ -368,7 +451,12 @@ const Intro = styled.div({
     span: { fontSize: 56, fontWeight: 700, color: 'rgb(255 255 255 / 90%)' },
   },
   '.intro-body': { display: 'flex', flexDirection: 'column', gap: 12, flex: 1 },
-  '.facts': { marginTop: 'auto', ...textStyle.metaText, color: c.gray700, lineHeight: 1.8 },
+  '.facts': {
+    marginTop: 'auto',
+    ...textStyle.metaText,
+    color: c.gray700,
+    lineHeight: 1.8,
+  },
   [mobile]: {
     flexDirection: 'column',
     gap: 24,
@@ -406,7 +494,12 @@ const PosterFrame = styled.div({
   borderRadius: 19,
   background: c.gray100,
   overflow: 'hidden',
-  img: { display: 'block', width: '100%', height: '100%', objectFit: 'contain' },
+  img: {
+    display: 'block',
+    width: '100%',
+    height: '100%',
+    objectFit: 'contain',
+  },
   div: { width: '100%', height: '100%' },
 });
 const Tabs = styled.nav({
@@ -415,14 +508,22 @@ const Tabs = styled.nav({
   borderBottom: `0.5px solid ${c.gray100}`,
   marginBottom: 20,
   '& a': { padding: '12px 16px', ...textStyle.bodySmall, color: c.gray500 },
-  '& a[aria-current=page]': { color: c.primary, borderBottom: `0.5px solid ${c.primary}` },
+  '& a[aria-current=page]': {
+    color: c.primary,
+    borderBottom: `0.5px solid ${c.primary}`,
+  },
 });
 const Summary = styled.div({
   background: c.gray50,
   borderRadius: 12,
   padding: 16,
   ...textStyle.caption,
-  '& dl': { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16 },
+  '& dl': {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 12,
+    marginTop: 16,
+  },
   '& dt': { color: c.gray500 },
   '& dd': { textAlign: 'right', fontWeight: 600 },
 });

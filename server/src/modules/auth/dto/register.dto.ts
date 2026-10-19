@@ -5,13 +5,11 @@ import {
   IsIn,
   IsOptional,
   IsString,
-  IsUUID,
   Matches,
-  MaxLength,
   MinLength,
 } from 'class-validator';
 
-export const TERMS_KEYS = ['privacy', 'business'] as const;
+export const TERMS_KEYS = ['terms', 'privacy', 'business'] as const;
 export type TermsKey = (typeof TERMS_KEYS)[number];
 
 export class RegisterDto {
@@ -30,19 +28,6 @@ export class RegisterDto {
   @IsOptional()
   @Matches(/^[a-z0-9_]{4,20}$/, { message: '아이디는 영문 소문자·숫자·_ 4~20자입니다.' })
   username?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(30)
-  phone?: string;
-
-  @IsOptional()
-  @IsUUID()
-  emailVerificationId?: string;
-
-  @IsOptional()
-  @IsUUID()
-  phoneVerificationId?: string;
 
   @IsOptional()
   @IsArray()

@@ -29,8 +29,30 @@ describe('AdminService — settings', () => {
     expect(result.groups).toBe(SETTINGS_GROUPS);
     expect(result.values).toEqual({ ...DEFAULT_VALUES, bizAutoApprove: true });
     expect(result.maintenance).toEqual({ startAt: null, endAt: null, active: false });
-    // 설정 row는 AdminSettingsService만 읽는다 — 중복 정의/기본값 불일치 방지.
-    expect(db.select).not.toHaveBeenCalled();
+    // 설정 그룹/값은 AdminSettingsService에서만 온다 — 중복 정의/기본값 불일치 방지.
+    // (twoFactorEnabled용 2FA 수단 조회 때문에 db.select 자체는 이제 호출된다.)
+    expect(settings.get).toHaveBeenCalled();
+  });
+
+  it('등록된 2FA 수단이 없으면 twoFactorEnabled는 false다', async () => {
+    const { db } = createDbStub({ select: [[], []] });
+    const { service } = createService(db, undefined, undefined, undefined, createSettingsStub());
+
+    const result = await service.getSettings(user);
+
+    expect(result.profile.twoFactorEnabled).toBe(false);
+  });
+
+  it.each([
+    ['verified TOTP', [[{ userId: 'admin-1' }], []]],
+    ['패스키', [[], [{ id: 'pk-1' }]]],
+  ])('%s가 있으면 twoFactorEnabled는 true다', async (_label, selectQueue) => {
+    const { db } = createDbStub({ select: selectQueue });
+    const { service } = createService(db, undefined, undefined, undefined, createSettingsStub());
+
+    const result = await service.getSettings(user);
+
+    expect(result.profile.twoFactorEnabled).toBe(true);
   });
 
   it('updateSettings는 AdminSettingsService.update에 위임하고 최신 설정을 돌려준다', async () => {

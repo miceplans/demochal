@@ -17,9 +17,8 @@
  * OpenAPI spec version: 0.0.1
  */
 
-export type RequestContactVerification201 = {
+export type WebAuthnCreationOptionsExcludeCredentialsItem = {
   id: string;
-  expiresAt: string;
-  /** production 외 환경에서만 포함 */
-  devCode?: string;
+  type?: string;
+  transports?: string[];
 };

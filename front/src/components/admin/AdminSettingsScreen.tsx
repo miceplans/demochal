@@ -9,6 +9,7 @@ import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, ApproveButton } from './parts';
 import { Input, Toggle } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
+// import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
 const MAINTENANCE_START_KEY = 'maintenanceStartAt';
 const MAINTENANCE_END_KEY = 'maintenanceEndAt';
@@ -187,6 +188,8 @@ export function AdminSettingsScreen() {
           </PeriodInputWrap>
         </SettingRow>
       </Card>
+      {/* TODO(2FA): 임시 비활성화 */}
+      {/* <MfaSettingsCard /> */}
       {(settings?.groups ?? []).map((group) => (
         <Card key={group.title} aria-label={group.title}>
           <CardTitle>{group.title}</CardTitle>

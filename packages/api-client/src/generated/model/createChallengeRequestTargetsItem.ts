@@ -29,6 +29,7 @@ export const CreateChallengeRequestTargetsItem = {
   대학원생: '대학원생',
   제한없음: '제한없음',
   지역제한: '지역제한',
+  기타: '기타',
   일반인: '일반인',
   기업: '기업',
 } as const;

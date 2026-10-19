@@ -1,5 +1,6 @@
 'use client';
 
+import { RichDescription } from '@/components/common/RichDescription';
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -125,6 +126,7 @@ const SectionText = styled.p({
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 });
+const SectionRich = styled.div({ ...textStyle.body, color: c.gray700 });
 const TeamLink = styled(Link)({
   display: 'flex',
   flexDirection: 'column',
@@ -529,14 +531,7 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
                 {challenge.posterUrl ? <Poster src={challenge.posterUrl} alt="" /> : null}
                 <InfoBody>
                   <Body style={{ padding: 0 }}>
-                    <Section title="자격 / 대상">
-                      {[
-                        (challenge.targets ?? []).join(', '),
-                        `모집 인원 ${challenge.capacity ?? 0}명`,
-                      ]
-                        .filter(Boolean)
-                        .join('\n')}
-                    </Section>
+                    <Section title="자격 / 대상">{(challenge.targets ?? []).join(', ')}</Section>
                     <Section title="일정">{`접수기간: ${period}`}</Section>
                     <Section title="상금">{prize}</Section>
                     <Section title="참가비 · 지원 방식">
@@ -548,7 +543,16 @@ export function AdminChallengeDetailScreen({ id }: { id: string }) {
                       ].join('\n')}
                     </Section>
                     <Section title="한줄 소개">{challenge.summary}</Section>
-                    <Section title="공고 내용">{challenge.description}</Section>
+                    <SectionBlock>
+                      <SectionTitle>공고 내용</SectionTitle>
+                      <SectionRich>
+                        {challenge.description ? (
+                          <RichDescription value={challenge.description} />
+                        ) : (
+                          EMPTY
+                        )}
+                      </SectionRich>
+                    </SectionBlock>
                     <Section title="해시태그">
                       {(challenge.hashtags ?? []).map((tag) => `#${tag}`).join(' ')}
                     </Section>

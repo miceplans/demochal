@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizAdsPage } from './BizAdsPage';
 
@@ -292,5 +292,28 @@ describe('BizAdsPage 광고 링크 입력', () => {
 
     expect(mocks.createAd).toHaveBeenCalledTimes(1);
     expect(mocks.createAd.mock.calls[0][0].data.landingUrl).toBeUndefined();
+  });
+});
+
+describe('BizAdsPage 현재 나의 광고 빈 상태', () => {
+  beforeEach(() => {
+    mocks.createAd.mockReset();
+    mocks.toastSuccess.mockReset();
+    mocks.toastError.mockReset();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('광고가 없으면 빈 상태 이미지와 안내 문구를 표시한다', () => {
+    renderPage();
+
+    const section = screen.getByRole('heading', { name: '현재 나의 광고' }).closest('section');
+    expect(section).not.toBeNull();
+    // 장식 이미지(alt="")는 role=img가 아니므로 alt로 직접 찾는다.
+    const emptyImage = within(section as HTMLElement).getByAltText('');
+    expect((emptyImage as HTMLImageElement).src).toContain('/assets/empty-contents.png');
+    expect(screen.getByText('광고가 없어요')).not.toBeNull();
   });
 });

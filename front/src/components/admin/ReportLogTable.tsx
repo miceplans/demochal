@@ -26,8 +26,8 @@ const reportStatusLabel: Record<string, ReportRow['status']> = {
   dismissed: '거부',
 };
 
-const statusBadge: Record<ReportRow['status'], 'blue' | 'green' | 'red' | 'gray'> = {
-  대기: 'blue',
+const statusBadge: Record<ReportRow['status'], 'amber' | 'green' | 'red' | 'gray'> = {
+  대기: 'amber',
   승인: 'green',
   거부: 'red',
   '알 수 없음': 'gray',

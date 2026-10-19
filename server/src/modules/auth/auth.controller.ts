@@ -4,8 +4,6 @@ import {
   Get,
   HttpCode,
   Patch,
-  Param,
-  ParseUUIDPipe,
   Post,
   Query,
   Req,
@@ -26,11 +24,6 @@ import {
 } from './auth.cookie.js';
 import { LoginDto } from './dto/login.dto.js';
 import { RegisterDto } from './dto/register.dto.js';
-import {
-  ConfirmContactVerificationDto,
-  RequestContactVerificationDto,
-} from './dto/contact-verification.dto.js';
-import { ContactVerificationsService } from './contact-verifications.service.js';
 import { fetchJson } from '../../common/http/fetch-json.js';
 import { SkipInputSecurity } from '../../common/security/skip-input-security.decorator.js';
 import { env } from '../../config/env.js';
@@ -82,13 +75,10 @@ const KAKAO_USERINFO_URL = 'https://kapi.kakao.com/v2/user/me';
 @Public()
 @Controller('auth')
 export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly contactVerifications: ContactVerificationsService,
-  ) {}
+  constructor(private readonly authService: AuthService) {}
 
-  // Email/password signup; the biz signup (`/biz/login`) also sends username,
-  // phone, contact verification ids and terms agreements.
+  // Email/password signup; the biz signup (`/biz/login`) also sends username
+  // and terms agreements.
   @Post('register')
   @Throttle(AUTH_THROTTLE)
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) response: Response) {
@@ -97,32 +87,24 @@ export class AuthController {
     return { user };
   }
 
-  @Post('contact-verifications')
-  @Throttle(AUTH_THROTTLE)
-  requestContactVerification(@Body() dto: RequestContactVerificationDto) {
-    return this.contactVerifications.request(dto.channel, dto.target);
-  }
-
-  @Post('contact-verifications/:id/confirm')
-  @HttpCode(200)
-  @Throttle(AUTH_THROTTLE)
-  confirmContactVerification(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: ConfirmContactVerificationDto,
-  ) {
-    return this.contactVerifications.confirm(id, dto.code);
-  }
-
   @Post('login')
+  @HttpCode(200)
   @Throttle(AUTH_THROTTLE)
   @UseGuards(LoginAttemptThrottlerGuard)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) {
-    const { accessToken, user } = await this.authService.login(
-      dto.email ?? dto.username ?? '',
-      dto.password,
-    );
-    response.cookie(AUTH_COOKIE_NAME, accessToken, authCookieOptions);
-    return { user };
+    const result = await this.authService.login(dto.email ?? dto.username ?? '', dto.password);
+    // 관리자·사업자 2FA가 남아 있으면 세션 쿠키 없이 mfa 토큰만 낸다(컨트롤러가 쿠키를 세팅하지 않음).
+    if (result.accessToken) {
+      response.cookie(AUTH_COOKIE_NAME, result.accessToken, authCookieOptions);
+    }
+    if (!result.mfa) return { user: result.user };
+    return {
+      user: result.user,
+      mfaRequired: result.mfa.required,
+      mfaEnrollmentRequired: result.mfa.enrollmentRequired,
+      mfaToken: result.mfa.token,
+      methods: result.mfa.methods,
+    };
   }
 
   @Get('me')

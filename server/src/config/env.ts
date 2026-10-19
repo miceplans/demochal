@@ -73,6 +73,12 @@ const envSchema = z
       .string()
       .url()
       .default('http://localhost:3001/auth/social/kakao/callback'),
+
+    // WebAuthn(패스키) RP 설정. RP ID는 패스키가 유효한 도메인 — production에서는
+    // 서비스 도메인(예: semochall.com)으로 반드시 바꿔야 한다.
+    WEBAUTHN_RP_ID: z.string().default('localhost'),
+    WEBAUTHN_RP_ORIGIN: z.string().url().default('http://localhost:3000'),
+    WEBAUTHN_RP_NAME: z.string().default('Semochal'),
   })
   .superRefine((value, ctx) => {
     // HS256 key: anything shorter than 32 bytes is brute-forceable offline from one issued token.
@@ -146,11 +152,6 @@ export const env = {
   jwtSecret,
   // OAuth state HMAC key, derived (HKDF) so it never equals the session-signing key.
   oauthStateSecret: Buffer.from(hkdfSync('sha256', jwtSecret, '', 'semochal/oauth-state', 32)),
-  // 이메일/휴대폰 인증번호 HMAC 키. 코드가 6자리 숫자라 무솔트 다이제스트는 DB 유출 시
-  // 오프라인 복구가 쉬워 서버 비밀에서 HKDF로 떼어낸 별도 키로 HMAC한다.
-  contactVerificationCodeSecret: Buffer.from(
-    hkdfSync('sha256', jwtSecret, '', 'semochal/contact-verification-code', 32),
-  ),
   frontendOrigins: raw.FRONTEND_ORIGIN.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean),
@@ -168,4 +169,8 @@ export const env = {
   kakaoClientId: raw.KAKAO_CLIENT_ID,
   kakaoClientSecret: raw.KAKAO_CLIENT_SECRET,
   kakaoRedirectUri: raw.KAKAO_REDIRECT_URI,
+
+  webauthnRpId: raw.WEBAUTHN_RP_ID,
+  webauthnRpOrigin: raw.WEBAUTHN_RP_ORIGIN,
+  webauthnRpName: raw.WEBAUTHN_RP_NAME,
 };

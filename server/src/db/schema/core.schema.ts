@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   index,
   integer,
@@ -21,6 +22,7 @@ export type ApplicationFormQuestion = {
   options: string[];
   required: boolean;
 };
+export type ChallengeAttachment = { fileId: string; name: string; size: number };
 export const users = pgTable(
   'users',
   {
@@ -69,6 +71,73 @@ export const users = pgTable(
     uniqueIndex('users_email_lower_unique').on(sql`lower(${table.email})`),
   ],
 );
+
+/**
+ * One TOTP secret per privileged account; encrypted at rest by the auth layer.
+ * verifiedAt이 null이면 등록 확인(첫 코드 입력)을 기다리는 pending 상태다.
+ */
+export const userTotpCredentials = pgTable('user_totp_credentials', {
+  userId: uuid('user_id')
+    .primaryKey()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  secretCiphertext: text('secret_ciphertext').notNull(),
+  verifiedAt: timestamp('verified_at'),
+  // 마지막으로 수락한 TOTP time-step(30초 단위). 같은 코드의 재사용을 막는다.
+  lastUsedStep: bigint('last_used_step', { mode: 'number' }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const userPasskeyCredentials = pgTable(
+  'user_passkey_credentials',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    credentialId: text('credential_id').notNull().unique(),
+    publicKey: text('public_key').notNull(),
+    counter: integer('counter').notNull().default(0),
+    transports: jsonb('transports').$type<string[]>(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('user_passkey_credentials_user_id_idx').on(table.userId)],
+);
+
+/** Only irreversible recovery-code digests are retained. */
+export const userMfaRecoveryCodes = pgTable(
+  'user_mfa_recovery_codes',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    codeHash: text('code_hash').notNull().unique(),
+    usedAt: timestamp('used_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('user_mfa_recovery_codes_user_id_idx').on(table.userId)],
+);
+
+// WebAuthn 단회 challenge. 등록(register)·로그인 인증(auth) 옵션 발급 시 저장하고
+// 검증 성공 시 usedAt을 찍어 재사용을 막는다 — 만료·사용 여부를 DB에서 검증하므로
+// 클라이언트가 날조한 challenge로는 통과할 수 없다.
+export const userMfaChallenges = pgTable(
+  'user_mfa_challenges',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    // webauthn-register | webauthn-auth
+    type: varchar('type', { length: 20 }).notNull(),
+    challenge: text('challenge').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    expiresAt: timestamp('expires_at').notNull(),
+    usedAt: timestamp('used_at'),
+  },
+  (table) => [index('user_mfa_challenges_user_id_idx').on(table.userId)],
+);
+
 export const businesses = pgTable('businesses', {
   id: uuid('id').defaultRandom().primaryKey(),
   ownerUserId: uuid('owner_user_id')
@@ -111,9 +180,14 @@ export const challenges = pgTable('challenges', {
   title: varchar('title', { length: 200 }).notNull(),
   description: text('description').notNull(),
   price: integer('price').notNull(),
-  capacity: integer('capacity').notNull(),
+  // 인원 제한 입력은 폼에서 제거됐다. null이면 정원 제한 없음(기존 공고는 값 유지).
+  capacity: integer('capacity'),
+  // 접수 기간(시각 포함). 행사 기간은 아래 eventStartDate/eventEndDate로 분리한다.
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
+  // 행사 기간. 둘 다 null이면 미정.
+  eventStartDate: timestamp('event_start_date'),
+  eventEndDate: timestamp('event_end_date'),
   status: varchar('status', { length: 20 }).notNull().default('draft'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 챌린지' 목록에서 제외한다.
@@ -139,6 +213,15 @@ export const challenges = pgTable('challenges', {
   // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
   // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
   applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
+  // 주최(신규 공고는 필수 — 기존 공고 호환을 위해 DB는 nullable), 주관·협찬·후원(선택).
+  host: varchar('host', { length: 200 }),
+  supervisor: varchar('supervisor', { length: 200 }),
+  sponsor: varchar('sponsor', { length: 200 }),
+  supporter: varchar('supporter', { length: 200 }),
+  // 대상에 '기타'를 고른 경우 직접 입력한 내용.
+  targetOther: varchar('target_other', { length: 100 }),
+  // 첨부파일. 개인 파일과 같이 private 버킷에만 두고 다운로드는 presigned GET으로만 연다.
+  attachments: jsonb('attachments').$type<ChallengeAttachment[]>().notNull().default([]),
   summary: varchar('summary', { length: 300 }),
   hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
   topics: jsonb('topics').$type<string[]>().notNull().default([]),
@@ -301,6 +384,8 @@ export const files = pgTable('files', {
   key: text('key').notNull(),
   contentType: varchar('content_type', { length: 100 }).notNull(),
   uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
+  // 공고 포스터처럼 원본(JPG/PNG/WebP)을 변환 없이 공개 버킷에 올리는 파일. 그 외 공개 이미지는 WebP로 강제한다.
+  preserveOriginal: boolean('preserve_original').notNull().default(false),
   uploaderUserId: uuid('uploader_user_id').references(() => users.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });

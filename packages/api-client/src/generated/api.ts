@@ -74,8 +74,7 @@ import type {
   ChangePasswordBody,
   CheckHealth200,
   CheckHealth503,
-  ConfirmContactVerification200,
-  ConfirmContactVerificationBody,
+  ConfirmMfaTotpBody,
   ConfirmPaymentRequest,
   CreateAdBody,
   CreateAdminEmail,
@@ -83,6 +82,8 @@ import type {
   CreateChallengeRequest,
   CreateReportRequest,
   CreateTeamRequest,
+  DeleteMfaPasskeyBody,
+  DeleteMfaTotpBody,
   FileMeta,
   ForbiddenResponse,
   GetAdReportParams,
@@ -91,7 +92,10 @@ import type {
   GetAdminDashboardParams,
   GetApplicationAttachment200,
   GetBillingCustomerKey200,
+  GetChallengeAttachmentDownload200,
   GetInterests200,
+  GetMfaPasskeyAuthOptionsBody,
+  GetMfaPasskeyRegisterOptionsBody,
   HandleTossWebhook200,
   InviteTeamRequest,
   IssueBillingAuthorizationBody,
@@ -121,9 +125,16 @@ import type {
   ListRecommendedChallenges200,
   ListRecommendedChallengesParams,
   ListTeamsParams,
-  Login200,
   LoginBody,
+  LoginResponse,
   MarkAllNotificationsRead200,
+  MfaPasskeyAuthOptionsResponse,
+  MfaPasskeyRegisterOptionsResponse,
+  MfaPasskeyRegisterResponse,
+  MfaRecoveryCodesResponse,
+  MfaStatusResponse,
+  MfaTotpConfirmResponse,
+  MfaTotpSetupResponse,
   NotFoundResponse,
   Notification,
   OnboardingSurvey,
@@ -134,6 +145,7 @@ import type {
   PresignedUploadRequest,
   PublicAd,
   PublishAdminChallenge200,
+  RegenerateMfaRecoveryCodesBody,
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
@@ -141,8 +153,6 @@ import type {
   RejectAdminTeamBody,
   RejectVerificationBody,
   Report,
-  RequestContactVerification201,
-  RequestContactVerificationBody,
   RequestPresignedUpload201,
   ResolveReportBody,
   SaveInterests200,
@@ -151,6 +161,7 @@ import type {
   SaveNotificationSettingsBody,
   ScoutQuota,
   SendAdminEmailReply,
+  SetupMfaTotpBody,
   SocialLogin200,
   SocialLoginBody,
   SubmitOperationsInquiry201,
@@ -176,7 +187,14 @@ import type {
   UpdateTeamMemberRequest,
   User,
   Verification,
-  VerifyCertificateBody
+  VerifyCertificateBody,
+  VerifyMfaPasskey200,
+  VerifyMfaPasskeyBody,
+  VerifyMfaPasskeyRegistrationBody,
+  VerifyMfaRecoveryCode200,
+  VerifyMfaRecoveryCodeBody,
+  VerifyMfaTotp200,
+  VerifyMfaTotpBody
 } from './model';
 
 import { apiFetch } from '../mutator';
@@ -325,11 +343,6 @@ export type registerResponse201 = {
   status: 201
 }
 
-export type registerResponse400 = {
-  data: void
-  status: 400
-}
-
 export type registerResponse409 = {
   data: void
   status: 409
@@ -338,7 +351,7 @@ export type registerResponse409 = {
 export type registerResponseSuccess = (registerResponse201) & {
   headers: Headers;
 };
-export type registerResponseError = (registerResponse400 | registerResponse409) & {
+export type registerResponseError = (registerResponse409) & {
   headers: Headers;
 };
 
@@ -436,231 +449,8 @@ export const useRegister = <TError = void,
       return useMutation(getRegisterMutationOptions(options), queryClient);
     }
 
-export type requestContactVerificationResponse201 = {
-  data: RequestContactVerification201
-  status: 201
-}
-
-export type requestContactVerificationResponse429 = {
-  data: void
-  status: 429
-}
-
-export type requestContactVerificationResponse503 = {
-  data: void
-  status: 503
-}
-
-export type requestContactVerificationResponseSuccess = (requestContactVerificationResponse201) & {
-  headers: Headers;
-};
-export type requestContactVerificationResponseError = (requestContactVerificationResponse429 | requestContactVerificationResponse503) & {
-  headers: Headers;
-};
-
-export type requestContactVerificationResponse = (requestContactVerificationResponseSuccess | requestContactVerificationResponseError)
-
-export const getRequestContactVerificationUrl = () => {
-
-
-
-
-  return `/auth/contact-verifications`
-}
-
-/**
- * 6자리 인증번호(5분 유효)를 만들고 발송 이벤트를 outbox에 적재한다. 같은 대상은 60초에 1회.
- * 발송 relay(SES/SMS)는 아직 없어 production에서는 503을 반환하고, 그 외 환경에서는
- * 테스트용으로 `devCode`를 함께 돌려준다.
- * @summary 이메일/휴대폰 인증번호 요청
- */
-export const requestContactVerification = async (requestContactVerificationBody: RequestContactVerificationBody, options?: Parameters<typeof apiFetch>[1]): Promise<requestContactVerificationResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<requestContactVerificationResponse>(getRequestContactVerificationUrl(),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(requestContactVerificationBody)
-  }
-);}
-
-
-
-
-
-export const getRequestContactVerificationMutationKey = () => ['requestContactVerification'] as const;
-
-export const getRequestContactVerificationMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestContactVerification>>, TError,RequestContactVerificationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof requestContactVerification>>, TError,RequestContactVerificationMutationVariables, TContext> => {
-
-const mutationKey = getRequestContactVerificationMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof requestContactVerification>>, RequestContactVerificationMutationVariables> = (props) => {
-          const {data} = props ?? {};
-
-          return  requestContactVerification(data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type RequestContactVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof requestContactVerification>>>
-    export type RequestContactVerificationMutationBody = RequestContactVerificationBody
-    export type RequestContactVerificationMutationError = void
-    export type RequestContactVerificationMutationVariables = {data: RequestContactVerificationBody}
-
-    /**
- * @summary 이메일/휴대폰 인증번호 요청
- */
-export const useRequestContactVerification = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof requestContactVerification>>, TError,RequestContactVerificationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof requestContactVerification>>,
-        TError,
-        RequestContactVerificationMutationVariables,
-        TContext
-      > => {
-      return useMutation(getRequestContactVerificationMutationOptions(options), queryClient);
-    }
-
-export type confirmContactVerificationResponse200 = {
-  data: ConfirmContactVerification200
-  status: 200
-}
-
-export type confirmContactVerificationResponse400 = {
-  data: void
-  status: 400
-}
-
-export type confirmContactVerificationResponseSuccess = (confirmContactVerificationResponse200) & {
-  headers: Headers;
-};
-export type confirmContactVerificationResponseError = (confirmContactVerificationResponse400) & {
-  headers: Headers;
-};
-
-export type confirmContactVerificationResponse = (confirmContactVerificationResponseSuccess | confirmContactVerificationResponseError)
-
-export const getConfirmContactVerificationUrl = (id: string,) => {
-
-
-
-
-  return `/auth/contact-verifications/${id}/confirm`
-}
-
-/**
- * @summary 이메일/휴대폰 인증번호 확인
- */
-export const confirmContactVerification = async (id: string,
-    confirmContactVerificationBody: ConfirmContactVerificationBody, options?: Parameters<typeof apiFetch>[1]): Promise<confirmContactVerificationResponse> => {
-
-    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
-    if (!h) return {};
-    if (h instanceof Headers) return Object.fromEntries(h.entries());
-    if (Symbol.iterator in h) {
-      return Object.fromEntries(
-        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
-      );
-    }
-    const headers: Record<string, string | readonly string[]> = {};
-    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
-      if (value !== undefined) headers[name] = value;
-    }
-    return headers;
-  };
-return apiFetch<confirmContactVerificationResponse>(getConfirmContactVerificationUrl(id),
-  {
-    ...options,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
-    body: JSON.stringify(confirmContactVerificationBody)
-  }
-);}
-
-
-
-
-
-export const getConfirmContactVerificationMutationKey = () => ['confirmContactVerification'] as const;
-
-export const getConfirmContactVerificationMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmContactVerification>>, TError,ConfirmContactVerificationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof confirmContactVerification>>, TError,ConfirmContactVerificationMutationVariables, TContext> => {
-
-const mutationKey = getConfirmContactVerificationMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmContactVerification>>, ConfirmContactVerificationMutationVariables> = (props) => {
-          const {id,data} = props ?? {};
-
-          return  confirmContactVerification(id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type ConfirmContactVerificationMutationResult = NonNullable<Awaited<ReturnType<typeof confirmContactVerification>>>
-    export type ConfirmContactVerificationMutationBody = ConfirmContactVerificationBody
-    export type ConfirmContactVerificationMutationError = void
-    export type ConfirmContactVerificationMutationVariables = {id: string;data: ConfirmContactVerificationBody}
-
-    /**
- * @summary 이메일/휴대폰 인증번호 확인
- */
-export const useConfirmContactVerification = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmContactVerification>>, TError,ConfirmContactVerificationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof confirmContactVerification>>,
-        TError,
-        ConfirmContactVerificationMutationVariables,
-        TContext
-      > => {
-      return useMutation(getConfirmContactVerificationMutationOptions(options), queryClient);
-    }
-
 export type loginResponse200 = {
-  data: Login200
+  data: LoginResponse
   status: 200
 }
 
@@ -690,6 +480,9 @@ export const getLoginUrl = () => {
  * 이메일(또는 기업 계정의 아이디)/비밀번호로 로그인하여 HttpOnly 세션 쿠키(JWT, 7일 유효)를 설정한다.
  * bcrypt로 저장된 해시와 비교하며, 일치하지 않으면 401을 반환한다.
  * 실제 운영 화면은 소셜 로그인(카카오/구글/네이버)이 기본이며, `/onboarding/*` 4단계 설문 후 가입 완료.
+ * 관리자·사업자 계정은 2FA가 필수라 세션 쿠키 없이 `mfaToken`(10분 만료 JWT)만 발급한다 —
+ * 수단이 있으면 `mfaRequired`(인증 흐름), 없으면 `mfaEnrollmentRequired`(등록 흐름)가 true다.
+ * 프론트는 `/auth/mfa/verify/*`(또는 `/auth/mfa/totp/setup` 등록)로 이어진다.
  * @summary 이메일 로그인
  */
 export const login = async (loginBody: LoginBody, options?: Parameters<typeof apiFetch>[1]): Promise<loginResponse> => {
@@ -1192,6 +985,1438 @@ export const useSocialLogin = <TError = unknown,
         TContext
       > => {
       return useMutation(getSocialLoginMutationOptions(options), queryClient);
+    }
+
+export type setupMfaTotpResponse200 = {
+  data: MfaTotpSetupResponse
+  status: 200
+}
+
+export type setupMfaTotpResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type setupMfaTotpResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type setupMfaTotpResponseSuccess = (setupMfaTotpResponse200) & {
+  headers: Headers;
+};
+export type setupMfaTotpResponseError = (setupMfaTotpResponse401 | setupMfaTotpResponse403) & {
+  headers: Headers;
+};
+
+export type setupMfaTotpResponse = (setupMfaTotpResponseSuccess | setupMfaTotpResponseError)
+
+export const getSetupMfaTotpUrl = () => {
+
+
+
+
+  return `/auth/mfa/totp/setup`
+}
+
+/**
+ * 새 TOTP 시크릿을 발급해 pending 상태로 저장하고, 평문 시크릿과 otpauth:// URL을 이 응답에 한 번만 낸다.
+ * 이미 등록된 TOTP가 있어도 미검증(pending) 상태로 덮어쓴다. 관리자·사업자 계정 전용.
+ * 로그인 세션 쿠키 또는 등록용(mfa-enroll) mfaToken으로 인증한다.
+ * @summary TOTP 등록 시작 (시크릿 발급)
+ */
+export const setupMfaTotp = async (setupMfaTotpBody?: SetupMfaTotpBody, options?: Parameters<typeof apiFetch>[1]): Promise<setupMfaTotpResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<setupMfaTotpResponse>(getSetupMfaTotpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(setupMfaTotpBody)
+  }
+);}
+
+
+
+
+
+export const getSetupMfaTotpMutationKey = () => ['setupMfaTotp'] as const;
+
+export const getSetupMfaTotpMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext> => {
+
+const mutationKey = getSetupMfaTotpMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setupMfaTotp>>, SetupMfaTotpMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  setupMfaTotp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetupMfaTotpMutationResult = NonNullable<Awaited<ReturnType<typeof setupMfaTotp>>>
+    export type SetupMfaTotpMutationBody = SetupMfaTotpBody | undefined
+    export type SetupMfaTotpMutationError = UnauthorizedResponse | ForbiddenResponse
+    export type SetupMfaTotpMutationVariables = {data?: SetupMfaTotpBody}
+
+    /**
+ * @summary TOTP 등록 시작 (시크릿 발급)
+ */
+export const useSetupMfaTotp = <TError = UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setupMfaTotp>>, TError,SetupMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof setupMfaTotp>>,
+        TError,
+        SetupMfaTotpMutationVariables,
+        TContext
+      > => {
+      return useMutation(getSetupMfaTotpMutationOptions(options), queryClient);
+    }
+
+export type confirmMfaTotpResponse200 = {
+  data: MfaTotpConfirmResponse
+  status: 200
+}
+
+export type confirmMfaTotpResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type confirmMfaTotpResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type confirmMfaTotpResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type confirmMfaTotpResponseSuccess = (confirmMfaTotpResponse200) & {
+  headers: Headers;
+};
+export type confirmMfaTotpResponseError = (confirmMfaTotpResponse400 | confirmMfaTotpResponse401 | confirmMfaTotpResponse403) & {
+  headers: Headers;
+};
+
+export type confirmMfaTotpResponse = (confirmMfaTotpResponseSuccess | confirmMfaTotpResponseError)
+
+export const getConfirmMfaTotpUrl = () => {
+
+
+
+
+  return `/auth/mfa/totp/confirm`
+}
+
+/**
+ * 등록 중인(pending) 시크릿으로 첫 6자리 코드를 검증해 TOTP를 verified 상태로 전환한다.
+ * 첫 번째 2FA 수단이면 복구 코드 10개를 발급해 `recoveryCodes`에 담고 세션 쿠키를 설정한다
+ * (mfa-enroll 토큰으로 진입한 등록 흐름이 로그인까지 마쳤다는 뜻). 이미 다른 수단이 있으면 `recoveryCodes`는 null.
+ * @summary TOTP 등록 완료 (첫 코드 검증)
+ */
+export const confirmMfaTotp = async (confirmMfaTotpBody: ConfirmMfaTotpBody, options?: Parameters<typeof apiFetch>[1]): Promise<confirmMfaTotpResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<confirmMfaTotpResponse>(getConfirmMfaTotpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(confirmMfaTotpBody)
+  }
+);}
+
+
+
+
+
+export const getConfirmMfaTotpMutationKey = () => ['confirmMfaTotp'] as const;
+
+export const getConfirmMfaTotpMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMfaTotp>>, TError,ConfirmMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmMfaTotp>>, TError,ConfirmMfaTotpMutationVariables, TContext> => {
+
+const mutationKey = getConfirmMfaTotpMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmMfaTotp>>, ConfirmMfaTotpMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmMfaTotp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmMfaTotpMutationResult = NonNullable<Awaited<ReturnType<typeof confirmMfaTotp>>>
+    export type ConfirmMfaTotpMutationBody = ConfirmMfaTotpBody
+    export type ConfirmMfaTotpMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+    export type ConfirmMfaTotpMutationVariables = {data: ConfirmMfaTotpBody}
+
+    /**
+ * @summary TOTP 등록 완료 (첫 코드 검증)
+ */
+export const useConfirmMfaTotp = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMfaTotp>>, TError,ConfirmMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmMfaTotp>>,
+        TError,
+        ConfirmMfaTotpMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmMfaTotpMutationOptions(options), queryClient);
+    }
+
+export type getMfaStatusResponse200 = {
+  data: MfaStatusResponse
+  status: 200
+}
+
+export type getMfaStatusResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getMfaStatusResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getMfaStatusResponseSuccess = (getMfaStatusResponse200) & {
+  headers: Headers;
+};
+export type getMfaStatusResponseError = (getMfaStatusResponse401 | getMfaStatusResponse403) & {
+  headers: Headers;
+};
+
+export type getMfaStatusResponse = (getMfaStatusResponseSuccess | getMfaStatusResponseError)
+
+export const getGetMfaStatusUrl = () => {
+
+
+
+
+  return `/auth/mfa/status`
+}
+
+/**
+ * 로그인한 관리자·사업자 계정의 2FA 수단 상태를 조회한다 —
+ * TOTP 등록 상태(unenrolled/pending/verified), 패스키 목록, 미사용 복구 코드 개수.
+ * 로그인 세션 쿠키 전용(manage 흐름).
+ * @summary 2FA 상태 조회
+ */
+export const getMfaStatus = async ( options?: Parameters<typeof apiFetch>[1]): Promise<getMfaStatusResponse> => {
+
+  return apiFetch<getMfaStatusResponse>(getGetMfaStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMfaStatusQueryKey = () => {
+    return [
+    `/auth/mfa/status`
+    ] as const;
+    }
+
+
+export const getGetMfaStatusQueryOptions = <TData = Awaited<ReturnType<typeof getMfaStatus>>, TError = UnauthorizedResponse | ForbiddenResponse>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMfaStatusQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMfaStatus>>> = ({ signal }) => getMfaStatus({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetMfaStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getMfaStatus>>>
+export type GetMfaStatusQueryError = UnauthorizedResponse | ForbiddenResponse
+
+
+export function useGetMfaStatus<TData = Awaited<ReturnType<typeof getMfaStatus>>, TError = UnauthorizedResponse | ForbiddenResponse>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMfaStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getMfaStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMfaStatus<TData = Awaited<ReturnType<typeof getMfaStatus>>, TError = UnauthorizedResponse | ForbiddenResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getMfaStatus>>,
+          TError,
+          Awaited<ReturnType<typeof getMfaStatus>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetMfaStatus<TData = Awaited<ReturnType<typeof getMfaStatus>>, TError = UnauthorizedResponse | ForbiddenResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 2FA 상태 조회
+ */
+
+export function useGetMfaStatus<TData = Awaited<ReturnType<typeof getMfaStatus>>, TError = UnauthorizedResponse | ForbiddenResponse>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getMfaStatus>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetMfaStatusQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getMfaPasskeyRegisterOptionsResponse200 = {
+  data: MfaPasskeyRegisterOptionsResponse
+  status: 200
+}
+
+export type getMfaPasskeyRegisterOptionsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getMfaPasskeyRegisterOptionsResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type getMfaPasskeyRegisterOptionsResponseSuccess = (getMfaPasskeyRegisterOptionsResponse200) & {
+  headers: Headers;
+};
+export type getMfaPasskeyRegisterOptionsResponseError = (getMfaPasskeyRegisterOptionsResponse401 | getMfaPasskeyRegisterOptionsResponse403) & {
+  headers: Headers;
+};
+
+export type getMfaPasskeyRegisterOptionsResponse = (getMfaPasskeyRegisterOptionsResponseSuccess | getMfaPasskeyRegisterOptionsResponseError)
+
+export const getGetMfaPasskeyRegisterOptionsUrl = () => {
+
+
+
+
+  return `/auth/mfa/passkeys/register-options`
+}
+
+/**
+ * 패스키 등록용 `PublicKeyCredentialCreationOptionsJSON`을 발급하고 챌린지를 서버에 저장한다.
+ * 이미 등록된 패스키는 excludeCredentials로 제외한다. 로그인 세션 쿠키 또는 mfa-enroll 토큰으로 인증한다.
+ * @summary 패스키 등록 옵션 발급 (WebAuthn)
+ */
+export const getMfaPasskeyRegisterOptions = async (getMfaPasskeyRegisterOptionsBody?: GetMfaPasskeyRegisterOptionsBody, options?: Parameters<typeof apiFetch>[1]): Promise<getMfaPasskeyRegisterOptionsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<getMfaPasskeyRegisterOptionsResponse>(getGetMfaPasskeyRegisterOptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(getMfaPasskeyRegisterOptionsBody)
+  }
+);}
+
+
+
+
+
+export const getGetMfaPasskeyRegisterOptionsMutationKey = () => ['getMfaPasskeyRegisterOptions'] as const;
+
+export const getGetMfaPasskeyRegisterOptionsMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext> => {
+
+const mutationKey = getGetMfaPasskeyRegisterOptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, GetMfaPasskeyRegisterOptionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  getMfaPasskeyRegisterOptions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetMfaPasskeyRegisterOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>>
+    export type GetMfaPasskeyRegisterOptionsMutationBody = GetMfaPasskeyRegisterOptionsBody | undefined
+    export type GetMfaPasskeyRegisterOptionsMutationError = UnauthorizedResponse | ForbiddenResponse
+    export type GetMfaPasskeyRegisterOptionsMutationVariables = {data?: GetMfaPasskeyRegisterOptionsBody}
+
+    /**
+ * @summary 패스키 등록 옵션 발급 (WebAuthn)
+ */
+export const useGetMfaPasskeyRegisterOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>, TError,GetMfaPasskeyRegisterOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof getMfaPasskeyRegisterOptions>>,
+        TError,
+        GetMfaPasskeyRegisterOptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGetMfaPasskeyRegisterOptionsMutationOptions(options), queryClient);
+    }
+
+export type verifyMfaPasskeyRegistrationResponse200 = {
+  data: MfaPasskeyRegisterResponse
+  status: 200
+}
+
+export type verifyMfaPasskeyRegistrationResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type verifyMfaPasskeyRegistrationResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type verifyMfaPasskeyRegistrationResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type verifyMfaPasskeyRegistrationResponseSuccess = (verifyMfaPasskeyRegistrationResponse200) & {
+  headers: Headers;
+};
+export type verifyMfaPasskeyRegistrationResponseError = (verifyMfaPasskeyRegistrationResponse400 | verifyMfaPasskeyRegistrationResponse401 | verifyMfaPasskeyRegistrationResponse403) & {
+  headers: Headers;
+};
+
+export type verifyMfaPasskeyRegistrationResponse = (verifyMfaPasskeyRegistrationResponseSuccess | verifyMfaPasskeyRegistrationResponseError)
+
+export const getVerifyMfaPasskeyRegistrationUrl = () => {
+
+
+
+
+  return `/auth/mfa/passkeys/register-verify`
+}
+
+/**
+ * authenticator 등록 응답(`RegistrationResponseJSON`)을 검증해 패스키를 저장한다.
+ * 첫 번째 2FA 수단이면 복구 코드 10개를 발급하고 세션 쿠키를 설정한다(첫 수단 등록=로그인 완료).
+ * WebAuthn credential JSON은 base64url 값이라 일반 입력 보안 검사(deny-list)를 적용하지 않는다 —
+ * 프로토콜 파라미터는 simplewebauthn이 암호학적으로 검증한다.
+ * @summary 패스키 등록 검증 (WebAuthn)
+ */
+export const verifyMfaPasskeyRegistration = async (verifyMfaPasskeyRegistrationBody: VerifyMfaPasskeyRegistrationBody, options?: Parameters<typeof apiFetch>[1]): Promise<verifyMfaPasskeyRegistrationResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<verifyMfaPasskeyRegistrationResponse>(getVerifyMfaPasskeyRegistrationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyMfaPasskeyRegistrationBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyMfaPasskeyRegistrationMutationKey = () => ['verifyMfaPasskeyRegistration'] as const;
+
+export const getVerifyMfaPasskeyRegistrationMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>, TError,VerifyMfaPasskeyRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>, TError,VerifyMfaPasskeyRegistrationMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMfaPasskeyRegistrationMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>, VerifyMfaPasskeyRegistrationMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyMfaPasskeyRegistration(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyMfaPasskeyRegistrationMutationResult = NonNullable<Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>>
+    export type VerifyMfaPasskeyRegistrationMutationBody = VerifyMfaPasskeyRegistrationBody
+    export type VerifyMfaPasskeyRegistrationMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+    export type VerifyMfaPasskeyRegistrationMutationVariables = {data: VerifyMfaPasskeyRegistrationBody}
+
+    /**
+ * @summary 패스키 등록 검증 (WebAuthn)
+ */
+export const useVerifyMfaPasskeyRegistration = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>, TError,VerifyMfaPasskeyRegistrationMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyMfaPasskeyRegistration>>,
+        TError,
+        VerifyMfaPasskeyRegistrationMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyMfaPasskeyRegistrationMutationOptions(options), queryClient);
+    }
+
+export type deleteMfaTotpResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteMfaTotpResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type deleteMfaTotpResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type deleteMfaTotpResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type deleteMfaTotpResponseSuccess = (deleteMfaTotpResponse204) & {
+  headers: Headers;
+};
+export type deleteMfaTotpResponseError = (deleteMfaTotpResponse400 | deleteMfaTotpResponse401 | deleteMfaTotpResponse403) & {
+  headers: Headers;
+};
+
+export type deleteMfaTotpResponse = (deleteMfaTotpResponseSuccess | deleteMfaTotpResponseError)
+
+export const getDeleteMfaTotpUrl = () => {
+
+
+
+
+  return `/auth/mfa/totp`
+}
+
+/**
+ * 현재 비밀번호로 본인 확인 후 TOTP 수단을 삭제한다. 로그인 세션 쿠키 전용(manage 흐름).
+ * @summary TOTP 삭제
+ */
+export const deleteMfaTotp = async (deleteMfaTotpBody: DeleteMfaTotpBody, options?: Parameters<typeof apiFetch>[1]): Promise<deleteMfaTotpResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<deleteMfaTotpResponse>(getDeleteMfaTotpUrl(),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deleteMfaTotpBody)
+  }
+);}
+
+
+
+
+
+export const getDeleteMfaTotpMutationKey = () => ['deleteMfaTotp'] as const;
+
+export const getDeleteMfaTotpMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMfaTotp>>, TError,DeleteMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMfaTotp>>, TError,DeleteMfaTotpMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMfaTotpMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMfaTotp>>, DeleteMfaTotpMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  deleteMfaTotp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMfaTotpMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMfaTotp>>>
+    export type DeleteMfaTotpMutationBody = DeleteMfaTotpBody
+    export type DeleteMfaTotpMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+    export type DeleteMfaTotpMutationVariables = {data: DeleteMfaTotpBody}
+
+    /**
+ * @summary TOTP 삭제
+ */
+export const useDeleteMfaTotp = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMfaTotp>>, TError,DeleteMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMfaTotp>>,
+        TError,
+        DeleteMfaTotpMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMfaTotpMutationOptions(options), queryClient);
+    }
+
+export type deleteMfaPasskeyResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteMfaPasskeyResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type deleteMfaPasskeyResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type deleteMfaPasskeyResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type deleteMfaPasskeyResponseSuccess = (deleteMfaPasskeyResponse204) & {
+  headers: Headers;
+};
+export type deleteMfaPasskeyResponseError = (deleteMfaPasskeyResponse400 | deleteMfaPasskeyResponse401 | deleteMfaPasskeyResponse403) & {
+  headers: Headers;
+};
+
+export type deleteMfaPasskeyResponse = (deleteMfaPasskeyResponseSuccess | deleteMfaPasskeyResponseError)
+
+export const getDeleteMfaPasskeyUrl = (id: string,) => {
+
+
+
+
+  return `/auth/mfa/passkeys/${id}`
+}
+
+/**
+ * 현재 비밀번호로 본인 확인 후 지정 패스키를 삭제한다. 로그인 세션 쿠키 전용(manage 흐름).
+ * @summary 패스키 삭제
+ */
+export const deleteMfaPasskey = async (id: string,
+    deleteMfaPasskeyBody: DeleteMfaPasskeyBody, options?: Parameters<typeof apiFetch>[1]): Promise<deleteMfaPasskeyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<deleteMfaPasskeyResponse>(getDeleteMfaPasskeyUrl(id),
+  {
+    ...options,
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(deleteMfaPasskeyBody)
+  }
+);}
+
+
+
+
+
+export const getDeleteMfaPasskeyMutationKey = () => ['deleteMfaPasskey'] as const;
+
+export const getDeleteMfaPasskeyMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMfaPasskey>>, TError,DeleteMfaPasskeyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMfaPasskey>>, TError,DeleteMfaPasskeyMutationVariables, TContext> => {
+
+const mutationKey = getDeleteMfaPasskeyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMfaPasskey>>, DeleteMfaPasskeyMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  deleteMfaPasskey(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMfaPasskeyMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMfaPasskey>>>
+    export type DeleteMfaPasskeyMutationBody = DeleteMfaPasskeyBody
+    export type DeleteMfaPasskeyMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+    export type DeleteMfaPasskeyMutationVariables = {id: string;data: DeleteMfaPasskeyBody}
+
+    /**
+ * @summary 패스키 삭제
+ */
+export const useDeleteMfaPasskey = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMfaPasskey>>, TError,DeleteMfaPasskeyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMfaPasskey>>,
+        TError,
+        DeleteMfaPasskeyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteMfaPasskeyMutationOptions(options), queryClient);
+    }
+
+export type regenerateMfaRecoveryCodesResponse200 = {
+  data: MfaRecoveryCodesResponse
+  status: 200
+}
+
+export type regenerateMfaRecoveryCodesResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type regenerateMfaRecoveryCodesResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type regenerateMfaRecoveryCodesResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
+export type regenerateMfaRecoveryCodesResponseSuccess = (regenerateMfaRecoveryCodesResponse200) & {
+  headers: Headers;
+};
+export type regenerateMfaRecoveryCodesResponseError = (regenerateMfaRecoveryCodesResponse400 | regenerateMfaRecoveryCodesResponse401 | regenerateMfaRecoveryCodesResponse403) & {
+  headers: Headers;
+};
+
+export type regenerateMfaRecoveryCodesResponse = (regenerateMfaRecoveryCodesResponseSuccess | regenerateMfaRecoveryCodesResponseError)
+
+export const getRegenerateMfaRecoveryCodesUrl = () => {
+
+
+
+
+  return `/auth/mfa/recovery-codes/regenerate`
+}
+
+/**
+ * 현재 비밀번호로 본인 확인 후 미사용 복구 코드 10개를 새로 발급한다.
+ * 기존 복구 코드는 전부 무효화되며 평문은 이 응답에만 한 번 노출된다. 로그인 세션 쿠키 전용(manage 흐름).
+ * @summary 복구 코드 재발급
+ */
+export const regenerateMfaRecoveryCodes = async (regenerateMfaRecoveryCodesBody: RegenerateMfaRecoveryCodesBody, options?: Parameters<typeof apiFetch>[1]): Promise<regenerateMfaRecoveryCodesResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<regenerateMfaRecoveryCodesResponse>(getRegenerateMfaRecoveryCodesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(regenerateMfaRecoveryCodesBody)
+  }
+);}
+
+
+
+
+
+export const getRegenerateMfaRecoveryCodesMutationKey = () => ['regenerateMfaRecoveryCodes'] as const;
+
+export const getRegenerateMfaRecoveryCodesMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>, TError,RegenerateMfaRecoveryCodesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>, TError,RegenerateMfaRecoveryCodesMutationVariables, TContext> => {
+
+const mutationKey = getRegenerateMfaRecoveryCodesMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>, RegenerateMfaRecoveryCodesMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  regenerateMfaRecoveryCodes(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegenerateMfaRecoveryCodesMutationResult = NonNullable<Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>>
+    export type RegenerateMfaRecoveryCodesMutationBody = RegenerateMfaRecoveryCodesBody
+    export type RegenerateMfaRecoveryCodesMutationError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse
+    export type RegenerateMfaRecoveryCodesMutationVariables = {data: RegenerateMfaRecoveryCodesBody}
+
+    /**
+ * @summary 복구 코드 재발급
+ */
+export const useRegenerateMfaRecoveryCodes = <TError = BadRequestResponse | UnauthorizedResponse | ForbiddenResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>, TError,RegenerateMfaRecoveryCodesMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof regenerateMfaRecoveryCodes>>,
+        TError,
+        RegenerateMfaRecoveryCodesMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegenerateMfaRecoveryCodesMutationOptions(options), queryClient);
+    }
+
+export type getMfaPasskeyAuthOptionsResponse200 = {
+  data: MfaPasskeyAuthOptionsResponse
+  status: 200
+}
+
+export type getMfaPasskeyAuthOptionsResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type getMfaPasskeyAuthOptionsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type getMfaPasskeyAuthOptionsResponse429 = {
+  data: void
+  status: 429
+}
+
+export type getMfaPasskeyAuthOptionsResponseSuccess = (getMfaPasskeyAuthOptionsResponse200) & {
+  headers: Headers;
+};
+export type getMfaPasskeyAuthOptionsResponseError = (getMfaPasskeyAuthOptionsResponse400 | getMfaPasskeyAuthOptionsResponse401 | getMfaPasskeyAuthOptionsResponse429) & {
+  headers: Headers;
+};
+
+export type getMfaPasskeyAuthOptionsResponse = (getMfaPasskeyAuthOptionsResponseSuccess | getMfaPasskeyAuthOptionsResponseError)
+
+export const getGetMfaPasskeyAuthOptionsUrl = () => {
+
+
+
+
+  return `/auth/mfa/passkeys/auth-options`
+}
+
+/**
+ * 로그인 2FA 검증(pending 흐름)용 `PublicKeyCredentialRequestOptionsJSON`을 발급한다.
+ * body의 mfaToken(mfa-pending, 10분 만료)으로만 인증한다. 로그인 시도 횟수 제한(AUTH_THROTTLE)이 적용된다.
+ * @summary 패스키 로그인 검증 옵션 발급 (WebAuthn)
+ */
+export const getMfaPasskeyAuthOptions = async (getMfaPasskeyAuthOptionsBody: GetMfaPasskeyAuthOptionsBody, options?: Parameters<typeof apiFetch>[1]): Promise<getMfaPasskeyAuthOptionsResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<getMfaPasskeyAuthOptionsResponse>(getGetMfaPasskeyAuthOptionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(getMfaPasskeyAuthOptionsBody)
+  }
+);}
+
+
+
+
+
+export const getGetMfaPasskeyAuthOptionsMutationKey = () => ['getMfaPasskeyAuthOptions'] as const;
+
+export const getGetMfaPasskeyAuthOptionsMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>, TError,GetMfaPasskeyAuthOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>, TError,GetMfaPasskeyAuthOptionsMutationVariables, TContext> => {
+
+const mutationKey = getGetMfaPasskeyAuthOptionsMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>, GetMfaPasskeyAuthOptionsMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  getMfaPasskeyAuthOptions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GetMfaPasskeyAuthOptionsMutationResult = NonNullable<Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>>
+    export type GetMfaPasskeyAuthOptionsMutationBody = GetMfaPasskeyAuthOptionsBody
+    export type GetMfaPasskeyAuthOptionsMutationError = BadRequestResponse | UnauthorizedResponse | void
+    export type GetMfaPasskeyAuthOptionsMutationVariables = {data: GetMfaPasskeyAuthOptionsBody}
+
+    /**
+ * @summary 패스키 로그인 검증 옵션 발급 (WebAuthn)
+ */
+export const useGetMfaPasskeyAuthOptions = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>, TError,GetMfaPasskeyAuthOptionsMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof getMfaPasskeyAuthOptions>>,
+        TError,
+        GetMfaPasskeyAuthOptionsMutationVariables,
+        TContext
+      > => {
+      return useMutation(getGetMfaPasskeyAuthOptionsMutationOptions(options), queryClient);
+    }
+
+export type verifyMfaTotpResponse200 = {
+  data: VerifyMfaTotp200
+  status: 200
+}
+
+export type verifyMfaTotpResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type verifyMfaTotpResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type verifyMfaTotpResponse429 = {
+  data: void
+  status: 429
+}
+
+export type verifyMfaTotpResponseSuccess = (verifyMfaTotpResponse200) & {
+  headers: Headers;
+};
+export type verifyMfaTotpResponseError = (verifyMfaTotpResponse400 | verifyMfaTotpResponse401 | verifyMfaTotpResponse429) & {
+  headers: Headers;
+};
+
+export type verifyMfaTotpResponse = (verifyMfaTotpResponseSuccess | verifyMfaTotpResponseError)
+
+export const getVerifyMfaTotpUrl = () => {
+
+
+
+
+  return `/auth/mfa/verify/totp`
+}
+
+/**
+ * 로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 6자리 TOTP 코드로 본인을 확인하면
+ * 세션 쿠키(`Set-Cookie`)와 함께 공개 사용자 정보를 반환한다. 로그인 시도 횟수 제한이 적용된다.
+ * @summary 2FA 로그인 검증 — TOTP 코드
+ */
+export const verifyMfaTotp = async (verifyMfaTotpBody: VerifyMfaTotpBody, options?: Parameters<typeof apiFetch>[1]): Promise<verifyMfaTotpResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<verifyMfaTotpResponse>(getVerifyMfaTotpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyMfaTotpBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyMfaTotpMutationKey = () => ['verifyMfaTotp'] as const;
+
+export const getVerifyMfaTotpMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaTotp>>, TError,VerifyMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyMfaTotp>>, TError,VerifyMfaTotpMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMfaTotpMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyMfaTotp>>, VerifyMfaTotpMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyMfaTotp(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyMfaTotpMutationResult = NonNullable<Awaited<ReturnType<typeof verifyMfaTotp>>>
+    export type VerifyMfaTotpMutationBody = VerifyMfaTotpBody
+    export type VerifyMfaTotpMutationError = BadRequestResponse | UnauthorizedResponse | void
+    export type VerifyMfaTotpMutationVariables = {data: VerifyMfaTotpBody}
+
+    /**
+ * @summary 2FA 로그인 검증 — TOTP 코드
+ */
+export const useVerifyMfaTotp = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaTotp>>, TError,VerifyMfaTotpMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyMfaTotp>>,
+        TError,
+        VerifyMfaTotpMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyMfaTotpMutationOptions(options), queryClient);
+    }
+
+export type verifyMfaPasskeyResponse200 = {
+  data: VerifyMfaPasskey200
+  status: 200
+}
+
+export type verifyMfaPasskeyResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type verifyMfaPasskeyResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type verifyMfaPasskeyResponse429 = {
+  data: void
+  status: 429
+}
+
+export type verifyMfaPasskeyResponseSuccess = (verifyMfaPasskeyResponse200) & {
+  headers: Headers;
+};
+export type verifyMfaPasskeyResponseError = (verifyMfaPasskeyResponse400 | verifyMfaPasskeyResponse401 | verifyMfaPasskeyResponse429) & {
+  headers: Headers;
+};
+
+export type verifyMfaPasskeyResponse = (verifyMfaPasskeyResponseSuccess | verifyMfaPasskeyResponseError)
+
+export const getVerifyMfaPasskeyUrl = () => {
+
+
+
+
+  return `/auth/mfa/verify/passkey`
+}
+
+/**
+ * 로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 authenticator 인증 응답
+ * (`AuthenticationResponseJSON`)으로 본인을 확인하면 세션 쿠키와 함께 공개 사용자 정보를 반환한다.
+ * 로그인 시도 횟수 제한이 적용된다. credential JSON은 등록 검증과 같은 사유로 입력 보안 검사를 생략한다.
+ * @summary 2FA 로그인 검증 — 패스키 (WebAuthn)
+ */
+export const verifyMfaPasskey = async (verifyMfaPasskeyBody: VerifyMfaPasskeyBody, options?: Parameters<typeof apiFetch>[1]): Promise<verifyMfaPasskeyResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<verifyMfaPasskeyResponse>(getVerifyMfaPasskeyUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyMfaPasskeyBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyMfaPasskeyMutationKey = () => ['verifyMfaPasskey'] as const;
+
+export const getVerifyMfaPasskeyMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskey>>, TError,VerifyMfaPasskeyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskey>>, TError,VerifyMfaPasskeyMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMfaPasskeyMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyMfaPasskey>>, VerifyMfaPasskeyMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyMfaPasskey(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyMfaPasskeyMutationResult = NonNullable<Awaited<ReturnType<typeof verifyMfaPasskey>>>
+    export type VerifyMfaPasskeyMutationBody = VerifyMfaPasskeyBody
+    export type VerifyMfaPasskeyMutationError = BadRequestResponse | UnauthorizedResponse | void
+    export type VerifyMfaPasskeyMutationVariables = {data: VerifyMfaPasskeyBody}
+
+    /**
+ * @summary 2FA 로그인 검증 — 패스키 (WebAuthn)
+ */
+export const useVerifyMfaPasskey = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaPasskey>>, TError,VerifyMfaPasskeyMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyMfaPasskey>>,
+        TError,
+        VerifyMfaPasskeyMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyMfaPasskeyMutationOptions(options), queryClient);
+    }
+
+export type verifyMfaRecoveryCodeResponse200 = {
+  data: VerifyMfaRecoveryCode200
+  status: 200
+}
+
+export type verifyMfaRecoveryCodeResponse400 = {
+  data: BadRequestResponse
+  status: 400
+}
+
+export type verifyMfaRecoveryCodeResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type verifyMfaRecoveryCodeResponse429 = {
+  data: void
+  status: 429
+}
+
+export type verifyMfaRecoveryCodeResponseSuccess = (verifyMfaRecoveryCodeResponse200) & {
+  headers: Headers;
+};
+export type verifyMfaRecoveryCodeResponseError = (verifyMfaRecoveryCodeResponse400 | verifyMfaRecoveryCodeResponse401 | verifyMfaRecoveryCodeResponse429) & {
+  headers: Headers;
+};
+
+export type verifyMfaRecoveryCodeResponse = (verifyMfaRecoveryCodeResponseSuccess | verifyMfaRecoveryCodeResponseError)
+
+export const getVerifyMfaRecoveryCodeUrl = () => {
+
+
+
+
+  return `/auth/mfa/verify/recovery`
+}
+
+/**
+ * 로그인 2FA 검증(pending 흐름). body의 mfaToken(mfa-pending)과 미사용 복구 코드로 본인을 확인하면
+ * 세션 쿠키와 함께 공개 사용자 정보를 반환한다. 복구 코드는 사용 즉시 소모된다.
+ * `XXXX-XXXX-XXXX`(하이픈 포함 14자)와 하이픈 없는 12자 모두 허용한다. 로그인 시도 횟수 제한이 적용된다.
+ * @summary 2FA 로그인 검증 — 복구 코드
+ */
+export const verifyMfaRecoveryCode = async (verifyMfaRecoveryCodeBody: VerifyMfaRecoveryCodeBody, options?: Parameters<typeof apiFetch>[1]): Promise<verifyMfaRecoveryCodeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<verifyMfaRecoveryCodeResponse>(getVerifyMfaRecoveryCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(verifyMfaRecoveryCodeBody)
+  }
+);}
+
+
+
+
+
+export const getVerifyMfaRecoveryCodeMutationKey = () => ['verifyMfaRecoveryCode'] as const;
+
+export const getVerifyMfaRecoveryCodeMutationOptions = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaRecoveryCode>>, TError,VerifyMfaRecoveryCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof verifyMfaRecoveryCode>>, TError,VerifyMfaRecoveryCodeMutationVariables, TContext> => {
+
+const mutationKey = getVerifyMfaRecoveryCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof verifyMfaRecoveryCode>>, VerifyMfaRecoveryCodeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  verifyMfaRecoveryCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type VerifyMfaRecoveryCodeMutationResult = NonNullable<Awaited<ReturnType<typeof verifyMfaRecoveryCode>>>
+    export type VerifyMfaRecoveryCodeMutationBody = VerifyMfaRecoveryCodeBody
+    export type VerifyMfaRecoveryCodeMutationError = BadRequestResponse | UnauthorizedResponse | void
+    export type VerifyMfaRecoveryCodeMutationVariables = {data: VerifyMfaRecoveryCodeBody}
+
+    /**
+ * @summary 2FA 로그인 검증 — 복구 코드
+ */
+export const useVerifyMfaRecoveryCode = <TError = BadRequestResponse | UnauthorizedResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof verifyMfaRecoveryCode>>, TError,VerifyMfaRecoveryCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof verifyMfaRecoveryCode>>,
+        TError,
+        VerifyMfaRecoveryCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getVerifyMfaRecoveryCodeMutationOptions(options), queryClient);
     }
 
 export type getUserResponse200 = {
@@ -2547,6 +3772,135 @@ export function useListSimilarChallenges<TData = Awaited<ReturnType<typeof listS
 
 
 
+export type getChallengeAttachmentDownloadResponse200 = {
+  data: GetChallengeAttachmentDownload200
+  status: 200
+}
+
+export type getChallengeAttachmentDownloadResponse404 = {
+  data: void
+  status: 404
+}
+
+export type getChallengeAttachmentDownloadResponseSuccess = (getChallengeAttachmentDownloadResponse200) & {
+  headers: Headers;
+};
+export type getChallengeAttachmentDownloadResponseError = (getChallengeAttachmentDownloadResponse404) & {
+  headers: Headers;
+};
+
+export type getChallengeAttachmentDownloadResponse = (getChallengeAttachmentDownloadResponseSuccess | getChallengeAttachmentDownloadResponseError)
+
+export const getGetChallengeAttachmentDownloadUrl = (id: string,
+    fileId: string,) => {
+
+
+
+
+  return `/challenges/${id}/attachments/${fileId}/download`
+}
+
+/**
+ * 공개 공고의 첨부파일을 내려받는 5분짜리 presigned URL. private 버킷은 이 경로로만 연다.
+ * @summary 공고 첨부파일 다운로드 URL
+ */
+export const getChallengeAttachmentDownload = async (id: string,
+    fileId: string, options?: Parameters<typeof apiFetch>[1]): Promise<getChallengeAttachmentDownloadResponse> => {
+
+  return apiFetch<getChallengeAttachmentDownloadResponse>(getGetChallengeAttachmentDownloadUrl(id,fileId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetChallengeAttachmentDownloadQueryKey = (id: string,
+    fileId: string,) => {
+    return [
+    `/challenges/${id}/attachments/${fileId}/download`
+    ] as const;
+    }
+
+
+export const getGetChallengeAttachmentDownloadQueryOptions = <TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetChallengeAttachmentDownloadQueryKey(id,fileId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>> = ({ signal }) => getChallengeAttachmentDownload(id,fileId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined && fileId !== null && fileId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetChallengeAttachmentDownloadQueryResult = NonNullable<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>>
+export type GetChallengeAttachmentDownloadQueryError = void
+
+
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>,
+          TError,
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>,
+          TError,
+          Awaited<ReturnType<typeof getChallengeAttachmentDownload>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 공고 첨부파일 다운로드 URL
+ */
+
+export function useGetChallengeAttachmentDownload<TData = Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError = void>(
+ id: string,
+    fileId: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getChallengeAttachmentDownload>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetChallengeAttachmentDownloadQueryOptions(id,fileId,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type listTeamsResponse200 = {
   data: Team[]
   status: 200
@@ -2922,6 +4276,7 @@ export const getListManagedTeamsUrl = () => {
 
 /**
  * 팀 지원자 관리 화면(`/my/teams/public-data`). 내가 리더인 팀과 그 지원자 목록(팀장 본인 행 제외).
+ * 각 팀에 연결된 챌린지의 공개 포스터 URL을 포함한다(없거나 공개 준비 상태가 아니면 null).
  * 지원자별 합격/불합격 결정은 `PATCH /teams/{id}/members/{memberId}`로 저장한다.
  * @summary 내가 리더인 팀과 지원자 목록 조회
  */
