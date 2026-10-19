@@ -423,12 +423,25 @@ export function UserShell({
     </>
   );
 }
-export const Content = styled.div({
-  width: 'min(1200px, calc(100% - 48px))',
-  margin: '0 auto',
-  padding: '40px 0',
-  [mobile]: { width: '100%', padding: '24px 16px' },
-});
+export type ContentSize = 'default' | 'medium' | 'narrow';
+const contentWidths: Record<ContentSize, string> = {
+  default: 'min(1200px, calc(100% - 48px))',
+  medium: 'min(720px, calc(100% - 48px))',
+  narrow: 'min(640px, calc(100% - 48px))',
+};
+const contentBase = { margin: '0 auto', padding: '40px 0' };
+const contentMobile = { [mobile]: { width: '100%', padding: '24px 16px' } };
+export const Content = styled.div<{ size?: ContentSize }>(
+  ({ size = 'default' }) => ({ width: contentWidths[size] }),
+  contentBase,
+  contentMobile,
+);
+export const FormContent = styled.form<{ size?: ContentSize }>(
+  ({ size = 'default' }) => ({ width: contentWidths[size] }),
+  contentBase,
+  { display: 'flex', flexDirection: 'column', gap: 32 },
+  contentMobile,
+);
 export const myMenu = [
   ['/my/teams', '내 팀'],
   ['/my/bookmarks', '북마크 챌린지'],

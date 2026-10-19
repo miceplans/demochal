@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReactNode } from 'react';
+import type { FormEventHandler, ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
 import { useUserStore } from '@/stores/useUserStore';
 import { RecruitmentPage } from './RecruitmentPage';
@@ -26,6 +26,13 @@ vi.mock('@semochal/api-client', () => ({
 
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  FormContent: ({
+    children,
+    onSubmit,
+  }: {
+    children: ReactNode;
+    onSubmit?: FormEventHandler<HTMLFormElement>;
+  }) => <form onSubmit={onSubmit}>{children}</form>,
 }));
 
 vi.mock('@/components/common/Toast', () => ({

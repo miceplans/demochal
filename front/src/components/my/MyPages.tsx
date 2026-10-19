@@ -1469,11 +1469,6 @@ export function TeamApplicantsPage() {
   );
 }
 
-const NotificationContent = styled(Content)({
-  width: 'min(720px, calc(100% - 48px))',
-  padding: '32px 0',
-  [mobile]: { width: '100%', padding: '24px 16px' },
-});
 const NotificationTitle = styled.h1({
   margin: 0,
   textAlign: 'center',
@@ -1626,7 +1621,7 @@ export function NotificationsPage() {
   };
   return (
     <UserShell title="알림">
-      <NotificationContent>
+      <Content size="medium">
         <Stack gap={24}>
           <NotificationTitle>알림</NotificationTitle>
           <NotificationTabs>
@@ -1739,7 +1734,7 @@ export function NotificationsPage() {
           {notificationsQuery.isPending && <LoadingState label="알림을 불러오는 중이에요." />}
           {notificationsQuery.isError && <Muted>알림을 불러오지 못했어요.</Muted>}
         </Stack>
-      </NotificationContent>
+      </Content>
     </UserShell>
   );
 }

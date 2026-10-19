@@ -22,6 +22,7 @@ vi.mock('@semochal/api-client', () => ({
 
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock('@/components/common/Toast', () => ({

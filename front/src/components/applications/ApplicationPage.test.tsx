@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReactNode } from 'react';
+import type { FormEventHandler, ReactNode } from 'react';
 import { ApplicationPage } from './ApplicationPage';
 import { ThemeProvider } from '@emotion/react';
 import { theme } from '@/styles/theme';
@@ -29,6 +29,13 @@ vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => (
     <ThemeProvider theme={theme}>{children}</ThemeProvider>
   ),
+  FormContent: ({
+    children,
+    onSubmit,
+  }: {
+    children: ReactNode;
+    onSubmit?: FormEventHandler<HTMLFormElement>;
+  }) => <form onSubmit={onSubmit}>{children}</form>,
 }));
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
