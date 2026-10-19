@@ -4,7 +4,7 @@ import { useRef, useState } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { colors as c } from '@/styles/design';
+import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 export type Question = NonNullable<
@@ -27,6 +27,9 @@ export function isAnswerValid(question: Question, value: string | string[] | und
     return Boolean(question.options?.includes(value));
   return value.length <= (question.type === 'long' ? 10000 : 500);
 }
+
+const isAnswered = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
 
 export function ApplicationQuestions({
   questions,
@@ -81,14 +84,14 @@ export function ApplicationQuestions({
     }
   };
   return (
-    <>
+    <Questions>
       {questions.map((question) => {
         const value = answers[question.id];
         const text = typeof value === 'string' ? value : '';
         const selected = Array.isArray(value) ? value : [];
         const inputId = `question-${question.id}`;
         return (
-          <Field key={question.id} disabled={disabled}>
+          <Field key={question.id} disabled={disabled} $completed={isAnswered(value)}>
             <legend>
               {question.title}
               {question.required ? ' (필수)' : ' (선택)'}
@@ -183,30 +186,89 @@ export function ApplicationQuestions({
         );
       })}
       {uploadError && <p role="alert">{uploadError}</p>}
-    </>
+    </Questions>
   );
 }
 
-const Field = styled.fieldset({
+const Questions = styled.div({
   display: 'flex',
   flexDirection: 'column',
-  gap: 12,
+  gap: 60,
+  counterReset: 'question',
+  [mobile]: { gap: 28 },
+});
+// 단계 번호는 CSS 카운터로 그려 legend 텍스트(접근성 이름)에 숫자가 섞이지 않게 한다.
+const Field = styled.fieldset<{ $completed: boolean }>(({ $completed }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 32,
   minWidth: 0,
   margin: 0,
-  padding: 20,
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 12,
+  padding: 0,
+  border: 0,
   color: c.gray900,
+  counterIncrement: 'question',
   ...textStyle.body,
-  '& legend': { padding: '0 8px', ...textStyle.bodyStrong },
-  '& input:not([type=radio]):not([type=checkbox]), & textarea': {
-    boxSizing: 'border-box',
+  '& legend': {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 32,
+    padding: 0,
+    color: c.gray900,
+    fontSize: 24,
+    fontWeight: 600,
+    lineHeight: 1.3,
+    letterSpacing: '-0.01em',
+    '&::before': {
+      content: 'counter(question)',
+      display: 'grid',
+      width: 30,
+      height: 30,
+      placeItems: 'center',
+      flexShrink: 0,
+      boxSizing: 'border-box',
+      border: `${$completed ? 0 : 0.5}px solid ${c.primary}`,
+      borderRadius: '50%',
+      background: $completed ? c.primary : c.white,
+      color: $completed ? c.white : c.primary,
+      fontSize: 20,
+      fontWeight: 600,
+    },
+    [mobile]: {
+      marginBottom: 14,
+      fontSize: 17,
+      letterSpacing: 0,
+      '&::before': { width: 26, height: 26, fontSize: 14 },
+    },
+  },
+  [mobile]: { gap: 14 },
+  '& input:not([type=radio]):not([type=checkbox]):not([type=file]), & textarea': {
+    width: 800,
     maxWidth: '100%',
-    padding: 12,
-    border: `0.5px solid ${c.gray300}`,
-    borderRadius: 6,
+    boxSizing: 'border-box',
+    padding: '0 14px',
+    border: `0.5px solid ${c.gray100}`,
+    borderRadius: 8,
     font: 'inherit',
     color: 'inherit',
     background: c.white,
+    '&:hover:not(:focus)': { borderColor: c.gray300 },
+    '&:focus': { outline: 'none', boxShadow: s.focus },
   },
-});
+  '& input:not([type=radio]):not([type=checkbox]):not([type=file])': { height: 44 },
+  '& textarea': { padding: 14, resize: 'vertical' },
+  '& label': { display: 'flex', alignItems: 'center', gap: 8, color: c.gray700 },
+  '& input[type=radio], & input[type=checkbox]': { accentColor: c.primary },
+  '& small': { color: c.gray500 },
+  '& button': {
+    alignSelf: 'flex-start',
+    padding: 0,
+    border: 0,
+    background: 'none',
+    color: c.gray500,
+    fontSize: 13,
+    textDecoration: 'underline',
+  },
+  '& > div:not([role])': { display: 'flex', gap: 8, color: c.gray700 },
+}));

@@ -18,8 +18,6 @@ type UserState = {
     slots?: { id: number; role: string; count: number; custom?: boolean }[];
   };
   applicationDraft: {
-    role: string;
-    members: { name: string; role: string }[];
     challengeId?: string;
     answers?: Record<string, string | string[]>;
   } | null;
