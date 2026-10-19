@@ -28,7 +28,11 @@ function setup(rows: unknown[][]) {
       },
     })),
   };
-  return { service: new ApplicationsService(db as never), db, conditions };
+  return {
+    service: new ApplicationsService(db as never, { create: vi.fn() } as never),
+    db,
+    conditions,
+  };
 }
 
 describe('application attachments and answer access', () => {

@@ -6,6 +6,7 @@ import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
 import type { UpdateApplicationDto } from './dto/update-application.dto.js';
 import { effectiveApplicationCondition } from './effective-application.js';
 import { fileAnswerIds, validateFormAnswers, type FormAnswer } from './form-answers.js';
+import { NotificationsService } from '../notifications/notifications.service.js';
 
 // Toss orderName 상한은 100자 — 그 이상의 챌린지 제목이 checkout 오픈을 막지 않게 잘라낸다.
 function tossOrderName(title: string) {
@@ -16,7 +17,10 @@ function tossOrderName(title: string) {
 
 @Injectable()
 export class ApplicationsService {
-  constructor(@Inject(DRIZZLE) private readonly db: Database) {}
+  constructor(
+    @Inject(DRIZZLE) private readonly db: Database,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   async apply(dto: ApplyChallengeDto, userId: string) {
     return this.db.transaction(async (tx) => {
@@ -128,6 +132,17 @@ export class ApplicationsService {
         };
       }
 
+      // 무료 신청은 여기서 바로 접수 완료. 유료 신청은 결제 확정(OrdersService.settleOrderPaid)에서 알린다.
+      await this.notificationsService.create(
+        userId,
+        'application.submitted',
+        {
+          applicationId: application.id,
+          challengeId: challenge.id,
+          challengeTitle: challenge.title,
+        },
+        tx,
+      );
       return { ...application, order: null };
     });
   }

@@ -56,7 +56,7 @@ describe('OrdersService.markCancelled', () => {
       id: 'order-1',
       status: 'pending',
     });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     const result = await service.markCancelled('order-1');
 
@@ -67,7 +67,7 @@ describe('OrdersService.markCancelled', () => {
 
   it('cancels a paid order without an ad (refund only)', async () => {
     const { db, ordersUpdateSet, adsUpdateSet } = createDbStub({ id: 'order-1', status: 'paid' });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await service.markCancelled('order-1');
 
@@ -81,7 +81,7 @@ describe('OrdersService.markCancelled', () => {
       status: 'paid',
       adId: 'ad-1',
     });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await service.markCancelled('order-1');
 
@@ -91,7 +91,7 @@ describe('OrdersService.markCancelled', () => {
 
   it('does not revert an ad for a canceled pending order that never activated it', async () => {
     const { db, adsUpdateSet } = createDbStub({ id: 'order-1', status: 'pending', adId: 'ad-1' });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await service.markCancelled('order-1');
 
@@ -103,7 +103,7 @@ describe('OrdersService.markCancelled', () => {
       id: 'order-1',
       status: 'canceled',
     });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     const result = await service.markCancelled('order-1');
 
@@ -114,7 +114,7 @@ describe('OrdersService.markCancelled', () => {
 
   it('throws for a missing order', async () => {
     const { db } = createDbStub(undefined);
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await expect(service.markCancelled('missing')).rejects.toThrow(NotFoundException);
   });
@@ -127,7 +127,7 @@ describe('OrdersService.markPaid', () => {
       ...existing,
       status: 'paid',
     });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     const result = await service.markPaid('order-1');
 
@@ -139,7 +139,7 @@ describe('OrdersService.markPaid', () => {
   it('is idempotent when the order is already paid', async () => {
     const existing = { id: 'order-1', status: 'paid', adId: 'ad-1' };
     const { db, ordersUpdateSet, adsUpdateSet } = createDbStub(existing);
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     const result = await service.markPaid('order-1');
 
@@ -153,7 +153,7 @@ describe('OrdersService.markPaid', () => {
       id: 'order-1',
       status: 'canceled',
     });
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
     expect(ordersUpdateSet).not.toHaveBeenCalled();
@@ -186,7 +186,7 @@ describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
       undefined,
       preparingAd(new Date(now.getTime() - 1)),
     );
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
     expect(ordersUpdateSet).not.toHaveBeenCalled();
@@ -202,7 +202,7 @@ describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
       undefined,
       preparingAd(new Date(now.getTime())),
     );
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
     expect(ordersUpdateSet).not.toHaveBeenCalled();
@@ -214,7 +214,7 @@ describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
       undefined,
       preparingAd(null),
     );
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
     expect(ordersUpdateSet).not.toHaveBeenCalled();
@@ -227,7 +227,7 @@ describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
       { ...existing, status: 'paid' },
       preparingAd(new Date(now.getTime() + 1)),
     );
-    const service = new OrdersService(db);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
 
     const result = await service.markPaid('order-1');
 

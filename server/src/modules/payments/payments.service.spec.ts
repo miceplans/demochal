@@ -792,7 +792,7 @@ describe('PaymentsService', () => {
     function createService(opts: { order: Record<string, unknown>; ad: Record<string, unknown> }) {
       const { db, insertValues, ordersUpdateSet, adsUpdateSet, orderLimit } =
         createCombinedDbStub(opts);
-      const service = new PaymentsService(db, new OrdersService(db));
+      const service = new PaymentsService(db, new OrdersService(db, { create: vi.fn() } as never));
       return { service, db, insertValues, ordersUpdateSet, adsUpdateSet, orderLimit };
     }
 
