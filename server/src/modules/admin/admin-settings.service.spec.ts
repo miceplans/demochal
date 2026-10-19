@@ -41,7 +41,9 @@ describe('AdminSettingsService', () => {
     const { db, insertCalls } = createDbStub();
     const service = new AdminSettingsService(db);
 
-    await service.update(JSON.parse('{"toString":true,"constructor":true,"contestAutoPublish":true}'));
+    await service.update(
+      JSON.parse('{"toString":true,"constructor":true,"contestAutoPublish":true}'),
+    );
 
     expect(insertCalls[0]?.values).toEqual({ contestAutoPublish: true });
   });
@@ -117,7 +119,11 @@ describe('AdminSettingsService', () => {
 
     expect(insertCalls[0]?.values[MAINTENANCE_START_KEY]).toBe(new Date(start).toISOString());
     const maintenance = (await service.get()).maintenance;
-    expect(maintenance).toEqual({ startAt: new Date(start).toISOString(), endAt: new Date(end).toISOString(), active: true });
+    expect(maintenance).toEqual({
+      startAt: new Date(start).toISOString(),
+      endAt: new Date(end).toISOString(),
+      active: true,
+    });
     expect(await service.isMaintenanceActive()).toBe(true);
   });
 
@@ -159,9 +165,9 @@ describe('AdminSettingsService', () => {
     const { db, insertCalls } = createDbStub();
     const service = new AdminSettingsService(db);
 
-    await expect(
-      service.update({ [MAINTENANCE_START_KEY]: 'not-a-date' }),
-    ).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.update({ [MAINTENANCE_START_KEY]: 'not-a-date' })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
     await expect(
       service.update({ [MAINTENANCE_END_KEY]: '2026-13-40T99:99' }),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -180,7 +186,11 @@ describe('AdminSettingsService', () => {
 
     await service.update({ [MAINTENANCE_START_KEY]: null, [MAINTENANCE_END_KEY]: null });
 
-    expect((await service.get()).maintenance).toEqual({ startAt: null, endAt: null, active: false });
+    expect((await service.get()).maintenance).toEqual({
+      startAt: null,
+      endAt: null,
+      active: false,
+    });
   });
 
   it('datetime-local 형식(로컬 시간) 입력은 UTC ISO로 정규화해 저장한다', async () => {

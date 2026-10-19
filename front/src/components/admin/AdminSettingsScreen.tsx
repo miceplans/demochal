@@ -63,8 +63,10 @@ export function AdminSettingsScreen() {
   const settings = settingsQuery.data?.data;
   const values = { ...(settings?.values ?? {}), ...pendingChanges };
   const maintenance = settings?.maintenance;
-  const effectiveStart = pendingWindow.startAt !== undefined ? pendingWindow.startAt : (maintenance?.startAt ?? null);
-  const effectiveEnd = pendingWindow.endAt !== undefined ? pendingWindow.endAt : (maintenance?.endAt ?? null);
+  const effectiveStart =
+    pendingWindow.startAt !== undefined ? pendingWindow.startAt : (maintenance?.startAt ?? null);
+  const effectiveEnd =
+    pendingWindow.endAt !== undefined ? pendingWindow.endAt : (maintenance?.endAt ?? null);
   const status = resolveStatus(effectiveStart, effectiveEnd);
 
   const updateSettingsMutation = generated.useUpdateAdminSettings({
@@ -258,12 +260,6 @@ const StatusBadge = styled.span<{ $tone: MaintenanceStatus['tone'] }>(({ $tone }
   borderRadius: 999,
   ...textStyle.overline,
   fontWeight: 600,
-  color:
-    $tone === 'active'
-      ? c.red
-      : $tone === 'scheduled'
-        ? c.primary
-        : c.gray500,
-  background:
-    $tone === 'active' ? c.lightRed : $tone === 'scheduled' ? c.paleBlue : c.gray100,
+  color: $tone === 'active' ? c.red : $tone === 'scheduled' ? c.primary : c.gray500,
+  background: $tone === 'active' ? c.lightRed : $tone === 'scheduled' ? c.paleBlue : c.gray100,
 }));

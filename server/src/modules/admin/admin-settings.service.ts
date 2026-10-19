@@ -156,7 +156,9 @@ export class AdminSettingsService {
   private async getValues(): Promise<Record<string, boolean>> {
     const stored = await this.getStoredValues();
     const booleans = Object.fromEntries(
-      Object.entries(stored).filter((entry): entry is [string, boolean] => typeof entry[1] === 'boolean'),
+      Object.entries(stored).filter(
+        (entry): entry is [string, boolean] => typeof entry[1] === 'boolean',
+      ),
     );
     return { ...DEFAULT_VALUES, ...booleans };
   }
@@ -172,7 +174,9 @@ export class AdminSettingsService {
     return {
       ...pickKnownBooleans(row.values),
       ...(Object.hasOwn(row.values, MAINTENANCE_START_KEY)
-        ? { [MAINTENANCE_START_KEY]: (row.values as Record<string, unknown>)[MAINTENANCE_START_KEY] }
+        ? {
+            [MAINTENANCE_START_KEY]: (row.values as Record<string, unknown>)[MAINTENANCE_START_KEY],
+          }
         : {}),
       ...(Object.hasOwn(row.values, MAINTENANCE_END_KEY)
         ? { [MAINTENANCE_END_KEY]: (row.values as Record<string, unknown>)[MAINTENANCE_END_KEY] }
