@@ -89,6 +89,8 @@ describe('MaintenanceGate', () => {
   });
 
   it('HTTP 클라이언트가 발생시킨 503 이벤트로 즉시 점검 화면으로 전환한다', async () => {
+    // 점검 화면 진입 후 탐침도 계속 503이어야 화면이 유지된다 — 성공 탐침으로 즉시 복귀하지 않게 고정한다.
+    listChallengesMock.mockRejectedValue(new ApiError(503, { message: '점검 중' }));
     renderGate(<div data-testid="page-content">정상 화면</div>);
 
     window.dispatchEvent(new CustomEvent(API_ERROR_EVENT, { detail: { status: 503 } }));
