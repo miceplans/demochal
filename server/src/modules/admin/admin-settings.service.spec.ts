@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import {
   ADMIN_SETTINGS_ID,
@@ -172,6 +172,68 @@ describe('AdminSettingsService', () => {
       service.update({ [MAINTENANCE_END_KEY]: '2026-13-40T99:99' }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(insertCalls).toHaveLength(0);
+  });
+
+  it('날짜 문자열이 아닌 값도 저장을 거부한다', async () => {
+    const { db, insertCalls } = createDbStub();
+    const service = new AdminSettingsService(db);
+
+    await expect(service.update({ [MAINTENANCE_START_KEY]: 123 })).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    expect(insertCalls).toHaveLength(0);
+  });
+
+  it('한쪽 시각만 갱신할 때 저장된 상대 시각과 충돌하면 거부하고, 충돌 없으면 허용한다', async () => {
+    const { db, insertCalls } = createDbStub({
+      id: ADMIN_SETTINGS_ID,
+      values: { [MAINTENANCE_END_KEY]: isoHoursFromNow(1) },
+    });
+    const service = new AdminSettingsService(db);
+
+    // 저장된 종료(+1h)보다 늦은 시작만 본래도 거부해야 한다.
+    await expect(
+      service.update({ [MAINTENANCE_START_KEY]: isoHoursFromNow(2) }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(insertCalls).toHaveLength(0);
+
+    // 저장된 종료보다 이른 시작은 부분 갱신으로 허용한다.
+    const validStart = isoHoursFromNow(0.5);
+    await service.update({ [MAINTENANCE_START_KEY]: validStart });
+    expect(insertCalls).toHaveLength(1);
+    expect(insertCalls[0]?.values[MAINTENANCE_START_KEY]).toBe(new Date(validStart).toISOString());
+  });
+
+  it('경계 시각에서는 시작 시각이면 활성이고 종료 시각과 같으면 비활성이다', async () => {
+    vi.useFakeTimers();
+    try {
+      const now = new Date('2026-10-19T12:00:00.000Z');
+      vi.setSystemTime(now);
+
+      const starting = new AdminSettingsService(
+        createDbStub({
+          id: ADMIN_SETTINGS_ID,
+          values: {
+            [MAINTENANCE_START_KEY]: now.toISOString(),
+            [MAINTENANCE_END_KEY]: new Date(now.getTime() + 60_000).toISOString(),
+          },
+        }).db,
+      );
+      expect(await starting.isMaintenanceActive()).toBe(true);
+
+      const ending = new AdminSettingsService(
+        createDbStub({
+          id: ADMIN_SETTINGS_ID,
+          values: {
+            [MAINTENANCE_START_KEY]: new Date(now.getTime() - 60_000).toISOString(),
+            [MAINTENANCE_END_KEY]: now.toISOString(),
+          },
+        }).db,
+      );
+      expect(await ending.isMaintenanceActive()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('null로 저장하면 점검 기간이 초기화된다', async () => {

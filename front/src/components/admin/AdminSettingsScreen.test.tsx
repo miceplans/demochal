@@ -94,7 +94,7 @@ describe('AdminSettingsScreen', () => {
     useGetAdminSettingsMock.mockReturnValue({
       data: {
         data: settingsWith({
-          startAt: '2026-10-19T00:00:00.000Z',
+          startAt: '2026-10-18T00:00:00.000Z',
           endAt: '2099-10-19T06:00:00.000Z',
           active: true,
         }),
@@ -105,7 +105,7 @@ describe('AdminSettingsScreen', () => {
 
     expect(screen.getByLabelText('점검 시작 시각')).toHaveProperty(
       'value',
-      toLocalValue('2026-10-19T00:00:00.000Z'),
+      toLocalValue('2026-10-18T00:00:00.000Z'),
     );
     expect(screen.getByLabelText('점검 종료 시각')).toHaveProperty(
       'value',
@@ -218,6 +218,102 @@ describe('AdminSettingsScreen', () => {
 
     // 전송한 변경분이 pending에서 빠져 저장 버튼이 다시 비활성이 된다.
     expect(container.querySelector('button[disabled]')).toBeTruthy();
+  });
+
+  it('과거 기간이면 점검 종료, 미래 기간이면 점검 예정 배지를 보여준다', () => {
+    useGetAdminSettingsMock.mockReturnValue({
+      data: {
+        data: settingsWith({
+          startAt: '2020-01-01T00:00:00.000Z',
+          endAt: '2020-01-01T06:00:00.000Z',
+        }),
+      },
+    } as never);
+    const { unmount } = renderScreen();
+    expect(screen.getByText('점검 종료')).toBeTruthy();
+    unmount();
+
+    useGetAdminSettingsMock.mockReturnValue({
+      data: {
+        data: settingsWith({
+          startAt: '2099-01-01T00:00:00.000Z',
+          endAt: '2099-01-01T06:00:00.000Z',
+        }),
+      },
+    } as never);
+    renderScreen();
+    expect(screen.getByText('점검 예정')).toBeTruthy();
+  });
+
+  it('기간을 입력하는 동안 상태 배지가 입력값 기준으로 바뀐다', () => {
+    renderScreen();
+
+    expect(screen.getByText('미설정')).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('점검 시작 시각'), {
+      target: { value: '2099-02-02T01:00' },
+    });
+    fireEvent.change(screen.getByLabelText('점검 종료 시각'), {
+      target: { value: '2099-02-02T03:00' },
+    });
+    expect(screen.getByText('점검 예정')).toBeTruthy();
+  });
+
+  it('저장 실패 시 에러 토스트를 보여주고 미저장 변경분을 유지한다', async () => {
+    const user = userEvent.setup();
+    let capturedConfig: MutationConfig | undefined;
+    useUpdateAdminSettingsMock.mockImplementation((config?: unknown) => {
+      capturedConfig = config as MutationConfig;
+      return { mutate: mutateMock, isPending: false } as never;
+    });
+    renderScreen();
+
+    fireEvent.change(screen.getByLabelText('점검 시작 시각'), {
+      target: { value: '2099-05-05T01:00' },
+    });
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(mutateMock).toHaveBeenCalled();
+
+    await act(async () => {
+      capturedConfig?.mutation?.onError?.();
+    });
+
+    expect(screen.getByText('설정 저장에 실패했어요')).toBeTruthy();
+    // 변경분이 그대로 남아 저장 버튼이 활성 상태다.
+    expect(screen.getByRole('button', { name: '저장하기' })).toHaveProperty('disabled', false);
+  });
+
+  it('저장 응답 전에 새로 바꾼 변경분은 onSuccess 이후에도 유지된다', async () => {
+    const user = userEvent.setup();
+    let capturedConfig: MutationConfig | undefined;
+    useUpdateAdminSettingsMock.mockImplementation((config?: unknown) => {
+      capturedConfig = config as MutationConfig;
+      return { mutate: mutateMock, isPending: false } as never;
+    });
+    renderScreen();
+
+    fireEvent.change(screen.getByLabelText('점검 시작 시각'), {
+      target: { value: '2099-07-07T01:00' },
+    });
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+    const firstPayload = {
+      maintenanceStartAt: new Date('2099-07-07T01:00').toISOString(),
+    };
+    expect(mutateMock).toHaveBeenCalledWith({ data: firstPayload });
+
+    // 응답 도착 전에 종료 시각을 추가로 바꾼다 — 이 변경분은 지워지면 안 된다.
+    fireEvent.change(screen.getByLabelText('점검 종료 시각'), {
+      target: { value: '2099-07-07T03:00' },
+    });
+    await act(async () => {
+      capturedConfig?.mutation?.onSuccess?.({ data: baseSettings }, { data: firstPayload });
+    });
+
+    expect(screen.getByRole('button', { name: '저장하기' })).toHaveProperty('disabled', false);
+    // 새 변경분만 다시 저장에 실린다.
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(mutateMock).toHaveBeenLastCalledWith({
+      data: { maintenanceEndAt: new Date('2099-07-07T03:00').toISOString() },
+    });
   });
 });
 
