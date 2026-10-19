@@ -20,6 +20,7 @@ import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
 import { daysUntil } from '@/lib/date';
+import { ScrollRail } from '@/components/ui/ScrollRail';
 
 // 홈 '마감임박' 섹션 노출 기준(일).
 const DEADLINE_SOON_DAYS = 7;
@@ -219,18 +220,18 @@ export function HomePage() {
                 />
               </MobileOnly>
               <DesktopOnly>
-                <TeamRail>
+                <ScrollRail as={TeamRail}>
                   {teams.map((team) => (
                     <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
                   ))}
-                </TeamRail>
+                </ScrollRail>
               </DesktopOnly>
               <MobileOnly>
-                <TeamRail>
+                <ScrollRail as={TeamRail}>
                   {teams.slice(0, 3).map((team) => (
                     <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
                   ))}
-                </TeamRail>
+                </ScrollRail>
               </MobileOnly>
             </section>
           </Sections>

@@ -67,6 +67,88 @@ select {
   font-family: inherit;
 }
 
+/* 전역 스크롤바 — 세로 스크롤바만 사용한다. 평소엔 숨기고(투명), 호버/포커스 시에만
+   짙은 회색 4px로 보이며 화면 가장자리에서 8px 떨어진다. 가로 스크롤바는 숨기고
+   가로 스크롤 영역은 ScrollRail의 화살표 버튼으로 이동한다.
+   숨김 처리된 요소(레일 등)의 scrollbarWidth: none / display: none 규칙이 더 높은
+   명시도로 유지된다. Chrome 121+는 scrollbar-width/color가 있으면 ::-webkit-scrollbar를
+   무시하므로, 표준 속성은 webkit 미지원 브라우저(Firefox)에만 적용한다. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: transparent transparent;
+  }
+
+  *:hover,
+  *:focus-within {
+    scrollbar-color: var(--color-gray-500) transparent;
+  }
+}
+
+*::-webkit-scrollbar {
+  width: 12px;
+  height: 0;
+}
+
+*::-webkit-scrollbar:horizontal {
+  display: none;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: transparent;
+  background-clip: padding-box;
+  border-right: 8px solid transparent;
+  border-radius: 999px;
+}
+
+*:hover::-webkit-scrollbar-thumb,
+*:focus-within::-webkit-scrollbar-thumb {
+  background-color: var(--color-gray-500);
+}
+
+*::-webkit-scrollbar-thumb:hover,
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--color-gray-700);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* textarea 베이스 — 디자인 톤의 입력 스타일(회색 볼더, 8px radius,
+   포커스 브랜드 블루)을 전역 기본값으로. styled.textarea가 있는 화면은
+   자체 값으로 덮어쓴다. */
+textarea {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--color-gray-900);
+  background: var(--background);
+  border: 0.5px solid var(--color-gray-300);
+  border-radius: 8px;
+  padding: 12px 14px;
+  resize: vertical;
+}
+
+textarea::placeholder {
+  color: var(--color-gray-500);
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--color-semo);
+}
+
+textarea:disabled {
+  background: var(--color-gray-100);
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import styled from '@emotion/styled';
 import { EmptyState } from '@/components/common/Primitives';
+import { ScrollRail } from '@/components/ui/ScrollRail';
 
 interface DataTableProps<TData> {
   data: TData[];
@@ -32,7 +33,7 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
   });
 
   return (
-    <TableWrapper>
+    <ScrollRail as={TableWrapper}>
       <Table>
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -78,7 +79,7 @@ export function DataTable<TData>({ data, columns }: DataTableProps<TData>) {
           )}
         </tbody>
       </Table>
-    </TableWrapper>
+    </ScrollRail>
   );
 }
 

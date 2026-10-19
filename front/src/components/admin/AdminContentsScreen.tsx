@@ -19,6 +19,7 @@ import {
 } from './parts';
 import { useAdminHref } from './AdminShell';
 import { ReportLogTable } from './ReportLogTable';
+import { ScrollRail } from '@/components/ui/ScrollRail';
 
 /* ---------- 팀 카드 ---------- */
 
@@ -278,7 +279,7 @@ export function AdminContentsScreen() {
             </MoreButton>
           ) : null}
         </SectionHeader>
-        <CardGrid>
+        <ScrollRail as={CardGrid}>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminTeams.map((team) => (
             <TeamCard
@@ -292,7 +293,7 @@ export function AdminContentsScreen() {
               {teamCardContent(team)}
             </TeamCard>
           ))}
-        </CardGrid>
+        </ScrollRail>
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -308,7 +309,7 @@ export function AdminContentsScreen() {
             </MoreButton>
           ) : null}
         </SectionHeader>
-        <CardGrid>
+        <ScrollRail as={CardGrid}>
           {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
           {adminContests.map((contest) => (
             <ContestCard
@@ -322,7 +323,7 @@ export function AdminContentsScreen() {
               {contestCardContent(contest)}
             </ContestCard>
           ))}
-        </CardGrid>
+        </ScrollRail>
       </section>
 
       <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
