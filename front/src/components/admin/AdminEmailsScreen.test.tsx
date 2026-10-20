@@ -169,6 +169,8 @@ describe('AdminEmailsScreen', () => {
             subject: '[세모챌] 인증 결과 안내',
             type: 'verification.result',
             recipient: 'k***@gmail.com',
+            textBody:
+              '사업자 인증이 승인되었습니다.\n\n확인하기: https://semochall.com/notifications',
             status: 'sent',
             sentAt: '2026-10-02T00:00:00.000Z',
           },
@@ -235,6 +237,19 @@ describe('AdminEmailsScreen', () => {
     expect(screen.getByText('k***@gmail.com')).toBeTruthy();
     expect(screen.queryByRole('button', { name: '+ 새 메일' })).toBeNull();
     expect(screen.queryByText('도와주세요')).toBeNull();
+  });
+
+  it('shows and hides the selected automated email text body', async () => {
+    const user = userEvent.setup();
+    render(<AdminEmailsScreen />);
+    await user.click(screen.getByRole('tab', { name: /no-reply@semochall\.com/ }));
+    const item = screen.getByRole('button', { name: /인증 결과 안내/ });
+    expect(item.getAttribute('aria-expanded')).toBe('false');
+    await user.click(item);
+    expect(screen.getByText(/사업자 인증이 승인되었습니다/)).toBeTruthy();
+    expect(item.getAttribute('aria-expanded')).toBe('true');
+    await user.click(item);
+    expect(screen.queryByText(/사업자 인증이 승인되었습니다/)).toBeNull();
   });
 
   it('shows the recipient and a Re: subject in the reply form', () => {
