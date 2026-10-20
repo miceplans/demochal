@@ -8,7 +8,6 @@ export interface OutgoingEmail {
   text: string;
   html: string;
   fromEmail?: string;
-  messageId?: string;
   inReplyTo?: string;
   references?: string;
 }
@@ -29,7 +28,6 @@ export class SesEmailClient {
 
   async send(email: OutgoingEmail): Promise<{ sesMessageId?: string }> {
     const headers = [
-      email.messageId ? { Name: 'Message-ID', Value: email.messageId } : null,
       email.inReplyTo ? { Name: 'In-Reply-To', Value: email.inReplyTo } : null,
       email.references ? { Name: 'References', Value: email.references } : null,
     ].filter((header): header is { Name: string; Value: string } => header !== null);

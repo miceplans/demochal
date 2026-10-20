@@ -69,7 +69,6 @@ describe('SesEmailClient', () => {
         subject: 'Re: 문의',
         text: '답변',
         html: '<p>답변</p>',
-        messageId: '<reply-1@semochall.com>',
         inReplyTo: '<customer-1@example.com>',
         references: '<customer-1@example.com>',
       }),
@@ -78,7 +77,6 @@ describe('SesEmailClient', () => {
     const command = send.mock.calls[0]?.[0] as SendEmailCommand;
     expect(command.input.FromEmailAddress).toBe('help@semochall.com');
     expect(command.input.Content?.Simple?.Headers).toEqual([
-      { Name: 'Message-ID', Value: '<reply-1@semochall.com>' },
       { Name: 'In-Reply-To', Value: '<customer-1@example.com>' },
       { Name: 'References', Value: '<customer-1@example.com>' },
     ]);
