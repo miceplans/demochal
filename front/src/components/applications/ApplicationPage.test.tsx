@@ -7,6 +7,7 @@ import { ThemeProvider } from '@emotion/react';
 import { theme } from '@/styles/theme';
 import type { Question } from './ApplicationQuestions';
 import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
+import { ApiError } from '@semochal/api-client';
 
 const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
@@ -192,6 +193,32 @@ describe('saved application questionnaires', () => {
     await waitFor(() =>
       expect(container.querySelector('[data-component="submit-spinner"]')).toBeNull(),
     );
+  });
+
+  it('drops the attachments the server reports as invalid', async () => {
+    mocks.questions = [{ ...questions[5]!, id: 'file' }];
+    mocks.apply.mockRejectedValueOnce(
+      new ApiError(400, {
+        message: '유효하지 않은 첨부파일이 있습니다.',
+        invalidFileIds: [fileId],
+      }),
+    );
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.upload(
+      screen.getByLabelText('file'),
+      new File(['a'], 'a.pdf', { type: 'application/pdf' }),
+    );
+    await screen.findByText(/첨부 완료/);
+    await user.click(screen.getByRole('button', { name: '제출' }));
+    await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith(
+        '첨부파일을 다시 올려주세요',
+        '유효하지 않은 첨부파일이 있습니다.',
+      ),
+    );
+    await waitFor(() => expect(screen.queryByText(/첨부 완료/)).toBeNull());
   });
 
   it('does not submit an unloaded challenge and preserves inputs after API failure', async () => {

@@ -346,8 +346,16 @@ export class ApplicationsService {
           eq(files.uploadStatus, 'ready'),
         ),
       );
-    if (ownedFiles.length !== fileIds.length)
-      throw new BadRequestException('A ready private file owned by the applicant is required');
+    if (ownedFiles.length !== fileIds.length) {
+      // 초안에 남은 오래된 파일 ID가 원인인 경우가 많아, 클라이언트가 해당 파일만 걷어낼 수 있게 ID를 내려준다.
+      const owned = new Set(ownedFiles.map((file) => file.id));
+      throw new BadRequestException({
+        statusCode: 400,
+        error: 'Bad Request',
+        message: '유효하지 않은 첨부파일이 있습니다. 해당 파일을 다시 첨부해 주세요.',
+        invalidFileIds: fileIds.filter((id) => !owned.has(id)),
+      });
+    }
   }
 
   private async findWithBusinessOwner(id: string) {
