@@ -933,7 +933,9 @@ export function MyTeamsPage() {
                   <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
                     <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
-                      <Muted>지원자 {applicants}명</Muted>
+                      <Link href="/my/teams/public-data">
+                        <Muted>지원자 {applicants}명</Muted>
+                      </Link>
                       <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
                         {team.status === 'closed' ? '모집마감' : '모집중'}
                       </Tag>
@@ -1272,6 +1274,14 @@ const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
   value: x,
   label: x,
 }));
+const ApplicantThumbnail = styled.div({
+  height: 221,
+  overflow: 'hidden',
+  borderRadius: 19,
+  background: c.gray100,
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  [mobile]: { height: 160 },
+});
 type ApplicantResult = '미정' | '합격' | '불합격';
 const resultFromStatus = (status?: string): ApplicantResult =>
   status === 'accepted' ? '합격' : status === 'rejected' ? '불합격' : '미정';
@@ -1381,11 +1391,12 @@ export function TeamApplicantsPage() {
         ) : (
           teams.map((team) => (
             <section key={team.id}>
-              <div>
-                <Title>{team.title}</Title>
-                <MutedSpaced $mt={8}>
-                  {team.challengeTitle ?? '챌린지'} · {team.businessName ?? '-'}
-                </MutedSpaced>
+              <ApplicantThumbnail>
+                {team.challengePosterUrl && <img src={team.challengePosterUrl} alt="" />}
+              </ApplicantThumbnail>
+              <div style={{ marginTop: 24 }}>
+                <Title>{team.challengeTitle ?? team.title}</Title>
+                <MutedSpaced $mt={10}>{team.businessName ?? '-'}</MutedSpaced>
               </div>
               <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
                 <Heading>팀 지원현황</Heading>
