@@ -933,8 +933,8 @@ export function MyTeamsPage() {
                   <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
                     <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
-                      <Link href="/my/teams/public-data">
-                        <Muted>지원자 {applicants}명</Muted>
+                      <Link href="/my/teams/public-data" aria-label={`지원자 ${applicants}명 보기`}>
+                        <Tag tone="blue">지원자 {applicants}명 보기 ›</Tag>
                       </Link>
                       <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
                         {team.status === 'closed' ? '모집마감' : '모집중'}
