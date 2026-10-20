@@ -26,7 +26,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
-import { normalizeLinkUrl } from '@/components/profile/link-model';
+import { normalizeLinkUrl, isSafeLinkUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -1178,6 +1178,12 @@ function teamResultTag(status?: string): { label: string; tone: 'green' | 'blue'
   if (status === 'rejected') return { label: '불합격', tone: 'red' };
   return { label: '검토중', tone: 'green' };
 }
+// 팀장이 합격과 함께 첨부한 채팅방 링크 — http(s)만 반환해 javascript: 같은 값이 href로 나가지 않게 한다.
+function acceptedChatLink(status: string | undefined, raw: unknown): string | undefined {
+  if (status !== 'accepted' || typeof raw !== 'string') return undefined;
+  const value = raw.trim();
+  return isSafeLinkUrl(value) ? value : undefined;
+}
 export function ApplicationsPage() {
   const challengeQuery = generated.useListMyApplications();
   const teamQuery = generated.useListMyTeamApplications();
@@ -1252,12 +1258,20 @@ export function ApplicationsPage() {
               <tbody>
                 {teamApps.map((row) => {
                   const result = teamResultTag(row.status);
+                  const chatLink = acceptedChatLink(row.status, row.chatLink);
                   return (
                     <tr key={row.id}>
                       <td>{row.challengeTitle ?? '챌린지'}</td>
                       <td>{row.teamTitle ?? '팀'}</td>
                       <td>
-                        <Tag tone={result.tone}>{result.label}</Tag>
+                        <Row gap={8} style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
+                          <Tag tone={result.tone}>{result.label}</Tag>
+                          {chatLink && (
+                            <a href={chatLink} target="_blank" rel="noopener noreferrer">
+                              채팅방 링크
+                            </a>
+                          )}
+                        </Row>
                       </td>
                     </tr>
                   );
@@ -1694,6 +1708,14 @@ export function NotificationsPage() {
                   ? payload.memberId
                   : undefined;
               const inviteResponse = inviteMemberId ? inviteResponses[inviteMemberId] : undefined;
+              // 합격 알림에 첨부된 채팅방 링크 — http(s)만 노출해 잘못된 스킴이 href로 나가지 않게 한다.
+              const chatLink =
+                item.type === 'team_matching'
+                  ? acceptedChatLink(
+                      typeof payload.status === 'string' ? payload.status : undefined,
+                      payload.chatLink,
+                    )
+                  : undefined;
               return (
                 <NotificationItem
                   key={item.id}
@@ -1750,6 +1772,19 @@ export function NotificationsPage() {
                     )}
                     {item.type === 'content.rejected' && typeof payload.reason === 'string' && (
                       <Muted style={{ fontSize: 13 }}>반려 사유: {payload.reason}</Muted>
+                    )}
+                    {chatLink && (
+                      <Muted style={{ fontSize: 13 }}>
+                        채팅방 링크:{' '}
+                        <a
+                          href={chatLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {chatLink}
+                        </a>
+                      </Muted>
                     )}
                     <Muted style={{ fontSize: 12 }}>{meta}</Muted>
                   </NotificationBody>

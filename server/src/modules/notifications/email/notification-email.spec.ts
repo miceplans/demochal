@@ -57,6 +57,47 @@ describe('renderNotificationEmail', () => {
     expect(email?.html).toContain('src="https://semochall.example/assets/SEMO.png"');
   });
 
+  it('includes the leader-attached chat link in the accepted team notification', () => {
+    const email = renderNotificationEmail(
+      'team_matching',
+      { teamId: 't', status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+      origin,
+    );
+    expect(email?.subject).toContain('수락되었습니다');
+    expect(email?.text).toContain('채팅방 링크: https://open.kakao.com/o/abc');
+    expect(email?.html).toContain('채팅방 링크: https://open.kakao.com/o/abc');
+  });
+
+  it('keeps the accepted team notification body unchanged without a chat link', () => {
+    const email = renderNotificationEmail(
+      'team_matching',
+      { teamId: 't', status: 'accepted' },
+      origin,
+    );
+    expect(email?.text).toContain('신청하신 팀 참여가 수락되었습니다.');
+    expect(email?.text).not.toContain('채팅방 링크');
+  });
+
+  it.each([
+    ['빈 문자열', { teamId: 't', status: 'accepted', chatLink: '' }],
+    ['공백만 있는 문자열', { teamId: 't', status: 'accepted', chatLink: '   ' }],
+    ['문자열이 아닌 값', { teamId: 't', status: 'accepted', chatLink: 123 }],
+  ])('omits the chat link line for %s', (_label, payload) => {
+    const email = renderNotificationEmail('team_matching', payload, origin);
+    expect(email?.text).not.toContain('채팅방 링크');
+  });
+
+  it('escapes HTML characters in the chat link', () => {
+    const email = renderNotificationEmail(
+      'team_matching',
+      { teamId: 't', status: 'accepted', chatLink: 'https://x.example/?q=<b>&r=1' },
+      origin,
+    );
+    expect(email?.text).toContain('https://x.example/?q=<b>&r=1');
+    expect(email?.html).not.toContain('<b>');
+    expect(email?.html).toContain('https://x.example/?q=&lt;b&gt;&amp;r=1');
+  });
+
   it('returns null for types that are not emailed', () => {
     expect(renderNotificationEmail('report.resolved', {}, origin)).toBeNull();
     expect(renderNotificationEmail('team_matching', { teamId: 't' }, origin)).toBeNull();
