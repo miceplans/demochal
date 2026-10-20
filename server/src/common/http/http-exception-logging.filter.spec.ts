@@ -8,9 +8,14 @@ import {
 } from './http-exception-logging.filter.js';
 
 function makeHost(method: string, originalUrl: string): ArgumentsHost {
+  const req = { method, originalUrl };
+  const res = {};
   return {
     getType: () => 'http',
-    switchToHttp: () => ({ getRequest: () => ({ method, originalUrl }) }),
+    switchToHttp: () => ({ getRequest: () => req, getResponse: () => res }),
+    // BaseExceptionFilter가 응답 객체를 host.getArgByIndex(1)로 꺼낸다.
+    getArgByIndex: (index: number) => [req, res][index],
+    getArgs: () => [req, res],
   } as unknown as ArgumentsHost;
 }
 
