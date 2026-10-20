@@ -3100,8 +3100,9 @@ paths:
       x-impl-status: implemented
       description: |
         설정(`/admin/settings`). `groups`는 설정 항목 메타(제목/키/라벨/설명)를,
-        `values`는 현재 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
-        contestAutoPublish(공고 자동 게시), maintenanceMode(점검 모드), reportAlert(신고 접수 알림) 등.
+        `values`는 토글 설정 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
+        contestAutoPublish(공고 자동 게시), reportAlert(신고 접수 알림) 등.
+        `maintenance`는 점검 기간으로, 시작 ≤ 현재 < 종료인 동안 점검 모드가 자동 활성화된다.
       responses:
         '200':
           description: 설정 값
@@ -3120,7 +3121,11 @@ paths:
           application/json:
             schema:
               type: object
-              additionalProperties: { type: boolean }
+              description: |
+                변경할 키만 partial로 담는다. 불리언 토글 키(bizAutoApprove, contestAutoPublish,
+                reportAlert, newBusinessAlert)와 점검 기간 키(maintenanceStartAt, maintenanceEndAt —
+                null 또는 ISO 8601 문자열, 시작은 종료보다 이전이어야 함)를 허용한다.
+              additionalProperties: true
       responses:
         '200':
           description: 저장된 설정
@@ -4713,6 +4718,23 @@ components:
           type: object
           additionalProperties: { type: boolean }
           description: 현재 설정 값 (키 → on/off)
+        maintenance:
+          type: object
+          description: 점검 기간 — 시작 ≤ 현재 < 종료인 동안 점검 모드 자동 활성화
+          properties:
+            startAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: 점검 시작 시각 (ISO 8601, null이면 미설정)
+            endAt:
+              type: string
+              format: date-time
+              nullable: true
+              description: 점검 종료 시각 (ISO 8601, null이면 미설정)
+            active:
+              type: boolean
+              description: 현재 시각 기준 점검 진행 여부
     AdminDashboard:
       type: object
       description: 관리자 대시보드(`/admin`) 위젯 데이터 묶음

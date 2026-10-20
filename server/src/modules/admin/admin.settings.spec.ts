@@ -21,13 +21,17 @@ describe('AdminService — settings', () => {
 
   it('getSettings는 AdminSettingsService의 그룹/값(기본값 병합)을 그대로 쓴다', async () => {
     const { db } = createDbStub();
-    const settings = createSettingsStub({ ...DEFAULT_VALUES, maintenanceMode: true });
+    const settings = createSettingsStub({ ...DEFAULT_VALUES, bizAutoApprove: true });
     const { service } = createService(db, undefined, undefined, undefined, settings);
 
     const result = await service.getSettings(user);
 
     expect(result.groups).toBe(SETTINGS_GROUPS);
-    expect(result.values).toEqual({ ...DEFAULT_VALUES, maintenanceMode: true });
+    expect(result.values).toEqual({ ...DEFAULT_VALUES, bizAutoApprove: true });
+    expect(result.maintenance).toEqual({ startAt: null, endAt: null, active: false });
+    // 설정 그룹/값은 AdminSettingsService에서만 온다 — 중복 정의/기본값 불일치 방지.
+    // (twoFactorEnabled용 2FA 수단 조회 때문에 db.select 자체는 이제 호출된다.)
+    expect(settings.get).toHaveBeenCalled();
   });
 
   it('등록된 2FA 수단이 없으면 twoFactorEnabled는 false다', async () => {
@@ -56,9 +60,9 @@ describe('AdminService — settings', () => {
     const settings = createSettingsStub();
     const { service } = createService(db, undefined, undefined, undefined, settings);
 
-    const result = await service.updateSettings({ maintenanceMode: true }, user);
+    const result = await service.updateSettings({ contestAutoPublish: true }, user);
 
-    expect(settings.update).toHaveBeenCalledWith({ maintenanceMode: true });
+    expect(settings.update).toHaveBeenCalledWith({ contestAutoPublish: true });
     expect(result.values).toEqual(DEFAULT_VALUES);
     expect(db.insert).not.toHaveBeenCalled();
   });

@@ -17,6 +17,7 @@
  * OpenAPI spec version: 0.0.1
  */
 import type { AdminSettingsGroupsItem } from './adminSettingsGroupsItem';
+import type { AdminSettingsMaintenance } from './adminSettingsMaintenance';
 import type { AdminSettingsProfile } from './adminSettingsProfile';
 import type { AdminSettingsValues } from './adminSettingsValues';
 
@@ -30,4 +31,6 @@ export interface AdminSettings {
   groups?: AdminSettingsGroupsItem[];
   /** 현재 설정 값 (키 → on/off) */
   values?: AdminSettingsValues;
+  /** 점검 기간 — 시작 ≤ 현재 < 종료인 동안 점검 모드 자동 활성화 */
+  maintenance?: AdminSettingsMaintenance;
 }

@@ -2,68 +2,12 @@
 
 import '@/lib/api'; // generated API 공통 설정(configureGeneratedApi) — 최초 import 시 1회 실행
 import { ThemeProvider } from '@emotion/react';
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
-import { ApiError, getApiErrorMessage } from '@semochal/api-client';
+import { type ReactNode } from 'react';
 import { EmotionRegistry } from '@/lib/emotion-registry';
-import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
-import { ToastProvider, useToast } from '@/components/common/Toast';
+import { ToastProvider } from '@/components/common/Toast';
 import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
+import { MaintenanceGate } from '@/components/common/MaintenanceGate';
 import { theme } from '@/styles/theme';
-
-function QueryProvider({ children }: { children: ReactNode }) {
-  const toast = useToast();
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        queryCache: new QueryCache({
-          // 401은 로그인하지 않은 상태(예: /auth/me)일 수 있으므로 전역 토스트에서 제외
-          // meta.localErrorToast 쿼리는 화면이 직접 액션 토스트로 알리므로 전역 토스트에서 제외
-          // meta.silentError 쿼리(예: 홈 광고)는 실패해도 기본 광고가 있어 방문자에게 알리지 않는다
-          onError: (error, query) => {
-            if (error instanceof ApiError && error.status === 401) return;
-            if (query.meta?.localErrorToast) return;
-            if (query.meta?.silentError) return;
-            toast.error('요청이 실패했어요', apiErrorDescription(error));
-          },
-        }),
-        mutationCache: new MutationCache({
-          // 호출부에서 직접 처리하는 상태 코드는 mutation `meta.handledErrorStatuses`로 지정해 제외한다
-          // (예: 온보딩 설문 409 = 이미 완료).
-          // mutation 단위 onError가 있으면 그 화면이 이미 안내 중이므로 이중 토스트를 피한다
-          onError: (error, _variables, _onMutateResult, mutation) => {
-            if (error instanceof ApiError && error.status === 401) return;
-            const handled = mutation.meta?.handledErrorStatuses;
-            if (
-              error instanceof ApiError &&
-              Array.isArray(handled) &&
-              handled.includes(error.status)
-            )
-              return;
-            if (mutation.options.onError) return;
-            toast.error('요청이 실패했어요', apiErrorDescription(error));
-          },
-        }),
-        defaultOptions: {
-          queries: {
-            staleTime: 30_000,
-            retry: 1,
-            refetchOnWindowFocus: false,
-          },
-        },
-      }),
-  );
-
-  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
-}
-
-/** 서버가 알려준 원인이 있으면 그 메시지를, 없으면 네트워크 문제인지 구분해 안내한다. */
-function apiErrorDescription(error: unknown): string {
-  const serverMessage = getApiErrorMessage(error);
-  if (serverMessage) return serverMessage;
-  if (!(error instanceof ApiError) && error instanceof Error) return NETWORK_ERROR_MESSAGE;
-  return '잠시 후 다시 시도해주세요';
-}
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
@@ -71,7 +15,7 @@ export function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider theme={theme}>
         <ToastProvider>
           <InputSecurityBoundary>
-            <QueryProvider>{children}</QueryProvider>
+            <MaintenanceGate>{children}</MaintenanceGate>
           </InputSecurityBoundary>
         </ToastProvider>
       </ThemeProvider>

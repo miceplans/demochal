@@ -132,12 +132,19 @@ export function createService(
   };
 }
 
-export function createSettingsStub(values: Record<string, boolean> = DEFAULT_VALUES): {
+export function createSettingsStub(
+  values: Record<string, boolean> = DEFAULT_VALUES,
+  maintenance: { startAt: string | null; endAt: string | null; active: boolean } = {
+    startAt: null,
+    endAt: null,
+    active: false,
+  },
+): {
   get: Mock;
   update: Mock;
 } {
   return {
-    get: vi.fn().mockResolvedValue({ groups: SETTINGS_GROUPS, values }),
+    get: vi.fn().mockResolvedValue({ groups: SETTINGS_GROUPS, values, maintenance }),
     update: vi.fn().mockResolvedValue(values),
   };
 }

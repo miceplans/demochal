@@ -23,7 +23,7 @@ describe('MaintenanceGuard', () => {
     '/auth/social/kakao',
     '/auth/social/kakao/callback',
   ])('allows OAuth endpoint %s without querying maintenance settings', async (path) => {
-    const adminSettingsService = { isEnabled: vi.fn() };
+    const adminSettingsService = { isMaintenanceActive: vi.fn() };
     const jwtService = { verifyAsync: vi.fn() };
     const guard = new MaintenanceGuard(
       adminSettingsService as never,
@@ -32,11 +32,11 @@ describe('MaintenanceGuard', () => {
     );
 
     await expect(guard.canActivate(contextFor(path))).resolves.toBe(true);
-    expect(adminSettingsService.isEnabled).not.toHaveBeenCalled();
+    expect(adminSettingsService.isMaintenanceActive).not.toHaveBeenCalled();
   });
 
   describe('while maintenance mode is on', () => {
-    const adminSettingsService = { isEnabled: vi.fn().mockResolvedValue(true) };
+    const adminSettingsService = { isMaintenanceActive: vi.fn().mockResolvedValue(true) };
     const tokenHeaders = { cookie: `${AUTH_COOKIE_NAME}=valid.jwt` };
 
     it('lets an authenticated admin through using the role JwtAuthGuard loaded', async () => {

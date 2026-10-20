@@ -41,7 +41,7 @@ export class MaintenanceGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     if (
       EXEMPT_PATHS.has(request.path) ||
-      !(await this.adminSettingsService.isEnabled('maintenanceMode'))
+      !(await this.adminSettingsService.isMaintenanceActive())
     ) {
       return true;
     }
