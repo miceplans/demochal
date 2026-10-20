@@ -932,18 +932,15 @@ export function MyTeamsPage() {
                   <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
                     <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
-                      <Tag tone="blue">지원자 {applicants}명</Tag>
                       <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
                         {team.status === 'closed' ? '모집마감' : '모집중'}
                       </Tag>
                     </Row>
                   </Row>
-                  <TeamCard team={toTeamCard(team)} hideApply />
-                  <Link href="/my/teams/public-data">
-                    <Button as="span" fullWidth>
-                      지원자 확인하기
-                    </Button>
-                  </Link>
+                  <TeamCard
+                    team={toTeamCard(team)}
+                    manage={{ href: '/my/teams/public-data', applicants }}
+                  />
                 </Stack>
               );
             })}

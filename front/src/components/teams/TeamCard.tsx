@@ -8,12 +8,12 @@ import { textStyle } from '@/styles/typography';
 export function TeamCard({
   team,
   displayOnly = false,
-  hideApply = false,
+  manage,
 }: {
   team: Team;
   displayOnly?: boolean;
-  /** 내가 만든 팀처럼 지원 대상이 아닐 때 '지원하기' 버튼만 숨긴다(상세 링크는 유지). */
-  hideApply?: boolean;
+  /** 내가 만든 팀: '지원하기' 대신 지원자 확인 버튼을 보여준다. 버튼이 링크라 카드 전체 링크는 걸지 않는다. */
+  manage?: { href: string; applicants: number };
 }) {
   const poster = team.poster;
   const content = (
@@ -54,14 +54,18 @@ export function TeamCard({
               ))}
             </RoleRow>
           </RoleBox>
-          {!displayOnly && !hideApply && <Apply>지원하기</Apply>}
+          {manage ? (
+            <ApplyLink href={manage.href}>지원자 {manage.applicants}명 보기</ApplyLink>
+          ) : (
+            !displayOnly && <Apply>지원하기</Apply>
+          )}
         </BottomRow>
       </Body>
     </>
   );
   return (
     <Card data-component="team-card">
-      {displayOnly ? (
+      {displayOnly || manage ? (
         content
       ) : (
         <CardLink href={`/teams/${team.id}`} aria-label={`${team.name} 상세 보기`}>
@@ -226,6 +230,8 @@ const Apply = styled.span({
   whiteSpace: 'nowrap',
   flexShrink: 0,
 });
+
+const ApplyLink = Apply.withComponent(Link);
 
 export const TeamGrid = styled.div({
   display: 'grid',
