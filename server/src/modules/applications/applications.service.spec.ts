@@ -137,6 +137,28 @@ describe('ApplicationsService.apply', () => {
     ).rejects.toThrow(BadRequestException);
     expect(db.insert).not.toHaveBeenCalled();
   });
+  it('reports which attachment ids are invalid so the client can drop only those', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 1000, title: 'Form', applicationForm },
+    });
+    const service = new ApplicationsService(db, { create: vi.fn() } as never);
+    const error = await service
+      .apply(
+        {
+          ...dto,
+          formAnswers: [
+            { questionId: 'q1', value: '지원합니다' },
+            { questionId: 'q2', value: fileId },
+          ],
+        },
+        'user-1',
+      )
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(BadRequestException);
+    expect((error as BadRequestException).getResponse()).toMatchObject({
+      invalidFileIds: [fileId],
+    });
+  });
   it('keeps original answers on a retry even after the questionnaire changed', async () => {
     const original = [
       { questionId: 'old', title: 'Old question', type: 'short', value: 'Original' },
