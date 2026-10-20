@@ -15,6 +15,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
 import { teamCapacity } from './team-model';
+import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 
 const REGION_DISPLAY_NAMES: Record<string, string> = {
   서울: '서울특별시',
@@ -120,9 +121,7 @@ export function TeamDetailPage() {
   const capacity = teamCapacity(team);
   const openRoles = (team.openRoles ?? []).map((slot) => slot.role ?? '').filter(Boolean);
   const roleOptions = openRoles.map((role) => ({ value: role, label: role }));
-  const joinRole = roleOptions.some((option) => option.value === pickedRole)
-    ? pickedRole
-    : (roleOptions[0]?.value ?? '');
+  const joinRole = joinRoleForTeam(openRoles, pickedRole);
   const facts = [
     ['필요역할', openRoles.length ? openRoles.join(', ') : '없음'],
     ['우대사항', team.preferred || '없음'],
@@ -142,7 +141,7 @@ export function TeamDetailPage() {
       goLogin();
       return;
     }
-    join.mutate({ id, data: { role: joinRole || undefined } });
+    join.mutate({ id, data: { role: joinRole } });
   };
 
   return (
@@ -237,18 +236,19 @@ export function TeamDetailPage() {
               type="button"
               fullWidth
               disabled={
-                authPending ||
-                join.isPending ||
-                isLeader ||
-                !!myMembership ||
-                roleOptions.length === 0
+                !canSubmitTeamJoin({
+                  authPending,
+                  joinPending: join.isPending,
+                  isLeader,
+                  hasMembership: !!myMembership,
+                })
               }
               onClick={apply}
             >
               {ctaLabel}
             </Button>
             {!isLeader && !myMembership && roleOptions.length === 0 && (
-              <Muted style={{ textAlign: 'center' }}>현재 모집 중인 역할이 없어요.</Muted>
+              <Muted style={{ textAlign: 'center' }}>역할 선택 없이 팀에 신청할 수 있어요.</Muted>
             )}
             <Summary>
               <b>대회 요약</b>
