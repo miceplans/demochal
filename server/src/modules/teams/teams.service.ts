@@ -214,14 +214,14 @@ export class TeamsService {
     };
   }
 
-  // 마이페이지 지원현황의 "팀 지원현황" — 내가 지원한 팀(리더로 참여 중인 팀은 제외)과 그 결과.
+  // 마이페이지 지원현황의 "팀 지원현황" — 내가 지원하거나 생성해 참여한 팀과 그 결과.
   async listMyApplications(userId: string) {
     const rows = await this.db
       .select({ member: teamMembers, teamTitle: teams.title, challengeTitle: challenges.title })
       .from(teamMembers)
       .innerJoin(teams, eq(teamMembers.teamId, teams.id))
       .innerJoin(challenges, eq(teams.challengeId, challenges.id))
-      .where(and(eq(teamMembers.userId, userId), ne(teams.leaderUserId, userId)))
+      .where(eq(teamMembers.userId, userId))
       .orderBy(desc(teamMembers.createdAt));
     return rows.map(({ member, teamTitle, challengeTitle }) => ({
       ...member,

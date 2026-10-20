@@ -657,7 +657,7 @@ describe('TeamsService', () => {
     expect(set).toHaveBeenCalledWith({ status: 'rejected', chatLink: null });
   });
 
-  it('listMyApplications returns applied teams with titles, excluding teams I lead', async () => {
+  it('listMyApplications returns applied and leader teams with titles', async () => {
     const rows = [
       {
         member: { id: 'member-1', teamId: 'team-1', userId: applicant.id, status: 'pending' },
@@ -666,7 +666,7 @@ describe('TeamsService', () => {
       },
       {
         member: { id: 'member-2', teamId: 'team-2', userId: applicant.id, status: 'accepted' },
-        teamTitle: 'Leader의 팀',
+        teamTitle: '내가 만든 팀',
         challengeTitle: '공공데이터 챌린지',
       },
     ];
@@ -686,6 +686,12 @@ describe('TeamsService', () => {
       status: 'pending',
       teamTitle: 'AI 해커톤 팀',
       challengeTitle: '2026 AI 챌린지',
+    });
+    expect(result[1]).toMatchObject({
+      id: 'member-2',
+      status: 'accepted',
+      teamTitle: '내가 만든 팀',
+      challengeTitle: '공공데이터 챌린지',
     });
   });
 

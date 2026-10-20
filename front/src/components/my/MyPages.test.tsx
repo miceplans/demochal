@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   meLoaded: true,
   managedTeams: [] as Array<Record<string, unknown>>,
   myApplications: [] as Array<Record<string, unknown>>,
+  myTeamApplications: [] as Array<Record<string, unknown>>,
   me: { name: '홍길동', bio: '안녕하세요' } as {
     name: string;
     bio: string;
@@ -33,7 +34,7 @@ vi.mock('@semochal/api-client', () => ({
     getListMyCertificatesQueryKey: () => ['certificates'],
     useListMyCertificates: () => ({ data: { data: [] } }),
     useListMyTeamApplications: () => ({
-      data: { status: 200, data: [] },
+      data: { status: 200, data: mocks.myTeamApplications },
       isPending: false,
       isError: false,
     }),
@@ -88,6 +89,7 @@ describe('ApplicationsPage 지원서 링크', () => {
   afterEach(() => {
     cleanup();
     mocks.myApplications = [];
+    mocks.myTeamApplications = [];
   });
 
   it('각 챌린지 지원 행에 /my/applications/{id}로 가는 지원서 링크가 있다', () => {
@@ -121,6 +123,42 @@ describe('ApplicationsPage 지원서 링크', () => {
       '/my/applications/app-1',
       '/my/applications/app-2',
     ]);
+  });
+
+  it('팀 지원 결과를 상태별로 표시한다', () => {
+    mocks.myTeamApplications = [
+      {
+        id: 'team-member-1',
+        challengeTitle: 'AI 챌린지',
+        teamTitle: '내가 만든 팀',
+        status: 'accepted',
+      },
+      {
+        id: 'team-member-2',
+        challengeTitle: '데이터 챌린지',
+        teamTitle: '지원 팀',
+        status: 'pending',
+      },
+      {
+        id: 'team-member-3',
+        challengeTitle: '환경 챌린지',
+        teamTitle: '다른 팀',
+        status: 'rejected',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <ApplicationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText('내가 만든 팀')).toBeTruthy();
+    expect(screen.getByText('합격')).toBeTruthy();
+    expect(screen.getByText('검토중')).toBeTruthy();
+    expect(screen.getByText('불합격')).toBeTruthy();
   });
 });
 
