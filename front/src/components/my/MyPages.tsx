@@ -925,23 +925,25 @@ export function MyTeamsPage() {
         ) : (
           <TeamGrid>
             {teams.map((team) => {
-              const applicants = (team.members ?? []).filter(
-                (member) => member.status === 'pending',
-              ).length;
+              // 지원현황 표에 보이는 전체 지원자 수 — 합격/불합격 처리된 지원자도 포함한다.
+              const applicants = (team.members ?? []).length;
               return (
                 <Stack key={team.id} gap={8}>
                   <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
                     <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
                     <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
-                      <Link href="/my/teams/public-data">
-                        <Muted>지원자 {applicants}명</Muted>
-                      </Link>
+                      <Tag tone="blue">지원자 {applicants}명</Tag>
                       <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
                         {team.status === 'closed' ? '모집마감' : '모집중'}
                       </Tag>
                     </Row>
                   </Row>
-                  <TeamCard team={toTeamCard(team)} />
+                  <TeamCard team={toTeamCard(team)} hideApply />
+                  <Link href="/my/teams/public-data">
+                    <Button as="span" fullWidth>
+                      지원자 확인하기
+                    </Button>
+                  </Link>
                 </Stack>
               );
             })}

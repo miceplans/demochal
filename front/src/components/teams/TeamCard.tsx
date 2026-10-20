@@ -5,7 +5,16 @@ import type { Team } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
-export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnly?: boolean }) {
+export function TeamCard({
+  team,
+  displayOnly = false,
+  hideApply = false,
+}: {
+  team: Team;
+  displayOnly?: boolean;
+  /** 내가 만든 팀처럼 지원 대상이 아닐 때 '지원하기' 버튼만 숨긴다(상세 링크는 유지). */
+  hideApply?: boolean;
+}) {
   const poster = team.poster;
   const content = (
     <>
@@ -45,7 +54,7 @@ export function TeamCard({ team, displayOnly = false }: { team: Team; displayOnl
               ))}
             </RoleRow>
           </RoleBox>
-          {!displayOnly && <Apply>지원하기</Apply>}
+          {!displayOnly && !hideApply && <Apply>지원하기</Apply>}
         </BottomRow>
       </Body>
     </>
