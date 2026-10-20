@@ -282,6 +282,31 @@ describe('NotificationsPage 채팅방 링크', () => {
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
+  it('채팅방 링크에서 Enter 키가 알림 항목의 페이지 이동을 일으키지 않는다', async () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    screen.getByRole('link', { name: 'https://open.kakao.com/o/abc' }).focus();
+    await user.keyboard('{Enter}');
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
   it('채팅방 링크가 없는 합격 알림은 링크 없이 렌더한다', () => {
     mocks.myNotifications = [
       {

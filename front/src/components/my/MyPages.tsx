@@ -1781,6 +1781,10 @@ export function NotificationsPage() {
                           target="_blank"
                           rel="noopener noreferrer"
                           onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => {
+                            // 행의 Enter 핸들러(읽음 처리·페이지 이동)가 먼저 실행되지 않게 버블링을 막는다.
+                            if (e.key === 'Enter') e.stopPropagation();
+                          }}
                         >
                           {chatLink}
                         </a>
