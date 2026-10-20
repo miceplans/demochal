@@ -227,11 +227,8 @@ describe('TeamsService', () => {
       .fn()
       .mockReturnValueOnce({ values: teamValues })
       .mockReturnValueOnce({ values: memberValues });
-    const service = new TeamsService(
-      db,
-      createNotificationsStub() as any,
-      createFilesStub() as any,
-    );
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
     const result = await service.create(createDto as any, leader);
 
@@ -250,6 +247,12 @@ describe('TeamsService', () => {
       role: '기획',
       status: 'accepted',
     });
+    expect(notifications.create).toHaveBeenCalledWith(
+      leader.id,
+      'team.created',
+      { teamId: 'team-1', challengeId: 'challenge-1', title: 'AI 해커톤 팀' },
+      db,
+    );
     expect(result).toEqual(teamRow);
   });
 
@@ -492,11 +495,20 @@ describe('TeamsService', () => {
       role: '개발',
       status: 'pending',
     });
-    expect(notifications.create).toHaveBeenCalledWith(leader.id, 'team_matching', {
-      teamId: 'team-1',
-      applicantUserId: applicant.id,
-      role: '개발',
-    });
+    expect(notifications.create).toHaveBeenNthCalledWith(
+      1,
+      leader.id,
+      'team_matching',
+      { teamId: 'team-1', applicantUserId: applicant.id, role: '개발' },
+      db,
+    );
+    expect(notifications.create).toHaveBeenNthCalledWith(
+      2,
+      applicant.id,
+      'team.application.submitted',
+      { teamId: 'team-1' },
+      db,
+    );
     expect(result).toEqual(memberRow);
   });
 

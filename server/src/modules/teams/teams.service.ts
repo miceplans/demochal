@@ -127,30 +127,39 @@ export class TeamsService {
       .limit(1);
     if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
 
-    const [team] = await this.db
-      .insert(teams)
-      .values({
-        challengeId: dto.challengeId,
-        leaderUserId: user.id,
-        title: dto.title?.trim() || `${user.name}의 팀`,
-        leaderRole: dto.myRole,
-        introduction: dto.introduction,
-        preferred: dto.preferred,
-        etc: dto.etc,
-        region: dto.region,
-        openRoles: dto.openRoles ?? [],
-        status: 'recruiting',
-      })
-      .returning();
+    return this.db.transaction(async (tx) => {
+      const [team] = await tx
+        .insert(teams)
+        .values({
+          challengeId: dto.challengeId,
+          leaderUserId: user.id,
+          title: dto.title?.trim() || `${user.name}의 팀`,
+          leaderRole: dto.myRole,
+          introduction: dto.introduction,
+          preferred: dto.preferred,
+          etc: dto.etc,
+          region: dto.region,
+          openRoles: dto.openRoles ?? [],
+          status: 'recruiting',
+        })
+        .returning();
+      if (!team) throw new Error('Failed to create team');
 
-    // The creator joins their own team immediately as an accepted member.
-    await this.db.insert(teamMembers).values({
-      teamId: team!.id,
-      userId: user.id,
-      role: dto.myRole,
-      status: 'accepted',
+      // The creator joins their own team immediately as an accepted member.
+      await tx.insert(teamMembers).values({
+        teamId: team.id,
+        userId: user.id,
+        role: dto.myRole,
+        status: 'accepted',
+      });
+      await this.notificationsService.create(
+        user.id,
+        'team.created',
+        { teamId: team.id, challengeId: team.challengeId, title: team.title },
+        tx,
+      );
+      return team;
     });
-    return team;
   }
 
   async findById(id: string, user?: AuthenticatedUser) {
@@ -289,17 +298,31 @@ export class TeamsService {
       .limit(1);
     if (existing) throw new BadRequestException('이미 이 팀에 신청하셨습니다.');
 
-    const [member] = await this.db
-      .insert(teamMembers)
-      .values({ teamId: id, userId, role, status: 'pending' })
-      .returning();
+    return this.db.transaction(async (tx) => {
+      const [member] = await tx
+        .insert(teamMembers)
+        .values({ teamId: id, userId, role, status: 'pending' })
+        .returning();
+      if (!member) throw new Error('Failed to create team application');
 
-    await this.notificationsService.create(team.leaderUserId, 'team_matching', {
-      teamId: id,
-      applicantUserId: userId,
-      ...(role ? { role } : {}),
+      await this.notificationsService.create(
+        team.leaderUserId,
+        'team_matching',
+        {
+          teamId: id,
+          applicantUserId: userId,
+          ...(role ? { role } : {}),
+        },
+        tx,
+      );
+      await this.notificationsService.create(
+        userId,
+        'team.application.submitted',
+        { teamId: id },
+        tx,
+      );
+      return member;
     });
-    return member;
   }
 
   // 프로필의 '팀에 초대' — 팀장이 특정 사용자를 팀에 초대한다. 지원과 달리 방향이
