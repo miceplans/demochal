@@ -25,6 +25,8 @@ export interface AdminAutomatedEmail {
   type?: string;
   /** 마스킹된 수신자 주소 */
   recipient?: string;
+  /** 안전하게 표시할 자동 발송 메일의 텍스트 본문 */
+  textBody?: string;
   status?: AdminAutomatedEmailStatus;
   /** @nullable */
   sentAt?: string | null;

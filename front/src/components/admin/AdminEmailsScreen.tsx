@@ -133,6 +133,7 @@ export function AdminEmailsScreen() {
 
 function AutomatedMailbox() {
   const [query, setQuery] = useState('');
+  const [expandedId, setExpandedId] = useState<string>();
   const list = generated.useListAdminAutomatedEmails({ q: query || undefined });
   const rows = (list.data?.status === 200 ? list.data.data : []).filter(
     (row): row is typeof row & { id: string } => Boolean(row.id),
@@ -160,7 +161,14 @@ function AutomatedMailbox() {
         <MailList role="list">
           {rows.map((row) => (
             <MailItem key={row.id} role="listitem">
-              <MailRow as="div">
+              <MailRow
+                type="button"
+                aria-expanded={expandedId === row.id}
+                aria-controls={`automated-email-body-${row.id}`}
+                onClick={() =>
+                  setExpandedId((current) => (current === row.id ? undefined : row.id))
+                }
+              >
                 <StatusDot tone="done" aria-hidden />
                 <Sender>{row.recipient || '-'}</Sender>
                 <Summary>
@@ -172,6 +180,11 @@ function AutomatedMailbox() {
                 <Badge tone="green">발송 완료</Badge>
                 <TimeCell>{formatTime(row.sentAt ?? undefined)}</TimeCell>
               </MailRow>
+              {expandedId === row.id ? (
+                <AutomatedMessageBody id={`automated-email-body-${row.id}`}>
+                  {row.textBody || '본문을 생성할 수 없는 메일입니다.'}
+                </AutomatedMessageBody>
+              ) : null}
             </MailItem>
           ))}
         </MailList>
@@ -788,6 +801,16 @@ const Preview = styled.span({
   color: c.gray500,
   fontSize: 13,
   fontWeight: 400,
+});
+const AutomatedMessageBody = styled.pre({
+  margin: 0,
+  padding: '0 16px 16px 38px',
+  color: c.gray700,
+  fontFamily: 'inherit',
+  fontSize: 14,
+  lineHeight: 1.6,
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
 });
 const TypeTag = styled.span({ color: c.gray500, fontSize: 12, fontWeight: 400, flexShrink: 0 });
 const TimeCell = styled.span({ color: c.gray500, whiteSpace: 'nowrap', fontSize: 12 });
