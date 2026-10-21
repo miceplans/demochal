@@ -150,6 +150,8 @@ export const businesses = pgTable('businesses', {
   // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨).
   // 기관은 가입 시 자동 승인(verified)되며, pending/rejected는 0040에서 모두 verified로 정리했다.
   verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('verified'),
+  // 가입 시 국세청 조회 결과: registered | unavailable(조회 장애). null = 조회 대상 아님(기업 외 유형)이거나 기존 가입.
+  ntsResult: varchar('nts_result', { length: 20 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 기관 유형: 기업 | 학교 | 비영리 | 협회
   type: varchar('type', { length: 50 }),

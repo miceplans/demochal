@@ -611,6 +611,8 @@ describe('0040_business_auto_verified migration', () => {
     const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
     expect(sql).toContain('ALTER COLUMN "verification_status" SET DEFAULT \'verified\'');
     expect(sql).toContain("IN ('pending', 'rejected')");
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "nts_result" varchar(20)');
+    expect(sql).toContain('UPDATE "verifications" SET "status" = \'verified\'');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[40]!.when).toBeGreaterThan(journal.entries[39]!.when);
   });
