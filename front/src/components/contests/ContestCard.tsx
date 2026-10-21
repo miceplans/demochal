@@ -57,7 +57,7 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   '.artwork img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   '.card-body': { display: 'flex', flexDirection: 'column', gap: 12, padding: 14 },
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
-  '.dday': { color: c.primary, ...textStyle.overline },
+  '.dday': { color: c.primary, ...textStyle.overline, whiteSpace: 'nowrap', flexShrink: 0 },
   '.prize': { color: c.gray900, ...textStyle.bodySmall2 },
   h3: { ...textStyle.h3, fontSize: 18, fontWeight: 700 },
   // 탐색 목록 보기(Figma contestCard 1345:22813): 100px 썸네일 + 세로로 쌓은 본문(제목 / 태그·D-day / 북마크·팀 배지).
