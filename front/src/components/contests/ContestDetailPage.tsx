@@ -77,6 +77,12 @@ export function ContestDetailPage({
       posterUrl: item.posterUrl ?? null,
     }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
+  // 접수 종료(마감일 경과 또는 마감 처리) — 신청 버튼을 비활성화하고 D-day 대신 '마감'을 보여준다.
+  const closed = Boolean(
+    challenge &&
+    (challenge.status === 'closed' ||
+      (challenge.endDate && new Date(challenge.endDate).getTime() < now)),
+  );
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
   // 신청 API는 ?challenge=<uuid>가 있어야 실제 신청·결제 흐름으로 동작한다(ApplicationPage).
   const applyHref = challengeId
@@ -98,7 +104,7 @@ export function ContestDetailPage({
         period: [formatDateTime(challenge.startDate), formatDateTime(challenge.endDate)]
           .filter(Boolean)
           .join(' ~ '),
-        dday: challenge.endDate ? `D-${daysUntil(challenge.endDate, now)}` : '',
+        dday: closed ? '마감' : challenge.endDate ? `D-${daysUntil(challenge.endDate, now)}` : '',
         deadline: formatDate(challenge.endDate) || '-',
         sections: [
           ...(challenge.summary ? [{ title: '소개', body: challenge.summary, rich: false }] : []),
@@ -127,7 +133,7 @@ export function ContestDetailPage({
     : // TODO: 데모 상세(/contests/public-data) 폴백으로 쓰는 user-design.ts contestDetail 목업이다.
       // 이 데모 라우트를 실제 챌린지 id 기반으로 바꾸거나 없앨 때 함께 제거한다(#278).
       contestDetail;
-  // 상단 요약 — 실제 챌린지는 가짜 상금 대신 서버 값(참가비·분야·정원)만 쓴다.
+  // 상단 요약 — 실제 챌린지는 가짜 상금 대신 서버 값(참가비·분야)만 쓴다.
   const summaryRows: [string, string][] = challenge
     ? [
         ['마감일', detail.deadline],
@@ -340,7 +346,11 @@ export function ContestDetailPage({
                     </ul>
                   </section>
                 )}
-                {external ? (
+                {closed ? (
+                  <Button disabled fullWidth>
+                    마감된 챌린지입니다
+                  </Button>
+                ) : external ? (
                   <a href={external} target="_blank" rel="noopener noreferrer" ref={applyRef}>
                     <Button as="span" fullWidth>
                       참가 신청하기
@@ -367,7 +377,7 @@ export function ContestDetailPage({
                 )}
               </PosterFrame>
             )}
-            {!teamTab && !applyVisible && (
+            {!teamTab && !applyVisible && !closed && (
               <Link
                 href={external || applyHref}
                 {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
