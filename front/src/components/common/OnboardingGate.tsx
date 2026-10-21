@@ -23,8 +23,10 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
   const exempt = isExempt(pathname);
   const auth = generated.useGetMyAuthInfo({ query: { retry: false, enabled: !exempt } });
   const user = auth.data?.status === 200 ? auth.data.data : undefined;
+  // 설문 직후엔 캐시가 아직 onboardingSurvey: null이라, 무효화 refetch가 끝나기 전엔 판단하지 않는다.
   const needsOnboarding =
     !exempt &&
+    !auth.isFetching &&
     user !== undefined &&
     user.onboardingSurvey === null &&
     user.role !== 'business' &&

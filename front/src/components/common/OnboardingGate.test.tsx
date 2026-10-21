@@ -15,9 +15,10 @@ vi.mock('@semochal/api-client', () => ({
   generated: { useGetMyAuthInfo: vi.fn() },
 }));
 
-function mockMe(data: Record<string, unknown> | null) {
+function mockMe(data: Record<string, unknown> | null, isFetching = false) {
   vi.mocked(generated.useGetMyAuthInfo).mockReturnValue({
     data: data ? { status: 200, data } : undefined,
+    isFetching,
   } as never);
 }
 
@@ -33,6 +34,12 @@ describe('OnboardingGate', () => {
     mockMe({ role: 'user', onboardingSurvey: null });
     render(<OnboardingGate>내용</OnboardingGate>);
     expect(replace).toHaveBeenCalledWith('/onboarding/activity');
+  });
+
+  it('내 정보를 다시 불러오는 중에는 보내지 않는다(설문 직후 되튕김 방지)', () => {
+    mockMe({ role: 'user', onboardingSurvey: null }, true);
+    render(<OnboardingGate>내용</OnboardingGate>);
+    expect(replace).not.toHaveBeenCalled();
   });
 
   it('설문을 마친 회원은 그대로 둔다', () => {
