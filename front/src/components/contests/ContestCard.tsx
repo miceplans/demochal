@@ -33,13 +33,6 @@ const ScrapButton = styled(IconButton, {
       }
     : {}),
 }));
-const TeamLink = styled(Link)({ display: 'block' });
-const TeamBadge = styled(TeamTag)({
-  boxSizing: 'border-box',
-  width: '100%',
-  height: 21,
-  justifyContent: 'center',
-});
 const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',
@@ -161,7 +154,7 @@ export function ContestCard({
             {scrapButton}
           </Row>
         ) : !row && !horizontal ? (
-          // Figma contestCard 1521:8662: 금액·태그·북마크 / 제목·D-day / 팀 배지(전체 폭).
+          // Figma contestCard 1521:8662: 금액·태그·북마크 / 제목·D-day.
           <>
             <div className="meta">
               <Row style={{ justifyContent: 'space-between' }}>
@@ -180,11 +173,6 @@ export function ContestCard({
                 <span className="dday">D-{contest.days}</span>
               </Row>
             </div>
-            {contest.teams !== undefined && (
-              <TeamLink href="/contests/public-data/teams">
-                <TeamBadge tone="blue">팀 모집 {contest.teams}건</TeamBadge>
-              </TeamLink>
-            )}
           </>
         ) : (
           <div className="meta">
