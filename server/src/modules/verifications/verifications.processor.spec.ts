@@ -16,4 +16,21 @@ describe('VerificationsProcessorService', () => {
       expect(notifications.create).not.toHaveBeenCalled();
     },
   );
+
+  it('does not auto-approve a pending verification of an admin-blocked business', async () => {
+    const { db } = createDbStub({
+      select: [
+        [{ id: 'v1', businessId: 'b1', status: 'pending' }],
+        [{ id: 'b1', ownerUserId: 'u1', verificationStatus: 'rejected' }],
+      ],
+    });
+    const notifications = { create: vi.fn() };
+    const processor = new VerificationsProcessorService(db, notifications as never);
+
+    await processor.process({ verificationId: 'v1' } as never);
+
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
 });

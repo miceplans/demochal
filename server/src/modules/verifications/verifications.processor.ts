@@ -38,6 +38,12 @@ export class VerificationsProcessorService {
       .where(eq(businesses.id, verification.businessId))
       .limit(1);
 
+    // 관리자가 차단(rejected)한 기관은 서류 제출만으로 차단이 풀리지 않게 자동 승인하지 않는다.
+    if (business?.verificationStatus === 'rejected') {
+      this.logger.warn(`Business ${business.id} is blocked by an admin, skipping auto-approval`);
+      return;
+    }
+
     // 기관은 서류 심사 없이 전부 자동 승인한다(가입 시 verified와 같은 정책).
     await this.completeVerification(verification, business, 'verified');
   }
