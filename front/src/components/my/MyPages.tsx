@@ -1171,9 +1171,9 @@ function challengeResultTag(status?: string): { label: string; tone: 'green' | '
   if (status === 'rejected') return { label: '불합격', tone: 'red' };
   return { label: '심사중', tone: 'blue' };
 }
-// 팀 지원: accepted→확정, rejected→불합격, pending→검토중.
+// 팀 지원: accepted→합격, rejected→불합격, pending→검토중.
 function teamResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
-  if (status === 'accepted') return { label: '확정', tone: 'blue' };
+  if (status === 'accepted') return { label: '합격', tone: 'blue' };
   if (status === 'rejected') return { label: '불합격', tone: 'red' };
   return { label: '검토중', tone: 'green' };
 }
