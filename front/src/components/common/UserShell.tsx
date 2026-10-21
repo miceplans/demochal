@@ -443,6 +443,7 @@ export function UserShell({
               {(subNav.key === 'explore' ? categories : roles).map((item) => (
                 <li key={item}>
                   <Link
+                    onClick={() => setSubNav(null)}
                     href={`/${subNav.key === 'explore' ? 'explore?category' : 'teams?role'}=${encodeURIComponent(item)}`}
                   >
                     {item}
