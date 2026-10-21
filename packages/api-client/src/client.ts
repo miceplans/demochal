@@ -87,14 +87,7 @@ export function createApiClient(options: HttpClientOptions) {
       create: (
         body: Pick<
           Challenge,
-          | 'businessId'
-          | 'title'
-          | 'description'
-          | 'price'
-          | 'capacity'
-          | 'startDate'
-          | 'endDate'
-          | 'category'
+          'businessId' | 'title' | 'description' | 'price' | 'startDate' | 'endDate' | 'category'
         >,
       ) => http.post<Challenge>('/challenges', body),
       getStats: (id: string) => http.get<ChallengeStats>(`/challenges/${id}/stats`),

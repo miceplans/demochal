@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(41);
+    expect(journal.entries).toHaveLength(42);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -615,5 +615,16 @@ describe('0040_business_auto_verified migration', () => {
     expect(sql).toContain('UPDATE "verifications" SET "status" = \'verified\'');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[40]!.when).toBeGreaterThan(journal.entries[39]!.when);
+  });
+});
+
+describe('0041_drop_challenge_capacity migration', () => {
+  it('drops only the challenges.capacity column, idempotently', () => {
+    const tag = journal.entries[41]?.tag;
+    expect(tag).toBe('0041_drop_challenge_capacity');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ALTER TABLE "challenges" DROP COLUMN IF EXISTS "capacity"');
+    expect(sql).not.toMatch(/DROP TABLE/);
+    expect(journal.entries[41]!.when).toBeGreaterThan(journal.entries[40]!.when);
   });
 });

@@ -758,7 +758,6 @@ export class AdminService {
       startDate: challenge.startDate.toISOString(),
       endDate: challenge.endDate.toISOString(),
       price: challenge.price,
-      capacity: challenge.capacity ?? undefined,
       prizeAmount: challenge.prizeAmount,
       targets: challenge.targets ?? [],
       hashtags: challenge.hashtags,

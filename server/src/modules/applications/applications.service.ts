@@ -5,7 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, count, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { applications, businesses, challenges, files, orders } from '../../db/schema.js';
 import type { ApplyChallengeDto } from './dto/apply-challenge.dto.js';
@@ -41,7 +41,6 @@ export class ApplicationsService {
           applicationForm: challenges.applicationForm,
           visibility: challenges.visibility,
           recruitMethod: challenges.recruitMethod,
-          capacity: challenges.capacity,
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
@@ -81,16 +80,6 @@ export class ApplicationsService {
       // 외부 접수 공고는 앱 안에서 신청·결제를 받지 않는다(recruitUrl로 이동).
       if (challenge.recruitMethod === 'external') {
         throw new BadRequestException('외부 접수 챌린지는 앱에서 신청할 수 없습니다.');
-      }
-      // 정원은 실제 접수된 신청(무료 접수 + 결제 완료) 기준으로 센다.
-      if (challenge.capacity !== null && challenge.capacity !== undefined) {
-        const [accepted] = await tx
-          .select({ total: count() })
-          .from(applications)
-          .where(and(eq(applications.challengeId, challenge.id), effectiveApplicationCondition));
-        if (Number(accepted?.total ?? 0) >= challenge.capacity) {
-          throw new BadRequestException('모집 정원이 마감된 챌린지입니다.');
-        }
       }
 
       const formAnswers = validateFormAnswers(challenge.applicationForm, dto.formAnswers);

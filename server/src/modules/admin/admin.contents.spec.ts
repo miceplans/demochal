@@ -124,7 +124,6 @@ describe('AdminService — content detail', () => {
       startDate: new Date('2026-10-01T00:00:00.000Z'),
       endDate: new Date('2026-11-01T00:00:00.000Z'),
       price: 0,
-      capacity: 10,
       prizeAmount: null,
       targets: null,
       hashtags: ['ai'],

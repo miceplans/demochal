@@ -83,7 +83,6 @@ const CHALLENGE = {
   recruitMethod: 'internal',
   price: 0,
   category: '개발',
-  capacity: 4,
   description: '상세 설명',
 };
 
@@ -137,5 +136,28 @@ describe('ContestDetailPage 사이드바 포스터', () => {
     render(<ContestDetailPage challengeId={CHALLENGE.id} teamTab />);
     scrollIntro(false);
     expect(posterAlt()).toBeNull();
+  });
+});
+
+describe('ContestDetailPage 마감 처리', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    observers = [];
+  });
+
+  afterEach(() => cleanup());
+
+  it('마감일이 지난 챌린지는 신청 버튼 대신 마감 안내를 보이고 D-day 대신 마감을 표시한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, endDate: '2020-01-01' } },
+    } as never);
+    vi.mocked(generated.useListTeams).mockReturnValue({ data: { data: [] } } as never);
+    vi.mocked(generated.useListSimilarChallenges).mockReturnValue({
+      data: { status: 200, data: [] },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    expect(screen.getByText('마감된 챌린지입니다')).toBeTruthy();
+    expect(screen.queryByText('참가 신청하기')).toBeNull();
+    expect(screen.getByText('마감', { selector: 'div' })).toBeTruthy();
   });
 });

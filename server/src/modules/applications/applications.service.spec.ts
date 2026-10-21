@@ -18,9 +18,7 @@ function createDbStub(options: {
     endDate?: Date;
     applicationForm?: ApplicationFormQuestion[];
     recruitMethod?: string;
-    capacity?: number;
   };
-  acceptedCount?: number;
   existingApplication?: Record<string, unknown>;
   latestOrder?: Record<string, unknown>;
   application?: Record<string, unknown>;
@@ -49,8 +47,7 @@ function createDbStub(options: {
       }
       if (table === applications) {
         limit.mockResolvedValue(options.existingApplication ? [options.existingApplication] : []);
-        // 정원 집계(`select count ... where`)는 limit 없이 바로 await된다.
-        return Object.assign(Promise.resolve([{ total: options.acceptedCount ?? 0 }]), { limit });
+        return { limit };
       }
       // orders (latest lookup in orderForApplication)
       limit.mockResolvedValue(options.latestOrder ? [options.latestOrder] : []);
@@ -242,17 +239,6 @@ describe('ApplicationsService.apply', () => {
     expect(db.values).not.toHaveBeenCalled();
   });
 
-  it('rejects a new application once the accepted applicants fill the capacity', async () => {
-    const db = createDbStub({
-      challenge: { id: 'challenge-1', price: 0, title: 'Full', capacity: 2 },
-      acceptedCount: 2,
-    });
-    await expect(
-      new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1'),
-    ).rejects.toThrow('정원');
-    expect(db.values).not.toHaveBeenCalled();
-  });
-
   it('notifies the applicant in the same transaction for a free application', async () => {
     const db = createDbStub({
       challenge: { id: 'challenge-1', price: 0, title: 'Free' },
@@ -277,19 +263,6 @@ describe('ApplicationsService.apply', () => {
     const notifications = { create: vi.fn() };
     await new ApplicationsService(db, notifications as never).apply(dto, 'user-1');
     expect(notifications.create).not.toHaveBeenCalled();
-  });
-
-  it('accepts a new application while seats remain', async () => {
-    const db = createDbStub({
-      challenge: { id: 'challenge-1', price: 0, title: 'Open', capacity: 2 },
-      acceptedCount: 1,
-      application: { id: 'app-1' },
-    });
-    await expect(
-      new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1'),
-    ).resolves.toMatchObject({
-      id: 'app-1',
-    });
   });
 
   it('rejects a private challenge before creating an application or order', async () => {
