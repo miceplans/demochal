@@ -62,23 +62,23 @@ describe('AdminSettingsService', () => {
     const { db, insertCalls } = createDbStub();
     const service = new AdminSettingsService(db);
 
-    await service.update({ bizAutoApprove: true, contestAutoPublish: true });
+    await service.update({ newBusinessAlert: true, contestAutoPublish: true });
 
     expect(insertCalls[0]?.id).toBe(ADMIN_SETTINGS_ID);
     // 읽기 경로가 쓰기와 다른 키를 쓰면(과거 'singleton' 버그) 여기서 false가 된다.
-    expect(await service.isEnabled('bizAutoApprove')).toBe(true);
+    expect(await service.isEnabled('newBusinessAlert')).toBe(true);
     expect(await service.isEnabled('contestAutoPublish')).toBe(true);
     // 저장하지 않은 키는 기본값을 따른다.
-    expect(await service.isEnabled('newBusinessAlert')).toBe(false);
+    expect(await service.isEnabled('reportAlert')).toBe(true);
   });
 
   it('일부 키만 저장된 row에서도 저장하지 않은 키는 기본값(true 포함)으로 읽는다', async () => {
-    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { bizAutoApprove: true } });
+    const { db } = createDbStub({ id: ADMIN_SETTINGS_ID, values: { newBusinessAlert: true } });
     const service = new AdminSettingsService(db);
 
     // reportAlert 기본값은 true — row에 없다고 false로 읽으면 안 된다.
     expect(await service.isEnabled('reportAlert')).toBe(true);
-    expect((await service.get()).values).toEqual({ ...DEFAULT_VALUES, bizAutoApprove: true });
+    expect((await service.get()).values).toEqual({ ...DEFAULT_VALUES, newBusinessAlert: true });
   });
 
   it('update는 기존 값 위에 병합하고 알 수 없는 키·불리언이 아닌 값은 저장하지 않는다', async () => {
@@ -89,13 +89,13 @@ describe('AdminSettingsService', () => {
     const service = new AdminSettingsService(db);
 
     const result = await service.update({
-      bizAutoApprove: true,
+      newBusinessAlert: true,
       unknownFlag: true,
       reportAlert: 'no',
     });
 
-    expect(current()?.values).toEqual({ contestAutoPublish: true, bizAutoApprove: true });
-    expect(result).toEqual({ ...DEFAULT_VALUES, contestAutoPublish: true, bizAutoApprove: true });
+    expect(current()?.values).toEqual({ contestAutoPublish: true, newBusinessAlert: true });
+    expect(result).toEqual({ ...DEFAULT_VALUES, contestAutoPublish: true, newBusinessAlert: true });
   });
 
   it('저장된 row의 알 수 없는 키와 레거시 maintenanceMode는 읽을 때 무시한다', async () => {

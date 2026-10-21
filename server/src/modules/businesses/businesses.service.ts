@@ -12,7 +12,7 @@ import { businesses, challenges, users } from '../../db/schema.js';
 import { AdminAlertsService } from '../admin/admin-alerts.service.js';
 import type { RegisterBusinessDto } from './dto/register-business.dto.js';
 import type { UpdateBusinessDto } from './dto/update-business.dto.js';
-import { verificationStatusPresentation } from '../verifications/verifications.service.js';
+import { verificationStatusPresentation } from './business-status.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { FilesService } from '../files/files.service.js';
 import { NtsClient } from '../verifications/clients/nts.client.js';
@@ -60,6 +60,8 @@ export class BusinessesService {
           email: dto.email ?? null,
           type: dto.type,
           ownerUserId,
+          // 기관 가입은 서류 심사 없이 자동 승인한다.
+          verificationStatus: 'verified',
         })
         .returning();
       // 기업을 등록한 일반 회원은 기업 회원이 된다(BizAccessCover가 role로 콘솔 접근을 판단).

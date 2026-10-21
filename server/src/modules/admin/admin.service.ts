@@ -326,10 +326,6 @@ export class AdminService {
       .select({ count: countRows })
       .from(businesses)
       .where(eq(businesses.verificationStatus, 'rejected'));
-    const [pendingRow] = await this.db
-      .select({ count: countRows })
-      .from(businesses)
-      .where(eq(businesses.verificationStatus, 'pending'));
 
     const conditions = [];
     // 검색창이 "기관명/담당자"이므로 기관 소유자(담당자) 이름도 함께 매칭한다.
@@ -372,7 +368,6 @@ export class AdminService {
       { label: '전체 신청', value: String(totalRow?.count ?? 0), meta: '전체', dot: '#006FFF' },
       { label: '승인', value: String(approvedRow?.count ?? 0), meta: '누적 승인', dot: '#22C55E' },
       { label: '거부', value: String(rejectedRow?.count ?? 0), meta: '누적 거부', dot: '#FF4D00' },
-      { label: '대기', value: String(pendingRow?.count ?? 0), meta: '심사 대기', dot: '#F59E0B' },
     ];
 
     const items = rows.map((business) => {

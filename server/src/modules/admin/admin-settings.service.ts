@@ -17,11 +17,6 @@ export const SETTINGS_GROUPS = [
     title: '서비스 설정',
     rows: [
       {
-        key: 'bizAutoApprove',
-        label: '기관 가입 자동 승인',
-        description: '제출 서류 심사 없이 기관 가입 신청을 즉시 승인합니다.',
-      },
-      {
         key: 'contestAutoPublish',
         label: '공고 자동 게시',
         description: '기관이 등록한 공고를 검수 없이 바로 게시합니다.',
@@ -47,7 +42,6 @@ export const SETTINGS_GROUPS = [
 
 // reportAlert/newBusinessAlert는 AdminAlertsService가 신고 접수/기관 등록 시 읽어 알림을 보낸다.
 export const DEFAULT_VALUES: Record<string, boolean> = {
-  bizAutoApprove: false,
   contestAutoPublish: true,
   reportAlert: true,
   newBusinessAlert: false,

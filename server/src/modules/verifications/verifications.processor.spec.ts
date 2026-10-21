@@ -8,21 +8,12 @@ describe('VerificationsProcessorService', () => {
     async (status) => {
       const { db } = createDbStub({ select: [[{ id: 'v1', businessId: 'b1', status }]] });
       const notifications = { create: vi.fn() };
-      const settings = { isEnabled: vi.fn().mockResolvedValue(true) };
-      const processor = new VerificationsProcessorService(
-        db,
-        {} as never,
-        {} as never,
-        notifications as never,
-        settings as never,
-        {} as never,
-      );
+      const processor = new VerificationsProcessorService(db, notifications as never);
 
       await processor.process({ verificationId: 'v1' } as never);
 
       expect(db.update).not.toHaveBeenCalled();
       expect(notifications.create).not.toHaveBeenCalled();
-      expect(settings.isEnabled).not.toHaveBeenCalled();
     },
   );
 });
