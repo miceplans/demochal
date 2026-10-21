@@ -72,7 +72,8 @@ function compose(
  * Renders a service email from an existing notification row. Uses only the
  * notification's own display data — never registration numbers, OCR results
  * or free-text reasons — and returns null for types that are not emailed.
- * 예외: `content.rejected`는 관리자가 작성한 반려 사유와 콘텐츠 제목을 본문에 싣는다
+ * 예외: `content.rejected`는 관리자가 작성한 반려 사유와 콘텐츠 제목을 본문에 싣고,
+ * `team_matching` 수락 알림은 팀장이 첨부한 채팅방 링크를 본문에 싣는다
  * (사용자 입력 개인정보가 아니며 HTML은 escape된다).
  */
 export function renderNotificationEmail(
@@ -108,9 +109,14 @@ export function renderNotificationEmail(
       );
     }
     if (payload.status === 'accepted') {
+      const chatLink = typeof payload.chatLink === 'string' ? payload.chatLink.trim() : '';
       return compose(
         '팀 참여 신청이 수락되었습니다',
-        ['신청하신 팀 참여가 수락되었습니다.'],
+        [
+          '신청하신 팀 참여가 수락되었습니다.',
+          // 팀장이 합격과 함께 첨부한 채팅방 링크가 있으면 바로 확인할 수 있게 본문에 함께 싣는다.
+          ...(chatLink ? [`채팅방 링크: ${chatLink}`] : []),
+        ],
         origin,
       );
     }

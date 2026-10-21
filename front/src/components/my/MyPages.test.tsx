@@ -4,7 +4,13 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { MyPage, MyProfileEditPage, MyTeamsPage, ApplicationsPage } from './MyPages';
+import {
+  MyPage,
+  MyProfileEditPage,
+  MyTeamsPage,
+  ApplicationsPage,
+  NotificationsPage,
+} from './MyPages';
 
 const mocks = vi.hoisted(() => ({
   mutateAsync: vi.fn(),
@@ -13,6 +19,9 @@ const mocks = vi.hoisted(() => ({
   meLoaded: true,
   managedTeams: [] as Array<Record<string, unknown>>,
   myApplications: [] as Array<Record<string, unknown>>,
+  myTeamApplications: [] as Array<Record<string, unknown>>,
+  myNotifications: [] as Array<Record<string, unknown>>,
+  push: vi.fn(),
   me: { name: '홍길동', bio: '안녕하세요' } as {
     name: string;
     bio: string;
@@ -33,7 +42,7 @@ vi.mock('@semochal/api-client', () => ({
     getListMyCertificatesQueryKey: () => ['certificates'],
     useListMyCertificates: () => ({ data: { data: [] } }),
     useListMyTeamApplications: () => ({
-      data: { status: 200, data: [] },
+      data: { status: 200, data: mocks.myTeamApplications },
       isPending: false,
       isError: false,
     }),
@@ -47,9 +56,20 @@ vi.mock('@semochal/api-client', () => ({
       isPending: false,
       isError: false,
     }),
+    useListMyNotifications: () => ({
+      data: { status: 200, data: mocks.myNotifications },
+      isPending: false,
+      isError: false,
+    }),
+    getListMyNotificationsQueryKey: () => ['notifications'],
+    useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
+    useMarkAllNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
+    useUpdateTeamMember: () => ({ mutate: vi.fn(), isPending: false }),
     getGetMyAuthInfoQueryKey: () => ['myAuthInfo'],
   },
 }));
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
 describe('MyTeamsPage 포스터', () => {
   afterEach(() => {
@@ -121,6 +141,215 @@ describe('ApplicationsPage 지원서 링크', () => {
       '/my/applications/app-1',
       '/my/applications/app-2',
     ]);
+  });
+});
+
+describe('ApplicationsPage 팀 지원현황 채팅방 링크', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.myTeamApplications = [];
+  });
+
+  it('합격한 팀 지원 행의 채팅방 링크를 새 탭으로 연다', () => {
+    mocks.myTeamApplications = [
+      {
+        id: 'app-1',
+        challengeTitle: 'AI 챌린지',
+        teamTitle: '세모 팀',
+        status: 'accepted',
+        chatLink: 'https://open.kakao.com/o/abc',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <ApplicationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    const link = screen.getByRole('link', { name: '채팅방 링크' });
+    expect(link.getAttribute('href')).toBe('https://open.kakao.com/o/abc');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('검토중·불합격 행에는 채팅방 링크를 표시하지 않는다', () => {
+    mocks.myTeamApplications = [
+      {
+        id: 'app-1',
+        challengeTitle: 'AI 챌린지',
+        teamTitle: '세모 팀',
+        status: 'rejected',
+        chatLink: null,
+      },
+      {
+        id: 'app-2',
+        challengeTitle: '빅데이터 공모전',
+        teamTitle: '데이터 팀',
+        status: 'pending',
+        chatLink: 'https://open.kakao.com/o/xyz',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <ApplicationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByRole('link', { name: '채팅방 링크' })).toBeNull();
+  });
+
+  it('http(s)가 아닌 링크는 렌더하지 않는다', () => {
+    mocks.myTeamApplications = [
+      {
+        id: 'app-1',
+        challengeTitle: 'AI 챌린지',
+        teamTitle: '세모 팀',
+        status: 'accepted',
+        chatLink: 'javascript:alert(1)',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <ApplicationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByRole('link', { name: '채팅방 링크' })).toBeNull();
+  });
+});
+
+describe('NotificationsPage 채팅방 링크', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.myNotifications = [];
+  });
+
+  it('합격 알림의 채팅방 링크를 새 탭으로 연다', () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    const link = screen.getByRole('link', { name: 'https://open.kakao.com/o/abc' });
+    expect(link.getAttribute('href')).toBe('https://open.kakao.com/o/abc');
+    expect(link.getAttribute('target')).toBe('_blank');
+    expect(link.getAttribute('rel')).toContain('noopener');
+  });
+
+  it('채팅방 링크 클릭이 알림 항목의 페이지 이동을 일으키지 않는다', async () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    await user.click(screen.getByRole('link', { name: 'https://open.kakao.com/o/abc' }));
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it('채팅방 링크에서 Enter 키가 알림 항목의 페이지 이동을 일으키지 않는다', async () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted', chatLink: 'https://open.kakao.com/o/abc' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const user = userEvent.setup();
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    screen.getByRole('link', { name: 'https://open.kakao.com/o/abc' }).focus();
+    await user.keyboard('{Enter}');
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it('채팅방 링크가 없는 합격 알림은 링크 없이 렌더한다', () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByText('지원이 수락됐어요')).toBeTruthy();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
+  it('http(s)가 아닌 링크 payload는 렌더하지 않는다', () => {
+    mocks.myNotifications = [
+      {
+        id: 'n-1',
+        type: 'team_matching',
+        payload: { teamId: 't-1', status: 'accepted', chatLink: 'javascript:alert(1)' },
+        readAt: null,
+        createdAt: '2026-10-20T00:00:00.000Z',
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <NotificationsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    expect(screen.queryByRole('link')).toBeNull();
   });
 });
 
