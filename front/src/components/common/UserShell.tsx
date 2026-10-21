@@ -328,7 +328,7 @@ export function UserShell({
   back?: string;
 }) {
   const path = usePathname();
-  const [subNav, setSubNav] = useState<'explore' | 'teams' | null>(null);
+  const [subNav, setSubNav] = useState<{ key: 'explore' | 'teams'; left: number } | null>(null);
   useEffect(() => {
     void useUserStore.persist.rehydrate();
   }, []);
@@ -411,16 +411,16 @@ export function UserShell({
             <Link
               href="/explore"
               aria-current={path.startsWith('/explore') ? 'page' : undefined}
-              onMouseEnter={() => setSubNav('explore')}
-              onFocus={() => setSubNav('explore')}
+              onMouseEnter={(e) => setSubNav({ key: 'explore', left: e.currentTarget.offsetLeft })}
+              onFocus={(e) => setSubNav({ key: 'explore', left: e.currentTarget.offsetLeft })}
             >
               챌린지 탐색
             </Link>
             <Link
               href="/teams"
               aria-current={path.startsWith('/teams') ? 'page' : undefined}
-              onMouseEnter={() => setSubNav('teams')}
-              onFocus={() => setSubNav('teams')}
+              onMouseEnter={(e) => setSubNav({ key: 'teams', left: e.currentTarget.offsetLeft })}
+              onFocus={(e) => setSubNav({ key: 'teams', left: e.currentTarget.offsetLeft })}
             >
               팀 탐색
             </Link>
@@ -435,12 +435,15 @@ export function UserShell({
           </Nav>
         )}
         {!compact && subNav && (
-          <SubNavBar aria-label={subNav === 'explore' ? '챌린지 종목' : '팀 모집 역할'}>
+          <SubNavBar
+            style={{ paddingLeft: subNav.left }}
+            aria-label={subNav.key === 'explore' ? '챌린지 종목' : '팀 모집 역할'}
+          >
             <ul>
-              {(subNav === 'explore' ? categories : roles).map((item) => (
+              {(subNav.key === 'explore' ? categories : roles).map((item) => (
                 <li key={item}>
                   <Link
-                    href={`/${subNav === 'explore' ? 'explore?category' : 'teams?role'}=${encodeURIComponent(item)}`}
+                    href={`/${subNav.key === 'explore' ? 'explore?category' : 'teams?role'}=${encodeURIComponent(item)}`}
                   >
                     {item}
                   </Link>
