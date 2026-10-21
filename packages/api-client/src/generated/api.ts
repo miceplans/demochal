@@ -13961,7 +13961,7 @@ export const getGetAdminSettingsUrl = () => {
 
 /**
  * 설정(`/admin/settings`). `groups`는 설정 항목 메타(제목/키/라벨/설명)를,
- * `values`는 토글 설정 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
+ * `values`는 토글 설정 값(키 → boolean)을 담는다. 키 예:
  * contestAutoPublish(공고 자동 게시), reportAlert(신고 접수 알림) 등.
  * `maintenance`는 점검 기간으로, 시작 ≤ 현재 < 종료인 동안 점검 모드가 자동 활성화된다.
  * @summary 관리자 설정 조회

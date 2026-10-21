@@ -18,7 +18,7 @@
  */
 
 export type AdminSettingsGroupsItemRowsItem = {
-  /** 설정 키 (예: bizAutoApprove) */
+  /** 설정 키 (예: contestAutoPublish) */
   key?: string;
   label?: string;
   description?: string;
