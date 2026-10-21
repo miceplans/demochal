@@ -1,4 +1,4 @@
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { generated } from '@semochal/api-client';
 import { OnboardingGate } from './OnboardingGate';
@@ -34,6 +34,7 @@ describe('OnboardingGate', () => {
     mockMe({ role: 'user', onboardingSurvey: null });
     render(<OnboardingGate>내용</OnboardingGate>);
     expect(replace).toHaveBeenCalledWith('/onboarding/activity');
+    expect(screen.queryByText('내용')).toBeNull();
   });
 
   it('내 정보를 다시 불러오는 중에는 보내지 않는다(설문 직후 되튕김 방지)', () => {
@@ -46,6 +47,7 @@ describe('OnboardingGate', () => {
     mockMe({ role: 'user', onboardingSurvey: { activity: [] } });
     render(<OnboardingGate>내용</OnboardingGate>);
     expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText('내용')).toBeTruthy();
   });
 
   it('기업·관리자 계정과 비로그인 방문자는 보내지 않는다', () => {

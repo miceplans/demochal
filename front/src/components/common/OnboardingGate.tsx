@@ -36,5 +36,7 @@ export function OnboardingGate({ children }: { children: ReactNode }) {
     if (needsOnboarding) router.replace(ONBOARDING_PATH);
   }, [needsOnboarding, router]);
 
+  // 미완료가 확정되면 이동하는 동안 대상 페이지 내용을 보여주지 않는다.
+  if (needsOnboarding) return null;
   return <>{children}</>;
 }
