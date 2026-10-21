@@ -10,6 +10,7 @@ import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from '.
 import { useUserStore } from '@/stores/useUserStore';
 import { generated } from '@semochal/api-client';
 import { useNotificationStream } from '@/lib/useNotificationStream';
+import { categories, roles } from '@/data/user-design';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -93,6 +94,26 @@ const Nav = styled.nav({
   },
   '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
+});
+const NavItem = styled.div({
+  position: 'relative',
+  '&:hover > div, &:focus-within > div': { display: 'grid' },
+});
+const CategoryMenu = styled.div({
+  display: 'none',
+  position: 'absolute',
+  top: '100%',
+  left: 0,
+  zIndex: 30,
+  gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))',
+  gap: 2,
+  minWidth: 420,
+  padding: 12,
+  background: c.white,
+  border: `0.5px solid ${c.gray100}`,
+  borderRadius: 8,
+  boxShadow: s.toast,
+  '& a': { padding: '8px 10px', whiteSpace: 'nowrap' },
 });
 const HeaderActionLink = styled(Link)({
   display: 'inline-flex',
@@ -366,12 +387,30 @@ export function UserShell({
         </Row>
         {!compact && (
           <Nav>
-            <Link href="/explore" aria-current={path.startsWith('/explore') ? 'page' : undefined}>
-              챌린지 탐색
-            </Link>
-            <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
-              팀 탐색
-            </Link>
+            <NavItem>
+              <Link href="/explore" aria-current={path.startsWith('/explore') ? 'page' : undefined}>
+                챌린지 탐색
+              </Link>
+              <CategoryMenu aria-label="챌린지 종목">
+                {categories.map((category) => (
+                  <Link key={category} href={`/explore?category=${encodeURIComponent(category)}`}>
+                    {category}
+                  </Link>
+                ))}
+              </CategoryMenu>
+            </NavItem>
+            <NavItem>
+              <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
+                팀 탐색
+              </Link>
+              <CategoryMenu aria-label="팀 모집 역할">
+                {roles.map((role) => (
+                  <Link key={role} href={`/teams?role=${encodeURIComponent(role)}`}>
+                    {role}
+                  </Link>
+                ))}
+              </CategoryMenu>
+            </NavItem>
             <Link href="/people" aria-current={path.startsWith('/people') ? 'page' : undefined}>
               팀원 찾기
             </Link>
