@@ -289,7 +289,7 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
 // 데스크톱 3열 × 2줄(최대 6개), 모바일 2열.
 const Rail = styled.div({
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: 16,
   [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
 });

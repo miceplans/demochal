@@ -34,7 +34,12 @@ const ScrapButton = styled(IconButton, {
     : {}),
 }));
 const TeamLink = styled(Link)({ display: 'block' });
-const TeamBadge = styled(TeamTag)({ width: '100%', height: 21, justifyContent: 'center' });
+const TeamBadge = styled(TeamTag)({
+  boxSizing: 'border-box',
+  width: '100%',
+  height: 21,
+  justifyContent: 'center',
+});
 const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',

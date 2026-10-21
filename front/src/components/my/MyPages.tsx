@@ -951,7 +951,7 @@ export function MyTeamsPage() {
   );
 }
 const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
-  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
+  gridTemplateColumns: 'repeat(4,minmax(0,1fr))',
   [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
 }));
 export function BookmarksPage() {
