@@ -503,6 +503,18 @@ export class TeamsService {
       throw new ForbiddenException('초대받은 본인만 초대를 수락할 수 있습니다.');
     }
 
+    // 가입 신청(pending)은 정원을 넘어도 받지만, 확정(accepted) 인원은 정원(리더 + 모집 슬롯 합계)을 넘길 수 없다.
+    if (dto.status === 'accepted' && member.status !== 'accepted') {
+      const [confirmed] = await this.db
+        .select({ total: count() })
+        .from(teamMembers)
+        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'accepted')));
+      const capacity = 1 + team.openRoles.reduce((sum, slot) => sum + slot.count, 0);
+      if (Number(confirmed?.total ?? 0) >= capacity) {
+        throw new BadRequestException('팀 정원이 가득 차 더 이상 수락할 수 없습니다.');
+      }
+    }
+
     const [updated] = await this.db
       .update(teamMembers)
       .set({

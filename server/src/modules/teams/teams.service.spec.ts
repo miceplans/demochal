@@ -517,8 +517,9 @@ describe('TeamsService', () => {
     db.select
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
       .mockReturnValueOnce(selectChain([{ id: 'member-1', userId: applicant.id }]))
-      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
-      .mockReturnValueOnce(selectChain([{ id: 'member-1', userId: applicant.id }]));
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id, openRoles: [] }]))
+      .mockReturnValueOnce(selectChain([{ id: 'member-1', userId: applicant.id }]))
+      .mockReturnValueOnce(selectChain([{ total: 0 }]));
     const returning = vi.fn().mockResolvedValue([{ id: 'member-1', status: 'accepted' }]);
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) }),
@@ -595,10 +596,11 @@ describe('TeamsService', () => {
   it('updateMember stores the chat link for accepted members and includes it in the notification', async () => {
     const db = createDbStub();
     db.select
-      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id, openRoles: [] }]))
       .mockReturnValueOnce(
         selectChain([{ id: 'member-1', userId: applicant.id, status: 'pending', chatLink: null }]),
-      );
+      )
+      .mockReturnValueOnce(selectChain([{ total: 0 }]));
     const set = vi.fn().mockReturnValue({
       where: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'member-1', status: 'accepted' }]),
@@ -624,6 +626,30 @@ describe('TeamsService', () => {
       status: 'accepted',
       chatLink: 'https://open.kakao.com/o/abc',
     });
+  });
+
+  it('updateMember rejects accepting a member once confirmed members fill the team capacity', async () => {
+    const db = createDbStub();
+    db.select
+      .mockReturnValueOnce(
+        selectChain([
+          { id: 'team-1', leaderUserId: leader.id, openRoles: [{ role: '개발', count: 1 }] },
+        ]),
+      )
+      .mockReturnValueOnce(
+        selectChain([{ id: 'member-3', userId: applicant.id, status: 'pending', chatLink: null }]),
+      )
+      .mockReturnValueOnce(selectChain([{ total: 2 }]));
+    const service = new TeamsService(
+      db,
+      createNotificationsStub() as any,
+      createFilesStub() as any,
+    );
+
+    await expect(
+      service.updateMember('team-1', 'member-3', { status: 'accepted' }, leader),
+    ).rejects.toThrow(BadRequestException);
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('updateMember clears the chat link when a member is rejected', async () => {
@@ -979,10 +1005,11 @@ describe('TeamsService', () => {
   it('updateMember lets the invitee accept their own invite and notifies the leader', async () => {
     const db = createDbStub();
     db.select
-      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id, openRoles: [] }]))
       .mockReturnValueOnce(
         selectChain([{ id: 'member-9', userId: applicant.id, status: 'invited', chatLink: null }]),
-      );
+      )
+      .mockReturnValueOnce(selectChain([{ total: 0 }]));
     const set = vi.fn().mockReturnValue({
       where: vi.fn().mockReturnValue({
         returning: vi.fn().mockResolvedValue([{ id: 'member-9', status: 'accepted' }]),
