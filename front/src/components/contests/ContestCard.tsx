@@ -33,6 +33,8 @@ const ScrapButton = styled(IconButton, {
       }
     : {}),
 }));
+const TeamLink = styled(Link)({ display: 'block' });
+const TeamBadge = styled(TeamTag)({ width: '100%', height: 21, justifyContent: 'center' });
 const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
   overflow: 'hidden',
@@ -40,17 +42,19 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   background: c.white,
   transition: 'box-shadow 0.2s ease, transform 0.2s ease',
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  // Figma contestCard 1521:8662: 썸네일 정사각형(416×415), 본문 패딩 14 / 간격 12, 제목 18 Bold.
   '.artwork': {
-    height: 188,
+    aspectRatio: '416 / 415',
     background: c.gray100,
     borderRadius: '12px 12px 0 0',
     overflow: 'hidden',
   },
   '.artwork img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  '.card-body': { display: 'flex', flexDirection: 'column', gap: 8, padding: 14 },
+  '.card-body': { display: 'flex', flexDirection: 'column', gap: 12, padding: 14 },
   '.meta': { display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 },
   '.dday': { color: c.primary, ...textStyle.overline },
-  h3: textStyle.h3,
+  '.prize': { color: c.gray900, ...textStyle.bodySmall2 },
+  h3: { ...textStyle.h3, fontSize: 18, fontWeight: 700 },
   // 탐색 목록 보기(Figma contestCard 1345:22813): 100px 썸네일 + 세로로 쌓은 본문(제목 / 태그·D-day / 북마크·팀 배지).
   ...(row
     ? {
@@ -141,14 +145,42 @@ export function ContestCard({
         </div>
       </Link>
       <div className="card-body">
-        <Link href={href}>
-          <h3 className={simple ? 'clamp' : undefined}>{contest.title}</h3>
-        </Link>
+        {(simple || row || horizontal) && (
+          <Link href={href}>
+            <h3 className={simple ? 'clamp' : undefined}>{contest.title}</h3>
+          </Link>
+        )}
         {simple ? (
           <Row style={{ justifyContent: 'space-between' }}>
             <CategoryTag>{contest.category}</CategoryTag>
             {scrapButton}
           </Row>
+        ) : !row && !horizontal ? (
+          // Figma contestCard 1521:8662: 금액·태그·북마크 / 제목·D-day / 팀 배지(전체 폭).
+          <>
+            <div className="meta">
+              <Row style={{ justifyContent: 'space-between' }}>
+                <Row style={{ gap: 8 }}>
+                  {contest.prizeAmount ? (
+                    <span className="prize">{contest.prizeAmount}만원</span>
+                  ) : null}
+                  <CategoryTag className="tag">{contest.category}</CategoryTag>
+                </Row>
+                {scrapButton}
+              </Row>
+              <Row style={{ gap: 8 }}>
+                <Link href={href}>
+                  <h3>{contest.title}</h3>
+                </Link>
+                <span className="dday">D-{contest.days}</span>
+              </Row>
+            </div>
+            {contest.teams !== undefined && (
+              <TeamLink href="/contests/public-data/teams">
+                <TeamBadge tone="blue">팀 모집 {contest.teams}건</TeamBadge>
+              </TeamLink>
+            )}
+          </>
         ) : (
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>

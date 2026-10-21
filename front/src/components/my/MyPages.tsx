@@ -967,6 +967,7 @@ export function BookmarksPage() {
     category: challenge.category ?? '기타',
     days: daysUntil(challenge.endDate, now),
     posterUrl: challenge.posterUrl ?? null,
+    prizeAmount: challenge.prizeAmount ?? null,
   }));
   return (
     <MyShell title="북마크 챌린지">

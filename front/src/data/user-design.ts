@@ -11,6 +11,8 @@ export type Contest = {
   teams?: number;
   /** 공개 포스터 URL. 없으면 기본 회색 영역만 보인다. */
   posterUrl?: string | null;
+  /** 총상금(만원). 없으면 카드에서 금액을 숨긴다. */
+  prizeAmount?: number | null;
 };
 export const contests: Contest[] = [
   { id: 'contest-1', title: '2025 공공데이터 활용 대회', category: 'IT/SW', days: 7, teams: 3 },
