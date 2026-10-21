@@ -34,6 +34,8 @@ export class BusinessesService {
       throw new ConflictException('이미 등록된 기업 정보가 있습니다.');
     }
     let registrationLookupUnavailable = false;
+    // 국세청 조회 결과 — 기업 유형만 조회하며, 관리자 콘솔 NTS 컬럼이 이 값을 쓴다.
+    let ntsResult: 'registered' | 'unavailable' | null = null;
     if (dto.type === '기업') {
       if (!dto.registrationNumber || !/^\d{10}$/.test(dto.registrationNumber)) {
         throw new BadRequestException('사업자등록번호 10자리를 입력해주세요.');
@@ -45,10 +47,12 @@ export class BusinessesService {
       } catch {
         // 가입 정책에 따라 조회 장애 시 등록을 허용한다.
         registrationLookupUnavailable = true;
+        ntsResult = 'unavailable';
       }
       if (result === 'unregistered') {
         throw new BadRequestException('국세청에 등록되지 않은 사업자등록번호입니다.');
       }
+      if (result === 'registered') ntsResult = 'registered';
     }
     const business = await this.db.transaction(async (tx) => {
       const [created] = await tx
@@ -62,6 +66,7 @@ export class BusinessesService {
           ownerUserId,
           // 기관 가입은 서류 심사 없이 자동 승인한다.
           verificationStatus: 'verified',
+          ntsResult,
         })
         .returning();
       // 기업을 등록한 일반 회원은 기업 회원이 된다(BizAccessCover가 role로 콘솔 접근을 판단).

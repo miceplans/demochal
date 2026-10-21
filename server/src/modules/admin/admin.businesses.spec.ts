@@ -14,6 +14,7 @@ describe('AdminService — businesses', () => {
     type: '비영리' as string | null,
     registrationNumber: '123-45-67890',
     verificationStatus: 'pending',
+    ntsResult: null as string | null,
     createdAt: new Date('2026-09-01T00:00:00Z'),
   };
   const statCounts = [[{ count: 1 }], [{ count: 1 }], [{ count: 0 }]];
@@ -41,6 +42,21 @@ describe('AdminService — businesses', () => {
     const result = await service.listBusinesses();
 
     expect(result.items[0]?.type).toBe('미지정');
+  });
+
+  it('shows NTS success for a business whose registration lookup succeeded at sign-up', async () => {
+    const { db } = createDbStub({
+      select: [
+        ...statCounts,
+        [{ ...businessListRow, verificationStatus: 'verified', ntsResult: 'registered' }],
+        [],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items[0]).toMatchObject({ nts: 'success', verificationId: null });
   });
 
   it('returns the latest verification id so approve/reject target the request, not the business', async () => {

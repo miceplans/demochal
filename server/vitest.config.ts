@@ -13,8 +13,6 @@ export default defineConfig({
     env: {
       JWT_SECRET: 'test-jwt-secret',
       NTS_API_KEY: 'test-nts-key',
-      CLOVA_OCR_API_URL: 'https://ocr.test/recognize',
-      CLOVA_OCR_SECRET_KEY: 'test-ocr-secret',
       TOSS_SECRET_KEY: 'test-toss-secret',
     },
     coverage: {

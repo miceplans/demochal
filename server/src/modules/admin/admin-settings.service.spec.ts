@@ -62,14 +62,14 @@ describe('AdminSettingsService', () => {
     const { db, insertCalls } = createDbStub();
     const service = new AdminSettingsService(db);
 
-    await service.update({ newBusinessAlert: true, contestAutoPublish: true });
+    await service.update({ reportAlert: false, contestAutoPublish: true });
 
     expect(insertCalls[0]?.id).toBe(ADMIN_SETTINGS_ID);
     // 읽기 경로가 쓰기와 다른 키를 쓰면(과거 'singleton' 버그) 여기서 false가 된다.
-    expect(await service.isEnabled('newBusinessAlert')).toBe(true);
+    expect(await service.isEnabled('reportAlert')).toBe(false);
     expect(await service.isEnabled('contestAutoPublish')).toBe(true);
-    // 저장하지 않은 키는 기본값을 따른다.
-    expect(await service.isEnabled('reportAlert')).toBe(true);
+    // 저장하지 않은 키는 기본값(false)을 따른다.
+    expect(await service.isEnabled('newBusinessAlert')).toBe(false);
   });
 
   it('일부 키만 저장된 row에서도 저장하지 않은 키는 기본값(true 포함)으로 읽는다', async () => {

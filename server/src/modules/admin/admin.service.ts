@@ -385,7 +385,9 @@ export class AdminService {
             ? 'success'
             : businessVerifications.some((row) => row.status === 'rejected')
               ? 'failed'
-              : 'unrecognized';
+              : business.ntsResult === 'registered'
+                ? 'success'
+                : 'unrecognized';
       const appliedAt = latest?.createdAt ?? business.createdAt;
       return {
         id: business.id,

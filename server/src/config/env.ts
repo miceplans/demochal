@@ -41,9 +41,6 @@ const envSchema = z
     // 잘못된 항목은 파싱 단계에서 throw해 서버 기동이 실패한다.
     TOSS_WEBHOOK_ALLOWED_IPS: z.string().default(''),
 
-    CLOVA_OCR_API_URL: z.string().default(''),
-    CLOVA_OCR_SECRET_KEY: z.string().default(''),
-
     NTS_API_KEY: z.string().default(''),
 
     JWT_SECRET: z.string().min(1).optional(),
@@ -143,9 +140,6 @@ export const env = {
       .map((entry) => entry.trim())
       .filter(Boolean),
   ),
-
-  clovaOcrApiUrl: raw.CLOVA_OCR_API_URL,
-  clovaOcrSecretKey: raw.CLOVA_OCR_SECRET_KEY,
 
   ntsApiKey: raw.NTS_API_KEY,
 

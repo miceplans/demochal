@@ -45,6 +45,9 @@ export class VerificationsProcessorService {
     }
 
     // 기관은 서류 심사 없이 전부 자동 승인한다(가입 시 verified와 같은 정책).
+    // TODO: completeVerification 트랜잭션이 계속 실패해 메시지가 DLQ에 도달하면 verification이
+    // pending으로 정체된다. DLQ 알림/수동 복구를 추가한다.
+    // https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html
     await this.completeVerification(verification, business, 'verified');
   }
 
