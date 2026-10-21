@@ -262,11 +262,21 @@ function challengeToContest(
   };
 }
 
-const Home = styled.div({ padding: '60px 0', overflow: 'hidden', [mobile]: { padding: 0 } });
+// 상단 광고와 첫 섹션이 붙지 않도록 데스크톱에서 섹션 간격(60px)과 동일하게 띄운다.
+const Home = styled.div({
+  padding: '60px 0',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 60,
+  [mobile]: { padding: 0, display: 'block' },
+});
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
+  // Home이 flex 컬럼이라 margin auto만으로는 폭이 내용물 크기로 줄어든다.
+  width: '100%',
   maxWidth: 1200,
   margin: '0 auto',
   display: 'flex',
