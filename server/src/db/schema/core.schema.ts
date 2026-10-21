@@ -147,8 +147,9 @@ export const businesses = pgTable('businesses', {
   name: varchar('name', { length: 200 }),
   // 학교/비영리 등 사업자번호가 없는 기관은 null.
   registrationNumber: varchar('registration_number', { length: 20 }),
-  // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨)
-  verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('pending'),
+  // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨).
+  // 기관은 가입 시 자동 승인(verified)되며, pending/rejected는 0040에서 모두 verified로 정리했다.
+  verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('verified'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   // 기관 유형: 기업 | 학교 | 비영리 | 협회
   type: varchar('type', { length: 50 }),

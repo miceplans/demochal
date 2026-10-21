@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(40);
+    expect(journal.entries).toHaveLength(41);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -601,5 +601,17 @@ describe('0039_certificate_file_ids migration', () => {
     expect(sql).toContain('jsonb_build_array("file_id")');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[39]!.when).toBeGreaterThan(journal.entries[38]!.when);
+  });
+});
+
+describe('0040_business_auto_verified migration', () => {
+  it('defaults businesses to verified and approves pending/rejected rows without destructive DDL', () => {
+    const tag = journal.entries[40]?.tag;
+    expect(tag).toBe('0040_business_auto_verified');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ALTER COLUMN "verification_status" SET DEFAULT \'verified\'');
+    expect(sql).toContain("IN ('pending', 'rejected')");
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[40]!.when).toBeGreaterThan(journal.entries[39]!.when);
   });
 });
