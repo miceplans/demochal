@@ -97,23 +97,30 @@ const Nav = styled.nav({
 });
 const NavItem = styled.div({
   position: 'relative',
-  '&:hover > div, &:focus-within > div': { display: 'grid' },
+  '&:hover > a, &:focus-within > a': { color: c.primary },
+  '&:hover > div, &:focus-within > div': { display: 'flex' },
 });
+// 링커리어 스타일: 메뉴 바로 아래에 붙는 한 줄(세로) 목록 카드.
 const CategoryMenu = styled.div({
   display: 'none',
   position: 'absolute',
   top: '100%',
-  left: 0,
+  left: -5,
   zIndex: 30,
-  gridTemplateColumns: 'repeat(3, minmax(120px, 1fr))',
-  gap: 2,
-  minWidth: 420,
-  padding: 12,
+  flexDirection: 'column',
+  minWidth: 'max-content',
+  padding: '8px 0',
   background: c.white,
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 8,
+  borderRadius: 5,
   boxShadow: s.toast,
-  '& a': { padding: '8px 10px', whiteSpace: 'nowrap' },
+  '& a': {
+    padding: '4px 15px',
+    borderRadius: 0,
+    ...textStyle.bodySmall,
+    color: c.gray900,
+    whiteSpace: 'nowrap',
+  },
+  '& a:hover': { background: c.gray50 },
 });
 const HeaderActionLink = styled(Link)({
   display: 'inline-flex',
