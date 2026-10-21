@@ -35,6 +35,7 @@ const ScrapButton = styled(IconButton, {
 }));
 const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizontal, row }) => ({
   borderRadius: 12,
+  border: `0.5px solid ${c.gray200}`,
   overflow: 'hidden',
   minWidth: 0,
   background: c.white,
@@ -91,7 +92,7 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
           gap: 8,
           alignItems: 'center',
         }
-      : { border: '0.5px solid #f0f1f3' }),
+      : { border: `0.5px solid ${c.gray200}` }),
     '.artwork': {
       height: horizontal ? 100 : 160,
       background: horizontal ? c.gray100 : '#d8e3f0',
