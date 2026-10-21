@@ -44,11 +44,6 @@ export interface Challenge {
   visibility?: ChallengeVisibility;
   /** 참가비 (원) */
   price?: number;
-  /**
-     * 정원(입력 폼에서 제거됨 — 기존 공고만 값 보유)
-     * @nullable
-     */
-  capacity?: number | null;
   /** 접수 시작 시각 */
   startDate: string;
   /** 접수 종료 시각 */

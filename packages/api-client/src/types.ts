@@ -95,7 +95,6 @@ export interface Challenge {
   title: string;
   description: string;
   price: number;
-  capacity: number;
   startDate: string;
   endDate: string;
   status: 'draft' | 'published' | 'closed';

@@ -32,7 +32,6 @@ export interface AdminChallengeDetail {
   startDate?: string;
   endDate?: string;
   price?: number;
-  capacity?: number;
   /**
      * 총상금(만원)
      * @nullable

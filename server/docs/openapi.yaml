@@ -3513,12 +3513,6 @@ components:
         inquiryContact: { type: string, nullable: true, maxLength: 200 }
         visibility: { type: string, enum: [public, private], default: public }
         price: { type: integer, description: 참가비 (원) }
-        capacity:
-          {
-            type: integer,
-            nullable: true,
-            description: 정원(입력 폼에서 제거됨 — 기존 공고만 값 보유),
-          }
         startDate: { type: string, format: date-time, description: 접수 시작 시각 }
         endDate: { type: string, format: date-time, description: 접수 종료 시각 }
         eventStartDate: { type: string, format: date-time, nullable: true, description: 행사 시작 }
@@ -4578,7 +4572,6 @@ components:
         startDate: { type: string, format: date-time }
         endDate: { type: string, format: date-time }
         price: { type: integer }
-        capacity: { type: integer }
         prizeAmount: { type: integer, nullable: true, description: 총상금(만원) }
         targets: { type: array, items: { type: string } }
         hashtags: { type: array, items: { type: string } }
