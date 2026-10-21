@@ -183,8 +183,6 @@ export const challenges = pgTable('challenges', {
   title: varchar('title', { length: 200 }).notNull(),
   description: text('description').notNull(),
   price: integer('price').notNull(),
-  // 인원 제한 입력은 폼에서 제거됐다. null이면 정원 제한 없음(기존 공고는 값 유지).
-  capacity: integer('capacity'),
   // 접수 기간(시각 포함). 행사 기간은 아래 eventStartDate/eventEndDate로 분리한다.
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date').notNull(),
