@@ -27,7 +27,7 @@ describe('EmailService.listAutomated', () => {
     {
       id: 'n1',
       type: 'team_matching',
-      payload: { teamName: '세모' },
+      payload: { teamName: '세모', applicantUserId: 'applicant-1' },
       email: 'kim.dev@gmail.com',
     },
   ];
@@ -37,6 +37,7 @@ describe('EmailService.listAutomated', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.recipient).toBe('k***@gmail.com');
     expect(rows[0]?.status).toBe('sent');
+    expect(rows[0]?.textBody).toContain('운영 중인 팀에 새 참여 신청이 도착했습니다');
     expect(JSON.stringify(rows)).not.toContain('kim.dev');
   });
 
@@ -47,5 +48,17 @@ describe('EmailService.listAutomated', () => {
 
   it('발송 내역이 없으면 알림 조회 없이 빈 배열을 돌려준다', async () => {
     expect(await serviceWith([]).listAutomated()).toEqual([]);
+  });
+
+  it('알림이 삭제되어 본문을 렌더링할 수 없어도 목록 항목을 반환한다', async () => {
+    const rows = await serviceWith(sent, []).listAutomated();
+    expect(rows).toEqual([
+      expect.objectContaining({
+        id: 's1',
+        subject: '(삭제된 알림)',
+        recipient: '',
+        textBody: '',
+      }),
+    ]);
   });
 });

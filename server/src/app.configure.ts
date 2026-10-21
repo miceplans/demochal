@@ -4,6 +4,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { Express } from 'express';
 import helmet from 'helmet';
 import { env } from './config/env.js';
+import { HttpExceptionLoggingFilter } from './common/http/http-exception-logging.filter.js';
 import { InputSecurityPipe } from './common/security/input-security.pipe.js';
 import { SkipInputSecurityInterceptor } from './common/security/skip-input-security.interceptor.js';
 
@@ -25,6 +26,8 @@ export function configureApp(app: INestApplication): void {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
   app.useGlobalInterceptors(new SkipInputSecurityInterceptor(new Reflector()));
+  // 4xx/5xx 원인을 CloudWatch에서 볼 수 있도록 로그만 추가한다(응답은 기본 필터와 동일).
+  app.useGlobalFilters(new HttpExceptionLoggingFilter(app.getHttpAdapter()));
 
   // Also the source for packages/api-client's future OpenAPI-generated types.
   // 비밀번호/키가 아닌 엔드포인트 계약만 담지만, 외부에 드러낼지는 SWAGGER_ENABLED로

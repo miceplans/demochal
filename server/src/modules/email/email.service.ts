@@ -141,6 +141,7 @@ export class EmailService {
           subject: rendered?.subject ?? '(삭제된 알림)',
           type: notification?.type ?? '',
           recipient: notification?.email ? maskEmail(notification.email) : '',
+          textBody: rendered?.text ?? '',
           status: 'sent' as const,
           sentAt: row.sentAt,
         };
