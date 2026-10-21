@@ -248,6 +248,7 @@ function challengeToContest(
     category?: string;
     endDate?: string;
     posterUrl?: string | null;
+    prizeAmount?: number | null;
   },
   now: number,
 ): Contest {
@@ -259,6 +260,7 @@ function challengeToContest(
     // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
     teams: undefined,
     posterUrl: challenge.posterUrl ?? null,
+    prizeAmount: challenge.prizeAmount ?? null,
   };
 }
 
@@ -287,7 +289,7 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
 // 데스크톱 3열 × 2줄(최대 6개), 모바일 2열.
 const Rail = styled.div({
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: 16,
   [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
 });
