@@ -275,6 +275,8 @@ const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locke
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
 const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
+  // Home이 flex 컬럼이라 margin auto만으로는 폭이 내용물 크기로 줄어든다.
+  width: '100%',
   maxWidth: 1200,
   margin: '0 auto',
   display: 'flex',
