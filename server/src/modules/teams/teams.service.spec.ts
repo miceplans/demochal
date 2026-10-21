@@ -621,6 +621,9 @@ describe('TeamsService', () => {
       status: 'accepted',
       chatLink: 'https://open.kakao.com/o/abc',
     });
+    // 수락 시 팀 행을 잠가 동시 수락이 정원을 넘지 않게 직렬화한다.
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalledTimes(1);
     expect(notifications.create).toHaveBeenCalledWith(applicant.id, 'team_matching', {
       teamId: 'team-1',
       status: 'accepted',
@@ -649,6 +652,7 @@ describe('TeamsService', () => {
     await expect(
       service.updateMember('team-1', 'member-3', { status: 'accepted' }, leader),
     ).rejects.toThrow(BadRequestException);
+    expect(db.execute).toHaveBeenCalledTimes(1);
     expect(db.update).not.toHaveBeenCalled();
   });
 

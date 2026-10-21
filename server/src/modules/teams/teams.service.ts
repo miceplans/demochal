@@ -504,26 +504,31 @@ export class TeamsService {
     }
 
     // 가입 신청(pending)은 정원을 넘어도 받지만, 확정(accepted) 인원은 정원(리더 + 모집 슬롯 합계)을 넘길 수 없다.
-    if (dto.status === 'accepted' && member.status !== 'accepted') {
-      const [confirmed] = await this.db
-        .select({ total: count() })
-        .from(teamMembers)
-        .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'accepted')));
-      const capacity = 1 + team.openRoles.reduce((sum, slot) => sum + slot.count, 0);
-      if (Number(confirmed?.total ?? 0) >= capacity) {
-        throw new BadRequestException('팀 정원이 가득 차 더 이상 수락할 수 없습니다.');
+    // 팀 행을 잠가 동시 수락 요청이 같은 확정 인원을 읽고 함께 통과하지 못하게 직렬화한다.
+    const updated = await this.db.transaction(async (tx) => {
+      if (dto.status === 'accepted' && member.status !== 'accepted') {
+        await tx.execute(sql`select 1 from ${teams} where ${teams.id} = ${teamId} for update`);
+        const [confirmed] = await tx
+          .select({ total: count() })
+          .from(teamMembers)
+          .where(and(eq(teamMembers.teamId, teamId), eq(teamMembers.status, 'accepted')));
+        const capacity = 1 + team.openRoles.reduce((sum, slot) => sum + slot.count, 0);
+        if (Number(confirmed?.total ?? 0) >= capacity) {
+          throw new BadRequestException('팀 정원이 가득 차 더 이상 수락할 수 없습니다.');
+        }
       }
-    }
 
-    const [updated] = await this.db
-      .update(teamMembers)
-      .set({
-        status: dto.status,
-        // 불합격으로 바뀌면 이전에 저장된 링크를 지워 합격자 전용 정보가 남지 않게 한다.
-        chatLink: dto.status === 'rejected' ? null : (dto.chatLink ?? member.chatLink),
-      })
-      .where(eq(teamMembers.id, memberId))
-      .returning();
+      const [row] = await tx
+        .update(teamMembers)
+        .set({
+          status: dto.status,
+          // 불합격으로 바뀌면 이전에 저장된 링크를 지워 합격자 전용 정보가 남지 않게 한다.
+          chatLink: dto.status === 'rejected' ? null : (dto.chatLink ?? member.chatLink),
+        })
+        .where(eq(teamMembers.id, memberId))
+        .returning();
+      return row;
+    });
 
     if (isInviteResponse) {
       // 초대 수락 시에만 리더에게 알린다(거절은 지원자 관리 화면에서 확인).
