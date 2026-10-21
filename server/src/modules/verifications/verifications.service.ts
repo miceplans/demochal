@@ -4,6 +4,7 @@ import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, verifications } from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
 import { FilesService } from '../files/files.service.js';
+import { verificationStatusPresentation } from '../businesses/business-status.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import type { SubmitVerificationDto } from './dto/submit-verification.dto.js';
 
@@ -13,12 +14,6 @@ export const VERIFICATION_SUBMITTED_EVENT = 'verification.submitted';
 
 export interface VerificationJobMessage {
   verificationId: string;
-}
-
-export function verificationStatusPresentation(status: string) {
-  if (status === 'verified') return { displayStatus: '승인', detailStatus: '승인' };
-  if (status === 'rejected') return { displayStatus: '가승인', detailStatus: '실패' };
-  return { displayStatus: '가승인', detailStatus: '인증 대기' };
 }
 
 @Injectable()

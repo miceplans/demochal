@@ -219,25 +219,33 @@ describe('BusinessesService.listMyChallenges pagination', () => {
 
 describe('BusinessesService.register', () => {
   function createRegisterDb(existing: unknown[]) {
-    const created = { id: 'biz-new', verificationStatus: 'pending', ownerUserId: 'user-1' };
+    const created = { id: 'biz-new', verificationStatus: 'verified', ownerUserId: 'user-1' };
+    const inserted: Record<string, unknown>[] = [];
     const tx: any = {
-      insert: () => ({ values: () => ({ returning: async () => [created] }) }),
+      insert: () => ({
+        values: (values: Record<string, unknown>) => {
+          inserted.push(values);
+          return { returning: async () => [created] };
+        },
+      }),
       update: () => ({ set: () => ({ where: async () => [] }) }),
     };
     const db: any = {
       select: () => ({ from: () => ({ where: () => ({ limit: async () => existing }) }) }),
       transaction: async (callback: (tx: unknown) => unknown) => callback(tx),
+      inserted,
     };
     return db;
   }
 
   it.each(['registered', 'unavailable'])('allows a company when lookup is %s', async (result) => {
+    const db = createRegisterDb([]);
     const lookupRegistration =
       result === 'unavailable'
         ? vi.fn().mockRejectedValue(new Error('offline'))
         : vi.fn().mockResolvedValue(result);
     const service = new BusinessesService(
-      createRegisterDb([]),
+      db,
       { notify: vi.fn() } as any,
       {} as any,
       { lookupRegistration } as any,
@@ -245,6 +253,22 @@ describe('BusinessesService.register', () => {
     await expect(
       service.register({ type: '기업', registrationNumber: '1234567890' }, 'user-1'),
     ).resolves.toMatchObject({ registrationLookupUnavailable: result === 'unavailable' });
+    // 자동 승인으로 생성되며, 국세청 조회 결과가 기관에 기록된다.
+    expect(db.inserted[0]).toMatchObject({ verificationStatus: 'verified', ntsResult: result });
+  });
+
+  it('does not record an NTS result for organizations that are not looked up', async () => {
+    const db = createRegisterDb([]);
+    const lookupRegistration = vi.fn();
+    const service = new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      {} as any,
+      { lookupRegistration } as any,
+    );
+    await service.register({ type: '학교' }, 'user-1');
+    expect(lookupRegistration).not.toHaveBeenCalled();
+    expect(db.inserted[0]).toMatchObject({ verificationStatus: 'verified', ntsResult: null });
   });
 
   it('rejects unregistered or missing company numbers before creating a business', async () => {

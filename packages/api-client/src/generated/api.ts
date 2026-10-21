@@ -7181,7 +7181,8 @@ export const getRegisterBusinessUrl = () => {
  * 기업 회원가입 3단계(`/biz/login`: 약관 동의 → 계정 정보 → 기관 인증)의 마지막 단계.
  * 기업은 사업자등록번호가 필수이며 국세청 조회에서 계속·휴업·폐업 상태를 허용하고 미등록 번호는 거부한다.
  * 학교·비영리·협회는 번호가 선택 사항이다. 국세청 조회 장애 시 등록을 허용하고 응답에 `registrationLookupUnavailable=true`를 표시한다.
- * 등록 후 `verificationStatus=pending`이며, 사업자등록증 인증(`POST /verifications`)을 거쳐 승인된다.
+ * 서류 심사 없이 등록 즉시 `verificationStatus=verified`로 자동 승인된다.
+ * 국세청 조회 결과(`registered`/조회 장애)는 기관에 기록되어 관리자 콘솔 NTS 컬럼에 반영된다.
  * @summary 기업(기관) 등록
  */
 export const registerBusiness = async (registerBusinessRequest: RegisterBusinessRequest, options?: Parameters<typeof apiFetch>[1]): Promise<registerBusinessResponse> => {
@@ -8111,8 +8112,8 @@ export const getSubmitVerificationUrl = () => {
 
 /**
  * 기업 가입의 기관 인증 단계. 파일 업로드(`POST /files/presign` → S3 PUT) 후 fileId로 제출.
- * 제출 즉시 SQS(`SQS_VERIFICATIONS_QUEUE_URL`)로 OCR 심사 잡을 발송하고 `status=pending`으로 생성된다.
- * 관리자 심사(`/admin/biz-review`)에서 승인/거부된다.
+ * 제출 즉시 SQS(`SQS_VERIFICATIONS_QUEUE_URL`)로 잡을 발송하고 `status=pending`으로 생성된다.
+ * 워커가 서류 심사 없이 자동 승인(`verified`)하며, 관리자가 차단(`rejected`)한 기관은 자동 승인하지 않는다.
  * @summary 기관 인증 서류 제출 (사업자등록증)
  */
 export const submitVerification = async (submitVerificationRequest: SubmitVerificationRequest, options?: Parameters<typeof apiFetch>[1]): Promise<submitVerificationResponse> => {
@@ -13961,7 +13962,7 @@ export const getGetAdminSettingsUrl = () => {
 
 /**
  * 설정(`/admin/settings`). `groups`는 설정 항목 메타(제목/키/라벨/설명)를,
- * `values`는 토글 설정 값(키 → boolean)을 담는다. 키 예: bizAutoApprove(기관 가입 자동 승인),
+ * `values`는 토글 설정 값(키 → boolean)을 담는다. 키 예:
  * contestAutoPublish(공고 자동 게시), reportAlert(신고 접수 알림) 등.
  * `maintenance`는 점검 기간으로, 시작 ≤ 현재 < 종료인 동안 점검 모드가 자동 활성화된다.
  * @summary 관리자 설정 조회

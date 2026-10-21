@@ -32,7 +32,7 @@ export type BizRow = {
   bizNumber: string;
   appliedAt: string;
   nts: '성공' | '실패' | '폐업/폐점' | '인식불가';
-  status: '대기' | '승인' | '거부';
+  status: '승인' | '거부' | '알 수 없음';
 };
 
 export type UserRow = {

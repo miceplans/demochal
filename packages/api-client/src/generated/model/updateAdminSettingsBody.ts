@@ -18,7 +18,7 @@
  */
 
 /**
- * 변경할 키만 partial로 담는다. 불리언 토글 키(bizAutoApprove, contestAutoPublish,
+ * 변경할 키만 partial로 담는다. 불리언 토글 키(contestAutoPublish,
  * reportAlert, newBusinessAlert)와 점검 기간 키(maintenanceStartAt, maintenanceEndAt —
  * null 또는 ISO 8601 문자열, 시작은 종료보다 이전이어야 함)를 허용한다.
  */

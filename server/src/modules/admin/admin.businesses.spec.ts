@@ -14,9 +14,10 @@ describe('AdminService — businesses', () => {
     type: '비영리' as string | null,
     registrationNumber: '123-45-67890',
     verificationStatus: 'pending',
+    ntsResult: null as string | null,
     createdAt: new Date('2026-09-01T00:00:00Z'),
   };
-  const statCounts = [[{ count: 1 }], [{ count: 0 }], [{ count: 0 }], [{ count: 1 }]];
+  const statCounts = [[{ count: 1 }], [{ count: 1 }], [{ count: 0 }]];
 
   it('filters by businesses.type and returns the stored type', async () => {
     const { db, selectWhereCalls } = createDbStub({
@@ -26,7 +27,7 @@ describe('AdminService — businesses', () => {
 
     const result = await service.listBusinesses(undefined, '비영리');
 
-    const listWhere = selectWhereCalls[3]?.[0];
+    const listWhere = selectWhereCalls[2]?.[0];
     expect(referencesColumn(listWhere, businesses.type)).toBe(true);
     expect(collectStrings(listWhere)).toContain('비영리');
     expect(result.items[0]?.type).toBe('비영리');
@@ -41,6 +42,21 @@ describe('AdminService — businesses', () => {
     const result = await service.listBusinesses();
 
     expect(result.items[0]?.type).toBe('미지정');
+  });
+
+  it('shows NTS success for a business whose registration lookup succeeded at sign-up', async () => {
+    const { db } = createDbStub({
+      select: [
+        ...statCounts,
+        [{ ...businessListRow, verificationStatus: 'verified', ntsResult: 'registered' }],
+        [],
+      ],
+    });
+    const { service } = createService(db);
+
+    const result = await service.listBusinesses();
+
+    expect(result.items[0]).toMatchObject({ nts: 'success', verificationId: null });
   });
 
   it('returns the latest verification id so approve/reject target the request, not the business', async () => {
@@ -71,9 +87,9 @@ describe('AdminService — businesses', () => {
 
     await service.listBusinesses(undefined, undefined, 'verified');
 
-    // [0] 승인 count, [1] 거부, [2] 대기, [3] list filter
+    // [0] 승인 count, [1] 거부, [2] list filter
     expect(collectStrings(selectWhereCalls[0]?.[0])).toContain('verified');
-    expect(collectStrings(selectWhereCalls[3]?.[0])).toContain('verified');
+    expect(collectStrings(selectWhereCalls[2]?.[0])).toContain('verified');
   });
 
   it('marks NTS success from a verified verification row', async () => {

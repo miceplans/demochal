@@ -50,12 +50,11 @@ const baseSettings = {
     {
       title: '서비스 설정',
       rows: [
-        { key: 'bizAutoApprove', label: '기관 가입 자동 승인', description: '자동 승인합니다.' },
+        { key: 'contestAutoPublish', label: '공고 자동 게시', description: '바로 게시합니다.' },
       ],
     },
   ],
   values: {
-    bizAutoApprove: false,
     contestAutoPublish: false,
     reportAlert: true,
     newBusinessAlert: false,
@@ -140,7 +139,7 @@ describe('AdminSettingsScreen', () => {
     const user = userEvent.setup();
     renderScreen();
 
-    await user.click(screen.getByRole('switch', { name: '기관 가입 자동 승인' }));
+    await user.click(screen.getByRole('switch', { name: '공고 자동 게시' }));
     fireEvent.change(screen.getByLabelText('점검 시작 시각'), {
       target: { value: '2099-03-03T01:00' },
     });
@@ -148,7 +147,7 @@ describe('AdminSettingsScreen', () => {
 
     expect(mutateMock).toHaveBeenCalledWith({
       data: {
-        bizAutoApprove: true,
+        contestAutoPublish: true,
         maintenanceStartAt: new Date('2099-03-03T01:00').toISOString(),
       },
     });

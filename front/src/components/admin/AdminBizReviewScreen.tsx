@@ -8,7 +8,6 @@ import { maskBizNumber } from '@/lib/mask';
 import { MaskedText } from '@/components/ui/MaskedText';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useToast } from '@/components/common/Toast';
 import {
   AdminPageTitle,
   AdminTable,
@@ -22,13 +21,13 @@ import {
 } from './parts';
 import { CloseIcon } from './AdminIcons';
 
-// 승인/거부 API는 기관 id가 아니라 최신 인증 요청 id를 받는다(없으면 심사 불가).
-type BizReviewRow = BizRow & { verificationId: string | null };
+// 기관은 가입 시 자동 승인되므로 심사 대기·승인/거부 처리는 없다(거부는 차단된 기관 표시).
+type BizReviewRow = BizRow;
 
-const statusBadge: Record<BizRow['status'], 'amber' | 'green' | 'red'> = {
-  대기: 'amber',
+const statusBadge: Record<BizRow['status'], 'green' | 'red' | 'gray'> = {
   승인: 'green',
   거부: 'red',
+  '알 수 없음': 'gray',
 };
 
 const columns: AdminColumn<BizReviewRow>[] = [
@@ -59,22 +58,7 @@ const columns: AdminColumn<BizReviewRow>[] = [
 
 const PANEL_WIDTH = 360;
 
-function BizDetailPanel({
-  row,
-  onClose,
-  onApprove,
-  onReject,
-  pending,
-}: {
-  row: BizReviewRow;
-  onClose: () => void;
-  onApprove: () => void;
-  onReject: (reason: string) => void;
-  pending: boolean;
-}) {
-  const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState('');
-
+function BizDetailPanel({ row, onClose }: { row: BizReviewRow; onClose: () => void }) {
   const details: [string, ReactNode][] = [
     ['기관 유형', row.type],
     [
@@ -104,48 +88,11 @@ function BizDetailPanel({
           </InfoItem>
         ))}
       </InfoList>
-      {row.status === '대기' && !row.verificationId ? (
-        <PanelNotice>제출된 인증 서류가 없어 심사할 수 없어요.</PanelNotice>
-      ) : row.status === '대기' && rejecting ? (
-        <RejectForm>
-          <RejectLabel htmlFor="biz-reject-reason">거부 사유</RejectLabel>
-          <RejectTextarea
-            id="biz-reject-reason"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            placeholder="거부 사유를 입력해주세요"
-            rows={3}
-          />
-          <ActionRow>
-            <ActionButton type="button" onClick={() => setRejecting(false)} disabled={pending}>
-              취소
-            </ActionButton>
-            <ActionButton
-              type="button"
-              primary
-              disabled={pending || !reason.trim()}
-              onClick={() => onReject(reason.trim())}
-            >
-              거부 확정
-            </ActionButton>
-          </ActionRow>
-        </RejectForm>
-      ) : row.status === '대기' ? (
-        <ActionRow>
-          <ActionButton type="button" onClick={() => setRejecting(true)} disabled={pending}>
-            거부
-          </ActionButton>
-          <ActionButton type="button" primary onClick={onApprove} disabled={pending}>
-            승인
-          </ActionButton>
-        </ActionRow>
-      ) : null}
     </Panel>
   );
 }
 
-const statusParam: Record<string, 'pending' | 'verified' | 'rejected'> = {
-  대기: 'pending',
+const statusParam: Record<string, 'verified' | 'rejected'> = {
   승인: 'verified',
   거부: 'rejected',
 };
@@ -156,7 +103,6 @@ const ntsLabel: Record<string, BizRow['nts']> = {
   unrecognized: '인식불가',
 };
 const bizStatusLabel: Record<string, BizRow['status']> = {
-  pending: '대기',
   verified: '승인',
   rejected: '거부',
 };
@@ -166,7 +112,6 @@ export function AdminBizReviewScreen() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [bizType, setBizType] = useState('');
-  const toast = useToast();
 
   const businessesQuery = generated.useListAdminBusinesses({
     q: query || undefined,
@@ -178,13 +123,12 @@ export function AdminBizReviewScreen() {
     () =>
       (businessesQuery.data?.data.items ?? []).map((entry, index) => ({
         id: entry.id ?? String(index),
-        verificationId: entry.verificationId ?? null,
         org: entry.org ?? '',
         type: entry.type ?? '',
         bizNumber: entry.bizNumber ?? '',
         appliedAt: entry.appliedAt ?? '',
         nts: ntsLabel[entry.nts ?? ''] ?? '인식불가',
-        status: bizStatusLabel[entry.status ?? ''] ?? '대기',
+        status: bizStatusLabel[entry.status ?? ''] ?? '알 수 없음',
       })),
     [businessesQuery.data],
   );
@@ -193,28 +137,6 @@ export function AdminBizReviewScreen() {
   const selectBiz = (row: BizReviewRow) =>
     setSelected((current) => (current?.id === row.id ? null : row));
   const closePanel = () => setSelected(null);
-
-  const approveMutation = generated.useApproveVerification({
-    mutation: {
-      onSuccess: () => {
-        toast.success('기관 심사를 승인했어요.');
-        businessesQuery.refetch();
-        closePanel();
-      },
-      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
-    },
-  });
-  const rejectMutation = generated.useRejectVerification({
-    mutation: {
-      onSuccess: () => {
-        toast.success('기관 심사를 거부했어요.');
-        businessesQuery.refetch();
-        closePanel();
-      },
-      onError: () => toast.error('처리에 실패했어요', '잠시 후 다시 시도해주세요'),
-    },
-  });
-  const actionPending = approveMutation.isPending || rejectMutation.isPending;
 
   return (
     <>
@@ -243,12 +165,7 @@ export function AdminBizReviewScreen() {
           value={bizType}
           onChange={setBizType}
         />
-        <SelectFilter
-          label="상태"
-          options={['대기', '승인', '거부']}
-          value={status}
-          onChange={setStatus}
-        />
+        <SelectFilter label="상태" options={['승인', '거부']} value={status} onChange={setStatus} />
       </FilterBar>
       <BizWorkspace>
         <TableArea withPanel={Boolean(selected) || undefined}>
@@ -259,20 +176,7 @@ export function AdminBizReviewScreen() {
             selectedRowId={selected?.id}
           />
         </TableArea>
-        {selected ? (
-          <BizDetailPanel
-            row={selected}
-            onClose={closePanel}
-            pending={actionPending}
-            onApprove={() => {
-              if (selected.verificationId) approveMutation.mutate({ id: selected.verificationId });
-            }}
-            onReject={(reason) => {
-              if (!selected.verificationId) return;
-              rejectMutation.mutate({ id: selected.verificationId, data: { reason } });
-            }}
-          />
-        ) : null}
+        {selected ? <BizDetailPanel row={selected} onClose={closePanel} /> : null}
       </BizWorkspace>
     </>
   );
@@ -362,43 +266,3 @@ const InfoValue = styled.dd({
   color: c.gray900,
   textAlign: 'right',
 });
-const ActionRow = styled.div({
-  display: 'flex',
-  gap: 8,
-  marginTop: 'auto',
-  paddingTop: 4,
-});
-const RejectForm = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 8,
-  marginTop: 'auto',
-  paddingTop: 4,
-});
-const PanelNotice = styled.p({
-  margin: 0,
-  marginTop: 'auto',
-  ...textStyle.bodySmall,
-  color: c.gray500,
-});
-const RejectLabel = styled.label({ ...textStyle.metaText, color: c.gray500 });
-const RejectTextarea = styled.textarea({
-  resize: 'vertical',
-  padding: '10px 12px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  color: c.gray900,
-  ...textStyle.bodySmall,
-  '&:focus': { outline: 'none', borderColor: c.primary },
-});
-const ActionButton = styled.button<{ primary?: boolean }>(({ primary }) => ({
-  flex: 1,
-  height: 36,
-  padding: '0 16px',
-  border: primary ? 0 : `0.5px solid ${c.gray200}`,
-  borderRadius: 6,
-  background: primary ? c.primary : c.white,
-  color: primary ? c.white : c.gray700,
-  ...textStyle.buttonLabel,
-  '&:hover': { background: primary ? c.primaryDark : c.gray100 },
-}));

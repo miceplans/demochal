@@ -273,6 +273,13 @@
       "when": 1792210367747,
       "tag": "0039_certificate_file_ids",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792296767747,
+      "tag": "0040_business_auto_verified",
+      "breakpoints": true
     }
   ]
 }
