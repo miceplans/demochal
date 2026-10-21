@@ -24,9 +24,10 @@ import { CloseIcon } from './AdminIcons';
 // 기관은 가입 시 자동 승인되므로 심사 대기·승인/거부 처리는 없다(거부는 차단된 기관 표시).
 type BizReviewRow = BizRow;
 
-const statusBadge: Record<BizRow['status'], 'green' | 'red'> = {
+const statusBadge: Record<BizRow['status'], 'green' | 'red' | 'gray'> = {
   승인: 'green',
   거부: 'red',
+  '알 수 없음': 'gray',
 };
 
 const columns: AdminColumn<BizReviewRow>[] = [
@@ -127,7 +128,7 @@ export function AdminBizReviewScreen() {
         bizNumber: entry.bizNumber ?? '',
         appliedAt: entry.appliedAt ?? '',
         nts: ntsLabel[entry.nts ?? ''] ?? '인식불가',
-        status: bizStatusLabel[entry.status ?? ''] ?? '승인',
+        status: bizStatusLabel[entry.status ?? ''] ?? '알 수 없음',
       })),
     [businessesQuery.data],
   );
