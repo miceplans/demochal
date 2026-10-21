@@ -7,6 +7,7 @@ import { EmotionRegistry } from '@/lib/emotion-registry';
 import { ToastProvider } from '@/components/common/Toast';
 import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
 import { MaintenanceGate } from '@/components/common/MaintenanceGate';
+import { OnboardingGate } from '@/components/common/OnboardingGate';
 import { theme } from '@/styles/theme';
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -15,7 +16,9 @@ export function Providers({ children }: { children: ReactNode }) {
       <ThemeProvider theme={theme}>
         <ToastProvider>
           <InputSecurityBoundary>
-            <MaintenanceGate>{children}</MaintenanceGate>
+            <MaintenanceGate>
+              <OnboardingGate>{children}</OnboardingGate>
+            </MaintenanceGate>
           </InputSecurityBoundary>
         </ToastProvider>
       </ThemeProvider>
