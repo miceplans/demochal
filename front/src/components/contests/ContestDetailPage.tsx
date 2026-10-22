@@ -303,11 +303,11 @@ export function ContestDetailPage({
                     <section key={title}>
                       <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
                       {rich ? (
-                        <Muted as="div">
+                        <SectionBody>
                           <RichDescription value={body} />
-                        </Muted>
+                        </SectionBody>
                       ) : (
-                        <Muted style={{ whiteSpace: 'pre-line' }}>{body}</Muted>
+                        <SectionBody style={{ whiteSpace: 'pre-line' }}>{body}</SectionBody>
                       )}
                     </section>
                   );
@@ -473,6 +473,8 @@ const Intro = styled.div({
     '.intro-body': { gap: 12 },
   },
 });
+// 상세 본문은 긴 글이라 Muted(13px gray500)보다 크고 진하게 보여준다.
+const SectionBody = styled.div({ ...textStyle.body, color: c.gray700, lineHeight: 1.6 });
 const Columns = styled.div({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
