@@ -1,5 +1,6 @@
 'use client';
 import { RichDescription } from '@/components/common/RichDescription';
+import { isRichHtml } from '@/lib/rich-text';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
@@ -33,6 +34,15 @@ import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 const formatDateTime = (value?: string) => (value ? formatDateTimeDot(value) : '');
+
+// 줄바꿈 없이 이어 붙은 평문 공고는 항목 기호(○, " - ") 앞에서 줄을 나눠 보여준다.
+const splitPlainItems = (text: string) =>
+  text.includes('\n')
+    ? text
+    : text
+        .replace(/\s*○\s*/g, '\n○ ')
+        .replace(/ - (?=\S)/g, '\n- ')
+        .trim();
 
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
@@ -304,7 +314,9 @@ export function ContestDetailPage({
                       <h2 style={{ fontSize: 15, marginBottom: 10 }}>{title}</h2>
                       {rich ? (
                         <SectionBody>
-                          <RichDescription value={body} />
+                          <RichDescription
+                            value={isRichHtml(body) ? body : splitPlainItems(body)}
+                          />
                         </SectionBody>
                       ) : (
                         <SectionBody style={{ whiteSpace: 'pre-line' }}>{body}</SectionBody>
