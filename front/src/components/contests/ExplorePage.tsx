@@ -60,7 +60,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
   const [teamRoles, setTeamRoles] = useState<string[]>([]);
   const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
-  const [limit, setLimit] = useState(6);
+  const [limit, setLimit] = useState(8);
   const [includeClosed, setIncludeClosed] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -419,7 +419,7 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
               )}
               {hasMoreChallenges && (
                 <Row style={{ justifyContent: 'center', marginTop: 40 }}>
-                  <Button small onClick={() => setLimit((v) => v + 6)}>
+                  <Button small onClick={() => setLimit((v) => v + 8)}>
                     더보기
                   </Button>
                 </Row>
