@@ -474,7 +474,7 @@ const Intro = styled.div({
   },
 });
 // 상세 본문은 긴 글이라 Muted(13px gray500)보다 크고 진하게 보여준다.
-const SectionBody = styled.div({ ...textStyle.body, color: c.gray700, lineHeight: 1.6 });
+const SectionBody = styled.div({ ...textStyle.body, color: c.gray900, lineHeight: 1.7 });
 const Columns = styled.div({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 860px) minmax(240px, 320px)',
