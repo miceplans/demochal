@@ -86,21 +86,21 @@ export function HomePage() {
   const liveTeams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
   // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않고 섹션 전체를 숨긴다.
   const { data: recommended } = generated.useListRecommendedChallenges(
-    { limit: 6 },
+    { limit: 8 },
     { query: { enabled: auth?.status === 200 } },
   );
   const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
   );
-  // 마감 임박순으로 최대 6개(3열 2줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외하고, D-7 이내만 노출한다.
+  // 마감 임박순으로 최대 8개(4열 2줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외하고, D-7 이내만 노출한다.
   const { data: deadlineList } = generated.useListChallenges({
     sort: 'deadline',
     includeClosed: false,
-    limit: 6,
+    limit: 8,
   });
   const liveDeadlineContests = (deadlineList?.data.items ?? [])
     .filter((challenge) => Boolean(challenge.endDate))
-    .slice(0, 4)
+    .slice(0, 8)
     .map((challenge) => challengeToContest(challenge, now));
   // 목업 데이터 폴백은 개발 환경 전용 — 프로덕션에서 API가 비어있거나 실패하면 빈 상태 그대로 둔다.
   const useMockFallbacks = process.env.NODE_ENV === 'development';
@@ -139,7 +139,7 @@ export function HomePage() {
                 <div style={{ height: 16 }} />
                 <DesktopOnly>
                   <Rail>
-                    {recommendationContests.slice(0, 6).map((contest) => (
+                    {recommendationContests.slice(0, 8).map((contest) => (
                       <ContestCard
                         key={contest.id}
                         contest={contest}
@@ -286,7 +286,7 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   gap: 60,
   [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
 }));
-// 데스크톱 3열 × 2줄(최대 6개), 모바일 2열.
+// 데스크톱 4열 × 2줄(최대 8개), 모바일 2열.
 const Rail = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
