@@ -74,6 +74,7 @@ const ActionLink = styled(Link)({
   justifyContent: 'center',
 });
 
+const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
 const Avatar = styled.img({
   flexShrink: 0,
   width: 59,
@@ -81,13 +82,6 @@ const Avatar = styled.img({
   borderRadius: '50%',
   background: c.gray100,
   objectFit: 'cover',
-});
-const AvatarPlaceholder = styled.span({
-  flexShrink: 0,
-  width: 59,
-  height: 59,
-  borderRadius: '50%',
-  background: c.gray100,
 });
 const Name = styled.span({ ...textStyle.h1_2, color: c.gray900, wordBreak: 'break-word' });
 const StackChip = styled.span({
@@ -112,11 +106,7 @@ export function PersonCard({
   return (
     <Card>
       <Row gap={12}>
-        {person.profileImageUrl ? (
-          <Avatar src={person.profileImageUrl} alt="" />
-        ) : (
-          <AvatarPlaceholder aria-hidden />
-        )}
+        <Avatar src={person.profileImageUrl ?? DEFAULT_PROFILE_IMAGE} alt="" />
         <Name>{person.name ?? '이름 없음'}</Name>
       </Row>
       <Bottom>
