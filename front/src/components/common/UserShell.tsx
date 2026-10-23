@@ -122,12 +122,13 @@ const SubNavBar = styled.div({
   '& a': {
     display: 'block',
     padding: '8px 10px',
-    ...textStyle.bodySmall,
-    color: c.gray700,
+    ...textStyle.metaText,
+    color: c.gray500,
     whiteSpace: 'nowrap',
     borderRadius: 6,
+    transition: 'background 0.15s ease, color 0.15s ease',
   },
-  '& a:hover': { color: c.primary, background: c.gray50 },
+  '& a:hover': { color: c.gray900, background: c.gray50 },
 });
 const HeaderActionLink = styled(Link)({
   display: 'inline-flex',
