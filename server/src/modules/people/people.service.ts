@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { and, asc, desc, eq, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { users } from '../../db/schema.js';
+import { files, users } from '../../db/schema.js';
+import { buildPublicFileUrl } from '../files/public-file-url.js';
 
 export interface PeopleFilters {
   q?: string;
@@ -57,18 +58,28 @@ export class PeopleService {
         stacks: users.stacks,
         externalLinks: users.externalLinks,
         awardHistory: users.awardHistory,
+        profileImageFileId: users.profileImageFileId,
       })
       .from(users)
       .where(and(...conditions))
       .orderBy(filters.sort === 'name' ? asc(users.name) : desc(users.createdAt))
       .limit(200);
 
-    return rows.map(({ externalLinks, awardHistory, ...person }) => {
+    // 프로필 사진은 files를 한 번에 조회해 붙인다(카드마다 조회하는 N+1 방지).
+    const fileIds = rows.flatMap((row) => (row.profileImageFileId ? [row.profileImageFileId] : []));
+    const imageFiles =
+      fileIds.length > 0
+        ? await this.db.select().from(files).where(inArray(files.id, fileIds))
+        : [];
+    const urlById = new Map(imageFiles.map((file) => [file.id, buildPublicFileUrl(file)]));
+
+    return rows.map(({ externalLinks, awardHistory, profileImageFileId, ...person }) => {
       const links = (Array.isArray(externalLinks) ? externalLinks : []) as { url?: unknown }[];
       const isGithub = (link: { url?: unknown }) =>
         typeof link.url === 'string' && link.url.toLowerCase().includes('github.com');
       return {
         ...person,
+        profileImageUrl: (profileImageFileId && urlById.get(profileImageFileId)) || null,
         // 카드에는 인증 배지 여부만 내려 개인 링크 URL은 목록에 노출하지 않는다.
         hasGithub: links.some(isGithub),
         hasPortfolio: links.some((link) => !isGithub(link)),
