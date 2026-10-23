@@ -74,7 +74,15 @@ const ActionLink = styled(Link)({
   justifyContent: 'center',
 });
 
-const Avatar = styled.span({
+const Avatar = styled.img({
+  flexShrink: 0,
+  width: 59,
+  height: 59,
+  borderRadius: '50%',
+  background: c.gray100,
+  objectFit: 'cover',
+});
+const AvatarPlaceholder = styled.span({
   flexShrink: 0,
   width: 59,
   height: 59,
@@ -104,7 +112,11 @@ export function PersonCard({
   return (
     <Card>
       <Row gap={12}>
-        <Avatar aria-hidden />
+        {person.profileImageUrl ? (
+          <Avatar src={person.profileImageUrl} alt="" />
+        ) : (
+          <AvatarPlaceholder aria-hidden />
+        )}
         <Name>{person.name ?? '이름 없음'}</Name>
       </Row>
       <Bottom>

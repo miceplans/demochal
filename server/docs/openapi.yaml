@@ -3919,6 +3919,7 @@ components:
       properties:
         id: { type: string, format: uuid }
         name: { type: string, nullable: true }
+        profileImageUrl: { type: string, nullable: true }
         position: { type: string, nullable: true }
         region: { type: string, nullable: true }
         stacks: { type: array, items: { type: string } }

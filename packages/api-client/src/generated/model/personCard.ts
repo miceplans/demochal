@@ -22,6 +22,8 @@ export interface PersonCard {
   /** @nullable */
   name?: string | null;
   /** @nullable */
+  profileImageUrl?: string | null;
+  /** @nullable */
   position?: string | null;
   /** @nullable */
   region?: string | null;
