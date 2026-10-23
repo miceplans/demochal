@@ -488,10 +488,10 @@ const Intro = styled.div({
 // 상세 본문은 긴 글이라 Muted(13px gray500)보다 크고 진하게 보여준다.
 const SectionBody = styled.div({
   ...textStyle.body,
-  fontSize: 18,
+  fontSize: 17,
   color: c.gray900,
   lineHeight: 1.8,
-  [mobile]: { fontSize: 16 },
+  [mobile]: { fontSize: 15 },
 });
 const Columns = styled.div({
   display: 'grid',
