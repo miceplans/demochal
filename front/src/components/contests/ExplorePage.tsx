@@ -40,7 +40,15 @@ const PRIZE_MAX = 10_000;
 
 const MOBILE_FILTER_MAX_WIDTH = 110;
 
-export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
+export function ExplorePage({
+  teamMode = false,
+  initialCategory,
+  initialRole,
+}: {
+  teamMode?: boolean;
+  initialCategory?: string;
+  initialRole?: string;
+}) {
   const query = useUserStore((s) => s.query);
   // 필터 바가 실제로 화면 상단에 붙어 떠 있을 때만 그림자를 준다(sentinel이 화면 밖으로 나간 시점).
   const dockSentinel = useRef<HTMLDivElement>(null);
@@ -52,12 +60,16 @@ export function ExplorePage({ teamMode = false }: { teamMode?: boolean }) {
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    initialCategory && categories.includes(initialCategory) ? [initialCategory] : [],
+  );
   const [targets, setTargets] = useState<string[]>([]);
   const [organizers, setOrganizers] = useState<string[]>([]);
   const [prize, setPrize] = useState<[number, number]>([PRIZE_MIN, PRIZE_MAX]);
   const [challengeId, setChallengeId] = useState('');
-  const [teamRoles, setTeamRoles] = useState<string[]>([]);
+  const [teamRoles, setTeamRoles] = useState<string[]>(
+    initialRole && roles.includes(initialRole) ? [initialRole] : [],
+  );
   const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
   const [limit, setLimit] = useState(8);

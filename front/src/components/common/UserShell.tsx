@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
@@ -10,6 +10,7 @@ import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from '.
 import { useUserStore } from '@/stores/useUserStore';
 import { generated } from '@semochal/api-client';
 import { useNotificationStream } from '@/lib/useNotificationStream';
+import { categories, roles } from '@/data/user-design';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -32,6 +33,7 @@ export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: bool
   );
 }
 const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
+  position: 'relative',
   background: c.white,
   borderBottom: `0.5px solid ${c.gray100}`,
   padding: compact
@@ -93,6 +95,39 @@ const Nav = styled.nav({
   },
   '& a:hover': { background: c.gray50 },
   '& a[aria-current=page]': { color: c.primary, background: c.gray50 },
+});
+// 링커리어 스타일: nav 항목에 호버하면 헤더 아래에 전체 너비 가로 바가 펼쳐져 하위 항목을 한 줄로 보여준다.
+const SubNavBar = styled.div({
+  position: 'absolute',
+  // 헤더 하단 선을 덮어 nav와 단차 없이 이어 붙인다.
+  top: 'calc(100% - 0.5px)',
+  left: 0,
+  right: 0,
+  zIndex: 30,
+  padding: '0 max(24px, calc((100% - 1200px) / 2))',
+  background: c.white,
+  // 그림자는 아래쪽으로만 보이게 자른다.
+  boxShadow: s.toast,
+  clipPath: 'inset(0 0 -24px 0)',
+  '& ul': {
+    display: 'grid',
+    gridTemplateRows: 'repeat(4, auto)',
+    gridAutoFlow: 'column',
+    gridAutoColumns: 'max-content',
+    gap: '0 48px',
+    margin: 0,
+    padding: '4px 0 12px',
+    listStyle: 'none',
+  },
+  '& a': {
+    display: 'block',
+    padding: '8px 10px',
+    ...textStyle.bodySmall,
+    color: c.gray700,
+    whiteSpace: 'nowrap',
+    borderRadius: 6,
+  },
+  '& a:hover': { color: c.primary, background: c.gray50 },
 });
 const HeaderActionLink = styled(Link)({
   display: 'inline-flex',
@@ -293,6 +328,7 @@ export function UserShell({
   back?: string;
 }) {
   const path = usePathname();
+  const [subNav, setSubNav] = useState<{ key: 'explore' | 'teams'; left: number } | null>(null);
   useEffect(() => {
     void useUserStore.persist.rehydrate();
   }, []);
@@ -330,7 +366,13 @@ export function UserShell({
           img: { display: 'block' },
         }}
       />
-      <HeaderBox compact={compact}>
+      <HeaderBox
+        compact={compact}
+        onMouseLeave={() => setSubNav(null)}
+        onBlur={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget)) setSubNav(null);
+        }}
+      >
         <Row
           style={{
             justifyContent: compact && !navigation ? 'center' : 'space-between',
@@ -366,16 +408,50 @@ export function UserShell({
         </Row>
         {!compact && (
           <Nav>
-            <Link href="/explore" aria-current={path.startsWith('/explore') ? 'page' : undefined}>
+            <Link
+              href="/explore"
+              aria-current={path.startsWith('/explore') ? 'page' : undefined}
+              onMouseEnter={(e) => setSubNav({ key: 'explore', left: e.currentTarget.offsetLeft })}
+              onFocus={(e) => setSubNav({ key: 'explore', left: e.currentTarget.offsetLeft })}
+            >
               챌린지 탐색
             </Link>
-            <Link href="/teams" aria-current={path.startsWith('/teams') ? 'page' : undefined}>
+            <Link
+              href="/teams"
+              aria-current={path.startsWith('/teams') ? 'page' : undefined}
+              onMouseEnter={(e) => setSubNav({ key: 'teams', left: e.currentTarget.offsetLeft })}
+              onFocus={(e) => setSubNav({ key: 'teams', left: e.currentTarget.offsetLeft })}
+            >
               팀 탐색
             </Link>
-            <Link href="/people" aria-current={path.startsWith('/people') ? 'page' : undefined}>
+            <Link
+              href="/people"
+              aria-current={path.startsWith('/people') ? 'page' : undefined}
+              onMouseEnter={() => setSubNav(null)}
+              onFocus={() => setSubNav(null)}
+            >
               팀원 찾기
             </Link>
           </Nav>
+        )}
+        {!compact && subNav && (
+          <SubNavBar
+            style={{ paddingLeft: subNav.left }}
+            aria-label={subNav.key === 'explore' ? '챌린지 종목' : '팀 모집 역할'}
+          >
+            <ul>
+              {(subNav.key === 'explore' ? categories : roles).map((item) => (
+                <li key={item}>
+                  <Link
+                    onClick={() => setSubNav(null)}
+                    href={`/${subNav.key === 'explore' ? 'explore?category' : 'teams?role'}=${encodeURIComponent(item)}`}
+                  >
+                    {item}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </SubNavBar>
         )}
       </HeaderBox>
       {!hideMobileHeader && (
