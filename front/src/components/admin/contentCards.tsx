@@ -34,6 +34,8 @@ export const MAX_LIMIT = 50;
 
 export const TeamCard = styled.article({
   position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
   cursor: 'pointer',
   '&:hover': { borderColor: c.gray300 },
   border: `0.5px solid ${c.gray200}`,
@@ -60,6 +62,7 @@ export const TeamCover = styled.div({
   '@media (max-width: 640px)': { height: 'auto', aspectRatio: '4 / 3' },
 });
 export const TeamBody = styled.div({
+  flex: '1 1 auto',
   background: c.white,
   padding: 16,
   display: 'flex',
@@ -85,6 +88,8 @@ export const RoleBadge = styled.span<{ active?: boolean }>(({ active }) => ({
 
 export const ContestCard = styled.article({
   position: 'relative',
+  display: 'flex',
+  flexDirection: 'column',
   cursor: 'pointer',
   '&:hover': { borderColor: c.gray300 },
   border: `0.5px solid ${c.gray200}`,
@@ -106,6 +111,7 @@ export const ContestCover = styled.div({
   '@media (max-width: 640px)': { height: 'auto', aspectRatio: '4 / 3' },
 });
 export const ContestBody = styled.div({
+  flex: '1 1 auto',
   background: c.white,
   padding: 14,
   display: 'flex',
