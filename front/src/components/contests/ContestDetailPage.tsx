@@ -563,13 +563,13 @@ const IconLink = styled(Link)({
   '&:hover': { background: c.gray50 },
   '&:active': { transform: 'scale(0.85)' },
 });
-// 주최(organizer) — 기업 프로필로 가는 링크. 평소엔 Muted와 똑같이 보이고 호버 때만 링크임을 보인다.
+// 주최(organizer) — 기업 프로필로 가는 링크. Muted와 같은 회색을 유지하고 호버에는 밑줄만 표시한다.
 const OrgLink = styled(Link)({
   ...textStyle.caption,
   lineHeight: 1.5,
   color: c.gray500,
   textDecoration: 'none',
-  '&:hover': { color: c.primary, textDecoration: 'underline' },
+  '&:hover': { textDecoration: 'underline' },
 });
 const Related = styled.div({
   display: 'grid',
