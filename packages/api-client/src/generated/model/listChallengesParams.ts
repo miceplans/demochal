@@ -25,6 +25,11 @@ export type ListChallengesParams = {
 cursor?: string;
 limit?: number;
 /**
+ * 1부터 시작하는 페이지 번호. 지정하면 cursor를 무시하고 offset 방식으로 조회하며 응답에 total이 포함된다.
+ * @minimum 1
+ */
+page?: number;
+/**
  * title 또는 category ILIKE `%q%` 검색어
  */
 q?: string;

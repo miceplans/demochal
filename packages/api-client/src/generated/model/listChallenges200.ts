@@ -25,4 +25,6 @@ export type ListChallenges200 = {
      * @nullable
      */
   nextCursor?: string | null;
+  /** 필터에 맞는 전체 개수 (page 지정 시에만 포함) */
+  total?: number;
 };

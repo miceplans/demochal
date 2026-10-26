@@ -42,8 +42,14 @@ export class ChallengesController {
     @Query('prizeMax') prizeMax?: string,
     @Query('includeClosed') includeClosed?: string,
     @Query('sort') sort?: string,
+    @Query('page') page?: string,
   ) {
+    const pageNumber = parseOptionalInt(page, 'page');
+    if (pageNumber !== undefined && pageNumber < 1) {
+      throw new BadRequestException('page must be 1 or greater');
+    }
     return this.challengesService.list({
+      page: pageNumber,
       cursor,
       limit: Number(limit),
       q,

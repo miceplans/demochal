@@ -69,6 +69,8 @@ export interface ListChallengesOptions {
   prizeMax?: number;
   includeClosed?: boolean;
   sort?: string;
+  /** 1부터 시작하는 페이지 번호 — 지정하면 커서 대신 offset 방식으로 조회하고 `total`을 함께 반환한다. */
+  page?: number;
 }
 
 const splitList = (value?: string) =>
@@ -129,6 +131,7 @@ export class ChallengesService {
       prizeMax,
       includeClosed = true,
       sort: requestedSort,
+      page,
     } = options;
     const sort: ChallengeSort = requestedSort ? this.parseSort(requestedSort) : 'latest';
 
@@ -158,6 +161,24 @@ export class ChallengesService {
     if (prizeMax !== undefined) conditions.push(lte(challenges.prizeAmount, prizeMax));
     if (q) {
       conditions.push(or(ilike(challenges.title, `%${q}%`), ilike(challenges.category, `%${q}%`))!);
+    }
+    if (page !== undefined) {
+      const where = and(...conditions);
+      const [rows, totalRows] = await Promise.all([
+        this.db
+          .select()
+          .from(challenges)
+          .where(where)
+          .orderBy(...this.orderBy(sort))
+          .limit(limit)
+          .offset((page - 1) * limit),
+        this.db.select({ value: count() }).from(challenges).where(where),
+      ]);
+      return {
+        items: await this.withPosterUrls(rows),
+        nextCursor: null,
+        total: Number(totalRows[0]?.value ?? 0),
+      };
     }
     if (cursor) conditions.push(this.keysetCondition(this.parseCursor(sort, cursor)));
 
