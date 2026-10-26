@@ -8,7 +8,7 @@ import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel, type AdCarouselItem } from '@/components/ads/AdCarousel';
-import { fallbackAds } from '@/components/ads/fallback-ads';
+import { fallbackAds, fillWithFallback } from '@/components/ads/fallback-ads';
 import {
   contests as fallbackContests,
   teams as fallbackTeams,
@@ -121,7 +121,7 @@ export function HomePage() {
             // 기본 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
             key={liveHeroAds ? 'hero-live' : 'hero-default'}
             ariaLabel="홈 상단 광고"
-            items={liveHeroAds ?? fallbackAds.hero}
+            items={fillWithFallback(liveHeroAds, fallbackAds.hero)}
             variant="hero"
             priceOverlay={
               adPreviewPrice
@@ -202,7 +202,7 @@ export function HomePage() {
           <AdCarousel
             key={liveGalleryAds ? 'gallery-live' : 'gallery-default'}
             ariaLabel="홈 중간 광고"
-            items={liveGalleryAds ?? fallbackAds.gallery}
+            items={fillWithFallback(liveGalleryAds, fallbackAds.gallery)}
             variant="gallery"
             interval={4000}
           />
