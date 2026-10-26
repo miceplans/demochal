@@ -40,26 +40,27 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
-const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
+const SLIDE_WIDTH = { hero: 1200, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 기준 시안 358×150 비율을
-// 유지한다. PC용 1060:250 소재는 중앙을 기준으로 cover 크롭된다.
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 기준 시안 358×220 비율을
+// 유지한다. PC용 1200:300 소재는 중앙을 기준으로 cover 크롭된다.
 export const MOBILE_HERO_LAYOUT = {
   width: 358,
-  height: 150,
+  height: 220,
   inset: 0,
   gap: 0,
 } as const;
 const MOBILE_HERO_ASPECT_RATIO = `${MOBILE_HERO_LAYOUT.width} / ${MOBILE_HERO_LAYOUT.height}`;
 export const HERO_MEDIA_STYLE = {
-  width: '1060px',
-  height: '250px',
+  width: '1200px',
+  height: '300px',
   borderRadius: '12px',
   objectFit: 'cover',
   flexShrink: 0,
 } as const;
+export const HERO_VIEWPORT_STYLE = { height: '300px' } as const;
 export const MOBILE_HERO_VIEWPORT_STYLE = {
   width: '100%',
   height: 'auto',
@@ -71,6 +72,11 @@ export const MOBILE_HERO_MEDIA_STYLE = {
   borderRadius: 0,
   objectFit: 'cover',
   objectPosition: 'center',
+} as const;
+export const HERO_EDGE_FADE_STYLE = {
+  pointerEvents: 'none',
+  background:
+    'linear-gradient(90deg, #fff 0%, rgb(255 255 255 / 88%) 3%, transparent 15%, transparent 85%, rgb(255 255 255 / 88%) 97%, #fff 100%)',
 } as const;
 const MOBILE_GALLERY_WIDTH = 240;
 const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
@@ -85,7 +91,7 @@ export function getMobileHeroSlideStep(viewportWidth: number) {
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
-  height: '250px',
+  ...HERO_VIEWPORT_STYLE,
   '& img': {
     ...HERO_MEDIA_STYLE,
   },
@@ -100,6 +106,14 @@ const HeroViewport = styled.div({
       ...MOBILE_HERO_MEDIA_STYLE,
     },
   },
+});
+
+const HeroEdgeFade = styled.div({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 1,
+  ...HERO_EDGE_FADE_STYLE,
+  [mobile]: { display: 'none' },
 });
 
 const PriceOverlay = styled.div({
@@ -197,10 +211,10 @@ const SlideButton = styled.button({
 
 const SlideLink = SlideButton.withComponent('a');
 
-// hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
+// hero는 화면 중앙(50vw)에 놓인 1200px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
 const navOffset = {
-  hero: 'calc(50vw - 510px)',
+  hero: 'calc(50vw - 580px)',
   gallery: 'calc(50% - 213.5px)',
 } as const;
 
@@ -210,7 +224,7 @@ const NavButton = styled.button<{
 }>(({ direction, variant }) => ({
   position: 'absolute',
   top: '50%',
-  zIndex: 1,
+  zIndex: 2,
   display: 'grid',
   placeItems: 'center',
   width: '64px',
@@ -511,6 +525,7 @@ export function AdCarousel({
             );
           })}
         </Rail>
+        {variant === 'hero' ? <HeroEdgeFade aria-hidden="true" /> : null}
         {itemCount > 1 ? (
           <>
             <NavButton

@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AdCarousel,
   getMobileHeroSlideStep,
+  HERO_EDGE_FADE_STYLE,
   HERO_MEDIA_STYLE,
+  HERO_VIEWPORT_STYLE,
   MOBILE_HERO_LAYOUT,
   MOBILE_HERO_MEDIA_STYLE,
   MOBILE_HERO_VIEWPORT_STYLE,
@@ -120,11 +122,11 @@ describe('AdCarousel', () => {
   });
 
   it('keeps the design crop styles and movement contract on mobile', () => {
-    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 358, height: 150, inset: 0, gap: 0 });
-    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBeCloseTo(2.3867, 4);
+    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 358, height: 220, inset: 0, gap: 0 });
+    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBeCloseTo(1.6273, 4);
     expect(MOBILE_HERO_VIEWPORT_STYLE).toMatchObject({
       width: '100%',
-      aspectRatio: '358 / 150',
+      aspectRatio: '358 / 220',
     });
     expect(MOBILE_HERO_MEDIA_STYLE).toMatchObject({
       width: 'calc(100vw - 0px)',
@@ -138,9 +140,19 @@ describe('AdCarousel', () => {
 
   it('preserves the desktop hero media dimensions', () => {
     expect(HERO_MEDIA_STYLE).toMatchObject({
-      width: '1060px',
-      height: '250px',
+      width: '1200px',
+      height: '300px',
       borderRadius: '12px',
     });
+    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '300px' });
+  });
+
+  it('fades the desktop hero edges without blocking ad interaction', () => {
+    expect(HERO_EDGE_FADE_STYLE).toMatchObject({
+      pointerEvents: 'none',
+      background: expect.stringContaining('linear-gradient(90deg'),
+    });
+    expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 15%');
+    expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 85%');
   });
 });
