@@ -40,10 +40,17 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
-const SLIDE_WIDTH = { hero: 1200, gallery: 315 } as const;
+export const SLIDE_WIDTH = { hero: 1200, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
+// 갤러리 노출 크기. 업로드 크롭 사양(AdPlacementPreview의 GALLERY_CROP_SPEC)과 동기화 대상이라
+// export해 테스트로 계약을 잠근다. 모바일 높이는 PC 비율(315:190)을 유지한 채 폭 240에 맞춘다.
+export const GALLERY_LAYOUT = {
+  pc: { width: SLIDE_WIDTH.gallery, height: 190 },
+  mobile: { width: 240, height: Math.round((240 * 190) / 315) },
+} as const;
+const SLIDE_HEIGHT = { hero: 300, gallery: GALLERY_LAYOUT.pc.height } as const;
 // 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 기준 시안 358×220 비율을
 // 유지한다. PC용 1200:300 소재는 중앙을 기준으로 cover 크롭된다.
 export const MOBILE_HERO_LAYOUT = {
@@ -78,8 +85,8 @@ export const HERO_EDGE_FADE_STYLE = {
   background:
     'linear-gradient(90deg, #fff 0%, rgb(255 255 255 / 88%) 3%, transparent 15%, transparent 85%, rgb(255 255 255 / 88%) 97%, #fff 100%)',
 } as const;
-const MOBILE_GALLERY_WIDTH = 240;
-const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
+const MOBILE_GALLERY_WIDTH = GALLERY_LAYOUT.mobile.width;
+const MOBILE_GALLERY_HEIGHT = GALLERY_LAYOUT.mobile.height;
 const MOBILE_GALLERY_GAP = 16;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_WIDTH + MOBILE_GALLERY_GAP;
 const mobileLayoutQuery = '(max-width: 480px)';
@@ -495,7 +502,7 @@ export function AdCarousel({
                   src={item.src}
                   alt={index === railIndex ? item.alt : ''}
                   width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
+                  height={SLIDE_HEIGHT[variant]}
                   // DB 광고 소재는 CloudFront 절대 URL이라 next/image 최적화 대상(remotePatterns)이 아니다.
                   unoptimized={/^https?:/.test(item.src)}
                 />
