@@ -37,6 +37,26 @@ export function BizPostingsPage() {
       )
     : null;
   const latest = items[0];
+  const now = Date.now();
+  const groups = [
+    {
+      key: 'open',
+      label: '운영중인 공고',
+      items: items.filter(
+        (i) => new Date(i.startDate).getTime() <= now && daysLeft(i.endDate) >= 0,
+      ),
+    },
+    {
+      key: 'upcoming',
+      label: '오픈 예정 공고',
+      items: items.filter((i) => new Date(i.startDate).getTime() > now),
+    },
+    {
+      key: 'closed',
+      label: '마감된 공고',
+      items: items.filter((i) => new Date(i.startDate).getTime() <= now && daysLeft(i.endDate) < 0),
+    },
+  ];
   const statsQuery = generated.useGetMyChallengeStats(latest?.id ?? '', {
     query: { enabled: !!latest },
   });
@@ -121,37 +141,52 @@ export function BizPostingsPage() {
             </ExposureBox>
           </StatsRow>
 
-          <section aria-label="내가 게시했던 공고">
+          <section aria-label="내가 게시한 공고">
             <SectionHeader style={{ marginBottom: 28 }}>
-              <SectionTitle>내가 게시했던 공고</SectionTitle>
+              <SectionTitle>내가 게시한 공고</SectionTitle>
               <PrimaryButton onClick={() => (window.location.href = hrefOf('/postings/new'))}>
                 챌린지 추가
               </PrimaryButton>
             </SectionHeader>
-            <PostingsGrid>
-              {items.map((item) => {
-                const left = daysLeft(item.endDate);
-                const closed = left < 0;
-                return (
-                  <CardBox key={item.id} href={`/postings/${item.id}`}>
-                    <CardThumb closed={closed}>
-                      {item.posterUrl && <PosterImg src={item.posterUrl} alt="" />}
-                      {closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
-                    </CardThumb>
-                    <CardBody>
-                      <CardTitle>{item.title}</CardTitle>
-                      <CardMeta>
-                        <CategoryTag>{item.category ?? '미분류'}</CategoryTag>
-                        {!closed && <Dday>{left === 0 ? 'D-DAY' : `D-${left}`}</Dday>}
-                      </CardMeta>
-                      <CardBottom>
-                        <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
-                      </CardBottom>
-                    </CardBody>
-                  </CardBox>
-                );
-              })}
-            </PostingsGrid>
+            {groups.map((g) =>
+              g.items.length === 0 && g.key !== 'open' ? null : (
+                <PostingGroup key={g.key} aria-label={g.label}>
+                  <GroupTitle>
+                    {g.label} <GroupCount>{g.items.length}</GroupCount>
+                  </GroupTitle>
+                  {g.items.length === 0 ? (
+                    <Message>{g.label} 공고가 없습니다.</Message>
+                  ) : (
+                    <PostingsGrid>
+                      {g.items.map((item) => {
+                        const left = daysLeft(item.endDate);
+                        const closed = g.key === 'closed';
+                        return (
+                          <CardBox key={item.id} href={`/postings/${item.id}`}>
+                            <CardThumb closed={closed}>
+                              {item.posterUrl && <PosterImg src={item.posterUrl} alt="" />}
+                              {closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
+                            </CardThumb>
+                            <CardBody>
+                              <CardTitle>{item.title}</CardTitle>
+                              <CardMeta>
+                                <CategoryTag>{item.category ?? '미분류'}</CategoryTag>
+                                {g.key === 'open' && (
+                                  <Dday>{left === 0 ? 'D-DAY' : `D-${left}`}</Dday>
+                                )}
+                              </CardMeta>
+                              <CardBottom>
+                                <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
+                              </CardBottom>
+                            </CardBody>
+                          </CardBox>
+                        );
+                      })}
+                    </PostingsGrid>
+                  )}
+                </PostingGroup>
+              ),
+            )}
           </section>
         </>
       )}
@@ -250,6 +285,14 @@ const LegendValue = styled.strong({ marginLeft: 'auto', color: c.primary, ...tex
 
 const ExposureBox = styled(StatBox)({ width: 297, flexShrink: 0, justifyContent: 'flex-start' });
 
+const PostingGroup = styled.section({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  marginBottom: 40,
+});
+const GroupTitle = styled.h3({ margin: 0, ...textStyle.h3_2, color: c.gray900 });
+const GroupCount = styled.span({ color: c.primary });
 const PostingsGrid = styled.div({ display: 'flex', gap: 16, flexWrap: 'wrap' });
 const CardBox = styled(BizLink)({
   width: 416,
