@@ -179,7 +179,7 @@ export function AdPlacementPreview({
                     <HeroSlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
                         compact={view === 'mobile'}
-                        aspectRatio={1060 / 250}
+                        aspectRatio={3.5}
                         previewWidth={1060}
                         busy={processing}
                         onFileSelected={(file) => onImagePicked?.('hero', file)}

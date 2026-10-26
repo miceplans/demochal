@@ -44,31 +44,34 @@ const SLIDE_WIDTH = { hero: 1200, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 기준 시안 358×220 비율을
-// 유지한다. PC용 1200:300 소재는 중앙을 기준으로 cover 크롭된다.
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) PC와 같은 3.5:1 비율을 쓴다.
+// 소재가 3.5:1이 아니면 중앙을 기준으로 cover 크롭된다.
 export const MOBILE_HERO_LAYOUT = {
-  width: 358,
-  height: 220,
+  width: 350,
+  height: 100,
   inset: 0,
   gap: 0,
 } as const;
 const MOBILE_HERO_ASPECT_RATIO = `${MOBILE_HERO_LAYOUT.width} / ${MOBILE_HERO_LAYOUT.height}`;
 export const HERO_MEDIA_STYLE = {
   width: '1200px',
-  height: '300px',
+  height: '343px',
   borderRadius: '12px',
   objectFit: 'cover',
   flexShrink: 0,
 } as const;
-export const HERO_VIEWPORT_STYLE = { height: '300px' } as const;
+export const HERO_VIEWPORT_STYLE = { height: '343px' } as const;
 export const MOBILE_HERO_VIEWPORT_STYLE = {
   width: '100%',
   height: 'auto',
   aspectRatio: MOBILE_HERO_ASPECT_RATIO,
 } as const;
 export const MOBILE_HERO_MEDIA_STYLE = {
+  display: 'block',
   width: `calc(100vw - ${MOBILE_HERO_LAYOUT.inset * 2}px)`,
-  height: '100%',
+  // 부모(button) 높이가 auto라 height: 100%가 풀리지 않으므로 비율로 박스를 고정하고 cover로 크롭한다.
+  height: 'auto',
+  aspectRatio: MOBILE_HERO_ASPECT_RATIO,
   borderRadius: 0,
   objectFit: 'cover',
   objectPosition: 'center',
@@ -495,7 +498,7 @@ export function AdCarousel({
                   src={item.src}
                   alt={index === railIndex ? item.alt : ''}
                   width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
+                  height={variant === 'hero' ? 343 : 190}
                   // DB 광고 소재는 CloudFront 절대 URL이라 next/image 최적화 대상(remotePatterns)이 아니다.
                   unoptimized={/^https?:/.test(item.src)}
                 />

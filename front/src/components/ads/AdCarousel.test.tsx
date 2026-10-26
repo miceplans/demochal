@@ -122,15 +122,16 @@ describe('AdCarousel', () => {
   });
 
   it('keeps the design crop styles and movement contract on mobile', () => {
-    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 358, height: 220, inset: 0, gap: 0 });
-    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBeCloseTo(1.6273, 4);
+    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 350, height: 100, inset: 0, gap: 0 });
+    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBe(3.5);
     expect(MOBILE_HERO_VIEWPORT_STYLE).toMatchObject({
       width: '100%',
-      aspectRatio: '358 / 220',
+      aspectRatio: '350 / 100',
     });
     expect(MOBILE_HERO_MEDIA_STYLE).toMatchObject({
       width: 'calc(100vw - 0px)',
-      height: '100%',
+      height: 'auto',
+      aspectRatio: '350 / 100',
       objectFit: 'cover',
       objectPosition: 'center',
     });
@@ -141,10 +142,10 @@ describe('AdCarousel', () => {
   it('preserves the desktop hero media dimensions', () => {
     expect(HERO_MEDIA_STYLE).toMatchObject({
       width: '1200px',
-      height: '300px',
+      height: '343px',
       borderRadius: '12px',
     });
-    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '300px' });
+    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '343px' });
   });
 
   it('fades the desktop hero edges without blocking ad interaction', () => {
