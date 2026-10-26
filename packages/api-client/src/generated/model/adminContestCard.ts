@@ -24,6 +24,11 @@ export interface AdminContestCard {
   id?: string;
   title?: string;
   category?: string;
+  /**
+     * 공개 포스터 URL(없으면 null)
+     * @nullable
+     */
+  posterUrl?: string | null;
   /** 'D-7' 형태 */
   dday?: string;
   /** '팀 모집 3건' 형태 */

@@ -4622,6 +4622,7 @@ components:
         id: { type: string, format: uuid }
         title: { type: string }
         category: { type: string }
+        posterUrl: { type: string, nullable: true, description: 공개 포스터 URL(없으면 null) }
         dday: { type: string, description: "'D-7' 형태" }
         teams: { type: string, description: "'팀 모집 3건' 형태" }
         unread: { type: boolean }
