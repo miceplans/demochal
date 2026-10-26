@@ -1,5 +1,5 @@
 'use client';
-import { useState, type ChangeEvent } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -397,7 +397,14 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
   };
 
   // 드래그 중인 옵션의 위치({questionId, index})를 추적해 순서 변경과 시각 피드백에 쓴다.
-  const [dragOption, setDragOption] = useState<{ questionId: string; index: number } | null>(null);
+  // 드롭 판정은 동기 ref로, 시각 피드백(opacity)만 state로 둔다.
+  type DragOption = { questionId: string; index: number };
+  const dragSource = useRef<DragOption | null>(null);
+  const [dragOption, setDragOption] = useState<DragOption | null>(null);
+  const endDrag = () => {
+    dragSource.current = null;
+    setDragOption(null);
+  };
 
   const handlePublish = async () => {
     if (questions.some((q) => !q.title.trim())) {
@@ -477,15 +484,15 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
                       key={oi}
                       dragging={dragOption?.questionId === q.id && dragOption.index === oi}
                       onDragOver={(e) => {
-                        if (!dragOption || dragOption.questionId !== q.id) return;
+                        if (dragSource.current?.questionId !== q.id) return;
                         e.preventDefault();
                         e.dataTransfer.dropEffect = 'move';
                       }}
                       onDrop={(e) => {
                         e.preventDefault();
-                        if (!dragOption || dragOption.questionId !== q.id) return;
-                        reorderOption(q.id, dragOption.index, oi);
-                        setDragOption(null);
+                        if (!dragSource.current || dragSource.current.questionId !== q.id) return;
+                        reorderOption(q.id, dragSource.current.index, oi);
+                        endDrag();
                       }}
                     >
                       <DragHandle
@@ -494,9 +501,12 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
                         onDragStart={(e) => {
                           e.dataTransfer.setData('text/plain', String(oi));
                           e.dataTransfer.effectAllowed = 'move';
-                          setDragOption({ questionId: q.id, index: oi });
+                          // dragstart 중 드래그 요소의 className이 바뀌면 Chrome이 드래그를 즉시 취소하므로
+                          // 상태 갱신(opacity 피드백)은 드래그가 시작된 다음 틱으로 미룬다.
+                          dragSource.current = { questionId: q.id, index: oi };
+                          setTimeout(() => setDragOption(dragSource.current), 0);
                         }}
-                        onDragEnd={() => setDragOption(null)}
+                        onDragEnd={endDrag}
                       >
                         <GripIcon />
                       </DragHandle>
