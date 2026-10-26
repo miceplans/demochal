@@ -31,6 +31,17 @@ const artwork = {
   mobile: { width: 358, background: '/assets/mobile-screen.png' },
 } as const;
 
+// 업로드 크롭 프레임은 각 뷰가 실제 홈에서 광고를 노출하는 비율과 같아야 한다 —
+// AdCarousel의 히어로·갤러리 레이아웃(모바일·PC 모두 3.5:1, 갤러리 315:190·240:145)과 동기화한다.
+export const HERO_CROP_SPEC = {
+  pc: { aspectRatio: 1200 / 343, previewWidth: 1200 },
+  mobile: { aspectRatio: 3.5, previewWidth: 350 },
+} as const;
+export const GALLERY_CROP_SPEC = {
+  pc: { aspectRatio: 315 / 190, previewWidth: 315 },
+  mobile: { aspectRatio: 240 / 145, previewWidth: 240 },
+} as const;
+
 // 게재 중인 광고가 없거나 조회에 실패하면 fallbackAds(홈과 공유) 기본 광고 세트를
 // 보여준다. 홈(HomePage)과 같은 silentError 관례를 쓴다.
 const publicAdsQuery = { query: { meta: { silentError: true } } };
@@ -179,8 +190,8 @@ export function AdPlacementPreview({
                     <HeroSlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
                         compact={view === 'mobile'}
-                        aspectRatio={3.5}
-                        previewWidth={1060}
+                        aspectRatio={HERO_CROP_SPEC[view].aspectRatio}
+                        previewWidth={HERO_CROP_SPEC[view].previewWidth}
                         busy={processing}
                         onFileSelected={(file) => onImagePicked?.('hero', file)}
                       />
@@ -269,8 +280,8 @@ export function AdPlacementPreview({
                     <GallerySlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
                         compact
-                        aspectRatio={298 / 190}
-                        previewWidth={298}
+                        aspectRatio={GALLERY_CROP_SPEC[view].aspectRatio}
+                        previewWidth={GALLERY_CROP_SPEC[view].previewWidth}
                         busy={processing}
                         onFileSelected={(file) => onImagePicked?.('gallery', file)}
                       />
@@ -396,7 +407,7 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   position: 'relative',
   display: 'block',
   width: '100%',
-  height: 'clamp(150px, 21vw, 252px)',
+  height: 'clamp(100px, 29vw, 343px)',
   padding: 8,
   overflow: 'hidden',
   border: `4px dashed ${active ? c.primary : '#7db2ff'}`,
@@ -415,14 +426,14 @@ const HeroSlot = styled('button', { shouldForwardProp: (prop) => prop !== 'activ
   '&:hover': { transform: 'scale(1.02)', zIndex: 2 },
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 4 },
 }));
-const MobileHeroSlot = styled(HeroSlot)({ height: 150 });
+const MobileHeroSlot = styled(HeroSlot)({ height: 120 });
 const HeroSlotFrame = styled('div', { shouldForwardProp: (prop) => prop !== 'view' })<{
   view: AdPreviewView;
 }>(({ view }) => ({
   position: 'relative',
   display: 'block',
   width: '100%',
-  height: view === 'mobile' ? 150 : 'clamp(150px, 21vw, 252px)',
+  height: view === 'mobile' ? 120 : 'clamp(100px, 29vw, 343px)',
   padding: 8,
   overflow: 'hidden',
   border: `4px dashed ${c.primary}`,
@@ -526,7 +537,7 @@ const GallerySlot = styled('button', {
   '& img, & video': {
     display: 'block',
     width: '100%',
-    aspectRatio: '298 / 190',
+    aspectRatio: view === 'mobile' ? '240 / 145' : '315 / 190',
     borderRadius: 8,
     objectFit: 'cover',
   },
