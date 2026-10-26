@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { BusinessesController } from './businesses.controller.js';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
+import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import type { BusinessesService } from './businesses.service.js';
 
 const user = { id: 'user-1', email: 'biz@semochal.kr', name: '사업자', role: 'business' };
@@ -25,10 +26,20 @@ describe('BusinessesController', () => {
       JwtAuthGuard,
     );
   });
-  it('serves the public profile without the JWT guard (비로그인 접근 허용)', () => {
+  it('serves the public profile anonymously via the @Public marker (비로그인 접근 허용)', () => {
+    // JwtAuthGuard가 APP_GUARD로 전역 등록돼 있으므로, guard 부재가 아니라
+    // IS_PUBLIC_KEY 메타데이터가 비로그인 통과의 실제 계약이다(guard 자체 동작은 jwt-auth.guard.spec가 검증).
+    expect(Reflect.getMetadata(IS_PUBLIC_KEY, BusinessesController.prototype.findPublic)).toBe(
+      true,
+    );
+  });
+  it('does not mark the owner/admin detail endpoint public', () => {
     expect(
-      Reflect.getMetadata(GUARDS_METADATA, BusinessesController.prototype.findPublic),
+      Reflect.getMetadata(IS_PUBLIC_KEY, BusinessesController.prototype.findOne),
     ).toBeUndefined();
+    expect(Reflect.getMetadata(GUARDS_METADATA, BusinessesController.prototype.findOne)).toContain(
+      JwtAuthGuard,
+    );
   });
   it('returns the public profile for any visitor', async () => {
     const { controller, businessesService } = createController();
