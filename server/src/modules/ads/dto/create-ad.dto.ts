@@ -1,15 +1,20 @@
 import {
   IsDateString,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsPositive,
   IsString,
   IsUrl,
   IsUUID,
+  Matches,
 } from 'class-validator';
 
 export class CreateAdDto {
-  @IsUUID()
+  // ad_products.id is a stable string slot ID (for example, "hero"), not a UUID.
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/\S/)
   productId!: string;
 
   @IsOptional()

@@ -246,6 +246,38 @@ describe('AdsService.updateStatus', () => {
   });
 });
 
+describe('AdsService.create', () => {
+  it('keeps an unknown string product ID on the existing 404 path', async () => {
+    const limit = vi.fn().mockResolvedValue([]);
+    const db: any = {
+      transaction: vi.fn((callback: (tx: unknown) => unknown) => callback(db)),
+      select: vi.fn(() => ({
+        from: vi.fn(() => ({
+          where: vi.fn(() => ({
+            for: vi.fn(() => ({ limit })),
+          })),
+        })),
+      })),
+    };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(
+      service.create(
+        {
+          productId: 'unknown-product',
+          startDate: '2026-10-26',
+          endDate: '2026-10-26',
+          expectedDailyPrice: 100_000,
+        },
+        'biz-1',
+        'user-1',
+      ),
+    ).rejects.toThrow('광고 상품을 찾을 수 없습니다.');
+
+    expect(limit).toHaveBeenCalledWith(1);
+  });
+});
+
 describe('AdsService.listMine', () => {
   const DAY_MS = 86_400_000;
 
