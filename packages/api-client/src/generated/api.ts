@@ -144,6 +144,8 @@ import type {
   PersonCard,
   PresignedUploadRequest,
   PublicAd,
+  PublicBusiness,
+  PublicBusinessChallenge,
   PublishAdminChallenge200,
   RegenerateMfaRecoveryCodesBody,
   Register201,
@@ -7834,6 +7836,253 @@ export function useFindMyBusiness<TData = Awaited<ReturnType<typeof findMyBusine
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getFindMyBusinessQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getPublicBusinessResponse200 = {
+  data: PublicBusiness
+  status: 200
+}
+
+export type getPublicBusinessResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getPublicBusinessResponseSuccess = (getPublicBusinessResponse200) & {
+  headers: Headers;
+};
+export type getPublicBusinessResponseError = (getPublicBusinessResponse404) & {
+  headers: Headers;
+};
+
+export type getPublicBusinessResponse = (getPublicBusinessResponseSuccess | getPublicBusinessResponseError)
+
+export const getGetPublicBusinessUrl = (id: string,) => {
+
+
+
+
+  return `/businesses/${id}/public`
+}
+
+/**
+ * 일반 사용자용 공개 기업 프로필(`/businesses/{id}`). 비로그인 접근을 허용한다.
+ * 사업자등록번호·소유자 ID·nts 조회 결과 등 민감 필드는 제외하고, 배너/로고는
+ * 서버가 공개 URL(`bannerUrl`/`logoUrl`)로 변환해 반환한다.
+ * 챌린지 상세의 주최(organizer) 표시에서 기업 프로필로 진입할 때 사용한다.
+ * @summary 기업 공개 프로필 조회
+ */
+export const getPublicBusiness = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getPublicBusinessResponse> => {
+
+  return apiFetch<getPublicBusinessResponse>(getGetPublicBusinessUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicBusinessQueryKey = (id: string,) => {
+    return [
+    `/businesses/${id}/public`
+    ] as const;
+    }
+
+
+export const getGetPublicBusinessQueryOptions = <TData = Awaited<ReturnType<typeof getPublicBusiness>>, TError = NotFoundResponse>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicBusinessQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicBusiness>>> = ({ signal }) => getPublicBusiness(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPublicBusinessQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicBusiness>>>
+export type GetPublicBusinessQueryError = NotFoundResponse
+
+
+export function useGetPublicBusiness<TData = Awaited<ReturnType<typeof getPublicBusiness>>, TError = NotFoundResponse>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicBusiness>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicBusiness<TData = Awaited<ReturnType<typeof getPublicBusiness>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicBusiness>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicBusiness>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicBusiness<TData = Awaited<ReturnType<typeof getPublicBusiness>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 기업 공개 프로필 조회
+ */
+
+export function useGetPublicBusiness<TData = Awaited<ReturnType<typeof getPublicBusiness>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusiness>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPublicBusinessQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type getPublicBusinessChallengesResponse200 = {
+  data: PublicBusinessChallenge[]
+  status: 200
+}
+
+export type getPublicBusinessChallengesResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type getPublicBusinessChallengesResponseSuccess = (getPublicBusinessChallengesResponse200) & {
+  headers: Headers;
+};
+export type getPublicBusinessChallengesResponseError = (getPublicBusinessChallengesResponse404) & {
+  headers: Headers;
+};
+
+export type getPublicBusinessChallengesResponse = (getPublicBusinessChallengesResponseSuccess | getPublicBusinessChallengesResponseError)
+
+export const getGetPublicBusinessChallengesUrl = (id: string,) => {
+
+
+
+
+  return `/businesses/${id}/challenges`
+}
+
+/**
+ * 공개 기업 프로필(`/businesses/{id}`) 하단 "이 기관의 챌린지"용. 비로그인 접근을 허용한다.
+ * 공개 챌린지 목록과 같은 기준(`status`가 published/closed이고 `visibility`가 public)의
+ * 챌린지만 최근 생성순으로 최대 50개 반환하며, 존재하지 않는 기업은 404다.
+ * @summary 기업 공개 챌린지 목록 조회
+ */
+export const getPublicBusinessChallenges = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<getPublicBusinessChallengesResponse> => {
+
+  return apiFetch<getPublicBusinessChallengesResponse>(getGetPublicBusinessChallengesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPublicBusinessChallengesQueryKey = (id: string,) => {
+    return [
+    `/businesses/${id}/challenges`
+    ] as const;
+    }
+
+
+export const getGetPublicBusinessChallengesQueryOptions = <TData = Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError = NotFoundResponse>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPublicBusinessChallengesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicBusinessChallenges>>> = ({ signal }) => getPublicBusinessChallenges(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPublicBusinessChallengesQueryResult = NonNullable<Awaited<ReturnType<typeof getPublicBusinessChallenges>>>
+export type GetPublicBusinessChallengesQueryError = NotFoundResponse
+
+
+export function useGetPublicBusinessChallenges<TData = Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError = NotFoundResponse>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicBusinessChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicBusinessChallenges>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicBusinessChallenges<TData = Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPublicBusinessChallenges>>,
+          TError,
+          Awaited<ReturnType<typeof getPublicBusinessChallenges>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPublicBusinessChallenges<TData = Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 기업 공개 챌린지 목록 조회
+ */
+
+export function useGetPublicBusinessChallenges<TData = Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPublicBusinessChallenges>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPublicBusinessChallengesQueryOptions(id,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

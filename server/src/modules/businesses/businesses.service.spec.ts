@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
-/** eq/and 호출을 기록해 where 절의 실제 predicate를 검증한다. */
+/** eq/and/inArray 호출을 기록해 where 절의 실제 predicate를 검증한다. */
 const predicates = vi.hoisted(() => ({
   eqCalls: [] as Array<{ column: unknown; value: unknown }>,
   andCalls: [] as unknown[][],
+  inArrayCalls: [] as Array<{ column: unknown; values: unknown[] }>,
 }));
 
 vi.mock('drizzle-orm', async (importActual) => {
@@ -19,10 +20,14 @@ vi.mock('drizzle-orm', async (importActual) => {
       predicates.andCalls.push(conditions);
       return { op: 'and', conditions };
     },
+    inArray: (column: unknown, values: unknown[]) => {
+      predicates.inArrayCalls.push({ column, values });
+      return { op: 'inArray', column, values };
+    },
   };
 });
 
-import { businesses } from '../../db/schema.js';
+import { businesses, challenges } from '../../db/schema.js';
 import { BusinessesService } from './businesses.service.js';
 
 /** update().set().where().returning() chain. */
@@ -334,5 +339,193 @@ describe('BusinessesService.register', () => {
       '이미 등록된 기업 정보가 있습니다.',
     );
     expect(alerts.notify).not.toHaveBeenCalled();
+  });
+});
+
+describe('BusinessesService.findPublicById', () => {
+  const publicRow = {
+    id: 'biz-1',
+    name: '주식회사 새모',
+    type: '기업',
+    verificationStatus: 'verified',
+    bannerImageFileId: 'file-banner',
+    logoImageFileId: 'file-logo',
+    address: '서울시 강남구',
+    phone: '02-1234-5678',
+    email: 'biz@semochal.kr',
+    contentBlocks: [],
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+
+  function createPublicDb(row: Record<string, unknown> | undefined) {
+    const db: any = {
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => (row ? [row] : []) }) }),
+      }),
+    };
+    return db;
+  }
+
+  function createService(row: Record<string, unknown> | undefined, resolvePublicUrls = vi.fn()) {
+    return new BusinessesService(
+      createPublicDb(row),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls } as any,
+      {} as any,
+    );
+  }
+
+  it('returns public fields with resolved banner/logo URLs and hides sensitive ones', async () => {
+    const resolvePublicUrls = vi.fn(
+      async () =>
+        new Map([
+          ['file-banner', 'https://cdn.example.com/banner.png'],
+          ['file-logo', 'https://cdn.example.com/logo.png'],
+        ]),
+    );
+    const service = createService(publicRow, resolvePublicUrls);
+
+    const result = await service.findPublicById('biz-1');
+
+    expect(result).toEqual({
+      id: 'biz-1',
+      name: '주식회사 새모',
+      type: '기업',
+      address: '서울시 강남구',
+      phone: '02-1234-5678',
+      email: 'biz@semochal.kr',
+      contentBlocks: [],
+      createdAt: publicRow.createdAt,
+      bannerUrl: 'https://cdn.example.com/banner.png',
+      logoUrl: 'https://cdn.example.com/logo.png',
+      displayStatus: '승인',
+      detailStatus: '승인',
+    });
+    // 사업자등록번호·소유자 ID·nts 결과·원본 파일 ID는 비로그인 응답에 포함되면 안 된다.
+    expect(result).not.toHaveProperty('registrationNumber');
+    expect(result).not.toHaveProperty('ownerUserId');
+    expect(result).not.toHaveProperty('ntsResult');
+    expect(result).not.toHaveProperty('registrationLookupUnavailable');
+    expect(result).not.toHaveProperty('bannerImageFileId');
+    expect(result).not.toHaveProperty('logoImageFileId');
+    expect(resolvePublicUrls).toHaveBeenCalledWith(['file-banner', 'file-logo']);
+  });
+
+  it('resolves banner/logo to null when the business has none', async () => {
+    const service = createService({ ...publicRow, bannerImageFileId: null, logoImageFileId: null });
+    const result = await service.findPublicById('biz-1');
+    expect(result.bannerUrl).toBeNull();
+    expect(result.logoUrl).toBeNull();
+  });
+
+  it('throws NotFound for a missing business', async () => {
+    const service = createService(undefined);
+    await expect(service.findPublicById('biz-x')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('BusinessesService.listPublicChallenges', () => {
+  const challengeRow = (id: string, posterFileId: string | null = null) => ({
+    challenge: {
+      id,
+      title: `챌린지 ${id}`,
+      status: 'published',
+      category: '개발',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-10-31T00:00:00.000Z'),
+      posterFileId,
+    },
+  });
+
+  // 존재 확인 select + 목록 select를 순서대로 처리한다.
+  function createListDb(
+    businessRow: Record<string, unknown> | undefined,
+    challengeRows: unknown[],
+  ) {
+    const limit = vi.fn().mockResolvedValue(challengeRows);
+    const select = vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({ limit: async () => (businessRow ? [businessRow] : []) }),
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({ limit }),
+          }),
+        }),
+      }));
+    return { db: { select } as any, limit };
+  }
+
+  function createService(db: any, resolvePublicUrls = vi.fn(async () => new Map())) {
+    return new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls } as any,
+      {} as any,
+    );
+  }
+
+  it('returns public challenges with resolved poster URLs', async () => {
+    const { db } = createListDb({ id: 'biz-1' }, [
+      challengeRow('c-1', 'file-poster'),
+      challengeRow('c-2', null),
+    ]);
+    const service = createService(
+      db,
+      vi.fn(async () => new Map([['file-poster', 'https://cdn.example.com/poster.png']])),
+    );
+
+    const result = await service.listPublicChallenges('biz-1');
+
+    expect(result).toEqual([
+      {
+        id: 'c-1',
+        title: '챌린지 c-1',
+        status: 'published',
+        category: '개발',
+        startDate: new Date('2026-10-01T00:00:00.000Z'),
+        endDate: new Date('2026-10-31T00:00:00.000Z'),
+        posterUrl: 'https://cdn.example.com/poster.png',
+      },
+      {
+        id: 'c-2',
+        title: '챌린지 c-2',
+        status: 'published',
+        category: '개발',
+        startDate: new Date('2026-10-01T00:00:00.000Z'),
+        endDate: new Date('2026-10-31T00:00:00.000Z'),
+        posterUrl: null,
+      },
+    ]);
+  });
+
+  it('scopes the list to the business with the public list criteria (published/closed + public)', async () => {
+    predicates.eqCalls.length = 0;
+    predicates.inArrayCalls.length = 0;
+    const { db, limit } = createListDb({ id: 'biz-1' }, [challengeRow('c-1')]);
+    const service = createService(db);
+
+    await service.listPublicChallenges('biz-1');
+
+    // draft·비공개 챌린지 유출 방지 — 공개 목록과 동일한 조건이어야 한다.
+    expect(predicates.eqCalls).toContainEqual({ column: challenges.businessId, value: 'biz-1' });
+    expect(predicates.eqCalls).toContainEqual({ column: challenges.visibility, value: 'public' });
+    expect(predicates.inArrayCalls).toContainEqual({
+      column: challenges.status,
+      values: ['published', 'closed'],
+    });
+    expect(limit).toHaveBeenCalledWith(50);
+  });
+
+  it('throws NotFound for a missing business without listing challenges', async () => {
+    const { db, limit } = createListDb(undefined, []);
+    const service = createService(db);
+
+    await expect(service.listPublicChallenges('biz-x')).rejects.toThrow(NotFoundException);
+    expect(limit).not.toHaveBeenCalled();
   });
 });
