@@ -247,7 +247,12 @@ export function ContestDetailPage({
           </div>
           <div className="intro-body">
             <Title>{detail.title}</Title>
-            <Muted>{detail.org}</Muted>
+            {/* 주최가 등록 기업이면 그 기업의 공개 프로필로 연결한다(데모 상세는 businessId가 없음). */}
+            {challenge?.businessId ? (
+              <OrgLink href={`/businesses/${challenge.businessId}`}>{detail.org}</OrgLink>
+            ) : (
+              <Muted>{detail.org}</Muted>
+            )}
             <div className="facts">
               자격 / 대상　{detail.eligibility}
               <br />
@@ -557,6 +562,14 @@ const IconLink = styled(Link)({
   transition: 'background 0.15s ease, transform 0.1s ease',
   '&:hover': { background: c.gray50 },
   '&:active': { transform: 'scale(0.85)' },
+});
+// 주최(organizer) — 기업 프로필로 가는 링크. Muted와 같은 자리·굵기에 링크 색을 쓴다.
+const OrgLink = styled(Link)({
+  ...textStyle.caption,
+  lineHeight: 1.5,
+  color: c.primary,
+  textDecoration: 'none',
+  '&:hover': { textDecoration: 'underline' },
 });
 const Related = styled.div({
   display: 'grid',

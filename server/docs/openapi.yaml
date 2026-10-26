@@ -1786,6 +1786,29 @@ paths:
               schema: { $ref: '#/components/schemas/Business' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
+  /businesses/{id}/public:
+    get:
+      tags: [Businesses]
+      summary: 기업 공개 프로필 조회
+      operationId: getPublicBusiness
+      x-impl-status: implemented
+      description: |
+        일반 사용자용 공개 기업 프로필(`/businesses/{id}`). 비로그인 접근을 허용한다.
+        사업자등록번호·소유자 ID·nts 조회 결과 등 민감 필드는 제외하고, 배너/로고는
+        서버가 공개 URL(`bannerUrl`/`logoUrl`)로 변환해 반환한다.
+        챌린지 상세의 주최(organizer) 표시에서 기업 프로필로 진입할 때 사용한다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 공개 기업 프로필
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicBusiness' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /businesses/{id}:
     get:
       tags: [Businesses]
@@ -4103,6 +4126,24 @@ components:
         phone: { type: string }
         email: { type: string, format: email }
         contentBlocks: { type: array, items: { $ref: '#/components/schemas/ContentBlock' } }
+    PublicBusiness:
+      type: object
+      description: 일반 사용자용 공개 기업 프로필 — 사업자등록번호·소유자 ID·nts 결과·원본 파일 ID는 포함하지 않는다.
+      required: [id, name, verificationStatus, createdAt, bannerUrl, logoUrl]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, nullable: true, description: 기관명 }
+        type: { type: string, enum: [기업, 학교, 비영리, 협회], nullable: true }
+        verificationStatus: { type: string, enum: [pending, verified, rejected] }
+        displayStatus: { type: string, description: 인증 상태 화면 표시(승인/반려/가승인) }
+        detailStatus: { type: string, description: 인증 상태 상세 표시(승인/실패/인증 대기) }
+        bannerUrl: { type: string, nullable: true, description: 배너 공개 URL }
+        logoUrl: { type: string, nullable: true, description: 로고 공개 URL }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string, format: email }
+        contentBlocks: { type: array, items: { $ref: '#/components/schemas/ContentBlock' } }
+        createdAt: { type: string, format: date-time }
     ContentBlock:
       type: object
       description: 기업 프로필 콘텐츠 블록 (링크/텍스트/파일/레이아웃/이미지 툴바)

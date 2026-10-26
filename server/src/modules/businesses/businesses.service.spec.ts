@@ -336,3 +336,85 @@ describe('BusinessesService.register', () => {
     expect(alerts.notify).not.toHaveBeenCalled();
   });
 });
+
+describe('BusinessesService.findPublicById', () => {
+  const publicRow = {
+    id: 'biz-1',
+    name: '주식회사 새모',
+    type: '기업',
+    verificationStatus: 'verified',
+    bannerImageFileId: 'file-banner',
+    logoImageFileId: 'file-logo',
+    address: '서울시 강남구',
+    phone: '02-1234-5678',
+    email: 'biz@semochal.kr',
+    contentBlocks: [],
+    createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  };
+
+  function createPublicDb(row: Record<string, unknown> | undefined) {
+    const db: any = {
+      select: () => ({
+        from: () => ({ where: () => ({ limit: async () => (row ? [row] : []) }) }),
+      }),
+    };
+    return db;
+  }
+
+  function createService(row: Record<string, unknown> | undefined, resolvePublicUrls = vi.fn()) {
+    return new BusinessesService(
+      createPublicDb(row),
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls } as any,
+      {} as any,
+    );
+  }
+
+  it('returns public fields with resolved banner/logo URLs and hides sensitive ones', async () => {
+    const resolvePublicUrls = vi.fn(
+      async () =>
+        new Map([
+          ['file-banner', 'https://cdn.example.com/banner.png'],
+          ['file-logo', 'https://cdn.example.com/logo.png'],
+        ]),
+    );
+    const service = createService(publicRow, resolvePublicUrls);
+
+    const result = await service.findPublicById('biz-1');
+
+    expect(result).toEqual({
+      id: 'biz-1',
+      name: '주식회사 새모',
+      type: '기업',
+      address: '서울시 강남구',
+      phone: '02-1234-5678',
+      email: 'biz@semochal.kr',
+      contentBlocks: [],
+      createdAt: publicRow.createdAt,
+      bannerUrl: 'https://cdn.example.com/banner.png',
+      logoUrl: 'https://cdn.example.com/logo.png',
+      displayStatus: '승인',
+      detailStatus: '승인',
+    });
+    // 사업자등록번호·소유자 ID·nts 결과·원본 파일 ID는 비로그인 응답에 포함되면 안 된다.
+    expect(result).not.toHaveProperty('registrationNumber');
+    expect(result).not.toHaveProperty('ownerUserId');
+    expect(result).not.toHaveProperty('ntsResult');
+    expect(result).not.toHaveProperty('registrationLookupUnavailable');
+    expect(result).not.toHaveProperty('bannerImageFileId');
+    expect(result).not.toHaveProperty('logoImageFileId');
+    expect(resolvePublicUrls).toHaveBeenCalledWith(['file-banner', 'file-logo']);
+  });
+
+  it('resolves banner/logo to null when the business has none', async () => {
+    const service = createService({ ...publicRow, bannerImageFileId: null, logoImageFileId: null });
+    const result = await service.findPublicById('biz-1');
+    expect(result.bannerUrl).toBeNull();
+    expect(result.logoUrl).toBeNull();
+  });
+
+  it('throws NotFound for a missing business', async () => {
+    const service = createService(undefined);
+    await expect(service.findPublicById('biz-x')).rejects.toThrow(NotFoundException);
+  });
+});

@@ -102,6 +102,46 @@ export class BusinessesService {
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
   }
 
+  // 일반 사용자 공개 프로필용 — 비로그인 접근을 허용한다. 사업자등록번호·소유자 ID·nts 결과 등
+  // 민감 필드는 제외하고, 배너/로고는 공개 URL로 변환해 반환한다(원본 파일 ID는 내리지 않는다).
+  async findPublicById(id: string) {
+    const [business] = await this.db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        type: businesses.type,
+        verificationStatus: businesses.verificationStatus,
+        bannerImageFileId: businesses.bannerImageFileId,
+        logoImageFileId: businesses.logoImageFileId,
+        address: businesses.address,
+        phone: businesses.phone,
+        email: businesses.email,
+        contentBlocks: businesses.contentBlocks,
+        createdAt: businesses.createdAt,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, id))
+      .limit(1);
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
+    const urls = await this.filesService.resolvePublicUrls([
+      business.bannerImageFileId,
+      business.logoImageFileId,
+    ]);
+    return {
+      id: business.id,
+      name: business.name,
+      type: business.type,
+      address: business.address,
+      phone: business.phone,
+      email: business.email,
+      contentBlocks: business.contentBlocks,
+      createdAt: business.createdAt,
+      bannerUrl: business.bannerImageFileId ? (urls.get(business.bannerImageFileId) ?? null) : null,
+      logoUrl: business.logoImageFileId ? (urls.get(business.logoImageFileId) ?? null) : null,
+      ...verificationStatusPresentation(business.verificationStatus),
+    };
+  }
+
   async findByOwner(ownerUserId: string) {
     const [business] = await this.db
       .select()

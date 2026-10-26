@@ -31,6 +31,11 @@ export class BusinessesController {
     return this.businessesService.register(dto, user.id);
   }
 
+  @Get(':id/public')
+  findPublic(@Param('id') id: string) {
+    return this.businessesService.findPublicById(id);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
