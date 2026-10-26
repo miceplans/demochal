@@ -8,7 +8,8 @@ allowBuilds:
   unrs-resolver: false
   '@scarf/scarf': false
 overrides:
-  multer: 2.4.0
+  body-parser: 2.4.0
+  multer: 2.5.0
   proxy-addr: 2.0.8
   source-map-js: 1.2.2
   fast-uri: 3.1.8
