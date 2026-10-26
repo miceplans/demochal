@@ -113,26 +113,42 @@ export const ContestBody = styled.div({
   gap: 8,
 });
 export const ContestTitle = styled.strong({ ...textStyle.bodySmall2, color: c.gray900 });
-export const TagRow = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 6,
-  flexWrap: 'wrap',
-});
+// 긴 분야명은 두 줄로 깨지지 않고 말줄임 처리한다.
 export const CategoryTag = styled.span({
   padding: '3px 8px',
   borderRadius: 4,
   background: c.gray100,
   color: c.gray700,
   ...textStyle.finePrint,
+  alignSelf: 'flex-start',
+  maxWidth: '100%',
+  whiteSpace: 'nowrap',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  boxSizing: 'border-box',
 });
-export const DDay = styled.span({ ...textStyle.overline, color: c.primary });
+export const DDay = styled.span({
+  ...textStyle.overline,
+  color: c.primary,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+});
 export const TeamCount = styled.span({
   padding: '4px 8px',
   borderRadius: 4,
   background: c.lightBlue,
   color: c.primary,
   ...textStyle.label,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+});
+// D-day와 팀 수는 카드 하단에 항상 한 줄로 정렬한다.
+const ContestMetaRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  marginTop: 'auto',
 });
 
 // 카드를 키보드로도 열 수 있게 하는 공통 속성.
@@ -173,11 +189,11 @@ export const contestCardContent = (contest: ContestCardRow) => (
     <ContestCover>공고 이미지</ContestCover>
     <ContestBody>
       <ContestTitle>{contest.title}</ContestTitle>
-      <TagRow>
-        <CategoryTag>{contest.category}</CategoryTag>
+      <CategoryTag>{contest.category}</CategoryTag>
+      <ContestMetaRow>
         <DDay>{contest.dday}</DDay>
         <TeamCount>{contest.teams}</TeamCount>
-      </TagRow>
+      </ContestMetaRow>
     </ContestBody>
   </>
 );
