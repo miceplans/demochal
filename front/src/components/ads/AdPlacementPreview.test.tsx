@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdPlacementPreview } from './AdPlacementPreview';
+import { MOBILE_HERO_LAYOUT } from './AdCarousel';
+import { AdPlacementPreview, GALLERY_CROP_SPEC, HERO_CROP_SPEC } from './AdPlacementPreview';
 
 type PublicAd = { id: string; title: string; imageUrl: string };
 
@@ -216,5 +217,18 @@ describe('AdPlacementPreview', () => {
 
     expect(screen.getByLabelText('모바일 사용자 홈 광고 미리보기')).not.toBeNull();
     expect(screen.getByLabelText('상단 광고 1 / 4')).not.toBeNull();
+  });
+
+  it('업로드 크롭 사양은 각 뷰의 실제 홈 노출 비율과 동기화돼 있다', () => {
+    // 실제 노출(AdCarousel): 모바일 히어로 358:220, PC 히어로 1200:300,
+    // PC 갤러리 315:190, 모바일 갤러리 240:145(=240×190/315 반올림).
+    expect(HERO_CROP_SPEC.mobile).toEqual({ aspectRatio: 358 / 220, previewWidth: 358 });
+    expect(HERO_CROP_SPEC.pc).toEqual({ aspectRatio: 1200 / 300, previewWidth: 1200 });
+    expect(GALLERY_CROP_SPEC.pc).toEqual({ aspectRatio: 315 / 190, previewWidth: 315 });
+    expect(GALLERY_CROP_SPEC.mobile).toEqual({ aspectRatio: 240 / 145, previewWidth: 240 });
+    // 모바일 히어로는 AdCarousel의 노출 레이아웃 상수와 직접 맞물린다.
+    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBe(
+      HERO_CROP_SPEC.mobile.aspectRatio,
+    );
   });
 });
