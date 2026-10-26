@@ -41,6 +41,9 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   background: c.white,
   transition: 'box-shadow 0.2s ease, transform 0.2s ease',
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  // 인라인 링크 안의 블록 썸네일은 모바일에서 높이·aspect-ratio 기준으로 축소될 수 있다.
+  // 링크 자체를 블록으로 만들어 카드 폭을 기준으로 포스터를 배치한다.
+  '> a:first-of-type': { display: 'block' },
   // Figma contestCard 1521:8662: 썸네일 정사각형(416×415), 본문 패딩 14 / 간격 12, 제목 18 Bold.
   '.artwork': {
     aspectRatio: '416 / 415',
