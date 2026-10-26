@@ -161,11 +161,11 @@ describe('BizPostingFormPage', () => {
 
     const topics = screen.getByRole('group', { name: '주제' });
     const addedTopics = [
-      '서포터즈/대회활동',
-      '공모전 아이디어',
-      '행사/전시/이벤트',
-      '해외/국제',
-      '강연/강의',
+      '# 서포터즈/대회활동',
+      '# 공모전 아이디어',
+      '# 행사/전시/이벤트',
+      '# 해외/국제',
+      '# 강연/강의',
     ];
     for (const topic of addedTopics) {
       const chip = within(topics).getByRole('button', { name: topic });
