@@ -73,9 +73,16 @@ export class AdsService implements OnModuleInit {
     });
   }
 
-  async listProducts() {
+  // reservedPeriods는 요청한 업체 본인의 계약 기간만 담는다(같은 노출 위치·기간에 다른
+  // 업체 광고는 함께 등록할 수 있다). 비로그인/업체 없음이면 빈 배열이다.
+  async listProducts(businessId?: string) {
     const products = await this.db.select().from(adProducts);
-    const reserving = await this.db.select().from(ads).where(this.reservingCondition());
+    const reserving = businessId
+      ? await this.db
+          .select()
+          .from(ads)
+          .where(and(eq(ads.businessId, businessId), this.reservingCondition()))
+      : [];
 
     return products.map((product) => ({
       ...product,
@@ -191,7 +198,13 @@ export class AdsService implements OnModuleInit {
       const reserving = await tx
         .select()
         .from(ads)
-        .where(and(eq(ads.productId, dto.productId), this.reservingCondition()));
+        .where(
+          and(
+            eq(ads.productId, dto.productId),
+            eq(ads.businessId, businessId),
+            this.reservingCondition(),
+          ),
+        );
       const hasOverlap = reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate);
       if (hasOverlap) {
         throw new BadRequestException('선택한 날짜가 이미 예약된 기간과 겹칩니다.');

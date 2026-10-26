@@ -9,9 +9,10 @@ import {
   Post,
   Query,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
-import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { OptionalJwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { Public } from '../auth/public.decorator.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
@@ -28,9 +29,11 @@ export class AdsController {
   ) {}
 
   @Public()
+  @UseGuards(OptionalJwtAuthGuard)
   @Get('products')
-  listProducts() {
-    return this.adsService.listProducts();
+  async listProducts(@CurrentUser() user?: AuthenticatedUser) {
+    const business = user ? await this.businessesService.findByOwner(user.id) : undefined;
+    return this.adsService.listProducts(business?.id);
   }
 
   @Public()

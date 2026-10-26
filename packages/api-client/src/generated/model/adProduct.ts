@@ -20,7 +20,7 @@ import type { AdProductPlacement } from './adProductPlacement';
 import type { AdProductReservedPeriodsItem } from './adProductReservedPeriodsItem';
 
 export interface AdProduct {
-  /** 결제 대기, 진행 중, 일시 정지 계약의 예약 불가 기간. 종료일 포함. */
+  /** 요청한 업체 본인의 결제 대기, 진행 중, 일시 정지 계약의 예약 불가 기간. 종료일 포함. 다른 업체 계약은 포함하지 않으며 비로그인이면 빈 배열이다. */
   reservedPeriods: AdProductReservedPeriodsItem[];
   id: string;
   /** 상품명 (예: 메인 배너 (대)) */

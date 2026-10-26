@@ -278,6 +278,46 @@ describe('AdsService.create', () => {
   });
 });
 
+describe('AdsService.listProducts', () => {
+  const PRODUCT = { id: 'hero', name: '홈 히어로 배너', placement: 'hero', dailyPrice: 100_000 };
+
+  it('returns empty reservedPeriods without querying ads when there is no business', async () => {
+    const adsWhere = vi.fn();
+    const db: any = {
+      select: vi.fn(() => ({ from: vi.fn(() => Promise.resolve([PRODUCT])), where: adsWhere })),
+    };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const products = await service.listProducts();
+
+    expect(products).toEqual([{ ...PRODUCT, reservedPeriods: [] }]);
+    expect(db.select).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists only the requesting business's reserving periods", async () => {
+    const reservedAd = {
+      productId: 'hero',
+      startDate: new Date('2026-10-26T00:00:00+09:00'),
+      endDate: new Date('2026-10-30T00:00:00+09:00'),
+    };
+    const where = vi.fn().mockResolvedValue([reservedAd]);
+    const db: any = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({ from: vi.fn(() => Promise.resolve([PRODUCT])) }))
+        .mockImplementationOnce(() => ({ from: vi.fn(() => ({ where })) })),
+    };
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const products = await service.listProducts('biz-1');
+
+    expect(where).toHaveBeenCalledTimes(1);
+    expect(products[0]?.reservedPeriods).toEqual([
+      { startDate: reservedAd.startDate.toISOString(), endDate: reservedAd.endDate.toISOString() },
+    ]);
+  });
+});
+
 describe('AdsService.listMine', () => {
   const DAY_MS = 86_400_000;
 
