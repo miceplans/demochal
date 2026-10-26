@@ -20,11 +20,25 @@ function createDbStub() {
 }
 
 const challengeRows = [
-  { challenge: { id: 'challenge-1', title: 'AI 챌린지', posterFileId: 'file-1' } },
+  {
+    challenge: {
+      id: 'challenge-1',
+      title: 'AI 챌린지',
+      posterFileId: 'file-1',
+      thumbnailFileId: 'file-t',
+    },
+  },
 ];
 const filesStub = () =>
   ({
-    resolvePublicUrls: vi.fn().mockResolvedValue(new Map([['file-1', 'https://cdn/p.webp']])),
+    resolvePublicUrls: vi
+      .fn()
+      .mockResolvedValue(
+        new Map([
+          ['file-1', 'https://cdn/p.webp'],
+          ['file-t', 'https://cdn/t.webp'],
+        ]),
+      ),
   }) as any;
 
 describe('BookmarksService', () => {
@@ -42,7 +56,9 @@ describe('BookmarksService', () => {
         id: 'challenge-1',
         title: 'AI 챌린지',
         posterFileId: 'file-1',
+        thumbnailFileId: 'file-t',
         posterUrl: 'https://cdn/p.webp',
+        thumbnailUrl: 'https://cdn/t.webp',
       },
     ]);
   });

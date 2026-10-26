@@ -28,4 +28,25 @@ describe('ContestCard poster link', () => {
     expect(posterLink).toBeTruthy();
     expect(getComputedStyle(posterLink).display).toBe('block');
   });
+
+  it('썸네일 URL이 있으면 썸네일을, 없으면 포스터를 폰백으로 보여준다', () => {
+    const base = {
+      id: 'contest-1',
+      title: '썸네일 테스트',
+      category: '디자인',
+      days: 3,
+      posterUrl: '/poster.png',
+    };
+    const { unmount } = render(<ContestCard contest={base} href="/contests/contest-1" />);
+    expect(screen.getByRole('img', { hidden: true }).getAttribute('src')).toBe('/poster.png');
+    unmount();
+
+    render(
+      <ContestCard
+        contest={{ ...base, thumbnailUrl: '/thumb.webp' }}
+        href="/contests/contest-1"
+      />,
+    );
+    expect(screen.getByRole('img', { hidden: true }).getAttribute('src')).toBe('/thumb.webp');
+  });
 });

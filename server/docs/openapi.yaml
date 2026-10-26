@@ -3594,6 +3594,19 @@ components:
             nullable: true,
             description: 챌린지 포스터 공개 URL (public+ready 파일). 상세·목록 응답에 포함. 클라이언트는 이 URL로 직접 렌더,
           }
+        thumbnailFileId:
+          {
+            type: string,
+            format: uuid,
+            nullable: true,
+            description: 카드 썸네일 파일 ID(포스터에서 사용자가 지정한 영역을 잘라 만든 파일). 없으면 null,
+          }
+        thumbnailUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 카드 썸네일 공개 URL(public+ready 파일). 없으면 클라이언트는 posterUrl로 폰백,
+          }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }
@@ -3721,6 +3734,8 @@ components:
           }
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
+        thumbnailFileId:
+          { type: string, format: uuid, description: 카드 썸네일 파일 ID(포스터에서 잘라 만든 파일) }
         status:
           {
             type: string,
@@ -3826,6 +3841,13 @@ components:
         prizeAmount: { type: integer, nullable: true, minimum: 0, description: 총상금(만원) }
         posterFileId:
           { type: string, nullable: true, format: uuid, description: null이면 포스터를 제거 }
+        thumbnailFileId:
+          {
+            type: string,
+            nullable: true,
+            format: uuid,
+            description: 카드 썸네일 파일 ID. null이면 썸네일을 제거(포스터 제거 시 함께 제거),
+          }
         applicationForm:
           {
             type: array,
@@ -3866,6 +3888,19 @@ components:
             type: string,
             nullable: true,
             description: 챌린지 포스터 공개 URL (public+ready 파일). 없으면 null — 클라이언트는 placeholder 유지,
+          }
+        challengeThumbnailFileId:
+          {
+            type: string,
+            nullable: true,
+            format: uuid,
+            description: 목록·상세·내가 관리하는 팀 응답의 챌린지 썸네일 파일 ID,
+          }
+        challengeThumbnailUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 챌린지 썸네일 공개 URL. 없으면 클라이언트는 challengePosterUrl로 폰백,
           }
         leaderName: { type: string, description: 목록·상세 응답에 포함 }
         businessName:
@@ -4592,6 +4627,8 @@ components:
         recruitMethod: { type: string }
         recruitUrl: { type: string }
         posterUrl: { type: string, nullable: true, description: 공개 포스터 URL(없으면 null) }
+        thumbnailUrl:
+          { type: string, nullable: true, description: 카드 썸네일 공개 URL(없으면 null) }
         teams:
           type: array
           description: 이 챌린지에 등록된 팀 모집글

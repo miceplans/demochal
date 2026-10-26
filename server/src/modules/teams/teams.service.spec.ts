@@ -734,6 +734,7 @@ describe('TeamsService', () => {
             team: { id: 'team-1', title: 'AI 해커톤 팀', leaderUserId: leader.id },
             challengeTitle: '2026 AI 챌린지',
             challengePosterFileId: 'file-poster-1',
+            challengeThumbnailFileId: 'file-thumb-1',
             businessName: '한국데이터산업진흥원',
           },
         ]),
@@ -755,6 +756,7 @@ describe('TeamsService', () => {
       );
     const files = createFilesStub({
       'file-poster-1': 'https://cdn.example.com/uploads/poster.webp',
+      'file-thumb-1': 'https://cdn.example.com/uploads/thumb.webp',
     });
     const service = new TeamsService(db, createNotificationsStub() as any, files as any);
 
@@ -765,9 +767,11 @@ describe('TeamsService', () => {
       id: 'team-1',
       challengeTitle: '2026 AI 챌린지',
       challengePosterUrl: 'https://cdn.example.com/uploads/poster.webp',
+      challengeThumbnailUrl: 'https://cdn.example.com/uploads/thumb.webp',
       businessName: '한국데이터산업진흥원',
     });
     expect(files.resolvePublicUrls).toHaveBeenCalledWith(['file-poster-1']);
+    expect(files.resolvePublicUrls).toHaveBeenCalledWith(['file-thumb-1']);
     expect(result[0]?.members).toHaveLength(1);
     expect(result[0]?.members[0]).toMatchObject({ id: 'member-1', name: 'Applicant' });
   });
@@ -785,34 +789,65 @@ describe('TeamsService', () => {
     expect(db.select).toHaveBeenCalledTimes(1);
   });
 
-  it('listManaged batches poster resolution and keeps null for missing or unavailable files', async () => {
+  it('listManaged batches poster and thumbnail resolution and keeps null for missing or unavailable files', async () => {
     const db = createDbStub();
     db.select
       .mockReturnValueOnce(
         selectChain([
-          { team: { id: 'team-1' }, challengePosterFileId: 'ready', challengeTitle: '첫 공고' },
+          {
+            team: { id: 'team-1' },
+            challengePosterFileId: 'ready',
+            challengeThumbnailFileId: 'thumb-ready',
+            challengeTitle: '첫 공고',
+          },
           {
             team: { id: 'team-2' },
             challengePosterFileId: 'unavailable',
+            challengeThumbnailFileId: 'thumb-missing',
             challengeTitle: '둘째 공고',
           },
-          { team: { id: 'team-3' }, challengePosterFileId: null, challengeTitle: '셋째 공고' },
-          { team: { id: 'team-4' }, challengePosterFileId: 'ready', challengeTitle: '첫 공고' },
+          {
+            team: { id: 'team-3' },
+            challengePosterFileId: null,
+            challengeThumbnailFileId: null,
+            challengeTitle: '셋째 공고',
+          },
+          {
+            team: { id: 'team-4' },
+            challengePosterFileId: 'ready',
+            challengeThumbnailFileId: 'thumb-ready',
+            challengeTitle: '첫 공고',
+          },
         ]),
       )
       .mockReturnValueOnce(selectChain([]));
-    const files = createFilesStub({ ready: 'https://cdn.example.com/poster.webp' });
+    const files = createFilesStub({
+      ready: 'https://cdn.example.com/poster.webp',
+      'thumb-ready': 'https://cdn.example.com/thumb.webp',
+    });
     const service = new TeamsService(db, createNotificationsStub() as any, files as any);
 
     const result = await service.listManaged(leader.id);
 
-    expect(files.resolvePublicUrls).toHaveBeenCalledOnce();
+    expect(files.resolvePublicUrls).toHaveBeenCalledTimes(2);
     expect(files.resolvePublicUrls).toHaveBeenCalledWith(['ready', 'unavailable', null, 'ready']);
+    expect(files.resolvePublicUrls).toHaveBeenCalledWith([
+      'thumb-ready',
+      'thumb-missing',
+      null,
+      'thumb-ready',
+    ]);
     expect(result.map((team) => team.challengePosterUrl)).toEqual([
       'https://cdn.example.com/poster.webp',
       null,
       null,
       'https://cdn.example.com/poster.webp',
+    ]);
+    expect(result.map((team) => team.challengeThumbnailUrl)).toEqual([
+      'https://cdn.example.com/thumb.webp',
+      null,
+      null,
+      'https://cdn.example.com/thumb.webp',
     ]);
   });
 

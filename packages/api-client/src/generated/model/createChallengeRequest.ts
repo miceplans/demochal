@@ -91,6 +91,8 @@ export interface CreateChallengeRequest {
   prizeAmount?: number;
   /** 챌린지 포스터 파일 ID */
   posterFileId?: string;
+  /** 카드 썸네일 파일 ID(포스터에서 잘라 만든 파일) */
+  thumbnailFileId?: string;
   /** 공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다. */
   status?: CreateChallengeRequestStatus;
   recruitMethod?: CreateChallengeRequestRecruitMethod;

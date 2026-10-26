@@ -967,6 +967,7 @@ export function BookmarksPage() {
     category: challenge.category ?? '기타',
     days: daysUntil(challenge.endDate, now),
     posterUrl: challenge.posterUrl ?? null,
+    thumbnailUrl: challenge.thumbnailUrl ?? null,
     prizeAmount: challenge.prizeAmount ?? null,
   }));
   return (
@@ -1406,7 +1407,9 @@ export function TeamApplicantsPage() {
           teams.map((team) => (
             <section key={team.id}>
               <ApplicantThumbnail>
-                {team.challengePosterUrl && <img src={team.challengePosterUrl} alt="" />}
+                {(team.challengeThumbnailUrl ?? team.challengePosterUrl) && (
+                  <img src={team.challengeThumbnailUrl ?? team.challengePosterUrl ?? ''} alt="" />
+                )}
               </ApplicantThumbnail>
               <div style={{ marginTop: 24 }}>
                 <Title>{team.challengeTitle ?? team.title}</Title>

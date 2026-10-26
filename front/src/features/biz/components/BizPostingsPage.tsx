@@ -84,7 +84,9 @@ export function BizPostingsPage() {
           <section aria-label="공고 성과 요약">
             <HeaderRow>
               <Thumb aria-hidden>
-                {latest.posterUrl && <PosterImg src={latest.posterUrl} alt="" />}
+                {(latest.thumbnailUrl ?? latest.posterUrl) && (
+                  <PosterImg src={latest.thumbnailUrl ?? latest.posterUrl ?? ''} alt="" />
+                )}
               </Thumb>
               <HeaderInfo>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -165,7 +167,9 @@ export function BizPostingsPage() {
                         return (
                           <CardBox key={item.id} href={`/postings/${item.id}`}>
                             <CardThumb closed={closed}>
-                              {item.posterUrl && <PosterImg src={item.posterUrl} alt="" />}
+                              {(item.thumbnailUrl ?? item.posterUrl) && (
+                                <PosterImg src={item.thumbnailUrl ?? item.posterUrl ?? ''} alt="" />
+                              )}
                               {closed && <CardClosedLabel>마감된 공고입니다.</CardClosedLabel>}
                             </CardThumb>
                             <CardBody>

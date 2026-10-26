@@ -118,6 +118,11 @@ export interface UpdateChallengeRequest {
      */
   posterFileId?: string | null;
   /**
+     * 카드 썸네일 파일 ID. null이면 썸네일을 제거(포스터 제거 시 함께 제거)
+     * @nullable
+     */
+  thumbnailFileId?: string | null;
+  /**
      * 신청서 질문 목록. 보낸 값 전체를 교체한다. 최대 100개.
      * @maxItems 100
      */

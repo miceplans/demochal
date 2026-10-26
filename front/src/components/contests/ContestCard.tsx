@@ -143,7 +143,9 @@ export function ContestCard({
     <Card horizontal={horizontal} row={row} data-component="contest-card">
       <Link href={href} aria-label={`${contest.title} 상세`}>
         <div className="artwork">
-          {contest.posterUrl ? <img src={contest.posterUrl} alt="" /> : null}
+          {contest.thumbnailUrl ?? contest.posterUrl ? (
+            <img src={contest.thumbnailUrl ?? contest.posterUrl ?? ''} alt="" />
+          ) : null}
         </div>
       </Link>
       <div className="card-body">

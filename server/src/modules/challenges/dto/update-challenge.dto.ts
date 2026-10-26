@@ -122,6 +122,11 @@ export class UpdateChallengeDto {
   @ValidateIf((_, value) => value !== null && value !== undefined)
   @IsUUID()
   posterFileId?: string | null;
+
+  // 카드 썸네일 파일. null이면 썸네일을 제거한다(포스터 제거 시 함께 제거된다).
+  @ValidateIf((_, value) => value !== null && value !== undefined)
+  @IsUUID()
+  thumbnailFileId?: string | null;
   // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 작성한 경우에만 전체를 교체한다.
   @IsOptional()
   @IsArray()

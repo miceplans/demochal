@@ -19,7 +19,8 @@ export function toTeamCard(team: ApiTeam): Team {
     name: team.title ?? '',
     challenge: team.challengeTitle ?? '',
     // 서버가 내린 공개 URL이 없으면 빈 문자열 — TeamCard가 중성 플레이스홀더를 렌더한다.
-    poster: team.challengePosterUrl ?? '',
+    // 썸네일은 업로더가 지정한 영역, 없으면 원본 포스터로 폰백.
+    poster: team.challengeThumbnailUrl ?? team.challengePosterUrl ?? '',
     members: `${joined}/${capacity}명 참여중`,
     joined,
     capacity,

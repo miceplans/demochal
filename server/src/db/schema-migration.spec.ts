@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(41);
+    expect(journal.entries).toHaveLength(42);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -615,5 +615,17 @@ describe('0040_business_auto_verified migration', () => {
     expect(sql).toContain('UPDATE "verifications" SET "status" = \'verified\'');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[40]!.when).toBeGreaterThan(journal.entries[39]!.when);
+  });
+});
+
+describe('0041_challenge_thumbnail_file migration', () => {
+  it('adds an optional thumbnail reference without destructive DDL', () => {
+    const tag = journal.entries[41]?.tag;
+    expect(tag).toBe('0041_challenge_thumbnail_file');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "thumbnail_file_id" uuid');
+    expect(sql).toContain('REFERENCES "files"("id") ON DELETE SET NULL');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[41]!.when).toBeGreaterThan(journal.entries[40]!.when);
   });
 });

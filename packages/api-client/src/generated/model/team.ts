@@ -63,6 +63,16 @@ export interface Team {
      * @nullable
      */
   challengePosterUrl?: string | null;
+  /**
+     * 목록·상세·내가 관리하는 팀 응답의 챌린지 썸네일 파일 ID
+     * @nullable
+     */
+  challengeThumbnailFileId?: string | null;
+  /**
+     * 챌린지 썸네일 공개 URL. 없으면 클라이언트는 challengePosterUrl로 폰백
+     * @nullable
+     */
+  challengeThumbnailUrl?: string | null;
   /** 목록·상세 응답에 포함 */
   leaderName?: string;
   /** listManagedTeams 응답 전용 — 주최 기업(협회)명 */

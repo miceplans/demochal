@@ -100,21 +100,33 @@ describe('ChallengesService.listRecommended', () => {
     expect(result.items.map((item) => item.id)).toEqual(['matching', 'popular']);
   });
 
-  it('attaches the public poster URL to each recommended item', async () => {
+  it('attaches the public poster and thumbnail URLs to each recommended item', async () => {
     const withPoster = {
       ...challenge('with-poster', 'IT/SW', '2029-01-01'),
       posterFileId: 'file-p',
+      thumbnailFileId: 'file-t',
     };
     const withoutPoster = { ...challenge('no-poster', '디자인', '2029-01-02'), posterFileId: null };
     const { service, files } = createService({ interests: [] }, [withPoster, withoutPoster]);
     files.resolvePublicUrls.mockResolvedValue(
-      new Map([['file-p', 'https://cdn.example.com/p.webp']]),
+      new Map([
+        ['file-p', 'https://cdn.example.com/p.webp'],
+        ['file-t', 'https://cdn.example.com/t.webp'],
+      ]),
     );
 
     const result = await service.listRecommended('user-1');
 
     const urls = Object.fromEntries(result.items.map((item) => [item.id, item.posterUrl]));
     expect(urls).toEqual({ 'with-poster': 'https://cdn.example.com/p.webp', 'no-poster': null });
+    const thumbnails = Object.fromEntries(
+      result.items.map((item) => [item.id, item.thumbnailUrl]),
+    );
+    expect(thumbnails).toEqual({
+      'with-poster': 'https://cdn.example.com/t.webp',
+      // 썸네일이 없는 기존 공고는 null — 클라이언트가 posterUrl로 폰백한다.
+      'no-poster': null,
+    });
   });
 
   it('does not match short ASCII interest tokens as substrings of unrelated categories', async () => {
@@ -680,16 +692,21 @@ describe('ChallengesService.create', () => {
     expect(valuesCalls).toHaveLength(0);
   });
 
-  it('persists the optional poster file id on create', async () => {
+  it('persists the optional poster and thumbnail file ids on create', async () => {
     const valuesCalls: Record<string, unknown>[] = [];
     const service = createCapturingService(valuesCalls);
 
     await service.create(
-      { ...baseDto, recruitMethod: 'seMOchall', posterFileId: 'file-1' } as any,
+      {
+        ...baseDto,
+        recruitMethod: 'seMOchall',
+        posterFileId: 'file-1',
+        thumbnailFileId: 'file-t',
+      } as any,
       'user-1',
     );
 
-    expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1' });
+    expect(valuesCalls[0]).toMatchObject({ posterFileId: 'file-1', thumbnailFileId: 'file-t' });
   });
 
   it('validates the poster file and rejects create for a missing/pending/private file', async () => {
@@ -765,14 +782,43 @@ describe('ChallengesService.update', () => {
     expect(db.update).not.toHaveBeenCalled();
   });
 
-  it('updates or clears the optional poster file id', async () => {
+  it('updates or clears the optional poster and thumbnail file ids', async () => {
     const withPoster = createUpdateService([current]);
     await withPoster.service.update('ch-1', { posterFileId: 'file-1' }, owner);
     expect(withPoster.set).toHaveBeenCalledWith({ posterFileId: 'file-1' });
 
     const cleared = createUpdateService([current]);
     await cleared.service.update('ch-1', { posterFileId: null }, owner);
-    expect(cleared.set).toHaveBeenCalledWith({ posterFileId: null });
+    // 썸네일은 포스터에서 파생되므로 포스터 제거와 함께 비워진다.
+    expect(cleared.set).toHaveBeenCalledWith({ posterFileId: null, thumbnailFileId: null });
+
+    const withThumbnail = createUpdateService([current]);
+    await withThumbnail.service.update('ch-1', { thumbnailFileId: 'file-t' }, owner);
+    expect(withThumbnail.set).toHaveBeenCalledWith({ thumbnailFileId: 'file-t' });
+
+    const clearedThumbnail = createUpdateService([current]);
+    await clearedThumbnail.service.update('ch-1', { thumbnailFileId: null }, owner);
+    expect(clearedThumbnail.set).toHaveBeenCalledWith({ thumbnailFileId: null });
+  });
+
+  it('rejects update when thumbnailFileId is not a ready public file', async () => {
+    const db = { select: vi.fn(), update: vi.fn() } as any;
+    const limit = vi.fn().mockResolvedValue([current]);
+    const where = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where });
+    db.select.mockReturnValue({ from: vi.fn().mockReturnValue({ innerJoin }) });
+    db.update.mockReturnValue({ set: vi.fn() });
+    const files = createFilesStub({
+      assertReadyPublic: vi
+        .fn()
+        .mockRejectedValue(new BadRequestException('A ready public file is required')),
+    });
+    const service = new ChallengesService(db, {} as any, files as any);
+
+    await expect(service.update('ch-1', { thumbnailFileId: 'file-x' }, owner)).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('rejects update when posterFileId is not a ready public file', async () => {
@@ -951,17 +997,27 @@ describe('ChallengesService.findById', () => {
     return new ChallengesService(db, {} as any, files as any);
   }
 
-  it('attaches the resolved posterUrl next to the challenge row', async () => {
+  it('attaches the resolved posterUrl and thumbnailUrl next to the challenge row', async () => {
     const files = createFilesStub({
-      resolvePublicUrl: vi.fn().mockResolvedValue('https://cdn.example.com/uploads/poster.webp'),
+      resolvePublicUrl: vi.fn((id: string | null | undefined) =>
+        Promise.resolve(
+          id === 'file-thumb'
+            ? 'https://cdn.example.com/uploads/thumb.webp'
+            : 'https://cdn.example.com/uploads/poster.webp',
+        ),
+      ),
     });
-    const service = createDetailService([{ id: 'ch-1', posterFileId: 'file-poster' }], files);
+    const service = createDetailService(
+      [{ id: 'ch-1', posterFileId: 'file-poster', thumbnailFileId: 'file-thumb' }],
+      files,
+    );
 
     const result = await service.findById('ch-1');
 
     expect(result).toMatchObject({
       id: 'ch-1',
       posterUrl: 'https://cdn.example.com/uploads/poster.webp',
+      thumbnailUrl: 'https://cdn.example.com/uploads/thumb.webp',
     });
     expect(files.resolvePublicUrl).toHaveBeenCalledWith('file-poster');
   });

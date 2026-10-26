@@ -212,6 +212,9 @@ export const challenges = pgTable('challenges', {
   prizeAmount: integer('prize_amount'),
   // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
   posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
+  // 카드 썸네일용 — 업로더가 포스터에서 썸네일로 보일 영역을 잘라 만든 별도 파일.
+  // null이면 카드는 posterUrl로 폰백한다(기존 공고 호환).
+  thumbnailFileId: uuid('thumbnail_file_id').references(() => files.id, { onDelete: 'set null' }),
   // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 별도 테이블 대신
   // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
   // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
