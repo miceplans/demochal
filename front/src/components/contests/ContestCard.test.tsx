@@ -37,16 +37,13 @@ describe('ContestCard poster link', () => {
       days: 3,
       posterUrl: '/poster.png',
     };
-    const { unmount } = render(<ContestCard contest={base} href="/contests/contest-1" />);
-    expect(screen.getByRole('img', { hidden: true }).getAttribute('src')).toBe('/poster.png');
+    const { container, unmount } = render(<ContestCard contest={base} href="/contests/contest-1" />);
+    expect(container.querySelector('.artwork img')?.getAttribute('src')).toBe('/poster.png');
     unmount();
 
-    render(
-      <ContestCard
-        contest={{ ...base, thumbnailUrl: '/thumb.webp' }}
-        href="/contests/contest-1"
-      />,
+    const second = render(
+      <ContestCard contest={{ ...base, thumbnailUrl: '/thumb.webp' }} href="/contests/contest-1" />,
     );
-    expect(screen.getByRole('img', { hidden: true }).getAttribute('src')).toBe('/thumb.webp');
+    expect(second.container.querySelector('.artwork img')?.getAttribute('src')).toBe('/thumb.webp');
   });
 });

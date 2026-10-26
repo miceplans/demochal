@@ -52,10 +52,6 @@ export function ImageCropModal({
     null,
   );
 
-  useEffect(() => {
-    setPosition({ x: 0.5, y: 0.5 });
-    setError(null);
-  }, [image]);
   const close = useCallback(() => {
     if (!processing) onCancel();
   }, [processing, onCancel]);

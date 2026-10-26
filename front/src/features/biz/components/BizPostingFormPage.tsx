@@ -854,7 +854,10 @@ function PostingForm({
     else editor.innerText = initial.description;
   }, [initial.description]);
   const pendingPosterRef = useRef<CropImage | null>(null);
-  pendingPosterRef.current = pendingPoster;
+  useEffect(() => {
+    // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
+    pendingPosterRef.current = pendingPoster;
+  }, [pendingPoster]);
   useEffect(
     () => () => {
       if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
@@ -972,7 +975,7 @@ function PostingForm({
     }
   };
 
-  // 파일을 고륾면 먼저 썸네일 크롭 모달을 연다 — 확인 시에만 업로드가 시작된다.
+  // 파일을 고르는 즉시 썸네일 크롭 모달을 연다 — 확인 시에만 업로드가 시작된다.
   const choosePoster = async (file: File) => {
     if (uploadingPoster) return;
     if (!POSTER_TYPES.includes(file.type))
