@@ -4,14 +4,7 @@ import Link from 'next/link';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { UserShell } from '@/components/common/UserShell';
-import {
-  Button,
-  DesktopOnly,
-  EmptyState,
-  MobileOnly,
-  Row,
-  Heading,
-} from '@/components/common/Primitives';
+import { DesktopOnly, EmptyState, MobileOnly, Row, Heading } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
 import { contestHref } from './contest-links';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
@@ -39,6 +32,9 @@ const PRIZE_MIN = 0;
 const PRIZE_MAX = 10_000;
 
 const MOBILE_FILTER_MAX_WIDTH = 110;
+
+// 한 페이지에 보여줄 공모전 수(데스크톱 4열 × 4행).
+const PAGE_SIZE = 16;
 
 export function ExplorePage({
   teamMode = false,
@@ -72,7 +68,7 @@ export function ExplorePage({
   );
   const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
-  const [limit, setLimit] = useState(8);
+  const [pageState, setPageState] = useState({ key: '', page: 1 });
   const [includeClosed, setIncludeClosed] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -106,9 +102,21 @@ export function ExplorePage({
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
   // 챌린지 탐색 목록. 팀 모드의 챌린지 필터는 ChallengeSearch가 따로 검색하므로 여기서는 조회하지 않는다.
+  // 필터·정렬·검색어가 바뀌면 1페이지로 돌아간다(키가 달라지면 저장된 페이지를 무시).
+  const filterKey = JSON.stringify([
+    query,
+    selectedCategories,
+    targets,
+    organizers,
+    prize,
+    includeClosed,
+    sort,
+  ]);
+  const page = pageState.key === filterKey ? pageState.page : 1;
   const challengesQuery = generated.useListChallenges(
     {
-      limit,
+      limit: PAGE_SIZE,
+      page,
       q: query || undefined,
       category: selectedCategories.join(',') || undefined,
       targets: targets.join(',') || undefined,
@@ -145,7 +153,11 @@ export function ExplorePage({
     posterUrl: challenge.posterUrl ?? null,
     prizeAmount: challenge.prizeAmount ?? null,
   }));
-  const hasMoreChallenges = Boolean(challengesQuery.data?.data.nextCursor);
+  const totalPages = Math.ceil((challengesQuery.data?.data.total ?? 0) / PAGE_SIZE);
+  const goToPage = (next: number) => {
+    setPageState({ key: filterKey, page: next });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   return (
     <UserShell>
       <Layout $team={teamMode}>
@@ -429,12 +441,36 @@ export function ExplorePage({
                   {challengesQuery.isSuccess && contestCards.length === 0 && <EmptyState />}
                 </>
               )}
-              {hasMoreChallenges && (
-                <Row style={{ justifyContent: 'center', marginTop: 40 }}>
-                  <Button small onClick={() => setLimit((v) => v + 8)}>
-                    더보기
-                  </Button>
-                </Row>
+              {totalPages > 1 && (
+                <PageNav aria-label="페이지 이동">
+                  <PageButton
+                    type="button"
+                    aria-label="이전 페이지"
+                    disabled={page <= 1}
+                    onClick={() => goToPage(page - 1)}
+                  >
+                    ‹
+                  </PageButton>
+                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((n) => (
+                    <PageButton
+                      key={n}
+                      type="button"
+                      aria-label={`${n}페이지`}
+                      aria-current={n === page ? 'page' : undefined}
+                      onClick={() => goToPage(n)}
+                    >
+                      {n}
+                    </PageButton>
+                  ))}
+                  <PageButton
+                    type="button"
+                    aria-label="다음 페이지"
+                    disabled={page >= totalPages}
+                    onClick={() => goToPage(page + 1)}
+                  >
+                    ›
+                  </PageButton>
+                </PageNav>
               )}
             </>
           )}
@@ -650,7 +686,7 @@ const ExploreGrid = styled(ContestGrid)<{ $list: boolean }>(({ $list }) => ({
   gap: $list ? 12 : 16,
 }));
 
-// 필터 변경으로 목록이 다시 그려질 때 카드가 순차적으로 떠오른다(더보기로 이어 붙는 카드에도 적용).
+// 필터·페이지 변경으로 목록이 다시 그려질 때 카드가 순차적으로 떠오른다.
 // 지연은 앞 6개만 계단식으로 주고 이후 카드는 상한(180ms)에 묶어 긴 목록이 늦어지지 않게 한다.
 const riseIn = keyframes`
   from { opacity: 0; transform: translateY(6px); }
@@ -669,6 +705,28 @@ const staggerIn = {
 const TeamGridReveal = styled(TeamGrid)(staggerIn);
 const ExploreGridReveal = styled(ExploreGrid)<{ $list: boolean }>(staggerIn);
 const ContestGridReveal = styled(ContestGrid)(staggerIn);
+const PageNav = styled.nav({
+  display: 'flex',
+  flexWrap: 'wrap',
+  justifyContent: 'center',
+  gap: 4,
+  marginTop: 40,
+});
+const PageButton = styled.button({
+  ...textStyle.caption,
+  minWidth: 32,
+  height: 32,
+  padding: '0 8px',
+  border: 0,
+  borderRadius: 8,
+  background: 'transparent',
+  color: c.gray700,
+  cursor: 'pointer',
+  '&:hover:not(:disabled)': { background: c.gray50 },
+  '&[aria-current=page]': { background: c.primary, color: c.white },
+  '&:disabled': { color: c.gray300, cursor: 'default' },
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 1 },
+});
 const Sidebar = styled.aside({
   padding: '24px 20px',
   background: c.gray50,
