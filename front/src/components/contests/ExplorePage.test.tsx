@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
@@ -21,12 +21,59 @@ vi.mock('@/components/common/Primitives', () => {
   };
 });
 
-vi.mock('@/components/ui/Dropdown', () => ({ Dropdown: () => <select /> }));
+vi.mock('@/components/ui/Dropdown', () => ({
+  Dropdown: ({
+    options,
+    onChange,
+    value,
+    ...props
+  }: {
+    options: { value: string; label: string }[];
+    onChange?: (value: string) => void;
+    value?: string;
+    'aria-label'?: string;
+  }) => (
+    <select
+      aria-label={props['aria-label']}
+      value={value}
+      onChange={(event) => onChange?.(event.target.value)}
+    >
+      {options.map((option) => (
+        <option key={option.value} value={option.value}>
+          {option.label}
+        </option>
+      ))}
+    </select>
+  ),
+}));
 vi.mock('@/components/ui/RangeSlider', () => ({ RangeSlider: () => <div /> }));
 vi.mock('./ExploreFilters', () => ({
   Checkbox: ({ label }: { label: string }) => <label>{label}</label>,
   CheckFilter: () => <div />,
-  ChipFilter: () => <div />,
+  ChipFilter: ({
+    ariaLabel,
+    options,
+    selected,
+    onToggle,
+  }: {
+    ariaLabel: string;
+    options: string[];
+    selected: string[];
+    onToggle: (value: string) => void;
+  }) => (
+    <div role="group" aria-label={ariaLabel}>
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          aria-pressed={selected.includes(option)}
+          onClick={() => onToggle(option)}
+        >
+          {option}
+        </button>
+      ))}
+    </div>
+  ),
   FilterGroup: ({ title, children }: { title: string; children: ReactNode }) => (
     <section>
       <h3>{title}</h3>
@@ -144,5 +191,46 @@ describe('ExplorePage loading skeletons', () => {
 
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByTestId('empty-state')).not.toBeNull();
+  });
+});
+
+describe('ExplorePage category filters', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
+    setQueries();
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it('shows the new categories on desktop and mobile and filters challenges by the selected category', async () => {
+    const { container } = render(<ExplorePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '필터' }));
+    const desktopCategoryGroup = screen.getByRole('group', { name: '분야' });
+    const mobileCategorySelect =
+      container.querySelector<HTMLSelectElement>('select[aria-label="분야"]');
+    expect(mobileCategorySelect).not.toBeNull();
+    for (const category of ['대외활동', '홍보', '강연/강의']) {
+      expect(within(desktopCategoryGroup).getByRole('button', { name: category })).toBeTruthy();
+      expect(
+        Array.from(mobileCategorySelect!.options).some((option) => option.text === category),
+      ).toBe(true);
+    }
+
+    fireEvent.click(within(desktopCategoryGroup).getByRole('button', { name: '대외활동' }));
+    await waitFor(() => {
+      const calls = vi.mocked(generated.useListChallenges).mock.calls;
+      expect(calls.at(-1)?.[0]?.category).toBe('대외활동');
+    });
+
+    fireEvent.change(mobileCategorySelect!, { target: { value: '홍보' } });
+    await waitFor(() => {
+      const calls = vi.mocked(generated.useListChallenges).mock.calls;
+      expect(calls.at(-1)?.[0]?.category).toBe('홍보');
+    });
   });
 });

@@ -148,6 +148,42 @@ describe('BizPostingFormPage', () => {
     expect(new Date(data.eventEndDate).getDate()).toBe(11);
   });
 
+  it('추가된 카테고리와 주제를 선택해 공고 생성 payload에 전송한다', async () => {
+    renderForm();
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+
+    fireEvent.click(screen.getByLabelText('카테고리'));
+    const categoryList = screen.getByRole('listbox', { name: '카테고리' });
+    for (const category of ['대외활동', '홍보', '강연/강의'])
+      expect(within(categoryList).getByRole('option', { name: category })).toBeTruthy();
+    fireEvent.click(within(categoryList).getByRole('option', { name: '대외활동' }));
+
+    const topics = screen.getByRole('group', { name: '주제' });
+    const addedTopics = [
+      '서포터즈/대회활동',
+      '공모전 아이디어',
+      '행사/전시/이벤트',
+      '해외/국제',
+      '강연/강의',
+    ];
+    for (const topic of addedTopics) {
+      const chip = within(topics).getByRole('button', { name: topic });
+      fireEvent.click(chip);
+      expect(chip.getAttribute('aria-pressed')).toBe('true');
+    }
+
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ category: '대외활동', topics: addedTopics }),
+      }),
+    );
+  });
+
   it('첨부파일을 private 버킷으로 올리고 목록에서 제거할 수 있다', async () => {
     renderForm();
     const input = screen.getByLabelText('첨부파일 선택');

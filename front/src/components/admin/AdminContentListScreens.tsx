@@ -33,10 +33,10 @@ const BackButton = styled.button({
   color: c.gray900,
 });
 
-// 콘텐츠 모니터링 레일과 카드 4개 기준을 같은 그리드로 배치한다.
+// 콘텐츠 모니터링 레일의 카드 4개 기준과 맞추고, 뷰포트가 좁아지면 3→2→1열로 줄인다.
 const Grid = styled.div({
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, 1fr)',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
   gap: 16,
 });
 

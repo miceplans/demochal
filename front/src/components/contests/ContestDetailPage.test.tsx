@@ -74,6 +74,7 @@ vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 
 const CHALLENGE = {
   id: '346b34db-ab07-4ab0-9242-6ed941420506',
+  businessId: '7d1c239a-1111-4222-8333-944455556666',
   title: '테스트 챌린지',
   organizer: '주최 기관',
   eligibility: '누구나',
@@ -137,5 +138,30 @@ describe('ContestDetailPage 사이드바 포스터', () => {
     render(<ContestDetailPage challengeId={CHALLENGE.id} teamTab />);
     scrollIntro(false);
     expect(posterAlt()).toBeNull();
+  });
+});
+
+describe('ContestDetailPage 기업 프로필 진입점', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    observers = [];
+    setChallengeQueries();
+  });
+
+  afterEach(() => cleanup());
+
+  it('주최 표시가 등록 기업의 공개 프로필 링크로 연결된다', () => {
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    const link = screen.getByRole('link', { name: CHALLENGE.organizer });
+    expect(link.getAttribute('href')).toBe(`/businesses/${CHALLENGE.businessId}`);
+  });
+
+  it('businessId가 없는 챌린지는 주최가 링크가 아니라 일반 텍스트로 표시된다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, businessId: undefined } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    expect(screen.queryByRole('link', { name: CHALLENGE.organizer })).toBeNull();
+    expect(screen.getByText(CHALLENGE.organizer)).not.toBeNull();
   });
 });

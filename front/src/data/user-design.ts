@@ -106,6 +106,9 @@ export const categories = [
   '미술',
   '영상/UCC',
   '해외',
+  '대외활동',
+  '홍보',
+  '강연/강의',
 ];
 export const challengeTargets: NonNullable<generated.UpdateChallengeMutationBody['targets']> = [
   '제한없음',

@@ -6,7 +6,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { and, desc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { businesses, challenges, users } from '../../db/schema.js';
 import { AdminAlertsService } from '../admin/admin-alerts.service.js';
@@ -18,6 +18,10 @@ import { FilesService } from '../files/files.service.js';
 import { NtsClient } from '../verifications/clients/nts.client.js';
 
 const LIST_MAX_LIMIT = 100;
+// 공개 프로필 하단 "이 기관의 챌린지" — 최근 것부터 이 개수만큼 낸다.
+const PUBLIC_CHALLENGES_MAX = 50;
+// 공개 챌린지 목록 기준과 동일하게 draft·비공개 챌린지는 제외한다(challenges.service의 공개 목록과 동일한 정책).
+const PUBLIC_CHALLENGE_STATUSES = ['published', 'closed'];
 
 @Injectable()
 export class BusinessesService {
@@ -100,6 +104,81 @@ export class BusinessesService {
       throw new ForbiddenException('기업 정보 조회 권한이 없습니다.');
     }
     return { ...business, ...verificationStatusPresentation(business.verificationStatus) };
+  }
+
+  // 일반 사용자 공개 프로필용 — 비로그인 접근을 허용한다. 사업자등록번호·소유자 ID·nts 결과 등
+  // 민감 필드는 제외하고, 배너/로고는 공개 URL로 변환해 반환한다(원본 파일 ID는 내리지 않는다).
+  async findPublicById(id: string) {
+    const [business] = await this.db
+      .select({
+        id: businesses.id,
+        name: businesses.name,
+        type: businesses.type,
+        verificationStatus: businesses.verificationStatus,
+        bannerImageFileId: businesses.bannerImageFileId,
+        logoImageFileId: businesses.logoImageFileId,
+        address: businesses.address,
+        phone: businesses.phone,
+        email: businesses.email,
+        contentBlocks: businesses.contentBlocks,
+        createdAt: businesses.createdAt,
+      })
+      .from(businesses)
+      .where(eq(businesses.id, id))
+      .limit(1);
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
+    const urls = await this.filesService.resolvePublicUrls([
+      business.bannerImageFileId,
+      business.logoImageFileId,
+    ]);
+    return {
+      id: business.id,
+      name: business.name,
+      type: business.type,
+      address: business.address,
+      phone: business.phone,
+      email: business.email,
+      contentBlocks: business.contentBlocks,
+      createdAt: business.createdAt,
+      bannerUrl: business.bannerImageFileId ? (urls.get(business.bannerImageFileId) ?? null) : null,
+      logoUrl: business.logoImageFileId ? (urls.get(business.logoImageFileId) ?? null) : null,
+      ...verificationStatusPresentation(business.verificationStatus),
+    };
+  }
+
+  // 공개 프로필 하단 "이 기관의 챌린지"용 — 비로그인 접근을 허용한다. 공개 챌린지 목록과 같은
+  // 기준(draft·비공개 제외)으로만 낸다. 프로필 조회와 동일하게 존재하지 않는 기업은 404다.
+  async listPublicChallenges(businessId: string) {
+    const [business] = await this.db
+      .select({ id: businesses.id })
+      .from(businesses)
+      .where(eq(businesses.id, businessId))
+      .limit(1);
+    if (!business) throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
+    const rows = await this.db
+      .select({ challenge: challenges })
+      .from(challenges)
+      .where(
+        and(
+          eq(challenges.businessId, businessId),
+          inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+          eq(challenges.visibility, 'public'),
+        ),
+      )
+      .orderBy(desc(challenges.createdAt))
+      .limit(PUBLIC_CHALLENGES_MAX);
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      rows.map(({ challenge }) => challenge.posterFileId),
+    );
+    return rows.map(({ challenge }) => ({
+      id: challenge.id,
+      title: challenge.title,
+      status: challenge.status,
+      category: challenge.category,
+      startDate: challenge.startDate,
+      endDate: challenge.endDate,
+      posterUrl: challenge.posterFileId ? (posterUrls.get(challenge.posterFileId) ?? null) : null,
+    }));
   }
 
   async findByOwner(ownerUserId: string) {

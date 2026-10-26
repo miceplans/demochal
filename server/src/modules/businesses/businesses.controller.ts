@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import { JwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.guard.js';
+import { Public } from '../auth/public.decorator.js';
 import { BusinessesService } from './businesses.service.js';
 import { RegisterBusinessDto } from './dto/register-business.dto.js';
 import { UpdateBusinessDto } from './dto/update-business.dto.js';
@@ -29,6 +30,18 @@ export class BusinessesController {
   @UseGuards(JwtAuthGuard)
   register(@Body() dto: RegisterBusinessDto, @CurrentUser() user: AuthenticatedUser) {
     return this.businessesService.register(dto, user.id);
+  }
+
+  @Get(':id/public')
+  @Public()
+  findPublic(@Param('id') id: string) {
+    return this.businessesService.findPublicById(id);
+  }
+
+  @Get(':id/challenges')
+  @Public()
+  listPublicChallenges(@Param('id') id: string) {
+    return this.businessesService.listPublicChallenges(id);
   }
 
   @Get(':id')
