@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { ApiError, generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
 import { UserShell, Content } from '@/components/common/UserShell';
@@ -8,8 +9,10 @@ import { NotFound } from '@/components/common/NotFound';
 import { Muted, Tag } from '@/components/common/Primitives';
 import type { BadgeTone } from '@/components/ui/Badge';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
+import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { daysUntil } from '@/lib/date';
 
 const verificationTone = (displayStatus?: string): BadgeTone =>
   displayStatus === '승인' ? 'green' : displayStatus === '반려' ? 'red' : 'amber';
@@ -44,6 +47,16 @@ function IntroBlocks({ blocks }: { blocks?: readonly IntroBlock[] }) {
   );
 }
 
+// 승인(verified) 기관명 옆의 파란 인증 체크 — 흰 체크 아이콘을 파란 원 안에 둔다.
+function VerifiedMark() {
+  return (
+    <VerifiedBadge title="인증된 기관">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/assets/icons/check.svg" alt="인증된 기관" width={11} height={11} />
+    </VerifiedBadge>
+  );
+}
+
 function LoadError() {
   return (
     <UserShell title="기업 프로필" back="/explore">
@@ -56,7 +69,12 @@ function LoadError() {
 
 export function PublicBusinessProfilePage({ businessId }: { businessId: string }) {
   const businessQuery = generated.useGetPublicBusiness(businessId);
+  const challengesQuery = generated.useGetPublicBusinessChallenges(businessId);
+  // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
+  const [now] = useState(() => Date.now());
   const business = businessQuery.data?.status === 200 ? businessQuery.data.data : undefined;
+  const challengeItems =
+    challengesQuery.data?.status === 200 ? challengesQuery.data.data : undefined;
   if (businessQuery.isLoading) {
     return (
       <UserShell title="기업 프로필" back="/explore">
@@ -82,6 +100,7 @@ export function PublicBusinessProfilePage({ businessId }: { businessId: string }
           name={
             <NameWrap>
               <span>{business.name ?? '이름 없는 기업'}</span>
+              {business.displayStatus === '승인' ? <VerifiedMark /> : null}
               {business.displayStatus ? (
                 <Tag tone={verificationTone(business.displayStatus)}>{business.displayStatus}</Tag>
               ) : null}
@@ -92,12 +111,70 @@ export function PublicBusinessProfilePage({ businessId }: { businessId: string }
           email={business.email}
         />
         <IntroBlocks blocks={business.contentBlocks} />
+        <ChallengeSection items={challengeItems} loading={challengesQuery.isLoading} now={now} />
       </Content>
     </UserShell>
   );
 }
 
+// 이 기관의 챌린지 — 목록 로딩 중·오류·빈 목록이면 섹션을 숨긴다(프로필이 본체다).
+function ChallengeSection({
+  items,
+  loading,
+  now,
+}: {
+  items?: {
+    id: string;
+    title: string;
+    category?: string | null;
+    endDate: string;
+    posterUrl: string | null;
+  }[];
+  loading: boolean;
+  now: number;
+}) {
+  if (loading) {
+    return (
+      <Intro>
+        <IntroTitle>이 기관의 챌린지</IntroTitle>
+        <Muted>챌린지를 불러오는 중이에요</Muted>
+      </Intro>
+    );
+  }
+  if (!items?.length) return null;
+  return (
+    <Intro>
+      <IntroTitle>이 기관의 챌린지</IntroTitle>
+      <ContestGrid>
+        {items.map((item) => (
+          <ContestCard
+            key={item.id}
+            href={`/contests/${item.id}`}
+            contest={{
+              id: item.id,
+              title: item.title,
+              category: item.category ?? '',
+              days: daysUntil(item.endDate, now),
+              posterUrl: item.posterUrl,
+            }}
+          />
+        ))}
+      </ContestGrid>
+    </Intro>
+  );
+}
+
 const NameWrap = styled.span({ display: 'inline-flex', alignItems: 'center', gap: 8 });
+const VerifiedBadge = styled.span({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 18,
+  height: 18,
+  borderRadius: '50%',
+  background: c.primary,
+  flexShrink: 0,
+});
 const Intro = styled.section({ display: 'flex', flexDirection: 'column', gap: 12 });
 const IntroTitle = styled.h2({ margin: 0, ...textStyle.h2, color: c.gray900 });
 const IntroText = styled.p({

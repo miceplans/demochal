@@ -1809,6 +1809,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PublicBusiness' }
         '404': { $ref: '#/components/responses/NotFound' }
+  /businesses/{id}/challenges:
+    get:
+      tags: [Businesses]
+      summary: 기업 공개 챌린지 목록 조회
+      operationId: getPublicBusinessChallenges
+      x-impl-status: implemented
+      description: |
+        공개 기업 프로필(`/businesses/{id}`) 하단 "이 기관의 챌린지"용. 비로그인 접근을 허용한다.
+        공개 챌린지 목록과 같은 기준(`status`가 published/closed이고 `visibility`가 public)의
+        챌린지만 최근 생성순으로 최대 50개 반환하며, 존재하지 않는 기업은 404다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 공개 챌린지 목록(최근 생성순, 최대 50개)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PublicBusinessChallenge' }
+        '404': { $ref: '#/components/responses/NotFound' }
   /businesses/{id}:
     get:
       tags: [Businesses]
@@ -4144,6 +4168,18 @@ components:
         email: { type: string, format: email }
         contentBlocks: { type: array, items: { $ref: '#/components/schemas/ContentBlock' } }
         createdAt: { type: string, format: date-time }
+    PublicBusinessChallenge:
+      type: object
+      description: 공개 기업 프로필의 "이 기관의 챌린지" 카드용 — 공개 목록 기준(published/closed + public)으로만 낸다.
+      required: [id, title, status, startDate, endDate, posterUrl]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        status: { type: string, enum: [published, closed] }
+        category: { type: string, nullable: true }
+        startDate: { type: string, format: date-time }
+        endDate: { type: string, format: date-time }
+        posterUrl: { type: string, nullable: true, description: 공개 포스터 URL(없으면 null) }
     ContentBlock:
       type: object
       description: 기업 프로필 콘텐츠 블록 (링크/텍스트/파일/레이아웃/이미지 툴바)

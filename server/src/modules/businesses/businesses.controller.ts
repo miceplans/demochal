@@ -38,6 +38,12 @@ export class BusinessesController {
     return this.businessesService.findPublicById(id);
   }
 
+  @Get(':id/challenges')
+  @Public()
+  listPublicChallenges(@Param('id') id: string) {
+    return this.businessesService.listPublicChallenges(id);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {

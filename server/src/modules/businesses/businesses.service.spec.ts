@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 
-/** eq/and 호출을 기록해 where 절의 실제 predicate를 검증한다. */
+/** eq/and/inArray 호출을 기록해 where 절의 실제 predicate를 검증한다. */
 const predicates = vi.hoisted(() => ({
   eqCalls: [] as Array<{ column: unknown; value: unknown }>,
   andCalls: [] as unknown[][],
+  inArrayCalls: [] as Array<{ column: unknown; values: unknown[] }>,
 }));
 
 vi.mock('drizzle-orm', async (importActual) => {
@@ -19,10 +20,14 @@ vi.mock('drizzle-orm', async (importActual) => {
       predicates.andCalls.push(conditions);
       return { op: 'and', conditions };
     },
+    inArray: (column: unknown, values: unknown[]) => {
+      predicates.inArrayCalls.push({ column, values });
+      return { op: 'inArray', column, values };
+    },
   };
 });
 
-import { businesses } from '../../db/schema.js';
+import { businesses, challenges } from '../../db/schema.js';
 import { BusinessesService } from './businesses.service.js';
 
 /** update().set().where().returning() chain. */
@@ -416,5 +421,111 @@ describe('BusinessesService.findPublicById', () => {
   it('throws NotFound for a missing business', async () => {
     const service = createService(undefined);
     await expect(service.findPublicById('biz-x')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('BusinessesService.listPublicChallenges', () => {
+  const challengeRow = (id: string, posterFileId: string | null = null) => ({
+    challenge: {
+      id,
+      title: `챌린지 ${id}`,
+      status: 'published',
+      category: '개발',
+      startDate: new Date('2026-10-01T00:00:00.000Z'),
+      endDate: new Date('2026-10-31T00:00:00.000Z'),
+      posterFileId,
+    },
+  });
+
+  // 존재 확인 select + 목록 select를 순서대로 처리한다.
+  function createListDb(
+    businessRow: Record<string, unknown> | undefined,
+    challengeRows: unknown[],
+  ) {
+    const limit = vi.fn().mockResolvedValue(challengeRows);
+    const select = vi
+      .fn()
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({ limit: async () => (businessRow ? [businessRow] : []) }),
+        }),
+      }))
+      .mockImplementationOnce(() => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({ limit }),
+          }),
+        }),
+      }));
+    return { db: { select } as any, limit };
+  }
+
+  function createService(db: any, resolvePublicUrls = vi.fn(async () => new Map())) {
+    return new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls } as any,
+      {} as any,
+    );
+  }
+
+  it('returns public challenges with resolved poster URLs', async () => {
+    const { db } = createListDb({ id: 'biz-1' }, [
+      challengeRow('c-1', 'file-poster'),
+      challengeRow('c-2', null),
+    ]);
+    const service = createService(
+      db,
+      vi.fn(async () => new Map([['file-poster', 'https://cdn.example.com/poster.png']])),
+    );
+
+    const result = await service.listPublicChallenges('biz-1');
+
+    expect(result).toEqual([
+      {
+        id: 'c-1',
+        title: '챌린지 c-1',
+        status: 'published',
+        category: '개발',
+        startDate: new Date('2026-10-01T00:00:00.000Z'),
+        endDate: new Date('2026-10-31T00:00:00.000Z'),
+        posterUrl: 'https://cdn.example.com/poster.png',
+      },
+      {
+        id: 'c-2',
+        title: '챌린지 c-2',
+        status: 'published',
+        category: '개발',
+        startDate: new Date('2026-10-01T00:00:00.000Z'),
+        endDate: new Date('2026-10-31T00:00:00.000Z'),
+        posterUrl: null,
+      },
+    ]);
+  });
+
+  it('scopes the list to the business with the public list criteria (published/closed + public)', async () => {
+    predicates.eqCalls.length = 0;
+    predicates.inArrayCalls.length = 0;
+    const { db, limit } = createListDb({ id: 'biz-1' }, [challengeRow('c-1')]);
+    const service = createService(db);
+
+    await service.listPublicChallenges('biz-1');
+
+    // draft·비공개 챌린지 유출 방지 — 공개 목록과 동일한 조건이어야 한다.
+    expect(predicates.eqCalls).toContainEqual({ column: challenges.businessId, value: 'biz-1' });
+    expect(predicates.eqCalls).toContainEqual({ column: challenges.visibility, value: 'public' });
+    expect(predicates.inArrayCalls).toContainEqual({
+      column: challenges.status,
+      values: ['published', 'closed'],
+    });
+    expect(limit).toHaveBeenCalledWith(50);
+  });
+
+  it('throws NotFound for a missing business without listing challenges', async () => {
+    const { db, limit } = createListDb(undefined, []);
+    const service = createService(db);
+
+    await expect(service.listPublicChallenges('biz-x')).rejects.toThrow(NotFoundException);
+    expect(limit).not.toHaveBeenCalled();
   });
 });

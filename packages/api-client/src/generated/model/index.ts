@@ -223,6 +223,8 @@ export * from './presignedUploadRequestPurpose';
 export * from './publicAd';
 export * from './publicAdPlacement';
 export * from './publicBusiness';
+export * from './publicBusinessChallenge';
+export * from './publicBusinessChallengeStatus';
 export * from './publicBusinessType';
 export * from './publicBusinessVerificationStatus';
 export * from './publishAdminChallenge200';

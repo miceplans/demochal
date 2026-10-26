@@ -14,6 +14,7 @@ function createController() {
     register: vi.fn(),
     findById: vi.fn(),
     findPublicById: vi.fn(),
+    listPublicChallenges: vi.fn(),
     update: vi.fn(),
   };
   const controller = new BusinessesController(businessesService as unknown as BusinessesService);
@@ -40,6 +41,20 @@ describe('BusinessesController', () => {
     expect(Reflect.getMetadata(GUARDS_METADATA, BusinessesController.prototype.findOne)).toContain(
       JwtAuthGuard,
     );
+  });
+  it('serves the public challenges list anonymously via the @Public marker', () => {
+    expect(
+      Reflect.getMetadata(IS_PUBLIC_KEY, BusinessesController.prototype.listPublicChallenges),
+    ).toBe(true);
+  });
+  it('returns the public challenges list for any visitor', async () => {
+    const { controller, businessesService } = createController();
+    businessesService.listPublicChallenges.mockResolvedValue([{ id: 'c-1', title: '챌린지' }]);
+
+    await expect(controller.listPublicChallenges('biz-1')).resolves.toEqual([
+      { id: 'c-1', title: '챌린지' },
+    ]);
+    expect(businessesService.listPublicChallenges).toHaveBeenCalledWith('biz-1');
   });
   it('returns the public profile for any visitor', async () => {
     const { controller, businessesService } = createController();

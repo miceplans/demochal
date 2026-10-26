@@ -9,7 +9,10 @@ vi.mock('@semochal/api-client', async (importActual) => {
   const actual = await importActual<typeof import('@semochal/api-client')>();
   return {
     ...actual,
-    generated: { useGetPublicBusiness: vi.fn() },
+    generated: {
+      useGetPublicBusiness: vi.fn(),
+      useGetPublicBusinessChallenges: vi.fn(),
+    },
   };
 });
 
@@ -37,6 +40,13 @@ vi.mock('@/components/common/Primitives', () => ({
   Tag: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 
+vi.mock('@/components/contests/ContestCard', () => ({
+  ContestGrid: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+  ContestCard: ({ contest, href }: { contest: { title: string }; href?: string }) => (
+    <a href={href}>{contest.title}</a>
+  ),
+}));
+
 const BUSINESS = {
   id: 'biz-1',
   name: '주식회사 새모',
@@ -53,12 +63,32 @@ const BUSINESS = {
   createdAt: '2026-01-01T00:00:00.000Z',
 };
 
+const CHALLENGES = [
+  {
+    id: 'c-1',
+    title: '새모 해커톤',
+    status: 'published',
+    category: '개발',
+    startDate: '2026-10-01T00:00:00.000Z',
+    endDate: '2099-10-31T00:00:00.000Z',
+    posterUrl: 'https://cdn.example.com/poster.png',
+  },
+];
+
 function mockQuery(overrides: Record<string, unknown>) {
   vi.mocked(generated.useGetPublicBusiness).mockReturnValue(overrides as never);
 }
 
+function mockChallengesQuery(overrides: Record<string, unknown>) {
+  vi.mocked(generated.useGetPublicBusinessChallenges).mockReturnValue(overrides as never);
+}
+
 describe('PublicBusinessProfilePage', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // 기본적으로 챌린지 목록은 비어 있어 섹션이 숨겨진다.
+    mockChallengesQuery({ isLoading: false, isError: false, data: { status: 200, data: [] } });
+  });
   afterEach(() => cleanup());
 
   it('로딩 중에는 로딩 상태를 보여준다', () => {
@@ -93,6 +123,25 @@ describe('PublicBusinessProfilePage', () => {
     expect(container.querySelector(`img[src="${BUSINESS.logoUrl}"]`)).not.toBeNull();
   });
 
+  it('승인 상태면 기업명 옆에 파란 인증 체크를 표시한다', () => {
+    mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
+    const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
+    expect(container.querySelector('img[alt="인증된 기관"]')).not.toBeNull();
+  });
+
+  it('승인이 아니면 인증 체크를 표시하지 않는다', () => {
+    mockQuery({
+      isLoading: false,
+      isError: false,
+      data: {
+        status: 200,
+        data: { ...BUSINESS, displayStatus: '가승인', detailStatus: '인증 대기' },
+      },
+    });
+    const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
+    expect(container.querySelector('img[alt="인증된 기관"]')).toBeNull();
+  });
+
   it('contentBlocks가 비어 있으면 소개 섹션을 렌더하지 않는다', () => {
     mockQuery({
       isLoading: false,
@@ -101,5 +150,25 @@ describe('PublicBusinessProfilePage', () => {
     });
     render(<PublicBusinessProfilePage businessId="biz-1" />);
     expect(screen.queryByText('소개')).toBeNull();
+  });
+
+  it('이 기관의 챌린지 목록을 카드 링크로 렌더한다', () => {
+    mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
+    mockChallengesQuery({
+      isLoading: false,
+      isError: false,
+      data: { status: 200, data: CHALLENGES },
+    });
+    render(<PublicBusinessProfilePage businessId="biz-1" />);
+    expect(screen.getByText('이 기관의 챌린지')).not.toBeNull();
+    const link = screen.getByRole('link', { name: '새모 해커톤' });
+    expect(link.getAttribute('href')).toBe('/contests/c-1');
+  });
+
+  it('공개 챌린지가 없으면 챌린지 섹션을 숨긴다', () => {
+    mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
+    // beforeEach의 빈 목록 기본값을 그대로 둔다.
+    render(<PublicBusinessProfilePage businessId="biz-1" />);
+    expect(screen.queryByText('이 기관의 챌린지')).toBeNull();
   });
 });
