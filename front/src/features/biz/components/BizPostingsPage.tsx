@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { generated } from '@semochal/api-client';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
@@ -37,7 +38,7 @@ export function BizPostingsPage() {
       )
     : null;
   const latest = items[0];
-  const now = Date.now();
+  const [now] = useState(() => Date.now());
   const groups = [
     {
       key: 'open',
