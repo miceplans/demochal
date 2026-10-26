@@ -246,16 +246,19 @@ export function BizAdsPage() {
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
-      if (!created.data.order) throw new Error('결제 주문을 생성하지 못했습니다.');
-      const started = await requestTossPayment({
-        orderId: created.data.order.id,
-        amount: created.data.order.amount,
-        orderName: created.data.order.name,
-        flow: 'ad',
-      });
-      if (!started) {
-        await adApi.orders.cancel(created.data.order.id).catch(() => {});
-        throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+      // 주문이 없으면(결제 우회) Toss 결제 단계를 걸러 등록 완료로 바로 넘어간다.
+      // 결제 복원 시 아래 if 블록을 제거하고 !created.data.order 검사를 복원할 것.
+      if (created.data.order) {
+        const started = await requestTossPayment({
+          orderId: created.data.order.id,
+          amount: created.data.order.amount,
+          orderName: created.data.order.name,
+          flow: 'ad',
+        });
+        if (!started) {
+          await adApi.orders.cancel(created.data.order.id).catch(() => {});
+          throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+        }
       }
       await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
       setSelectedAd({
