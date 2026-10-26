@@ -19,7 +19,7 @@ describe('CreateAdDto', () => {
     expect(errorsFor({ productId: 'hero' })).toHaveLength(0);
   });
 
-  it.each(['', 123, null])('rejects an empty or non-string product ID: %s', (productId) => {
+  it.each(['', '   ', 123, null])('rejects an empty or non-string product ID: %s', (productId) => {
     expect(errorsFor({ productId })).not.toHaveLength(0);
   });
 });

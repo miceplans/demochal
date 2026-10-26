@@ -7,12 +7,14 @@ import {
   IsString,
   IsUrl,
   IsUUID,
+  Matches,
 } from 'class-validator';
 
 export class CreateAdDto {
   // ad_products.id is a stable string slot ID (for example, "hero"), not a UUID.
   @IsString()
   @IsNotEmpty()
+  @Matches(/\S/)
   productId!: string;
 
   @IsOptional()
