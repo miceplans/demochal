@@ -11,6 +11,8 @@ import { textStyle } from '@/styles/typography';
 import type { ProfileAward, ProfileUserData } from './ProfileCards';
 import { isGithubUrl, isSafeLinkUrl, linkDisplayText, linkIconName } from './link-model';
 
+const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+
 // 사람 카드와 같은 규칙: 링크·수상 이력에서 인증 배지를 도출하고, 저장된 badges와 합쳐 중복을 없앤다.
 function verificationBadges(user: ProfileUserData) {
   const links = (user.externalLinks ?? []).filter((link) => isSafeLinkUrl(link.url));
@@ -90,7 +92,7 @@ function ProfilePageContent() {
         <Grid>
           <ProfileCard>
             <Row gap={16}>
-              <Avatar aria-hidden />
+              <Avatar src={user.profileImageUrl ?? DEFAULT_PROFILE_IMAGE} alt="" />
               <Name>{user.name ?? '이름 없음'}</Name>
             </Row>
             {user.bio ? <Bio>{user.bio}</Bio> : null}
@@ -206,12 +208,13 @@ const ProfileCard = styled.div({
   background: c.white,
   [mobile]: { border: 0, padding: 0 },
 });
-const Avatar = styled.div({
+const Avatar = styled.img({
   width: 64,
   height: 64,
   flexShrink: 0,
   borderRadius: '50%',
   background: c.gray100,
+  objectFit: 'cover',
 });
 const Name = styled.p({ ...textStyle.subtitle2, color: c.gray900, lineHeight: 'normal' });
 const ProfileBadge = styled(Tag)({ padding: '4px 10px', borderRadius: 8, lineHeight: 'normal' });
