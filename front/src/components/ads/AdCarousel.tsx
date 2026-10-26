@@ -44,43 +44,60 @@ const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) Figma 모바일 홈 광고 자리 높이(150px)를 쓴다.
-// 소재는 PC용 1060:250이라 object-fit: cover로 좌우가 일부 잘린다.
-const MOBILE_HERO_INSET = 0;
-const MOBILE_HERO_GAP = 0;
-const MOBILE_HERO_HEIGHT = 150;
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 기준 시안 358×150 비율을
+// 유지한다. PC용 1060:250 소재는 중앙을 기준으로 cover 크롭된다.
+export const MOBILE_HERO_LAYOUT = {
+  width: 358,
+  height: 150,
+  inset: 0,
+  gap: 0,
+} as const;
+const MOBILE_HERO_ASPECT_RATIO = `${MOBILE_HERO_LAYOUT.width} / ${MOBILE_HERO_LAYOUT.height}`;
+export const HERO_MEDIA_STYLE = {
+  width: '1060px',
+  height: '250px',
+  borderRadius: '12px',
+  objectFit: 'cover',
+  flexShrink: 0,
+} as const;
+export const MOBILE_HERO_VIEWPORT_STYLE = {
+  width: '100%',
+  height: 'auto',
+  aspectRatio: MOBILE_HERO_ASPECT_RATIO,
+} as const;
+export const MOBILE_HERO_MEDIA_STYLE = {
+  width: `calc(100vw - ${MOBILE_HERO_LAYOUT.inset * 2}px)`,
+  height: '100%',
+  borderRadius: 0,
+  objectFit: 'cover',
+  objectPosition: 'center',
+} as const;
 const MOBILE_GALLERY_WIDTH = 240;
 const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
 const MOBILE_GALLERY_GAP = 16;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_WIDTH + MOBILE_GALLERY_GAP;
 const mobileLayoutQuery = '(max-width: 480px)';
 
+export function getMobileHeroSlideStep(viewportWidth: number) {
+  return viewportWidth - MOBILE_HERO_LAYOUT.inset * 2 + MOBILE_HERO_LAYOUT.gap;
+}
+
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
   height: '250px',
   '& img': {
-    width: '1060px',
-    height: '250px',
-    borderRadius: '12px',
-    objectFit: 'cover',
-    flexShrink: 0,
+    ...HERO_MEDIA_STYLE,
   },
   '& video': {
-    width: '1060px',
-    height: '250px',
-    borderRadius: '12px',
-    objectFit: 'cover',
-    flexShrink: 0,
+    ...HERO_MEDIA_STYLE,
     display: 'block',
   },
   [mobile]: {
-    height: 'auto',
+    ...MOBILE_HERO_VIEWPORT_STYLE,
     margin: '0 0 16px',
     '& img, & video': {
-      width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
-      height: `${MOBILE_HERO_HEIGHT}px`,
-      borderRadius: 0,
+      ...MOBILE_HERO_MEDIA_STYLE,
     },
   },
 });
@@ -158,9 +175,9 @@ const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant
               transform: `translateX(${-activeIndex * MOBILE_GALLERY_STEP}px)`,
             }
           : {
-              gap: `${MOBILE_HERO_GAP}px`,
-              transform: `translateX(calc(${MOBILE_HERO_INSET}px - ${activeIndex} * (100vw - ${
-                MOBILE_HERO_INSET * 2 - MOBILE_HERO_GAP
+              gap: `${MOBILE_HERO_LAYOUT.gap}px`,
+              transform: `translateX(calc(${MOBILE_HERO_LAYOUT.inset}px - ${activeIndex} * (100vw - ${
+                MOBILE_HERO_LAYOUT.inset * 2 - MOBILE_HERO_LAYOUT.gap
               }px)))`,
             },
     };
@@ -306,7 +323,7 @@ export function AdCarousel({
     const isMobile = window.matchMedia(mobileLayoutQuery).matches;
     if (variant === 'hero') {
       return isMobile
-        ? window.innerWidth - MOBILE_HERO_INSET * 2 + MOBILE_HERO_GAP
+        ? getMobileHeroSlideStep(window.innerWidth)
         : SLIDE_WIDTH.hero + SLIDE_GAP.hero;
     }
     return isMobile ? MOBILE_GALLERY_STEP : SLIDE_WIDTH.gallery + SLIDE_GAP.gallery;

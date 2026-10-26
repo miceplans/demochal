@@ -1,6 +1,13 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdCarousel } from './AdCarousel';
+import {
+  AdCarousel,
+  getMobileHeroSlideStep,
+  HERO_MEDIA_STYLE,
+  MOBILE_HERO_LAYOUT,
+  MOBILE_HERO_MEDIA_STYLE,
+  MOBILE_HERO_VIEWPORT_STYLE,
+} from './AdCarousel';
 
 const animation = vi.hoisted(() => ({
   callbacks: new Map<number, FrameRequestCallback>(),
@@ -110,5 +117,30 @@ describe('AdCarousel', () => {
     });
 
     expect(rail!.style.transition).toBe('');
+  });
+
+  it('keeps the design crop styles and movement contract on mobile', () => {
+    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 358, height: 150, inset: 0, gap: 0 });
+    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBeCloseTo(2.3867, 4);
+    expect(MOBILE_HERO_VIEWPORT_STYLE).toMatchObject({
+      width: '100%',
+      aspectRatio: '358 / 150',
+    });
+    expect(MOBILE_HERO_MEDIA_STYLE).toMatchObject({
+      width: 'calc(100vw - 0px)',
+      height: '100%',
+      objectFit: 'cover',
+      objectPosition: 'center',
+    });
+    expect(getMobileHeroSlideStep(358)).toBe(358);
+    expect(getMobileHeroSlideStep(480)).toBe(480);
+  });
+
+  it('preserves the desktop hero media dimensions', () => {
+    expect(HERO_MEDIA_STYLE).toMatchObject({
+      width: '1060px',
+      height: '250px',
+      borderRadius: '12px',
+    });
   });
 });
