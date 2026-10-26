@@ -43,9 +43,7 @@ export class BizService {
         ? {
             ...recentPosting,
             posterUrl: await this.filesService.resolvePublicUrl(recentPosting.posterFileId),
-            thumbnailUrl: await this.filesService.resolvePublicUrl(
-              recentPosting.thumbnailFileId,
-            ),
+            thumbnailUrl: await this.filesService.resolvePublicUrl(recentPosting.thumbnailFileId),
           }
         : null,
       stats,

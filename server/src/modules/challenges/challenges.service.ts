@@ -466,7 +466,7 @@ export class ChallengesService {
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
         posterFileId: dto.posterFileId,
-      thumbnailFileId: dto.thumbnailFileId,
+        thumbnailFileId: dto.thumbnailFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         summary: dto.summary,

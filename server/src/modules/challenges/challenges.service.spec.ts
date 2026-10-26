@@ -119,9 +119,7 @@ describe('ChallengesService.listRecommended', () => {
 
     const urls = Object.fromEntries(result.items.map((item) => [item.id, item.posterUrl]));
     expect(urls).toEqual({ 'with-poster': 'https://cdn.example.com/p.webp', 'no-poster': null });
-    const thumbnails = Object.fromEntries(
-      result.items.map((item) => [item.id, item.thumbnailUrl]),
-    );
+    const thumbnails = Object.fromEntries(result.items.map((item) => [item.id, item.thumbnailUrl]));
     expect(thumbnails).toEqual({
       'with-poster': 'https://cdn.example.com/t.webp',
       // 썸네일이 없는 기존 공고는 null — 클라이언트가 posterUrl로 폰백한다.

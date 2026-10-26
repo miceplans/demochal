@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  useCallback,
-  useEffect,
-  useId,
-  useRef,
-  useState,
-  type PointerEvent,
-} from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
@@ -48,9 +41,7 @@ export function ImageCropModal({
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(
-    null,
-  );
+  const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
 
   const close = useCallback(() => {
     if (!processing) onCancel();
@@ -88,7 +79,12 @@ export function ImageCropModal({
     setProcessing(true);
     setError(null);
     try {
-      const file = await makeCroppedFile(image, aspectRatio, position, minOutputWidth ?? previewWidth * 2);
+      const file = await makeCroppedFile(
+        image,
+        aspectRatio,
+        position,
+        minOutputWidth ?? previewWidth * 2,
+      );
       onConfirm(file);
     } catch (cause) {
       // 모달을 유지해 사용자가 실패를 인지하고 다시 시도하거나 취소할 수 있게 한다.

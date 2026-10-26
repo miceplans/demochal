@@ -37,7 +37,9 @@ describe('ContestCard poster link', () => {
       days: 3,
       posterUrl: '/poster.png',
     };
-    const { container, unmount } = render(<ContestCard contest={base} href="/contests/contest-1" />);
+    const { container, unmount } = render(
+      <ContestCard contest={base} href="/contests/contest-1" />,
+    );
     expect(container.querySelector('.artwork img')?.getAttribute('src')).toBe('/poster.png');
     unmount();
 

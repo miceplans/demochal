@@ -221,9 +221,7 @@ export class TeamsService {
       challengePosterFileId: row.challengePosterFileId,
       challengeThumbnailFileId: row.challengeThumbnailFileId,
       challengePosterUrl: await this.filesService.resolvePublicUrl(row.challengePosterFileId),
-      challengeThumbnailUrl: await this.filesService.resolvePublicUrl(
-        row.challengeThumbnailFileId,
-      ),
+      challengeThumbnailUrl: await this.filesService.resolvePublicUrl(row.challengeThumbnailFileId),
       leaderName: row.leaderName,
       members: visibleMembers,
     };
@@ -292,7 +290,13 @@ export class TeamsService {
       myTeams.map(({ challengeThumbnailFileId }) => challengeThumbnailFileId),
     );
     return myTeams.map(
-      ({ team, challengeTitle, challengePosterFileId, challengeThumbnailFileId, businessName }) => ({
+      ({
+        team,
+        challengeTitle,
+        challengePosterFileId,
+        challengeThumbnailFileId,
+        businessName,
+      }) => ({
         ...team,
         challengeTitle,
         challengePosterFileId,

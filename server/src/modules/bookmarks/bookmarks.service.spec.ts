@@ -31,14 +31,12 @@ const challengeRows = [
 ];
 const filesStub = () =>
   ({
-    resolvePublicUrls: vi
-      .fn()
-      .mockResolvedValue(
-        new Map([
-          ['file-1', 'https://cdn/p.webp'],
-          ['file-t', 'https://cdn/t.webp'],
-        ]),
-      ),
+    resolvePublicUrls: vi.fn().mockResolvedValue(
+      new Map([
+        ['file-1', 'https://cdn/p.webp'],
+        ['file-t', 'https://cdn/t.webp'],
+      ]),
+    ),
   }) as any;
 
 describe('BookmarksService', () => {

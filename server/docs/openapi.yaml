@@ -3735,7 +3735,11 @@ components:
         prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
         posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
         thumbnailFileId:
-          { type: string, format: uuid, description: 카드 썸네일 파일 ID(포스터에서 잘라 만든 파일) }
+          {
+            type: string,
+            format: uuid,
+            description: 카드 썸네일 파일 ID(포스터에서 잘라 만든 파일),
+          }
         status:
           {
             type: string,

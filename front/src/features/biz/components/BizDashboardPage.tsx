@@ -219,7 +219,7 @@ export function BizDashboardPage() {
           <SectionTitle>나의 가장 최근 공고</SectionTitle>
           <ContestHeader>
             <Thumbnail aria-hidden>
-              {posting?.thumbnailUrl ?? posting?.posterUrl ? (
+              {(posting?.thumbnailUrl ?? posting?.posterUrl) ? (
                 <img src={posting?.thumbnailUrl ?? posting?.posterUrl ?? ''} alt="" />
               ) : null}
             </Thumbnail>
