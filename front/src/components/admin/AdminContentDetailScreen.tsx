@@ -176,6 +176,8 @@ const NextThumb = styled.div({
   borderRadius: 11,
   border: '0.9px solid #f0f1f3',
   background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
 });
 const NextBody = styled.div({
   flex: 1,
@@ -330,7 +332,12 @@ function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: 
           .filter((contest) => contest.id !== currentId)
           .map((contest) => (
             <NextItem key={contest.id} href={hrefOf(`/contents/challenges/${contest.id}`)}>
-              <NextThumb />
+              <NextThumb>
+                {contest.posterUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- 서버가 내려주는 외부 포스터 URL
+                  <img src={contest.posterUrl} alt="" />
+                ) : null}
+              </NextThumb>
               <NextBody>
                 <NextTitle>{contest.title}</NextTitle>
                 <NextMeta>

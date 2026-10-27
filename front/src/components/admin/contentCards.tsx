@@ -21,6 +21,7 @@ export type ContestCardRow = {
   id: string;
   title: string;
   category: string;
+  posterUrl: string | null;
   dday: string;
   teams: string;
   unread: boolean;
@@ -106,6 +107,8 @@ export const ContestCover = styled.div({
   alignItems: 'center',
   justifyContent: 'center',
   color: c.gray500,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   ...textStyle.mInfoText,
   // 모바일에서는 폭에 맞춰 커버 높이를 키운다.
   '@media (max-width: 640px)': { height: 'auto', aspectRatio: '4 / 3' },
@@ -192,7 +195,14 @@ export const teamCardContent = (team: TeamCardRow) => (
 export const contestCardContent = (contest: ContestCardRow) => (
   <>
     {contest.unread ? <UnreadDot aria-label="확인 필요" /> : null}
-    <ContestCover>공고 이미지</ContestCover>
+    <ContestCover>
+      {contest.posterUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- 서버가 내려주는 외부 포스터 URL
+        <img src={contest.posterUrl} alt="" />
+      ) : (
+        '공고 이미지'
+      )}
+    </ContestCover>
     <ContestBody>
       <ContestTitle>{contest.title}</ContestTitle>
       <CategoryTag>{contest.category}</CategoryTag>

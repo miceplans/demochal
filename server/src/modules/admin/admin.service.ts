@@ -1193,6 +1193,9 @@ export class AdminService {
       };
     });
 
+    const posterUrls = await this.filesService.resolvePublicUrls(
+      contestRows.map((challenge) => challenge.posterFileId),
+    );
     const now = Date.now();
     const contestCards = contestRows.map((challenge) => {
       const daysLeft = Math.max(0, Math.ceil((challenge.endDate.getTime() - now) / 86_400_000));
@@ -1200,6 +1203,7 @@ export class AdminService {
         id: challenge.id,
         title: challenge.title,
         category: challenge.category ?? '',
+        posterUrl: challenge.posterFileId ? (posterUrls.get(challenge.posterFileId) ?? null) : null,
         dday: `D-${daysLeft}`,
         teams: `팀 모집 ${teamCountByChallenge.get(challenge.id) ?? 0}건`,
         unread: flagged.has(challenge.id),

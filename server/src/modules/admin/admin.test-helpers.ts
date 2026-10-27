@@ -109,6 +109,7 @@ export function createFilesStub() {
   return {
     getPrivateReadUrl: vi.fn(async (key: string) => `https://signed.example/${key}`),
     resolvePublicUrl: vi.fn(async () => null),
+    resolvePublicUrls: vi.fn(async () => new Map<string, string | null>()),
   };
 }
 

@@ -149,6 +149,7 @@ export function AdminContestListScreen() {
         id: contest.id ?? String(index),
         title: contest.title ?? '',
         category: contest.category ?? '',
+        posterUrl: contest.posterUrl ?? null,
         dday: contest.dday ?? '',
         teams: contest.teams ?? '',
         unread: contest.unread ?? false,

@@ -49,7 +49,12 @@ describe('AdminService — contents', () => {
         unread: false,
       },
     ]);
-    expect(result.contests[0]).toMatchObject({ id: 'ch1', teams: '팀 모집 1건', unread: true });
+    expect(result.contests[0]).toMatchObject({
+      id: 'ch1',
+      posterUrl: null,
+      teams: '팀 모집 1건',
+      unread: true,
+    });
     expect(result.teamsTotal).toBe(12);
     expect(result.contestsTotal).toBe(30);
   });
