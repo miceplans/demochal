@@ -40,49 +40,90 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
-const SLIDE_WIDTH = { hero: 1060, gallery: 315 } as const;
+export const SLIDE_WIDTH = { hero: 1200, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) Figma 모바일 홈 광고 자리 높이(150px)를 쓴다.
-// 소재는 PC용 1060:250이라 object-fit: cover로 좌우가 일부 잘린다.
-const MOBILE_HERO_INSET = 0;
-const MOBILE_HERO_GAP = 0;
-const MOBILE_HERO_HEIGHT = 150;
-const MOBILE_GALLERY_WIDTH = 240;
-const MOBILE_GALLERY_HEIGHT = Math.round((240 * 190) / 315);
+// 갤러리 노출 크기. 업로드 크롭 사양(AdPlacementPreview의 GALLERY_CROP_SPEC)과 동기화 대상이라
+// export해 테스트로 계약을 잠근다. 모바일 높이는 PC 비율(315:190)을 유지한 채 폭 240에 맞춘다.
+export const GALLERY_LAYOUT = {
+  pc: { width: SLIDE_WIDTH.gallery, height: 190 },
+  mobile: { width: 240, height: Math.round((240 * 190) / 315) },
+} as const;
+const SLIDE_HEIGHT = { hero: 343, gallery: GALLERY_LAYOUT.pc.height } as const;
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) PC와 같은 3.5:1 비율을 쓴다.
+// 소재가 3.5:1이 아니면 중앙을 기준으로 cover 크롭된다.
+export const MOBILE_HERO_LAYOUT = {
+  width: 350,
+  height: 100,
+  inset: 0,
+  gap: 0,
+} as const;
+const MOBILE_HERO_ASPECT_RATIO = `${MOBILE_HERO_LAYOUT.width} / ${MOBILE_HERO_LAYOUT.height}`;
+export const HERO_MEDIA_STYLE = {
+  width: '1200px',
+  height: '343px',
+  borderRadius: '12px',
+  objectFit: 'cover',
+  flexShrink: 0,
+} as const;
+export const HERO_VIEWPORT_STYLE = { height: '343px' } as const;
+export const MOBILE_HERO_VIEWPORT_STYLE = {
+  width: '100%',
+  height: 'auto',
+  aspectRatio: MOBILE_HERO_ASPECT_RATIO,
+} as const;
+export const MOBILE_HERO_MEDIA_STYLE = {
+  display: 'block',
+  width: `calc(100vw - ${MOBILE_HERO_LAYOUT.inset * 2}px)`,
+  // 부모(button) 높이가 auto라 height: 100%가 풀리지 않으므로 비율로 박스를 고정하고 cover로 크롭한다.
+  height: 'auto',
+  aspectRatio: MOBILE_HERO_ASPECT_RATIO,
+  borderRadius: 0,
+  objectFit: 'cover',
+  objectPosition: 'center',
+} as const;
+export const HERO_EDGE_FADE_STYLE = {
+  pointerEvents: 'none',
+  background:
+    'linear-gradient(90deg, #fff 0%, rgb(255 255 255 / 88%) 3%, transparent 15%, transparent 85%, rgb(255 255 255 / 88%) 97%, #fff 100%)',
+} as const;
+const MOBILE_GALLERY_WIDTH = GALLERY_LAYOUT.mobile.width;
+const MOBILE_GALLERY_HEIGHT = GALLERY_LAYOUT.mobile.height;
 const MOBILE_GALLERY_GAP = 16;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_WIDTH + MOBILE_GALLERY_GAP;
 const mobileLayoutQuery = '(max-width: 480px)';
 
+export function getMobileHeroSlideStep(viewportWidth: number) {
+  return viewportWidth - MOBILE_HERO_LAYOUT.inset * 2 + MOBILE_HERO_LAYOUT.gap;
+}
+
 const HeroViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
-  height: '250px',
+  ...HERO_VIEWPORT_STYLE,
   '& img': {
-    width: '1060px',
-    height: '250px',
-    borderRadius: '12px',
-    objectFit: 'cover',
-    flexShrink: 0,
+    ...HERO_MEDIA_STYLE,
   },
   '& video': {
-    width: '1060px',
-    height: '250px',
-    borderRadius: '12px',
-    objectFit: 'cover',
-    flexShrink: 0,
+    ...HERO_MEDIA_STYLE,
     display: 'block',
   },
   [mobile]: {
-    height: 'auto',
+    ...MOBILE_HERO_VIEWPORT_STYLE,
     margin: '0 0 16px',
     '& img, & video': {
-      width: `calc(100vw - ${MOBILE_HERO_INSET * 2}px)`,
-      height: `${MOBILE_HERO_HEIGHT}px`,
-      borderRadius: 0,
+      ...MOBILE_HERO_MEDIA_STYLE,
     },
   },
+});
+
+const HeroEdgeFade = styled.div({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 1,
+  ...HERO_EDGE_FADE_STYLE,
+  [mobile]: { display: 'none' },
 });
 
 const PriceOverlay = styled.div({
@@ -158,9 +199,9 @@ const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant
               transform: `translateX(${-activeIndex * MOBILE_GALLERY_STEP}px)`,
             }
           : {
-              gap: `${MOBILE_HERO_GAP}px`,
-              transform: `translateX(calc(${MOBILE_HERO_INSET}px - ${activeIndex} * (100vw - ${
-                MOBILE_HERO_INSET * 2 - MOBILE_HERO_GAP
+              gap: `${MOBILE_HERO_LAYOUT.gap}px`,
+              transform: `translateX(calc(${MOBILE_HERO_LAYOUT.inset}px - ${activeIndex} * (100vw - ${
+                MOBILE_HERO_LAYOUT.inset * 2 - MOBILE_HERO_LAYOUT.gap
               }px)))`,
             },
     };
@@ -180,10 +221,10 @@ const SlideButton = styled.button({
 
 const SlideLink = SlideButton.withComponent('a');
 
-// hero는 화면 중앙(50vw)에 놓인 1060px 슬라이드의 가장자리에서 20px 안쪽,
+// hero는 화면 중앙(50vw)에 놓인 1200px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
 const navOffset = {
-  hero: 'calc(50vw - 510px)',
+  hero: 'calc(50vw - 580px)',
   gallery: 'calc(50% - 213.5px)',
 } as const;
 
@@ -193,7 +234,7 @@ const NavButton = styled.button<{
 }>(({ direction, variant }) => ({
   position: 'absolute',
   top: '50%',
-  zIndex: 1,
+  zIndex: 2,
   display: 'grid',
   placeItems: 'center',
   width: '64px',
@@ -306,7 +347,7 @@ export function AdCarousel({
     const isMobile = window.matchMedia(mobileLayoutQuery).matches;
     if (variant === 'hero') {
       return isMobile
-        ? window.innerWidth - MOBILE_HERO_INSET * 2 + MOBILE_HERO_GAP
+        ? getMobileHeroSlideStep(window.innerWidth)
         : SLIDE_WIDTH.hero + SLIDE_GAP.hero;
     }
     return isMobile ? MOBILE_GALLERY_STEP : SLIDE_WIDTH.gallery + SLIDE_GAP.gallery;
@@ -464,7 +505,7 @@ export function AdCarousel({
                   src={item.src}
                   alt={index === railIndex ? item.alt : ''}
                   width={SLIDE_WIDTH[variant]}
-                  height={variant === 'hero' ? 250 : 190}
+                  height={SLIDE_HEIGHT[variant]}
                   // DB 광고 소재는 CloudFront 절대 URL이라 next/image 최적화 대상(remotePatterns)이 아니다.
                   unoptimized={/^https?:/.test(item.src)}
                 />
@@ -494,6 +535,7 @@ export function AdCarousel({
             );
           })}
         </Rail>
+        {variant === 'hero' ? <HeroEdgeFade aria-hidden="true" /> : null}
         {itemCount > 1 ? (
           <>
             <NavButton

@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdPlacementPreview } from './AdPlacementPreview';
+import { GALLERY_LAYOUT, HERO_VIEWPORT_STYLE, MOBILE_HERO_LAYOUT, SLIDE_WIDTH } from './AdCarousel';
+import { AdPlacementPreview, GALLERY_CROP_SPEC, HERO_CROP_SPEC } from './AdPlacementPreview';
 
 type PublicAd = { id: string; title: string; imageUrl: string };
 
@@ -216,5 +217,25 @@ describe('AdPlacementPreview', () => {
 
     expect(screen.getByLabelText('모바일 사용자 홈 광고 미리보기')).not.toBeNull();
     expect(screen.getByLabelText('상단 광고 1 / 4')).not.toBeNull();
+  });
+
+  it('업로드 크롭 사양은 각 뷰의 실제 홈 노출 비율과 동기화돼 있다', () => {
+    // 크롭 사양은 AdCarousel의 노출 레이아웃 상수와 직접 맞물려야 한다 — 어느 쪽이 바뀌면
+    // 이 테스트가 실패해야 한다(리터럴 재서술 금지).
+    const pcHeroHeight = Number.parseInt(HERO_VIEWPORT_STYLE.height, 10);
+    expect(HERO_CROP_SPEC.mobile.aspectRatio).toBe(
+      MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height,
+    );
+    expect(HERO_CROP_SPEC.mobile.previewWidth).toBe(MOBILE_HERO_LAYOUT.width);
+    expect(HERO_CROP_SPEC.pc.aspectRatio).toBe(SLIDE_WIDTH.hero / pcHeroHeight);
+    expect(HERO_CROP_SPEC.pc.previewWidth).toBe(SLIDE_WIDTH.hero);
+    expect(GALLERY_CROP_SPEC.pc.aspectRatio).toBe(
+      GALLERY_LAYOUT.pc.width / GALLERY_LAYOUT.pc.height,
+    );
+    expect(GALLERY_CROP_SPEC.pc.previewWidth).toBe(GALLERY_LAYOUT.pc.width);
+    expect(GALLERY_CROP_SPEC.mobile.aspectRatio).toBe(
+      GALLERY_LAYOUT.mobile.width / GALLERY_LAYOUT.mobile.height,
+    );
+    expect(GALLERY_CROP_SPEC.mobile.previewWidth).toBe(GALLERY_LAYOUT.mobile.width);
   });
 });

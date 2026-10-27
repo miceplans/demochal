@@ -1,6 +1,15 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { AdCarousel } from './AdCarousel';
+import {
+  AdCarousel,
+  getMobileHeroSlideStep,
+  HERO_EDGE_FADE_STYLE,
+  HERO_MEDIA_STYLE,
+  HERO_VIEWPORT_STYLE,
+  MOBILE_HERO_LAYOUT,
+  MOBILE_HERO_MEDIA_STYLE,
+  MOBILE_HERO_VIEWPORT_STYLE,
+} from './AdCarousel';
 
 const animation = vi.hoisted(() => ({
   callbacks: new Map<number, FrameRequestCallback>(),
@@ -110,5 +119,41 @@ describe('AdCarousel', () => {
     });
 
     expect(rail!.style.transition).toBe('');
+  });
+
+  it('keeps the design crop styles and movement contract on mobile', () => {
+    expect(MOBILE_HERO_LAYOUT).toEqual({ width: 350, height: 100, inset: 0, gap: 0 });
+    expect(MOBILE_HERO_LAYOUT.width / MOBILE_HERO_LAYOUT.height).toBe(3.5);
+    expect(MOBILE_HERO_VIEWPORT_STYLE).toMatchObject({
+      width: '100%',
+      aspectRatio: '350 / 100',
+    });
+    expect(MOBILE_HERO_MEDIA_STYLE).toMatchObject({
+      width: 'calc(100vw - 0px)',
+      height: 'auto',
+      aspectRatio: '350 / 100',
+      objectFit: 'cover',
+      objectPosition: 'center',
+    });
+    expect(getMobileHeroSlideStep(358)).toBe(358);
+    expect(getMobileHeroSlideStep(480)).toBe(480);
+  });
+
+  it('preserves the desktop hero media dimensions', () => {
+    expect(HERO_MEDIA_STYLE).toMatchObject({
+      width: '1200px',
+      height: '343px',
+      borderRadius: '12px',
+    });
+    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '343px' });
+  });
+
+  it('fades the desktop hero edges without blocking ad interaction', () => {
+    expect(HERO_EDGE_FADE_STYLE).toMatchObject({
+      pointerEvents: 'none',
+      background: expect.stringContaining('linear-gradient(90deg'),
+    });
+    expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 15%');
+    expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 85%');
   });
 });
