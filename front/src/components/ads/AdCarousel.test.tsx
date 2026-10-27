@@ -139,13 +139,15 @@ describe('AdCarousel', () => {
     expect(getMobileHeroSlideStep(480)).toBe(480);
   });
 
-  it('preserves the desktop hero media dimensions', () => {
+  it('preserves the desktop hero media dimensions and aspect ratio', () => {
     expect(HERO_MEDIA_STYLE).toMatchObject({
-      width: '1200px',
-      height: '343px',
+      width: '900px',
+      height: '257px',
       borderRadius: '12px',
     });
-    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '343px' });
+    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '257px' });
+    // 폭 1200→900 축소에도 원 노출 비율 1200:343(≈3.5:1)을 유지한다.
+    expect(900 / 257).toBeCloseTo(1200 / 343, 2);
   });
 
   it('fades the desktop hero edges without blocking ad interaction', () => {

@@ -34,7 +34,7 @@ const artwork = {
 // 업로드 크롭 프레임은 각 뷰가 실제 홈에서 광고를 노출하는 비율과 같아야 한다 —
 // AdCarousel의 히어로·갤러리 레이아웃(모바일·PC 모두 3.5:1, 갤러리 315:190·240:145)과 동기화한다.
 export const HERO_CROP_SPEC = {
-  pc: { aspectRatio: 1200 / 343, previewWidth: 1200 },
+  pc: { aspectRatio: 900 / 257, previewWidth: 900 },
   mobile: { aspectRatio: 3.5, previewWidth: 350 },
 } as const;
 export const GALLERY_CROP_SPEC = {
