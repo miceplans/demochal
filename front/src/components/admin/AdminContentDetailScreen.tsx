@@ -137,6 +137,26 @@ const TeamLink = styled(Link)({
   color: c.gray900,
   '&:hover': { background: c.gray100 },
 });
+const MemberTable = styled.table({
+  width: '100%',
+  borderCollapse: 'collapse',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  overflow: 'hidden',
+  ...textStyle.body,
+  color: c.gray700,
+  '& th, & td': {
+    padding: '12px 16px',
+    textAlign: 'left',
+    borderBottom: `1px solid ${c.gray200}`,
+  },
+  '& th': {
+    background: c.gray100,
+    fontWeight: 600,
+    color: c.gray900,
+  },
+  '& tbody tr:last-child td': { borderBottom: 0 },
+});
 
 /* ---------- 우측 ---------- */
 
@@ -667,11 +687,29 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
               <Section title="모집 역할">
                 {(team.openRoles ?? []).map((slot) => `${slot.role} ${slot.count}명`).join('\n')}
               </Section>
-              <Section title="참여 팀원">
-                {(team.members ?? [])
-                  .map((member) => [member.name, member.role].filter(Boolean).join(' · '))
-                  .join('\n')}
-              </Section>
+              <SectionBlock>
+                <SectionTitle>참여 팀원</SectionTitle>
+                {(team.members ?? []).length === 0 ? (
+                  <SectionText>{EMPTY}</SectionText>
+                ) : (
+                  <MemberTable aria-label="참여 팀원">
+                    <thead>
+                      <tr>
+                        <th scope="col">이름</th>
+                        <th scope="col">역할</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(team.members ?? []).map((member, index) => (
+                        <tr key={`${member.name ?? ''}-${member.role ?? ''}-${index}`}>
+                          <td>{member.name}</td>
+                          <td>{member.role}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </MemberTable>
+                )}
+              </SectionBlock>
               <Section title="우대사항">{team.preferred}</Section>
               <Section title="기타">{team.etc}</Section>
             </Body>
