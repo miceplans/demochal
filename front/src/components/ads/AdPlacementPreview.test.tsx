@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AdPlacementPreview } from './AdPlacementPreview';
 
@@ -200,6 +200,78 @@ describe('AdPlacementPreview', () => {
     expect(screen.getAllByText('파일 찾기').length).toBe(1);
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
     expect(container.querySelector('img[src="/assets/figma-ads/home-gallery.png"]')).not.toBeNull();
+  });
+
+  it('업로드 모드는 사용자가 선택한 칸에 업로더를 표시한다', () => {
+    const { rerender } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+
+    // 두 번째 칸(기본 소재 home-hero-2.png)을 호버해 선택한 뒤 업로드 모드로 진입한다.
+    // 갤러리 기본 세트도 같은 소재를 쓰므로 상단 레일 안에서만 찾는다.
+    const heroRail = screen.getByLabelText('홈 상단 광고');
+    const secondSlotImg = heroRail.querySelector<HTMLImageElement>(
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
+    );
+    fireEvent.mouseOver(secondSlotImg!.closest('button')!);
+
+    rerender(<AdPlacementPreview view="pc" onSelect={() => {}} uploadPlacement="hero" />);
+
+    // 업로더가 정확히 1개이고, 선택한 두 번째 칸이 업로더로 교첼된다.
+    expect(screen.getAllByText('파일 찾기').length).toBe(1);
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).toBeNull();
+    // 첫 칸(영상)과 나머지 칸은 기존 광고를 유지한다.
+    expect(heroRail.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
+  });
+
+  it('업로드 모드 중에는 다른 칸을 호버핸도 업로더 위치가 바뀌지 않는다', () => {
+    render(<AdPlacementPreview view="pc" onSelect={() => {}} uploadPlacement="hero" />);
+
+    // 다른 칸을 호버한다.
+    const heroRail = screen.getByLabelText('홈 상단 광고');
+    const otherSlotImg = heroRail.querySelector<HTMLImageElement>(
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
+    );
+    fireEvent.mouseOver(otherSlotImg!.closest('button')!);
+
+    // 업로더는 그대로 1개이고 호버한 칸의 기존 광고는 유지된다.
+    expect(screen.getAllByText('파일 찾기').length).toBe(1);
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
+  });
+
+  it('업로드 완료한 이미지는 선택한 칸에 표시되고 이후 호버로 옮겨가지 않는다', () => {
+    const { rerender } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
+    const heroRail = screen.getByLabelText('홈 상단 광고');
+
+    // 두 번째 칸을 선택해 업로드 모드로 진입한다.
+    const secondSlotImg = heroRail.querySelector<HTMLImageElement>(
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
+    );
+    fireEvent.mouseOver(secondSlotImg!.closest('button')!);
+    rerender(<AdPlacementPreview view="pc" onSelect={() => {}} uploadPlacement="hero" />);
+
+    // 업로드가 완료되면(업로드 이미지가 생기면) 결과는 선택한 두 번째 칸에 표시된다.
+    rerender(
+      <AdPlacementPreview
+        view="pc"
+        onSelect={() => {}}
+        uploadedImages={{ hero: 'blob:uploaded-hero' }}
+      />,
+    );
+
+    const uploaded = heroRail.querySelector<HTMLImageElement>('img[src="blob:uploaded-hero"]');
+    expect(uploaded).not.toBeNull();
+    expect(uploaded!.alt).toBe('업로드한 홈 상단 광고 이미지');
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).toBeNull();
+    // 첫 칸(영상)과 나머지 칸은 기존 광고를 유지한다.
+    expect(heroRail.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
+
+    // 이후 다른 칸을 호버핏 결과 이미지 위치는 그대로 유지된다.
+    const thirdSlotImg = heroRail.querySelector<HTMLImageElement>(
+      'img[src="/assets/figma-ads/home-hero-3.png"]',
+    );
+    fireEvent.mouseOver(thirdSlotImg!.closest('button')!);
+    expect(heroRail.querySelector('img[src="blob:uploaded-hero"]')).not.toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
   });
 
   it('업로드 처리 중에는 안내 문구가 바뀐다', () => {
