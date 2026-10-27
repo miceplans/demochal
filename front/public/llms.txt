@@ -1,0 +1,9 @@
+# 세모챌 (semochall)
+
+> 세모챌은 전국의 공모전·대외활동·해커톤·공공데이터 공모전을 모아 보여주는 공모전 사이트이자, 공모전 팀원 모집 플랫폼입니다.
+
+## 주요 페이지
+- [공모전 찾기](https://www.semochall.com/explore): 진행 중인 공모전을 분야·상금·마감일로 탐색
+- [공모전 팀원 모집](https://www.semochall.com/teams): 공모전·해커톤 팀원 구하기
+- [공공데이터 공모전](https://www.semochall.com/contests/public-data): 공공데이터 활용 공모전 안내
+- [사이트맵](https://www.semochall.com/sitemap.xml): 전체 공모전 상세 페이지 목록
