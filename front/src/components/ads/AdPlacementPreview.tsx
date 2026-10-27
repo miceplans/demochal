@@ -73,6 +73,8 @@ export function AdPlacementPreview({
     top: number;
     left: number;
   } | null>(null);
+  // 각 레일에서 사용자가 마지막으로 호버/클릭한 칸. 업로드 모드에서는 이 칸에만 업로더를 띄운다.
+  const [pickedSlots, setPickedSlots] = useState<Partial<Record<AdPlacement, number>>>({});
   const canvasRef = useRef<HTMLElement>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,27 +119,38 @@ export function AdPlacementPreview({
       ),
     [galleryAdList, uploadedImages.gallery],
   );
-  const showTooltip = (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
-    const canvas = canvasRef.current?.getBoundingClientRect();
-    const target = event.currentTarget.getBoundingClientRect();
-    if (!canvas) return;
-    setTooltip({
-      placement,
-      top: target.bottom - canvas.top + 12,
-      left: target.left - canvas.left + target.width / 2,
-    });
-    if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
-    tooltipTimer.current = setTimeout(() => {
-      setTooltip((current) => (current?.placement === placement ? null : current));
-      tooltipTimer.current = null;
-    }, 1400);
+  const rememberSlot = (placement: AdPlacement, item: number) => {
+    // 업로드 모드 중에는 이미 뜬 업로더 위치를 옮기지 않는다. 다른 칸으로 바꾸려면 업로드 모드를
+    // 닫고 다시 선택해야 한다.
+    if (uploadPlacement === placement) return;
+    setPickedSlots((current) =>
+      current[placement] === item ? current : { ...current, [placement]: item },
+    );
   };
+  const showTooltip =
+    (placement: AdPlacement, item: number) => (event: SyntheticEvent<HTMLButtonElement>) => {
+      const canvas = canvasRef.current?.getBoundingClientRect();
+      const target = event.currentTarget.getBoundingClientRect();
+      if (!canvas) return;
+      rememberSlot(placement, item);
+      setTooltip({
+        placement,
+        top: target.bottom - canvas.top + 12,
+        left: target.left - canvas.left + target.width / 2,
+      });
+      if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
+      tooltipTimer.current = setTimeout(() => {
+        setTooltip((current) => (current?.placement === placement ? null : current));
+        tooltipTimer.current = null;
+      }, 1400);
+    };
   const handleSlotEnter =
-    (placement: AdPlacement) => (event: SyntheticEvent<HTMLButtonElement>) => {
-      showTooltip(placement)(event);
+    (placement: AdPlacement, item: number) => (event: SyntheticEvent<HTMLButtonElement>) => {
+      showTooltip(placement, item)(event);
       if (isPricingPreview) setActive(placement);
     };
-  const handleSlotClick = (placement: AdPlacement) => {
+  const handleSlotClick = (placement: AdPlacement, item: number) => {
+    rememberSlot(placement, item);
     setActive(placement);
     if (selectImmediately && onSelect) onSelect(placement);
   };
@@ -151,7 +164,7 @@ export function AdPlacementPreview({
       {/* 슬라이드 수가 바뀌면(예: fallback 3개에서 노출 1개로 줄면) 레일 위치를 재시작해
           복제본 범위 밖의 위치가 남지 않게 한다. 홈 AdCarousel의 key 관례와 같다. */}
       <MovingAds
-        key={`hero-${heroItems.length}-${uploadPlacement === 'hero'}`}
+        key={`hero-${heroItems.length}`}
         ariaLabel="홈 상단 광고"
         itemCount={heroItems.length}
         interval={5000}
@@ -179,8 +192,8 @@ export function AdPlacementPreview({
                 // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
                 const isClone =
                   heroItems.length > 1 && (position === 0 || position === heroItems.length + 1);
-                // 업로드할 칸(첫 슬롯의 실제 항목)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
-                if (uploadPlacement === 'hero' && item === 0 && !isClone) {
+                // 업로드할 칸(사용자가 선택한 슬롯, 미선택 시 첫 슬롯)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
+                if (uploadPlacement === 'hero' && item === (pickedSlots.hero ?? 0) && !isClone) {
                   return (
                     <HeroSlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
@@ -198,10 +211,10 @@ export function AdPlacementPreview({
                     key={`${item}-${position}`}
                     type="button"
                     active={active === 'hero'}
-                    onMouseEnter={handleSlotEnter('hero')}
-                    onFocus={showTooltip('hero')}
+                    onMouseEnter={handleSlotEnter('hero', item)}
+                    onFocus={showTooltip('hero', item)}
                     onBlur={() => setTooltip(null)}
-                    onClick={() => handleSlotClick('hero')}
+                    onClick={() => handleSlotClick('hero', item)}
                     aria-label="홈 상단 광고 선택"
                   >
                     {ad.type === 'video' ? (
@@ -242,7 +255,7 @@ export function AdPlacementPreview({
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
-        key={`gallery-${galleryItems.length}-${uploadPlacement === 'gallery'}`}
+        key={`gallery-${galleryItems.length}`}
         ariaLabel="홈 중간 이미지 광고"
         itemCount={galleryItems.length}
         interval={5000}
@@ -271,8 +284,12 @@ export function AdPlacementPreview({
                 const isClone =
                   galleryItems.length > 1 &&
                   (position === 0 || position === galleryItems.length + 1);
-                // 업로드할 칸(첫 슬롯의 실제 항목)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
-                if (uploadPlacement === 'gallery' && item === 0 && !isClone) {
+                // 업로드할 칸(사용자가 선택한 슬롯, 미선택 시 첫 슬롯)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
+                if (
+                  uploadPlacement === 'gallery' &&
+                  item === (pickedSlots.gallery ?? 0) &&
+                  !isClone
+                ) {
                   return (
                     <GallerySlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
@@ -291,10 +308,10 @@ export function AdPlacementPreview({
                     view={view}
                     type="button"
                     active={active === 'gallery'}
-                    onMouseEnter={handleSlotEnter('gallery')}
-                    onFocus={showTooltip('gallery')}
+                    onMouseEnter={handleSlotEnter('gallery', item)}
+                    onFocus={showTooltip('gallery', item)}
                     onBlur={() => setTooltip(null)}
-                    onClick={() => handleSlotClick('gallery')}
+                    onClick={() => handleSlotClick('gallery', item)}
                     aria-label="홈 중간 이미지 광고 선택"
                   >
                     {ad.type === 'video' ? (
