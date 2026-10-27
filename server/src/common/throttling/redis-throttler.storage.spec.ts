@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { lauxlib, lua, lualib, to_luastring } from 'fengari';
-import {
-  RedisThrottlerStorage,
-  THROTTLER_INCREMENT_LUA,
-  createThrottlerStorage,
-} from './redis-throttler.storage.js';
+import { RedisThrottlerStorage, THROTTLER_INCREMENT_LUA } from './redis-throttler.storage.js';
 
 const { evalStub, redisInstances } = vi.hoisted(() => ({
   evalStub: vi.fn(),

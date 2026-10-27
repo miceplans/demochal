@@ -17,6 +17,9 @@ interface ThrottlerStorageRecord {
 // hits expire ttl after they fire, the window anchor refreshes once expired,
 // and crossing `limit` blocks further requests for blockDuration. Redis keys
 // carry only the guard's sha256 tracker hash — never raw IPs or emails.
+// Redis errors intentionally propagate (fail closed): a store outage rejects
+// requests instead of silently lifting rate limits, since this guard is a
+// security control; the /health check does not probe Redis by design.
 export const THROTTLER_INCREMENT_LUA = `
 local key = KEYS[1]
 local now = tonumber(ARGV[1])
@@ -81,6 +84,7 @@ if time_to_block_expire <= 0 and stored_blocked then
   redis.call('HSET', meta_key, 'isBlocked', '0')
   redis.call('DEL', hits_key)
   fire_hit()
+  redis.call('PEXPIRE', hits_key, keep_ms)
   total_hits = 1
   stored_blocked = false
 end

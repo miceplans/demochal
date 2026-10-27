@@ -334,9 +334,13 @@ locals {
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "SQS_INBOUND_EMAILS_QUEUE_URL", value = aws_sqs_queue.inbound_emails.url },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
-    { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" },
-    { name = "REDIS_URL", value = "rediss://${aws_elasticache_replication_group.rate_limit.primary_endpoint_address}:6379" }
+    { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
+  # The worker has no HTTP path, so it must not receive the API-only Redis
+  # endpoint (its SG cannot even reach it); keep it on the API task only.
+  api_environment = concat(local.common_environment, [
+    { name = "REDIS_URL", value = "rediss://${aws_elasticache_replication_group.rate_limit.primary_endpoint_address}:6379" }
+  ])
   worker_environment = concat(local.common_environment, [
     { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
   ])
@@ -353,7 +357,7 @@ resource "aws_ecs_task_definition" "api" {
   memory                   = 512
   execution_role_arn       = aws_iam_role.execution.arn
   task_role_arn            = aws_iam_role.api_task.arn
-  container_definitions    = jsonencode([{ name = "api", image = var.api_image != "" ? var.api_image : "public.ecr.aws/docker/library/busybox:latest", essential = true, portMappings = [{ containerPort = 3001 }], environment = local.common_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.api.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "api" } } }])
+  container_definitions    = jsonencode([{ name = "api", image = var.api_image != "" ? var.api_image : "public.ecr.aws/docker/library/busybox:latest", essential = true, portMappings = [{ containerPort = 3001 }], environment = local.api_environment, secrets = local.app_secrets, logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.api.name, awslogs-region = var.aws_region, awslogs-stream-prefix = "api" } } }])
 }
 
 resource "aws_ecs_task_definition" "worker" {
