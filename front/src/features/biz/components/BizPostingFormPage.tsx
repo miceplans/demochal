@@ -527,12 +527,14 @@ function DatePickerField({
   onChange,
   withTime = false,
   defaultTime = '00:00',
+  invalid = false,
   'aria-label': ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   withTime?: boolean;
   defaultTime?: string;
+  invalid?: boolean;
   'aria-label': string;
 }) {
   const [open, setOpen] = useState(false);
@@ -562,6 +564,7 @@ function DatePickerField({
       <PickerTrigger
         type="button"
         aria-label={ariaLabel}
+        aria-invalid={invalid}
         aria-expanded={open}
         hasValue={Boolean(datePart)}
         onClick={() => {
@@ -841,6 +844,17 @@ function PostingForm({
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
+  const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
+  const isInvalid = (key: string) => invalid.has(key);
+  const clearInvalid = (...keys: string[]) =>
+    setInvalid((prev) =>
+      keys.some((k) => prev.has(k)) ? new Set([...prev].filter((k) => !keys.includes(k))) : prev,
+    );
+  const fail = (keys: string[], message: string) => {
+    setInvalid(new Set(keys));
+    setError(message);
+  };
   const shownError = error || initialError;
   // 저장된 카테고리가 선택지에 없으면(과거 값 등) 사라지지 않도록 옵션에 포함한다.
   const dropdownOptions =
@@ -1085,23 +1099,33 @@ function PostingForm({
 
   async function submit() {
     setError('');
+    setInvalid(new Set());
     const editor = editorRef.current;
     const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
     const description = hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '';
     const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
-    if (!title.trim() || !description || !startDate || !endDate)
-      return setError('제목, 상세정보, 접수 기간을 입력해 주세요.');
-    if (!host.trim()) return setError('주최를 입력해 주세요.');
+    const missing = [
+      !title.trim() && 'title',
+      !description && 'description',
+      !startDate && 'startDate',
+      !endDate && 'endDate',
+    ].filter((key): key is string => Boolean(key));
+    if (missing.length) return fail(missing, '제목, 상세정보, 접수 기간을 입력해 주세요.');
+    if (!host.trim()) return fail(['host'], '주최를 입력해 주세요.');
     if (Boolean(eventStartDate) !== Boolean(eventEndDate))
-      return setError('행사 기간은 시작일과 종료일을 함께 입력해 주세요.');
+      return fail(
+        [eventStartDate ? 'eventEndDate' : 'eventStartDate'],
+        '행사 기간은 시작일과 종료일을 함께 입력해 주세요.',
+      );
     if (eventStartDate && eventEndDate < eventStartDate)
-      return setError('행사 종료일은 시작일 이후여야 합니다.');
+      return fail(['eventEndDate'], '행사 종료일은 시작일 이후여야 합니다.');
     if (
       parsedPrizeAmount !== null &&
       (!Number.isInteger(parsedPrizeAmount) || parsedPrizeAmount < 0)
     )
-      return setError('총상금은 0 이상의 정수(만원)로 입력해 주세요.');
-    if (endDate < startDate) return setError('접수 종료 시각은 시작 시각 이후여야 합니다.');
+      return fail(['prizeAmount'], '총상금은 0 이상의 정수(만원)로 입력해 주세요.');
+    if (endDate < startDate)
+      return fail(['endDate'], '접수 종료 시각은 시작 시각 이후여야 합니다.');
     const trimmedRecruitUrl = recruitUrl.trim();
     const normalizedHashtags = [
       ...new Set(
@@ -1113,15 +1137,18 @@ function PostingForm({
     ];
     // 서버 DTO 한도(description 100,000자(서식 포함) / hashtags 20개·각 50자)를 미리 검사해 이해 가능한 문구로 안내한다.
     if (description.length > 100_000)
-      return setError('상세정보가 너무 깁니다. 내용을 줄여 주세요.');
+      return fail(['description'], '상세정보가 너무 깁니다. 내용을 줄여 주세요.');
     if (normalizedHashtags.length > 20)
-      return setError('해시태그는 최대 20개까지 입력할 수 있습니다.');
+      return fail(['hashtags'], '해시태그는 최대 20개까지 입력할 수 있습니다.');
     if (normalizedHashtags.some((tag) => tag.length > 50))
-      return setError('해시태그는 각 50자 이하로 입력해 주세요.');
+      return fail(['hashtags'], '해시태그는 각 50자 이하로 입력해 주세요.');
     if (recruit === 'external') {
-      if (!trimmedRecruitUrl) return setError('외부 지원 링크 URL을 입력해 주세요.');
+      if (!trimmedRecruitUrl) return fail(['recruitUrl'], '외부 지원 링크 URL을 입력해 주세요.');
       if (!isHttpUrl(trimmedRecruitUrl))
-        return setError('외부 지원 링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.');
+        return fail(
+          ['recruitUrl'],
+          '외부 지원 링크는 http(s)://로 시작하는 올바른 URL이어야 합니다.',
+        );
     }
     setSubmitting(true);
     try {
@@ -1199,7 +1226,11 @@ function PostingForm({
             aria-label="공고 제목"
             value={title}
             maxLength={200}
-            onChange={(e) => setTitle(e.target.value)}
+            aria-invalid={isInvalid('title')}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              clearInvalid('title');
+            }}
           />
           <Roles aria-label="접수 기간과 행사 기간">
             <RoleRow>
@@ -1208,7 +1239,11 @@ function PostingForm({
                 withTime
                 defaultTime="00:00"
                 value={startDate}
-                onChange={setStartDate}
+                onChange={(v) => {
+                  setStartDate(v);
+                  clearInvalid('startDate');
+                }}
+                invalid={isInvalid('startDate')}
                 aria-label="접수 시작 일시"
               />
               <RangeTilde>~</RangeTilde>
@@ -1216,7 +1251,11 @@ function PostingForm({
                 withTime
                 defaultTime="23:59"
                 value={endDate}
-                onChange={setEndDate}
+                onChange={(v) => {
+                  setEndDate(v);
+                  clearInvalid('endDate');
+                }}
+                invalid={isInvalid('endDate')}
                 aria-label="접수 종료 일시"
               />
             </RoleRow>
@@ -1224,13 +1263,21 @@ function PostingForm({
               <RoleLabel>행사 기간</RoleLabel>
               <DatePickerField
                 value={eventStartDate}
-                onChange={setEventStartDate}
+                onChange={(v) => {
+                  setEventStartDate(v);
+                  clearInvalid('eventStartDate');
+                }}
+                invalid={isInvalid('eventStartDate')}
                 aria-label="행사 시작일"
               />
               <RangeTilde>~</RangeTilde>
               <DatePickerField
                 value={eventEndDate}
-                onChange={setEventEndDate}
+                onChange={(v) => {
+                  setEventEndDate(v);
+                  clearInvalid('eventEndDate');
+                }}
+                invalid={isInvalid('eventEndDate')}
                 aria-label="행사 종료일"
               />
             </RoleRow>
@@ -1252,12 +1299,16 @@ function PostingForm({
             <LineInput
               aria-label="해시태그"
               value={hashtags}
-              onChange={(e) => setHashtags(e.target.value)}
+              aria-invalid={isInvalid('hashtags')}
+              onChange={(e) => {
+                setHashtags(e.target.value);
+                clearInvalid('hashtags');
+              }}
             />
           </FieldBlock>
           <FieldBlock>
             <FieldLabel>상세정보를 적어주세요.</FieldLabel>
-            <EditorBox>
+            <EditorBox aria-invalid={isInvalid('description')}>
               <MenuBar role="toolbar" aria-label="텍스트 에디터">
                 <ToolGroup borderless>
                   <Tip label="문단 스타일">
@@ -1460,6 +1511,7 @@ function PostingForm({
                   );
                 }}
                 onInput={(event) => {
+                  clearInvalid('description');
                   // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
                   const el = event.currentTarget;
                   if (!el.innerText.trim() && !el.querySelector('img,hr')) el.innerHTML = '';
@@ -1543,7 +1595,11 @@ function PostingForm({
                 value={host}
                 maxLength={200}
                 required
-                onChange={(e) => setHost(e.target.value)}
+                aria-invalid={isInvalid('host')}
+                onChange={(e) => {
+                  setHost(e.target.value);
+                  clearInvalid('host');
+                }}
               />
             </FieldBlock>
             <FieldBlock>
@@ -1596,7 +1652,11 @@ function PostingForm({
                 min={0}
                 step={1}
                 value={prizeAmount}
-                onChange={(e) => setPrizeAmount(e.target.value)}
+                aria-invalid={isInvalid('prizeAmount')}
+                onChange={(e) => {
+                  setPrizeAmount(e.target.value);
+                  clearInvalid('prizeAmount');
+                }}
                 aria-label="총상금(만원)"
               />
             </FieldBlock>
@@ -1632,7 +1692,11 @@ function PostingForm({
                       type="url"
                       aria-label="외부 링크"
                       value={recruitUrl}
-                      onChange={(event) => setRecruitUrl(event.target.value)}
+                      aria-invalid={isInvalid('recruitUrl')}
+                      onChange={(event) => {
+                        setRecruitUrl(event.target.value);
+                        clearInvalid('recruitUrl');
+                      }}
                       placeholder="https://example.com/apply"
                       required
                     />
@@ -1649,7 +1713,11 @@ function PostingForm({
                 type="url"
                 aria-label="외부 링크"
                 value={recruitUrl}
-                onChange={(event) => setRecruitUrl(event.target.value)}
+                aria-invalid={isInvalid('recruitUrl')}
+                onChange={(event) => {
+                  setRecruitUrl(event.target.value);
+                  clearInvalid('recruitUrl');
+                }}
                 placeholder="https://example.com/apply"
                 required
               />
@@ -1766,6 +1834,7 @@ const PickerTrigger = styled('button', { shouldForwardProp: (prop) => prop !== '
   textAlign: 'left',
   cursor: 'pointer',
   '&:hover, &[aria-expanded=true]': { borderColor: c.primary },
+  '&[aria-invalid=true]': { borderColor: c.red },
 }));
 const PickerPopover = styled.div({
   position: 'absolute',
@@ -1916,6 +1985,7 @@ const TitleInput = styled.input({
   fontSize: 40,
   fontWeight: 600,
   '::placeholder': { color: c.gray500 },
+  '&[aria-invalid=true]': { borderBottom: `2px solid ${c.red}` },
 });
 const Roles = styled.div({
   display: 'flex',
@@ -1952,6 +2022,7 @@ const LineInput = styled.input({
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
+  '&[aria-invalid=true]': { borderColor: c.red },
 });
 
 /* ---------- 텍스트 에디터 ---------- */
@@ -1959,6 +2030,7 @@ const EditorBox = styled.div({
   border: '1px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
+  '&[aria-invalid=true]': { borderColor: c.red },
   // 툴팁이 박스 밖으로 나가도 잘리지 않게 overflow를 숨기지 않는다.
 });
 const MenuBar = styled.div({
@@ -2155,6 +2227,7 @@ const LinkInput = styled.input({
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
+  '&[aria-invalid=true]': { borderColor: c.red },
 });
 
 /* ---------- 문의연락처 ---------- */
