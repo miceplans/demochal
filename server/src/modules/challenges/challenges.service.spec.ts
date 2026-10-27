@@ -783,7 +783,19 @@ describe('ChallengesService.update', () => {
   it('updates or clears the optional poster and thumbnail file ids', async () => {
     const withPoster = createUpdateService([current]);
     await withPoster.service.update('ch-1', { posterFileId: 'file-1' }, owner);
-    expect(withPoster.set).toHaveBeenCalledWith({ posterFileId: 'file-1' });
+    // 포스터만 교체하면 이전 포스터의 썸네일이 남지 않도록 함께 비워진다.
+    expect(withPoster.set).toHaveBeenCalledWith({ posterFileId: 'file-1', thumbnailFileId: null });
+
+    const replacedWithThumbnail = createUpdateService([current]);
+    await replacedWithThumbnail.service.update(
+      'ch-1',
+      { posterFileId: 'file-1', thumbnailFileId: 'file-t' },
+      owner,
+    );
+    expect(replacedWithThumbnail.set).toHaveBeenCalledWith({
+      posterFileId: 'file-1',
+      thumbnailFileId: 'file-t',
+    });
 
     const cleared = createUpdateService([current]);
     await cleared.service.update('ch-1', { posterFileId: null }, owner);

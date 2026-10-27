@@ -499,6 +499,7 @@ export class ChallengesService {
         attachments: challenges.attachments,
         targets: challenges.targets,
         recruitMethod: challenges.recruitMethod,
+        posterFileId: challenges.posterFileId,
       })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
@@ -555,6 +556,10 @@ export class ChallengesService {
       ...(dto.thumbnailFileId !== undefined && { thumbnailFileId: dto.thumbnailFileId }),
       // 썸네일은 포스터에서 파생된 파일이라 포스터 제거와 함께 비운다.
       ...(dto.posterFileId === null && { thumbnailFileId: null }),
+      // 포스터만 교체하면 이전 포스터에서 잘라낸 썸네일이 어긋나므로 새 썸네일이 없을 때 비운다.
+      ...(dto.posterFileId &&
+        dto.posterFileId !== current.posterFileId &&
+        dto.thumbnailFileId === undefined && { thumbnailFileId: null }),
       ...(dto.applicationForm !== undefined && {
         applicationForm: normalizeApplicationForm(dto.applicationForm),
       }),
