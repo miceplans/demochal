@@ -12,6 +12,7 @@ import 'react-day-picker/style.css';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
+import { Button } from '@/components/common/Primitives';
 import {
   AdPlacementPreview,
   type AdPlacement,
@@ -427,21 +428,25 @@ export function BizAdsPage() {
                             : '진행중'}
                   </StatusCell>
                   <span role="cell" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                    <button
+                    <Button
                       type="button"
+                      tone="outline"
+                      small
                       onClick={() =>
                         router.push(hrefOf(`/reports?adId=${encodeURIComponent(ad.id)}`))
                       }
                     >
                       리포트
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
+                      tone="plain"
+                      small
                       disabled={ad.status !== 'active' || pausingId === ad.id}
                       onClick={() => void pauseAd(ad)}
                     >
                       {pausingId === ad.id ? '처리 중…' : '중단'}
-                    </button>
+                    </Button>
                   </span>
                 </TableRow>
               ))}
