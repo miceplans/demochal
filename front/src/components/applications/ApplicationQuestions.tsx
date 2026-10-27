@@ -291,7 +291,7 @@ const Field = styled.fieldset<{ $completed: boolean }>(({ $completed }) => ({
     maxWidth: '100%',
     boxSizing: 'border-box',
     padding: '0 14px',
-    border: `0.5px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray200}`,
     borderRadius: 8,
     font: 'inherit',
     color: 'inherit',

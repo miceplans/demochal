@@ -426,7 +426,7 @@ export const Field = styled.label({
 });
 export const FieldInput = styled.input({
   height: 40,
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,

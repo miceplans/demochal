@@ -19,7 +19,7 @@ const Textarea = styled.textarea({
   width: '100%',
   height: 118,
   resize: 'none',
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '12px 14px',
   background: c.white,

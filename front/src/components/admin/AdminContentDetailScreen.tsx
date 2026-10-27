@@ -218,7 +218,7 @@ const ReasonTextarea = styled.textarea({
   boxSizing: 'border-box',
   resize: 'vertical',
   padding: '10px 12px',
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   color: c.gray900,
   ...textStyle.bodySmall,
