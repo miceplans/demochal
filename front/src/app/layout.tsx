@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { DEFAULT_SITE_ORIGIN, SITE_ORIGIN } from '@/lib/biz';
 import { JsonLd } from '@/lib/JsonLd';
-import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_TITLE } from '@/lib/seo';
+import { SITE_DESCRIPTION, SITE_KEYWORDS, SITE_NAME, SITE_OPEN_GRAPH, SITE_TITLE } from '@/lib/seo';
 import { Providers } from './providers';
 import '../styles/tokens.css';
 import './globals.css';
@@ -18,13 +18,7 @@ export const metadata: Metadata = {
   description: SITE_DESCRIPTION,
   keywords: SITE_KEYWORDS,
   applicationName: SITE_NAME,
-  openGraph: {
-    type: 'website',
-    locale: 'ko_KR',
-    siteName: SITE_NAME,
-    title: SITE_TITLE,
-    description: SITE_DESCRIPTION,
-  },
+  openGraph: SITE_OPEN_GRAPH,
   twitter: { card: 'summary_large_image', title: SITE_TITLE, description: SITE_DESCRIPTION },
   robots: {
     index: true,

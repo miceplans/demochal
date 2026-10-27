@@ -24,6 +24,15 @@ export const SITE_KEYWORDS = [
   '세모챌',
 ];
 
+/** 루트 openGraph 기본값 — 페이지 메타데이터는 shallow merge라 openGraph를 덮어쓸 때 이 객체를 펼쳐 쓴다. */
+export const SITE_OPEN_GRAPH = {
+  type: 'website',
+  locale: 'ko_KR',
+  siteName: SITE_NAME,
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
+} as const;
+
 /** 공통 OG/Twitter 필드를 채운 페이지 메타데이터. canonical은 metadataBase 기준 상대 경로. */
 export function pageMetadata(opts: {
   title: string;
@@ -37,14 +46,7 @@ export function pageMetadata(opts: {
     description,
     keywords: keywords ? [...keywords, ...SITE_KEYWORDS] : SITE_KEYWORDS,
     alternates: { canonical: path },
-    openGraph: {
-      type: 'website',
-      locale: 'ko_KR',
-      siteName: SITE_NAME,
-      title,
-      description,
-      url: path,
-    },
+    openGraph: { ...SITE_OPEN_GRAPH, title, description, url: path },
     twitter: { card: 'summary_large_image', title, description },
   };
 }

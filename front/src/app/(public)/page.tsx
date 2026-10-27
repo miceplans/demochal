@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
+import { SITE_OPEN_GRAPH } from '@/lib/seo';
 import { HomePage as UserHomePage } from '@/components/home/HomePage';
 
-export const metadata: Metadata = { alternates: { canonical: '/' }, openGraph: { url: '/' } };
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+  openGraph: { ...SITE_OPEN_GRAPH, url: '/' },
+};
 
 // 본문은 클라이언트에서 그려지므로, 크롤러가 서버 HTML에서 주제를 읽도록 시각적으로 숨긴 h1/설명을 둔다.
 const srOnly = {

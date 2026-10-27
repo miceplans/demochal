@@ -39,7 +39,7 @@ export default async function Page({ params }: Props) {
   const challenge = await loadPublishedChallenge(id);
   return (
     <>
-      {challenge && (
+      {challenge?.eventStartDate && (
         <JsonLd
           data={{
             '@context': 'https://schema.org',
@@ -48,11 +48,10 @@ export default async function Page({ params }: Props) {
             description: (challenge.summary ?? challenge.description ?? '').slice(0, 300),
             url: `${ORIGIN}/contests/${id}`,
             image: challenge.posterUrl ?? undefined,
-            startDate: challenge.eventStartDate ?? challenge.startDate,
-            endDate: challenge.eventEndDate ?? challenge.endDate,
-            eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+            // 행사 일정이 없으면 접수 기간으로 대체하지 않고 Event 마크업을 생략한다. 온/오프라인 구분 필드가 없어 개최 방식·장소도 쓰지 않는다.
+            startDate: challenge.eventStartDate,
+            endDate: challenge.eventEndDate ?? undefined,
             eventStatus: 'https://schema.org/EventScheduled',
-            location: { '@type': 'VirtualLocation', url: `${ORIGIN}/contests/${id}` },
             organizer: challenge.organizer
               ? { '@type': 'Organization', name: challenge.organizer }
               : undefined,
