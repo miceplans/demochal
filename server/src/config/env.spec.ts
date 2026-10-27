@@ -83,6 +83,20 @@ describe('env SWAGGER_ENABLED', () => {
   });
 });
 
+describe('env REDIS_URL', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('is undefined when unset so the in-memory throttler fallback stays', async () => {
+    expect((await loadEnv({ REDIS_URL: '' })).env.redisUrl).toBeUndefined();
+  });
+
+  it('exposes the configured Redis URL (redis or rediss)', async () => {
+    expect((await loadEnv({ REDIS_URL: 'rediss://cache:6379' })).env.redisUrl).toBe(
+      'rediss://cache:6379',
+    );
+  });
+});
+
 describe('env S3_ENDPOINT', () => {
   afterEach(() => vi.unstubAllEnvs());
 

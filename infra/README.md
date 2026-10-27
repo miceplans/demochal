@@ -91,6 +91,18 @@ ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP
 
 DMARC는 `p=none`으로 시작합니다. 전달 상태를 확인한 뒤 `ses_dmarc_policy`를 `quarantine`/`reject`로 올립니다.
 
+## 분산 레이트리밋 저장소 (ElastiCache Redis)
+
+API의 `@nestjs/throttler` 저장소로 `cache.t4g.micro` 단일 노드 ElastiCache Redis(`redis.tf`)를 둡니다.
+기본 저장소가 태스크 메모리일 때는 ECS 태스크 수만큼 IP당 한도가 늘어나는 취약점(issue #569)이 있어,
+Terraform이 API task definition의 `REDIS_URL`(`rediss://<primary_endpoint>:6379`)로 주입하면
+모든 태스크가 하나의 공유 카운터를 봅니다. `REDIS_URL`이 비어 있으면 서버는 인메모리 저장소로
+돌아가므로 로컬 개발/docker compose(또는 미설정 환경)는 Redis 없이 동작합니다.
+
+- Redis는 private subnet에만 있고 API task 보안그룹에서만 6379로 접근할 수 있습니다. 인터넷 게이트웨이·NAT 경로가 없습니다.
+- 전송 암호화(TLS)와 저장 암호화를 켜고 인증 토큰은 두지 않습니다. 저장되는 값은 sha256으로 해시된 추적자 키와 만료 시각뿐이고(원본 IP/이메일 미보관), VPC 외부에서는 어차피 도달할 수 없습니다.
+- 리소스는 신규 추가만 하고 기존 리소스를 바꾸지 않습니다. `apply`는 승인된 운영자가 별도 세션에서 수행하며, 서비스는 task_definition을 무시하므로 다음 배포부터 새 revision이 Redis를 사용합니다.
+
 ## RDS TLS 서버 인증서 검증
 
 ECS의 API, worker, 그리고 one-off migrate 태스크는 이미지 안의 AWS RDS commercial-region

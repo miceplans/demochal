@@ -136,6 +136,14 @@ resource "aws_security_group" "api_task" {
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
+
+  egress {
+    description = "Redis rate-limit store in the VPC"
+    from_port   = 6379
+    to_port     = 6379
+    protocol    = "tcp"
+    cidr_blocks = [var.vpc_cidr]
+  }
 }
 
 resource "aws_security_group" "worker_task" {
