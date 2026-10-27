@@ -66,4 +66,12 @@ describe('OnboardingGate', () => {
     render(<OnboardingGate>내용</OnboardingGate>);
     expect(replace).not.toHaveBeenCalled();
   });
+
+  it('biz 경로에서는 본내지 않는다(온볼딩 미완료 회원의 기업 회원가입 진입 보장)', () => {
+    mockMe({ role: 'user', onboardingSurvey: null });
+    pathname = '/biz/signup';
+    render(<OnboardingGate>내용</OnboardingGate>);
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByText('내용')).toBeTruthy();
+  });
 });
