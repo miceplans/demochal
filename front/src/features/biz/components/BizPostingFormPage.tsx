@@ -1758,7 +1758,7 @@ const PickerTrigger = styled('button', { shouldForwardProp: (prop) => prop !== '
 }>(({ hasValue }) => ({
   width: '100%',
   height: 32,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -1841,7 +1841,7 @@ const LinkField = styled.div({ display: 'flex', flexDirection: 'column', gap: 6 
 const LinkLabel = styled.label({ fontSize: 12, color: c.gray700 });
 const LinkInputBox = styled.input({
   height: 36,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 12px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -1948,7 +1948,7 @@ const FieldLabel = styled.span({
 const LineInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray300}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -1956,7 +1956,7 @@ const LineInput = styled.input({
 
 /* ---------- 텍스트 에디터 ---------- */
 const EditorBox = styled.div({
-  border: '1px solid #e9ecef',
+  border: '0.5px solid #e9ecef',
   borderRadius: 8,
   background: c.white,
   // 툴팁이 박스 밖으로 나가도 잘리지 않게 overflow를 숨기지 않는다.
@@ -2151,7 +2151,7 @@ const LinkInput = styled.input({
   width: 470,
   maxWidth: '100%',
   height: 36,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
@@ -2161,7 +2161,7 @@ const LinkInput = styled.input({
 const ContactInput = styled.input({
   width: '100%',
   height: 40,
-  border: `1px solid ${c.gray200}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   '&:focus': { outline: 'none', borderColor: c.primary },
