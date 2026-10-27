@@ -6,7 +6,7 @@ import { generated } from '@semochal/api-client';
 
 const ONBOARDING_PATH = '/onboarding/activity';
 // 인증·온보딩 자체와 약관/안내 페이지는 설문 전에도 볼 수 있어야 한다.
-const EXEMPT_PREFIXES = ['/onboarding', '/login', '/auth', '/terms', '/privacy', '/youth'];
+const EXEMPT_PREFIXES = ['/onboarding', '/login', '/auth', '/terms', '/privacy', '/youth', '/biz'];
 
 function isExempt(pathname: string | null): boolean {
   if (!pathname) return true;
