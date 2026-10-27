@@ -746,6 +746,7 @@ export class AdminService {
       .orderBy(desc(teams.createdAt));
     const reportRows = await this.listTargetReports('challenge', id);
     const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+    const thumbnailUrl = await this.filesService.resolvePublicUrl(challenge.thumbnailFileId);
 
     return {
       id: challenge.id,
@@ -765,6 +766,7 @@ export class AdminService {
       recruitMethod: challenge.recruitMethod,
       recruitUrl: challenge.recruitUrl ?? '',
       posterUrl,
+      thumbnailUrl,
       teams: teamRows.map((team) => ({
         id: team.id,
         name: team.title,

@@ -113,6 +113,8 @@ describe('BizService', () => {
     expect(dashboard.recentPosting).toEqual({
       ...recent,
       posterUrl: 'https://cdn.example.com/uploads/poster-1.webp',
+      // 썸네일 파일이 없는 공고는 썸네일 URL도 같은 스텁 값이지만 null이 아닌 한 함께 남는다.
+      thumbnailUrl: 'https://cdn.example.com/uploads/poster-1.webp',
     });
     expect(deps.filesService.resolvePublicUrl).toHaveBeenCalledWith('poster-1');
     expect(deps.challengesService.getStatsForOwner).toHaveBeenCalledWith('ch-1', OWNER.id);

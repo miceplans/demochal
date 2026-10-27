@@ -47,6 +47,11 @@ export interface AdminChallengeDetail {
      * @nullable
      */
   posterUrl?: string | null;
+  /**
+     * 카드 썸네일 공개 URL(없으면 null)
+     * @nullable
+     */
+  thumbnailUrl?: string | null;
   /** 이 챌린지에 등록된 팀 모집글 */
   teams?: AdminChallengeDetailTeamsItem[];
   createdAt?: string;

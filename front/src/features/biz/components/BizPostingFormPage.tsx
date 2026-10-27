@@ -18,6 +18,8 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import { cropErrorMessage, readImage, type CropImage } from '@/lib/image-crop';
+import { ImageCropModal } from '@/components/ui/ImageCropModal';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
 import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
 import { richContentStyles } from '@/components/common/RichDescription';
@@ -97,6 +99,7 @@ export function BizPostingFormPage() {
             organizerType: values.organizerType ?? undefined,
             prizeAmount: values.prizeAmount ?? undefined,
             posterFileId: values.posterFileId ?? undefined,
+            thumbnailFileId: values.thumbnailFileId ?? undefined,
             summary: values.summary ?? undefined,
             hashtags: values.hashtags ?? undefined,
             topics: values.topics ?? undefined,
@@ -204,6 +207,7 @@ type PostingInput = {
   attachments: Attachment[];
   category: string;
   posterUrl?: string | null;
+  thumbnailFileId?: string | null;
   targets: NonNullable<generated.UpdateChallengeMutationBody['targets']>;
   organizerType: (typeof organizerTypes)[number] | null;
   prizeAmount: string;
@@ -825,8 +829,14 @@ function PostingForm({
   const [targets, setTargets] = useState(initial.targets);
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
   const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
-  const [poster, setPoster] = useState<{ fileId: string | null; previewUrl: string } | null>(null);
+  // 포스터는 크롭 모달에서 썸네일 영역까지 함께 확정된 뒤 원본+썸네일을 같이 올린다.
+  const [poster, setPoster] = useState<{
+    posterFileId: string;
+    thumbnailFileId: string;
+    previewUrl: string;
+  } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
+  const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -869,9 +879,15 @@ function PostingForm({
     if (isRichHtml(initial.description)) editor.innerHTML = sanitizeRichHtml(initial.description);
     else editor.innerText = initial.description;
   }, [initial.description]);
+  const pendingPosterRef = useRef<CropImage | null>(null);
+  useEffect(() => {
+    // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
+    pendingPosterRef.current = pendingPoster;
+  }, [pendingPoster]);
   useEffect(
     () => () => {
       if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
+      if (pendingPosterRef.current) URL.revokeObjectURL(pendingPosterRef.current.url);
     },
     [],
   );
@@ -985,42 +1001,84 @@ function PostingForm({
     }
   };
 
-  // 포스터는 압축·리사이즈·변환 없이 원본 파일 그대로 올린다(서버가 purpose=poster일 때만 원본을 보존).
-  const uploadPoster = async (file: File) => {
+  // 파일을 고르는 즉시 썸네일 크롭 모달을 연다 — 확인 시에만 업로드가 시작된다.
+  const choosePoster = async (file: File) => {
     if (uploadingPoster) return;
     if (!POSTER_TYPES.includes(file.type))
       return setError('포스터는 JPG, PNG, WebP 이미지만 올릴 수 있습니다.');
     if (file.size > MAX_ATTACHMENT_BYTES) return setError('포스터는 10MB 이하만 올릴 수 있습니다.');
     setError('');
-    setUploadingPoster(true);
-    const previewUrl = URL.createObjectURL(file);
-    // 업로드가 끝나기 전에도 선택 즉시 원본 프리뷰를 보여준다.
-    const previous = poster;
-    if (posterObjectUrl.current && posterObjectUrl.current !== previous?.previewUrl)
-      URL.revokeObjectURL(posterObjectUrl.current);
-    posterObjectUrl.current = previewUrl;
-    setPoster({ fileId: null, previewUrl });
     try {
-      const presigned = await adApi.files.requestUpload({
-        bucket: 'public',
-        purpose: 'poster',
-        contentType: file.type,
-        fileName: file.name,
-        sizeBytes: file.size,
+      setPendingPoster(await readImage(file));
+    } catch (cause) {
+      setPendingPoster(null);
+      setError(cropErrorMessage(cause));
+    }
+  };
+  const cancelPosterCrop = () => {
+    if (pendingPosterRef.current) URL.revokeObjectURL(pendingPosterRef.current.url);
+    setPendingPoster(null);
+  };
+  // 모달에서 크롭을 확정하면 원본 포스터와 잘라낸 썸네일 WebP를 함께 올린다.
+  const confirmPosterCrop = async (thumbnail: File) => {
+    const pending = pendingPosterRef.current;
+    if (pending) URL.revokeObjectURL(pending.url);
+    setPendingPoster(null);
+    if (!pending) return;
+    await uploadPoster(pending.file, thumbnail);
+  };
+
+  // 포스터는 압축·리사이즈·변환 없이 원본 파일 그대로 올린다(서버가 purpose=poster일 때만 원본을 보존).
+  // 썸네일은 크롭 결과 WebP라 purpose 없이 올려도 서버가 그대로 받는다.
+  const uploadPoster = async (file: File, thumbnail: File) => {
+    if (uploadingPoster) return;
+    setError('');
+    setUploadingPoster(true);
+    try {
+      const [presignedPoster, presignedThumbnail] = await Promise.all([
+        adApi.files.requestUpload({
+          bucket: 'public',
+          purpose: 'poster',
+          contentType: file.type,
+          fileName: file.name,
+          sizeBytes: file.size,
+        }),
+        adApi.files.requestUpload({
+          bucket: 'public',
+          contentType: thumbnail.type,
+          fileName: thumbnail.name,
+          sizeBytes: thumbnail.size,
+        }),
+      ]);
+      const [posterResponse, thumbnailResponse] = await Promise.all([
+        fetch(presignedPoster.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type },
+          body: file,
+        }),
+        fetch(presignedThumbnail.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': thumbnail.type },
+          body: thumbnail,
+        }),
+      ]);
+      if (!posterResponse.ok || !thumbnailResponse.ok)
+        throw new globalThis.Error('이미지 업로드에 실패했습니다.');
+      await Promise.all([
+        adApi.files.finalizeUpload(presignedPoster.fileId),
+        adApi.files.finalizeUpload(presignedThumbnail.fileId),
+      ]);
+      // 둘 다 성공한 뒤에만 폼 상태를 교체한다 — 하나만 올라간 부분 상태를 남기지 않는다.
+      const previewUrl = URL.createObjectURL(file);
+      if (posterObjectUrl.current && posterObjectUrl.current !== poster?.previewUrl)
+        URL.revokeObjectURL(posterObjectUrl.current);
+      posterObjectUrl.current = previewUrl;
+      setPoster({
+        posterFileId: presignedPoster.fileId,
+        thumbnailFileId: presignedThumbnail.fileId,
+        previewUrl,
       });
-      const response = await fetch(presigned.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': file.type },
-        body: file,
-      });
-      if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
-      await adApi.files.finalizeUpload(presigned.fileId);
-      if (previous && previous.previewUrl !== previewUrl) URL.revokeObjectURL(previous.previewUrl);
-      setPoster({ fileId: presigned.fileId, previewUrl });
     } catch {
-      URL.revokeObjectURL(previewUrl);
-      posterObjectUrl.current = previous?.previewUrl ?? null;
-      setPoster(previous);
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setUploadingPoster(false);
@@ -1170,7 +1228,9 @@ function PostingForm({
         targets,
         organizerType: organizerType || null,
         prizeAmount: parsedPrizeAmount,
-        ...(poster?.fileId ? { posterFileId: poster.fileId } : {}),
+        ...(poster
+          ? { posterFileId: poster.posterFileId, thumbnailFileId: poster.thumbnailFileId }
+          : {}),
         ...(showRecruitMethod
           ? { recruitMethod: recruit === 'semo' ? 'seMOchall' : 'external' }
           : {}),
@@ -1199,7 +1259,7 @@ function PostingForm({
           onChange={(event) => {
             const file = event.target.files?.[0];
             event.target.value = '';
-            if (file) void uploadPoster(file);
+            if (file) void choosePoster(file);
           }}
         />
         {poster?.previewUrl || existingPosterUrl ? (
@@ -1208,7 +1268,9 @@ function PostingForm({
               src={poster?.previewUrl ?? existingPosterUrl ?? ''}
               alt="포스터 미리보기"
             />
-            <UploadText>원본 비율 그대로 표시됩니다 · 클릭해서 다른 이미지로 바꾸기</UploadText>
+            <UploadText>
+              원본 비율 그대로 표시됩니다 · 카드 썸네일은 선택한 영역이 사용돼요
+            </UploadText>
           </>
         ) : (
           <>
@@ -1218,6 +1280,18 @@ function PostingForm({
         )}
         {uploadingPoster && <UploadText>포스터를 업로드하는 중입니다…</UploadText>}
       </Uploader>
+      {pendingPoster ? (
+        <ImageCropModal
+          image={pendingPoster}
+          aspectRatio={416 / 415}
+          previewWidth={400}
+          title="썸네일 영역 선택"
+          description="드래그해서 카드에 보일 영역을 지정한 뒤 확인해주세요. 원본 포스터는 그대로 유지됩니다."
+          previewAlt="포스터 썸네일 자르기 미리보기"
+          onCancel={cancelPosterCrop}
+          onConfirm={(file) => void confirmPosterCrop(file)}
+        />
+      ) : null}
 
       <Body>
         <TitleSection>

@@ -29,9 +29,15 @@ export class BookmarksService {
     const posterUrls = await this.filesService.resolvePublicUrls(
       rows.map((row) => row.challenge.posterFileId),
     );
+    const thumbnailUrls = await this.filesService.resolvePublicUrls(
+      rows.map((row) => row.challenge.thumbnailFileId),
+    );
     return rows.map(({ challenge }) => ({
       ...challenge,
       posterUrl: challenge.posterFileId ? (posterUrls.get(challenge.posterFileId) ?? null) : null,
+      thumbnailUrl: challenge.thumbnailFileId
+        ? (thumbnailUrls.get(challenge.thumbnailFileId) ?? null)
+        : null,
     }));
   }
 

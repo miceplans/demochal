@@ -124,6 +124,11 @@ export class CreateChallengeDto {
   @IsUUID()
   posterFileId?: string;
 
+  // 포스터에서 잘라 만든 카드 썸네일 파일. 공개+ready 파일만 참조할 수 있다.
+  @IsOptional()
+  @IsUUID()
+  thumbnailFileId?: string;
+
   @IsOptional()
   @IsString()
   @MaxLength(300)

@@ -58,6 +58,7 @@ export class TeamsService {
         team: teams,
         challengeTitle: challenges.title,
         challengePosterFileId: challenges.posterFileId,
+        challengeThumbnailFileId: challenges.thumbnailFileId,
         leaderName: users.name,
       })
       .from(teams)
@@ -104,19 +105,28 @@ export class TeamsService {
     const posterUrls = await this.filesService.resolvePublicUrls(
       matched.map(({ challengePosterFileId }) => challengePosterFileId),
     );
-    return matched.map(({ team, challengeTitle, challengePosterFileId, leaderName }) => ({
-      ...team,
-      challengeTitle,
-      challengePosterFileId,
-      challengePosterUrl: challengePosterFileId
-        ? (posterUrls.get(challengePosterFileId) ?? null)
-        : null,
-      leaderName,
-      filledRoles: accepted
-        .filter((member) => member.teamId === team.id)
-        .map((member) => member.role)
-        .filter((role): role is string => !!role),
-    }));
+    const thumbnailUrls = await this.filesService.resolvePublicUrls(
+      matched.map(({ challengeThumbnailFileId }) => challengeThumbnailFileId),
+    );
+    return matched.map(
+      ({ team, challengeTitle, challengePosterFileId, challengeThumbnailFileId, leaderName }) => ({
+        ...team,
+        challengeTitle,
+        challengePosterFileId,
+        challengeThumbnailFileId,
+        challengePosterUrl: challengePosterFileId
+          ? (posterUrls.get(challengePosterFileId) ?? null)
+          : null,
+        challengeThumbnailUrl: challengeThumbnailFileId
+          ? (thumbnailUrls.get(challengeThumbnailFileId) ?? null)
+          : null,
+        leaderName,
+        filledRoles: accepted
+          .filter((member) => member.teamId === team.id)
+          .map((member) => member.role)
+          .filter((role): role is string => !!role),
+      }),
+    );
   }
 
   async create(dto: CreateTeamDto, user: AuthenticatedUser) {
@@ -168,6 +178,7 @@ export class TeamsService {
         team: teams,
         challengeTitle: challenges.title,
         challengePosterFileId: challenges.posterFileId,
+        challengeThumbnailFileId: challenges.thumbnailFileId,
         challengeVisibility: challenges.visibility,
         leaderName: users.name,
       })
@@ -208,7 +219,9 @@ export class TeamsService {
       ...row.team,
       challengeTitle: row.challengeTitle,
       challengePosterFileId: row.challengePosterFileId,
+      challengeThumbnailFileId: row.challengeThumbnailFileId,
       challengePosterUrl: await this.filesService.resolvePublicUrl(row.challengePosterFileId),
+      challengeThumbnailUrl: await this.filesService.resolvePublicUrl(row.challengeThumbnailFileId),
       leaderName: row.leaderName,
       members: visibleMembers,
     };
@@ -237,6 +250,7 @@ export class TeamsService {
         team: teams,
         challengeTitle: challenges.title,
         challengePosterFileId: challenges.posterFileId,
+        challengeThumbnailFileId: challenges.thumbnailFileId,
         businessName: businesses.name,
       })
       .from(teams)
@@ -272,16 +286,31 @@ export class TeamsService {
     const posterUrls = await this.filesService.resolvePublicUrls(
       myTeams.map(({ challengePosterFileId }) => challengePosterFileId),
     );
-    return myTeams.map(({ team, challengeTitle, challengePosterFileId, businessName }) => ({
-      ...team,
-      challengeTitle,
-      challengePosterFileId,
-      challengePosterUrl: challengePosterFileId
-        ? (posterUrls.get(challengePosterFileId) ?? null)
-        : null,
-      businessName,
-      members: members.filter((member) => member.teamId === team.id),
-    }));
+    const thumbnailUrls = await this.filesService.resolvePublicUrls(
+      myTeams.map(({ challengeThumbnailFileId }) => challengeThumbnailFileId),
+    );
+    return myTeams.map(
+      ({
+        team,
+        challengeTitle,
+        challengePosterFileId,
+        challengeThumbnailFileId,
+        businessName,
+      }) => ({
+        ...team,
+        challengeTitle,
+        challengePosterFileId,
+        challengeThumbnailFileId,
+        challengePosterUrl: challengePosterFileId
+          ? (posterUrls.get(challengePosterFileId) ?? null)
+          : null,
+        challengeThumbnailUrl: challengeThumbnailFileId
+          ? (thumbnailUrls.get(challengeThumbnailFileId) ?? null)
+          : null,
+        businessName,
+        members: members.filter((member) => member.teamId === team.id),
+      }),
+    );
   }
 
   async join(id: string, role: string | undefined, userId: string) {

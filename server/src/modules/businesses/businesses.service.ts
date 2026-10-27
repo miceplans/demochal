@@ -226,10 +226,16 @@ export class BusinessesService {
     const posterUrls = await this.filesService.resolvePublicUrls(
       items.map((item) => item.posterFileId),
     );
+    const thumbnailUrls = await this.filesService.resolvePublicUrls(
+      items.map((item) => item.thumbnailFileId),
+    );
     return {
       items: items.map((item) => ({
         ...item,
         posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
+        thumbnailUrl: item.thumbnailFileId
+          ? (thumbnailUrls.get(item.thumbnailFileId) ?? null)
+          : null,
       })),
       nextCursor: hasMore ? (items.at(-1)?.createdAt.toISOString() ?? null) : null,
     };

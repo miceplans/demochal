@@ -68,7 +68,7 @@ function ReportFormContent() {
     preview = {
       title: challenge.title ?? '챌린지',
       org: challenge.organizer,
-      image: challenge.posterUrl ?? null,
+      image: challenge.thumbnailUrl ?? challenge.posterUrl ?? null,
       meta: [
         { label: '자격 / 대상', value: challengeEligibility(challenge, '-') },
         {
@@ -81,7 +81,7 @@ function ReportFormContent() {
     preview = {
       title: team.title ?? '팀 모집글',
       org: team.challengeTitle,
-      image: team.challengePosterUrl ?? null,
+      image: team.challengeThumbnailUrl ?? team.challengePosterUrl ?? null,
       meta: [
         {
           label: '모집 역할',

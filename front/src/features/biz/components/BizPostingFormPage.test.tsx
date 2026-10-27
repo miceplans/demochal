@@ -82,7 +82,12 @@ describe('BizPostingFormPage', () => {
     mocks.create.mockResolvedValue({ data: { id: 'ch-1' } });
     vi.stubGlobal('fetch', mocks.fetchMock);
     mocks.fetchMock.mockResolvedValue({ ok: true });
-    mocks.requestUpload.mockResolvedValue({ uploadUrl: 'https://upload.example', fileId: 'f-1' });
+    mocks.requestUpload.mockImplementation((args: { purpose?: string }) =>
+      Promise.resolve({
+        uploadUrl: 'https://upload.example',
+        fileId: args?.purpose === 'poster' ? 'poster-1' : 'thumb-1',
+      }),
+    );
     mocks.finalizeUpload.mockResolvedValue({});
   });
   afterEach(() => {
@@ -331,39 +336,97 @@ describe('BizPostingFormPage', () => {
     expect(screen.getByLabelText('대상 기타 내용').getAttribute('placeholder')).toBeNull();
   });
 
-  it('업로드가 실패해도 선택한 포스터 프리뷰는 먼저 보이고, 실패하면 되돌린다', async () => {
+  // 크롭 모달(readImage/makeCroppedFile)이 쓰는 브라우저 API를 흉내 낸다.
+  const stubCropApis = () => {
     URL.createObjectURL = vi.fn(() => 'blob:poster');
     URL.revokeObjectURL = vi.fn();
+    vi.stubGlobal(
+      'Image',
+      class {
+        naturalWidth = 1200;
+        naturalHeight = 900;
+        set src(_value: string) {
+          queueMicrotask(() => this.onload?.());
+        }
+        onload?: () => void;
+        onerror?: () => void;
+      },
+    );
+    HTMLCanvasElement.prototype.getContext = vi.fn(() => ({ drawImage: vi.fn() })) as never;
+    HTMLCanvasElement.prototype.toBlob = vi.fn((callback) =>
+      callback(new Blob(['webp'], { type: 'image/webp' })),
+    ) as never;
+  };
+  const selectPoster = (container: HTMLElement, name = 'p.png') => {
+    const input = container.querySelector('input[accept="image/*"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(['x'], name, { type: 'image/png' })] } });
+  };
+  const confirmCrop = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: '확인' }));
+  };
+
+  it('썸네일 크롭 모달을 취소하면 업로드 없이 닫힌다', async () => {
+    stubCropApis();
+    const { container } = renderForm();
+    selectPoster(container);
+    expect(await screen.findByRole('dialog')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(mocks.requestUpload).not.toHaveBeenCalled();
+    expect(screen.queryByAltText('포스터 미리보기')).toBeNull();
+  });
+
+  it('포스터 업로드가 실패하면 이전 상태를 유지하고 오류를 보여준다', async () => {
+    stubCropApis();
     mocks.requestUpload.mockRejectedValue(new Error('boom'));
     const { container } = renderForm();
-    const input = container.querySelector('input[accept="image/*"]') as HTMLInputElement;
-    fireEvent.change(input, {
-      target: { files: [new File(['x'], 'p.png', { type: 'image/png' })] },
-    });
-    expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:poster');
+    selectPoster(container);
+    await confirmCrop();
+
     expect((await screen.findByRole('alert')).textContent).toContain('포스터 업로드에 실패');
     expect(screen.queryByAltText('포스터 미리보기')).toBeNull();
   });
 
-  it('포스터는 변환 없이 원본 파일 그대로 올리고 그 파일로 미리보기를 만든다', async () => {
-    URL.createObjectURL = vi.fn(() => 'blob:poster');
-    URL.revokeObjectURL = vi.fn();
+  it('확인 시 원본 포스터와 썸네일을 함께 올리고 저장 payload에 둘 다 담는다', async () => {
+    stubCropApis();
     const { container } = renderForm();
     const file = new File(['png-bytes'], 'poster.png', { type: 'image/png' });
     const input = container.querySelector('input[accept="image/*"]') as HTMLInputElement;
     fireEvent.change(input, { target: { files: [file] } });
-    expect((await screen.findByAltText('포스터 미리보기')).getAttribute('src')).toBe('blob:poster');
-    expect(mocks.requestUpload).toHaveBeenCalledWith({
-      bucket: 'public',
-      purpose: 'poster',
-      contentType: 'image/png',
-      fileName: 'poster.png',
-      sizeBytes: file.size,
-    });
+    await confirmCrop();
+
+    // 원본은 purpose=poster 그대로, 썸네일은 크롭된 WebP로 각각 업로드된다.
+    await waitFor(() =>
+      expect(mocks.requestUpload).toHaveBeenCalledWith({
+        bucket: 'public',
+        purpose: 'poster',
+        contentType: 'image/png',
+        fileName: 'poster.png',
+        sizeBytes: file.size,
+      }),
+    );
+    await waitFor(() =>
+      expect(mocks.requestUpload).toHaveBeenCalledWith(
+        expect.objectContaining({ bucket: 'public', contentType: 'image/webp' }),
+      ),
+    );
     expect(mocks.fetchMock).toHaveBeenCalledWith(
       'https://upload.example',
       expect.objectContaining({ body: file }),
     );
+    await waitFor(() =>
+      expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:poster'),
+    );
+
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create.mock.calls[0]![0].data).toMatchObject({
+      posterFileId: 'poster-1',
+      thumbnailFileId: 'thumb-1',
+    });
   });
 
   it('JPG/PNG/WebP가 아닌 포스터는 거절한다', async () => {

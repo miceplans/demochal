@@ -124,6 +124,16 @@ export interface Challenge {
      * @nullable
      */
   posterUrl?: string | null;
+  /**
+     * 카드 썸네일 파일 ID(포스터에서 사용자가 지정한 영역을 잘라 만든 파일). 없으면 null
+     * @nullable
+     */
+  thumbnailFileId?: string | null;
+  /**
+     * 카드 썸네일 공개 URL(public+ready 파일). 없으면 클라이언트는 posterUrl로 폰백
+     * @nullable
+     */
+  thumbnailUrl?: string | null;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;

@@ -93,9 +93,9 @@ export function BizPostingManagePage() {
       <Top>
         <Main>
           <Thumb aria-hidden>
-            {challenge.posterUrl && (
+            {(challenge.thumbnailUrl ?? challenge.posterUrl) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={challenge.posterUrl} alt="" />
+              <img src={challenge.thumbnailUrl ?? challenge.posterUrl ?? ''} alt="" />
             )}
           </Thumb>
           <Info>

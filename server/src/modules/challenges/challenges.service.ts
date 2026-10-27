@@ -196,14 +196,20 @@ export class ChallengesService {
     return { items: await this.withPosterUrls(items), nextCursor };
   }
 
-  /** 카드 목록 응답에 포스터 공개 URL을 붙인다(한 번의 조회로 일괄 해석). */
-  private async withPosterUrls<T extends { posterFileId: string | null }>(items: T[]) {
+  /** 카드 목록 응답에 포스터·썸네일 공개 URL을 붙인다(한 번의 조회로 일괄 해석). */
+  private async withPosterUrls<
+    T extends { posterFileId: string | null; thumbnailFileId: string | null },
+  >(items: T[]) {
     const posterUrls = await this.filesService.resolvePublicUrls(
       items.map((item) => item.posterFileId),
+    );
+    const thumbnailUrls = await this.filesService.resolvePublicUrls(
+      items.map((item) => item.thumbnailFileId),
     );
     return items.map((item) => ({
       ...item,
       posterUrl: item.posterFileId ? (posterUrls.get(item.posterFileId) ?? null) : null,
+      thumbnailUrl: item.thumbnailFileId ? (thumbnailUrls.get(item.thumbnailFileId) ?? null) : null,
     }));
   }
 
@@ -321,13 +327,14 @@ export class ChallengesService {
     await this.db.insert(challengeViews).values({ challengeId: id });
     // 포스터 공개 URL은 서버가 함께 내린다 — 클라이언트가 파일 API를 직접 호출하면 업로더 소유권 검사에 막힌다.
     const posterUrl = await this.filesService.resolvePublicUrl(challenge.posterFileId);
+    const thumbnailUrl = await this.filesService.resolvePublicUrl(challenge.thumbnailFileId);
     // 상세 화면의 주최 단체명 — businesses.name이 비어 있으면(OCR/프로필 미입력) 필드를 생략한다.
     const [business] = await this.db
       .select({ name: businesses.name })
       .from(businesses)
       .where(eq(businesses.id, challenge.businessId))
       .limit(1);
-    return { ...challenge, posterUrl, organizer: business?.name ?? undefined };
+    return { ...challenge, posterUrl, thumbnailUrl, organizer: business?.name ?? undefined };
   }
 
   /**
@@ -378,7 +385,8 @@ export class ChallengesService {
       .limit(1);
     if (!row) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     const posterUrl = await this.filesService.resolvePublicUrl(row.challenge.posterFileId);
-    return { ...row.challenge, posterUrl };
+    const thumbnailUrl = await this.filesService.resolvePublicUrl(row.challenge.thumbnailFileId);
+    return { ...row.challenge, posterUrl, thumbnailUrl };
   }
 
   async getStatsForOwner(id: string, ownerUserId: string) {
@@ -413,6 +421,7 @@ export class ChallengesService {
       .limit(1);
     if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
+    if (dto.thumbnailFileId) await this.filesService.assertReadyPublic(dto.thumbnailFileId);
     const startDate = new Date(dto.startDate);
     const endDate = new Date(dto.endDate);
     if (endDate.getTime() < startDate.getTime()) {
@@ -457,6 +466,7 @@ export class ChallengesService {
         organizerType: dto.organizerType,
         prizeAmount: dto.prizeAmount,
         posterFileId: dto.posterFileId,
+        thumbnailFileId: dto.thumbnailFileId,
         recruitMethod,
         recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
         summary: dto.summary,
@@ -489,6 +499,7 @@ export class ChallengesService {
         attachments: challenges.attachments,
         targets: challenges.targets,
         recruitMethod: challenges.recruitMethod,
+        posterFileId: challenges.posterFileId,
       })
       .from(challenges)
       .innerJoin(businesses, eq(businesses.id, challenges.businessId))
@@ -497,6 +508,7 @@ export class ChallengesService {
     if (!current) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
     // null은 포스터 제거라 검증에서 제외 — 존재하고 public+ready인 파일만 참조할 수 있다.
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
+    if (dto.thumbnailFileId) await this.filesService.assertReadyPublic(dto.thumbnailFileId);
 
     const startDate = dto.startDate ? new Date(dto.startDate) : current.startDate;
     const endDate = dto.endDate ? new Date(dto.endDate) : current.endDate;
@@ -541,6 +553,13 @@ export class ChallengesService {
       ...(dto.organizerType !== undefined && { organizerType: dto.organizerType }),
       ...(dto.prizeAmount !== undefined && { prizeAmount: dto.prizeAmount }),
       ...(dto.posterFileId !== undefined && { posterFileId: dto.posterFileId }),
+      ...(dto.thumbnailFileId !== undefined && { thumbnailFileId: dto.thumbnailFileId }),
+      // 썸네일은 포스터에서 파생된 파일이라 포스터 제거와 함께 비운다.
+      ...(dto.posterFileId === null && { thumbnailFileId: null }),
+      // 포스터만 교체하면 이전 포스터에서 잘라낸 썸네일이 어긋나므로 새 썸네일이 없을 때 비운다.
+      ...(dto.posterFileId &&
+        dto.posterFileId !== current.posterFileId &&
+        dto.thumbnailFileId === undefined && { thumbnailFileId: null }),
       ...(dto.applicationForm !== undefined && {
         applicationForm: normalizeApplicationForm(dto.applicationForm),
       }),
