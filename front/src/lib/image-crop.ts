@@ -1,5 +1,7 @@
 // AdImageUploader(광고)와 공고 포스터 썸네일이 공용으로 쓰는 클라이언트 크롭 유틸.
 
+const MAX_OUTPUT_EDGE = 2000;
+
 export type CropImage = { file: File; url: string; width: number; height: number };
 
 export function cropErrorMessage(error: unknown): string {
@@ -38,7 +40,11 @@ export async function makeCroppedFile(
   const cropWidth = sourceRatio > aspectRatio ? image.height * aspectRatio : image.width;
   const cropHeight = sourceRatio > aspectRatio ? image.height : image.width / aspectRatio;
   const canvas = document.createElement('canvas');
-  const scale = Math.max(1, minOutputWidth / cropWidth);
+  // 대형 원본은 캔버스 면적 제한·업로드 용량(10MB) 초과를 막기 위해 긴 변 상한까지만 다운스케일한다.
+  const scale = Math.min(
+    Math.max(1, minOutputWidth / cropWidth),
+    MAX_OUTPUT_EDGE / Math.max(cropWidth, cropHeight),
+  );
   canvas.width = Math.max(1, Math.round(cropWidth * scale));
   canvas.height = Math.max(1, Math.round(cropHeight * scale));
   const context = canvas.getContext('2d');
