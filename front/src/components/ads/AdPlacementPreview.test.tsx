@@ -190,17 +190,16 @@ describe('AdPlacementPreview', () => {
     expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
   });
 
-  it('업로드 모드에서는 해당 레일만 업로더 프레임을 보여주고 다른 레일은 유지한다', () => {
+  it('업로드 모드에서는 선택한 칸만 업로더로 보여주고 나머지 칸·레일은 기존 광고를 유지한다', () => {
     const { container } = render(
       <AdPlacementPreview view="pc" onSelect={() => {}} uploadPlacement="hero" />,
     );
 
-    // hero 레일의 모든 슬롯(기본 4개 + 복제 2개)이 업로더다.
+    // 교체되는 첫 슬롯 하나만 업로더이고, 나머지 슬롯은 기존 광고를 그대로 보여준다.
     const fileInputs = container.querySelectorAll('input[type="file"][accept="image/*"]');
-    expect(fileInputs.length).toBe(6);
-    expect(screen.getAllByText('파일 찾기').length).toBe(6);
-    // hero 레일만 업로더로 바뀌었다면 hero 고유 소재인 영상은 사라지고 gallery 소재는 남는다.
-    expect(container.querySelector('video')).toBeNull();
+    expect(fileInputs.length).toBe(1);
+    expect(screen.getAllByText('파일 찾기').length).toBe(1);
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
     expect(container.querySelector('img[src="/assets/figma-ads/home-gallery.png"]')).not.toBeNull();
   });
 

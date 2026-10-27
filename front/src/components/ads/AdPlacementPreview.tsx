@@ -162,7 +162,7 @@ export function AdPlacementPreview({
       {/* 슬라이드 수가 바뀌면(예: fallback 3개에서 노출 1개로 줄면) 레일 위치를 재시작해
           복제본 범위 밖의 위치가 남지 않게 한다. 홈 AdCarousel의 key 관례와 같다. */}
       <MovingAds
-        key={`hero-${heroItems.length}`}
+        key={`hero-${heroItems.length}-${uploadPlacement === 'hero'}`}
         ariaLabel="홈 상단 광고"
         itemCount={heroItems.length}
         interval={5000}
@@ -185,7 +185,13 @@ export function AdPlacementPreview({
               onTransitionEnd={handleTransitionEnd}
             >
               {loopIndexes.map((item, position) => {
-                if (uploadPlacement === 'hero') {
+                const ad = heroItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  heroItems.length > 1 && (position === 0 || position === heroItems.length + 1);
+                // 업로드할 칸(첫 슬롯의 실제 항목)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
+                if (uploadPlacement === 'hero' && item === 0 && !isClone) {
                   return (
                     <HeroSlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
@@ -198,11 +204,6 @@ export function AdPlacementPreview({
                     </HeroSlotFrame>
                   );
                 }
-                const ad = heroItems[item];
-                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
-                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
-                const isClone =
-                  heroItems.length > 1 && (position === 0 || position === heroItems.length + 1);
                 return (
                   <Slot
                     key={`${item}-${position}`}
@@ -252,7 +253,7 @@ export function AdPlacementPreview({
       </MovingAds>
       <Background src={screen.background} alt="" aria-hidden="true" />
       <MovingAds
-        key={`gallery-${galleryItems.length}`}
+        key={`gallery-${galleryItems.length}-${uploadPlacement === 'gallery'}`}
         ariaLabel="홈 중간 이미지 광고"
         itemCount={galleryItems.length}
         interval={5000}
@@ -275,7 +276,14 @@ export function AdPlacementPreview({
               onTransitionEnd={handleTransitionEnd}
             >
               {loopIndexes.map((item, position) => {
-                if (uploadPlacement === 'gallery') {
+                const ad = galleryItems[item];
+                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
+                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
+                const isClone =
+                  galleryItems.length > 1 &&
+                  (position === 0 || position === galleryItems.length + 1);
+                // 업로드할 칸(첫 슬롯의 실제 항목)만 업로더로 바꾸고 나머지는 기존 광고를 그대로 보여준다.
+                if (uploadPlacement === 'gallery' && item === 0 && !isClone) {
                   return (
                     <GallerySlotFrame key={`${item}-${position}`} view={view}>
                       <AdImageUploader
@@ -288,12 +296,6 @@ export function AdPlacementPreview({
                     </GallerySlotFrame>
                   );
                 }
-                const ad = galleryItems[item];
-                // 무한 순환용 복제 슬롯(첫·마지막)은 장식이라 보조기술에서 숨긴다.
-                // 슬롯이 1개뿐이면 복제본이 없으므로 유일 슬롯을 숨기지 않는다.
-                const isClone =
-                  galleryItems.length > 1 &&
-                  (position === 0 || position === galleryItems.length + 1);
                 return (
                   <GallerySlot
                     key={`${item}-${position}`}
@@ -350,6 +352,8 @@ export function AdPlacementPreview({
           {onSelect && !selectImmediately && (
             <PriceAction
               type="button"
+              // 슬롯 onBlur가 mousedown 시점에 툴팁을 닫아 클릭이 사라지지 않도록 포커스 이동을 막는다.
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => {
                 setTooltip(null);
                 onSelect(tooltip.placement);
