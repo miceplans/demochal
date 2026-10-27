@@ -48,15 +48,18 @@ export function fillWithFallback(
 
 /**
  * 광고 추가 미리보기에 보여줄 슬롯 목록을 만든다. 실제 홈 노출 목록(없으면
- * fallback)과 같은 개수를 유지하고, 업로드한 이미지는 첫 슬롯 하나만 교체한다.
+ * fallback)과 같은 개수를 유지하고, 업로드한 이미지는 지정한 슬롯 하나만 교체한다.
  * 한 장을 올려도 나머지 슬롯이 기존 광고(부족하면 기본 광고)로 보여야 미리보기가 홈과 같다.
  */
 export function buildPreviewAds(
   liveAds: AdCarouselItem[] | undefined,
   fallback: AdCarouselItem[],
   uploaded: AdCarouselItem | undefined,
+  slotIndex = 0,
 ): AdCarouselItem[] {
   const base = fillWithFallback(liveAds, fallback);
   if (!uploaded) return base;
-  return [uploaded, ...base.slice(1)];
+  // 업로드 시점에 선택한 칸에 결과를 표시한다. 범위를 벗어나면 첫 칸으로 낮춘다.
+  const index = Math.min(Math.max(slotIndex, 0), base.length - 1);
+  return base.map((ad, i) => (i === index ? uploaded : ad));
 }

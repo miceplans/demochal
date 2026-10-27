@@ -75,8 +75,11 @@ export function AdPlacementPreview({
   } | null>(null);
   // 각 레일에서 사용자가 마지막으로 호버/클릭한 칸. 업로드 모드에서는 이 칸에만 업로더를 띄운다.
   const [pickedSlots, setPickedSlots] = useState<Partial<Record<AdPlacement, number>>>({});
+  // 업로드 완료 시점에 선택한 칸. 이후 호버와 무관하게 결과 이미지를 이 칸에 고정해 보여준다.
+  const [uploadedSlots, setUploadedSlots] = useState<Partial<Record<AdPlacement, number>>>({});
   const canvasRef = useRef<HTMLElement>(null);
   const tooltipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevUploadedImages = useRef(uploadedImages);
 
   useEffect(
     () => () => {
@@ -84,6 +87,15 @@ export function AdPlacementPreview({
     },
     [],
   );
+  useEffect(() => {
+    const previous = prevUploadedImages.current;
+    (['hero', 'gallery'] as const).forEach((placement) => {
+      if (uploadedImages[placement] && uploadedImages[placement] !== previous[placement]) {
+        setUploadedSlots((current) => ({ ...current, [placement]: pickedSlots[placement] ?? 0 }));
+      }
+    });
+    prevUploadedImages.current = uploadedImages;
+  }, [uploadedImages, pickedSlots]);
 
   const screen = artwork[view];
   const Slot = view === 'mobile' ? MobileHeroSlot : HeroSlot;
@@ -91,7 +103,7 @@ export function AdPlacementPreview({
     price ?? dailyPrices?.[placement] ?? adInfo[placement].fallbackPrice;
   const isPricingPreview = !onSelect;
   // 실제 홈 노출 목록과 같은 광고 수·소재로 미리보기를 구성한다. 업로드한 이미지는
-  // 첫 슬롯 하나만 교체해 한 장을 올려도 나머지 슬롯이 기존 광고 그대로 보인다.
+  // 업로드 시점에 선택한 슬롯 하나만 교체해 한 장을 올려도 나머지 슬롯이 기존 광고 그대로 보인다.
   const { data: heroAdList } = generated.useListPublicAds({ placement: 'hero' }, publicAdsQuery);
   const { data: galleryAdList } = generated.useListPublicAds(
     { placement: 'gallery' },
@@ -105,8 +117,9 @@ export function AdPlacementPreview({
         uploadedImages.hero
           ? { src: uploadedImages.hero, alt: '업로드한 홈 상단 광고 이미지' }
           : undefined,
+        uploadedSlots.hero ?? 0,
       ),
-    [heroAdList, uploadedImages.hero],
+    [heroAdList, uploadedImages.hero, uploadedSlots.hero],
   );
   const galleryItems = useMemo(
     () =>
@@ -116,8 +129,9 @@ export function AdPlacementPreview({
         uploadedImages.gallery
           ? { src: uploadedImages.gallery, alt: '업로드한 홈 중간 광고 이미지' }
           : undefined,
+        uploadedSlots.gallery ?? 0,
       ),
-    [galleryAdList, uploadedImages.gallery],
+    [galleryAdList, uploadedImages.gallery, uploadedSlots.gallery],
   );
   const rememberSlot = (placement: AdPlacement, item: number) => {
     // 업로드 모드 중에는 이미 뜬 업로더 위치를 옮기지 않는다. 다른 칸으로 바꾸려면 업로드 모드를
