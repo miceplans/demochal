@@ -19,6 +19,10 @@ const envSchema = z
     DATABASE_URL: z.string().default('postgres://localhost:5432/semochal'),
     DATABASE_SSL_CA_PATH: z.string().min(1).optional(),
 
+    // 분산 레이트리밋 저장소(redis:// 또는 rediss://). 비워두면 태스크 메모리의
+    // 인메모리 저장소를 쓰므로 스케일아웃 환경에서는 반드시 설정한다.
+    REDIS_URL: z.string().default(''),
+
     AWS_REGION: z.string().default('ap-northeast-2'),
 
     S3_PUBLIC_BUCKET: z.string().default('semochal-public-dev'),
@@ -121,6 +125,8 @@ export const env = {
 
   databaseUrl: raw.DATABASE_URL,
   databaseSslCaPath: raw.DATABASE_SSL_CA_PATH,
+
+  redisUrl: raw.REDIS_URL || undefined,
 
   awsRegion: raw.AWS_REGION,
 

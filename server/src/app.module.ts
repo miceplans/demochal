@@ -23,6 +23,7 @@ import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
 import { AdminModule } from './modules/admin/admin.module.js';
 import { DEFAULT_THROTTLE } from './common/throttling/throttling.js';
+import { createThrottlerStorage } from './common/throttling/redis-throttler.storage.js';
 import { MaintenanceGuard } from './common/maintenance/maintenance.guard.js';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard.js';
 import { BillingModule } from './modules/billing/billing.module.js';
@@ -37,7 +38,10 @@ import { EmailModule } from './modules/email/email.module.js';
 // Full module tree, served over HTTP by main.ts.
 @Module({
   imports: [
-    ThrottlerModule.forRoot({ throttlers: [DEFAULT_THROTTLE] }),
+    ThrottlerModule.forRoot({
+      throttlers: [DEFAULT_THROTTLE],
+      storage: createThrottlerStorage(),
+    }),
     DbModule,
     QueueModule,
     HealthModule,

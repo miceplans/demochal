@@ -39,6 +39,20 @@ services:
       timeout: 3s
       retries: 10
 
+  # Distributed rate-limit store so local dev matches the ECS setup. The API
+  # falls back to per-task memory when REDIS_URL is unset.
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - semochal-redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   # One-shot: creates the dev buckets and browser-upload CORS on the LocalStack S3.
   # Idempotent so `docker compose up` can re-run it after a restart.
   s3-init:
@@ -68,10 +82,13 @@ services:
       NODE_ENV: development
       PORT: '3001'
       DATABASE_URL: postgres://semochal:semochal@db:5432/semochal
+      REDIS_URL: redis://redis:6379
     ports:
       - '127.0.0.1:3001:3001'
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
@@ -90,3 +107,4 @@ services:
 
 volumes:
   semochal-db-data:
+  semochal-redis-data:

@@ -334,7 +334,8 @@ locals {
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "SQS_INBOUND_EMAILS_QUEUE_URL", value = aws_sqs_queue.inbound_emails.url },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
-    { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
+    { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" },
+    { name = "REDIS_URL", value = "rediss://${aws_elasticache_replication_group.rate_limit.primary_endpoint_address}:6379" }
   ]
   worker_environment = concat(local.common_environment, [
     { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
