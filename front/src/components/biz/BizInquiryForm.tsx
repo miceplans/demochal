@@ -161,7 +161,7 @@ const FieldGroup = styled.div({ display: 'flex', flexDirection: 'column', gap: 8
 const FieldLabel = styled.label({ ...textStyle.bodyLarge, color: c.gray900 });
 const TextInput = styled.input({
   height: 40,
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
@@ -170,7 +170,7 @@ const TextInput = styled.input({
 });
 const TextArea = styled.textarea({
   height: 118,
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '14px',
   resize: 'none',

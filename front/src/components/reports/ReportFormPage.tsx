@@ -260,7 +260,7 @@ const Field = styled.div({
 const Textarea = styled.textarea({
   height: 106,
   resize: 'vertical',
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '12px 14px',
   background: c.white,

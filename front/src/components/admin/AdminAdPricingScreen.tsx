@@ -314,7 +314,7 @@ const PriceField = styled.div({
   alignItems: 'center',
   overflow: 'hidden',
   height: 48,
-  border: `0.5px solid ${c.gray300}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
   '&:focus-within': { borderColor: c.primary, boxShadow: `0 0 0 3px ${c.primary}20` },

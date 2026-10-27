@@ -44,7 +44,7 @@ const HeaderBox = styled.header<{ compact: boolean }>(({ compact }) => ({
 const Search = styled.form({
   display: 'flex',
   alignItems: 'center',
-  border: `0.5px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   gap: 8,
   padding: '0 16px',

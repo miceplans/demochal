@@ -245,7 +245,7 @@ const PasswordField = styled.label({
   '& input': {
     height: 42,
     padding: '0 12px',
-    border: `0.5px solid ${c.gray100}`,
+    border: `0.5px solid ${c.gray200}`,
     borderRadius: 6,
     font: 'inherit',
   },

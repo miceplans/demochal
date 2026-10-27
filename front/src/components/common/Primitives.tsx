@@ -91,7 +91,7 @@ export const Input = styled.input({
   width: '100%',
   minWidth: 0,
   height: 44,
-  border: `0.5px solid ${c.gray100}`,
+  border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   padding: '0 14px',
   background: c.white,
