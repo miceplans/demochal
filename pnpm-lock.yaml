@@ -179,6 +179,12 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.1.4
         version: 3.14.10(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@tesseract.js-data/eng':
+        specifier: 1.0.0
+        version: 1.0.0
+      '@tesseract.js-data/kor':
+        specifier: 1.0.0
+        version: 1.0.0
       '@tosspayments/tosspayments-sdk':
         specifier: ^2.8.1
         version: 2.8.1
@@ -2589,6 +2595,12 @@ packages:
 
   '@tanstack/virtual-core@3.17.8':
     resolution: {integrity: sha512-BfEvehNpOT75r5Ksc5xW6NZuXujTfb7nlSEyVu4XHG3gdxNg1KqXruWbDewXOUaUYIo4oRbSfkjIajz4MAT8tA==}
+
+  '@tesseract.js-data/eng@1.0.0':
+    resolution: {integrity: sha512-mbTumm6KQPUHyzTPQaF3ObXYnx0SqqfV2nabqFVQBwD6Kl7PhGSLSzOlfFTWy0P3BjghaSKA2W9GB19Jk+ZcTg==}
+
+  '@tesseract.js-data/kor@1.0.0':
+    resolution: {integrity: sha512-tepYhsYiRJ8E44R27MHxVteEDDLfYQxuvM6u4JlEHcCYqwpefvI5TGzoMgB67kunOvtyEJYtT5zfJ/6R6FVU9w==}
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -8345,6 +8357,10 @@ snapshots:
   '@tanstack/table-core@8.21.3': {}
 
   '@tanstack/virtual-core@3.17.8': {}
+
+  '@tesseract.js-data/eng@1.0.0': {}
+
+  '@tesseract.js-data/kor@1.0.0': {}
 
   '@testing-library/dom@10.4.2':
     dependencies:

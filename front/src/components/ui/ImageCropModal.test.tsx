@@ -10,18 +10,17 @@ const image: CropImage = {
   height: 400,
 };
 
+const baseProps = {
+  image,
+  aspectRatio: 1,
+  title: '썸네일 영역 선택',
+  previewAlt: '포스터 썸네일 자르기 미리보기',
+  onCancel: vi.fn(),
+  onConfirm: vi.fn(),
+};
+
 const renderModal = (extra: Partial<Parameters<typeof ImageCropModal>[0]> = {}) =>
-  render(
-    <ImageCropModal
-      image={image}
-      aspectRatio={1}
-      title="썸네일 영역 선택"
-      previewAlt="포스터 썸네일 자르기 미리보기"
-      onCancel={vi.fn()}
-      onConfirm={vi.fn()}
-      {...extra}
-    />,
-  );
+  render(<ImageCropModal {...baseProps} {...extra} />);
 
 // 원본 800x400(비율 2)에 1:1 프레임 → 가로만 넘친다. left = -position.x * 100%.
 const previewLeft = () => screen.getByAltText('포스터 썸네일 자르기 미리보기').style.left;
@@ -52,52 +51,27 @@ describe('ImageCropModal 자동 위치', () => {
     delete (Element.prototype as { releasePointerCapture?: unknown }).releasePointerCapture;
   });
 
-  it('initialPosition이 없으면 기존처럼 중앙(0.5)에서 시작한다', () => {
+  it('autoPosition이 없으면 기존처럼 중앙(0.5)에서 시작한다', () => {
     renderModal();
     expect(previewLeft()).toBe('-50%');
-  });
-
-  it('initialPosition이 있으면 그 위치에서 시작한다', () => {
-    renderModal({ initialPosition: { x: 0.2, y: 0.5 } });
-    expect(previewLeft()).toBe('-20%');
   });
 
   it('autoPosition이 도착하면 사용자가 건드리지 않았을 때만 위치를 적용한다', () => {
     const { rerender } = renderModal();
     expect(previewLeft()).toBe('-50%');
-    rerender(
-      <ImageCropModal
-        image={image}
-        aspectRatio={1}
-        title="썸네일 영역 선택"
-        previewAlt="포스터 썸네일 자르기 미리보기"
-        autoPosition={{ x: 0.8, y: 0.5, seq: 1 }}
-        onCancel={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    );
+    rerender(<ImageCropModal {...baseProps} autoPosition={{ x: 0.8, y: 0.5 }} />);
     expect(previewLeft()).toBe('-80%');
   });
 
   it('사용자가 드래그로 조정한 뒤에는 늦게 도착한 autoPosition을 적용하지 않는다', () => {
-    const props = {
-      image,
-      aspectRatio: 1,
-      title: '썸네일 영역 선택',
-      previewAlt: '포스터 썸네일 자르기 미리보기',
-      onCancel: vi.fn(),
-      onConfirm: vi.fn(),
-    };
-    const { rerender } = render(
-      <ImageCropModal {...props} autoPosition={{ x: 0.8, y: 0.5, seq: 1 }} />,
-    );
+    const { rerender } = renderModal({ autoPosition: { x: 0.8, y: 0.5 } });
     expect(previewLeft()).toBe('-80%');
-    // 프레임 표시 400px 기준으로 오버플로 400px: 400→200 드래그는 x 0.8에서 1.0(클램프)으로 이동한다.
+    // 프레임 표시 400px 기준으로 오버플로 400px: 400→200 드래그는 x 0.8에서 1.0(클립)으로 이동한다.
     fireEvent.pointerDown(cropFrame(), { pointerId: 1, clientX: 400, clientY: 200 });
     fireEvent.pointerMove(cropFrame(), { pointerId: 1, clientX: 200, clientY: 200 });
     fireEvent.pointerUp(cropFrame(), { pointerId: 1, clientX: 200, clientY: 200 });
     expect(previewLeft()).toBe('-100%');
-    rerender(<ImageCropModal {...props} autoPosition={{ x: 0.2, y: 0.5, seq: 2 }} />);
+    rerender(<ImageCropModal {...baseProps} autoPosition={{ x: 0.2, y: 0.5 }} />);
     expect(previewLeft()).toBe('-100%');
   });
 });

@@ -134,10 +134,19 @@ function drawForOcr(source: PosterCropSource): Promise<HTMLCanvasElement> {
   });
 }
 
+// tesseract.js가 런타임에 받아오는 워커·WASM 코어·학습데이터를 same-origin으로 자체 호스팅한다.
+// 외부 CDN(jsdelivr·projectnaptha)은 front/next.config.ts의 CSP가 허용하지 않아 이 경로가 필수다.
+// 실제 파일은 front/scripts/copy-tesseract-assets.mjs가 node_modules에서 public/tesseract/로 복사한다.
+export const TESSERACT_ASSET_PATHS = {
+  workerPath: '/tesseract/worker.min.js',
+  corePath: '/tesseract/core',
+  langPath: '/tesseract/lang-data',
+} as const;
+
 // tesseract.js는 포스터를 골랐을 때만 지연 로딩한다 — 일반 페이지 로딩에 인식 엔진을 싣지 않기 위함.
 const defaultRecognize: RecognizeFn = async (canvas) => {
   const { createWorker } = await import('tesseract.js');
-  const worker = await createWorker(['kor', 'eng']);
+  const worker = await createWorker(['kor', 'eng'], undefined, { ...TESSERACT_ASSET_PATHS });
   try {
     const { data } = await worker.recognize(canvas);
     // 결과는 blocks → paragraphs → lines → words 계층으로 날아온다.
@@ -180,7 +189,9 @@ export async function recommendPosterCropPosition(
       },
     }));
     return matchedRegionPosition(restored, targets, source, aspectRatio);
-  } catch {
+  } catch (cause) {
+    // 자동 추천은 부가 기능이라 폼을 망가뜨리지 않되, 실패를 완전히 묵살하지는 않는다.
+    console.warn('[poster-ocr] OCR 자동 추천에 실패해 중앙 위치를 사용합니다.', cause);
     return null;
   }
 }

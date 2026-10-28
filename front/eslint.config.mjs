@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    // tesseract.js 자체 호스팅 자산(minified) — copy-tesseract-assets.mjs가 생성한다.
+    'public/tesseract/**',
   ]),
 ]);
 

@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   matchedCenterToPosition,
   matchedRegionPosition,
   normalizeMatchText,
   recommendPosterCropPosition,
+  TESSERACT_ASSET_PATHS,
   type OcrWord,
 } from './poster-ocr';
 
@@ -86,7 +87,27 @@ describe('matchedRegionPosition', () => {
   });
 });
 
+describe('TESSERACT_ASSET_PATHS', () => {
+  it('워커·코어·학습데이터를 모두 same-origin에서 자체 호스팅한다', () => {
+    // front/next.config.ts의 CSP가 외부 CDN(jsdelivr 등)을 허용하지 않으므로
+    // 기본 CDN 경로로 바뀌면 createWorker가 항상 실패한다 — same-origin 고정을 테스트로 잠근다.
+    expect(Object.values(TESSERACT_ASSET_PATHS)).toEqual([
+      '/tesseract/worker.min.js',
+      '/tesseract/core',
+      '/tesseract/lang-data',
+    ]);
+    for (const path of Object.values(TESSERACT_ASSET_PATHS)) {
+      expect(path.startsWith('/')).toBe(true);
+    }
+  });
+});
+
 describe('recommendPosterCropPosition', () => {
+  beforeEach(() => {
+    // 실패 폰백 경로가 남기는 경고 로그를 테스트 출력에서 숨긴다.
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
     vi.restoreAllMocks();

@@ -841,12 +841,7 @@ function PostingForm({
   const existingPosterUrl = initial.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
   // OCR 자동 추천 위치 — 포스터를 고른 뒤 백그라운드 인식이 끝나면 늦게 세팅된다.
-  const [posterAutoPosition, setPosterAutoPosition] = useState<
-    | (Position & {
-        seq: number;
-      })
-    | null
-  >(null);
+  const [posterAutoPosition, setPosterAutoPosition] = useState<Position | null>(null);
   // 진행 중인 OCR이 어떤 파일 것인지 구분해, 새 파일을 고른 뒤 늦게 끝나도 덮어쓰지 않게 한다.
   const posterPickSeq = useRef(0);
   const [uploadingPoster, setUploadingPoster] = useState(false);
@@ -1028,14 +1023,14 @@ function PostingForm({
       setPosterAutoPosition(null);
       // 모달은 즉시 열고(중앙 시작) 백그라운드에서 OCR을 돌린다. 제목과 본문 innerText를
       // 함께 넣어 포스터에 적힌 공고 글자가 썸네일 중심이 되도록 위치를 추천한다.
-      // 인식 실패·매칭 없음은 null로 조용히 끝나 기존처럼 중앙을 그대로 쓴다.
+      // 인식 실패·매칭 없음은 null로 끝나 기존처럼 중앙을 그대로 쓴다(실패는 경고 로그만 남긴다).
       void recommendPosterCropPosition(
         image,
         [title.trim(), editorRef.current?.innerText ?? ''].filter((text) => text.trim().length > 0),
         POSTER_THUMBNAIL_ASPECT,
       ).then((position) => {
         if (position && posterPickSeq.current === pickSeq) {
-          setPosterAutoPosition({ ...position, seq: Date.now() });
+          setPosterAutoPosition(position);
         }
       });
     } catch (cause) {

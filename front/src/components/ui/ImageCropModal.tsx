@@ -20,13 +20,11 @@ type Props = {
   title: string;
   description?: string;
   previewAlt: string;
-  /** 모달이 열릴 때의 프레임 위치. 없으면 중앙(0.5, 0.5)에서 시작한다. */
-  initialPosition?: CropPosition;
   /**
-   * 열린 뒤 늦게 도착하는 자동 추천 위치. seq가 바뀔 때마다 적용하되,
+   * 열린 뒤 늦게 도착하는 자동 추천 위치. 새 값이 도착할 때마다 적용하되,
    * 사용자가 한 번이라도 드래그했다면 건드리지 않는다. 없으면 무시.
    */
-  autoPosition?: (CropPosition & { seq: number }) | null;
+  autoPosition?: CropPosition | null;
   onCancel: () => void;
   onConfirm: (file: File) => void;
 };
@@ -42,23 +40,22 @@ export function ImageCropModal({
   title,
   description,
   previewAlt,
-  initialPosition,
   autoPosition,
   onCancel,
   onConfirm,
 }: Props) {
   const titleId = useId();
-  const [position, setPosition] = useState<CropPosition>(initialPosition ?? { x: 0.5, y: 0.5 });
+  const [position, setPosition] = useState<CropPosition>({ x: 0.5, y: 0.5 });
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
-  // OCR 자동 추천이 늦게 도착핼 때 이미 사용자가 조정한 위치를 덮어쓰지 않게 한다.
+  // OCR 자동 추천이 늦게 도착할 때 이미 사용자가 조정한 위치를 덮어쓰지 않게 한다.
   const touchedRef = useRef(false);
 
   useEffect(() => {
     if (autoPosition && !touchedRef.current) {
-      setPosition({ x: autoPosition.x, y: autoPosition.y });
+      setPosition(autoPosition);
     }
   }, [autoPosition]);
 
