@@ -19,6 +19,7 @@ import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { cropErrorMessage, readImage, type CropImage } from '@/lib/image-crop';
+import { recommendPosterCropPosition, type Position } from '@/lib/poster-ocr';
 import { ImageCropModal } from '@/components/ui/ImageCropModal';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
 import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
@@ -331,6 +332,8 @@ const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES)
   .map((ext) => `.${ext}`)
   .join(',');
 const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+// 카드 썸네일 슬롯 비율 — 크롭 모달 프레임과 OCR 위치 계산이 같이 쓴다.
+const POSTER_THUMBNAIL_ASPECT = 416 / 415;
 const MAX_ATTACHMENTS = 10;
 const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
@@ -837,6 +840,12 @@ function PostingForm({
   } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
+  // OCR 자동 추천 위치 — 포스터를 고른 뒤 백그라운드 인식이 끝나면 늦게 세팅된다.
+  const [posterAutoPosition, setPosterAutoPosition] = useState<(Position & {
+    seq: number;
+  }) | null>(null);
+  // 진행 중인 OCR이 어떤 파일 것인지 구분해, 새 파일을 고른 뒤 늦게 끝나도 덮어쓰지 않게 한다.
+  const posterPickSeq = useRef(0);
   const [uploadingPoster, setUploadingPoster] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -1009,19 +1018,41 @@ function PostingForm({
     if (file.size > MAX_ATTACHMENT_BYTES) return setError('포스터는 10MB 이하만 올릴 수 있습니다.');
     setError('');
     try {
-      setPendingPoster(await readImage(file));
+      const image = await readImage(file);
+      setPendingPoster(image);
+      // 이전 파일의 자동 추천이 남지 않게 먼저 비우고, 새 선택의 OCR만 적용되게 표시한다.
+      const pickSeq = ++posterPickSeq.current;
+      setPosterAutoPosition(null);
+      // 모달은 즉시 열고(중앙 시작) 백그라운드에서 OCR을 돌린다. 제목과 본문 innerText를
+      // 함께 넣어 포스터에 적힌 공고 글자가 썸네일 중심이 되도록 위치를 추천한다.
+      // 인식 실패·매칭 없음은 null로 조용히 끝나 기존처럼 중앙을 그대로 쓴다.
+      void recommendPosterCropPosition(
+        image,
+        [title.trim(), editorRef.current?.innerText ?? ''].filter(
+          (text) => text.trim().length > 0,
+        ),
+        POSTER_THUMBNAIL_ASPECT,
+      ).then((position) => {
+        if (position && posterPickSeq.current === pickSeq) {
+          setPosterAutoPosition({ ...position, seq: Date.now() });
+        }
+      });
     } catch (cause) {
       setPendingPoster(null);
       setError(cropErrorMessage(cause));
     }
   };
   const cancelPosterCrop = () => {
+    posterPickSeq.current += 1;
+    setPosterAutoPosition(null);
     if (pendingPosterRef.current) URL.revokeObjectURL(pendingPosterRef.current.url);
     setPendingPoster(null);
   };
   // 모달에서 크롭을 확정하면 원본 포스터와 잘라낸 썸네일 WebP를 함께 올린다.
   const confirmPosterCrop = async (thumbnail: File) => {
     const pending = pendingPosterRef.current;
+    posterPickSeq.current += 1;
+    setPosterAutoPosition(null);
     if (pending) URL.revokeObjectURL(pending.url);
     setPendingPoster(null);
     if (!pending) return;
@@ -1283,11 +1314,12 @@ function PostingForm({
       {pendingPoster ? (
         <ImageCropModal
           image={pendingPoster}
-          aspectRatio={416 / 415}
+          aspectRatio={POSTER_THUMBNAIL_ASPECT}
           previewWidth={400}
           title="썸네일 영역 선택"
           description="드래그해서 카드에 보일 영역을 지정한 뒤 확인해주세요. 원본 포스터는 그대로 유지됩니다."
           previewAlt="포스터 썸네일 자르기 미리보기"
+          autoPosition={posterAutoPosition}
           onCancel={cancelPosterCrop}
           onConfirm={(file) => void confirmPosterCrop(file)}
         />
