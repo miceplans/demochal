@@ -12,7 +12,7 @@ import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { daysUntil } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/lib/date';
 
 const verificationTone = (displayStatus?: string): BadgeTone =>
   displayStatus === '승인' ? 'green' : displayStatus === '반려' ? 'red' : 'amber';
@@ -155,6 +155,7 @@ function ChallengeSection({
               title: item.title,
               category: item.category ?? '',
               days: daysUntil(item.endDate, now),
+              closed: isPastDeadline(item.endDate, now),
               posterUrl: item.posterUrl,
             }}
           />

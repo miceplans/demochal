@@ -25,7 +25,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ChallengeSearch } from './ChallengeSearch';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { Checkbox, CheckFilter, ChipFilter, FilterGroup, toggleValue } from './ExploreFilters';
-import { daysUntil } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/lib/date';
 
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
 const PRIZE_MIN = 0;
@@ -148,6 +148,7 @@ export function ExplorePage({
     title: challenge.title ?? '챌린지',
     category: challenge.category ?? '기타',
     days: daysUntil(challenge.endDate, now),
+    closed: isPastDeadline(challenge.endDate, now),
     // 목록 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
     teams: undefined,
     posterUrl: challenge.posterUrl ?? null,

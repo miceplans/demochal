@@ -7,6 +7,8 @@ export type Contest = {
   title: string;
   category: string;
   days: number;
+  /** 마감일이 지난 챌린지. true면 카드에 '마감된 공고입니다.'를 표시한다. */
+  closed?: boolean;
   /** 팀 모집 수. 알 수 없으면(API 추천 등) 생략하고 카드에서 배지를 숨긴다. */
   teams?: number;
   /** 공개 포스터 URL. 없으면 기본 회색 영역만 보인다. */

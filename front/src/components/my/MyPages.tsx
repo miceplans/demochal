@@ -36,7 +36,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
-import { daysUntil } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/lib/date';
 import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
 import legalCopy from '@/data/design-copy.json';
 
@@ -966,6 +966,7 @@ export function BookmarksPage() {
     title: challenge.title ?? '제목 없음',
     category: challenge.category ?? '기타',
     days: daysUntil(challenge.endDate, now),
+    closed: isPastDeadline(challenge.endDate, now),
     posterUrl: challenge.posterUrl ?? null,
     thumbnailUrl: challenge.thumbnailUrl ?? null,
     prizeAmount: challenge.prizeAmount ?? null,

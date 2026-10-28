@@ -21,6 +21,7 @@ export const colors = {
   gray700: theme.colors.gray[700],
   gray900: theme.colors.gray[900],
   overlayWhite: theme.colors.overlayWhite,
+  overlayBlack: theme.colors.overlayBlack,
 };
 export const shadows = {
   toast: theme.shadow.toast,

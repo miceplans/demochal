@@ -46,10 +46,23 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
   '> a:first-of-type': { display: 'block' },
   // Figma contestCard 1521:8662: 썸네일 정사각형(416×415), 본문 패딩 14 / 간격 12, 제목 18 Bold.
   '.artwork': {
+    position: 'relative',
     aspectRatio: '416 / 415',
     background: c.gray100,
     borderRadius: '12px 12px 0 0',
     overflow: 'hidden',
+  },
+  // 마감된 챌린지: 썸네일을 어둡게 덮고 '마감된 공고입니다.'를 가운데에 표시한다.
+  '.artwork-closed': {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: c.overlayBlack,
+    color: c.white,
+    textAlign: 'center',
+    ...textStyle.h3_2,
   },
   '.artwork img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   '.card-body': { display: 'flex', flexDirection: 'column', gap: 12, padding: 14 },
@@ -149,6 +162,7 @@ export function ContestCard({
           {(contest.thumbnailUrl ?? contest.posterUrl) ? (
             <img src={contest.thumbnailUrl ?? contest.posterUrl ?? ''} alt="" />
           ) : null}
+          {contest.closed && <div className="artwork-closed">마감된 공고입니다.</div>}
         </div>
       </Link>
       <div className="card-body">
@@ -179,7 +193,7 @@ export function ContestCard({
                 <Link href={href}>
                   <h3>{contest.title}</h3>
                 </Link>
-                <span className="dday">D-{contest.days}</span>
+                {!contest.closed && <span className="dday">D-{contest.days}</span>}
               </Row>
             </div>
           </>
@@ -187,7 +201,7 @@ export function ContestCard({
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>
               <CategoryTag className="tag">{contest.category}</CategoryTag>
-              <span className="dday">D-{contest.days}</span>
+              {!contest.closed && <span className="dday">D-{contest.days}</span>}
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
               {scrapButton}
