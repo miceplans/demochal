@@ -1,5 +1,5 @@
 import { ThemeProvider } from '@emotion/react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
 import { BizPostingFormPage } from './BizPostingFormPage';
@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   requestUpload: vi.fn(),
   finalizeUpload: vi.fn(),
   fetchMock: vi.fn(),
+  recommendPosterCrop: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -39,6 +40,10 @@ vi.mock('@semochal/api-client', () => ({
   generated: {
     useCreateChallenge: () => ({ mutateAsync: mocks.create }),
   },
+}));
+// 실제 OCR 엔진(tesseract.js)이 테스트에서 돌지 않게 막고, 반환값으로 자동 추천 흐름을 제어한다.
+vi.mock('@/lib/poster-ocr', () => ({
+  recommendPosterCropPosition: mocks.recommendPosterCrop,
 }));
 
 // 달력 팝오버를 열어 현재 보이는 달의 day일을 고른다.
@@ -89,6 +94,8 @@ describe('BizPostingFormPage', () => {
       }),
     );
     mocks.finalizeUpload.mockResolvedValue({});
+    // 기본은 추천 없음 — 모달이 중앙에서 시작하는 기존 동작이 유지된다.
+    mocks.recommendPosterCrop.mockResolvedValue(null);
   });
   afterEach(() => {
     cleanup();
@@ -437,5 +444,60 @@ describe('BizPostingFormPage', () => {
     });
     expect((await screen.findByRole('alert')).textContent).toContain('JPG');
     expect(mocks.requestUpload).not.toHaveBeenCalled();
+  });
+
+  // 크롭 모달 프리뷰의 좌측 오프셋(%). 원본 1200x900(비율 4/3)에 416:415 프레임이라
+  // left = -position.x * (4/3 ÷ 416/415 - 1) * 100% = -position.x * 33.01% 꼴이다.
+  const LEFT_FACTOR = ((1200 / 900) / (416 / 415) - 1) * 100;
+  const modalPreviewLeft = () =>
+    parseFloat(screen.getByAltText('포스터 썸네일 자르기 미리보기').style.left);
+  const CENTER_LEFT = -0.5 * LEFT_FACTOR;
+
+  it('OCR 추천이 오면 사용자가 건드리기 전의 크롭 위치를 자동으로 잡는다', async () => {
+    stubCropApis();
+    mocks.recommendPosterCrop.mockResolvedValue({ x: 0.2, y: 0.5 });
+    const { container } = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '해커톤' } });
+    selectPoster(container);
+    expect(await screen.findByRole('dialog')).not.toBeNull();
+
+    // 제목을 첫 대상으로 OCR이 호출되고, 결과 위치가 모달 프리뷰에 반영된다.
+    await waitFor(() => expect(mocks.recommendPosterCrop).toHaveBeenCalled());
+    expect(mocks.recommendPosterCrop.mock.calls[0]![1]).toEqual(['해커톤']);
+    expect(mocks.recommendPosterCrop.mock.calls[0]![2]).toBeCloseTo(416 / 415, 6);
+    await waitFor(() => expect(modalPreviewLeft()).toBeCloseTo(-0.2 * LEFT_FACTOR, 3));
+  });
+
+  it('이전 포스터의 늦은 OCR 결과는 취소 후 다시 고른 현재 모달에 적용되지 않는다', async () => {
+    stubCropApis();
+    const resolvers: Array<(value: { x: number; y: number }) => void> = [];
+    mocks.recommendPosterCrop.mockImplementation(
+      () => new Promise((resolve) => resolvers.push(resolve)),
+    );
+    const { container } = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '해커톤' } });
+
+    selectPoster(container, 'a.png');
+    expect(await screen.findByRole('dialog')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    selectPoster(container, 'b.png');
+    expect(await screen.findByRole('dialog')).not.toBeNull();
+    expect(modalPreviewLeft()).toBeCloseTo(CENTER_LEFT, 3);
+
+    // 취소했던 a.png의 OCR이 늦게 끝나도 b.png의 모달은 그대로 중앙에 둔다.
+    await act(async () => {
+      resolvers[0]!({ x: 0.8, y: 0.5 });
+      await Promise.resolve();
+    });
+    expect(modalPreviewLeft()).toBeCloseTo(CENTER_LEFT, 3);
+
+    // b.png의 OCR이 끝나면 그 위치를 적용한다.
+    await act(async () => {
+      resolvers[1]!({ x: 0.2, y: 0.5 });
+      await Promise.resolve();
+    });
+    expect(modalPreviewLeft()).toBeCloseTo(-0.2 * LEFT_FACTOR, 3);
   });
 });
