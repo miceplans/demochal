@@ -448,7 +448,7 @@ describe('BizPostingFormPage', () => {
 
   // 크롭 모달 프리뷰의 좌측 오프셋(%). 원본 1200x900(비율 4/3)에 416:415 프레임이라
   // left = -position.x * (4/3 ÷ 416/415 - 1) * 100% = -position.x * 33.01% 꼴이다.
-  const LEFT_FACTOR = ((1200 / 900) / (416 / 415) - 1) * 100;
+  const LEFT_FACTOR = (1200 / 900 / (416 / 415) - 1) * 100;
   const modalPreviewLeft = () =>
     parseFloat(screen.getByAltText('포스터 썸네일 자르기 미리보기').style.left);
   const CENTER_LEFT = -0.5 * LEFT_FACTOR;
