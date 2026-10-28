@@ -841,9 +841,12 @@ function PostingForm({
   const existingPosterUrl = initial.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
   // OCR 자동 추천 위치 — 포스터를 고른 뒤 백그라운드 인식이 끝나면 늦게 세팅된다.
-  const [posterAutoPosition, setPosterAutoPosition] = useState<(Position & {
-    seq: number;
-  }) | null>(null);
+  const [posterAutoPosition, setPosterAutoPosition] = useState<
+    | (Position & {
+        seq: number;
+      })
+    | null
+  >(null);
   // 진행 중인 OCR이 어떤 파일 것인지 구분해, 새 파일을 고른 뒤 늦게 끝나도 덮어쓰지 않게 한다.
   const posterPickSeq = useRef(0);
   const [uploadingPoster, setUploadingPoster] = useState(false);
@@ -1028,9 +1031,7 @@ function PostingForm({
       // 인식 실패·매칭 없음은 null로 조용히 끝나 기존처럼 중앙을 그대로 쓴다.
       void recommendPosterCropPosition(
         image,
-        [title.trim(), editorRef.current?.innerText ?? ''].filter(
-          (text) => text.trim().length > 0,
-        ),
+        [title.trim(), editorRef.current?.innerText ?? ''].filter((text) => text.trim().length > 0),
         POSTER_THUMBNAIL_ASPECT,
       ).then((position) => {
         if (position && posterPickSeq.current === pickSeq) {

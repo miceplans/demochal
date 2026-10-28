@@ -24,8 +24,7 @@ const renderModal = (extra: Partial<Parameters<typeof ImageCropModal>[0]> = {}) 
   );
 
 // 원본 800x400(비율 2)에 1:1 프레임 → 가로만 넘친다. left = -position.x * 100%.
-const previewLeft = () =>
-  screen.getByAltText('포스터 썸네일 자르기 미리보기').style.left;
+const previewLeft = () => screen.getByAltText('포스터 썸네일 자르기 미리보기').style.left;
 const cropFrame = () => screen.getByAltText('포스터 썸네일 자르기 미리보기').parentElement!;
 
 describe('ImageCropModal 자동 위치', () => {

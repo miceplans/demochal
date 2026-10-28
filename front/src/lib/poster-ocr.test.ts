@@ -17,16 +17,18 @@ describe('normalizeMatchText', () => {
 
 describe('matchedCenterToPosition', () => {
   it('프레임이 넘치지 않는 축은 중앙(0.5)을 반환한다', () => {
-    expect(
-      matchedCenterToPosition({ x: 0.2, y: 0.8 }, { width: 1000, height: 1000 }, 1),
-    ).toEqual({ x: 0.5, y: 0.5 });
+    expect(matchedCenterToPosition({ x: 0.2, y: 0.8 }, { width: 1000, height: 1000 }, 1)).toEqual({
+      x: 0.5,
+      y: 0.5,
+    });
   });
 
   it('가로가 넘치면 중심이 프레임 중앙에 오는 position을 계산한다', () => {
     // 2000x1000 이미지에 1:1 프레임 → cropWidth 1000. 중심 x 0.25 → (500-500)/1000 = 0
-    expect(
-      matchedCenterToPosition({ x: 0.25, y: 0.5 }, { width: 2000, height: 1000 }, 1),
-    ).toEqual({ x: 0, y: 0.5 });
+    expect(matchedCenterToPosition({ x: 0.25, y: 0.5 }, { width: 2000, height: 1000 }, 1)).toEqual({
+      x: 0,
+      y: 0.5,
+    });
   });
 
   it('계산값은 0~1로 클램프된다', () => {

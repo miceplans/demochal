@@ -8,9 +8,7 @@ export type OcrBbox = { x0: number; y0: number; x1: number; y1: number };
 // bbox 좌표는 인식에 넘긴 이미지(다운스케일 캔버스) 픽셀 기준이다.
 export type OcrWord = { text: string; bbox: OcrBbox };
 
-export type RecognizeFn = (
-  source: HTMLCanvasElement,
-) => Promise<{ words: OcrWord[] }>;
+export type RecognizeFn = (source: HTMLCanvasElement) => Promise<{ words: OcrWord[] }>;
 
 export type PosterCropSource = { width: number; height: number; url: string };
 
