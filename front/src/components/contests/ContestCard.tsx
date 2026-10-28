@@ -59,7 +59,7 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: 'rgba(0,0,0,0.5)',
+    background: c.overlayBlack,
     color: c.white,
     textAlign: 'center',
     ...textStyle.h3_2,
@@ -193,7 +193,7 @@ export function ContestCard({
                 <Link href={href}>
                   <h3>{contest.title}</h3>
                 </Link>
-                <span className="dday">D-{contest.days}</span>
+                {!contest.closed && <span className="dday">D-{contest.days}</span>}
               </Row>
             </div>
           </>
@@ -201,7 +201,7 @@ export function ContestCard({
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>
               <CategoryTag className="tag">{contest.category}</CategoryTag>
-              <span className="dday">D-{contest.days}</span>
+              {!contest.closed && <span className="dday">D-{contest.days}</span>}
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>
               {scrapButton}

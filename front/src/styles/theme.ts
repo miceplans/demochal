@@ -27,6 +27,7 @@ declare module '@emotion/react' {
       background: string;
       foreground: string;
       overlayWhite: string;
+      overlayBlack: string;
     };
     typography: {
       fontFamily: string;
@@ -65,6 +66,7 @@ export const theme = {
     background: '#ffffff',
     foreground: '#101010',
     overlayWhite: 'rgb(255 255 255 / 85%)',
+    overlayBlack: 'rgb(0 0 0 / 50%)',
   },
   typography: {
     fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',

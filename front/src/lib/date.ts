@@ -46,7 +46,6 @@ export function toDateKey(date: Date): string {
   return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
 }
 
-/** Days remaining until an ISO end date, clamped to >= 0. Falsy/unparsable input -> 0. */
 /** 마감일이 지났으면 true. 마감일이 없거나 파싱 불가면 false. */
 export function isPastDeadline(endDateIso: string | undefined, now: number = Date.now()): boolean {
   if (!endDateIso) return false;
@@ -54,6 +53,7 @@ export function isPastDeadline(endDateIso: string | undefined, now: number = Dat
   return !Number.isNaN(end) && end < now;
 }
 
+/** Days remaining until an ISO end date, clamped to >= 0. Falsy/unparsable input -> 0. */
 export function daysUntil(endDateIso: string | undefined, now: number = Date.now()): number {
   if (!endDateIso) return 0;
   const end = new Date(endDateIso).getTime();

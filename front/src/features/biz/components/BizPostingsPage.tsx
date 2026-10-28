@@ -321,7 +321,7 @@ const CardThumb = styled.div<{ closed?: boolean }>(({ closed }) => ({
           content: '""',
           position: 'absolute',
           inset: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: c.overlayBlack,
         },
       }
     : {}),
