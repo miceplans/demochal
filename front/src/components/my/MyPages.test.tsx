@@ -9,6 +9,7 @@ import {
   MyProfileEditPage,
   MyTeamsPage,
   ApplicationsPage,
+  TeamApplicantsPage,
   NotificationsPage,
 } from './MyPages';
 
@@ -669,5 +670,41 @@ describe('내 프로필 수정 페이지', () => {
     expect(screen.getByRole('button', { name: '링크 추가' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '자격증 인증하기' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '기술 스택 추가하기' })).toBeTruthy();
+  });
+});
+
+describe('TeamApplicantsPage 지원현황 표', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.managedTeams = [];
+  });
+
+  it('지원자 정보와 결과 컨트롤을 균형 잡힌 세 열로 표시한다', () => {
+    mocks.managedTeams = [
+      {
+        id: 'team-1',
+        title: '테스트 팀',
+        challengeTitle: '테스트',
+        businessName: '(주)마이스플랜즈',
+        members: [{ id: 'member-1', name: '성이름', role: '프론트엔드', status: 'pending' }],
+      },
+    ];
+    const queryClient = new QueryClient();
+    render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <TeamApplicantsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+
+    const table = screen.getByRole('table');
+    expect(table.querySelectorAll('col')).toHaveLength(3);
+    expect(screen.getByRole('columnheader', { name: '이름' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: '지원 역할' })).toBeTruthy();
+    expect(screen.getByRole('columnheader', { name: '결과' })).toBeTruthy();
+    expect(screen.getByText('성이름')).toBeTruthy();
+    expect(screen.getByText('프론트엔드')).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: '성이름 결과' })).toBeTruthy();
   });
 });
