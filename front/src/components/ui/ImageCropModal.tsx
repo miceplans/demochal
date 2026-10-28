@@ -7,6 +7,8 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { cropErrorMessage, makeCroppedFile, type CropImage } from '@/lib/image-crop';
 
+type CropPosition = { x: number; y: number };
+
 type Props = {
   image: CropImage;
   /** 크롭 프레임(=노출 슬롯)의 가로/세로 비율. */
@@ -18,6 +20,11 @@ type Props = {
   title: string;
   description?: string;
   previewAlt: string;
+  /**
+   * 열린 뒤 늦게 도착하는 자동 추천 위치. 새 값이 도착할 때마다 적용하되,
+   * 사용자가 한 번이라도 드래그했다면 건드리지 않는다. 없으면 무시.
+   */
+  autoPosition?: CropPosition | null;
   onCancel: () => void;
   onConfirm: (file: File) => void;
 };
@@ -33,15 +40,24 @@ export function ImageCropModal({
   title,
   description,
   previewAlt,
+  autoPosition,
   onCancel,
   onConfirm,
 }: Props) {
   const titleId = useId();
-  const [position, setPosition] = useState({ x: 0.5, y: 0.5 });
+  const [position, setPosition] = useState<CropPosition>({ x: 0.5, y: 0.5 });
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ pointerX: number; pointerY: number; x: number; y: number } | null>(null);
+  // OCR 자동 추천이 늦게 도착할 때 이미 사용자가 조정한 위치를 덮어쓰지 않게 한다.
+  const touchedRef = useRef(false);
+
+  useEffect(() => {
+    if (autoPosition && !touchedRef.current) {
+      setPosition(autoPosition);
+    }
+  }, [autoPosition]);
 
   const close = useCallback(() => {
     if (!processing) onCancel();
@@ -56,6 +72,7 @@ export function ImageCropModal({
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
     if (processing) return;
+    touchedRef.current = true;
     event.currentTarget.setPointerCapture(event.pointerId);
     dragRef.current = { pointerX: event.clientX, pointerY: event.clientY, ...position };
   };

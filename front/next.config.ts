@@ -15,7 +15,9 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 // - 구글 폰트(Material Symbols): fonts.googleapis.com(CSS), fonts.gstatic.com(폰트 파일)
 // - 업로드 이미지(S3/CloudFront): 호스트가 배포 환경(PUBLIC_ASSETS_BASE_URL)마다 달라 img-src만 https: 허용
 // - 소셜 로그인은 서버 경유 리다이렉트라 별도 도메인이 필요 없다
-const scriptSrc = ["'self'", "'unsafe-inline'"];
+// - 포스터 OCR(tesseract.js)은 외부 CDN 없이 same-origin 자체 호스팅(public/tesseract)을 쓰고,
+//   WASM 컴파일만 'wasm-unsafe-eval'로 허용한다
+const scriptSrc = ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"];
 if (process.env.NODE_ENV !== 'production') {
   // Next 개발 서버(HMR)가 eval을 쓴다 — 프로덕션에는 넣지 않는다.
   scriptSrc.push("'unsafe-eval'");
