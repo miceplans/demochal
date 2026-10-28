@@ -1297,6 +1297,14 @@ const ApplicantThumbnail = styled.div({
   '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
   [mobile]: { height: 160 },
 });
+const TeamApplicantsSection = styled.section({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+const ApplicantMeta = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const ApplicantHeader = styled(Row)({ justifyContent: 'space-between', marginTop: 8 });
+const ApplicantTable = styled(Table)({ tableLayout: 'fixed' });
 type ApplicantResult = '미정' | '합격' | '불합격';
 const resultFromStatus = (status?: string): ApplicantResult =>
   status === 'accepted' ? '합격' : status === 'rejected' ? '불합격' : '미정';
@@ -1405,26 +1413,31 @@ export function TeamApplicantsPage() {
           <Muted>아직 리더로 있는 팀이 없어요.</Muted>
         ) : (
           teams.map((team) => (
-            <section key={team.id}>
+            <TeamApplicantsSection key={team.id}>
               <ApplicantThumbnail>
                 {(team.challengeThumbnailUrl ?? team.challengePosterUrl) && (
                   <img src={team.challengeThumbnailUrl ?? team.challengePosterUrl ?? ''} alt="" />
                 )}
               </ApplicantThumbnail>
-              <div style={{ marginTop: 24 }}>
+              <ApplicantMeta>
                 <Title>{team.challengeTitle ?? team.title}</Title>
-                <MutedSpaced $mt={10}>{team.businessName ?? '-'}</MutedSpaced>
-              </div>
-              <Row style={{ justifyContent: 'space-between', marginTop: 32 }}>
+                <Muted>{team.businessName ?? '-'}</Muted>
+              </ApplicantMeta>
+              <ApplicantHeader>
                 <Heading>팀 지원현황</Heading>
                 <Button small onClick={() => setSendTargetId(team.id ?? null)}>
                   결과 전송하기
                 </Button>
-              </Row>
+              </ApplicantHeader>
               {(team.members ?? []).length === 0 ? (
-                <MutedSpaced $mt={16}>아직 지원자가 없어요.</MutedSpaced>
+                <Muted>아직 지원자가 없어요.</Muted>
               ) : (
-                <Table>
+                <ApplicantTable>
+                  <colgroup>
+                    <col style={{ width: '34%' }} />
+                    <col style={{ width: '36%' }} />
+                    <col style={{ width: '30%' }} />
+                  </colgroup>
                   <thead>
                     <tr>
                       <th>이름</th>
@@ -1439,7 +1452,7 @@ export function TeamApplicantsPage() {
                         <td>
                           {member.role ? <Tag tone="blue">{member.role}</Tag> : <Muted>-</Muted>}
                         </td>
-                        <td style={{ width: 130 }}>
+                        <td>
                           <Row gap={6} style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
                             <Dropdown
                               aria-label={`${member.name ?? '지원자'} 결과`}
@@ -1464,9 +1477,9 @@ export function TeamApplicantsPage() {
                       </tr>
                     ))}
                   </tbody>
-                </Table>
+                </ApplicantTable>
               )}
-            </section>
+            </TeamApplicantsSection>
           ))
         )}
       </Stack>
