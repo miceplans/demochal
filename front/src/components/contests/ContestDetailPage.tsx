@@ -29,7 +29,7 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
-import { daysUntil, formatDateDot, formatDateTimeDot } from '@/lib/date';
+import { daysUntil, isPastDeadline, formatDateDot, formatDateTimeDot } from '@/lib/date';
 import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
@@ -84,6 +84,7 @@ export function ContestDetailPage({
       title: item.title ?? '',
       category: item.category ?? '',
       days: daysUntil(item.endDate, now),
+      closed: isPastDeadline(item.endDate, now),
       posterUrl: item.posterUrl ?? null,
       thumbnailUrl: item.thumbnailUrl ?? null,
     }));

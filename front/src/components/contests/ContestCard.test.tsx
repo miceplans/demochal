@@ -48,4 +48,16 @@ describe('ContestCard poster link', () => {
     );
     expect(second.container.querySelector('.artwork img')?.getAttribute('src')).toBe('/thumb.webp');
   });
+
+  it('마감된 챌린지에만 마감 안내 문구를 보여준다', () => {
+    const base = { id: 'contest-1', title: '마감 테스트', category: '디자인', days: 0 };
+    const closed = render(
+      <ContestCard contest={{ ...base, closed: true }} href="/contests/contest-1" />,
+    );
+    expect(screen.getByText('마감된 공고입니다.')).toBeTruthy();
+    closed.unmount();
+
+    render(<ContestCard contest={base} href="/contests/contest-1" />);
+    expect(screen.queryByText('마감된 공고입니다.')).toBeNull();
+  });
 });
