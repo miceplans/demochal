@@ -1,10 +1,25 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '@emotion/react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizAdsPage } from './BizAdsPage';
+import { theme } from '@/styles/theme';
+
+type TestAd = {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  paidAmount: number;
+  status: 'active' | 'paused';
+  imageUrl: string | null;
+};
 
 const mocks = vi.hoisted(() => ({
+  ads: [] as TestAd[],
   createAd: vi.fn(),
+  updateAd: vi.fn(),
+  routerPush: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
   fetchMock: vi.fn(),
@@ -12,7 +27,7 @@ const mocks = vi.hoisted(() => ({
   cancelOrder: vi.fn(),
 }));
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.routerPush }) }));
 
 const products = [
   {
@@ -34,12 +49,12 @@ const products = [
 vi.mock('@semochal/api-client', () => ({
   generated: {
     useListMyAds: () => ({
-      data: { status: 200, data: [] },
+      data: { status: 200, data: mocks.ads },
       isPending: false,
       isError: false,
       refetch: vi.fn(),
     }),
-    useUpdateAd: () => ({ mutateAsync: vi.fn() }),
+    useUpdateAd: () => ({ mutateAsync: mocks.updateAd }),
     useCreateAd: () => ({ mutateAsync: mocks.createAd }),
     useRequestPresignedUpload: () => ({
       mutateAsync: vi.fn(async () => ({
@@ -122,9 +137,11 @@ vi.mock('@/components/ads/AdPlacementPreview', () => ({
 function renderPage() {
   const queryClient = new QueryClient();
   return render(
-    <QueryClientProvider client={queryClient}>
-      <BizAdsPage />
-    </QueryClientProvider>,
+    <ThemeProvider theme={theme}>
+      <QueryClientProvider client={queryClient}>
+        <BizAdsPage />
+      </QueryClientProvider>
+    </ThemeProvider>,
   );
 }
 
@@ -162,7 +179,10 @@ const heroBody = {
 
 describe('BizAdsPage 광고 링크 입력', () => {
   beforeEach(() => {
+    mocks.ads = [];
     mocks.createAd.mockReset();
+    mocks.updateAd.mockReset();
+    mocks.routerPush.mockReset();
     mocks.createAd.mockResolvedValue({
       status: 201,
       data: { paidAmount: 100000, order: { id: 'order-1', amount: 100000, name: '봄 이벤트' } },
@@ -297,6 +317,7 @@ describe('BizAdsPage 광고 링크 입력', () => {
 
 describe('BizAdsPage 현재 나의 광고 빈 상태', () => {
   beforeEach(() => {
+    mocks.ads = [];
     mocks.createAd.mockReset();
     mocks.toastSuccess.mockReset();
     mocks.toastError.mockReset();
@@ -315,5 +336,65 @@ describe('BizAdsPage 현재 나의 광고 빈 상태', () => {
     const emptyImage = within(section as HTMLElement).getByAltText('');
     expect((emptyImage as HTMLImageElement).src).toContain('/assets/empty-contents.png');
     expect(screen.getByText('광고가 없어요')).not.toBeNull();
+  });
+});
+
+describe('BizAdsPage 광고 관리 목록 작업 버튼', () => {
+  beforeEach(() => {
+    mocks.ads = [
+      {
+        id: 'ad-active',
+        title: '진행중 광고',
+        startDate: '2026-10-01',
+        endDate: '2026-11-01',
+        paidAmount: 100000,
+        status: 'active',
+        imageUrl: null,
+      },
+      {
+        id: 'ad-paused',
+        title: '중단 광고',
+        startDate: '2026-10-01',
+        endDate: '2026-11-01',
+        paidAmount: 100000,
+        status: 'paused',
+        imageUrl: null,
+      },
+    ];
+    mocks.routerPush.mockReset();
+    mocks.updateAd.mockReset();
+    mocks.updateAd.mockResolvedValue({ status: 200 });
+    mocks.toastSuccess.mockReset();
+  });
+
+  afterEach(() => cleanup());
+
+  it('리포트 버튼은 해당 광고의 기존 리포트 경로로 이동한다', () => {
+    renderPage();
+
+    fireEvent.click(screen.getAllByRole('button', { name: '리포트' })[0]);
+
+    expect(mocks.routerPush).toHaveBeenCalledWith('/reports?adId=ad-active');
+  });
+
+  it('진행중 광고만 중단할 수 있고, 요청 중에는 처리 상태를 표시한다', async () => {
+    let resolvePause: (() => void) | undefined;
+    mocks.updateAd.mockImplementation(
+      () => new Promise<void>((resolve) => (resolvePause = resolve)),
+    );
+    renderPage();
+
+    const pauseButtons = screen.getAllByRole('button', { name: '중단' });
+    expect((pauseButtons[0] as HTMLButtonElement).disabled).toBe(false);
+    expect((pauseButtons[1] as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(pauseButtons[0]);
+    expect((screen.getByRole('button', { name: '처리 중…' }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(mocks.updateAd).toHaveBeenCalledWith({ id: 'ad-active', data: { status: 'paused' } });
+
+    resolvePause?.();
+    await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith('광고를 중단했습니다.'));
   });
 });
