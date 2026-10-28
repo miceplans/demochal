@@ -220,7 +220,9 @@ const Avatar = styled.span({
   alignItems: 'center',
   justifyContent: 'center',
   flexShrink: 0,
+  overflow: 'hidden',
   ...textStyle.caption2,
+  '& img': { width: '100%', height: '100%', objectFit: 'cover' },
 });
 const LogoutIcon = styled.button({
   display: 'inline-flex',
@@ -257,6 +259,14 @@ export function BizSidebar() {
   const router = useRouter();
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const { data: business } = generated.useFindMyBusiness({ query: { retry: false } });
+  // 사이드바 아바타는 기업 로고 → 내 프로필 이미지 → 이름 첫 글자 순으로 표시한다.
+  const logoFileId = business?.status === 200 ? business.data.logoImageFileId : undefined;
+  const { data: logoFile } = generated.useGetFile(logoFileId ?? '', {
+    query: { enabled: !!logoFileId },
+  });
+  const logoUrl = logoFileId && logoFile?.status === 200 ? (logoFile.data.url ?? null) : null;
+  const profileImageUrl = auth?.status === 200 ? (auth.data.profileImageUrl ?? null) : null;
+  const avatarImage = logoUrl ?? profileImageUrl;
   const accountName = (auth?.status === 200 ? auth.data.name : undefined) ?? '불러오는 중';
   const businessName = (business?.status === 200 ? business.data.name : undefined) ?? '불러오는 중';
   const verification = presentBizVerificationStatus(
@@ -289,7 +299,14 @@ export function BizSidebar() {
       </SidebarTop>
       <ProfileRow>
         <AdminIdentity href={`${base}/profile`} aria-label="내 프로필">
-          <Avatar aria-hidden>{accountName[0]}</Avatar>
+          <Avatar aria-hidden>
+            {avatarImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarImage} alt="" />
+            ) : (
+              accountName[0]
+            )}
+          </Avatar>
           <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <strong style={{ ...textStyle.caption2, color: c.gray900 }}>{accountName}</strong>
             <span style={{ fontSize: 11, fontWeight: 500, color: c.gray500 }}>{businessName}</span>
