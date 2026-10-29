@@ -11,6 +11,7 @@ import { desktopContests, teams } from '@/data/user-design';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
+import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/components/ads/AdPlacementPreview';
 import { MovingAds } from '@/components/ads/MovingAds';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { useAdminHref } from './AdminShell';
@@ -22,13 +23,31 @@ const HERO_IMAGE = '/assets/figma-ads/home-hero.png';
 const GALLERY_IMAGE = '/assets/figma-ads/home-gallery.png';
 const AD_COUNT = 5;
 const AD_INTERVAL = 5000;
-const PC_HERO_CARD = 1043;
+
+// 목업 광고 영역의 비율은 실제 홈 노출 비율과 같아야 한다 — 업로드 크롭 사양인
+// HERO_CROP_SPEC/GALLERY_CROP_SPEC(#754 계약)에서 치수를 유도해 어긋남을 막는다(#759).
+export const PRICING_MOCK_LAYOUT = {
+  pc: {
+    heroCard: { width: 1043, height: Math.round(1043 / HERO_CROP_SPEC.pc.aspectRatio) },
+    galleryItem: { width: 298, height: Math.round(298 / GALLERY_CROP_SPEC.pc.aspectRatio) },
+  },
+  mobile: {
+    heroCard: { width: 358, height: Math.round(358 / HERO_CROP_SPEC.mobile.aspectRatio) },
+    galleryItem: { width: 122, height: Math.round(122 / GALLERY_CROP_SPEC.mobile.aspectRatio) },
+  },
+} as const;
+// 상세 다이얼로그 썸네일은 다이얼로그 최대 폭(606)에서 좌우 패딩(30 × 2)을 뺀 폭의 히어로 비율을 쓴다.
+export const PRICING_DIALOG_THUMB = {
+  width: 546,
+  height: Math.round(546 / HERO_CROP_SPEC.pc.aspectRatio),
+} as const;
+const PC_HERO_CARD = PRICING_MOCK_LAYOUT.pc.heroCard.width;
 const PC_HERO_GAP = 60;
 const PC_HERO_STEP = PC_HERO_CARD + PC_HERO_GAP;
-const PC_GALLERY_ITEM = 298;
+const PC_GALLERY_ITEM = PRICING_MOCK_LAYOUT.pc.galleryItem.width;
 const PC_GALLERY_GAP = 32;
 const PC_GALLERY_STEP = PC_GALLERY_ITEM + PC_GALLERY_GAP;
-const MOBILE_GALLERY_ITEM = 122;
+const MOBILE_GALLERY_ITEM = PRICING_MOCK_LAYOUT.mobile.galleryItem.width;
 const MOBILE_GALLERY_GAP = 12;
 const MOBILE_GALLERY_STEP = MOBILE_GALLERY_ITEM + MOBILE_GALLERY_GAP;
 
@@ -129,7 +148,9 @@ const HeroCard = styled('button', { shouldForwardProp: (prop) => prop !== 'compa
   position: 'relative',
   display: 'flex',
   width: '100%',
-  height: compact ? 170 : 252,
+  height: compact
+    ? PRICING_MOCK_LAYOUT.mobile.heroCard.height
+    : PRICING_MOCK_LAYOUT.pc.heroCard.height,
   padding: compact ? 16 : 20,
   flexDirection: 'column',
   justifyContent: 'flex-end',
@@ -216,13 +237,16 @@ const MobileRail = styled(Rail)({ '& > *': { flex: '0 0 240px' } });
 const GalleryViewport = styled.div({ overflow: 'hidden' });
 const GalleryItem = styled.div({
   position: 'relative',
-  height: 206,
+  height: PRICING_MOCK_LAYOUT.pc.galleryItem.height,
   borderRadius: 8,
   backgroundImage: `url(${GALLERY_IMAGE})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
 });
-const MobileGalleryItem = styled(GalleryItem)({ height: 74, borderRadius: 3 });
+const MobileGalleryItem = styled(GalleryItem)({
+  height: PRICING_MOCK_LAYOUT.mobile.galleryItem.height,
+  borderRadius: 3,
+});
 const GalleryNumber = styled.span({
   position: 'absolute',
   top: 12,
@@ -262,7 +286,7 @@ const Dialog = styled.div({
 });
 const DialogThumb = styled.div({
   width: '100%',
-  height: 133,
+  height: PRICING_DIALOG_THUMB.height,
   borderRadius: 6,
   backgroundImage: `url(${HERO_IMAGE})`,
   backgroundSize: 'cover',
