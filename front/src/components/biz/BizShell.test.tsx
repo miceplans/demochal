@@ -115,8 +115,10 @@ describe('BizSidebar 프로필 아바타', () => {
 });
 
 describe('isMenuActive 메뉴 별칭', () => {
-  it('지원서 관리(/applications) 화면에서는 공고 관리 메뉴가 활성 상태다', () => {
-    expect(isMenuActive('/applications', '/postings')).toBe(true);
+  it('신청자 응답(/applications) 화면은 자체 메뉴가 활성이고 공고 관리는 아니다', () => {
+    expect(isMenuActive('/applications', '/applications')).toBe(true);
+    expect(isMenuActive('/applications/ch-1', '/applications')).toBe(true);
+    expect(isMenuActive('/applications', '/postings')).toBe(false);
   });
 
   it('공고 등록·상세 화면에서도 공고 관리 메뉴가 활성 상태다', () => {

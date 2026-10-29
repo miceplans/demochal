@@ -234,14 +234,14 @@ const LogoutIcon = styled.button({
 export const menu: [string, string][] = [
   ['/dashboard', '대시보드'],
   ['/postings', '공고 관리'],
+  ['/applications', '신청자 응답'],
   ['/ads', '광고 관리'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
 ];
 
-// 메뉴에 없는 하위 화면이 어느 메뉴 아래에 속하는지 (Figma: 지원자 관리·공고 등록은 공고 관리, 리포트는 광고 관리)
+// 메뉴에 없는 하위 화면이 어느 메뉴 아래에 속하는지 (Figma: 리포트는 광고 관리)
 const menuAliases: Record<string, string[]> = {
-  '/postings': ['/applications'],
   '/ads': ['/reports'],
 };
 
