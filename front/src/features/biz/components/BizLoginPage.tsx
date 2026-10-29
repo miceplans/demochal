@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
+import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -16,6 +17,7 @@ const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 
 export function BizLoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const hrefOf = useBizHref();
   const toast = useToast();
   const [email, setEmail] = useState('');
@@ -59,6 +61,7 @@ export function BizLoginPage() {
         await generated.logout();
         throw new Error('business login failed');
       }
+      await queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
       router.replace(hrefOf('/dashboard'));
     } catch {
       toast.error('기업 계정의 이메일과 비밀번호를 확인해주세요.');
