@@ -10,20 +10,11 @@ interface BizPaymentCardProps {
   amount: string;
   /** 이미 마스킹된 카드번호(토스 응답 그대로 — 원본 번호는 서버도 받지 않는다). */
   maskedNumber: string;
+  /** 카드사/상품명(토스 카드 응답) — 없으면 카드 메타 행을 숨긴다. */
   cardName?: string | null;
-  /** 대시보드 목업 전용 표시 필드(실 API 미제공) — 없으면 해당 행을 숨긴다. */
-  holder?: string;
-  expiry?: string;
 }
 
-export function BizPaymentCard({
-  label,
-  amount,
-  maskedNumber,
-  cardName,
-  holder,
-  expiry,
-}: BizPaymentCardProps) {
+export function BizPaymentCard({ label, amount, maskedNumber, cardName }: BizPaymentCardProps) {
   return (
     <CardVisual>
       <Balance>
@@ -31,26 +22,12 @@ export function BizPaymentCard({
         <BalanceAmount>{amount}</BalanceAmount>
       </Balance>
       <Chip src="/assets/card-chip.png" alt="" />
-      {cardName || holder || expiry ? (
+      {cardName ? (
         <CardMeta>
-          {cardName ? (
-            <MetaItem>
-              <MetaLabel>카드</MetaLabel>
-              <MetaValue>{cardName}</MetaValue>
-            </MetaItem>
-          ) : null}
-          {holder ? (
-            <MetaItem>
-              <MetaLabel>카드 명의</MetaLabel>
-              <MetaValue>{holder}</MetaValue>
-            </MetaItem>
-          ) : null}
-          {expiry ? (
-            <MetaItem>
-              <MetaLabel>유효 기간</MetaLabel>
-              <MetaValue>{expiry}</MetaValue>
-            </MetaItem>
-          ) : null}
+          <MetaItem>
+            <MetaLabel>카드</MetaLabel>
+            <MetaValue>{cardName}</MetaValue>
+          </MetaItem>
         </CardMeta>
       ) : null}
       <CardBottom>
