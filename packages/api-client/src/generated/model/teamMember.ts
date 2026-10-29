@@ -16,6 +16,7 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ApplicationFormAnswer } from './applicationFormAnswer';
 import type { TeamMemberStatus } from './teamMemberStatus';
 
 export interface TeamMember {
@@ -33,6 +34,13 @@ export interface TeamMember {
      * @nullable
      */
   chatLink?: string | null;
+  /**
+     * 멤버 프로필 이미지 공개 URL (없으면 null — 클라이언트는 기본 이미지)
+     * @nullable
+     */
+  profileImageUrl?: string | null;
+  /** 지원 시 작성한 신청서 답변 스냅샷(리더·관리자 응답에만 포함, 일반 열람에는 미포함) */
+  formAnswers?: ApplicationFormAnswer[];
   createdAt?: string;
   /** listMyTeamApplications 응답 전용 */
   teamTitle?: string;

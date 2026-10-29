@@ -16,8 +16,14 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ApplicationAnswerInput } from './applicationAnswerInput';
 
 export interface JoinTeamRequest {
   /** 지원 역할 */
   role?: string;
+  /**
+     * 팀이 속한 챌린지의 신청서가 있을 때 지원자가 작성한 질문 답변(필수 질문 누락·존재하지 않는 질문은 400).
+     * @maxItems 100
+     */
+  formAnswers?: ApplicationAnswerInput[];
 }

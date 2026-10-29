@@ -23,6 +23,14 @@ export type ApplicationFormQuestion = {
   required: boolean;
 };
 export type ChallengeAttachment = { fileId: string; name: string; size: number };
+// 팀 지원 시 팀이 속한 챌린지의 신청서 질문에 대한 답변 스냅샷(questionId·제목·타입 포함).
+// applications.form_answers와 같은 형태로, 질문이 나중에 바뀌어도 지원 시점 내용이 유지된다.
+export type TeamFormAnswer = {
+  questionId: string;
+  title: string;
+  type: ApplicationFormQuestion['type'];
+  value: string | string[];
+};
 export const users = pgTable(
   'users',
   {
@@ -278,6 +286,8 @@ export const teamMembers = pgTable('team_members', {
   // 사람찾기 스카우트 제안(팀장→사용자)일 때만 채워진다. scoutedAt이 팀당 3회 제한의 집계 기준이다.
   scoutedAt: timestamp('scouted_at'),
   scoutMessage: varchar('scout_message', { length: 200 }),
+  // 지원자가 본인 지원 시 작성한 신청서 답변(챌린지 신청서 질문 기준). 지원·초대 구분 없이 pending 행에만 쓴다.
+  formAnswers: jsonb('form_answers').$type<TeamFormAnswer[]>().notNull().default([]),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 export const applications = pgTable('applications', {

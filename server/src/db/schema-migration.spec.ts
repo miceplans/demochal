@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(42);
+    expect(journal.entries).toHaveLength(43);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -627,5 +627,17 @@ describe('0041_challenge_thumbnail_file migration', () => {
     expect(sql).toContain('REFERENCES "files"("id") ON DELETE SET NULL');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[41]!.when).toBeGreaterThan(journal.entries[40]!.when);
+  });
+});
+
+describe('0042_team_member_form_answers migration', () => {
+  it('adds the team application answer snapshot column without destructive DDL', () => {
+    const tag = journal.entries[42]?.tag;
+    expect(tag).toBe('0042_team_member_form_answers');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "form_answers" jsonb');
+    expect(sql).toContain("NOT NULL DEFAULT '[]'::jsonb");
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[42]!.when).toBeGreaterThan(journal.entries[41]!.when);
   });
 });
