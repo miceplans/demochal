@@ -345,11 +345,7 @@ export function TeamDetailPage() {
                 {pickedMember.userId === team.leaderUserId ? '팀장' : '팀원'}
               </Muted>
               {pickedMember.userId && (
-                <Link href={`/profile?id=${pickedMember.userId}`}>
-                  <Button as="span" tone="plain">
-                    프로필 보기
-                  </Button>
-                </Link>
+                <ProfileLink href={`/profile?id=${pickedMember.userId}`}>프로필 보기</ProfileLink>
               )}
             </Stack>
           )}
@@ -515,6 +511,12 @@ const ProfileAvatar = styled.img({
   objectFit: 'cover',
 });
 const ProfileName = styled.b({ ...textStyle.h1, color: c.gray900 });
+// 배경 없는 텍스트 링크 — 모달 안에서는 버튼 형태보다 링크가 자연스럽다.
+const ProfileLink = styled(Link)({
+  ...textStyle.subtitle,
+  color: c.primary,
+  '&:hover': { textDecoration: 'underline' },
+});
 const Sidebar = styled.aside({
   display: 'flex',
   flexDirection: 'column',
