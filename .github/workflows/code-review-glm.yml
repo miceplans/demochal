@@ -8,6 +8,10 @@ on:
       - '**.md'
       - 'docs/**'
       - '.github/**/*.md'
+      - '**/pnpm-lock.yaml'
+      - '**/package-lock.json'
+      - '**/yarn.lock'
+      - 'packages/api-client/src/generated/**'
 
 jobs:
   # Z.AI 계정 잔액이 없으면 review job을 실행하지 않고 CI에서 Skipped로 표시한다.
@@ -46,8 +50,43 @@ jobs:
             echo 'skip_review=false' >> "$GITHUB_OUTPUT"
           fi
 
+  classify-review:
+    name: Classify GLM review depth
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      review_model: ${{ steps.classify.outputs.review_model }}
+      review_tier: ${{ steps.classify.outputs.review_tier }}
+    steps:
+      - name: Select review model from PR risk and size
+        id: classify
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          CHANGED_FILES: ${{ github.event.pull_request.changed_files }}
+          CHANGED_LINES: ${{ github.event.pull_request.additions + github.event.pull_request.deletions }}
+        run: |
+          files="$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files" --jq '.[].filename')"
+          deep_review=false
+
+          # Large diffs and sensitive paths need the stronger model. Keep this list conservative:
+          # it covers auth/authorization, payment, private files/OCR, runtime config, and deployment.
+          if (( CHANGED_FILES > 15 || CHANGED_LINES > 600 )) || \
+            grep -Eq '^(server/src/modules/(auth|files|payments)/|server/src/config/|front/src/(app|components|features)/(auth|payments)/|infra/|\.github/workflows/|server/Dockerfile|server/docs/openapi\.yaml)' <<< "$files"; then
+            deep_review=true
+          fi
+
+          if [ "$deep_review" = true ]; then
+            echo 'review_model=glm-4.7' >> "$GITHUB_OUTPUT"
+            echo 'review_tier=deep' >> "$GITHUB_OUTPUT"
+          else
+            echo 'review_model=glm-4.5-air' >> "$GITHUB_OUTPUT"
+            echo 'review_tier=standard' >> "$GITHUB_OUTPUT"
+          fi
+
   review:
-    needs: check-quota
+    needs: [check-quota, classify-review]
     if: needs.check-quota.outputs.skip_review != 'true'
     runs-on: ubuntu-latest
     environment: ZAI_API_KEY
@@ -74,16 +113,20 @@ jobs:
           # 중국 본토에서 발급받은 키라면 https://open.bigmodel.cn/api/anthropic 사용
           ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic'
           ANTHROPIC_AUTH_TOKEN: ${{ secrets.ZAI_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: 'glm-4.7'
-          ANTHROPIC_DEFAULT_OPUS_MODEL: 'glm-4.7'
+          ANTHROPIC_DEFAULT_SONNET_MODEL: ${{ needs.classify-review.outputs.review_model }}
+          ANTHROPIC_DEFAULT_OPUS_MODEL: ${{ needs.classify-review.outputs.review_model }}
           ANTHROPIC_DEFAULT_HAIKU_MODEL: 'glm-4.5-air'
           API_TIMEOUT_MS: '3000000'
         with:
           # 이 입력값 자체는 GLM 사용 시 무시되지만, 액션이 값 존재를 요구하므로 채워둠
           anthropic_api_key: ${{ secrets.ZAI_API_KEY }}
           prompt: |
-            /repo 루트의 CLAUDE.md에 정리된 세모챌 프로젝트 컨벤션과 아키텍처 규칙을 기준으로
             이 PR(${{ github.repository }}/pull/${{ github.event.pull_request.number }})을 리뷰해줘.
+            현재 리뷰 등급은 `${{ needs.classify-review.outputs.review_tier }}`이며,
+            먼저 PR의 변경 파일 목록과 diff만 검토해줘. 변경과 직접 연결된 코드 또는
+            CLAUDE.md의 관련 규칙이 필요할 때만 최소 범위로 추가 파일을 열고, 전체 레포를
+            탐색하지 마. /repo 루트의 CLAUDE.md에서 변경 경로에 관련된 프로젝트 컨벤션과
+            아키텍처 규칙을 적용해줘.
 
             우선순위:
             1. CLAUDE.md에 명시된 아키텍처 규칙 위반 (Outbox 패턴, Zustand/TanStack Query 경계,
