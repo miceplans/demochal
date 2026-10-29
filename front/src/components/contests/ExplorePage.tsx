@@ -205,55 +205,59 @@ export function ExplorePage({
                         height={20}
                       />
                     </PanelTitle>
-                    <PanelRow>
-                      <>
-                        <FilterGroup fit title="분야">
-                          <ChipFilter
-                            ariaLabel="분야"
-                            maxWidth={190}
-                            options={categories}
-                            selected={selectedCategories}
-                            onToggle={(value) =>
-                              setSelectedCategories((list) => toggleValue(list, value))
-                            }
-                          />
-                        </FilterGroup>
-                        <FilterGroup fit title="대상">
-                          <CheckFilter
-                            options={challengeTargets}
-                            selected={targets}
-                            onToggle={(value) => setTargets((list) => toggleValue(list, value))}
-                            rows={5}
-                            columnGap={51}
-                          />
-                        </FilterGroup>
-                        <FilterGroup fit title="주최기관">
-                          <CheckFilter
-                            options={organizerTypes}
-                            selected={organizers}
-                            onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
-                            rows={5}
-                            columnGap={7}
-                          />
-                        </FilterGroup>
-                        <FilterGroup fit title="상금">
-                          <PrizeLabel>
-                            {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
-                          </PrizeLabel>
-                          <PrizeSlider>
-                            <RangeSlider
-                              min={PRIZE_MIN}
-                              max={PRIZE_MAX}
-                              step={500}
-                              value={prize}
-                              onChange={setPrize}
-                              minAriaLabel="상금 최솟값"
-                              maxAriaLabel="상금 최댓값"
+                    <PanelCard>
+                      <PanelRow>
+                        <>
+                          <FilterGroup fit title="분야">
+                            <ChipFilter
+                              ariaLabel="분야"
+                              maxWidth={240}
+                              options={categories}
+                              selected={selectedCategories}
+                              onToggle={(value) =>
+                                setSelectedCategories((list) => toggleValue(list, value))
+                              }
                             />
-                          </PrizeSlider>
-                        </FilterGroup>
-                      </>
-                    </PanelRow>
+                          </FilterGroup>
+                          <FilterGroup fit title="대상">
+                            <CheckFilter
+                              options={challengeTargets}
+                              selected={targets}
+                              onToggle={(value) => setTargets((list) => toggleValue(list, value))}
+                              rows={5}
+                              columnGap={32}
+                            />
+                          </FilterGroup>
+                          <FilterGroup fit title="주최기관">
+                            <CheckFilter
+                              options={organizerTypes}
+                              selected={organizers}
+                              onToggle={(value) =>
+                                setOrganizers((list) => toggleValue(list, value))
+                              }
+                              rows={5}
+                              columnGap={24}
+                            />
+                          </FilterGroup>
+                          <FilterGroup fit title="상금">
+                            <PrizeLabel>
+                              {prize[0].toLocaleString()}~{prize[1].toLocaleString()}만원
+                            </PrizeLabel>
+                            <PrizeSlider>
+                              <RangeSlider
+                                min={PRIZE_MIN}
+                                max={PRIZE_MAX}
+                                step={500}
+                                value={prize}
+                                onChange={setPrize}
+                                minAriaLabel="상금 최솟값"
+                                maxAriaLabel="상금 최댓값"
+                              />
+                            </PrizeSlider>
+                          </FilterGroup>
+                        </>
+                      </PanelRow>
+                    </PanelCard>
                   </PanelInner>
                 </FilterPanel>
               </Collapsible>
@@ -614,6 +618,13 @@ const FilterPanel = styled.section({
   borderBottom: `0.5px solid ${c.gray100}`,
   padding: `24px ${CONTENT_INLINE}`,
 });
+// 그룹들을 흰 카드 하나로 묶고, 그룹 사이는 세로 구분선으로 나눈다.
+const PanelCard = styled.div({
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 16,
+  padding: '24px 28px',
+});
 const PanelInner = styled.div({
   display: 'flex',
   flexDirection: 'column',
@@ -635,7 +646,12 @@ const PanelRow = styled.div({
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'flex-start',
-  gap: 40,
+  gap: 32,
+  '& > * + *': {
+    paddingLeft: 32,
+    borderLeft: `0.5px solid ${c.gray200}`,
+    alignSelf: 'stretch',
+  },
 });
 const PrizeSlider = styled.div({ width: 220 });
 const SortEnd = styled.div({ display: 'flex', alignItems: 'center', gap: 16 });

@@ -106,14 +106,14 @@ export const toggleValue = (list: string[], value: string) =>
 const Group = styled.div<{ $fit: boolean }>(({ $fit }) => ({
   display: 'flex',
   flexDirection: 'column',
-  gap: 10,
+  gap: 14,
   width: $fit ? 'auto' : '100%',
 }));
 const GroupTitle = styled.h3({ ...textStyle.subtitle, color: c.gray900, margin: 0 });
-const Chips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: '4px 6px' });
+const Chips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: '8px 6px' });
 const ChipButton = styled.button<{ $on: boolean }>(({ $on }) => ({
   ...textStyle[$on ? 'overline' : 'metaText'],
-  padding: '5px 10px',
+  padding: '6px 12px',
   borderRadius: 20,
   border: $on ? '0.5px solid transparent' : `0.5px solid ${c.gray300}`,
   background: $on ? c.primary : c.white,
@@ -128,7 +128,7 @@ const CheckGrid = styled.div<{ $rows: number; $columnGap: number }>(({ $rows, $c
   gridAutoFlow: 'column',
   gridTemplateRows: `repeat(${$rows}, auto)`,
   gridAutoColumns: 'max-content',
-  gap: `10px ${$columnGap}px`,
+  gap: `12px ${$columnGap}px`,
 }));
 const CheckRow = styled.label({
   ...textStyle.caption,
