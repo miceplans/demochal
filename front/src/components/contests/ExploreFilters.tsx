@@ -1,4 +1,5 @@
 'use client';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -100,6 +101,49 @@ export function CheckFilter({
   );
 }
 
+/** 칩 모양 트리거 + 아래로 열리는 팝오버. 선택이 있으면 칩이 강조되고 개수를 보여준다. */
+export function FilterPopover({
+  label,
+  count,
+  children,
+}: {
+  label: string;
+  count: number;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+  return (
+    <PopoverWrap ref={ref}>
+      <TriggerButton
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="true"
+        $active={count > 0 || open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        {label}
+        {count > 0 && <Count>{count}</Count>}
+        <Caret aria-hidden $open={open} />
+      </TriggerButton>
+      {open && <PopoverPanel>{children}</PopoverPanel>}
+    </PopoverWrap>
+  );
+}
+
 export const toggleValue = (list: string[], value: string) =>
   list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
@@ -154,4 +198,52 @@ const CheckInput = styled.input({
     borderColor: c.primary,
   },
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 2 },
+});
+const PopoverWrap = styled.div({ position: 'relative' });
+const TriggerButton = styled.button<{ $active: boolean }>(({ $active }) => ({
+  ...textStyle.caption,
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 6,
+  height: 36,
+  padding: '0 14px',
+  borderRadius: 20,
+  border: `0.5px solid ${$active ? c.primary : c.gray300}`,
+  background: $active ? c.lightBlue : c.white,
+  color: $active ? c.primary : c.gray700,
+  cursor: 'pointer',
+  transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
+  '&:hover': { background: $active ? c.lightBlue : c.gray50 },
+}));
+const Count = styled.span({
+  ...textStyle.overline,
+  minWidth: 18,
+  height: 18,
+  padding: '0 5px',
+  boxSizing: 'border-box',
+  borderRadius: 9,
+  background: c.primary,
+  color: c.white,
+  textAlign: 'center',
+  lineHeight: '18px',
+});
+const Caret = styled.span<{ $open: boolean }>(({ $open }) => ({
+  width: 6,
+  height: 6,
+  borderRight: '1.5px solid currentColor',
+  borderBottom: '1.5px solid currentColor',
+  transform: $open ? 'translateY(1px) rotate(225deg)' : 'translateY(-2px) rotate(45deg)',
+  transition: 'transform 0.15s ease',
+}));
+const PopoverPanel = styled.div({
+  position: 'absolute',
+  top: 'calc(100% + 8px)',
+  left: 0,
+  zIndex: 20,
+  minWidth: 200,
+  padding: 16,
+  borderRadius: 12,
+  border: `0.5px solid ${c.gray200}`,
+  background: c.white,
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12)',
 });
