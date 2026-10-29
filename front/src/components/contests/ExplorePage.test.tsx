@@ -85,6 +85,12 @@ vi.mock('./ExploreFilters', () => ({
       ))}
     </div>
   ),
+  FilterGroup: ({ title, children }: { title: string; children: ReactNode }) => (
+    <section>
+      <h3>{title}</h3>
+      {children}
+    </section>
+  ),
   toggleValue: (values: string[], value: string) => [...values, value],
 }));
 vi.mock('./ContestCard', () => ({

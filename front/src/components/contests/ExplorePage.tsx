@@ -4,7 +4,7 @@ import Link from 'next/link';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
 import { UserShell } from '@/components/common/UserShell';
-import { DesktopOnly, EmptyState, MobileOnly, Row } from '@/components/common/Primitives';
+import { DesktopOnly, EmptyState, MobileOnly, Row, Heading } from '@/components/common/Primitives';
 import { ContestCard, ContestGrid } from './ContestCard';
 import { contestHref } from './contest-links';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
@@ -24,7 +24,14 @@ import { useUserStore } from '@/stores/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ChallengeSearch } from './ChallengeSearch';
 import { RangeSlider } from '@/components/ui/RangeSlider';
-import { Checkbox, CheckFilter, ChipFilter, FilterPopover, toggleValue } from './ExploreFilters';
+import {
+  Checkbox,
+  CheckFilter,
+  ChipFilter,
+  FilterGroup,
+  FilterPopover,
+  toggleValue,
+} from './ExploreFilters';
 import { daysUntil, isPastDeadline } from '@/lib/date';
 
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
@@ -143,46 +150,36 @@ export function ExplorePage({
   };
   return (
     <UserShell>
-      <Layout>
-        <div ref={dockSentinel} aria-hidden style={{ height: 1, marginBottom: -1 }} />
+      <Layout $team={teamMode}>
         {teamMode ? (
-          <FilterDock $floating={floating}>
-            <FilterPopover label="챌린지" count={challengeId ? 1 : 0}>
-              <ChallengeSearch value={challengeId} onChange={setChallengeId} />
-            </FilterPopover>
-            <FilterPopover label="필요 역할" count={teamRoles.length}>
-              <ChipFilter
-                ariaLabel="필요 역할"
-                maxWidth={300}
-                options={roles}
-                selected={teamRoles}
-                onToggle={(value) => setTeamRoles((list) => toggleValue(list, value))}
-              />
-            </FilterPopover>
-            <FilterPopover label="지역" count={regionLabels.length}>
-              <CheckFilter
-                options={regionGroups.map((group) => group.label)}
-                selected={regionLabels}
-                onToggle={(value) => setRegionLabels((list) => toggleValue(list, value))}
-                rows={Math.ceil(regionGroups.length / 2)}
-                columnGap={32}
-              />
-            </FilterPopover>
-            {(challengeId || teamRoles.length > 0 || regionLabels.length > 0) && (
-              <ResetButton
-                type="button"
-                onClick={() => {
-                  setChallengeId('');
-                  setTeamRoles([]);
-                  setRegionLabels([]);
-                }}
-              >
-                초기화
-              </ResetButton>
-            )}
-          </FilterDock>
+          <Sidebar>
+            <Heading>필터</Heading>
+            <>
+              <FilterGroup title="챌린지">
+                <ChallengeSearch value={challengeId} onChange={setChallengeId} />
+              </FilterGroup>
+              <FilterGroup title="필요 역할">
+                <ChipFilter
+                  ariaLabel="필요 역할"
+                  options={roles}
+                  selected={teamRoles}
+                  onToggle={(value) => setTeamRoles((list) => toggleValue(list, value))}
+                />
+              </FilterGroup>
+              <FilterGroup title="지역">
+                <CheckFilter
+                  options={regionGroups.map((group) => group.label)}
+                  selected={regionLabels}
+                  onToggle={(value) => setRegionLabels((list) => toggleValue(list, value))}
+                  rows={4}
+                  columnGap={40}
+                />
+              </FilterGroup>
+            </>
+          </Sidebar>
         ) : (
           <>
+            <div ref={dockSentinel} aria-hidden style={{ height: 1, marginBottom: -1 }} />
             <FilterDock $floating={floating}>
               <FilterPopover label="분야" count={selectedCategories.length}>
                 <ChipFilter
@@ -471,7 +468,11 @@ function ContestSkeletonGrid() {
   );
 }
 
-const Layout = styled.div({ display: 'block' });
+const Layout = styled.div<{ $team: boolean }>(({ $team }) => ({
+  display: $team ? 'grid' : 'block',
+  gridTemplateColumns: '260px minmax(0, 1fr)',
+  [mobile]: { display: 'block' },
+}));
 // 필터 칩 바는 스크롤해도 화면 상단에 붙어 있고, 펼침은 칩 아래 팝오버로 처리해 목록을 밀어내지 않는다.
 const FilterDock = styled.div<{ $floating: boolean }>(({ $floating }) => ({
   position: 'sticky',
@@ -593,6 +594,16 @@ const PageButton = styled.button({
   '&:disabled': { color: c.gray300, cursor: 'default' },
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 1 },
 });
+const Sidebar = styled.aside({
+  padding: '24px 20px',
+  background: c.gray50,
+  borderRight: `0.5px solid ${c.gray100}`,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 40,
+  '& h2': { ...textStyle.h1, lineHeight: 'normal' },
+  [mobile]: { display: 'none' },
+});
 const PrizeLabel = styled.p({ ...textStyle.caption, color: c.gray700, margin: 0 });
 const TopBar = styled.div({
   display: 'flex',
@@ -616,7 +627,7 @@ const CreateLink = styled(Link)({
 // Figma RightContent 패딩: 팀 탐색 24/32, 공모전 접힘 20(상단)·24(하단), 펼침 32.
 const Results = styled.div<{ $team?: boolean }>(({ $team }) => ({
   boxSizing: 'border-box',
-  padding: `8px ${CONTENT_INLINE} ${$team ? 100 : 24}px`,
+  padding: $team ? '24px 32px 100px' : `8px ${CONTENT_INLINE} 24px`,
   minWidth: 0,
   minHeight: 900,
   [mobile]: { padding: '24px 16px', minHeight: 0 },
