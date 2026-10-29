@@ -439,6 +439,47 @@ describe('TeamsService', () => {
         members: expect.arrayContaining([expect.objectContaining({ status: 'pending' })]),
       });
     });
+
+    it('serves formAnswers only to the leader and admin', async () => {
+      // 지원서 답변은 개인 데이터 — pending 지원자의 답변이 들어 있는 로스터로 가시성을 검증한다.
+      const answer = {
+        questionId: 'q1',
+        title: '포트폴리오',
+        type: 'short',
+        value: 'https://a.dev',
+      };
+      const rosterWithAnswers = roster.map((member) =>
+        member.id === 'member-3' ? { ...member, formAnswers: [answer] } : member,
+      );
+
+      // 익명·외부인 응답에는 pending 명단이 빠지고, 노출된 멤버에도 formAnswers 키가 없다.
+      for (const viewer of [undefined, stranger] as const) {
+        const service = createFindByIdService('public', rosterWithAnswers);
+        const result = await service.findById('team-1', viewer);
+        expect(result.members).toHaveLength(2);
+        for (const member of result.members) expect(member).not.toHaveProperty('formAnswers');
+      }
+
+      // 팀원(비리더)은 pending 명단을 보지만 지원서 답변은 볼 수 없다.
+      const memberService = createFindByIdService('public', rosterWithAnswers);
+      const memberView = await memberService.findById('team-1', acceptedMember);
+      const applicantRow = memberView.members.find(
+        (member: { id?: string }) => member.id === 'member-3',
+      );
+      expect(applicantRow).toBeDefined();
+      expect(applicantRow).not.toHaveProperty('formAnswers');
+
+      // 리더·관리자 응답에는 저장된 답변 스냅샷이 포함된다.
+      for (const viewer of [leader, admin] as const) {
+        const service = createFindByIdService('public', rosterWithAnswers);
+        const result = await service.findById('team-1', viewer);
+        expect(result.members).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: 'member-3', formAnswers: [answer] }),
+          ]),
+        );
+      }
+    });
   });
 
   it('join throws 404 for a missing team', async () => {
