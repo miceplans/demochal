@@ -158,6 +158,36 @@ describe('RecruitmentPage', () => {
     });
   });
 
+  it('팀명을 입력하면 게시 페이로드에 title이 포함된다', () => {
+    useUserStore.setState({
+      recruitment: {
+        ...initialRecruitment,
+        title: '세모 팀',
+        challenge: 'challenge-1',
+        introduction: '팀 소개',
+        slots: [{ id: 1, role: '백엔드', count: 2 }],
+      },
+    });
+    render(<RecruitmentPage />);
+    fireEvent.submit(screen.getByText('게시하기').closest('form') as HTMLFormElement);
+    expect(h.mutate).toHaveBeenCalledWith({
+      data: {
+        challengeId: 'challenge-1',
+        title: '세모 팀',
+        introduction: '팀 소개',
+        openRoles: [{ role: '백엔드', count: 2 }],
+        myRole: '프론트엔드',
+        preferred: undefined,
+        etc: undefined,
+      },
+    });
+  });
+
+  it('팀명 입력란이 표시된다', () => {
+    render(<RecruitmentPage />);
+    expect(screen.getByLabelText('팀명')).not.toBeNull();
+  });
+
   it('챌린지를 고르지 않으면 게시하지 않고 에러를 보여준다', () => {
     useUserStore.setState({
       recruitment: {

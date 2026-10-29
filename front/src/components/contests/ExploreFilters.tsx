@@ -4,25 +4,6 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
-/** Figma 탐색 필터 사이드바(FilterSidebar) 구성 요소 — 그룹 제목 + 칩/체크박스. */
-export function FilterGroup({
-  title,
-  children,
-  fit = false,
-}: {
-  title: string;
-  children: React.ReactNode;
-  /** true면 내용 폭만큼만 차지한다(가로 패널용). */
-  fit?: boolean;
-}) {
-  return (
-    <Group $fit={fit}>
-      <GroupTitle>{title}</GroupTitle>
-      {children}
-    </Group>
-  );
-}
-
 export function ChipFilter({
   options,
   selected,
@@ -147,13 +128,6 @@ export function FilterPopover({
 export const toggleValue = (list: string[], value: string) =>
   list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
-const Group = styled.div<{ $fit: boolean }>(({ $fit }) => ({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 14,
-  width: $fit ? 'auto' : '100%',
-}));
-const GroupTitle = styled.h3({ ...textStyle.subtitle, color: c.gray900, margin: 0 });
 const Chips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: '8px 6px' });
 const ChipButton = styled.button<{ $on: boolean }>(({ $on }) => ({
   ...textStyle[$on ? 'overline' : 'metaText'],

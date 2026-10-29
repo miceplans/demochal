@@ -66,6 +66,8 @@ const CUSTOM_ROLE = '직접 입력';
 const PRESET_ROLES = roles.filter((x) => x !== '기타');
 const ROLE_OPTIONS = [...PRESET_ROLES, CUSTOM_ROLE].map((x) => ({ value: x, label: x }));
 const CUSTOM_ROLE_MAX = 20;
+// 팀명은 DB 컬럼(200)보다 짧게 제한해 카드·목록 표시가 깨지지 않게 한다.
+const TEAM_TITLE_MAX = 30;
 const normalizeRole = (value: string) => value.trim().replace(/\s+/g, ' ');
 
 function RecruitmentForm() {
@@ -90,6 +92,7 @@ function RecruitmentForm() {
       onSuccess: (result) => {
         setDraft({
           challenge: '',
+          title: '',
           introduction: '',
           role: draft.role,
           preferred: '',
@@ -143,6 +146,7 @@ function RecruitmentForm() {
           createTeam.mutate({
             data: {
               challengeId,
+              title: draft.title?.trim() || undefined,
               introduction: draft.introduction.trim() || undefined,
               openRoles,
               myRole,
@@ -156,7 +160,21 @@ function RecruitmentForm() {
           <Title>모집글 작성</Title>
         </DesktopOnly>
         <Stack gap={10}>
-          <StepLabel number={1} completed={!!draft.challenge}>
+          <StepLabel number={1} completed={!!draft.title?.trim()}>
+            팀명
+          </StepLabel>
+          <Input
+            aria-label="팀명"
+            placeholder="팀명을 입력해주세요"
+            required
+            maxLength={TEAM_TITLE_MAX}
+            value={draft.title ?? ''}
+            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
+            style={{ color: draft.title ? c.gray900 : c.gray500 }}
+          />
+        </Stack>
+        <Stack gap={10}>
+          <StepLabel number={2} completed={!!draft.challenge}>
             챌린지 선택
           </StepLabel>
           <ChallengeSearch
@@ -168,7 +186,7 @@ function RecruitmentForm() {
           />
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={2} completed={!!draft.introduction}>
+          <StepLabel number={3} completed={!!draft.introduction}>
             팀 소개
           </StepLabel>
           <Input
@@ -182,7 +200,7 @@ function RecruitmentForm() {
           />
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={3} completed={slots.length > 0}>
+          <StepLabel number={4} completed={slots.length > 0}>
             필요 역할 슬롯 추가
           </StepLabel>
           {slots.map((slot, i) => {
@@ -267,7 +285,7 @@ function RecruitmentForm() {
           </Button>
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={4} completed={!!draft.role}>
+          <StepLabel number={5} completed={!!draft.role}>
             내가 맡은 역할
           </StepLabel>
           <Dropdown
@@ -299,7 +317,7 @@ function RecruitmentForm() {
           )}
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={5} completed={!!draft.preferred}>
+          <StepLabel number={6} completed={!!draft.preferred}>
             우대사항
           </StepLabel>
           <Input
@@ -311,7 +329,7 @@ function RecruitmentForm() {
           />
         </Stack>
         <Stack gap={10}>
-          <StepLabel number={6} completed={!!draft.etc}>
+          <StepLabel number={7} completed={!!draft.etc}>
             기타
           </StepLabel>
           <Input
