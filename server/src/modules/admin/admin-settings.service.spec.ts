@@ -152,10 +152,13 @@ describe('AdminSettingsService', () => {
         [MAINTENANCE_END_KEY]: isoHoursFromNow(1),
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
+    // 시작=종료 시각도 거부해야 한다. 두 시각을 한 번에 잡아 ms 단위 경계를 넘나드는
+    // 벽시계 레이스로 인해 시작<종료가 되어 우연히 통과하는 플레이크를 막는다.
+    const sameInstant = isoHoursFromNow(1);
     await expect(
       service.update({
-        [MAINTENANCE_START_KEY]: isoHoursFromNow(1),
-        [MAINTENANCE_END_KEY]: isoHoursFromNow(1),
+        [MAINTENANCE_START_KEY]: sameInstant,
+        [MAINTENANCE_END_KEY]: sameInstant,
       }),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(insertCalls).toHaveLength(0);

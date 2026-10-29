@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BizNavProvider, BizSidebar } from './BizShell';
+import { BizNavProvider, BizSidebar, isMenuActive } from './BizShell';
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -111,5 +111,20 @@ describe('BizSidebar 프로필 아바타', () => {
     // 로그아웃 버튼이 동작한다.
     await user.click(screen.getByRole('button', { name: '로그아웃' }));
     expect(mocks.logoutMutate).toHaveBeenCalled();
+  });
+});
+
+describe('isMenuActive 메뉴 별칭', () => {
+  it('지원서 관리(/applications) 화면에서는 공고 관리 메뉴가 활성 상태다', () => {
+    expect(isMenuActive('/applications', '/postings')).toBe(true);
+  });
+
+  it('공고 등록·상세 화면에서도 공고 관리 메뉴가 활성 상태다', () => {
+    expect(isMenuActive('/postings/new', '/postings')).toBe(true);
+    expect(isMenuActive('/postings/ch-1', '/postings')).toBe(true);
+  });
+
+  it('별칭이 없는 다른 화면에서는 공고 관리 메뉴가 활성 상태가 아니다', () => {
+    expect(isMenuActive('/billing', '/postings')).toBe(false);
   });
 });

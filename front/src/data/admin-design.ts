@@ -2,7 +2,7 @@
 
 export const adminMenu: [string, string][] = [
   ['/', '대시보드'],
-  ['/biz-review', '기관 심사'],
+  ['/biz-review', '기관 관리'],
   ['/certificates', '상장 인증'],
   ['/ad-pricing', '광고 관리'],
   ['/users', '사용자 관리'],

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => {
   return {
     login: vi.fn(),
     logout: vi.fn(),
+    invalidateQueries: vi.fn(),
     replace: vi.fn(),
     toastError: vi.fn(),
     MockApiError,
@@ -21,6 +22,9 @@ const mocks = vi.hoisted(() => {
 const TEST_PASSWORD = 'placeholder-password';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ replace: mocks.replace }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
+}));
 vi.mock('next/link', () => ({
   default: ({ href, children }: { href: string; children: ReactNode }) => (
     <a href={href}>{children}</a>
@@ -49,6 +53,7 @@ vi.mock('@semochal/api-client', () => ({
     confirmMfaTotp: vi.fn(),
     getMfaPasskeyRegisterOptions: vi.fn(),
     verifyMfaPasskeyRegistration: vi.fn(),
+    getGetMyAuthInfoQueryKey: () => ['auth', 'me'],
   },
 }));
 vi.mock('@simplewebauthn/browser', () => ({
@@ -70,6 +75,7 @@ describe('BizLoginPage', () => {
 
   it('logs in with an email and redirects business accounts to the Biz dashboard', async () => {
     mocks.login.mockResolvedValue({ status: 200, data: { user: { role: 'business' } } });
+    mocks.invalidateQueries.mockResolvedValue(undefined);
     const user = userEvent.setup();
     renderLogin();
 
@@ -83,7 +89,27 @@ describe('BizLoginPage', () => {
         password: TEST_PASSWORD,
       }),
     );
+    expect(mocks.invalidateQueries).toHaveBeenCalledWith({ queryKey: ['auth', 'me'] });
     expect(mocks.replace).toHaveBeenCalledWith('/biz/dashboard');
+  });
+
+  it('waits for the auth cache invalidation before entering the Biz dashboard', async () => {
+    mocks.login.mockResolvedValue({ status: 200, data: { user: { role: 'business' } } });
+    let completeInvalidation: (() => void) | undefined;
+    mocks.invalidateQueries.mockImplementation(
+      () => new Promise<void>((resolve) => (completeInvalidation = resolve)),
+    );
+    const user = userEvent.setup();
+    renderLogin();
+
+    await user.type(screen.getByLabelText('이메일'), 'biz@semochal.kr');
+    await user.type(screen.getByLabelText('비밀번호'), TEST_PASSWORD);
+    await user.click(screen.getByRole('button', { name: '로그인' }));
+
+    await waitFor(() => expect(mocks.invalidateQueries).toHaveBeenCalledOnce());
+    expect(mocks.replace).not.toHaveBeenCalled();
+    completeInvalidation?.();
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/biz/dashboard'));
   });
 
   it('clears a non-business session instead of entering the Biz console', async () => {

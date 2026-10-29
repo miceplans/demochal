@@ -21,7 +21,7 @@ import {
 } from './parts';
 import { CloseIcon } from './AdminIcons';
 
-// 기관은 가입 시 자동 승인되므로 심사 대기·승인/거부 처리는 없다(거부는 차단된 기관 표시).
+// 기관은 가입 즉시 자동 승인되므로 이 화면은 심사 없이 기관 목록을 조회·관리하는 화면이다(거부는 차단된 기관 표시).
 type BizReviewRow = BizRow;
 
 const statusBadge: Record<BizRow['status'], 'green' | 'red' | 'gray'> = {
@@ -70,13 +70,13 @@ function BizDetailPanel({ row, onClose }: { row: BizReviewRow; onClose: () => vo
   ];
 
   return (
-    <Panel aria-label={`${row.org} 심사 상세`}>
+    <Panel aria-label={`${row.org} 상세`}>
       <PanelHeader>
         <TitleRow>
           <PanelTitle>{row.org}</PanelTitle>
           <Badge tone={statusBadge[row.status]}>{row.status}</Badge>
         </TitleRow>
-        <CloseButton type="button" aria-label="기관 심사 상세 닫기" onClick={onClose}>
+        <CloseButton type="button" aria-label="기관 상세 닫기" onClick={onClose}>
           <CloseIcon />
         </CloseButton>
       </PanelHeader>
@@ -140,7 +140,7 @@ export function AdminBizReviewScreen() {
 
   return (
     <>
-      <AdminPageTitle>기관 심사</AdminPageTitle>
+      <AdminPageTitle>기관 관리</AdminPageTitle>
       <StatRow>
         {bizStats.map((stat) => (
           <StatCard
