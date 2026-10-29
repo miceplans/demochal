@@ -8,10 +8,23 @@ describe('team join helpers', () => {
       canSubmitTeamJoin({
         authPending: false,
         joinPending: false,
+        challengePending: false,
         isLeader: false,
         hasMembership: false,
       }),
     ).toBe(true);
+  });
+
+  it('blocks submit while the team challenge is still loading', () => {
+    expect(
+      canSubmitTeamJoin({
+        authPending: false,
+        joinPending: false,
+        challengePending: true,
+        isLeader: false,
+        hasMembership: false,
+      }),
+    ).toBe(false);
   });
 
   it('keeps existing application blocking conditions', () => {
@@ -19,6 +32,7 @@ describe('team join helpers', () => {
       canSubmitTeamJoin({
         authPending: false,
         joinPending: false,
+        challengePending: false,
         isLeader: true,
         hasMembership: false,
       }),
@@ -27,6 +41,7 @@ describe('team join helpers', () => {
       canSubmitTeamJoin({
         authPending: false,
         joinPending: false,
+        challengePending: false,
         isLeader: false,
         hasMembership: true,
       }),

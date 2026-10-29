@@ -450,7 +450,9 @@ describe('TeamsService', () => {
       createFilesStub() as any,
     );
 
-    await expect(service.join('team-x', '개발', applicant.id)).rejects.toThrow(NotFoundException);
+    await expect(service.join('team-x', { role: '개발' }, applicant.id)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('join blocks the leader and duplicate applicants with 400', async () => {
@@ -465,8 +467,10 @@ describe('TeamsService', () => {
       createFilesStub() as any,
     );
 
-    await expect(service.join('team-1', undefined, leader.id)).rejects.toThrow(BadRequestException);
-    await expect(service.join('team-1', '개발', applicant.id)).rejects.toThrow(BadRequestException);
+    await expect(service.join('team-1', {}, leader.id)).rejects.toThrow(BadRequestException);
+    await expect(service.join('team-1', { role: '개발' }, applicant.id)).rejects.toThrow(
+      BadRequestException,
+    );
     expect(db.insert).not.toHaveBeenCalled();
   });
 
@@ -477,23 +481,26 @@ describe('TeamsService', () => {
       userId: applicant.id,
       role: '개발',
       status: 'pending',
+      formAnswers: [],
     };
     const db = createDbStub();
     db.select
       .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
-      .mockReturnValueOnce(selectChain([]));
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ applicationForm: null }]));
     const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([memberRow]) });
     db.insert = vi.fn().mockReturnValue({ values });
     const notifications = createNotificationsStub();
     const service = new TeamsService(db, notifications as any, createFilesStub() as any);
 
-    const result = await service.join('team-1', '개발', applicant.id);
+    const result = await service.join('team-1', { role: '개발' }, applicant.id);
 
     expect(values).toHaveBeenCalledWith({
       teamId: 'team-1',
       userId: applicant.id,
       role: '개발',
       status: 'pending',
+      formAnswers: [],
     });
     expect(notifications.create).toHaveBeenNthCalledWith(
       1,
@@ -510,6 +517,61 @@ describe('TeamsService', () => {
       db,
     );
     expect(result).toEqual(memberRow);
+  });
+
+  it('join validates answers against the challenge application form and stores the snapshot', async () => {
+    const applicationForm = [
+      {
+        id: 'q1',
+        title: '포트폴리오 링크',
+        type: 'short',
+        options: [],
+        required: true,
+      },
+    ];
+    const db = createDbStub();
+    // join당 select 3회(팀 → 중복 신청 → 챌린지 신청서) × 3번의 호출.
+    db.select
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ applicationForm }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ applicationForm }]))
+      .mockReturnValueOnce(selectChain([{ id: 'team-1', leaderUserId: leader.id }]))
+      .mockReturnValueOnce(selectChain([]))
+      .mockReturnValueOnce(selectChain([{ applicationForm }]));
+    const values = vi.fn().mockReturnValue({ returning: vi.fn().mockResolvedValue([{}]) });
+    db.insert = vi.fn().mockReturnValue({ values });
+    const notifications = createNotificationsStub();
+    const service = new TeamsService(db, notifications as any, createFilesStub() as any);
+
+    // 존재하지 않는 질문 답변은 400 — 저장까지 가지 않는다.
+    await expect(
+      service.join('team-1', { formAnswers: [{ questionId: 'q-x', value: 'x' }] }, applicant.id),
+    ).rejects.toThrow(BadRequestException);
+    // 필수 질문 누락도 400.
+    await expect(service.join('team-1', {}, applicant.id)).rejects.toThrow(BadRequestException);
+
+    await service.join(
+      'team-1',
+      { role: '개발', formAnswers: [{ questionId: 'q1', value: 'https://a.dev' }] },
+      applicant.id,
+    );
+    expect(values).toHaveBeenCalledWith({
+      teamId: 'team-1',
+      userId: applicant.id,
+      role: '개발',
+      status: 'pending',
+      formAnswers: [
+        {
+          questionId: 'q1',
+          title: '포트폴리오 링크',
+          type: 'short',
+          value: 'https://a.dev',
+        },
+      ],
+    });
   });
 
   it('updateMember throws 403 for non-leaders but allows admins', async () => {

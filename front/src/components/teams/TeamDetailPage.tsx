@@ -6,16 +6,40 @@ import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { UserShell, Content } from '@/components/common/UserShell';
-import { Button, HeartIcon, Icon, IconButton, Muted, Row } from '@/components/common/Primitives';
+import {
+  Button,
+  HeartIcon,
+  Icon,
+  IconButton,
+  Muted,
+  Row,
+  Stack,
+} from '@/components/common/Primitives';
+import { Modal } from '@/components/common/Feedback';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
+import {
+  ApplicationQuestions,
+  isAnswerValid,
+  type Answers,
+} from '@/components/applications/ApplicationQuestions';
 import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
 import { teamCapacity } from './team-model';
 import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
+
+const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+
+// 팀 상세 응답의 멤버 중 프로필 모달에 필요한 필드만 갖는 구조 타입(표의 행 그대로 넘긴다).
+type MemberSummary = {
+  userId?: string;
+  name?: string;
+  role?: string | null;
+  profileImageUrl?: string | null;
+};
 
 const REGION_DISPLAY_NAMES: Record<string, string> = {
   서울: '서울특별시',
@@ -62,6 +86,8 @@ export function TeamDetailPage() {
     query: { enabled: !!team?.challengeId },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
+  // 팀이 속한 챌린지의 신청서 질문 — 있으면 지원 버튼을 눌렀을 때 신청서 모달을 띄운다.
+  const questions = challenge?.applicationForm ?? [];
   const posterUrl = challenge?.posterUrl ?? null;
   const bookmarkId = challenge?.id;
   const saved = bookmarks.some((item) => item.id === bookmarkId);
@@ -69,9 +95,17 @@ export function TeamDetailPage() {
   const goLogin = () => router.push(`/login?next=${encodeURIComponent(pathname)}`);
   // 팀 지원 시 맡을 역할. 팀 조회가 끝난 뒤 openRoles로 선택지를 만들고, 선택값이 유효하지 않으면 첫 슬롯으로 되돌린다.
   const [pickedRole, setPickedRole] = useState('');
+  // 표에서 고른 팀원 — 프로필(프사) 모달에 표시한다.
+  const [pickedMember, setPickedMember] = useState<MemberSummary | null>(null);
+  // 챌린지에 신청서가 있는 팀은 지원 버튼을 눌러도 바로 신청하지 않고 신청서 모달을 연다.
+  const [applyOpen, setApplyOpen] = useState(false);
+  const [answers, setAnswers] = useState<Answers>({});
+  const [uploading, setUploading] = useState(false);
   const join = generated.useJoinTeam({
     mutation: {
       onSuccess: () => {
+        setApplyOpen(false);
+        setAnswers({});
         toast.success('팀 신청을 보냈어요', '팀장이 확인하면 알림으로 알려드릴게요');
         void queryClient.invalidateQueries({ queryKey: generated.getGetTeamQueryKey(id) });
       },
@@ -141,7 +175,28 @@ export function TeamDetailPage() {
       goLogin();
       return;
     }
+    // 신청서가 있는 팀은 모달에서 질문에 답한 뒤 제출하고, 없는 팀은 지금 바로 신청한다.
+    if (questions.length > 0) {
+      setApplyOpen(true);
+      return;
+    }
     join.mutate({ id, data: { role: joinRole } });
+  };
+  const submitApply = () => {
+    const invalid = questions.find((question) => !isAnswerValid(question, answers[question.id]));
+    if (invalid) {
+      toast.error(`“${invalid.title}” 답변을 확인해 주세요.`);
+      return;
+    }
+    join.mutate({
+      id,
+      data: {
+        role: joinRole,
+        formAnswers: questions
+          .filter((question) => answers[question.id] !== undefined)
+          .map((question) => ({ questionId: question.id, value: answers[question.id]! })),
+      },
+    });
   };
 
   return (
@@ -211,7 +266,16 @@ export function TeamDetailPage() {
                 <tbody>
                   {accepted.map((member) => (
                     <tr key={member.id}>
-                      <td>{member.name}</td>
+                      <td>
+                        <MemberButton
+                          type="button"
+                          onClick={() => setPickedMember(member)}
+                          aria-label={`${member.name ?? '팀원'} 프로필 보기`}
+                        >
+                          <Avatar src={member.profileImageUrl ?? DEFAULT_PROFILE_IMAGE} alt="" />
+                          <span>{member.name}</span>
+                        </MemberButton>
+                      </td>
                       <td>{member.role ?? '-'}</td>
                       <td>{member.userId === team.leaderUserId ? '팀장' : '팀원'}</td>
                     </tr>
@@ -239,6 +303,7 @@ export function TeamDetailPage() {
                 !canSubmitTeamJoin({
                   authPending,
                   joinPending: join.isPending,
+                  challengePending: challengeQuery.isPending,
                   isLeader,
                   hasMembership: !!myMembership,
                 })
@@ -265,6 +330,66 @@ export function TeamDetailPage() {
             </Summary>
           </Sidebar>
         </Columns>
+        <Modal
+          open={pickedMember !== null}
+          onClose={() => setPickedMember(null)}
+          title="팀원 프로필"
+          width={320}
+        >
+          {pickedMember && (
+            <Stack gap={12} style={{ alignItems: 'center', textAlign: 'center' }}>
+              <ProfileAvatar src={pickedMember.profileImageUrl ?? DEFAULT_PROFILE_IMAGE} alt="" />
+              <ProfileName>{pickedMember.name ?? '이름 없음'}</ProfileName>
+              <Muted>
+                {pickedMember.role ?? '역할 없음'} ·{' '}
+                {pickedMember.userId === team.leaderUserId ? '팀장' : '팀원'}
+              </Muted>
+              {pickedMember.userId && (
+                <Link href={`/profile?id=${pickedMember.userId}`}>
+                  <Button as="span" tone="plain">
+                    프로필 보기
+                  </Button>
+                </Link>
+              )}
+            </Stack>
+          )}
+        </Modal>
+        <Modal open={applyOpen} onClose={() => setApplyOpen(false)} title="팀 지원서" width={520}>
+          <Stack gap={20}>
+            {roleOptions.length > 0 && (
+              <RolePicker>
+                <span className="label">지원 역할</span>
+                <Dropdown
+                  aria-label="지원 역할"
+                  value={joinRole}
+                  onChange={setPickedRole}
+                  options={roleOptions}
+                />
+              </RolePicker>
+            )}
+            <ApplicationQuestions
+              questions={questions}
+              answers={answers}
+              onChange={(questionId, value) =>
+                setAnswers((current) => ({ ...current, [questionId]: value }))
+              }
+              onUploading={setUploading}
+              disabled={join.isPending || uploading}
+            />
+            <Row gap={8}>
+              <Button tone="plain" style={{ flex: 1 }} onClick={() => setApplyOpen(false)}>
+                취소
+              </Button>
+              <Button
+                style={{ flex: 1 }}
+                disabled={join.isPending || uploading}
+                onClick={submitApply}
+              >
+                {uploading ? '첨부파일 업로드 중…' : join.isPending ? '신청 중…' : '신청하기'}
+              </Button>
+            </Row>
+          </Stack>
+        </Modal>
       </Content>
     </UserShell>
   );
@@ -343,7 +468,7 @@ const Roster = styled.table({
   borderSpacing: 0,
   ...textStyle.bodyLarge,
   '& th, & td': { padding: '0 16px', textAlign: 'left' },
-  '& th:nth-of-type(1), & td:nth-of-type(1)': { width: 196 },
+  '& th:nth-of-type(1), & td:nth-of-type(1)': { width: 220 },
   '& th:last-of-type, & td:last-of-type': { width: 96 },
   '& th': { ...textStyle.h1, height: 48, background: c.gray100 },
   '& th:first-of-type': { borderTopLeftRadius: 12 },
@@ -359,6 +484,37 @@ const Roster = styled.table({
     '& th:last-of-type, & td:last-of-type': { width: 64 },
   },
 });
+// 표에서 사람(이름+아바타)을 누를 수 있는 버튼 — 누를면 팀원 프로필 모달이 열린다.
+const MemberButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 10,
+  maxWidth: '100%',
+  padding: 0,
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  ...textStyle.bodyLarge,
+  color: c.gray900,
+  '&:hover span': { textDecoration: 'underline' },
+  span: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+});
+const Avatar = styled.img({
+  flexShrink: 0,
+  width: 32,
+  height: 32,
+  borderRadius: '50%',
+  background: c.gray100,
+  objectFit: 'cover',
+});
+const ProfileAvatar = styled.img({
+  width: 96,
+  height: 96,
+  borderRadius: '50%',
+  background: c.gray100,
+  objectFit: 'cover',
+});
+const ProfileName = styled.b({ ...textStyle.h1, color: c.gray900 });
 const Sidebar = styled.aside({
   display: 'flex',
   flexDirection: 'column',

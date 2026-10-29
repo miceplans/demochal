@@ -19,8 +19,10 @@ import {
 } from '../../db/schema.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { FilesService } from '../files/files.service.js';
+import { validateFormAnswers } from '../applications/form-answers.js';
 import type { CreateTeamDto } from './dto/create-team.dto.js';
 import type { InviteTeamDto } from './dto/invite-team.dto.js';
+import type { JoinTeamDto } from './dto/join-team.dto.js';
 import type { UpdateTeamMemberDto } from './dto/update-team-member.dto.js';
 
 export interface TeamListFilters {
@@ -196,10 +198,15 @@ export class TeamsService {
         name: users.name,
         role: teamMembers.role,
         status: teamMembers.status,
+        formAnswers: teamMembers.formAnswers,
+        profileImageFileId: users.profileImageFileId,
       })
       .from(teamMembers)
       .innerJoin(users, eq(teamMembers.userId, users.id))
       .where(eq(teamMembers.teamId, id));
+    const profileImageUrls = await this.filesService.resolvePublicUrls(
+      members.map((member) => member.profileImageFileId),
+    );
 
     // list()는 비공개 챌린지를 아예 목록에서 제외하지만, 상세는 팀 관계자의 접근을 허용한다:
     // 비공개 챌린지의 팀은 리더·팀원(지원 포함)·관리자만 볼 수 있다.
@@ -210,10 +217,17 @@ export class TeamsService {
     }
     // 지원 대기(pending)·초대 대기(invited) 명단은 리더와 팀원에게만 보인다 — 익명·일반
     // 방문자 응답에는 수락된 멤버만 담는다(팀원 본인 행은 팀원이니 그대로 노출된다).
-    const visibleMembers =
+    const canReview = isLeader || user?.role === 'admin';
+    const visibleMembers = (
       isLeader || isMember || user?.role === 'admin'
         ? members
-        : members.filter((member) => member.status === 'accepted');
+        : members.filter((member) => member.status === 'accepted')
+    ).map(({ profileImageFileId, formAnswers, ...member }) => ({
+      ...member,
+      // 지원서 답변은 검토 권한(리더·관리자)이 있는 경우에만 남긴다 — 일반 열람은 프사와 기본 정보만 본다.
+      ...(canReview ? { formAnswers } : {}),
+      profileImageUrl: (profileImageFileId && profileImageUrls.get(profileImageFileId)) || null,
+    }));
 
     return {
       ...row.team,
@@ -313,7 +327,7 @@ export class TeamsService {
     );
   }
 
-  async join(id: string, role: string | undefined, userId: string) {
+  async join(id: string, dto: JoinTeamDto, userId: string) {
     const [team] = await this.db.select().from(teams).where(eq(teams.id, id)).limit(1);
     if (!team) throw new NotFoundException('팀을 찾을 수 없습니다.');
     if (team.leaderUserId === userId) {
@@ -327,10 +341,19 @@ export class TeamsService {
       .limit(1);
     if (existing) throw new BadRequestException('이미 이 팀에 신청하셨습니다.');
 
+    // 팀이 속한 챌린지의 신청서가 있으면 지원 답변을 검증·스냅샷해 함께 저장한다.
+    // 신청서가 없는 챌린지는 답변을 받지 않는다(빈 배열 저장).
+    const [challenge] = await this.db
+      .select({ applicationForm: challenges.applicationForm })
+      .from(challenges)
+      .where(eq(challenges.id, team.challengeId))
+      .limit(1);
+    const formAnswers = validateFormAnswers(challenge?.applicationForm, dto.formAnswers);
+
     return this.db.transaction(async (tx) => {
       const [member] = await tx
         .insert(teamMembers)
-        .values({ teamId: id, userId, role, status: 'pending' })
+        .values({ teamId: id, userId, role: dto.role, status: 'pending', formAnswers })
         .returning();
       if (!member) throw new Error('Failed to create team application');
 
@@ -340,7 +363,7 @@ export class TeamsService {
         {
           teamId: id,
           applicantUserId: userId,
-          ...(role ? { role } : {}),
+          ...(dto.role ? { role: dto.role } : {}),
         },
         tx,
       );

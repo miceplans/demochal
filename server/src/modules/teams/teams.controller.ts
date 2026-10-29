@@ -74,7 +74,7 @@ export class TeamsController {
     @Body() dto: JoinTeamDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.teamsService.join(id, dto.role, user.id);
+    return this.teamsService.join(id, dto, user.id);
   }
 
   @Post(':id/invite')

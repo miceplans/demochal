@@ -3986,6 +3986,18 @@ components:
             nullable: true,
             description: 합격 시 저장된 채팅방 링크 (미정/불합격은 null),
           }
+        profileImageUrl:
+          {
+            type: string,
+            nullable: true,
+            description: 멤버 프로필 이미지 공개 URL (없으면 null — 클라이언트는 기본 이미지),
+          }
+        formAnswers:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/ApplicationFormAnswer' },
+            description: '지원 시 작성한 신청서 답변 스냅샷(리더·관리자 응답에만 포함, 일반 열람에는 미포함)',
+          }
         createdAt: { type: string, format: date-time }
         teamTitle: { type: string, description: 'listMyTeamApplications 응답 전용' }
         challengeTitle: { type: string, description: 'listMyTeamApplications 응답 전용' }
@@ -3999,6 +4011,11 @@ components:
       type: object
       properties:
         role: { type: string, description: 지원 역할 }
+        formAnswers:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/ApplicationAnswerInput' }
+          description: 팀이 속한 챌린지의 신청서가 있을 때 지원자가 작성한 질문 답변(필수 질문 누락·존재하지 않는 질문은 400).
     InviteTeamRequest:
       type: object
       required: [userId]
