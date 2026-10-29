@@ -129,9 +129,9 @@ export class RedisThrottlerStorage implements ThrottlerStorage, OnApplicationShu
   }
 }
 
-// Redis keeps one shared counter per key across every ECS task; without
-// REDIS_URL the per-task in-memory fallback (and its multiplicative ceiling)
-// stays for local dev and serverless deploys.
+// Redis keeps one shared counter per key across every process; without
+// REDIS_URL the per-process in-memory fallback (and its multiplicative ceiling)
+// stays for local dev.
 export function createThrottlerStorage(): RedisThrottlerStorage | undefined {
   return env.redisUrl ? new RedisThrottlerStorage(env.redisUrl) : undefined;
 }

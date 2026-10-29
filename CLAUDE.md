@@ -2,7 +2,7 @@
 
 pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App Router + React 19), `server`(NestJS + Drizzle + SQS 워커), `packages/api-client`(orval 생성 클라이언트), `packages/config`(공유 tsconfig). 브랜치 `main` 기준, PR 단위 작업.
 
-주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `pr-validation` 워크플로(PR validation)의 format:check → lint → typecheck → 테스트(서버/프론트/api-client) → 빌드 + Docker 빌드가 통과해야 하며, `main` push 시 `ci.yml`(CI)이 전체 검증 후 배포를 진행한다. 로컬에서 `pnpm build`·품질 게이트의 프론트 빌드는 `front/.env.local`의 `API_PROXY_TARGET`(백엔드 오리진, 로컬 기본값 `http://localhost:3001`)이 필요하다. 프론트 단위 테스트는 jsdom 30 요구로 Node 22+에서만 실행된다(Repo 런타임 기준 Node 20과 별개 — CI는 `front-tests` 잡만 Node 22, 앱 런타임은 jsdom을 로드하지 않음).
+주요 스크립트(루트): `pnpm dev`(scripts/dev.mjs가 api-client 빌드 + front/server 동시 실행), `pnpm build`, `pnpm lint`, `pnpm typecheck`, `pnpm format:check`. PR 머지 전 `pr-validation` 워크플로(PR validation)의 format:check → lint → typecheck → 테스트(서버/프론트/api-client) → 빌드 + Docker 빌드가 통과해야 하며, `main` push 시 `ci.yml`(CI)이 format:check → lint → typecheck → 테스트(서버/프론트/api-client) → 빌드 + Docker 빌드 검증을 실행한다(배포 잡은 없음). 로컬에서 `pnpm build`·품질 게이트의 프론트 빌드는 `front/.env.local`의 `API_PROXY_TARGET`(백엔드 오리진, 로컬 기본값 `http://localhost:3001`)이 필요하다. 프론트 단위 테스트는 jsdom 30 요구로 Node 22+에서만 실행된다(Repo 런타임 기준 Node 20과 별개 — CI는 `front-tests` 잡만 Node 22, 앱 런타임은 jsdom을 로드하지 않음).
 
 ## Git 규칙 (반드시 준수)
 
@@ -19,9 +19,9 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 ## Server 규칙 (`server/`)
 
 - **구조**: NestJS 모듈 — auth, users, businesses, verifications, challenges, applications, orders, payments, files, notifications, ads. `DbModule`/`QueueModule`은 `@Global`. 인증은 전역 `JwtAuthGuard`(HttpOnly 쿠키 JWT)이며 매 요청 DB에서 유저를 다시 로드해 권한 변경이 즉시 반영된다(`modules/auth/jwt-auth.guard.ts`) — 이 동작을 우회하는 캐싱을 추가하지 않는다. 공개 엔드포인트는 `modules/auth/public.decorator.ts`의 `@Public()`으로 명시하고, 관리자 권한은 `AdminRoleGuard`로 검사한다.
-- **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`, `drizzle/meta/_journal.json`의 `when`은 이전 항목보다 커야 적용된다)하고, **적용은 CI 배포가 담당**한다 — `main` push → GitHub Environment `production` 승인 → migrate ECS 태스크(`dist/migrate.js`) 실행 → API/워커 갱신 순서(`ci.yml`). 따로 수동 실행하지 않으며, 앱 부팅(main.ts/worker.ts)에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
+- **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`, `drizzle/meta/_journal.json`의 `when`은 이전 항목보다 커야 적용된다)한다. **적용은 로컬 docker compose의 `migrate` 서비스**(`node dist/migrate.js`)가 담당한다 — 앱 부팅(main.ts/worker.ts)에 자동 `migrate()` 호출을 추가하지 않는다. `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
 - **워커**: `worker.ts`는 SQS(`SQS_VERIFICATIONS_QUEUE_URL`) 폧 루프만 돌리고 HTTP를 열지 않는다. 워커 전용 로직은 `worker.module.ts`에 등록된 모듈(현재 verifications, notifications)에만 둔다.
-- **설정**: `config/env.ts`는 zod 스키마로 `process.env`를 검증한다(production에서 `JWT_SECRET` 누락 시 실패). 신규 환경변수는 여기 + `server/.env.example`에 함께 추가.
+- **설정**: `config/env.ts`는 zod 스키마로 `process.env`를 검증한다. 신규 환경변수는 여기 + `server/.env.example`에 함께 추가.
 
 ## 아키텍처 규칙(준수 필수)
 
@@ -30,7 +30,6 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 - **개인정보(사업자등록증 등)**: 민감 문서는 반드시 private 버킷(`S3_PRIVATE_BUCKET`)에만 저장하고 presigned PUT(5분)으로만 접근한다(`modules/files/files.service.ts`). 공개/비공개 버킷 분리를 없애지 않는다. OCR/진위확인 결과(`ocrResult` 등)와 사업자번호를 로그에 남기지 않는다.
 - **청소년 보호**: 현재는 `front/src/app/youth/` 정적 안내 페이지만 존재하며 정책 강제 로직은 없다. 연령 확인·보호 관련 코드를 추가할 경우 별도 검토를 거치고, 개인정보 수집 최소화 원칙을 적용한다.
 - **Docker 분기**: `Dockerfile.api`와 `Dockerfile.worker`는 같은 소스, 같은 두 단계 빌드(`pnpm --filter @semochal/server...` + `nest build`)이며 차이는 `CMD`(dist/main.js vs dist/worker.js)와 API 전용 `EXPOSE`/`HEALTHCHECK`뿐이다. 둘 다 런타임은 비-root(`USER node`)로 통일한다. 워커 이미지에 `EXPOSE`를 추가하거나 API/워커 중 한 쪽에만 의존성·빌드 단계를 넣는 분기를 만들지 않는다. 둘 다 `ci.yml`에서 빌드 검증되므로 Dockerfile 변경 시 로컬에서 `docker build --file server/Dockerfile.{api,worker} .`를 확인한다.
-- **ECS Task Definition**(인프라 구성 시, `infra/README.md` 계획): API 서비스와 워커 서비스는 같은 태스크 정의 구조(같은 이미지, CMD 오버라이드와 환경변수만 다르게)로 유지한다. 워커에는 ALB 타깃을 붙이지 않는다.
 
 ## Issue / PR 작성 규칙(모든 에이전트 준수)
 
@@ -54,6 +53,6 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 ## CI/CD
 
-- `ci.yml`: PR/push 시 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드. `main` push는 GitHub Environment `production` 승인 후 OIDC로 ECR push → 마이그레이션 태스크 → ECS API/워커 배포까지 진행한다(장기 AWS 자격증명은 저장하지 않는다).
+- `ci.yml`: `main` push 시 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드 검증까지 실행한다(배포는 진행하지 않는다).
 - `code-review-glm.yml`: PR 리뷰(claude-code-action → Z.AI GLM). 인라인 코멘트 작성에는 `pull-requests: write` 권한이 필요하다.
 - `qodo-merge.yml`: PR-Agent 자동 describe/review/improve.

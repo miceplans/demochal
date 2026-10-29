@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 
 // Per-client ceiling for every route; auth endpoints tighten it with AUTH_THROTTLE.
-// REDIS_URL이 설정되면 모든 ECS 태스크가 공유하는 Redis 저장소를 쓰고
-// (AppModule의 createThrottlerStorage), 비워두면 태스크 메모리 저장소라 태스크
-// 수만큼 한도가 늘어나는 취약점이 남는다. https://docs.nestjs.com/security/rate-limiting#storages
+// REDIS_URL이 설정되면 모든 프로세스가 공유하는 Redis 저장소를 쓰고
+// (AppModule의 createThrottlerStorage), 비워두면 프로세스 메모리 저장소라
+// 인스턴스 수만큼 한도가 늘어나는 취약점이 남는다. https://docs.nestjs.com/security/rate-limiting#storages
 export const DEFAULT_THROTTLE = { name: 'default', ttl: 60_000, limit: 300 };
 
 // Credential-guessing surfaces (login, signup, contact verification codes).
@@ -14,7 +14,7 @@ export const AUTH_THROTTLE = { default: { ttl: 60_000, limit: 10 } };
 // PAYMENT_STATUS_CHANGED calls (plus a handful of Toss redeliveries), so 30
 // per minute per client blocks flood abuse of our Toss API relay while leaving
 // legitimate traffic an order of magnitude of headroom. Without REDIS_URL the
-// same per-ECS-task ceiling caveat as DEFAULT_THROTTLE applies.
+// same per-process ceiling caveat as DEFAULT_THROTTLE applies.
 export const TOSS_WEBHOOK_THROTTLE = { default: { ttl: 60_000, limit: 30 } };
 
 /**

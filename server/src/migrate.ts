@@ -6,17 +6,15 @@ import { Pool } from 'pg';
 import { resolveMigrationEnv } from './config/migration-env.js';
 import { createPoolOptions } from './db/pool-options.js';
 
-// One-off migration entry point — `node dist/migrate.js`. Normally run by the
-// CI deploy (`.github/workflows/ci.yml`): after GitHub Environment `production`
-// approval it runs the "migrate" ECS task definition (see
-// infra/terraform/compute.tf) and only updates the API/worker services once
-// this task exits 0. A manual `aws ecs run-task` is only for the initial
-// bootstrap in infra/README.md. Never invoked automatically by
-// main.ts/worker.ts on boot (see root CLAUDE.md, server/ rules).
+// One-off migration entry point — `node dist/migrate.js`. Run by the local
+// Docker Compose `migrate` service (see root docker-compose.yml) once the db
+// service is healthy; the `api`/`worker` services only start after this task
+// completes successfully. Never invoked automatically by main.ts/worker.ts on
+// boot (see root CLAUDE.md, server/ rules).
 //
 // Uses drizzle-orm's programmatic migrator (a production dependency) instead
 // of shelling out to the drizzle-kit CLI, since drizzle-kit is a devDependency
-// and is not present in the deployed image (server/Dockerfile.api runs
+// and is not present in the runtime image (server/Dockerfile.api runs
 // `pnpm deploy --prod`).
 async function run() {
   const logger = new Logger('Migrate');
