@@ -3,6 +3,7 @@
 import styled from '@emotion/styled';
 import { Fragment } from 'react';
 import { ApplicationAnswers } from './ApplicationAnswers';
+import { OutlineButton as ShellOutlineButton } from '@/components/biz/BizShell';
 import type { Application } from '@semochal/api-client';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
@@ -33,10 +34,15 @@ const EVALUATION_OPTIONS: DropdownOption[] = (['undecided', 'pass', 'fail'] as c
   (value) => ({ value, label: EVALUATION_LABEL[value] }),
 );
 
+export const GhostButton = styled(ShellOutlineButton)({
+  border: 0,
+  background: c.gray50,
+  '&:hover': { background: c.paleBlue, color: c.primary },
+});
 const Box = styled.div({
   width: '100%',
-  border: `0.5px solid ${c.gray100}`,
   borderRadius: 12,
+  overflow: 'hidden',
   background: c.white,
 });
 const Row = styled.div({
@@ -46,14 +52,13 @@ const Row = styled.div({
   padding: '0 16px',
   gap: 16,
   ...textStyle.body,
-  borderTop: `0.5px solid ${c.gray100}`,
+  '&:hover': { background: c.gray50 },
 });
 const HeadRow = styled(Row)({
+  '&:hover': { background: c.gray50 },
   minHeight: 48,
-  borderTop: 0,
-  borderRadius: '12px 12px 0 0',
-  background: c.gray100,
-  ...textStyle.bodyStrong,
+  background: c.gray50,
+  ...textStyle.h3,
 });
 const Cell = styled.span<{ w?: number }>(({ w }) => ({
   flex: w ? `0 0 ${w}px` : '1 1 0',
@@ -79,9 +84,14 @@ const Empty = styled.p({ margin: 0, padding: 24, textAlign: 'center', color: c.g
 export function ApplicationTable({
   rows,
   onUpdate,
+  onOpen,
+  selectedId,
 }: {
   rows: Application[];
   onUpdate: (id: string, patch: ApplicationPatch) => void;
+  /** 주어지면 표 안 펼침 대신 "응답 보기" 버튼으로 사이드 패널을 연다. */
+  onOpen?: (id: string) => void;
+  selectedId?: string | null;
 }) {
   return (
     <Box>
@@ -91,6 +101,7 @@ export function ApplicationTable({
         <Cell w={150}>신청 상태</Cell>
         <Cell>담당자 메모</Cell>
         <Cell w={120}>평가상태</Cell>
+        {onOpen && <Cell w={96}>신청서</Cell>}
       </HeadRow>
       {rows.length === 0 && <Empty>접수된 지원서가 없습니다.</Empty>}
       {rows.map((row) => (
@@ -133,8 +144,23 @@ export function ApplicationTable({
                 }
               />
             </Cell>
+            {onOpen && (
+              <Cell w={96}>
+                <GhostButton
+                  type="button"
+                  aria-label={`${row.id} 신청서 응답 보기`}
+                  aria-pressed={selectedId === row.id}
+                  style={
+                    selectedId === row.id ? { background: c.paleBlue, color: c.primary } : undefined
+                  }
+                  onClick={() => onOpen(row.id)}
+                >
+                  응답 보기
+                </GhostButton>
+              </Cell>
+            )}
           </Row>
-          <ApplicationAnswers applicationId={row.id} answers={row.formAnswers} />
+          {!onOpen && <ApplicationAnswers applicationId={row.id} answers={row.formAnswers} />}
         </Fragment>
       ))}
     </Box>

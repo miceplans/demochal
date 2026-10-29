@@ -1,73 +1,64 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { useMemo } from 'react';
+import Link from 'next/link';
 import styled from '@emotion/styled';
-import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import type { Application } from '@semochal/api-client';
-import { BizContent } from '@/components/biz/BizShell';
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { LoadingState } from '@/components/common/LoadingState';
+import { BizContent, StatBox, useBizHref } from '@/components/biz/BizShell';
+import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { ApplicationTable, EVALUATION_LABEL, type ApplicationPatch } from './ApplicationTable';
-import { apiErrorMessage } from '@/lib/api-error';
 
-const FILTER_OPTIONS: DropdownOption[] = [
-  { value: '', label: '전체' },
-  ...(['undecided', 'pass', 'fail'] as const).map((value) => ({
-    value,
-    label: EVALUATION_LABEL[value],
-  })),
-];
+const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 
+/** 신청자 응답 — 행사(공고)별 신청 현황 목록. 행사를 누르면 해당 행사의 신청서 뷰로 들어간다. */
 export function BizApplicationsPage() {
-  const queryClient = useQueryClient();
-  const [keyword, setKeyword] = useState('');
-  const [evaluation, setEvaluation] = useState('');
+  const hrefOf = useBizHref();
+  const challengesQuery = generated.useListMyChallenges();
   const applicationsQuery = generated.useListManagedApplications();
-  const rows = applicationsQuery.data?.status === 200 ? applicationsQuery.data.data : [];
-  const loading = applicationsQuery.isPending;
-  const error = applicationsQuery.isError
-    ? apiErrorMessage(applicationsQuery.error, '지원서를 불러오거나 저장하지 못했습니다.')
-    : null;
-  const updateApplicationMutation = generated.useUpdateApplication();
+  const challenges = useMemo(
+    () => (challengesQuery.data?.status === 200 ? (challengesQuery.data.data.items ?? []) : []),
+    [challengesQuery.data],
+  );
+  const applications = useMemo(
+    () => (applicationsQuery.data?.status === 200 ? applicationsQuery.data.data : []),
+    [applicationsQuery.data],
+  );
+  const loading = challengesQuery.isPending || applicationsQuery.isPending;
+  const error =
+    challengesQuery.isError || applicationsQuery.isError
+      ? apiErrorMessage(
+          challengesQuery.error ?? applicationsQuery.error,
+          '신청자 응답을 불러오지 못했습니다.',
+        )
+      : null;
 
-  const update = async (id: string, body: ApplicationPatch) => {
-    try {
-      await updateApplicationMutation.mutateAsync({
-        id,
-        data: body as Parameters<typeof updateApplicationMutation.mutateAsync>[0]['data'],
-      });
-      await queryClient.invalidateQueries({
-        queryKey: generated.getListManagedApplicationsQueryKey(),
-      });
-    } catch {
-      // 전역 MutationCache onError 토스트가 실패를 알린다.
+  const byChallenge = useMemo(() => {
+    const map = new Map<string, { total: number; reviewing: number; accepted: number }>();
+    for (const row of applications) {
+      const entry = map.get(row.challengeId) ?? { total: 0, reviewing: 0, accepted: 0 };
+      entry.total += 1;
+      if (row.status === 'reviewing') entry.reviewing += 1;
+      if (row.status === 'accepted') entry.accepted += 1;
+      map.set(row.challengeId, entry);
     }
-  };
-  const count = (predicate: (row: Application) => boolean) => rows.filter(predicate).length;
+    return map;
+  }, [applications]);
+
+  const count = (predicate: (row: (typeof applications)[number]) => boolean) =>
+    applications.filter(predicate).length;
   const stats = [
-    { label: '전체 응답 수', value: rows.length },
+    { label: '전체 응답 수', value: applications.length },
     { label: '제출 완료 수', value: count((r) => r.status !== 'pending') },
     { label: '검토 중', value: count((r) => r.status === 'reviewing') },
     { label: '선정', value: count((r) => r.status === 'accepted') },
     { label: '미선정', value: count((r) => r.status === 'rejected') },
   ];
-  const filtered = useMemo(() => {
-    const term = keyword.trim().toLowerCase();
-    return rows.filter(
-      (row) =>
-        (!evaluation || row.evaluation === evaluation) &&
-        (!term ||
-          row.userId.toLowerCase().includes(term) ||
-          row.teammates.some((name) => name.toLowerCase().includes(term))),
-    );
-  }, [rows, keyword, evaluation]);
 
   return (
-    <BizContent style={{ gap: 48 }}>
-      <PageHeading>지원서 관리</PageHeading>
+    <Content>
+      <PageHeading>신청자 응답</PageHeading>
       <Stats aria-label="지원 현황 요약">
         {stats.map((stat) => (
           <Stat key={stat.label}>
@@ -76,49 +67,120 @@ export function BizApplicationsPage() {
           </Stat>
         ))}
       </Stats>
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%' }}>
-        <SectionHeading>팀 지원현황</SectionHeading>
-        <Toolbar>
-          <Search
-            type="search"
-            value={keyword}
-            placeholder="신청자 또는 팀명 검색"
-            aria-label="신청자 또는 팀명 검색"
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-          <div style={{ width: 140 }}>
-            <Dropdown
-              options={FILTER_OPTIONS}
-              value={evaluation}
-              placeholder="평가상태"
-              aria-label="평가상태 필터"
-              size="S"
-              onChange={setEvaluation}
-            />
-          </div>
-        </Toolbar>
-        {loading && <LoadingState label="지원서를 불러오는 중입니다." />}
+      <section style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%' }}>
+        <SectionHeading>행사별 신청 현황</SectionHeading>
+        {loading && <LoadingState label="신청자 응답을 불러오는 중입니다." />}
         {error && <Message role="alert">{error}</Message>}
-        {!loading && <ApplicationTable rows={filtered} onUpdate={update} />}
+        {!loading && !error && challenges.length === 0 && (
+          <Message>등록된 행사가 없습니다.</Message>
+        )}
+        <List>
+          {challenges.map((challenge) => {
+            const entry = byChallenge.get(challenge.id) ?? { total: 0, reviewing: 0, accepted: 0 };
+            return (
+              <li key={challenge.id}>
+                <Card href={hrefOf(`/applications/${challenge.id}`)}>
+                  <Thumb aria-hidden>
+                    {(challenge.thumbnailUrl ?? challenge.posterUrl) && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={challenge.thumbnailUrl ?? challenge.posterUrl ?? ''} alt="" />
+                    )}
+                  </Thumb>
+                  <CardInfo>
+                    <CardTitle>{challenge.title}</CardTitle>
+                    <CardMeta>
+                      접수 {formatDate(challenge.startDate)} ~ {formatDate(challenge.endDate)}
+                    </CardMeta>
+                  </CardInfo>
+                  <Counts>
+                    <Count>
+                      <strong>{entry.total.toLocaleString()}</strong>
+                      <span>신청</span>
+                    </Count>
+                    <Count>
+                      <strong>{entry.reviewing.toLocaleString()}</strong>
+                      <span>검토 중</span>
+                    </Count>
+                    <Count>
+                      <strong>{entry.accepted.toLocaleString()}</strong>
+                      <span>선정</span>
+                    </Count>
+                  </Counts>
+                  <Go aria-hidden>신청서 보기 →</Go>
+                </Card>
+              </li>
+            );
+          })}
+        </List>
       </section>
-    </BizContent>
+    </Content>
   );
 }
 
-const PageHeading = styled.h1({ margin: 0, fontSize: 40, fontWeight: 600, color: c.gray900 });
-const Stats = styled.div({ display: 'flex', gap: 24 });
-const Stat = styled.div({ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, padding: 16 });
-const StatLabel = styled.span({ ...textStyle.metaText, color: c.gray700 });
-const StatValue = styled.strong({ fontSize: 24, fontWeight: 700, color: c.gray900 });
+const Content = styled(BizContent)({ maxWidth: 'none' });
+const PageHeading = styled.h1({ margin: 0, ...textStyle.display, color: c.gray900 });
+const Stats = styled.div({ display: 'flex', gap: 24, flexWrap: 'wrap' });
+const Stat = styled(StatBox)({ flex: 1, border: 0, background: c.gray50 });
+const StatLabel = styled.span({ ...textStyle.caption, color: c.gray700 });
+const StatValue = styled.strong({ fontSize: 28, fontWeight: 700, color: c.gray900 });
 const SectionHeading = styled.h2({ margin: 0, ...textStyle.h1_2 });
-const Toolbar = styled.div({ display: 'flex', justifyContent: 'space-between', gap: 16 });
-const Search = styled.input({
-  width: 300,
-  height: 43,
-  border: `0.5px solid ${c.gray200}`,
+const List = styled.ul({
+  listStyle: 'none',
+  margin: 0,
+  padding: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+});
+const Card = styled(Link)({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 20,
+  padding: 16,
   borderRadius: 12,
-  padding: '0 16px',
-  ...textStyle.metaText,
-  '&:focus': { outline: 'none', borderColor: c.primary },
+  background: c.gray50,
+  transition: 'background 0.15s',
+  '&:hover': { background: c.paleBlue },
+});
+const Thumb = styled.div({
+  width: 120,
+  height: 68,
+  flexShrink: 0,
+  borderRadius: 8,
+  background: c.gray100,
+  overflow: 'hidden',
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
+const CardInfo = styled.div({
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+});
+const CardTitle = styled.strong({
+  ...textStyle.h2,
+  color: c.gray900,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
+const CardMeta = styled.span({ ...textStyle.metaText, color: c.gray500 });
+const Counts = styled.div({ display: 'flex', gap: 24 });
+const Count = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 2,
+  '& strong': { fontSize: 20, fontWeight: 700, color: c.gray900 },
+  '& span': { ...textStyle.metaText, color: c.gray500 },
+});
+const Go = styled.span({
+  ...textStyle.overline,
+  color: c.primary,
+  padding: '8px 12px',
+  borderRadius: 6,
+  background: c.paleBlue,
+  whiteSpace: 'nowrap',
 });
 const Message = styled.p({ margin: 0, color: c.gray500 });
