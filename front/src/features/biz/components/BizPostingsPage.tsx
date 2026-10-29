@@ -11,6 +11,7 @@ import { ExposureChart } from '@/components/biz/ExposureChart';
 import {
   BizContent,
   BizLink,
+  OutlineButton,
   PrimaryButton,
   SectionHeader,
   SectionTitle,
@@ -71,12 +72,14 @@ export function BizPostingsPage() {
       {!loading && !error && !latest && (
         <>
           <Message>등록된 공고가 없습니다.</Message>
-          <PrimaryButton
-            style={{ alignSelf: 'center' }}
-            onClick={() => (window.location.href = hrefOf('/postings/new'))}
-          >
-            챌린지 추가
-          </PrimaryButton>
+          <EmptyActions>
+            <BizLink href="/applications">
+              <OutlineButton as="span">지원자 관리</OutlineButton>
+            </BizLink>
+            <PrimaryButton onClick={() => (window.location.href = hrefOf('/postings/new'))}>
+              챌린지 추가
+            </PrimaryButton>
+          </EmptyActions>
         </>
       )}
       {latest && (
@@ -147,9 +150,14 @@ export function BizPostingsPage() {
           <section aria-label="내가 게시한 공고">
             <SectionHeader style={{ marginBottom: 28 }}>
               <SectionTitle>내가 게시한 공고</SectionTitle>
-              <PrimaryButton onClick={() => (window.location.href = hrefOf('/postings/new'))}>
-                챌린지 추가
-              </PrimaryButton>
+              <HeaderActions>
+                <BizLink href="/applications">
+                  <OutlineButton as="span">지원자 관리</OutlineButton>
+                </BizLink>
+                <PrimaryButton onClick={() => (window.location.href = hrefOf('/postings/new'))}>
+                  챌린지 추가
+                </PrimaryButton>
+              </HeaderActions>
             </SectionHeader>
             {groups.map((g) =>
               g.items.length === 0 && g.key !== 'open' ? null : (
@@ -200,6 +208,8 @@ export function BizPostingsPage() {
 }
 
 const Message = styled.p({ color: c.gray500, padding: '48px 0', textAlign: 'center' });
+const HeaderActions = styled.span({ display: 'flex', gap: 8, alignItems: 'center' });
+const EmptyActions = styled.div({ display: 'flex', gap: 8, justifyContent: 'center' });
 const HeaderRow = styled.div({
   display: 'flex',
   gap: 24,
