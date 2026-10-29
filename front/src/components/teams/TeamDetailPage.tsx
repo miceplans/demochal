@@ -511,10 +511,10 @@ const ProfileAvatar = styled.img({
   objectFit: 'cover',
 });
 const ProfileName = styled.b({ ...textStyle.h1, color: c.gray900 });
-// 배경·밑줄 없는 텍스트 링크 — 모달 안에서는 버튼 형태보다 링크가 자연스럽다.
+// 배경·밑줄·색상 없는 일반 텍스트 링크 — 누를면 프로필로 이동한다.
 const ProfileLink = styled(Link)({
   ...textStyle.subtitle,
-  color: c.primary,
+  color: c.gray900,
 });
 const Sidebar = styled.aside({
   display: 'flex',
