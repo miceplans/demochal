@@ -133,13 +133,12 @@ describe('PublicBusinessProfilePage', () => {
     mockQuery({
       isLoading: false,
       isError: false,
-      data: {
-        status: 200,
-        data: { ...BUSINESS, displayStatus: '가승인', detailStatus: '인증 대기' },
-      },
+      data: { status: 200, data: { ...BUSINESS, displayStatus: '반려', detailStatus: '실패' } },
     });
     const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
     expect(container.querySelector('img[alt="인증된 기관"]')).toBeNull();
+    // 서버가 실제로 내리는 거부 상태 뱃지는 그대로 보인다.
+    expect(screen.getByText('반려')).not.toBeNull();
   });
 
   it('contentBlocks가 비어 있으면 소개 섹션을 렌더하지 않는다', () => {
