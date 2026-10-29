@@ -20,9 +20,10 @@ function assertNoSslUrlParameters(databaseUrl: string): void {
 
 /**
  * Builds the single PostgreSQL connection policy used by application and
- * migration clients. In ECS, DATABASE_SSL_CA_PATH points to the AWS RDS CA
- * bundle packaged in the runtime image. Local Docker development leaves it
- * unset and continues to use its non-TLS PostgreSQL container.
+ * migration clients. DATABASE_SSL_CA_PATH optionally points to a CA bundle
+ * for TLS server-certificate verification against a managed Postgres. Local
+ * Docker development leaves it unset and continues to use its non-TLS
+ * PostgreSQL container.
  */
 export function createPoolOptions(
   databaseUrl: string,

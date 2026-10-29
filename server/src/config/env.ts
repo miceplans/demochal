@@ -3,7 +3,8 @@ import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 import { parseIpAllowlist } from '../common/throttling/ip-allowlist.js';
 
-// No-op in production (ECS/Vercel inject env vars directly, no .env file present).
+// No-op when env vars are injected directly (docker compose services, CI);
+// only local shell runs load a .env file.
 loadDotenv({ quiet: true });
 
 export const MIN_JWT_SECRET_LENGTH = 32;

@@ -41,7 +41,7 @@ $ curl http://localhost:3001/health # {"status":"ok",...}
 ```
 
 - `db`(postgres:16)가 healthy해진 뒤 `migrate`가 `node dist/migrate.js`로 대기 중인 마이그레이션을 Drizzle의 마이그레이션 저널에 기록하며 적용하고, 성공적으로 끝나면 `api`가 기동합니다. `api` 컨테이너는 `/health` 기반 healthcheck를 가집니다.
-- `migrate`는 기존 ECS 마이그레이션 태스크와 동일한 진입점을 재사용하므로, 볼륨을 유지한 채로 새 마이그레이션을 추가해도(`server/drizzle`에 파일 추가 후 `docker compose up`) 정상적으로 증분 적용됩니다 — `down -v`로 데이터를 지울 필요가 없습니다.
+- `migrate`는 one-off 마이그레이션 서비스이므로, 볼륨을 유지한 채로 `server/drizzle`에 새 마이그레이션 파일을 올리면(`docker compose up`) 정상적으로 증분 적용됩니다 — `down -v`로 데이터를 지울 필요가 없습니다.
 - `db`는 `127.0.0.1`에만 포트를 게시하므로 같은 네트워크의 다른 호스트에서는 접근할 수 없습니다.
 - 로컬 compose 실행은 `NODE_ENV=development`로 오버라이드하므로 secret 주입 없이 기동할 수 있습니다.
 - 종료: `docker compose down`(DB 데이터 유지) / `docker compose down -v`(DB 데이터 삭제)
@@ -108,8 +108,8 @@ Check out a few resources that may come in handy when working with NestJS:
 - For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
 - To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
 - Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
+- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring made easy for your NestJS applications.
+- Visualize your application graph and interact with your application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
 - Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
 - To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
 - Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
@@ -131,7 +131,6 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 # File-upload security rollout
 
 `0000_file_upload_hardening.sql` adds the verification state required by the
-private-upload/finalize flow. Apply it before deploying the API change.
-
-Existing public S3 objects predate byte validation. Inventory and quarantine
-them with the bucket/CloudFront configuration before treating them as trusted.
+private-upload/finalize flow. Apply it before running the API change that
+depends on it — the local Docker Compose `migrate` service applies pending
+migrations automatically on `docker compose up`.

@@ -174,7 +174,7 @@ function dispatch(store: FakeRedisStore, cmd: string, args: LuaArg[]): LuaArg | 
 // Runs the shipped Lua increment script inside a real Lua VM (fengari) against
 // the fake store — the same script Redis executes, so semantics are verified
 // end to end without an external Redis. Each call gets a fresh Lua state, like
-// a separate ECS task, which is what proves shared-storage behavior.
+// a separate process, which is what proves shared-storage behavior.
 function runIncrement(
   store: FakeRedisStore,
   key: string,

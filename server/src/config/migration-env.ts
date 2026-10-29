@@ -1,6 +1,7 @@
 import { config as loadDotenv } from 'dotenv';
 
-// No-op in production (the ECS migration task injects env vars directly).
+// No-op when env vars are injected directly (e.g. the Docker Compose migrate
+// service passes DATABASE_URL explicitly).
 loadDotenv({ quiet: true });
 
 export interface MigrationEnv {
@@ -8,11 +9,10 @@ export interface MigrationEnv {
   databaseSslCaPath?: string;
 }
 
-// The one-off ECS migration task is intentionally restricted to DATABASE_URL
-// only (see migrate_secrets in infra/terraform/compute.tf), so migration code
-// must resolve its own minimal env instead of importing the shared ./env.js
-// config, which requires the full production secret set (JWT_SECRET, OAuth
-// keys, ...) and throws when they are absent.
+// The migration entry point is intentionally restricted to DATABASE_URL only,
+// so migration code resolves its own minimal env instead of importing the
+// shared ./env.js config, which pulls in the full application secret set
+// (JWT_SECRET, OAuth keys, ...) and throws when they are absent.
 export function resolveMigrationEnv(source: NodeJS.ProcessEnv = process.env): MigrationEnv {
   const databaseUrl = source.DATABASE_URL;
   if (!databaseUrl) {

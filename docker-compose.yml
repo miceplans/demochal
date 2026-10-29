@@ -39,8 +39,8 @@ services:
       timeout: 3s
       retries: 10
 
-  # Distributed rate-limit store so local dev matches the ECS setup. The API
-  # falls back to per-task memory when REDIS_URL is unset.
+  # Distributed rate-limit store for local development. The API
+  # falls back to per-process memory when REDIS_URL is unset.
   redis:
     image: redis:7-alpine
     ports:
