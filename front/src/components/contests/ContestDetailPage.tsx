@@ -96,6 +96,11 @@ export function ContestDetailPage({
     }));
   const basePath = challengeId ? `/contests/${challengeId}` : '/contests/public-data';
   const external = challenge?.recruitMethod === 'external' && challenge.recruitUrl;
+  // 자동 마감 배치 전에도 endDate가 지난 공고는 마감으로 취급한다. 상태가 먼저 closed로
+  // 전환된 경우도 함께 막아 CTA와 서버의 공개 목록 기준을 일치시킨다.
+  const isClosed = Boolean(
+    challenge && (challenge.status === 'closed' || isPastDeadline(challenge.endDate, now)),
+  );
   // 신청 API는 ?challenge=<uuid>가 있어야 실제 신청·결제 흐름으로 동작한다(ApplicationPage).
   const applyHref = challengeId
     ? `/applications/new?challenge=${encodeURIComponent(challengeId)}`
@@ -181,7 +186,7 @@ export function ContestDetailPage({
       toast.error('첨부파일을 내려받지 못했습니다. 잠시 후 다시 시도해 주세요.');
     }
   };
-  const applyRef = useRef<HTMLAnchorElement>(null);
+  const applyRef = useRef<HTMLDivElement>(null);
   const introRef = useRef<HTMLDivElement>(null);
   // 실제 챌린지는 로딩이 끝난 뒤에야 신청 버튼이 렌더되므로 그때 다시 관찰한다.
   const ready = !challengeId || Boolean(challenge);
@@ -202,7 +207,12 @@ export function ContestDetailPage({
     observer.observe(el);
     return () => observer.disconnect();
   }, [teamTab, ready]);
-  const teamCta = (
+  const disabledCtaStyle = { background: c.gray300, borderColor: c.gray300, color: c.white };
+  const teamCta = isClosed ? (
+    <Button tone="outline" fullWidth disabled style={disabledCtaStyle}>
+      이 챌린지 팀 구하기
+    </Button>
+  ) : (
     <Link
       href={
         challengeId ? `/teams/new?challengeId=${encodeURIComponent(challengeId)}` : '/teams/new'
@@ -354,19 +364,25 @@ export function ContestDetailPage({
                     </ul>
                   </section>
                 )}
-                {external ? (
-                  <a href={external} target="_blank" rel="noopener noreferrer" ref={applyRef}>
-                    <Button as="span" fullWidth>
+                <div ref={applyRef}>
+                  {isClosed ? (
+                    <Button fullWidth disabled style={disabledCtaStyle}>
                       참가 신청하기
                     </Button>
-                  </a>
-                ) : (
-                  <Link href={applyHref} ref={applyRef}>
-                    <Button as="span" fullWidth>
-                      참가 신청하기
-                    </Button>
-                  </Link>
-                )}
+                  ) : external ? (
+                    <a href={external} target="_blank" rel="noopener noreferrer">
+                      <Button as="span" fullWidth>
+                        참가 신청하기
+                      </Button>
+                    </a>
+                  ) : (
+                    <Link href={applyHref}>
+                      <Button as="span" fullWidth>
+                        참가 신청하기
+                      </Button>
+                    </Link>
+                  )}
+                </div>
                 <MobileOnly>{teamCta}</MobileOnly>
               </Stack>
             )}
@@ -381,16 +397,22 @@ export function ContestDetailPage({
                 )}
               </PosterFrame>
             )}
-            {!teamTab && !applyVisible && (
-              <Link
-                href={external || applyHref}
-                {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-              >
-                <Button as="span" fullWidth>
+            {!teamTab &&
+              !applyVisible &&
+              (isClosed ? (
+                <Button fullWidth disabled style={disabledCtaStyle}>
                   참가 신청하기
                 </Button>
-              </Link>
-            )}
+              ) : (
+                <Link
+                  href={external || applyHref}
+                  {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                >
+                  <Button as="span" fullWidth>
+                    참가 신청하기
+                  </Button>
+                </Link>
+              ))}
             {teamCta}
             {summaryBox}
           </Sidebar>
