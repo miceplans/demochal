@@ -50,7 +50,6 @@ const Targets = styled.div({
   display: 'flex',
   flexWrap: 'wrap',
   gap: 16,
-  marginBottom: 24,
 });
 const targetStyle = {
   display: 'flex',
@@ -79,25 +78,6 @@ const targetStyle = {
 } as const;
 const TargetButton = styled.button(targetStyle);
 const TargetLink = styled.a(targetStyle);
-const LinkRow = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '6px 6px 6px 14px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  input: {
-    flex: 1,
-    minWidth: 0,
-    border: 0,
-    outline: 'none',
-    background: 'transparent',
-    fontFamily: 'inherit',
-    fontSize: textStyle.caption.fontSize,
-    color: c.gray700,
-  },
-});
-
 export function ShareMenu({ title }: ShareMenuProps) {
   const toast = useToast();
   const titleId = useId();
@@ -175,6 +155,12 @@ export function ShareMenu({ title }: ShareMenuProps) {
                 </CloseButton>
               </Header>
               <Targets>
+                <TargetButton type="button" onClick={copyLink}>
+                  <span className="circle">
+                    <Icon src="/assets/icons/share/copy-link.svg" size={48} alt="" />
+                  </span>
+                  링크 복사
+                </TargetButton>
                 {canNativeShare && (
                   <TargetButton type="button" onClick={nativeShare}>
                     <span className="circle">
@@ -206,17 +192,6 @@ export function ShareMenu({ title }: ShareMenuProps) {
                   true,
                 )}
               </Targets>
-              <LinkRow>
-                <input
-                  readOnly
-                  value={url}
-                  aria-label="공유 링크"
-                  onFocus={(e) => e.target.select()}
-                />
-                <Button small tone="primary" onClick={copyLink}>
-                  링크 복사
-                </Button>
-              </LinkRow>
             </Dialog>
           </Backdrop>,
           document.body,
