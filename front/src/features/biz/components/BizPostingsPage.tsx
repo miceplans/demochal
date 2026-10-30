@@ -5,7 +5,7 @@ import { generated } from '@semochal/api-client';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { siteHref } from '@/lib/biz';
-import { colors as c } from '@/styles/design';
+import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ExposureChart } from '@/components/biz/ExposureChart';
 import {
@@ -70,7 +70,7 @@ export function BizPostingsPage() {
       {loading && <LoadingState label="공고를 불러오는 중입니다." />}
       {error && <Message role="alert">{error}</Message>}
       {!loading && !error && !latest && (
-        <>
+        <EmptyState aria-label="등록 공고 없음">
           <Message>등록된 공고가 없습니다.</Message>
           <EmptyActions>
             <BizLink href="/applications">
@@ -80,7 +80,7 @@ export function BizPostingsPage() {
               챌린지 추가
             </PrimaryButton>
           </EmptyActions>
-        </>
+        </EmptyState>
       )}
       {latest && (
         <>
@@ -208,6 +208,16 @@ export function BizPostingsPage() {
 }
 
 const Message = styled.p({ color: c.gray500, padding: '48px 0', textAlign: 'center' });
+const EmptyState = styled.section({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  width: '100%',
+  paddingTop: 96,
+  gap: 152,
+  '& > p': { margin: 0, padding: 0 },
+  [mobile]: { paddingTop: 48, gap: 48 },
+});
 const HeaderActions = styled.span({ display: 'flex', gap: 8, alignItems: 'center' });
 const EmptyActions = styled.div({ display: 'flex', gap: 8, justifyContent: 'center' });
 const HeaderRow = styled.div({

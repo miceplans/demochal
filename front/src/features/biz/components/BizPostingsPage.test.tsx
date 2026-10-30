@@ -68,10 +68,12 @@ describe('BizPostingsPage 지원자 관리 진입점', () => {
   it('공고가 없어도 빈 상태의 지원자 관리가 /applications 링크로 렌더된다', () => {
     mocks.hasPosting = false;
     render(<BizPostingsPage />);
+    expect(screen.getByRole('region', { name: '등록 공고 없음' })).toBeTruthy();
     expect(screen.getByText('등록된 공고가 없습니다.')).toBeTruthy();
     expect(screen.getByRole('link', { name: '지원자 관리' }).getAttribute('href')).toBe(
       '/biz/applications',
     );
+    expect(screen.getByRole('button', { name: '챌린지 추가' })).toBeTruthy();
     expect(mocks.hrefOf).toHaveBeenCalledWith('/applications');
   });
 });
