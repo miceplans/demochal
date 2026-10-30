@@ -21,6 +21,7 @@ import {
 } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { ShareMenu } from '@/components/common/ShareMenu';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { ContestCard } from './ContestCard';
@@ -196,14 +197,6 @@ export function ContestDetailPage({
     observer.observe(el);
     return () => observer.disconnect();
   }, [teamTab, ready]);
-  const share = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('링크를 복사했어요');
-    } catch {
-      toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
-    }
-  };
   const teamCta = (
     <Link
       href={
@@ -277,10 +270,7 @@ export function ContestDetailPage({
               >
                 <HeartIcon filled={saved} size={18} />
               </IconButton>
-              <Button small tone="plain" onClick={share}>
-                <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
-                공유
-              </Button>
+              <ShareMenu title={detail.title} />
               <IconLink
                 href={
                   challengeId
