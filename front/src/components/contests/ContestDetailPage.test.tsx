@@ -141,6 +141,44 @@ describe('ContestDetailPage 사이드바 포스터', () => {
   });
 });
 
+describe('ContestDetailPage 상세 포스터 소스', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    observers = [];
+    setChallengeQueries();
+  });
+
+  afterEach(() => cleanup());
+
+  it('thumbnailUrl이 있으면 상단 커버가 크롭 썸네일을 표시한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, thumbnailUrl: '/thumb.webp' } },
+    } as never);
+    const { container } = render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    expect(container.querySelector('.cover img')?.getAttribute('src')).toBe('/thumb.webp');
+  });
+
+  it('thumbnailUrl이 없으면 상단 커버가 원본 posterUrl로 폰백한다', () => {
+    const { container } = render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    expect(container.querySelector('.cover img')?.getAttribute('src')).toBe('/poster.png');
+  });
+
+  it('사이드바 포스터도 thumbnailUrl을 우선 표시한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, thumbnailUrl: '/thumb.webp' } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    scrollIntro(false);
+    expect(posterAlt()?.getAttribute('src')).toBe('/thumb.webp');
+  });
+
+  it('사이드바 포스터는 thumbnailUrl이 없으면 posterUrl로 폰백한다', () => {
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    scrollIntro(false);
+    expect(posterAlt()?.getAttribute('src')).toBe('/poster.png');
+  });
+});
+
 describe('ContestDetailPage 기업 프로필 진입점', () => {
   beforeEach(() => {
     vi.clearAllMocks();
