@@ -696,7 +696,8 @@ const ContestSkeletonCard = styled.article({
   '.meta > div': { width: '36%' },
   [mobile]: {
     border: '0.5px solid #f0f1f3',
-    '.artwork': { height: 160 },
+    // 실제 카드 이미지와 같은 416:415 비율로 — 로딩→렌더 전환 때 레이아웃이 어긋나지 않게 한다.
+    '.artwork': { height: 'auto', aspectRatio: '416 / 415' },
     '.card-body': { padding: 12 },
   },
 });
