@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useId, useState, type ReactNode } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { Button, Icon } from '@/components/common/Primitives';
@@ -73,12 +73,9 @@ const targetStyle = {
     height: 48,
     borderRadius: '50%',
     background: c.gray100,
-    color: c.gray900,
-    fontSize: 18,
-    fontWeight: 700,
-    transition: 'background 0.12s ease',
+    transition: 'opacity 0.12s ease',
   },
-  '&:hover .circle': { background: c.gray200 },
+  '&:hover .circle': { opacity: 0.85 },
 } as const;
 const TargetButton = styled.button(targetStyle);
 const TargetLink = styled.a(targetStyle);
@@ -100,12 +97,6 @@ const LinkRow = styled.div({
     color: c.gray700,
   },
 });
-
-const MessageIcon = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-    <path d="M4 5h16v11H9l-5 4V5z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-  </svg>
-);
 
 export function ShareMenu({ title }: ShareMenuProps) {
   const toast = useToast();
@@ -151,13 +142,15 @@ export function ShareMenu({ title }: ShareMenuProps) {
 
   const encodedUrl = encodeURIComponent(url);
   const encodedTitle = encodeURIComponent(title);
-  const link = (label: string, href: string, glyph: ReactNode, external = false) => (
+  const link = (label: string, href: string, icon: string, external = false) => (
     <TargetLink
       href={href}
       {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
       onClick={close}
     >
-      <span className="circle">{glyph}</span>
+      <span className="circle">
+        <Icon src={icon} size={48} alt="" />
+      </span>
       {label}
     </TargetLink>
   );
@@ -193,23 +186,23 @@ export function ShareMenu({ title }: ShareMenuProps) {
                 {link(
                   '메시지',
                   `sms:?&body=${encodeURIComponent(`${title}\n`)}${encodedUrl}`,
-                  <MessageIcon />,
+                  '/assets/icons/share/message.svg',
                 )}
                 {link(
                   '이메일',
                   `mailto:?subject=${encodedTitle}&body=${encodedUrl}`,
-                  <Icon src="/assets/icons/mail.svg" size={22} alt="" />,
+                  '/assets/icons/share/mail.svg',
                 )}
                 {link(
                   'X',
                   `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
-                  'X',
+                  '/assets/icons/share/x.svg',
                   true,
                 )}
                 {link(
                   '페이스북',
                   `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-                  'f',
+                  '/assets/icons/share/facebook.svg',
                   true,
                 )}
               </Targets>
