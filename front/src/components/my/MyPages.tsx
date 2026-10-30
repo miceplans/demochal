@@ -26,7 +26,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
-import { normalizeLinkUrl, isSafeLinkUrl } from '@/components/profile/link-model';
+import { normalizeLinkUrl, isSafeLinkUrl, isGithubUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -420,6 +420,15 @@ const linkInput = {
 } as const;
 const LinkLabelInput = styled.input({ ...linkInput, width: 101, flexShrink: 0 });
 const LinkUrlInput = styled.input({ ...linkInput, flex: 1 });
+const BadgeRequest = styled.label({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  flexShrink: 0,
+  fontSize: 13,
+  color: c.gray500,
+  cursor: 'pointer',
+});
 const LinkDeleteButton = styled.button({
   display: 'inline-flex',
   alignItems: 'center',
@@ -454,7 +463,7 @@ const LinkAddButton = styled.button({
 const LINK_LABEL_MAX_LENGTH = 50;
 const LINK_URL_MAX_LENGTH = 500;
 
-type LinkDraft = { label: string; url: string };
+type LinkDraft = { label: string; url: string; portfolioBadge?: 'pending' | 'approved' };
 
 // 프로필 링크(externalLinks)를 행 단위로 바로 편집한다. 이름·주소가 모두 유효한 행만 저장한다.
 function InlineLinks({
@@ -472,7 +481,13 @@ function InlineLinks({
     for (const row of list) {
       const label = row.label.trim();
       const url = normalizeLinkUrl(row.url);
-      if (label && url) out.push({ label, url });
+      // 포트폴리오 뱃지 상태(신청 중/승인됨)는 비-GitHub 링크에만 싣는다. 승인 여부는 서버가 다시 검증한다.
+      if (label && url)
+        out.push({
+          label,
+          url,
+          ...(row.portfolioBadge && !isGithubUrl(url) && { portfolioBadge: row.portfolioBadge }),
+        });
     }
     return out;
   };
@@ -526,6 +541,30 @@ function InlineLinks({
               onChange={(e) => updateRow(index, { url: e.target.value })}
               onBlur={() => void persist(rows, true)}
             />
+            {!isGithubUrl(row.url) && (
+              <BadgeRequest>
+                <input
+                  type="checkbox"
+                  aria-label={`링크 ${index + 1} 포트폴리오 뱃지 신청`}
+                  checked={Boolean(row.portfolioBadge)}
+                  // 승인된 뱃지는 실수로 해제해 재승인이 필요해지지 않도록 체크박스로 끄지 못하게 한다.
+                  disabled={row.portfolioBadge === 'approved'}
+                  onChange={(e) => {
+                    const next: LinkDraft[] = rows.map((r, i) =>
+                      i === index
+                        ? {
+                            ...r,
+                            portfolioBadge: e.target.checked ? ('pending' as const) : undefined,
+                          }
+                        : r,
+                    );
+                    setRows(next);
+                    void persist(next, true);
+                  }}
+                />
+                {row.portfolioBadge === 'approved' ? '뱃지 승인됨' : '뱃지 신청'}
+              </BadgeRequest>
+            )}
             <LinkDeleteButton
               type="button"
               aria-label={`링크 ${index + 1} 삭제`}
@@ -706,7 +745,11 @@ function ProfileEditor() {
         <Heading>링크</Heading>
         {me.data?.status === 200 ? (
           <InlineLinks
-            initial={myLinks.map((link) => ({ label: link.label ?? '', url: link.url ?? '' }))}
+            initial={myLinks.map((link) => ({
+              label: link.label ?? '',
+              url: link.url ?? '',
+              portfolioBadge: link.portfolioBadge,
+            }))}
             onSave={(externalLinks) => updateProfile.mutateAsync({ data: { externalLinks } })}
           />
         ) : (

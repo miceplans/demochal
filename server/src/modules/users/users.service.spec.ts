@@ -7,12 +7,18 @@ const survey = { interests: ['개발'], purposes: ['수상'], challengeTypes: ['
 function dbWith({ updated, existing }: { updated: unknown[]; existing: unknown[] }) {
   const returning = vi.fn().mockResolvedValue(updated);
   const set = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) });
-  const limit = vi.fn().mockResolvedValue(existing);
+  // `.limit(1)`을 바로 await하거나 `.for('update')`로 이어 쓰는 두 경우를 모두 받는다.
+  const limit = vi.fn(() =>
+    Object.assign(Promise.resolve(existing), { for: () => Promise.resolve(existing) }),
+  );
   const db: any = {
     update: vi.fn().mockReturnValue({ set }),
     select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit }) }),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ limit }),
+      }),
     }),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
   return { db, set };
 }
@@ -95,5 +101,50 @@ describe('UsersService profile image', () => {
     expect(set).toHaveBeenCalledWith({ profileImageFileId: null });
     expect(result.profileImageUrl).toBeNull();
     expect(db.select).not.toHaveBeenCalled();
+  });
+});
+
+describe('UsersService portfolio badge', () => {
+  const stored = [
+    { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+    { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'pending' },
+  ];
+
+  it('does not let the client self-approve: only previously approved URLs stay approved', async () => {
+    const { db, set } = dbWith({
+      updated: [{ id: 'u1', externalLinks: [] }],
+      existing: [{ externalLinks: stored }],
+    });
+    const service = new UsersService(db);
+
+    await service.updateProfile('u1', {
+      externalLinks: [
+        { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+        { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'approved' },
+        { label: '새 링크', url: 'https://new.example/c', portfolioBadge: 'approved' },
+        { label: 'GitHub', url: 'https://github.com/x', portfolioBadge: 'pending' },
+      ],
+    });
+
+    expect(set).toHaveBeenCalledWith({
+      externalLinks: [
+        { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+        { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'pending' },
+        { label: '새 링크', url: 'https://new.example/c', portfolioBadge: 'pending' },
+        { label: 'GitHub', url: 'https://github.com/x' },
+      ],
+    });
+  });
+
+  it('hides pending badges from other users but keeps approved ones', async () => {
+    const { db } = dbWith({ updated: [], existing: [{ id: 'u1', externalLinks: stored }] });
+    const service = new UsersService(db);
+
+    const profile = await service.findPublicProfileById('u1');
+
+    expect(profile.externalLinks).toEqual([
+      { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+      { label: '노션', url: 'https://notion.example/b' },
+    ]);
   });
 });

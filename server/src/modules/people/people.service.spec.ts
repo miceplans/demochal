@@ -30,7 +30,7 @@ describe('PeopleService.list', () => {
           stacks: ['React'],
           externalLinks: [
             { label: 'GitHub', url: 'https://github.com/x' },
-            { label: '블로그', url: 'https://blog.example/x' },
+            { label: '블로그', url: 'https://blog.example/x', portfolioBadge: 'approved' },
           ],
           awardHistory: [{ title: '장려상' }],
           profileImageFileId: 'f1',
@@ -70,6 +70,32 @@ describe('PeopleService.list', () => {
       hasAwards: false,
     });
     expect(result[0]).not.toHaveProperty('externalLinks');
+  });
+
+  it('does not grant the portfolio badge for links that did not request it', async () => {
+    const { db } = createDbStub(
+      [
+        {
+          id: 'u3',
+          name: '이서연',
+          position: null,
+          region: null,
+          stacks: [],
+          externalLinks: [
+            { label: '블로그', url: 'https://blog.example/y' },
+            { label: '노션', url: 'https://notion.example/y', portfolioBadge: 'pending' },
+          ],
+          awardHistory: [],
+          profileImageFileId: null,
+        },
+      ],
+      [],
+    );
+    const service = new PeopleService(db as any);
+
+    const result = await service.list({}, 'viewer');
+
+    expect(result[0]).toMatchObject({ hasPortfolio: false });
   });
 
   it('applies filters and sort without throwing for empty and comma lists', async () => {

@@ -2,6 +2,7 @@ import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsIn,
   IsOptional,
   IsUUID,
   IsString,
@@ -18,6 +19,12 @@ export class ExternalLinkDto {
   @IsString()
   @MaxLength(500)
   url!: string;
+
+  // 포트폴리오 뱃지 신청 상태. 링크만 추가해서는 뱃지가 붙지 않는다.
+  // 'approved'는 서버가 기존 승인 이력과 대조해 검증하므로 클라이언트가 임의로 올릴 수 없다.
+  @IsOptional()
+  @IsIn(['pending', 'approved'])
+  portfolioBadge?: 'pending' | 'approved';
 }
 
 export class AwardRecordDto {
