@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
 import { ExplorePage } from './ExplorePage';
 
@@ -50,6 +50,17 @@ vi.mock('@/components/ui/RangeSlider', () => ({ RangeSlider: () => <div /> }));
 vi.mock('./ExploreFilters', () => ({
   Checkbox: ({ label }: { label: string }) => <label>{label}</label>,
   CheckFilter: () => <div />,
+  FilterPopover: ({ label, children }: { label: string; children: ReactNode }) => {
+    const [open, setOpen] = useState(false);
+    return (
+      <div>
+        <button type="button" onClick={() => setOpen((v) => !v)}>
+          {label}
+        </button>
+        {open && children}
+      </div>
+    );
+  },
   ChipFilter: ({
     ariaLabel,
     options,
@@ -209,7 +220,7 @@ describe('ExplorePage category filters', () => {
   it('shows the new categories on desktop and mobile and filters challenges by the selected category', async () => {
     const { container } = render(<ExplorePage />);
 
-    fireEvent.click(screen.getByRole('button', { name: '필터' }));
+    fireEvent.click(screen.getByRole('button', { name: '분야' }));
     const desktopCategoryGroup = screen.getByRole('group', { name: '분야' });
     const mobileCategorySelect =
       container.querySelector<HTMLSelectElement>('select[aria-label="분야"]');
