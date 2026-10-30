@@ -753,7 +753,7 @@ describe('InterestsPage 온볼딩 관심분야', () => {
     );
   });
 
-  it('온볼딩 어휘 칩을 해제핸 뒤 저장하면 저장 목록에서 빠지고 칩은 남아 있다', async () => {
+  it('온볼딩 어휘 칩을 해제한 뒤 저장하면 저장 목록에서 빠지고 칩은 남아 있다', async () => {
     mocks.interests = ['IT/SW', '취업'];
     mocks.saveInterestsMutate.mockImplementation(
       (_data: unknown, options: { onSuccess?: () => void }) => options?.onSuccess?.(),
@@ -768,7 +768,7 @@ describe('InterestsPage 온볼딩 관심분야', () => {
       { data: { categories: ['취업'] } },
       expect.anything(),
     );
-    // 해제한 칩은 서버 목록 기준으로 남아 있어 다시 선택할 수 있다.
+    // 해제한 칩은 이 화면에서 본 서버 값 기준으로 남아 있어 다시 선택할 수 있다.
     expect(screen.getByRole('button', { name: 'IT/SW' }).getAttribute('aria-pressed')).toBe(
       'false',
     );
@@ -787,5 +787,49 @@ describe('InterestsPage 온볼딩 관심분야', () => {
       { data: { categories: ['IT/SW', '디자인 · UX'] } },
       expect.anything(),
     );
+  });
+
+  it('저장 후 재조회돼 서버 목록에서 빠져도 해제한 온볼딩 칩은 남아 재선택 가능하다', async () => {
+    mocks.interests = ['IT/SW', '취업'];
+    mocks.saveInterestsMutate.mockImplementation(
+      (_data: unknown, options: { onSuccess?: () => void }) => options?.onSuccess?.(),
+    );
+    const user = userEvent.setup();
+    const view = (
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={new QueryClient()}>
+          <InterestsPage />
+        </QueryClientProvider>
+      </ThemeProvider>
+    );
+    const { rerender } = render(view);
+
+    await user.click(screen.getByRole('button', { name: 'IT/SW' }));
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+
+    // 저장 직후 invalidate된 재조회 결과에서 IT/SW가 빠진 경우에도
+    // 이 화면에서 본 값은 칩으로 남아 다시 선택할 수 있다.
+    mocks.interests = ['취업'];
+    rerender(view);
+
+    const chip = screen.getByRole('button', { name: 'IT/SW' });
+    expect(chip.getAttribute('aria-pressed')).toBe('false');
+    await user.click(chip);
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+    expect(mocks.saveInterestsMutate).toHaveBeenLastCalledWith(
+      { data: { categories: ['취업', 'IT/SW'] } },
+      expect.anything(),
+    );
+  });
+
+  it('관심분야를 전부 해제하면 저장하기가 비활성화된다', async () => {
+    mocks.interests = ['IT/SW'];
+    const user = userEvent.setup();
+
+    renderInterestsPage();
+    await user.click(screen.getByRole('button', { name: 'IT/SW' }));
+
+    expect(screen.getByRole('button', { name: '저장하기' })).toHaveProperty('disabled', true);
+    expect(mocks.saveInterestsMutate).not.toHaveBeenCalled();
   });
 });

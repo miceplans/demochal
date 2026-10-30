@@ -1067,19 +1067,34 @@ export function InterestsPage() {
   const isSelected = (value: string) => interests.includes(value);
   // 온볼딩에서 선택한 관심분야는 칩 기본 옵션 어휘와 다를 수 있다('IT/SW', '취업' 등 —
   // design-copy.json fields). 서버가 내준 값 중 옵션에 없는 것도 칩으로 표시해
-  // 해제/재선택이 가능하게 한다. 편집 상태가 아니라 서버 목록 기준으로 뽑아야
-  // 해제한 칩이 화면에서 즉시 사라지지 않는다.
-  const optionSet = new Set(preferenceGroups.flatMap((g) => g.options));
-  const serverInterests = interestsQuery.data?.data.categories ?? [];
-  const extraOptions = serverInterests.filter((x) => !optionSet.has(x));
+  // 해제/재선택이 가능하게 한다. 이 화면에서 본 서버 값을 누적해 두어, 해제·저장 후
+  // 재조회돼 서버 목록에서 빠져도 칩이 사라지지 않고 다시 선택할 수 있게 한다.
+  const optionSet = useMemo(() => new Set(preferenceGroups.flatMap((g) => g.options)), []);
+  const serverCategories = interestsQuery.data?.data.categories;
+  // 파생 상태 조정 패턴: 서버 목록이 바뀌는 렌더에서만 누적 값을 갱신한다.
+  const [seen, setSeen] = useState<{ server: typeof serverCategories; extras: string[] }>(() => ({
+    server: serverCategories,
+    extras: serverCategories ? [...new Set(serverCategories)].filter((x) => !optionSet.has(x)) : [],
+  }));
+  if (serverCategories !== seen.server) {
+    setSeen({
+      server: serverCategories,
+      extras: serverCategories
+        ? [...new Set([...seen.extras, ...serverCategories])].filter((x) => !optionSet.has(x))
+        : seen.extras,
+    });
+  }
+  const extraOptions = seen.extras;
   const toggle = (value: string) => {
     if (!interestsReady) return;
     setEditedInterests(
       interests.includes(value) ? interests.filter((x) => x !== value) : [...interests, value],
     );
   };
+  // 빈 관심분야는 저장하지 않는다. 빈 배열이 저장되면 GET /interests의 온볼딩 설문
+  // 평백이 다시 발동해, 사용자가 비우려던 관심분야가 되살아난다(서버도 1개 이상 요구).
   const save = () => {
-    if (!interestsReady) return;
+    if (!interestsReady || interests.length === 0) return;
     saveInterests.mutate(
       { data: { categories: interests } },
       {
@@ -1128,7 +1143,7 @@ export function InterestsPage() {
         <Button
           style={{ width: 160 }}
           onClick={save}
-          disabled={!interestsReady || saveInterests.isPending}
+          disabled={!interestsReady || interests.length === 0 || saveInterests.isPending}
         >
           저장하기
         </Button>
