@@ -44,6 +44,10 @@ const splitPlainItems = (text: string) =>
         .replace(/ - (?=\S)/g, '\n- ')
         .trim();
 
+// 공고 포스터 크롭 썸네일 비율(등록 폼의 POSTER_THUMBNAIL_ASPECT와 동일) — 상세 포스터 슬롯도
+// 이 비율로 노출해 사용자가 자른 영역이 잘리지 않고 그대로 보이게 한다.
+const POSTER_ASPECT = '416 / 415';
+
 // challengeId가 있으면 GET /challenges/{id} 기준의 실제 상세, 없으면 /contests/public-data 데모 상세.
 export function ContestDetailPage({
   teamTab = false,
@@ -65,7 +69,8 @@ export function ContestDetailPage({
     query: { enabled: Boolean(challengeId) },
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
-  const posterUrl = challenge?.posterUrl ?? null;
+  // 상세 포스터는 사용자가 크롭한 썸네일을 우선 쓴다 — 원본은 썸네일이 없는 레거시 공고의 폰백이다.
+  const posterUrl = challenge?.thumbnailUrl ?? challenge?.posterUrl ?? null;
   // 데모 상세(challengeId 없음)는 데모 포스터, 실제 챌린지는 서버 포스터(없으면 플레이스홀더).
   const sidebarPoster = challengeId ? posterUrl : contestDetail.poster;
   // 데모 상세(challengeId 없음)는 전체 모집글을 보여준다.
@@ -459,7 +464,7 @@ const Intro = styled.div({
   marginBottom: 60,
   '.cover': {
     width: 315,
-    height: 220,
+    aspectRatio: POSTER_ASPECT,
     borderRadius: 12,
     background: '#d8e4f0',
     display: 'grid',
@@ -482,7 +487,6 @@ const Intro = styled.div({
     marginBottom: 24,
     '.cover': {
       width: 'calc(100% + 32px)',
-      height: 200,
       margin: '-24px -16px 0',
       background: '#d8e4f0',
       borderRadius: 0,
@@ -517,7 +521,7 @@ const Sidebar = styled(DesktopOnly)({
 });
 const PosterFrame = styled.div({
   width: '100%',
-  aspectRatio: '320 / 404',
+  aspectRatio: POSTER_ASPECT,
   borderRadius: 19,
   background: c.gray100,
   overflow: 'hidden',
