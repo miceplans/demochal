@@ -76,7 +76,7 @@ export function ExplorePage({
   const [regionLabels, setRegionLabels] = useState<string[]>([]);
   const [sort, setSort] = useState('마감임박');
   const [pageState, setPageState] = useState({ key: '', page: 1 });
-  const [includeClosed, setIncludeClosed] = useState(true);
+  const [includeClosed, setIncludeClosed] = useState(false);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const prizeActive = prize[0] > PRIZE_MIN || prize[1] < PRIZE_MAX;
   const hasFilters =
