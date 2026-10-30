@@ -27,7 +27,7 @@ import { richContentStyles } from '@/components/common/RichDescription';
 
 const ICON = '/assets/icons';
 
-const chipRows: string[][] = [
+const topicChips: string[] = [
   ['# 비즈니스/스타트업', '# 경제/금융/투자', '# 과학/IT/AI', '# 마케팅/PR'],
   [
     '# 사회/역사',
@@ -41,7 +41,7 @@ const chipRows: string[][] = [
   ['# 운동/건강/웰빙', '# 자연/환경', '# 가족/육아', '# 동식물/반려동물', '# 음식/음료'],
   ['# 영화/드라마/미디어', '# 패션/뷰티', '# 자기계발/학습/독서', '# DIY/공예', '# 종교', '# 기타'],
   ['서포터즈/대회활동', '공모전 아이디어', '행사/전시/이벤트', '해외/국제', '강연/강의'],
-];
+].flat();
 const categories = [
   'IT/SW',
   '디자인',
@@ -1641,23 +1641,19 @@ function PostingForm({
             </CategoryBlock>
             <TopicBlock>
               <FieldLabel>주제</FieldLabel>
-              <Chips role="group" aria-label="주제">
-                {chipRows.map((row, i) => (
-                  <ChipRow key={i}>
-                    {row.map((topic) => (
-                      <Chip
-                        key={topic}
-                        type="button"
-                        selected={topics.includes(topic)}
-                        aria-pressed={topics.includes(topic)}
-                        onClick={() => toggleTopic(topic)}
-                      >
-                        {topic}
-                      </Chip>
-                    ))}
-                  </ChipRow>
+              <TopicChips role="group" aria-label="주제">
+                {topicChips.map((topic) => (
+                  <Chip
+                    key={topic}
+                    type="button"
+                    selected={topics.includes(topic)}
+                    aria-pressed={topics.includes(topic)}
+                    onClick={() => toggleTopic(topic)}
+                  >
+                    {topic}
+                  </Chip>
                 ))}
-              </Chips>
+              </TopicChips>
             </TopicBlock>
           </TwoCol>
 
@@ -2290,6 +2286,7 @@ const TopicBlock = styled.div({
   minWidth: 0,
 });
 const Chips = styled.div({ display: 'flex', flexDirection: 'column', gap: 10 });
+const TopicChips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const ChipRow = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 8 });
 const Chip = styled.button<{ selected?: boolean }>(({ selected }) => ({
   padding: '8px 10px',
