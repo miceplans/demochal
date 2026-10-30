@@ -196,6 +196,15 @@ describe('BizPostingFormPage', () => {
     );
   });
 
+  it('주제 칩을 중첩된 고정 행 없이 하나의 wrapping 컨테이너에 배치한다', () => {
+    renderForm();
+
+    const topics = screen.getByRole('group', { name: '주제' });
+    const chips = within(topics).getAllByRole('button');
+    expect(chips).toHaveLength(27);
+    expect([...topics.children]).toEqual(chips);
+  });
+
   it('첨부파일을 private 버킷으로 올리고 목록에서 제거할 수 있다', async () => {
     renderForm();
     const input = screen.getByLabelText('첨부파일 선택');
