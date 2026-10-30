@@ -17,6 +17,7 @@ import {
 } from '@/components/common/Primitives';
 import { Modal } from '@/components/common/Feedback';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ShareMenu } from '@/components/common/ShareMenu';
 import { useToast } from '@/components/common/Toast';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 import {
@@ -122,15 +123,6 @@ export function TeamDetailPage() {
     },
   });
 
-  const share = async () => {
-    try {
-      await navigator.clipboard.writeText(window.location.href);
-      toast.success('링크를 복사했어요');
-    } catch {
-      toast.error('링크 복사 실패', '주소창의 링크를 복사해주세요');
-    }
-  };
-
   if (teamQuery.isPending) {
     return (
       <UserShell title="팀 모집글" back="/teams">
@@ -229,10 +221,7 @@ export function TeamDetailPage() {
               >
                 <HeartIcon filled={saved} size={18} />
               </BookmarkButton>
-              <Button small tone="plain" onClick={share}>
-                <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
-                공유
-              </Button>
+              <ShareMenu title={team.title ?? team.challengeTitle ?? '팀'} />
               <IconLink href={`/reports/new?targetType=team&targetId=${team.id}`} aria-label="신고">
                 <Icon src="/assets/icons/report.svg" size={18} alt="신고" />
               </IconLink>
