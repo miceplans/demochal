@@ -1,6 +1,22 @@
-import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
-import { Content, FormContent } from './UserShell';
+import { cleanup, render, screen } from '@testing-library/react';
+import { ThemeProvider } from '@emotion/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { theme } from '@/styles/theme';
+import { Content, FormContent, MyShell, UserShell } from './UserShell';
+
+const mocks = vi.hoisted(() => ({
+  auth: undefined as
+    { status: number; data: { name?: string | null; profileImageUrl?: string | null } } | undefined,
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: vi.fn() }),
+}));
+vi.mock('@semochal/api-client', () => ({
+  generated: { useGetMyAuthInfo: () => ({ data: mocks.auth }) },
+}));
+vi.mock('@/lib/useNotificationStream', () => ({ useNotificationStream: vi.fn() }));
 
 function emotionCss() {
   return Array.from(document.querySelectorAll('style[data-emotion]'))
@@ -44,5 +60,75 @@ describe('FormContent', () => {
     const css = emotionCss();
     expect(css).toContain('min(640px, calc(100% - 48px))');
     expect(css).toContain('padding:24px 16px');
+  });
+});
+
+describe('로그인 사용자 프로필 아바타', () => {
+  beforeEach(() => {
+    mocks.auth = { status: 200, data: { name: '홍길동', profileImageUrl: null } };
+  });
+
+  afterEach(cleanup);
+
+  it('저장된 사진을 데스크톱 헤더와 MY 사이드바에 표시한다', () => {
+    mocks.auth = {
+      status: 200,
+      data: { name: '홍길동', profileImageUrl: 'https://cdn.test/profile.webp' },
+    };
+    const { container } = render(
+      <ThemeProvider theme={theme}>
+        <>
+          <UserShell footer={false} navigation={false}>
+            <div />
+          </UserShell>
+          <MyShell title="MY">
+            <div />
+          </MyShell>
+        </>
+      </ThemeProvider>,
+    );
+
+    const avatars = container.querySelectorAll(
+      'a[href="/my"] img[src="https://cdn.test/profile.webp"]',
+    );
+    expect(avatars).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: '내 프로필' })[0]?.getAttribute('href')).toBe('/my');
+  });
+
+  it('사진이 없으면 기존 헤더 아이콘과 MY 플레이스홀더를 유지한다', () => {
+    const { container } = render(
+      <>
+        <UserShell footer={false} navigation={false}>
+          <div />
+        </UserShell>
+        <MyShell title="MY">
+          <div />
+        </MyShell>
+      </>,
+    );
+
+    expect(screen.getByAltText('프로필').getAttribute('src')).toBe('/assets/icons/profile.png');
+    expect(container.querySelector('aside a[href="/my"] img')).toBeNull();
+  });
+
+  it('인증 정보를 아직 받지 못했으면 로그인 진입점과 MY 플레이스홀더를 유지한다', () => {
+    mocks.auth = undefined;
+    const { container } = render(
+      <ThemeProvider theme={theme}>
+        <>
+          <UserShell footer={false} navigation={false}>
+            <div />
+          </UserShell>
+          <MyShell title="MY">
+            <div />
+          </MyShell>
+        </>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole('link', { name: '로그인/회원가입' }).getAttribute('href')).toBe(
+      '/login',
+    );
+    expect(container.querySelector('aside a[href="/my"] img')).toBeNull();
   });
 });

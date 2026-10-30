@@ -144,6 +144,24 @@ const HeaderActionLink = styled(Link)({
   transition: 'background 0.15s ease',
   '&:hover': { background: c.gray50 },
 });
+const HeaderProfileAvatar = styled.img({
+  width: 28,
+  height: 28,
+  borderRadius: '50%',
+  objectFit: 'cover',
+});
+const MyProfileAvatar = styled.img({
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  objectFit: 'cover',
+});
+const MyProfilePlaceholder = styled.div({
+  width: 40,
+  height: 40,
+  borderRadius: '50%',
+  background: c.gray100,
+});
 const MobileHeader = styled.header({
   display: 'none',
   [mobile]: {
@@ -335,6 +353,7 @@ export function UserShell({
   }, []);
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const isLoggedIn = auth?.status === 200;
+  const profileImageUrl = isLoggedIn ? (auth.data.profileImageUrl ?? null) : null;
   useNotificationStream(isLoggedIn);
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
@@ -393,7 +412,11 @@ export function UserShell({
                       <Icon src="/assets/icons/bell.png" alt="알림" />
                     </Link>
                     <Link href="/my" aria-label="내 프로필">
-                      <Icon src="/assets/icons/profile.png" alt="프로필" />
+                      {profileImageUrl ? (
+                        <HeaderProfileAvatar src={profileImageUrl} alt="" />
+                      ) : (
+                        <Icon src="/assets/icons/profile.png" alt="프로필" />
+                      )}
                     </Link>
                   </>
                 ) : (
@@ -562,13 +585,18 @@ export function MyShell({
   const path = usePathname();
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
+  const profileImageUrl = auth?.status === 200 ? (auth.data.profileImageUrl ?? null) : null;
   return (
     <UserShell compact title={title} hideMobileTitle={hideMobileTitle}>
       <MyGrid>
         <MyAside>
           <Link href="/my">
             <Row>
-              <div style={{ width: 40, height: 40, borderRadius: '50%', background: c.gray100 }} />
+              {profileImageUrl ? (
+                <MyProfileAvatar src={profileImageUrl} alt="" />
+              ) : (
+                <MyProfilePlaceholder />
+              )}
               {userName}
             </Row>
           </Link>
