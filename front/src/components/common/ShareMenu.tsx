@@ -157,7 +157,7 @@ export function ShareMenu({ title }: ShareMenuProps) {
               <Targets>
                 <TargetButton type="button" onClick={copyLink}>
                   <span className="circle">
-                    <Icon src="/assets/icons/share/copy-link.svg" size={48} alt="" />
+                    <Icon src="/assets/icons/share/copy-link.svg" size={24} alt="" />
                   </span>
                   링크 복사
                 </TargetButton>
