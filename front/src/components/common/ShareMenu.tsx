@@ -164,7 +164,7 @@ export function ShareMenu({ title }: ShareMenuProps) {
                 {canNativeShare && (
                   <TargetButton type="button" onClick={nativeShare}>
                     <span className="circle">
-                      <Icon src="/assets/icons/share-ic.png" size={20} alt="" />
+                      <Icon src="/assets/icons/share/share.svg" size={24} alt="" />
                     </span>
                     다른 앱
                   </TargetButton>
