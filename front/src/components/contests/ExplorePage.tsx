@@ -183,29 +183,32 @@ export function ExplorePage({
             <FilterDock $floating={floating}>
               <FilterPopover label="분야" count={selectedCategories.length}>
                 <ChipFilter
+                  pill
                   ariaLabel="분야"
-                  maxWidth={300}
+                  maxWidth={360}
                   options={categories}
                   selected={selectedCategories}
                   onToggle={(value) => setSelectedCategories((list) => toggleValue(list, value))}
                 />
               </FilterPopover>
               <FilterPopover label="대상" count={targets.length}>
-                <CheckFilter
+                <ChipFilter
+                  pill
+                  ariaLabel="대상"
+                  maxWidth={360}
                   options={challengeTargets}
                   selected={targets}
                   onToggle={(value) => setTargets((list) => toggleValue(list, value))}
-                  rows={Math.ceil(challengeTargets.length / 2)}
-                  columnGap={32}
                 />
               </FilterPopover>
               <FilterPopover label="주최기관" count={organizers.length}>
-                <CheckFilter
+                <ChipFilter
+                  pill
+                  ariaLabel="주최기관"
+                  maxWidth={360}
                   options={organizerTypes}
                   selected={organizers}
                   onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
-                  rows={Math.ceil(organizerTypes.length / 2)}
-                  columnGap={32}
                 />
               </FilterPopover>
               <FilterPopover label="상금" count={prizeActive ? 1 : 0}>

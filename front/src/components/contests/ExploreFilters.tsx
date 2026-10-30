@@ -29,15 +29,23 @@ export function ChipFilter({
   onToggle,
   ariaLabel,
   maxWidth,
+  pill = false,
 }: {
   options: string[];
   selected: string[];
   onToggle: (value: string) => void;
   ariaLabel: string;
   maxWidth?: number;
+  /** 팝오버용: 테두리 없는 회색 알약 칩. 선택하면 파란 채움. */
+  pill?: boolean;
 }) {
   return (
-    <Chips role="group" aria-label={ariaLabel} style={maxWidth ? { maxWidth } : undefined}>
+    <Chips
+      role="group"
+      aria-label={ariaLabel}
+      $pill={pill}
+      style={maxWidth ? { maxWidth } : undefined}
+    >
       {options.map((option) => {
         const on = selected.includes(option);
         return (
@@ -46,6 +54,7 @@ export function ChipFilter({
             type="button"
             aria-pressed={on}
             $on={on}
+            $pill={pill}
             onClick={() => onToggle(option)}
           >
             {option}
@@ -154,19 +163,37 @@ const Group = styled.div<{ $fit: boolean }>(({ $fit }) => ({
   width: $fit ? 'auto' : '100%',
 }));
 const GroupTitle = styled.h3({ ...textStyle.subtitle, color: c.gray900, margin: 0 });
-const Chips = styled.div({ display: 'flex', flexWrap: 'wrap', gap: '4px 6px' });
-const ChipButton = styled.button<{ $on: boolean }>(({ $on }) => ({
-  ...textStyle[$on ? 'overline' : 'metaText'],
-  padding: '5px 10px',
-  borderRadius: 20,
-  border: $on ? '0.5px solid transparent' : `0.5px solid ${c.gray300}`,
-  background: $on ? c.primary : c.white,
-  color: $on ? c.white : c.gray700,
-  cursor: 'pointer',
-  // 선택 토글이 뚝 끊기지 않도록 Primitives Chip과 같은 전환을 적용한다.
-  transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
-  '&:hover': { background: $on ? c.primary : c.gray50 },
+const Chips = styled.div<{ $pill?: boolean }>(({ $pill }) => ({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: $pill ? 8 : '4px 6px',
 }));
+const ChipButton = styled.button<{ $on: boolean; $pill?: boolean }>(({ $on, $pill }) =>
+  $pill
+    ? {
+        ...textStyle[$on ? 'caption2' : 'caption'],
+        padding: '9px 16px',
+        borderRadius: 20,
+        border: 0,
+        background: $on ? c.primary : c.gray100,
+        color: $on ? c.white : c.gray700,
+        cursor: 'pointer',
+        transition: 'background 0.15s ease, color 0.15s ease',
+        '&:hover': { background: $on ? c.primary : c.gray200 },
+      }
+    : {
+        ...textStyle[$on ? 'overline' : 'metaText'],
+        padding: '5px 10px',
+        borderRadius: 20,
+        border: $on ? '0.5px solid transparent' : `0.5px solid ${c.gray300}`,
+        background: $on ? c.primary : c.white,
+        color: $on ? c.white : c.gray700,
+        cursor: 'pointer',
+        // 선택 토글이 뚝 끊기지 않도록 Primitives Chip과 같은 전환을 적용한다.
+        transition: 'background 0.15s ease, color 0.15s ease, border-color 0.15s ease',
+        '&:hover': { background: $on ? c.primary : c.gray50 },
+      },
+);
 const CheckGrid = styled.div<{ $rows: number; $columnGap: number }>(({ $rows, $columnGap }) => ({
   display: 'grid',
   gridAutoFlow: 'column',
