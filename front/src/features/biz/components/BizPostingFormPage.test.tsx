@@ -396,6 +396,9 @@ describe('BizPostingFormPage', () => {
 
   it('확인 시 원본 포스터와 썸네일을 함께 올리고 저장 payload에 둘 다 담는다', async () => {
     stubCropApis();
+    (URL.createObjectURL as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce('blob:source')
+      .mockReturnValueOnce('blob:cropped');
     const { container } = renderForm();
     const file = new File(['png-bytes'], 'poster.png', { type: 'image/png' });
     const input = container.querySelector('input[accept="image/*"]') as HTMLInputElement;
@@ -422,7 +425,7 @@ describe('BizPostingFormPage', () => {
       expect.objectContaining({ body: file }),
     );
     await waitFor(() =>
-      expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:poster'),
+      expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:cropped'),
     );
 
     await fillRequired();
@@ -434,6 +437,29 @@ describe('BizPostingFormPage', () => {
       posterFileId: 'poster-1',
       thumbnailFileId: 'thumb-1',
     });
+  });
+
+  it('새 포스터로 다시 업로드하면 이전 크롭 미리보기 URL을 해제한다', async () => {
+    stubCropApis();
+    (URL.createObjectURL as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce('blob:source-1')
+      .mockReturnValueOnce('blob:cropped-1')
+      .mockReturnValueOnce('blob:source-2')
+      .mockReturnValueOnce('blob:cropped-2');
+    const { container } = renderForm();
+
+    selectPoster(container, 'first.png');
+    await confirmCrop();
+    await waitFor(() =>
+      expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:cropped-1'),
+    );
+
+    selectPoster(container, 'second.png');
+    await confirmCrop();
+    await waitFor(() =>
+      expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe('blob:cropped-2'),
+    );
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:cropped-1');
   });
 
   it('JPG/PNG/WebP가 아닌 포스터는 거절한다', async () => {

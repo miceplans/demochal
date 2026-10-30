@@ -1096,9 +1096,9 @@ function PostingForm({
         adApi.files.finalizeUpload(presignedThumbnail.fileId),
       ]);
       // 둘 다 성공한 뒤에만 폼 상태를 교체한다 — 하나만 올라간 부분 상태를 남기지 않는다.
-      const previewUrl = URL.createObjectURL(file);
-      if (posterObjectUrl.current && posterObjectUrl.current !== poster?.previewUrl)
-        URL.revokeObjectURL(posterObjectUrl.current);
+      // 원본은 보관용이고, 작성 화면에서는 사용자가 확정한 크롭 썸네일을 그대로 보여준다.
+      const previewUrl = URL.createObjectURL(thumbnail);
+      if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
       posterObjectUrl.current = previewUrl;
       setPoster({
         posterFileId: presignedPoster.fileId,
@@ -1294,10 +1294,9 @@ function PostingForm({
             <PosterPreview
               src={poster?.previewUrl ?? existingPosterUrl ?? ''}
               alt="포스터 미리보기"
+              cropped={Boolean(poster)}
             />
-            <UploadText>
-              원본 비율 그대로 표시됩니다 · 카드 썸네일은 선택한 영역이 사용돼요
-            </UploadText>
+            <UploadText>선택한 썸네일 영역이 표시됩니다</UploadText>
           </>
         ) : (
           <>
@@ -2039,13 +2038,14 @@ const LinkApply = styled.button({
 });
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
 const Message = styled.p({ color: c.gray700, margin: 0 });
-// 포스터는 잘라내지 않고 원본 비율 그대로 보여준다.
-const PosterPreview = styled.img({
+// 업로드 직후에는 크롭된 썸네일을 같은 비율로 표시한다.
+const PosterPreview = styled.img<{ cropped?: boolean }>(({ cropped }) => ({
   width: '100%',
-  maxHeight: 640,
-  objectFit: 'contain',
+  ...(cropped
+    ? { aspectRatio: `${POSTER_THUMBNAIL_ASPECT}`, objectFit: 'cover' }
+    : { maxHeight: 640, objectFit: 'contain' }),
   borderRadius: 14,
-});
+}));
 
 const FormWrap = styled.div({
   width: '100%',
