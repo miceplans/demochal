@@ -256,7 +256,7 @@ const PopoverPanel = styled.div({
   top: 'calc(100% + 8px)',
   left: 0,
   zIndex: 20,
-  minWidth: 200,
+  minWidth: 320,
   padding: 16,
   borderRadius: 12,
   border: `0.5px solid ${c.gray200}`,

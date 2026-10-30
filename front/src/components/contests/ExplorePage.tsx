@@ -185,7 +185,7 @@ export function ExplorePage({
                 <ChipFilter
                   pill
                   ariaLabel="분야"
-                  maxWidth={360}
+                  maxWidth={480}
                   options={categories}
                   selected={selectedCategories}
                   onToggle={(value) => setSelectedCategories((list) => toggleValue(list, value))}
@@ -195,7 +195,7 @@ export function ExplorePage({
                 <ChipFilter
                   pill
                   ariaLabel="대상"
-                  maxWidth={360}
+                  maxWidth={480}
                   options={challengeTargets}
                   selected={targets}
                   onToggle={(value) => setTargets((list) => toggleValue(list, value))}
@@ -205,7 +205,7 @@ export function ExplorePage({
                 <ChipFilter
                   pill
                   ariaLabel="주최기관"
-                  maxWidth={360}
+                  maxWidth={480}
                   options={organizerTypes}
                   selected={organizers}
                   onToggle={(value) => setOrganizers((list) => toggleValue(list, value))}
