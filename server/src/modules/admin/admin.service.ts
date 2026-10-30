@@ -56,6 +56,7 @@ import type { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import type { ResolveReportDto } from './dto/resolve-report.dto.js';
 import type { SuspendUserDto } from './dto/suspend-user.dto.js';
 import type { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
+import type { ReviewPortfolioBadgeDto } from './dto/review-portfolio-badge.dto.js';
 
 type ReportRow = typeof reportsTable.$inferSelect;
 
@@ -92,6 +93,7 @@ const like = (value: string) => `%${escapeLike(value)}%`;
 const DAY_MS = 86_400_000;
 const DEFAULT_USERS_PAGE_SIZE = 30;
 const MAX_USERS_PAGE_SIZE = 50;
+type PortfolioLink = { label?: string; url?: string; portfolioBadge?: 'pending' | 'approved' };
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type BucketUnit = 'day' | 'month';
@@ -1037,6 +1039,47 @@ export class AdminService {
   }
 
   /** "신고 누적" = reports filed against the user (reportedUserId), not by them. */
+  /** 포트폴리오 뱃지 신청 중(pending)인 링크를 사용자별로 풀어 최신 가입 순으로 돌려준다. */
+  async listPortfolioBadgeRequests() {
+    const rows = await this.db
+      .select({ id: users.id, name: users.name, externalLinks: users.externalLinks })
+      .from(users)
+      .where(
+        sql`jsonb_path_exists(${users.externalLinks}, '$[*] ? (@.portfolioBadge == "pending")')`,
+      )
+      .orderBy(desc(users.createdAt), desc(users.id));
+    return rows.flatMap((row) =>
+      (Array.isArray(row.externalLinks) ? (row.externalLinks as PortfolioLink[]) : [])
+        .filter((link) => link.portfolioBadge === 'pending')
+        .map((link) => ({
+          id: `${row.id}:${link.url ?? ''}`,
+          userId: row.id,
+          userName: row.name,
+          label: link.label ?? '',
+          url: link.url ?? '',
+        })),
+    );
+  }
+
+  /** 승인하면 다른 사용자에게도 뱃지가 노출되고, 거부하면 신청 표시만 지운다(링크는 유지). */
+  async reviewPortfolioBadge(userId: string, dto: ReviewPortfolioBadgeDto) {
+    const [target] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    if (!target) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+    const links = (
+      Array.isArray(target.externalLinks) ? target.externalLinks : []
+    ) as PortfolioLink[];
+    if (!links.some((link) => link.url === dto.url && link.portfolioBadge === 'pending')) {
+      throw new ConflictException('신청 중인 포트폴리오 뱃지가 아닙니다.');
+    }
+    const next = links.map((link) => {
+      if (link.url !== dto.url || link.portfolioBadge !== 'pending') return link;
+      const { portfolioBadge: _pending, ...rest } = link;
+      return dto.action === 'approve' ? { ...rest, portfolioBadge: 'approved' } : rest;
+    });
+    await this.db.update(users).set({ externalLinks: next }).where(eq(users.id, userId));
+    return { userId, url: dto.url, status: dto.action === 'approve' ? 'approved' : 'rejected' };
+  }
+
   private async countReportsAgainst(userIds: string[]) {
     if (!userIds.length) return new Map<string, number>();
     const rows = await this.db

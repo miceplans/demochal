@@ -97,3 +97,48 @@ describe('UsersService profile image', () => {
     expect(db.select).not.toHaveBeenCalled();
   });
 });
+
+describe('UsersService portfolio badge', () => {
+  const stored = [
+    { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+    { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'pending' },
+  ];
+
+  it('does not let the client self-approve: only previously approved URLs stay approved', async () => {
+    const { db, set } = dbWith({
+      updated: [{ id: 'u1', externalLinks: [] }],
+      existing: [{ externalLinks: stored }],
+    });
+    const service = new UsersService(db);
+
+    await service.updateProfile('u1', {
+      externalLinks: [
+        { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+        { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'approved' },
+        { label: '새 링크', url: 'https://new.example/c', portfolioBadge: 'approved' },
+        { label: 'GitHub', url: 'https://github.com/x', portfolioBadge: 'pending' },
+      ],
+    });
+
+    expect(set).toHaveBeenCalledWith({
+      externalLinks: [
+        { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+        { label: '노션', url: 'https://notion.example/b', portfolioBadge: 'pending' },
+        { label: '새 링크', url: 'https://new.example/c', portfolioBadge: 'pending' },
+        { label: 'GitHub', url: 'https://github.com/x' },
+      ],
+    });
+  });
+
+  it('hides pending badges from other users but keeps approved ones', async () => {
+    const { db } = dbWith({ updated: [], existing: [{ id: 'u1', externalLinks: stored }] });
+    const service = new UsersService(db);
+
+    const profile = await service.findPublicProfileById('u1');
+
+    expect(profile.externalLinks).toEqual([
+      { label: '블로그', url: 'https://blog.example/a', portfolioBadge: 'approved' },
+      { label: '노션', url: 'https://notion.example/b' },
+    ]);
+  });
+});

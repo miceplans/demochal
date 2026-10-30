@@ -4,6 +4,7 @@ export const adminMenu: [string, string][] = [
   ['/', '대시보드'],
   ['/biz-review', '기관 관리'],
   ['/certificates', '상장 인증'],
+  ['/portfolio-badges', '포트폴리오 뱃지'],
   ['/ad-pricing', '광고 관리'],
   ['/users', '사용자 관리'],
   ['/contents', '콘텐츠 모니터링'],

@@ -13,6 +13,14 @@ import type { UpdateProfileDto } from './dto/update-profile.dto.js';
 import type { SaveOnboardingSurveyDto } from './dto/save-onboarding-survey.dto.js';
 
 type UserRow = typeof users.$inferSelect;
+type StoredLink = { label?: string; url?: string; portfolioBadge?: 'pending' | 'approved' };
+
+/** 신청 중(pending) 뱃지 상태는 본인에게만 보인다 — 다른 사용자용 응답에서는 승인된 것만 남긴다. */
+export function hidePendingBadges(links: unknown): StoredLink[] {
+  return (Array.isArray(links) ? (links as StoredLink[]) : []).map(({ portfolioBadge, ...link }) =>
+    portfolioBadge === 'approved' ? { ...link, portfolioBadge } : link,
+  );
+}
 
 @Injectable()
 export class UsersService {
@@ -33,6 +41,10 @@ export class UsersService {
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     if (dto.profileImageFileId) await this.assertUsableProfileImage(dto.profileImageFileId, userId);
+    const externalLinks =
+      dto.externalLinks !== undefined
+        ? await this.sanitizeExternalLinks(userId, dto.externalLinks)
+        : undefined;
     const [user] = await this.db
       .update(users)
       .set({
@@ -41,7 +53,7 @@ export class UsersService {
         ...(dto.region !== undefined && { region: dto.region }),
         ...(dto.bio !== undefined && { bio: dto.bio || null }),
         ...(dto.stacks !== undefined && { stacks: dto.stacks }),
-        ...(dto.externalLinks !== undefined && { externalLinks: dto.externalLinks }),
+        ...(externalLinks !== undefined && { externalLinks }),
         ...(dto.badges !== undefined && { badges: sanitizeBadges(dto.badges) }),
         ...(dto.awardHistory !== undefined && { awardHistory: dto.awardHistory }),
         // null은 삭제(기본 아바타로 복귀), 문자열은 위에서 검증한 파일로 교체.
@@ -51,6 +63,30 @@ export class UsersService {
       .returning();
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     return this.withProfileImageUrl(toPublicUser(user), user.profileImageFileId);
+  }
+
+  /**
+   * 포트폴리오 뱃지 승인은 관리자만 줄 수 있다. 같은 URL이 이미 승인돼 있던 링크만 승인을 유지하고,
+   * 새로 신청하거나 URL이 바뀐 링크는 신청 중(pending)으로 저장한다. GitHub 링크는 신청 대상이 아니다.
+   */
+  private async sanitizeExternalLinks(
+    userId: string,
+    links: NonNullable<UpdateProfileDto['externalLinks']>,
+  ) {
+    const [current] = await this.db
+      .select({ externalLinks: users.externalLinks })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const approvedUrls = new Set(
+      ((Array.isArray(current?.externalLinks) ? current.externalLinks : []) as StoredLink[])
+        .filter((link) => link.portfolioBadge === 'approved')
+        .map((link) => link.url),
+    );
+    return links.map(({ label, url, portfolioBadge }) => {
+      if (!portfolioBadge || url.toLowerCase().includes('github.com')) return { label, url };
+      return { label, url, portfolioBadge: approvedUrls.has(url) ? 'approved' : 'pending' };
+    });
   }
 
   /**
@@ -137,7 +173,7 @@ function toPublicProfile(user: UserRow) {
     bio,
     stacks,
     badges,
-    externalLinks,
+    externalLinks: hidePendingBadges(externalLinks),
     awardHistory,
     createdAt,
   };

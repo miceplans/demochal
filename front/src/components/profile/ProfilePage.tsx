@@ -19,7 +19,8 @@ function verificationBadges(user: ProfileUserData) {
   const derived: { label: string; icon: string; tone: 'gray' | 'blue' | 'green' }[] = [];
   if (links.some((link) => isGithubUrl(link.url)))
     derived.push({ label: '깃허브 인증', icon: 'imgGithub', tone: 'gray' });
-  if (links.some((link) => !isGithubUrl(link.url)))
+  // 링크만 추가해서는 주지 않는다. 신청 중(pending)은 숨기고 관리자가 승인한 링크만 인정한다.
+  if (links.some((link) => !isGithubUrl(link.url) && link.portfolioBadge === 'approved'))
     derived.push({
       label: '포트폴리오',
       icon: 'imgDescription24DpE3E3E3Fill0Wght300Grad0Opsz241',
@@ -85,6 +86,13 @@ function ProfilePageContent() {
   const stacks = user.stacks ?? [];
   const awards = user.awardHistory ?? [];
   const badges = verificationBadges(user);
+  // 신청 중인 뱃지는 본인 프로필에서만 모아 보여준다(공개 응답에는 pending이 내려가지 않는다).
+  const isOwn = Boolean(me) && userId === me?.id;
+  const pendingLinks = isOwn
+    ? (me?.externalLinks ?? []).filter(
+        (link) => link.portfolioBadge === 'pending' && isSafeLinkUrl(link.url),
+      )
+    : [];
 
   return (
     <UserShell title="프로필" compact>
@@ -157,6 +165,26 @@ function ProfilePageContent() {
                 ))
               )}
             </Section>
+            {isOwn && (
+              <Section style={{ gap: 16 }}>
+                <SectionTitle>신청 중인 뱃지</SectionTitle>
+                {pendingLinks.length === 0 ? (
+                  <Muted>신청 중인 뱃지가 없어요.</Muted>
+                ) : (
+                  pendingLinks.map((link) => (
+                    <HistoryCard key={link.url}>
+                      <Stack gap={4} style={{ flex: 1 }}>
+                        <CardTitle>포트폴리오 · {link.label}</CardTitle>
+                        <Row gap={8}>
+                          <Tag tone="gray">승인 대기</Tag>
+                          <Info>{linkDisplayText(link)}</Info>
+                        </Row>
+                      </Stack>
+                    </HistoryCard>
+                  ))
+                )}
+              </Section>
+            )}
           </Stack>
         </Grid>
       </Content>

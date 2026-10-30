@@ -8,7 +8,7 @@ import { textStyle } from '@/styles/typography';
 
 // GET /users/{id} 공개 프로필 응답의 부분 집합 — 서버 실데이터만 렌더한다.
 export type ProfileAward = { title?: string; organization?: string; date?: string; prize?: string };
-export type ProfileLink = { label?: string; url?: string };
+export type ProfileLink = { label?: string; url?: string; portfolioBadge?: 'pending' | 'approved' };
 export type ProfileUserData = {
   name?: string;
   position?: string;

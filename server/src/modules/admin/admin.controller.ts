@@ -18,6 +18,7 @@ import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import { RejectContentDto } from './dto/reject-content.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
 import { ResolveReportDto } from './dto/resolve-report.dto.js';
+import { ReviewPortfolioBadgeDto } from './dto/review-portfolio-badge.dto.js';
 import { SuspendUserDto } from './dto/suspend-user.dto.js';
 import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
 import { SendNewEmailDto, SendReplyDto } from '../email/dto/send-reply.dto.js';
@@ -99,6 +100,16 @@ export class AdminController {
   @Post('certificates/:id/verify')
   verifyCertificate(@Param('id') id: string, @Body() dto: VerifyCertificateDto) {
     return this.adminService.verifyCertificate(id, dto);
+  }
+
+  @Get('portfolio-badges')
+  listPortfolioBadgeRequests() {
+    return this.adminService.listPortfolioBadgeRequests();
+  }
+
+  @Post('portfolio-badges/:userId/review')
+  reviewPortfolioBadge(@Param('userId') userId: string, @Body() dto: ReviewPortfolioBadgeDto) {
+    return this.adminService.reviewPortfolioBadge(userId, dto);
   }
 
   @Get('ads')

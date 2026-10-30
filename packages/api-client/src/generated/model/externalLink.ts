@@ -16,8 +16,15 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ExternalLinkPortfolioBadge } from './externalLinkPortfolioBadge';
 
 export interface ExternalLink {
   label?: string;
   url?: string;
+  /**
+     * 포트폴리오 뱃지 상태(없으면 미신청). `pending`(신청 중)은 본인에게만 내려가고,
+     * 관리자가 승인한 `approved`만 다른 사용자에게 노출된다. 클라이언트가 보낸 `approved`는
+     * 기존 승인 이력(같은 URL)이 있을 때만 유지되고 아니면 `pending`으로 저장된다.
+     */
+  portfolioBadge?: ExternalLinkPortfolioBadge;
 }

@@ -108,6 +108,7 @@ import type {
   ListAdminContents200,
   ListAdminContentsParams,
   ListAdminEmailsParams,
+  ListAdminPortfolioBadgeRequests200Item,
   ListAdminReportsParams,
   ListAdminUsersParams,
   ListChallenges200,
@@ -157,6 +158,8 @@ import type {
   Report,
   RequestPresignedUpload201,
   ResolveReportBody,
+  ReviewAdminPortfolioBadge200,
+  ReviewAdminPortfolioBadgeBody,
   SaveInterests200,
   SaveInterestsBody,
   SaveNotificationSettings200,
@@ -12316,6 +12319,229 @@ export const useVerifyCertificate = <TError = unknown,
         TContext
       > => {
       return useMutation(getVerifyCertificateMutationOptions(options), queryClient);
+    }
+
+export type listAdminPortfolioBadgeRequestsResponse200 = {
+  data: ListAdminPortfolioBadgeRequests200Item[]
+  status: 200
+}
+
+export type listAdminPortfolioBadgeRequestsResponseSuccess = (listAdminPortfolioBadgeRequestsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAdminPortfolioBadgeRequestsResponse = (listAdminPortfolioBadgeRequestsResponseSuccess)
+
+export const getListAdminPortfolioBadgeRequestsUrl = () => {
+
+
+
+
+  return `/admin/portfolio-badges`
+}
+
+/**
+ * 신청 중(pending)인 포트폴리오 링크를 사용자별로 내려준다.
+ * @summary 포트폴리오 뱃지 신청 목록 조회
+ */
+export const listAdminPortfolioBadgeRequests = async ( options?: Parameters<typeof apiFetch>[1]): Promise<listAdminPortfolioBadgeRequestsResponse> => {
+
+  return apiFetch<listAdminPortfolioBadgeRequestsResponse>(getListAdminPortfolioBadgeRequestsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminPortfolioBadgeRequestsQueryKey = () => {
+    return [
+    `/admin/portfolio-badges`
+    ] as const;
+    }
+
+
+export const getListAdminPortfolioBadgeRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminPortfolioBadgeRequestsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>> = ({ signal }) => listAdminPortfolioBadgeRequests({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminPortfolioBadgeRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>>
+export type ListAdminPortfolioBadgeRequestsQueryError = unknown
+
+
+export function useListAdminPortfolioBadgeRequests<TData = Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminPortfolioBadgeRequests<TData = Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminPortfolioBadgeRequests<TData = Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 포트폴리오 뱃지 신청 목록 조회
+ */
+
+export function useListAdminPortfolioBadgeRequests<TData = Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminPortfolioBadgeRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminPortfolioBadgeRequestsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type reviewAdminPortfolioBadgeResponse200 = {
+  data: ReviewAdminPortfolioBadge200
+  status: 200
+}
+
+export type reviewAdminPortfolioBadgeResponse409 = {
+  data: void
+  status: 409
+}
+
+export type reviewAdminPortfolioBadgeResponseSuccess = (reviewAdminPortfolioBadgeResponse200) & {
+  headers: Headers;
+};
+export type reviewAdminPortfolioBadgeResponseError = (reviewAdminPortfolioBadgeResponse409) & {
+  headers: Headers;
+};
+
+export type reviewAdminPortfolioBadgeResponse = (reviewAdminPortfolioBadgeResponseSuccess | reviewAdminPortfolioBadgeResponseError)
+
+export const getReviewAdminPortfolioBadgeUrl = (userId: string,) => {
+
+
+
+
+  return `/admin/portfolio-badges/${userId}/review`
+}
+
+/**
+ * 승인하면 해당 링크가 `approved`가 되어 다른 사용자에게 뱃지가 노출된다. 거부하면 신청 표시만 지운다.
+ * @summary 포트폴리오 뱃지 승인/거부
+ */
+export const reviewAdminPortfolioBadge = async (userId: string,
+    reviewAdminPortfolioBadgeBody: ReviewAdminPortfolioBadgeBody, options?: Parameters<typeof apiFetch>[1]): Promise<reviewAdminPortfolioBadgeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<reviewAdminPortfolioBadgeResponse>(getReviewAdminPortfolioBadgeUrl(userId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(reviewAdminPortfolioBadgeBody)
+  }
+);}
+
+
+
+
+
+export const getReviewAdminPortfolioBadgeMutationKey = () => ['reviewAdminPortfolioBadge'] as const;
+
+export const getReviewAdminPortfolioBadgeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>, TError,ReviewAdminPortfolioBadgeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>, TError,ReviewAdminPortfolioBadgeMutationVariables, TContext> => {
+
+const mutationKey = getReviewAdminPortfolioBadgeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>, ReviewAdminPortfolioBadgeMutationVariables> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  reviewAdminPortfolioBadge(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReviewAdminPortfolioBadgeMutationResult = NonNullable<Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>>
+    export type ReviewAdminPortfolioBadgeMutationBody = ReviewAdminPortfolioBadgeBody
+    export type ReviewAdminPortfolioBadgeMutationError = void
+    export type ReviewAdminPortfolioBadgeMutationVariables = {userId: string;data: ReviewAdminPortfolioBadgeBody}
+
+    /**
+ * @summary 포트폴리오 뱃지 승인/거부
+ */
+export const useReviewAdminPortfolioBadge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>, TError,ReviewAdminPortfolioBadgeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof reviewAdminPortfolioBadge>>,
+        TError,
+        ReviewAdminPortfolioBadgeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReviewAdminPortfolioBadgeMutationOptions(options), queryClient);
     }
 
 export type listAdminAdsResponse200 = {

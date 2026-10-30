@@ -74,7 +74,10 @@ export class PeopleService {
     const urlById = new Map(imageFiles.map((file) => [file.id, buildPublicFileUrl(file)]));
 
     return rows.map(({ externalLinks, awardHistory, profileImageFileId, ...person }) => {
-      const links = (Array.isArray(externalLinks) ? externalLinks : []) as { url?: unknown }[];
+      const links = (Array.isArray(externalLinks) ? externalLinks : []) as {
+        url?: unknown;
+        portfolioBadge?: unknown;
+      }[];
       const isGithub = (link: { url?: unknown }) =>
         typeof link.url === 'string' && link.url.toLowerCase().includes('github.com');
       return {
@@ -82,7 +85,8 @@ export class PeopleService {
         profileImageUrl: (profileImageFileId && urlById.get(profileImageFileId)) || null,
         // 카드에는 인증 배지 여부만 내려 개인 링크 URL은 목록에 노출하지 않는다.
         hasGithub: links.some(isGithub),
-        hasPortfolio: links.some((link) => !isGithub(link)),
+        // 링크만 추가해서는 주지 않는다. 신청 중(pending)은 숨기고 관리자가 승인한 링크만 인정한다.
+        hasPortfolio: links.some((link) => !isGithub(link) && link.portfolioBadge === 'approved'),
         hasAwards: Array.isArray(awardHistory) && awardHistory.length > 0,
       };
     });
