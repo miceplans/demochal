@@ -26,7 +26,7 @@ export class CreateTeamDto {
   @IsUUID()
   challengeId!: string;
 
-  // 생략하면 서버가 "<팀장 이름>의 팀"으로 채운다(모집글 작성 화면에는 팀명 입력이 없다).
+  // 생략하면 서버가 "<팀장 이름>의 팀"으로 채운다.
   @IsOptional()
   @IsString()
   @MaxLength(200)

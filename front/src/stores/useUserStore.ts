@@ -8,6 +8,8 @@ type UserState = {
   hasCompletedOnboarding: boolean;
   recruitment: {
     challenge: string;
+    /** 팀명. 이전 버전 저장값에는 없을 수 있어 선택 필드로 둔다. */
+    title?: string;
     introduction: string;
     role: string;
     /** 내 역할을 '직접 입력'으로 적는 중인지 여부. */
@@ -35,7 +37,14 @@ export const useUserStore = create<UserState>()(
       query: '',
       survey: {},
       hasCompletedOnboarding: false,
-      recruitment: { challenge: '', introduction: '', role: '프론트엔드', preferred: '', etc: '' },
+      recruitment: {
+        challenge: '',
+        title: '',
+        introduction: '',
+        role: '프론트엔드',
+        preferred: '',
+        etc: '',
+      },
       applicationDraft: null,
       logout: () => set({ applicationDraft: null }),
       setQuery: (query) => set({ query }),
