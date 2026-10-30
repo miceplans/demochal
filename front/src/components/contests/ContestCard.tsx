@@ -109,11 +109,11 @@ const Card = styled.article<{ horizontal?: boolean; row?: boolean }>(({ horizont
           alignItems: 'center',
         }
       : { border: `0.5px solid ${c.gray200}` }),
-    // 명시적 높이 + aspect-ratio 조합에서는 브라우저가 너비를 높이×비율로 계산해
-    // 카드 폭을 채우지 못한다 — 너비를 명시해 aspect-ratio가 무시되도록 한다.
+    // 세로형 카드는 이미지 섹션이 카드 폭만큼 정방형(416:415)으로 크게 보이게 aspect-ratio를 그대로 둔다.
+    // 명시적 높이를 얹으면 aspect-ratio가 무시되므로 높이는 horizontal(고정 100px 썸네일)에만 둔다.
     '.artwork': {
       width: '100%',
-      height: horizontal ? 100 : 160,
+      ...(horizontal ? { height: 100 } : {}),
       background: horizontal ? c.gray100 : '#d8e3f0',
       ...(horizontal ? { border: '0.5px solid #f0f1f3' } : {}),
       borderRadius: horizontal ? 12 : '12px 12px 0 0',
