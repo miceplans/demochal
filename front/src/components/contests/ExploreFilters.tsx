@@ -141,7 +141,6 @@ export function FilterPopover({
         type="button"
         aria-expanded={open}
         aria-haspopup="true"
-        $active={count > 0 || open}
         onClick={() => setOpen((v) => !v)}
       >
         {label}
@@ -227,7 +226,7 @@ const CheckInput = styled.input({
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 2 },
 });
 const PopoverWrap = styled.div({ position: 'relative' });
-const TriggerButton = styled.button<{ $active: boolean }>(({ $active }) => ({
+const TriggerButton = styled.button({
   ...textStyle.caption,
   display: 'inline-flex',
   alignItems: 'center',
@@ -235,25 +234,15 @@ const TriggerButton = styled.button<{ $active: boolean }>(({ $active }) => ({
   height: 36,
   padding: '0 14px',
   borderRadius: 20,
-  border: `0.5px solid ${$active ? c.primary : c.gray100}`,
-  background: $active ? c.lightBlue : c.gray100,
-  color: $active ? c.primary : c.gray700,
+  border: `0.5px solid ${c.gray100}`,
+  background: c.gray100,
+  color: c.gray700,
   cursor: 'pointer',
-  transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-  '&:hover': { background: $active ? c.lightBlue : c.gray200 },
-}));
-const Count = styled.span({
-  ...textStyle.overline,
-  minWidth: 18,
-  height: 18,
-  padding: '0 5px',
-  boxSizing: 'border-box',
-  borderRadius: 9,
-  background: c.primary,
-  color: c.white,
-  textAlign: 'center',
-  lineHeight: '18px',
+  transition: 'background 0.15s ease',
+  '&:hover': { background: c.gray200 },
 });
+// 선택 개수는 색 없이 숫자로만 보여준다.
+const Count = styled.span({ ...textStyle.caption2, color: c.gray900 });
 const Caret = styled.span<{ $open: boolean }>(({ $open }) => ({
   width: 6,
   height: 6,
