@@ -3,6 +3,15 @@
 // 매칭되지 않는다. 추천(ChallengesService)과 마감/공고 알림 스캔이 공유하는
 // 토큰 정규화 매칭 — 양쪽을 여기서 함께 바꿔야 정책이 어긋나지 않는다.
 
+/** 온볍딩 설문 jsonb에서 문자열 관심분야 배엸만 안전하게 꺼낸다(추천·관심분야 조회 공유). */
+export function surveyInterests(survey: unknown): string[] {
+  if (!survey || typeof survey !== 'object') return [];
+  const interests = (survey as { interests?: unknown }).interests;
+  return Array.isArray(interests)
+    ? interests.filter((interest): interest is string => typeof interest === 'string')
+    : [];
+}
+
 export function interestsMatch(interest: string, category: string | null): boolean {
   if (!category) return false;
   const interestTokens = normalizeInterestTokens(interest);

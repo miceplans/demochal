@@ -11,6 +11,7 @@ import {
   ApplicationsPage,
   TeamApplicantsPage,
   NotificationsPage,
+  InterestsPage,
 } from './MyPages';
 
 const mocks = vi.hoisted(() => ({
@@ -22,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   myApplications: [] as Array<Record<string, unknown>>,
   myTeamApplications: [] as Array<Record<string, unknown>>,
   myNotifications: [] as Array<Record<string, unknown>>,
+  interests: [] as string[],
+  saveInterestsMutate: vi.fn(),
   push: vi.fn(),
   me: { name: '홍길동', bio: '안녕하세요' } as {
     name: string;
@@ -36,6 +39,14 @@ vi.mock('@semochal/api-client', () => ({
     useGetMyAuthInfo: () => ({
       data: mocks.meLoaded ? { status: 200, data: mocks.me } : undefined,
     }),
+    useGetInterests: () => ({
+      data: { status: 200, data: { categories: mocks.interests } },
+      isSuccess: true,
+      isError: false,
+    }),
+    useSaveInterests: () => ({ mutate: mocks.saveInterestsMutate, isPending: false }),
+    getGetInterestsQueryKey: () => ['interests'],
+    getListRecommendedChallengesQueryKey: () => ['recommendedChallenges'],
     useUpdateMyProfile: () => ({ mutateAsync: mocks.mutateAsync }),
     useRequestPresignedUpload: () => ({ mutateAsync: vi.fn() }),
     useFinalizeUpload: () => ({ mutateAsync: vi.fn() }),
@@ -706,5 +717,75 @@ describe('TeamApplicantsPage 지원현황 표', () => {
     expect(screen.getByText('성이름')).toBeTruthy();
     expect(screen.getByText('프론트엔드')).toBeTruthy();
     expect(screen.getByRole('combobox', { name: '성이름 결과' })).toBeTruthy();
+  });
+});
+
+describe('InterestsPage 온볼딩 관심분야', () => {
+  afterEach(() => {
+    cleanup();
+    mocks.interests = [];
+    vi.clearAllMocks();
+  });
+
+  function renderInterestsPage() {
+    const queryClient = new QueryClient();
+    return render(
+      <ThemeProvider theme={theme}>
+        <QueryClientProvider client={queryClient}>
+          <InterestsPage />
+        </QueryClientProvider>
+      </ThemeProvider>,
+    );
+  }
+
+  it('온볼딩에서 선택한 값이 기본 칩 옵션 어휘와 달라도 선택된 칩으로 표시된다', () => {
+    mocks.interests = ['IT/SW', 'IT · 소프트웨어'];
+
+    renderInterestsPage();
+
+    const onboardingChip = screen.getByRole('button', { name: 'IT/SW' });
+    expect(onboardingChip.getAttribute('aria-pressed')).toBe('true');
+    expect(
+      screen.getByRole('button', { name: 'IT · 소프트웨어' }).getAttribute('aria-pressed'),
+    ).toBe('true');
+    expect(screen.getByRole('button', { name: '디자인 · UX' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+  });
+
+  it('온볼딩 어휘 칩을 해제핸 뒤 저장하면 저장 목록에서 빠지고 칩은 남아 있다', async () => {
+    mocks.interests = ['IT/SW', '취업'];
+    mocks.saveInterestsMutate.mockImplementation(
+      (_data: unknown, options: { onSuccess?: () => void }) => options?.onSuccess?.(),
+    );
+    const user = userEvent.setup();
+
+    renderInterestsPage();
+    await user.click(screen.getByRole('button', { name: 'IT/SW' }));
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+
+    expect(mocks.saveInterestsMutate).toHaveBeenCalledWith(
+      { data: { categories: ['취업'] } },
+      expect.anything(),
+    );
+    // 해제한 칩은 서버 목록 기준으로 남아 있어 다시 선택할 수 있다.
+    expect(screen.getByRole('button', { name: 'IT/SW' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+    expect(mocks.success).toHaveBeenCalledWith('관심분야를 저장했어요');
+  });
+
+  it('서버에서 받은 전체 선택 목록이 저장 페이로드에 그대로 실린다', async () => {
+    mocks.interests = ['IT/SW'];
+    const user = userEvent.setup();
+
+    renderInterestsPage();
+    await user.click(screen.getByRole('button', { name: '디자인 · UX' }));
+    await user.click(screen.getByRole('button', { name: '저장하기' }));
+
+    expect(mocks.saveInterestsMutate).toHaveBeenCalledWith(
+      { data: { categories: ['IT/SW', '디자인 · UX'] } },
+      expect.anything(),
+    );
   });
 });

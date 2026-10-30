@@ -9,19 +9,49 @@ function updateSpy() {
 }
 
 describe('InterestsService', () => {
-  it('getInterests returns the stored categories, or an empty list for a missing user', async () => {
-    const limit = vi
-      .fn()
-      .mockResolvedValueOnce([{ interests: ['디자인'] }])
-      .mockResolvedValueOnce([]);
+  function selectDb(rows: unknown[]) {
+    const limit = vi.fn().mockResolvedValue(rows);
     const where = vi.fn().mockReturnValue({ limit });
     const db: any = {
       select: vi.fn().mockReturnValue({ from: vi.fn().mockReturnValue({ where }) }),
     };
+    return db;
+  }
+
+  it('getInterests returns the stored categories, or an empty list for a missing user', async () => {
+    const db = selectDb([{ interests: ['디자인'], onboardingSurvey: null }]);
     const service = new InterestsService(db);
 
     await expect(service.getInterests('user-1')).resolves.toEqual({ categories: ['디자인'] });
+  });
+
+  it('getInterests falls back to the onboarding survey picks when nothing was saved yet', async () => {
+    const db = selectDb([{ interests: [], onboardingSurvey: { interests: ['IT/SW', '취업'] } }]);
+    const service = new InterestsService(db);
+
+    await expect(service.getInterests('user-1')).resolves.toEqual({
+      categories: ['IT/SW', '취업'],
+    });
+  });
+
+  it('getInterests keeps saved categories authoritative over the onboarding survey', async () => {
+    const db = selectDb([{ interests: ['디자인'], onboardingSurvey: { interests: ['IT/SW'] } }]);
+    const service = new InterestsService(db);
+
+    await expect(service.getInterests('user-1')).resolves.toEqual({ categories: ['디자인'] });
+  });
+
+  it('getInterests returns an empty list when the survey is missing or has no picks', async () => {
+    const service = new InterestsService(selectDb([]));
     await expect(service.getInterests('missing')).resolves.toEqual({ categories: [] });
+
+    const noSurvey = new InterestsService(selectDb([{ interests: [], onboardingSurvey: null }]));
+    await expect(noSurvey.getInterests('user-1')).resolves.toEqual({ categories: [] });
+
+    const emptySurvey = new InterestsService(
+      selectDb([{ interests: [], onboardingSurvey: { interests: [] } }]),
+    );
+    await expect(emptySurvey.getInterests('user-1')).resolves.toEqual({ categories: [] });
   });
 
   it('saveInterests stores categories and echoes them back', async () => {

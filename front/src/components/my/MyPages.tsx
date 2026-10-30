@@ -1065,6 +1065,13 @@ export function InterestsPage() {
   const interestsReady = interestsQuery.isSuccess;
   const saveInterests = generated.useSaveInterests();
   const isSelected = (value: string) => interests.includes(value);
+  // 온볼딩에서 선택한 관심분야는 칩 기본 옵션 어휘와 다를 수 있다('IT/SW', '취업' 등 —
+  // design-copy.json fields). 서버가 내준 값 중 옵션에 없는 것도 칩으로 표시해
+  // 해제/재선택이 가능하게 한다. 편집 상태가 아니라 서버 목록 기준으로 뽑아야
+  // 해제한 칩이 화면에서 즉시 사라지지 않는다.
+  const optionSet = new Set(preferenceGroups.flatMap((g) => g.options));
+  const serverInterests = interestsQuery.data?.data.categories ?? [];
+  const extraOptions = serverInterests.filter((x) => !optionSet.has(x));
   const toggle = (value: string) => {
     if (!interestsReady) return;
     setEditedInterests(
@@ -1096,24 +1103,27 @@ export function InterestsPage() {
         <p style={{ fontSize: 15 }}>
           관심 있는 분야를 선택하면 맞춤 챌린지와 팀 모집을 추천해드려요
         </p>
-        {preferenceGroups.map((g) => (
-          <Stack key={g.key} gap={12}>
-            <Heading>{g.title}</Heading>
-            <Wrap style={{ maxWidth: 550 }}>
-              {g.options.map((x) => (
-                <Chip
-                  key={x}
-                  selected={isSelected(x)}
-                  aria-pressed={isSelected(x)}
-                  disabled={!interestsReady}
-                  onClick={() => toggle(x)}
-                >
-                  {x}
-                </Chip>
-              ))}
-            </Wrap>
-          </Stack>
-        ))}
+        {preferenceGroups.map((g) => {
+          const options = g.key === 'interests' ? [...g.options, ...extraOptions] : g.options;
+          return (
+            <Stack key={g.key} gap={12}>
+              <Heading>{g.title}</Heading>
+              <Wrap style={{ maxWidth: 550 }}>
+                {options.map((x) => (
+                  <Chip
+                    key={x}
+                    selected={isSelected(x)}
+                    aria-pressed={isSelected(x)}
+                    disabled={!interestsReady}
+                    onClick={() => toggle(x)}
+                  >
+                    {x}
+                  </Chip>
+                ))}
+              </Wrap>
+            </Stack>
+          );
+        })}
         {interestsQuery.isError && <Muted>관심분야를 불러오지 못했어요. 새로고침해주세요.</Muted>}
         <Button
           style={{ width: 160 }}
