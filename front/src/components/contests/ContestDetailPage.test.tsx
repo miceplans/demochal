@@ -18,7 +18,9 @@ vi.mock('@/components/common/UserShell', () => ({
 vi.mock('@/components/common/Primitives', () => {
   const Passthrough = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   return {
-    Button: Passthrough,
+    Button: ({ children, disabled }: { children?: ReactNode; disabled?: boolean }) => (
+      <button disabled={disabled}>{children}</button>
+    ),
     DesktopOnly: Passthrough,
     MobileOnly: () => null,
     Row: Passthrough,
@@ -201,5 +203,74 @@ describe('ContestDetailPage 기업 프로필 진입점', () => {
     render(<ContestDetailPage challengeId={CHALLENGE.id} />);
     expect(screen.queryByRole('link', { name: CHALLENGE.organizer })).toBeNull();
     expect(screen.getByText(CHALLENGE.organizer)).not.toBeNull();
+  });
+});
+
+describe('ContestDetailPage 마감 챌린지 CTA', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    observers = [];
+    setChallengeQueries();
+  });
+
+  afterEach(() => cleanup());
+
+  it('마감된 챌린지는 신청과 팀 구하기 버튼을 비활성화하고 링크를 렌더하지 않는다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, endDate: '2020-10-31' } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+
+    expect(screen.getByRole('button', { name: '참가 신청하기' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+    expect(
+      screen.getByRole('button', { name: '이 챌린지 팀 구하기' }).hasAttribute('disabled'),
+    ).toBe(true);
+    expect(screen.getByRole('button', { name: '참가 신청하기' }).closest('a')).toBeNull();
+    expect(screen.getByRole('button', { name: '이 챌린지 팀 구하기' }).closest('a')).toBeNull();
+  });
+
+  it('상태가 closed인 챌린지도 마감일과 무관하게 CTA를 비활성화한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, endDate: '2030-10-31', status: 'closed' } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+
+    expect(screen.getByRole('button', { name: '참가 신청하기' }).hasAttribute('disabled')).toBe(
+      true,
+    );
+    expect(
+      screen.getByRole('button', { name: '이 챌린지 팀 구하기' }).hasAttribute('disabled'),
+    ).toBe(true);
+  });
+
+  it('마감된 챌린지는 스크롤 후 고정 신청 버튼도 비활성화하고 링크를 렌더하지 않는다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, endDate: '2020-10-31' } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+    scrollIntro(false);
+
+    const applyButtons = screen.getAllByRole('button', { name: '참가 신청하기' });
+    expect(applyButtons).toHaveLength(2);
+    for (const button of applyButtons) {
+      expect(button.hasAttribute('disabled')).toBe(true);
+      expect(button.closest('a')).toBeNull();
+    }
+  });
+
+  it('진행 중 챌린지는 신청과 팀 구하기 링크를 유지한다', () => {
+    vi.mocked(generated.useGetChallenge).mockReturnValue({
+      data: { status: 200, data: { ...CHALLENGE, endDate: '2030-10-31' } },
+    } as never);
+    render(<ContestDetailPage challengeId={CHALLENGE.id} />);
+
+    expect(screen.getByRole('link', { name: '참가 신청하기' }).getAttribute('href')).toBe(
+      `/applications/new?challenge=${CHALLENGE.id}`,
+    );
+    expect(screen.getByRole('link', { name: '이 챌린지 팀 구하기' }).getAttribute('href')).toBe(
+      `/teams/new?challengeId=${CHALLENGE.id}`,
+    );
   });
 });
