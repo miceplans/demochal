@@ -8,7 +8,8 @@ test('workflow, not GLM, publishes exactly one top-level PR summary', async () =
   assert.match(workflow, /--allowedTools "mcp__github_inline_comment__create_inline_comment"/);
   assert.doesNotMatch(workflow, /Bash\(gh pr comment:\*\)/);
   assert.match(workflow, /Publish GLM review summary/);
-  assert.match(workflow, /if: always\(\)/);
+  assert.match(workflow, /if: \$\{\{ !cancelled\(\) \}\}/);
+  assert.doesNotMatch(workflow, /Publish GLM review summary\n\s+if: always\(\)/);
   assert.match(workflow, /gh pr comment "\$PR_NUMBER" --body "\$body"/);
   assert.match(workflow, /GLM 코드 리뷰 요약/);
   assert.match(workflow, /github_token: \$\{\{ github\.token \}\}/);
