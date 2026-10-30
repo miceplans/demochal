@@ -29,7 +29,19 @@ describe('UsersService.saveOnboardingSurvey', () => {
     const service = new UsersService(db);
 
     await expect(service.saveOnboardingSurvey('user-1', survey)).resolves.toEqual(survey);
-    expect(set).toHaveBeenCalledWith({ onboardingSurvey: survey });
+    expect(set).toHaveBeenCalledWith({ onboardingSurvey: survey, interests: ['개발'] });
+  });
+
+  it('does not touch the interests column when the survey has no interests', async () => {
+    const { db, set } = dbWith({
+      updated: [{ onboardingSurvey: { purposes: ['수상'] } }],
+      existing: [],
+    });
+    const service = new UsersService(db);
+
+    await service.saveOnboardingSurvey('user-1', { purposes: ['수상'] });
+
+    expect(set).toHaveBeenCalledWith(expect.not.objectContaining({ interests: expect.anything() }));
   });
 
   it('rejects a second submission once the survey is already stored', async () => {

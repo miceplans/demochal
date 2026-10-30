@@ -41,7 +41,7 @@ import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
 import { effectiveApplicationCondition } from '../applications/effective-application.js';
-import { interestsMatch } from './interest-matching.js';
+import { interestsMatch, surveyInterests } from './interest-matching.js';
 import { FilesService } from '../files/files.service.js';
 
 // draft -> published -> closed; no other transition is valid.
@@ -663,8 +663,8 @@ export class ChallengesService {
       .where(eq(users.id, userId))
       .limit(1);
 
-    const surveyInterests = this.surveyInterests(user?.onboardingSurvey);
-    const interests = [...new Set([...(user?.interests ?? []), ...surveyInterests])];
+    const onboardedInterests = surveyInterests(user?.onboardingSurvey);
+    const interests = [...new Set([...(user?.interests ?? []), ...onboardedInterests])];
     const now = new Date();
     // Low-volume assumption: score only the 200 newest eligible candidates. Revisit with SQL scoring
     // and an index when the published catalogue grows beyond this bounded window.
@@ -718,14 +718,6 @@ export class ChallengesService {
       .slice(0, limit)
       .map(({ challenge }) => challenge);
     return { items: await this.withPosterUrls(ranked) };
-  }
-
-  private surveyInterests(survey: unknown): string[] {
-    if (!survey || typeof survey !== 'object') return [];
-    const interests = (survey as { interests?: unknown }).interests;
-    return Array.isArray(interests)
-      ? interests.filter((interest): interest is string => typeof interest === 'string')
-      : [];
   }
 
   private async statWithDelta(
