@@ -547,6 +547,8 @@ function InlineLinks({
                   type="checkbox"
                   aria-label={`링크 ${index + 1} 포트폴리오 뱃지 신청`}
                   checked={Boolean(row.portfolioBadge)}
+                  // 승인된 뱃지는 실수로 해제해 재승인이 필요해지지 않도록 체크박스로 끄지 못하게 한다.
+                  disabled={row.portfolioBadge === 'approved'}
                   onChange={(e) => {
                     const next: LinkDraft[] = rows.map((r, i) =>
                       i === index

@@ -7,12 +7,18 @@ const survey = { interests: ['개발'], purposes: ['수상'], challengeTypes: ['
 function dbWith({ updated, existing }: { updated: unknown[]; existing: unknown[] }) {
   const returning = vi.fn().mockResolvedValue(updated);
   const set = vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ returning }) });
-  const limit = vi.fn().mockResolvedValue(existing);
+  // `.limit(1)`을 바로 await하거나 `.for('update')`로 이어 쓰는 두 경우를 모두 받는다.
+  const limit = vi.fn(() =>
+    Object.assign(Promise.resolve(existing), { for: () => Promise.resolve(existing) }),
+  );
   const db: any = {
     update: vi.fn().mockReturnValue({ set }),
     select: vi.fn().mockReturnValue({
-      from: vi.fn().mockReturnValue({ where: vi.fn().mockReturnValue({ limit }) }),
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ limit }),
+      }),
     }),
+    transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback(db)),
   };
   return { db, set };
 }

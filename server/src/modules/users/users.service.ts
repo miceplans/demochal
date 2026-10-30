@@ -41,26 +41,32 @@ export class UsersService {
 
   async updateProfile(userId: string, dto: UpdateProfileDto) {
     if (dto.profileImageFileId) await this.assertUsableProfileImage(dto.profileImageFileId, userId);
-    const externalLinks =
-      dto.externalLinks !== undefined
-        ? await this.sanitizeExternalLinks(userId, dto.externalLinks)
-        : undefined;
-    const [user] = await this.db
-      .update(users)
-      .set({
-        ...(dto.name !== undefined && { name: dto.name }),
-        ...(dto.role !== undefined && { position: dto.role }),
-        ...(dto.region !== undefined && { region: dto.region }),
-        ...(dto.bio !== undefined && { bio: dto.bio || null }),
-        ...(dto.stacks !== undefined && { stacks: dto.stacks }),
-        ...(externalLinks !== undefined && { externalLinks }),
-        ...(dto.badges !== undefined && { badges: sanitizeBadges(dto.badges) }),
-        ...(dto.awardHistory !== undefined && { awardHistory: dto.awardHistory }),
-        // null은 삭제(기본 아바타로 복귀), 문자열은 위에서 검증한 파일로 교체.
-        ...(dto.profileImageFileId !== undefined && { profileImageFileId: dto.profileImageFileId }),
-      })
-      .where(eq(users.id, userId))
-      .returning();
+    // 링크 검증(읽기)과 저장(쓰기) 사이에 관리자 승인이 끼어 갱신이 유실되지 않도록 사용자 행을 잠근다.
+    const user = await this.db.transaction(async (tx) => {
+      const externalLinks =
+        dto.externalLinks !== undefined
+          ? await this.sanitizeExternalLinks(tx, userId, dto.externalLinks)
+          : undefined;
+      const [updated] = await tx
+        .update(users)
+        .set({
+          ...(dto.name !== undefined && { name: dto.name }),
+          ...(dto.role !== undefined && { position: dto.role }),
+          ...(dto.region !== undefined && { region: dto.region }),
+          ...(dto.bio !== undefined && { bio: dto.bio || null }),
+          ...(dto.stacks !== undefined && { stacks: dto.stacks }),
+          ...(externalLinks !== undefined && { externalLinks }),
+          ...(dto.badges !== undefined && { badges: sanitizeBadges(dto.badges) }),
+          ...(dto.awardHistory !== undefined && { awardHistory: dto.awardHistory }),
+          // null은 삭제(기본 아바타로 복귀), 문자열은 위에서 검증한 파일로 교체.
+          ...(dto.profileImageFileId !== undefined && {
+            profileImageFileId: dto.profileImageFileId,
+          }),
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updated;
+    });
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     return this.withProfileImageUrl(toPublicUser(user), user.profileImageFileId);
   }
@@ -70,14 +76,16 @@ export class UsersService {
    * 새로 신청하거나 URL이 바뀐 링크는 신청 중(pending)으로 저장한다. GitHub 링크는 신청 대상이 아니다.
    */
   private async sanitizeExternalLinks(
+    tx: Pick<Database, 'select'>,
     userId: string,
     links: NonNullable<UpdateProfileDto['externalLinks']>,
   ) {
-    const [current] = await this.db
+    const [current] = await tx
       .select({ externalLinks: users.externalLinks })
       .from(users)
       .where(eq(users.id, userId))
-      .limit(1);
+      .limit(1)
+      .for('update');
     const approvedUrls = new Set(
       ((Array.isArray(current?.externalLinks) ? current.externalLinks : []) as StoredLink[])
         .filter((link) => link.portfolioBadge === 'approved')

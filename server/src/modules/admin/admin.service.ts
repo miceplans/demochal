@@ -1063,20 +1063,28 @@ export class AdminService {
 
   /** 승인하면 다른 사용자에게도 뱃지가 노출되고, 거부하면 신청 표시만 지운다(링크는 유지). */
   async reviewPortfolioBadge(userId: string, dto: ReviewPortfolioBadgeDto) {
-    const [target] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
-    if (!target) throw new NotFoundException('사용자를 찾을 수 없습니다.');
-    const links = (
-      Array.isArray(target.externalLinks) ? target.externalLinks : []
-    ) as PortfolioLink[];
-    if (!links.some((link) => link.url === dto.url && link.portfolioBadge === 'pending')) {
-      throw new ConflictException('신청 중인 포트폴리오 뱃지가 아닙니다.');
-    }
-    const next = links.map((link) => {
-      if (link.url !== dto.url || link.portfolioBadge !== 'pending') return link;
-      const { portfolioBadge: _pending, ...rest } = link;
-      return dto.action === 'approve' ? { ...rest, portfolioBadge: 'approved' } : rest;
+    // 같은 사용자의 프로필 저장·다른 승인 처리와 겹쳐 갱신이 유실되지 않도록 행을 잠그고 읽는다.
+    await this.db.transaction(async (tx) => {
+      const [target] = await tx
+        .select({ externalLinks: users.externalLinks })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1)
+        .for('update');
+      if (!target) throw new NotFoundException('사용자를 찾을 수 없습니다.');
+      const links = (
+        Array.isArray(target.externalLinks) ? target.externalLinks : []
+      ) as PortfolioLink[];
+      if (!links.some((link) => link.url === dto.url && link.portfolioBadge === 'pending')) {
+        throw new ConflictException('신청 중인 포트폴리오 뱃지가 아닙니다.');
+      }
+      const next = links.map((link) => {
+        if (link.url !== dto.url || link.portfolioBadge !== 'pending') return link;
+        const { portfolioBadge: _pending, ...rest } = link;
+        return dto.action === 'approve' ? { ...rest, portfolioBadge: 'approved' } : rest;
+      });
+      await tx.update(users).set({ externalLinks: next }).where(eq(users.id, userId));
     });
-    await this.db.update(users).set({ externalLinks: next }).where(eq(users.id, userId));
     return { userId, url: dto.url, status: dto.action === 'approve' ? 'approved' : 'rejected' };
   }
 
