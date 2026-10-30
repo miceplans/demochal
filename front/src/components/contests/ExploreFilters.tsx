@@ -208,12 +208,12 @@ const TriggerButton = styled.button<{ $active: boolean }>(({ $active }) => ({
   height: 36,
   padding: '0 14px',
   borderRadius: 20,
-  border: `0.5px solid ${c.gray900}`,
-  background: $active ? c.primary : c.gray100,
-  color: $active ? c.white : c.gray700,
+  border: `0.5px solid ${$active ? c.primary : c.gray100}`,
+  background: $active ? c.lightBlue : c.gray100,
+  color: $active ? c.primary : c.gray700,
   cursor: 'pointer',
   transition: 'background 0.15s ease, border-color 0.15s ease, color 0.15s ease',
-  '&:hover': { background: $active ? c.primary : c.gray200 },
+  '&:hover': { background: $active ? c.lightBlue : c.gray200 },
 }));
 const Count = styled.span({
   ...textStyle.overline,
@@ -222,8 +222,8 @@ const Count = styled.span({
   padding: '0 5px',
   boxSizing: 'border-box',
   borderRadius: 9,
-  background: c.white,
-  color: c.primary,
+  background: c.primary,
+  color: c.white,
   textAlign: 'center',
   lineHeight: '18px',
 });
