@@ -61,3 +61,24 @@ describe('ContestCard poster link', () => {
     expect(screen.queryByText('마감된 공고입니다.')).toBeNull();
   });
 });
+
+describe('ContestCard 기본 상세 링크', () => {
+  afterEach(cleanup);
+
+  const base = { title: '링크 테스트', category: '디자인', days: 3 };
+
+  it('href가 없어도 서버 챌린지(UUID)는 실제 상세로 연결해 신청 링크에 challenge id가 실린다', () => {
+    const id = '0b6f1c2e-3d4a-4b5c-8d9e-1f2a3b4c5d6e';
+    render(<ContestCard contest={{ ...base, id }} />);
+    expect(screen.getByRole('link', { name: '링크 테스트 상세' }).getAttribute('href')).toBe(
+      `/contests/${id}`,
+    );
+  });
+
+  it('href가 없고 목데이터 id면 데모 상세로 연결한다', () => {
+    render(<ContestCard contest={{ ...base, id: 'contest-1' }} />);
+    expect(screen.getByRole('link', { name: '링크 테스트 상세' }).getAttribute('href')).toBe(
+      '/contests/public-data',
+    );
+  });
+});
