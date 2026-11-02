@@ -38,3 +38,18 @@ export function geocodeAddress(maps: GoogleMapsApi, address: string): Promise<Go
     }
   });
 }
+
+/**
+ * 주소 검색 → 좌표. 지오코딩 결과가 없으면 null을 돌리고, JS API 스크립트 로드 실패는
+ * reject로 그대로 전파한다 — 호출부가 둘을 구분해 안내한다.
+ * 첫 결과만 쓴다(자동완성 드롭다운은 Places API라 별도 계약 — Issue 범위 제외).
+ * 키 미설정은 이 함수가 아니라 호출부가 가드한다.
+ */
+export async function searchAddress(
+  apiKey: string,
+  query: string,
+): Promise<{ latitude: number; longitude: number } | null> {
+  const maps = await loadGoogleMaps(apiKey);
+  const location = await geocodeAddress(maps, query);
+  return location ? { latitude: location.lat(), longitude: location.lng() } : null;
+}
