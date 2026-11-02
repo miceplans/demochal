@@ -121,6 +121,9 @@ const BannerBadge = styled.span({
   pointerEvents: 'none',
 });
 const Identity = styled.div({
+  // 배너가 position을 갖게 돼서(배지 포지셔닝) 포지션 레이어에서 프사·기업명이 배너 뒤로 가려지지 않게
+  // 같은 레이어에서 DOM 순서가 뒤인 Identity를 포지션 요소로 올린다.
+  position: 'relative',
   display: 'flex',
   alignItems: 'center',
   gap: 16,
