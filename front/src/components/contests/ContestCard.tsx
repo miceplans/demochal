@@ -5,6 +5,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { type Contest } from '@/data/user-design';
 import { HeartIcon, Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
+import { contestHref } from './contest-links';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 
 const CategoryTag = styled(Tag)({
@@ -131,7 +132,7 @@ export function ContestCard({
   horizontal = false,
   row = false,
   simple = false,
-  href = '/contests/public-data',
+  href: hrefProp,
 }: {
   contest: Contest;
   horizontal?: boolean;
@@ -140,6 +141,8 @@ export function ContestCard({
   simple?: boolean;
   href?: string;
 }) {
+  // href를 넘기지 않으면 카드 id로 실제 상세(UUID)/데모 상세를 고른다.
+  const href = hrefProp ?? contestHref(contest.id);
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
   const bookmarkable = isBookmarkableId(contest.id);
   const saved = bookmarks.some((challenge) => challenge.id === contest.id);
