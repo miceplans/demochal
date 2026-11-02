@@ -21,6 +21,7 @@ output "worker_ecr_repository_url" { value = aws_ecr_repository.worker.repositor
 output "worker_ecr_repository_arn" { value = aws_ecr_repository.worker.arn }
 output "worker_ecr_repository_name" { value = aws_ecr_repository.worker.name }
 output "ecs_cluster_name" { value = aws_ecs_cluster.this.name }
+output "github_actions_deploy_role_arn" { value = aws_iam_role.github_actions_deploy.arn }
 output "api_service_name" { value = aws_ecs_service.api.name }
 output "worker_service_name" { value = aws_ecs_service.worker.name }
 output "ecs_cluster_arn" { value = aws_ecs_cluster.this.arn }

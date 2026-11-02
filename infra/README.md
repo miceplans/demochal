@@ -2,7 +2,7 @@
 
 AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성은 `ap-northeast-2`의 비용 우선 Single-AZ 스테이징 전용입니다. ALB와 RDS subnet group의 AWS 제약 때문에 두 AZ에 subnet은 만들지만, ECS API/worker와 RDS primary는 첫 번째 AZ에만 둡니다.
 
-> `semochal-staging-*`는 이미 배포된 리소스입니다. 기존 S3 backend state로 `terraform plan -var-file=staging.tfvars`를 먼저 검토하고, re-create 또는 destroy가 있으면 apply하지 않습니다. 특히 삭제된 Production GitHub Actions OIDC provider·deploy role·role policy가 state에 남아 destroy로 표시되면, apply하지 말고 별도 state migration 및 IAM 보존·정리 결정을 승인받아야 합니다. Production GitHub Actions·Vercel 배포는 이 저장소의 관리 대상이 아닙니다.
+> `semochal-staging-*`는 이미 배포된 리소스입니다. 기존 S3 backend state로 `terraform plan -var-file=staging.tfvars`를 먼저 검토하고, re-create 또는 destroy가 있으면 apply하지 않습니다. GitHub `Production` Environment는 `main`의 승인된 자동 배포가 이 staging ECS 리소스로 향하는 release gate다. Vercel은 이 저장소의 관리 대상이 아닙니다.
 
 ## 예정 구성
 
