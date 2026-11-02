@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadGoogleMaps } from '@/lib/google-maps';
 import { LocationMap } from './LocationMap';
@@ -169,6 +169,23 @@ describe('LocationMap', () => {
       expect(container.querySelector('iframe')!.getAttribute('src')).toContain(
         'q=37.5665%2C126.978',
       );
+    });
+
+    it('지도 타일이 로드되지 않으면(키 제한 등) 8초 후 embed로 폰백한다', async () => {
+      vi.useFakeTimers();
+      try {
+        const { container } = render(<LocationMap latitude={37.5665} longitude={126.978} />);
+        // 타이머 콜백의 setState를 act 안에서 플러시한다.
+        await act(async () => {
+          await vi.advanceTimersByTimeAsync(8500);
+        });
+        expect(container.querySelector('iframe')).not.toBeNull();
+        expect(container.querySelector('iframe')!.getAttribute('src')).toContain(
+          'q=37.5665%2C126.978',
+        );
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });
