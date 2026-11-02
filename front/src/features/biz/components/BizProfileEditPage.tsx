@@ -12,6 +12,7 @@ import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { apiErrorMessage } from '@/lib/api-error';
+import { searchAddress } from '@/lib/google-maps';
 
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
@@ -153,6 +154,28 @@ export function BizProfileEditPage() {
     );
   };
 
+  // 주소 → 좌표 지오코딩은 JS API 키가 필요하다. 키가 있을 때만 검색 UI를 노출한다.
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const [addressQuery, setAddressQuery] = useState('');
+  const [searchingAddress, setSearchingAddress] = useState(false);
+  const searchByAddress = async () => {
+    const query = addressQuery.trim();
+    if (!query || searchingAddress || !mapsApiKey) return;
+    setSearchingAddress(true);
+    try {
+      const found = await searchAddress(mapsApiKey, query);
+      if (found) {
+        setMapCoords({ latitude: found.latitude, longitude: found.longitude });
+      } else {
+        toast.error('주소 검색 실패', '주소를 찾지 못했어요. 도로명 주소로 다시 시도해주세요');
+      }
+    } catch {
+      toast.error('주소 검색 실패', '지도 서비스를 불러오지 못했어요. 잠시 후 다시 시도해주세요');
+    } finally {
+      setSearchingAddress(false);
+    }
+  };
+
   const save = async () => {
     if (!business) return;
     setSaveError(false);
@@ -255,6 +278,34 @@ export function BizProfileEditPage() {
       />
       <MapSection>
         <MapSectionTitle>지도 위치</MapSectionTitle>
+        {mapsApiKey ? (
+          <MapSearchRow>
+            <CoordField>
+              <span>주소로 찾기</span>
+              <SearchInput
+                aria-label="지도 주소 검색"
+                value={addressQuery}
+                placeholder="예: 서울시 강남구 테헤란로 123"
+                disabled={searchingAddress}
+                onChange={(event) => setAddressQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  // 한글 IME 조합 중 Enter(음절 확정)로 검색이 트리거되지 않게 한다.
+                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                    event.preventDefault();
+                    void searchByAddress();
+                  }
+                }}
+              />
+            </CoordField>
+            <OutlineButton
+              type="button"
+              disabled={searchingAddress || !addressQuery.trim()}
+              onClick={() => void searchByAddress()}
+            >
+              {searchingAddress ? '검색 중…' : '검색'}
+            </OutlineButton>
+          </MapSearchRow>
+        ) : null}
         <MapCoordRow>
           <CoordField>
             <span>위도</span>
@@ -295,8 +346,9 @@ export function BizProfileEditPage() {
           </OutlineButton>
         </MapCoordRow>
         <MapHint>
-          위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도
-          핀이 제거되고 주소 기준으로 지도가 표시돼요.
+          {mapsApiKey
+            ? '주소 검색, 지도 핀 드래그, 또는 위도·경도 입력으로 위치를 지정하세요. 빈 칸으로 저장하면 지도 핀이 제거되고 주소 기준으로 지도가 표시돼요.'
+            : '위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도 핀이 제거되고 주소 기준으로 지도가 표시돼요.'}
         </MapHint>
       </MapSection>
       {saveError && <p role="alert">저장하지 못했습니다.</p>}
@@ -319,6 +371,7 @@ const InlineInput = styled.input({
 const MapSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 10 });
 const MapSectionTitle = styled.h2({ margin: 0, ...textStyle.h2, color: c.gray900 });
 const MapCoordRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
+const MapSearchRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
 const CoordField = styled.label({
   display: 'flex',
   flexDirection: 'column',
@@ -335,4 +388,5 @@ const CoordInput = styled.input({
   font: 'inherit',
   '&:focus': { outline: 'none', borderColor: c.gray300 },
 });
+const SearchInput = styled(CoordInput)({ width: 280 });
 const MapHint = styled.p({ margin: 0, ...textStyle.metaText, color: c.gray500 });

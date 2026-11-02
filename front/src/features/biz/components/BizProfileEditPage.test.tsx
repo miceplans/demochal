@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => {
     updateBusiness: vi.fn(),
     toastSuccess: vi.fn(),
     toastError: vi.fn(),
+    searchAddress: vi.fn(),
   };
 });
 
@@ -76,11 +77,15 @@ vi.mock('@/components/biz/BizOrgProfile', () => ({
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
 }));
+vi.mock('@/lib/google-maps', () => ({
+  searchAddress: mocks.searchAddress,
+}));
 
 describe('BizProfileEditPage', () => {
   afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
+    delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     // 저장 성공 후 페이지 이동(window.location.href 할당)이 jsdom 에러를 내지 않게 스텁한다.
     Object.defineProperty(window, 'location', {
       configurable: true,
@@ -160,5 +165,45 @@ describe('BizProfileEditPage', () => {
     expect(getCurrentPosition).toHaveBeenCalled();
     expect((screen.getByLabelText('지도 위도') as HTMLInputElement).value).toBe('35.2');
     expect((screen.getByLabelText('지도 경도') as HTMLInputElement).value).toBe('129.1');
+  });
+
+  describe('주소 검색(JS API 키 설정 환경)', () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'test-key';
+    });
+
+    it('검색 성공 시 지오코딩 좌표가 위도·경도 입력에 반영된다', async () => {
+      mocks.searchAddress.mockResolvedValue({ latitude: 37.4, longitude: 127.1 });
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      await user.type(screen.getByLabelText('지도 주소 검색'), '서울시 중구 세종대로 110');
+      await user.click(screen.getByRole('button', { name: '검색' }));
+
+      expect(mocks.searchAddress).toHaveBeenCalledWith('test-key', '서울시 중구 세종대로 110');
+      await waitFor(() =>
+        expect((screen.getByLabelText('지도 위도') as HTMLInputElement).value).toBe('37.4'),
+      );
+      expect((screen.getByLabelText('지도 경도') as HTMLInputElement).value).toBe('127.1');
+    });
+
+    it('검색 실패(결과 없음)는 에러 토스트를 띄우고 기존 좌표를 유지한다', async () => {
+      mocks.searchAddress.mockResolvedValue(null);
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      await user.type(screen.getByLabelText('지도 주소 검색'), '아묻따 없는 주소');
+      await user.click(screen.getByRole('button', { name: '검색' }));
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+      expect((screen.getByLabelText('지도 위도') as HTMLInputElement).value).toBe('37.5665');
+      expect((screen.getByLabelText('지도 경도') as HTMLInputElement).value).toBe('126.978');
+    });
+
+    it('키가 없으면 주소 검색 입력이 보이지 않는다', () => {
+      delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+      render(<BizProfileEditPage />);
+      expect(screen.queryByLabelText('지도 주소 검색')).toBeNull();
+    });
   });
 });
