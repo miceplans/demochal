@@ -46,12 +46,15 @@ export function BizOrgProfile({
 }) {
   return (
     <Root>
-      <Banner as={bannerInput ? 'label' : 'div'}>
+      <Banner as={bannerInput ? 'label' : 'div'} data-has-banner={bannerUrl ? 'true' : 'false'}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {bannerUrl ? <img src={bannerUrl} alt="" /> : null}
-        {bannerInput}
         {bannerInput ? (
-          <BannerBadge>{bannerUrl ? '배경 이미지 변경' : '배경 이미지 추가'}</BannerBadge>
+          <BannerUploadControl data-banner-uploader $hasBanner={Boolean(bannerUrl)}>
+            {bannerInput}
+            <img src={`${ICON}/upload-folder.svg`} alt="" width={26} height={19} />
+            <BannerUploadText>파일 찾기</BannerUploadText>
+          </BannerUploadControl>
         ) : null}
       </Banner>
       <Identity>
@@ -106,20 +109,32 @@ const Banner = styled.div({
   borderRadius: 19,
   background: c.gray100,
   overflow: 'hidden',
-  '& img': { width: '100%', height: '100%', objectFit: 'cover' },
+  '& > img': { width: '100%', height: '100%', objectFit: 'cover' },
+  '&:hover [data-banner-uploader], &:focus-within [data-banner-uploader]': {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
 });
-// 배너 클릭 업로드는 기존 그대로 두고, 배경 이미지를 바꿀 수 있다는 표시만 올린다.
-const BannerBadge = styled.span({
+const BannerUploadControl = styled.div<{ $hasBanner: boolean }>(({ $hasBanner }) => ({
   position: 'absolute',
-  right: 16,
-  bottom: 16,
-  padding: '8px 14px',
+  left: '50%',
+  top: '50%',
+  transform: 'translate(-50%, -50%)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '16px 10px',
+  border: `1px dashed ${c.overlayWhite}`,
   borderRadius: 8,
   background: 'rgba(0, 0, 0, 0.55)',
   color: c.white,
-  ...textStyle.subtitle,
-  pointerEvents: 'none',
-});
+  cursor: 'pointer',
+  opacity: $hasBanner ? 0 : 1,
+  pointerEvents: $hasBanner ? 'none' : 'auto',
+  transition: 'opacity 0.15s ease',
+  '& input': { cursor: 'pointer' },
+}));
+const BannerUploadText = styled.span({ ...textStyle.body, color: c.white, whiteSpace: 'nowrap' });
 const Identity = styled.div({
   // 배너가 position을 갖게 돼서(배지 포지셔닝) 포지션 레이어에서 프사·기업명이 배너 뒤로 가려지지 않게
   // 같은 레이어에서 DOM 순서가 뒤인 Identity를 포지션 요소로 올린다.
