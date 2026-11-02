@@ -22,13 +22,7 @@ import { SupportEmailProcessorService } from './email/support-email.processor.js
     SesEmailClient,
     SupportEmailProcessorService,
   ],
-  exports: [
-    NotificationsService,
-    NotificationEmailProcessorService,
-    ChallengeNotificationScanService,
-    SesEmailClient,
-    SupportEmailProcessorService,
-  ],
+  exports: [NotificationsService],
 })
 export class NotificationsModule {}
 
