@@ -70,4 +70,11 @@ describe('BizOrgProfile', () => {
     mapProps.latest?.onChange?.(37.1, 127.1);
     expect(onMapChange).toHaveBeenCalledWith(37.1, 127.1);
   });
+
+  it('프사·기업명이 배너 이미지 위에 그려지도록 Identity가 포지션 레이어에 있다', () => {
+    render(<BizOrgProfile name="세모챌" bannerUrl="https://cdn.example.com/banner.png" />);
+    const identity = screen.getByText('세모챌').parentElement!;
+    // 배너가 position 요소라 같은 레이어에서는 DOM 순서대로 Identity(프사)가 위에 올라야 한다.
+    expect(getComputedStyle(identity).position).toBe('relative');
+  });
 });
