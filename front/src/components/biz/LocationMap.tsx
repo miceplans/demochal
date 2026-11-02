@@ -12,6 +12,8 @@ const ICON = '/assets/icons';
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 };
 const COORDS_ZOOM = 16;
 const ADDRESS_ZOOM = 15;
+// JS API가 거부돼도 타일 로드 자체가 안 되는 실패를 감지할 시간 — 이 안에 tilesloaded가 없으면 embed로 폰백한다.
+const MAP_RENDER_TIMEOUT_MS = 8000;
 
 export interface LocationMapProps {
   latitude?: number | null;
@@ -111,6 +113,14 @@ function GoogleMapView({
           disableDefaultUI: false,
         });
         mapRef.current = map;
+        // 키 제한(RefererNotAllowedMapError 등)·과금 문제로 스크립트는 로드됐지만 지도가 실제로
+        // 렌더되지 않는 실패도 잡는다 — 타일 로드가 없으면 기존 embed 폰백으로 떨어진다.
+        const renderWatchdog = setTimeout(() => {
+          if (!cancelled) onScriptError();
+        }, MAP_RENDER_TIMEOUT_MS);
+        map.addListener('tilesloaded', () => {
+          clearTimeout(renderWatchdog);
+        });
         const marker = new maps.Marker({
           position: coords,
           map,
