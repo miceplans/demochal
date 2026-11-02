@@ -609,6 +609,8 @@ export class ChallengesService {
 
   async listSimilar(id: string) {
     const challenge = await this.getPublicOrThrow(id);
+    // 마감된 공고(closed 또는 마감일 경과)는 유사 챌린지에서 제외한다.
+    const now = new Date();
 
     const byCategory = challenge.category
       ? await this.db
@@ -618,7 +620,8 @@ export class ChallengesService {
             and(
               eq(challenges.category, challenge.category),
               ne(challenges.id, id),
-              inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+              eq(challenges.status, 'published'),
+              gt(challenges.endDate, now),
               eq(challenges.visibility, 'public'),
             ),
           )
@@ -634,7 +637,8 @@ export class ChallengesService {
       .where(
         and(
           ne(challenges.id, id),
-          inArray(challenges.status, PUBLIC_CHALLENGE_STATUSES),
+          eq(challenges.status, 'published'),
+          gt(challenges.endDate, now),
           eq(challenges.visibility, 'public'),
         ),
       )
