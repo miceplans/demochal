@@ -113,7 +113,7 @@ describe('PublicBusinessProfilePage', () => {
     mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
     const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
     expect(screen.getByText('주식회사 새모')).not.toBeNull();
-    expect(screen.getByText('승인')).not.toBeNull();
+    expect(screen.queryByText('승인')).toBeNull();
     expect(screen.getByText('서울시 강남구')).not.toBeNull();
     expect(screen.getByText('02-1234-5678')).not.toBeNull();
     expect(screen.getByText('biz@semochal.kr')).not.toBeNull();
