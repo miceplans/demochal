@@ -42,10 +42,9 @@ describe('BizOrgProfile', () => {
     expect(screen.queryByText('배경 이미지 변경')).toBeNull();
   });
 
-  it('읽기 전용 모드에는 배지를 보여주지 않는다', () => {
+  it('읽기 전용 모드에는 업로더를 보여주지 않는다', () => {
     render(<BizOrgProfile name="세모챌" bannerUrl="https://cdn.example.com/banner.png" />);
-    expect(screen.queryByText('배경 이미지 변경')).toBeNull();
-    expect(screen.queryByText('배경 이미지 추가')).toBeNull();
+    expect(screen.queryByText('파일 찾기')).toBeNull();
   });
 
   it('지도 좌표·주소를 LocationMap에 전달하고 기본은 읽기 전용이다', () => {

@@ -120,7 +120,7 @@ const BannerUploadControl = styled.div({
   alignItems: 'center',
   gap: 8,
   padding: '16px 10px',
-  border: '1px dashed rgba(255, 255, 255, 0.8)',
+  border: `1px dashed ${c.overlayWhite}`,
   borderRadius: 8,
   background: 'rgba(0, 0, 0, 0.55)',
   color: c.white,
