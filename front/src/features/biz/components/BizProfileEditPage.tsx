@@ -136,6 +136,9 @@ export function BizProfileEditPage() {
     }
   };
 
+  // 구글 지도 API 키 유무 — 키가 있으면 좌표 입력 대신 주소 검색/지도 핀 드래그만 노출한다.
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   // 구글 지도 API 키가 없는 환경에서도 위치 조정이 가능하도록 브라우저 위치 정보를 쓴다.
   const useCurrentLocation = () => {
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
@@ -255,48 +258,60 @@ export function BizProfileEditPage() {
       />
       <MapSection>
         <MapSectionTitle>지도 위치</MapSectionTitle>
-        <MapCoordRow>
-          <CoordField>
-            <span>위도</span>
-            <CoordInput
-              aria-label="지도 위도"
-              type="number"
-              step="any"
-              min={-90}
-              max={90}
-              value={mapCoords.latitude ?? ''}
-              onChange={(event) =>
-                setMapCoords((current) => ({
-                  ...current,
-                  latitude: parseCoord(event.target.value),
-                }))
-              }
-            />
-          </CoordField>
-          <CoordField>
-            <span>경도</span>
-            <CoordInput
-              aria-label="지도 경도"
-              type="number"
-              step="any"
-              min={-180}
-              max={180}
-              value={mapCoords.longitude ?? ''}
-              onChange={(event) =>
-                setMapCoords((current) => ({
-                  ...current,
-                  longitude: parseCoord(event.target.value),
-                }))
-              }
-            />
-          </CoordField>
-          <OutlineButton type="button" onClick={useCurrentLocation}>
-            현재 위치 사용
-          </OutlineButton>
-        </MapCoordRow>
+        {mapsApiKey ? (
+          mapCoords.latitude !== null || mapCoords.longitude !== null ? (
+            <OutlineButton
+              type="button"
+              onClick={() => setMapCoords({ latitude: null, longitude: null })}
+            >
+              지도 위치 초기화
+            </OutlineButton>
+          ) : null
+        ) : (
+          <MapCoordRow>
+            <CoordField>
+              <span>위도</span>
+              <CoordInput
+                aria-label="지도 위도"
+                type="number"
+                step="any"
+                min={-90}
+                max={90}
+                value={mapCoords.latitude ?? ''}
+                onChange={(event) =>
+                  setMapCoords((current) => ({
+                    ...current,
+                    latitude: parseCoord(event.target.value),
+                  }))
+                }
+              />
+            </CoordField>
+            <CoordField>
+              <span>경도</span>
+              <CoordInput
+                aria-label="지도 경도"
+                type="number"
+                step="any"
+                min={-180}
+                max={180}
+                value={mapCoords.longitude ?? ''}
+                onChange={(event) =>
+                  setMapCoords((current) => ({
+                    ...current,
+                    longitude: parseCoord(event.target.value),
+                  }))
+                }
+              />
+            </CoordField>
+            <OutlineButton type="button" onClick={useCurrentLocation}>
+              현재 위치 사용
+            </OutlineButton>
+          </MapCoordRow>
+        )}
         <MapHint>
-          위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도
-          핀이 제거되고 주소 기준으로 지도가 표시돼요.
+          {mapsApiKey
+            ? '프로필 미리보기의 지도 핀을 드래그하거나 클릭해 위치를 지정하세요. 지도 위치 초기화는 저장 시 핀을 제거해요.'
+            : '위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도 핀이 제거되고 주소 기준으로 지도가 표시돼요.'}
         </MapHint>
       </MapSection>
       {saveError && <p role="alert">저장하지 못했습니다.</p>}

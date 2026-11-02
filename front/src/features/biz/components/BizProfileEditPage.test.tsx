@@ -161,4 +161,27 @@ describe('BizProfileEditPage', () => {
     expect((screen.getByLabelText('지도 위도') as HTMLInputElement).value).toBe('35.2');
     expect((screen.getByLabelText('지도 경도') as HTMLInputElement).value).toBe('129.1');
   });
+
+  describe('지도 API 키 설정 환경', () => {
+    beforeEach(() => {
+      process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY = 'test-key';
+    });
+    afterEach(() => {
+      delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+    });
+
+    it('위도·경도 입력이 보이지 않고 지도 위치 초기화 버튼으로 핀을 제거할 수 있다', async () => {
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      expect(screen.queryByLabelText('지도 위도')).toBeNull();
+      expect(screen.queryByLabelText('지도 경도')).toBeNull();
+
+      const reset = screen.getByRole('button', { name: '지도 위치 초기화' });
+      await user.click(reset);
+
+      // 좌표가 모두 null이 되면 초기화 버튼도 사라진다.
+      expect(screen.queryByRole('button', { name: '지도 위치 초기화' })).toBeNull();
+    });
+  });
 });
