@@ -812,7 +812,9 @@ function PostingForm({
   onSubmit: (values: PostingValues) => Promise<void>;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initial.title);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -870,8 +872,16 @@ function PostingForm({
     );
   const fail = (keys: string[], message: string) => {
     setInvalid(new Set(keys));
-    setError(message);
+    toast.error(message);
   };
+  // 검증 실패 안내는 토스트로만 하고, 실패한 필드 중 DOM 순서 첫 번째로 화면을 옮겨 바로 고치게 한다.
+  useEffect(() => {
+    if (invalid.size === 0) return;
+    const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!firstInvalid) return;
+    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    firstInvalid.focus({ preventScroll: true });
+  }, [invalid]);
   const shownError = error || initialError;
   // 저장된 카테고리가 선택지에 없으면(과거 값 등) 사라지지 않도록 옵션에 포함한다.
   const dropdownOptions =
@@ -1277,7 +1287,7 @@ function PostingForm({
 
   const radioIcon = (on: boolean) => `${ICON}/figma-radio-${on ? 'on' : 'off'}.svg`;
   return (
-    <FormWrap>
+    <FormWrap ref={formRef}>
       <Uploader>
         <input
           type="file"
