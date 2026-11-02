@@ -27,6 +27,12 @@ describe('BizOrgProfile', () => {
       />,
     );
     expect(screen.getByText('파일 찾기')).not.toBeNull();
+    expect(screen.getByText('파일 찾기').parentElement?.getAttribute('data-banner-uploader')).toBe(
+      'true',
+    );
+    expect(
+      screen.getByText('파일 찾기').closest('[data-has-banner]')?.getAttribute('data-has-banner'),
+    ).toBe('false');
     expect(screen.queryByText('배경 이미지 추가')).toBeNull();
   });
 
@@ -39,6 +45,12 @@ describe('BizOrgProfile', () => {
       />,
     );
     expect(screen.getByText('파일 찾기')).not.toBeNull();
+    expect(screen.getByText('파일 찾기').parentElement?.getAttribute('data-banner-uploader')).toBe(
+      'true',
+    );
+    expect(
+      screen.getByText('파일 찾기').closest('[data-has-banner]')?.getAttribute('data-has-banner'),
+    ).toBe('true');
     expect(screen.queryByText('배경 이미지 변경')).toBeNull();
   });
 

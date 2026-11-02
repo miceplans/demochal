@@ -46,11 +46,11 @@ export function BizOrgProfile({
 }) {
   return (
     <Root>
-      <Banner as={bannerInput ? 'label' : 'div'}>
+      <Banner as={bannerInput ? 'label' : 'div'} data-has-banner={bannerUrl ? 'true' : 'false'}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {bannerUrl ? <img src={bannerUrl} alt="" /> : null}
         {bannerInput ? (
-          <BannerUploadControl>
+          <BannerUploadControl data-banner-uploader $hasBanner={Boolean(bannerUrl)}>
             {bannerInput}
             <img src={`${ICON}/upload-folder.svg`} alt="" width={26} height={19} />
             <BannerUploadText>파일 찾기</BannerUploadText>
@@ -110,8 +110,12 @@ const Banner = styled.div({
   background: c.gray100,
   overflow: 'hidden',
   '& > img': { width: '100%', height: '100%', objectFit: 'cover' },
+  '&:hover [data-banner-uploader], &:focus-within [data-banner-uploader]': {
+    opacity: 1,
+    pointerEvents: 'auto',
+  },
 });
-const BannerUploadControl = styled.div({
+const BannerUploadControl = styled.div<{ $hasBanner: boolean }>(({ $hasBanner }) => ({
   position: 'absolute',
   left: '50%',
   top: '50%',
@@ -125,8 +129,11 @@ const BannerUploadControl = styled.div({
   background: 'rgba(0, 0, 0, 0.55)',
   color: c.white,
   cursor: 'pointer',
+  opacity: $hasBanner ? 0 : 1,
+  pointerEvents: $hasBanner ? 'none' : 'auto',
+  transition: 'opacity 0.15s ease',
   '& input': { cursor: 'pointer' },
-});
+}));
 const BannerUploadText = styled.span({ ...textStyle.body, color: c.white, whiteSpace: 'nowrap' });
 const Identity = styled.div({
   // 배너가 position을 갖게 돼서(배지 포지셔닝) 포지션 레이어에서 프사·기업명이 배너 뒤로 가려지지 않게
