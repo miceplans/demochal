@@ -22,13 +22,6 @@ function useExistingImageUrl(fileId?: string | null): string | null {
   return query.data?.status === 200 ? (query.data.data.url ?? null) : null;
 }
 
-// 좌표 입력값을 숫자 또는 null로 정규화한다(빈 값·잘못된 값은 핀 제거로 처리).
-function parseCoord(value: string): number | null {
-  if (value.trim() === '') return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : null;
-}
-
 export function BizProfileEditPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
@@ -150,7 +143,7 @@ export function BizProfileEditPage() {
           longitude: position.coords.longitude,
         }),
       () =>
-        toast.error('위치 조회 실패', '현재 위치를 가져오지 못했어요. 직접 좌표를 입력해주세요'),
+        toast.error('위치 조회 실패', '현재 위치를 가져오지 못했어요. 잠시 후 다시 시도해주세요'),
     );
   };
 
@@ -166,6 +159,10 @@ export function BizProfileEditPage() {
       const found = await searchAddress(mapsApiKey, query);
       if (found) {
         setMapCoords({ latitude: found.latitude, longitude: found.longitude });
+        // 프로필 주소 입력이 비어 있으면 검색한 주소를 자동으로 채운다(이미 있으면 건드리지 않는다).
+        setForm((current) =>
+          current.address.trim() === '' ? { ...current, address: query } : current,
+        );
       } else {
         toast.error('주소 검색 실패', '주소를 찾지 못했어요. 도로명 주소로 다시 시도해주세요');
       }
@@ -278,77 +275,43 @@ export function BizProfileEditPage() {
       />
       <MapSection>
         <MapSectionTitle>지도 위치</MapSectionTitle>
-        {mapsApiKey ? (
-          <MapSearchRow>
-            <CoordField>
-              <span>주소로 찾기</span>
-              <SearchInput
-                aria-label="지도 주소 검색"
-                value={addressQuery}
-                placeholder="예: 서울시 강남구 테헤란로 123"
-                disabled={searchingAddress}
-                onChange={(event) => setAddressQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  // 한글 IME 조합 중 Enter(음절 확정)로 검색이 트리거되지 않게 한다.
-                  if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
-                    event.preventDefault();
-                    void searchByAddress();
-                  }
-                }}
-              />
-            </CoordField>
-            <OutlineButton
-              type="button"
-              disabled={searchingAddress || !addressQuery.trim()}
-              onClick={() => void searchByAddress()}
-            >
-              {searchingAddress ? '검색 중…' : '검색'}
-            </OutlineButton>
-          </MapSearchRow>
-        ) : null}
-        <MapCoordRow>
-          <CoordField>
-            <span>위도</span>
-            <CoordInput
-              aria-label="지도 위도"
-              type="number"
-              step="any"
-              min={-90}
-              max={90}
-              value={mapCoords.latitude ?? ''}
-              onChange={(event) =>
-                setMapCoords((current) => ({
-                  ...current,
-                  latitude: parseCoord(event.target.value),
-                }))
-              }
-            />
-          </CoordField>
-          <CoordField>
-            <span>경도</span>
-            <CoordInput
-              aria-label="지도 경도"
-              type="number"
-              step="any"
-              min={-180}
-              max={180}
-              value={mapCoords.longitude ?? ''}
-              onChange={(event) =>
-                setMapCoords((current) => ({
-                  ...current,
-                  longitude: parseCoord(event.target.value),
-                }))
-              }
-            />
-          </CoordField>
+        <MapControlRow>
+          {mapsApiKey ? (
+            <>
+              <CoordField>
+                <span>주소로 찾기</span>
+                <SearchInput
+                  aria-label="지도 주소 검색"
+                  value={addressQuery}
+                  placeholder="예: 서울시 강남구 테헤란로 123"
+                  disabled={searchingAddress}
+                  onChange={(event) => setAddressQuery(event.target.value)}
+                  onKeyDown={(event) => {
+                    // 한글 IME 조합 중 Enter(음절 확정)로 검색이 트리거되지 않게 한다.
+                    if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+                      event.preventDefault();
+                      void searchByAddress();
+                    }
+                  }}
+                />
+              </CoordField>
+              <OutlineButton
+                type="button"
+                disabled={searchingAddress || !addressQuery.trim()}
+                onClick={() => void searchByAddress()}
+              >
+                {searchingAddress ? '검색 중…' : '검색'}
+              </OutlineButton>
+            </>
+          ) : null}
           <OutlineButton type="button" onClick={useCurrentLocation}>
             현재 위치 사용
           </OutlineButton>
-        </MapCoordRow>
+        </MapControlRow>
         <MapHint>
           {mapsApiKey
-            ? '주소 검색, 지도 핀 드래그, 또는 위도·경도 입력으로 위치를 지정하세요. 빈 칸으로 저장하면 지도 핀이 제거되고 주소 기준으로 지도가 표시돼요.'
-            : '위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도 핀이 제거되고 주소 기준으로 지도가 표시돼요.'}
+            ? '주소 검색 또는 지도 핀을 드래그해 위치를 지정하세요. 주소 입력이 비어 있으면 검색한 주소가 자동으로 채워져요.'
+            : '현재 위치 사용으로 위치를 지정할 수 있어요.'}
         </MapHint>
       </MapSection>
       {saveError && <p role="alert">저장하지 못했습니다.</p>}
@@ -370,8 +333,7 @@ const InlineInput = styled.input({
 });
 const MapSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 10 });
 const MapSectionTitle = styled.h2({ margin: 0, ...textStyle.h2, color: c.gray900 });
-const MapCoordRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
-const MapSearchRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
+const MapControlRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
 const CoordField = styled.label({
   display: 'flex',
   flexDirection: 'column',
