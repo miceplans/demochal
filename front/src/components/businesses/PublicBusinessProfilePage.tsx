@@ -103,7 +103,7 @@ export function PublicBusinessProfilePage({ businessId }: { businessId: string }
             <NameWrap>
               <span>{business.name ?? '이름 없는 기업'}</span>
               {business.displayStatus === '승인' ? <VerifiedMark /> : null}
-              {business.displayStatus ? (
+              {business.displayStatus && business.displayStatus !== '승인' ? (
                 <Tag tone={verificationTone(business.displayStatus)}>{business.displayStatus}</Tag>
               ) : null}
             </NameWrap>
@@ -135,6 +135,7 @@ function ChallengeSection({
   loading: boolean;
   now: number;
 }) {
+  const [page, setPage] = useState(1);
   if (loading) {
     return (
       <Intro>
@@ -144,11 +145,14 @@ function ChallengeSection({
     );
   }
   if (!items?.length) return null;
+  const totalPages = Math.ceil(items.length / PAGE_SIZE);
+  const current = Math.min(page, totalPages);
+  const visible = items.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
   return (
     <Intro>
       <IntroTitle>이 기관의 챌린지</IntroTitle>
       <ContestGrid>
-        {items.map((item) => (
+        {visible.map((item) => (
           <ContestCard
             key={item.id}
             href={`/contests/${item.id}`}
@@ -163,10 +167,56 @@ function ChallengeSection({
           />
         ))}
       </ContestGrid>
+      {totalPages > 1 ? (
+        <Pager aria-label="챌린지 페이지 이동">
+          <PageButton type="button" disabled={current <= 1} onClick={() => setPage(current - 1)}>
+            이전
+          </PageButton>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
+            <PageButton
+              key={n}
+              type="button"
+              aria-current={n === current ? 'page' : undefined}
+              data-active={n === current}
+              onClick={() => setPage(n)}
+            >
+              {n}
+            </PageButton>
+          ))}
+          <PageButton
+            type="button"
+            disabled={current >= totalPages}
+            onClick={() => setPage(current + 1)}
+          >
+            다음
+          </PageButton>
+        </Pager>
+      ) : null}
     </Intro>
   );
 }
 
+const PAGE_SIZE = 8;
+const Pager = styled.nav({
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  gap: 6,
+  flexWrap: 'wrap',
+});
+const PageButton = styled.button({
+  ...textStyle.metaText,
+  minWidth: 32,
+  height: 32,
+  padding: '0 10px',
+  border: `1px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: '#fff',
+  color: c.gray900,
+  cursor: 'pointer',
+  '&[data-active="true"]': { background: c.primary, color: '#fff', borderColor: c.primary },
+  '&:disabled': { opacity: 0.4, cursor: 'default' },
+});
 const NameWrap = styled.span({ display: 'inline-flex', alignItems: 'center', gap: 8 });
 const VerifiedBadge = styled.span({
   display: 'inline-flex',
