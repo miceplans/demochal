@@ -150,7 +150,7 @@ variable "ses_from_email" {
 variable "ses_support_from_email" {
   description = "Support mailbox used for SES inbound receiving and future support replies. Empty disables inbound receiving."
   type        = string
-  default     = "help@semochall.com"
+  default     = ""
   validation {
     condition     = var.ses_support_from_email == "" || can(regex("^[^@\\s]+@[^@\\s]+$", var.ses_support_from_email))
     error_message = "ses_support_from_email must be empty or a single email address."

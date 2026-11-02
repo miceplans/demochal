@@ -8,6 +8,17 @@ resource "aws_s3_bucket" "email_inbox" {
   bucket_prefix = "${local.name_prefix}-email-inbox-"
 }
 
+resource "aws_s3_bucket_lifecycle_configuration" "email_inbox" {
+  count  = local.email_inbound_enabled ? 1 : 0
+  bucket = aws_s3_bucket.email_inbox[0].id
+  rule {
+    id     = "expire-inbound-mime"
+    status = "Enabled"
+    filter {}
+    expiration { days = 30 }
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "email_inbox" {
   count                   = local.email_inbound_enabled ? 1 : 0
   bucket                  = aws_s3_bucket.email_inbox[0].id
@@ -49,6 +60,16 @@ resource "aws_s3_bucket_policy" "email_inbox" {
   policy = data.aws_iam_policy_document.email_inbox_bucket[0].json
 }
 
+# SES invokes the processor asynchronously (invocation_type = "Event"); events
+# that still fail after Lambda's built-in retries are parked here instead of
+# being dropped silently. The raw MIME stays in the inbox bucket for replay.
+# https://docs.aws.amazon.com/lambda/latest/dg/invocation-async-retain-records.html
+resource "aws_sqs_queue" "email_processor_dlq" {
+  count                     = local.email_inbound_enabled ? 1 : 0
+  name                      = "${local.name_prefix}-email-processor-dlq"
+  message_retention_seconds = 1209600
+}
+
 resource "aws_cloudwatch_log_group" "email_processor" {
   count             = local.email_inbound_enabled ? 1 : 0
   name              = "/aws/lambda/${local.name_prefix}-email-processor"
@@ -86,6 +107,10 @@ data "aws_iam_policy_document" "email_processor" {
     actions   = ["sqs:SendMessage"]
     resources = [aws_sqs_queue.inbound_emails.arn]
   }
+  statement {
+    actions   = ["sqs:SendMessage"]
+    resources = [aws_sqs_queue.email_processor_dlq[0].arn]
+  }
 }
 
 resource "aws_iam_role_policy" "email_processor" {
@@ -112,6 +137,10 @@ resource "aws_lambda_function" "email_processor" {
   source_code_hash = data.archive_file.email_processor[0].output_base64sha256
   timeout          = 30
   memory_size      = 256
+
+  dead_letter_config {
+    target_arn = aws_sqs_queue.email_processor_dlq[0].arn
+  }
 
   environment {
     variables = {

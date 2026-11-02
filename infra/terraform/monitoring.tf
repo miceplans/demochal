@@ -73,6 +73,43 @@ resource "aws_cloudwatch_metric_alarm" "emails_dlq_not_empty" {
   }
 }
 
+# Inbound support mail that exhausted its retries in the worker queue.
+resource "aws_cloudwatch_metric_alarm" "inbound_emails_dlq_not_empty" {
+  alarm_name          = "${local.name_prefix}-inbound-emails-dlq-not-empty"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 300
+  statistic           = "Maximum"
+  threshold           = 0
+  treat_missing_data  = "notBreaching"
+  alarm_description   = "Inbound support emails were dead-lettered after exhausting SQS retries."
+  alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
+  dimensions = {
+    QueueName = aws_sqs_queue.inbound_emails_dlq.name
+  }
+}
+
+# Inbound mail the SES-triggered Lambda failed to process (async invoke DLQ).
+resource "aws_cloudwatch_metric_alarm" "email_processor_dlq_not_empty" {
+  count               = local.email_inbound_enabled ? 1 : 0
+  alarm_name          = "${local.name_prefix}-email-processor-dlq-not-empty"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApproximateNumberOfMessagesVisible"
+  namespace           = "AWS/SQS"
+  period              = 300
+  statistic           = "Maximum"
+  threshold           = 0
+  treat_missing_data  = "notBreaching"
+  alarm_description   = "The inbound email Lambda failed after retries; raw MIME remains in the inbox bucket."
+  alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
+  dimensions = {
+    QueueName = aws_sqs_queue.email_processor_dlq[0].name
+  }
+}
+
 # Staging overview dashboard: ECS CPU/Memory, ALB traffic, RDS health, and recent
 # API/Worker error logs on one screen. Every target is a Terraform reference so the
 # dashboard follows renames without hardcoded ARNs.

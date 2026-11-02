@@ -102,12 +102,21 @@ function splitHeader(value) {
 }
 
 function decodeTransfer(value, encoding) {
-  const normalized = value.replace(/\r?\n/g, '');
+  const normalized = value.replace(/=\r?\n/g, '').replace(/\r?\n/g, '');
   if (encoding === 'base64') return Buffer.from(normalized, 'base64').toString('utf8');
   if (encoding === 'quoted-printable') {
-    return normalized
-      .replace(/=\r?\n/g, '')
-      .replace(/=([0-9A-F]{2})/gi, (_, hex) => String.fromCharCode(Number.parseInt(hex, 16)));
+    const source = Buffer.from(normalized, 'utf8');
+    const bytes = [];
+    for (let index = 0; index < source.length; index += 1) {
+      if (
+        source[index] === 0x3d &&
+        /^[0-9A-F]{2}$/i.test(source.subarray(index + 1, index + 3).toString())
+      ) {
+        bytes.push(Number.parseInt(source.subarray(index + 1, index + 3).toString(), 16));
+        index += 2;
+      } else bytes.push(source[index]);
+    }
+    return Buffer.from(bytes).toString('utf8');
   }
   return value;
 }
@@ -229,7 +238,9 @@ export function createHandler({
           references: parsed.references ? (parsed.references.match(/<[^>]+>/g) ?? []) : [],
           text: parsed.textBody,
           html: parsed.htmlBody || undefined,
-          sentAt: parsed.date ? new Date(parsed.date).toISOString() : new Date().toISOString(),
+          sentAt: Number.isNaN(Date.parse(parsed.date))
+            ? new Date().toISOString()
+            : new Date(parsed.date).toISOString(),
           attachments: parsed.attachments.map(({ filename, contentType, size }) => ({
             filename: filename || 'attachment',
             contentType,
