@@ -13,6 +13,8 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 // CSP 허용 목록은 코드베이스에서 실제 로드하는 외부 호스트만 담는다:
 // - 토스페이먼츠 SDK: js.tosspayments.com(스크립트), *.tosspayments.com(결제창 연결/iframe)
 // - 구글 폰트(Material Symbols): fonts.googleapis.com(CSS), fonts.gstatic.com(폰트 파일)
+// - 구글 지도(기업 프로필 지도): maps.googleapis.com(JS API 스크립트/XHR), www.google.com·maps.google.com(키 없는 embed iframe).
+//   타일·마커 이미지는 img-src가 https:로 이미 허용돼 별도 항목이 필요 없다
 // - 업로드 이미지(S3/CloudFront): 호스트가 배포 환경(PUBLIC_ASSETS_BASE_URL)마다 달라 img-src만 https: 허용
 // - 소셜 로그인은 서버 경유 리다이렉트라 별도 도메인이 필요 없다
 // - 포스터 OCR(tesseract.js)은 외부 CDN 없이 same-origin 자체 호스팅(public/tesseract)을 쓰고,
@@ -22,7 +24,7 @@ if (process.env.NODE_ENV !== 'production') {
   // Next 개발 서버(HMR)가 eval을 쓴다 — 프로덕션에는 넣지 않는다.
   scriptSrc.push("'unsafe-eval'");
 }
-scriptSrc.push('https://js.tosspayments.com');
+scriptSrc.push('https://js.tosspayments.com', 'https://maps.googleapis.com');
 
 // - 파일 업로드: 브라우저가 서버가 내려준 presigned URL로 S3에 직접 PUT한다(리전은 서버 AWS_REGION과 같다).
 const connectSrc = [
@@ -30,6 +32,7 @@ const connectSrc = [
   'https://*.tosspayments.com',
   'https://s3.ap-northeast-2.amazonaws.com',
   'https://*.s3.ap-northeast-2.amazonaws.com',
+  'https://maps.googleapis.com',
 ];
 if (process.env.NODE_ENV !== 'production') {
   // docker-compose의 LocalStack(S3_ENDPOINT) — 개발 전용.
@@ -49,7 +52,7 @@ const contentSecurityPolicy = [
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  'frame-src https://*.tosspayments.com',
+  'frame-src https://*.tosspayments.com https://www.google.com https://maps.google.com',
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",
