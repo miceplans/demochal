@@ -171,7 +171,7 @@ describe('BusinessesService.findById access control', () => {
 });
 
 describe('BusinessesService.listMyChallenges pagination', () => {
-  function createListDb(rows: unknown[], limit: ReturnType<typeof vi.fn>) {
+  function createListDb(limit: ReturnType<typeof vi.fn>) {
     const db: any = {
       select: () => ({
         from: () => ({
@@ -193,7 +193,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
   it('rejects an unparsable cursor with 400 before querying', async () => {
     const limit = vi.fn();
     const service = new BusinessesService(
-      createListDb([], limit),
+      createListDb(limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
       {} as any,
@@ -208,7 +208,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
   it('clamps a NaN/invalid limit to the default for LIMIT, slice, and hasMore', async () => {
     const limit = vi.fn().mockResolvedValue([challengeRow('c-1')]);
     const service = new BusinessesService(
-      createListDb([], limit),
+      createListDb(limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
       {} as any,
@@ -225,7 +225,7 @@ describe('BusinessesService.listMyChallenges pagination', () => {
     const many = Array.from({ length: 101 }, (_, i) => challengeRow(`c-${i}`));
     const limit = vi.fn().mockResolvedValue(many);
     const service = new BusinessesService(
-      createListDb([], limit),
+      createListDb(limit),
       { notify: vi.fn() } as any,
       { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
       {} as any,

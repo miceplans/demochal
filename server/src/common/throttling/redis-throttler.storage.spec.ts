@@ -229,7 +229,7 @@ function sequence(
   const ttl = opts.ttl ?? TTL;
   const limit = opts.limit ?? LIMIT;
   const blockDuration = opts.blockDuration ?? ttl;
-  return Array.from({ length: count }, (_, i) =>
+  return Array.from({ length: count }, () =>
     runIncrement(store, key, start, ttl, limit, blockDuration),
   );
 }
