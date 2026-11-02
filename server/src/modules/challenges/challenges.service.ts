@@ -295,16 +295,6 @@ export class ChallengesService {
     return `${row.createdAt.toISOString()}|${row.id}`;
   }
 
-  private async getOrThrow(id: string) {
-    const [challenge] = await this.db
-      .select()
-      .from(challenges)
-      .where(eq(challenges.id, id))
-      .limit(1);
-    if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
-    return challenge;
-  }
-
   private async getPublicOrThrow(id: string) {
     const [challenge] = await this.db
       .select()
