@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -166,6 +167,9 @@ export const businesses = pgTable('businesses', {
   bannerImageFileId: uuid('banner_image_file_id'),
   logoImageFileId: uuid('logo_image_file_id'),
   address: varchar('address', { length: 300 }),
+  // 프로필 구글 지도 핀 위치(소수 좌표). 둘 다 있어야 지도에 핀을 찍는다.
+  mapLatitude: doublePrecision('map_latitude'),
+  mapLongitude: doublePrecision('map_longitude'),
   phone: varchar('phone', { length: 30 }),
   email: varchar('email', { length: 255 }),
   contentBlocks: jsonb('content_blocks').notNull().default([]),

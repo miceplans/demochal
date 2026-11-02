@@ -23,6 +23,10 @@ export type UpdateBusinessBody = {
   bannerImageFileId?: string;
   logoImageFileId?: string;
   address?: string;
+  /** @nullable */
+  mapLatitude?: number | null;
+  /** @nullable */
+  mapLongitude?: number | null;
   phone?: string;
   email?: string;
   contentBlocks?: ContentBlock[];

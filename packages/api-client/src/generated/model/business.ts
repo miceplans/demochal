@@ -42,6 +42,16 @@ export interface Business {
   bannerImageFileId?: string;
   logoImageFileId?: string;
   address?: string;
+  /**
+     * 프로필 구글 지도 핀 위도(-90~90). null이면 핀 미지정
+     * @nullable
+     */
+  mapLatitude?: number | null;
+  /**
+     * 프로필 구글 지도 핀 경도(-180~180). null이면 핀 미지정
+     * @nullable
+     */
+  mapLongitude?: number | null;
   phone?: string;
   email?: string;
   contentBlocks?: ContentBlock[];

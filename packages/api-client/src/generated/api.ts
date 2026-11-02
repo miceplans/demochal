@@ -8260,7 +8260,8 @@ export const getUpdateBusinessUrl = (id: string,) => {
  * 기업 프로필 편집(`/biz/profile/edit`): 배너/로고 이미지 업로드(선행: `POST /files/presign` →
  * S3 PUT → `POST /files/{id}/finalize`. 요청/응답에는 파일 id(`bannerImageFileId`/`logoImageFileId`)만
  * 쓰고, 로컬 미리보기용 object URL을 파일 id처럼 본문에 넣지 않는다),
- * 기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지).
+ * 기업명/주소/전화/이메일, 콘텐츠 블록(링크/텍스트/파일/레이아웃/이미지),
+ * 구글 지도 핀 좌표(`mapLatitude`/`mapLongitude` — 위도 -90~90, 경도 -180~180, 둘 다 null이면 핀 제거).
  * 인증: JWT 쿠키(필수), 소유자 본인 기업만 수정 가능(다른 소유자의 기업은 404).
  * @summary 기업 프로필 수정
  */

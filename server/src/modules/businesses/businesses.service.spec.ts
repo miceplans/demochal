@@ -72,6 +72,23 @@ describe('BusinessesService', () => {
     });
   });
 
+  it('persists map coordinates and supports clearing them with null', async () => {
+    const { db, set } = createDbStub({ id: 'biz-1' });
+    const service = new BusinessesService(
+      db,
+      { notify: vi.fn() } as any,
+      { resolvePublicUrls: vi.fn(async () => new Map()) } as any,
+      {} as any,
+    );
+
+    await service.update('biz-1', { mapLatitude: 37.5665, mapLongitude: 126.978 }, 'user-1');
+    expect(set).toHaveBeenCalledWith({ mapLatitude: 37.5665, mapLongitude: 126.978 });
+
+    set.mockClear();
+    await service.update('biz-1', { mapLatitude: null, mapLongitude: null }, 'user-1');
+    expect(set).toHaveBeenCalledWith({ mapLatitude: null, mapLongitude: null });
+  });
+
   it('rejects with NotFound when no row matches id and owner (no partial leak)', async () => {
     const { db } = createDbStub(undefined);
     const service = new BusinessesService(
@@ -351,6 +368,8 @@ describe('BusinessesService.findPublicById', () => {
     bannerImageFileId: 'file-banner',
     logoImageFileId: 'file-logo',
     address: '서울시 강남구',
+    mapLatitude: 37.5665,
+    mapLongitude: 126.978,
     phone: '02-1234-5678',
     email: 'biz@semochal.kr',
     contentBlocks: [],
@@ -392,6 +411,8 @@ describe('BusinessesService.findPublicById', () => {
       name: '주식회사 새모',
       type: '기업',
       address: '서울시 강남구',
+      mapLatitude: 37.5665,
+      mapLongitude: 126.978,
       phone: '02-1234-5678',
       email: 'biz@semochal.kr',
       contentBlocks: [],
@@ -416,6 +437,16 @@ describe('BusinessesService.findPublicById', () => {
     const result = await service.findPublicById('biz-1');
     expect(result.bannerUrl).toBeNull();
     expect(result.logoUrl).toBeNull();
+  });
+
+  it('returns null map coordinates when the pin was never set', async () => {
+    const service = createService(
+      { ...publicRow, mapLatitude: null, mapLongitude: null },
+      vi.fn(async () => new Map()),
+    );
+    const result = await service.findPublicById('biz-1');
+    expect(result.mapLatitude).toBeNull();
+    expect(result.mapLongitude).toBeNull();
   });
 
   it('throws NotFound for a missing business', async () => {

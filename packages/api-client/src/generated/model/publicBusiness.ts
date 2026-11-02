@@ -48,6 +48,16 @@ export interface PublicBusiness {
      */
   logoUrl: string | null;
   address?: string;
+  /**
+     * 프로필 구글 지도 핀 위도
+     * @nullable
+     */
+  mapLatitude?: number | null;
+  /**
+     * 프로필 구글 지도 핀 경도
+     * @nullable
+     */
+  mapLongitude?: number | null;
   phone?: string;
   email?: string;
   contentBlocks?: ContentBlock[];
