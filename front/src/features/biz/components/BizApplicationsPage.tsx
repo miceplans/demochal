@@ -15,10 +15,19 @@ const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 /** 신청자 응답 — 행사(공고)별 신청 현황 목록. 행사를 누르면 해당 행사의 신청서 뷰로 들어간다. */
 export function BizApplicationsPage() {
   const hrefOf = useBizHref();
-  const challengesQuery = generated.useListMyChallenges();
+  const challengesQuery = generated.useListMyChallengesInfinite(undefined, {
+    query: {
+      initialPageParam: undefined as string | undefined,
+      getNextPageParam: (last) =>
+        last.status === 200 ? (last.data.nextCursor ?? undefined) : undefined,
+    },
+  });
   const applicationsQuery = generated.useListManagedApplications();
   const challenges = useMemo(
-    () => (challengesQuery.data?.status === 200 ? (challengesQuery.data.data.items ?? []) : []),
+    () =>
+      (challengesQuery.data?.pages ?? []).flatMap((page) =>
+        page.status === 200 ? (page.data.items ?? []) : [],
+      ),
     [challengesQuery.data],
   );
   const applications = useMemo(
@@ -112,6 +121,15 @@ export function BizApplicationsPage() {
             );
           })}
         </List>
+        {challengesQuery.hasNextPage && (
+          <MoreButton
+            type="button"
+            onClick={() => void challengesQuery.fetchNextPage()}
+            disabled={challengesQuery.isFetchingNextPage}
+          >
+            {challengesQuery.isFetchingNextPage ? '불러오는 중...' : '행사 더 보기'}
+          </MoreButton>
+        )}
       </section>
     </Content>
   );
@@ -182,5 +200,17 @@ const Go = styled.span({
   borderRadius: 6,
   background: c.paleBlue,
   whiteSpace: 'nowrap',
+});
+const MoreButton = styled.button({
+  ...textStyle.overline,
+  alignSelf: 'center',
+  padding: '10px 24px',
+  border: 0,
+  borderRadius: 8,
+  background: c.gray50,
+  color: c.gray900,
+  cursor: 'pointer',
+  '&:hover:not(:disabled)': { background: c.paleBlue },
+  '&:disabled': { cursor: 'default', color: c.gray500 },
 });
 const Message = styled.p({ margin: 0, color: c.gray500 });
