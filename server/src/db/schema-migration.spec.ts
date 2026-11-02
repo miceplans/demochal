@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(43);
+    expect(journal.entries).toHaveLength(44);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -639,5 +639,17 @@ describe('0042_team_member_form_answers migration', () => {
     expect(sql).toContain("NOT NULL DEFAULT '[]'::jsonb");
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[42]!.when).toBeGreaterThan(journal.entries[41]!.when);
+  });
+});
+
+describe('0043_business_map_location migration', () => {
+  it('adds nullable map coordinate columns to businesses without destructive DDL', () => {
+    const tag = journal.entries[43]?.tag;
+    expect(tag).toBe('0043_business_map_location');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "map_latitude" double precision');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "map_longitude" double precision');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[43]!.when).toBeGreaterThan(journal.entries[42]!.when);
   });
 });

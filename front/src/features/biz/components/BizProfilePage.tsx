@@ -122,6 +122,9 @@ export function BizProfilePage() {
         address={business.address}
         phone={business.phone}
         email={business.email}
+        mapLatitude={business.mapLatitude}
+        mapLongitude={business.mapLongitude}
+        mapAddress={business.address}
         action={
           <PrimaryButton
             style={{ marginTop: 70 }}
