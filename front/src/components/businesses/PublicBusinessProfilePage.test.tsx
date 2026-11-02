@@ -57,6 +57,8 @@ const BUSINESS = {
   bannerUrl: 'https://cdn.example.com/banner.png',
   logoUrl: 'https://cdn.example.com/logo.png',
   address: '서울시 강남구',
+  mapLatitude: 37.5665,
+  mapLongitude: 126.978,
   phone: '02-1234-5678',
   email: 'biz@semochal.kr',
   contentBlocks: [{ type: 'text', content: { text: '안녕하세요' } }],
@@ -127,6 +129,14 @@ describe('PublicBusinessProfilePage', () => {
     mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
     const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
     expect(container.querySelector('img[alt="인증된 기관"]')).not.toBeNull();
+  });
+
+  it('저장된 좌표가 있으면 공개 프로필 지도가 그 좌표로 표시된다', () => {
+    mockQuery({ isLoading: false, isError: false, data: { status: 200, data: BUSINESS } });
+    const { container } = render(<PublicBusinessProfilePage businessId="biz-1" />);
+    const iframe = container.querySelector('iframe[title="기업 위치 지도"]');
+    expect(iframe).not.toBeNull();
+    expect(iframe!.getAttribute('src')).toContain('q=37.5665%2C126.978');
   });
 
   it('승인이 아니면 인증 체크를 표시하지 않는다', () => {

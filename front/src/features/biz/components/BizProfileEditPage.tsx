@@ -8,6 +8,7 @@ import { generated } from '@semochal/api-client';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { apiErrorMessage } from '@/lib/api-error';
@@ -20,6 +21,13 @@ function useExistingImageUrl(fileId?: string | null): string | null {
   return query.data?.status === 200 ? (query.data.data.url ?? null) : null;
 }
 
+// 좌표 입력값을 숫자 또는 null로 정규화한다(빈 값·잘못된 값은 핀 제거로 처리).
+function parseCoord(value: string): number | null {
+  if (value.trim() === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 export function BizProfileEditPage() {
   const hrefOf = useBizHref();
   const toast = useToast();
@@ -29,6 +37,10 @@ export function BizProfileEditPage() {
   const businessLoadError = businessQuery.isError;
 
   const [form, setForm] = useState({ name: '', address: '', phone: '', email: '' });
+  const [mapCoords, setMapCoords] = useState<{
+    latitude: number | null;
+    longitude: number | null;
+  }>({ latitude: null, longitude: null });
   const [initialized, setInitialized] = useState(false);
   const [bannerImage, setBannerImage] = useState<UploadedImage | null>(null);
   const [logoImage, setLogoImage] = useState<UploadedImage | null>(null);
@@ -64,6 +76,10 @@ export function BizProfileEditPage() {
         address: business.address ?? '',
         phone: business.phone ?? '',
         email: business.email ?? '',
+      });
+      setMapCoords({
+        latitude: business.mapLatitude ?? null,
+        longitude: business.mapLongitude ?? null,
       });
       setInitialized(true);
     }
@@ -120,6 +136,23 @@ export function BizProfileEditPage() {
     }
   };
 
+  // 구글 지도 API 키가 없는 환경에서도 위치 조정이 가능하도록 브라우저 위치 정보를 쓴다.
+  const useCurrentLocation = () => {
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      toast.error('위치 정보 미지원', '이 브라우저는 현재 위치를 가져올 수 없어요');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (position) =>
+        setMapCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        }),
+      () =>
+        toast.error('위치 조회 실패', '현재 위치를 가져오지 못했어요. 직접 좌표를 입력해주세요'),
+    );
+  };
+
   const save = async () => {
     if (!business) return;
     setSaveError(false);
@@ -128,6 +161,8 @@ export function BizProfileEditPage() {
         id: business.id,
         data: {
           ...form,
+          mapLatitude: mapCoords.latitude,
+          mapLongitude: mapCoords.longitude,
           ...(bannerImage ? { bannerImageFileId: bannerImage.fileId } : {}),
           ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
         },
@@ -212,7 +247,58 @@ export function BizProfileEditPage() {
             onChange={update('email')}
           />
         }
+        mapLatitude={mapCoords.latitude}
+        mapLongitude={mapCoords.longitude}
+        mapAddress={form.address}
+        mapEditable
+        onMapChange={(latitude, longitude) => setMapCoords({ latitude, longitude })}
       />
+      <MapSection>
+        <MapSectionTitle>지도 위치</MapSectionTitle>
+        <MapCoordRow>
+          <CoordField>
+            <span>위도</span>
+            <CoordInput
+              aria-label="지도 위도"
+              type="number"
+              step="any"
+              min={-90}
+              max={90}
+              value={mapCoords.latitude ?? ''}
+              onChange={(event) =>
+                setMapCoords((current) => ({
+                  ...current,
+                  latitude: parseCoord(event.target.value),
+                }))
+              }
+            />
+          </CoordField>
+          <CoordField>
+            <span>경도</span>
+            <CoordInput
+              aria-label="지도 경도"
+              type="number"
+              step="any"
+              min={-180}
+              max={180}
+              value={mapCoords.longitude ?? ''}
+              onChange={(event) =>
+                setMapCoords((current) => ({
+                  ...current,
+                  longitude: parseCoord(event.target.value),
+                }))
+              }
+            />
+          </CoordField>
+          <OutlineButton type="button" onClick={useCurrentLocation}>
+            현재 위치 사용
+          </OutlineButton>
+        </MapCoordRow>
+        <MapHint>
+          위도·경도를 모두 입력하거나 지도 핀을 드래그해 위치를 지정하세요. 빈 칸으로 저장하면 지도
+          핀이 제거되고 주소 기준으로 지도가 표시돼요.
+        </MapHint>
+      </MapSection>
       {saveError && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
@@ -230,3 +316,23 @@ const InlineInput = styled.input({
   '&:hover': { background: c.gray50 },
   '&:focus': { outline: 'none', borderColor: c.gray300, background: c.white },
 });
+const MapSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 10 });
+const MapSectionTitle = styled.h2({ margin: 0, ...textStyle.h2, color: c.gray900 });
+const MapCoordRow = styled.div({ display: 'flex', alignItems: 'flex-end', gap: 12 });
+const CoordField = styled.label({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 6,
+  ...textStyle.caption,
+  color: c.gray700,
+});
+const CoordInput = styled.input({
+  width: 160,
+  height: 36,
+  padding: '0 10px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 6,
+  font: 'inherit',
+  '&:focus': { outline: 'none', borderColor: c.gray300 },
+});
+const MapHint = styled.p({ margin: 0, ...textStyle.metaText, color: c.gray500 });

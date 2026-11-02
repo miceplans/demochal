@@ -111,6 +111,9 @@ export function PublicBusinessProfilePage({ businessId }: { businessId: string }
           address={business.address}
           phone={business.phone}
           email={business.email}
+          mapLatitude={business.mapLatitude}
+          mapLongitude={business.mapLongitude}
+          mapAddress={business.address}
         />
         <IntroBlocks blocks={business.contentBlocks} />
         <ChallengeSection items={challengeItems} loading={challengesQuery.isLoading} now={now} />
