@@ -11,6 +11,5 @@ import { TeamsService } from './teams.service.js';
   imports: [NotificationsModule, FilesModule, AuthModule],
   controllers: [TeamsController],
   providers: [TeamsService],
-  exports: [TeamsService],
 })
 export class TeamsModule {}

@@ -9,6 +9,5 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
   imports: [AuthModule, FilesModule, NotificationsModule],
   controllers: [ApplicationsController],
   providers: [ApplicationsService],
-  exports: [ApplicationsService],
 })
 export class ApplicationsModule {}

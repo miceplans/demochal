@@ -8,6 +8,5 @@ import { ChallengeBookmarksController } from './challenge-bookmarks.controller.j
   imports: [FilesModule],
   controllers: [BookmarksController, ChallengeBookmarksController],
   providers: [BookmarksService],
-  exports: [BookmarksService],
 })
 export class BookmarksModule {}
