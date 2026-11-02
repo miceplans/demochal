@@ -11,6 +11,5 @@ import { BizService } from './biz.service.js';
   imports: [BusinessesModule, ChallengesModule, FilesModule, AdsModule, BillingModule],
   controllers: [BizController],
   providers: [BizService],
-  exports: [BizService],
 })
 export class BizModule {}
