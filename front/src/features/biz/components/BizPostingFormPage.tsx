@@ -812,7 +812,9 @@ function PostingForm({
   onSubmit: (values: PostingValues) => Promise<void>;
 }) {
   const router = useRouter();
+  const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
   const [title, setTitle] = useState(initial.title);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -863,6 +865,7 @@ function PostingForm({
   const [error, setError] = useState('');
   // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
+  const [failSeq, setFailSeq] = useState(0);
   const isInvalid = (key: string) => invalid.has(key);
   const clearInvalid = (...keys: string[]) =>
     setInvalid((prev) =>
@@ -870,8 +873,23 @@ function PostingForm({
     );
   const fail = (keys: string[], message: string) => {
     setInvalid(new Set(keys));
-    setError(message);
+    setFailSeq((n) => n + 1);
+    toast.error(message);
   };
+  // 검증 실패 회차 — invalid Set은 필드를 고치기 시작할 때도 identity가 바뀌므로, 화면 이동은 제출 실패 시에만 일어나게 별도로 센다.
+  useEffect(() => {
+    if (failSeq === 0) return;
+    const firstInvalid = formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]');
+    if (!firstInvalid) return;
+    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // EditorBox처럼 포커스 불가능한 래퍼가 대상이면 그 안의 본문 에디터로 포커스한다.
+    const focusTarget = firstInvalid.matches(
+      'input, textarea, select, button, [href], [contenteditable]',
+    )
+      ? firstInvalid
+      : firstInvalid.querySelector<HTMLElement>('[contenteditable]');
+    focusTarget?.focus({ preventScroll: true });
+  }, [failSeq]);
   const shownError = error || initialError;
   // 저장된 카테고리가 선택지에 없으면(과거 값 등) 사라지지 않도록 옵션에 포함한다.
   const dropdownOptions =
@@ -1277,7 +1295,7 @@ function PostingForm({
 
   const radioIcon = (on: boolean) => `${ICON}/figma-radio-${on ? 'on' : 'off'}.svg`;
   return (
-    <FormWrap>
+    <FormWrap ref={formRef}>
       <Uploader>
         <input
           type="file"

@@ -18,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   finalizeUpload: vi.fn(),
   fetchMock: vi.fn(),
   recommendPosterCrop: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastError: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
@@ -28,7 +30,9 @@ vi.mock('@/components/biz/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useBizHref: () => (path: string) => path,
 }));
-vi.mock('@/components/common/Toast', () => ({ useToast: () => ({ success: vi.fn() }) }));
+vi.mock('@/components/common/Toast', () => ({
+  useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
+}));
 vi.mock('@/lib/ad-api', () => ({
   adError: () => '오류',
   adApi: {
@@ -80,10 +84,12 @@ describe('BizPostingFormPage', () => {
       get() {
         return this.textContent;
       },
-      set(value: string) {
+      set(value) {
         this.textContent = value;
       },
     });
+    // jsdom에는 scrollIntoView가 없어 검증 실패 스크롤 이동이 동작하도록 stub한다.
+    Element.prototype.scrollIntoView = vi.fn();
     mocks.create.mockResolvedValue({ data: { id: 'ch-1' } });
     vi.stubGlobal('fetch', mocks.fetchMock);
     mocks.fetchMock.mockResolvedValue({ ok: true });
@@ -127,8 +133,53 @@ describe('BizPostingFormPage', () => {
     await fillRequired();
     await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
     fireEvent.click(screen.getByText('게시하기'));
-    expect((await screen.findByRole('alert')).textContent).toContain('주최');
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(expect.stringContaining('주최')),
+    );
     expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('검증 실패 시 하단 텍스트 대신 토스트로 안내하고 첫 미작성 필드로 화면을 옮긴다', async () => {
+    renderForm();
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith('제목, 상세정보, 접수 기간을 입력해 주세요.'),
+    );
+    expect(screen.queryByRole('alert')).toBeNull();
+    // DOM 순서 기준 첫 미작성 필드(제목)로 스크롤 이동하고 포커스를 준다.
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
+    expect(document.activeElement).toBe(screen.getByLabelText('공고 제목'));
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it('검증 실패 후 필드를 고치기 시작하면 남은 필드로 화면·포커스가 다시 이동하지 않는다', async () => {
+    renderForm();
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1));
+    const title = screen.getByLabelText('공고 제목');
+    expect(document.activeElement).toBe(title);
+
+    // invalid가 남아 있어도 제출 실패가 아니면(수정 시작) 스크롤·포커스 이동이 일어나지 않는다.
+    fireEvent.change(title, { target: { value: '해' } });
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(title);
+  });
+
+  it('상세정보가 첫 미작성 필드면 포커스 불가능한 래퍼 대신 본문 에디터로 포커스한다', async () => {
+    renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '해커톤' } });
+    pickDay('접수 시작 일시', 1);
+    pickDay('접수 종료 일시', 20);
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+    // aria-invalid는 EditorBox 래퍼에 붙지만, 포커스는 그 안의 contentEditable 본문으로 간다.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(screen.getByLabelText('상세정보 본문')),
+    );
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it('주최·주관·행사 기간·대상 기타를 함께 전송한다', async () => {
