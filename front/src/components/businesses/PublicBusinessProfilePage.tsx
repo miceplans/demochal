@@ -211,10 +211,10 @@ const PageButton = styled.button({
   padding: '0 10px',
   border: `1px solid ${c.gray200}`,
   borderRadius: 8,
-  background: '#fff',
+  background: c.white,
   color: c.gray900,
   cursor: 'pointer',
-  '&[data-active="true"]': { background: c.primary, color: '#fff', borderColor: c.primary },
+  '&[data-active="true"]': { background: c.primary, color: c.white, borderColor: c.primary },
   '&:disabled': { opacity: 0.4, cursor: 'default' },
 });
 const NameWrap = styled.span({ display: 'inline-flex', alignItems: 'center', gap: 8 });
