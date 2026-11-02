@@ -29,14 +29,19 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       variable = "token.actions.githubusercontent.com:aud"
       values   = ["sts.amazonaws.com"]
     }
-    # The production GitHub Environment must be restricted to main. Its
+    # The staging GitHub Environment must be restricted to main. Its
     # GitHub uses immutable repository IDs for this repository's OIDC subject.
     # Keep the trust environment-scoped and exact rather than adding a legacy
     # or branch-wide fallback.
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:miceplans@297952556/demochal@1361046246:environment:Production"]
+      # TODO: remove the legacy Production subject once the staging Environment
+      # deploy has succeeded (issue #863).
+      values = [
+        "repo:miceplans@297952556/demochal@1361046246:environment:staging",
+        "repo:miceplans@297952556/demochal@1361046246:environment:Production",
+      ]
     }
   }
 }
