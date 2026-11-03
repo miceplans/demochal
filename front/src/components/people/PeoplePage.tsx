@@ -11,6 +11,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PeopleBanners } from './PeopleBanners';
 import { PersonCard } from './PersonCard';
+import { RecommendedContests, RecommendedPeople, RecommendedTeams } from './PeopleRecommendations';
 import { ScoutModal } from './ScoutModal';
 
 const ALL = '';
@@ -144,11 +145,14 @@ export function PeoplePage() {
             {query.isPending && <LoadingState label="불러오는 중이에요." />}
             {query.isError && <Muted>목록을 불러오지 못했어요.</Muted>}
             {query.isSuccess && people.length === 0 && (
-              // TODO: Figma 01-B 빈 상태의 일러스트는 저장소에 자산이 없어 텍스트만 표시한다.
-              <Empty>
-                <strong>조건에 맞는 분이 없어요</strong>
-                <Muted>선택한 필터 조건에 맞는 분이 없어요. 조건을 조금 넓혀보세요.</Muted>
-              </Empty>
+              <>
+                <Empty>
+                  <strong>조건에 맞는 분이 없어요</strong>
+                  <Muted>선택한 필터 조건에 맞는 분이 없어요. 조건을 조금 넓혀보세요.</Muted>
+                </Empty>
+                {/* Figma 01-B 빈 상태: 맞는 사람이 없을 때 추천 인물 카드를 대신 보여준다. */}
+                <RecommendedPeople onSelect={setScoutTarget} />
+              </>
             )}
             {people.length > 0 && (
               <Grid>
@@ -158,6 +162,9 @@ export function PeoplePage() {
               </Grid>
             )}
           </Stack>
+          {/* 목록 아래 빈 공간에는 항상 공모전·팀 추천을 이어 붙인다. */}
+          <RecommendedContests />
+          <RecommendedTeams />
         </Stack>
       </Content>
       <ScoutModal person={scoutTarget} onClose={() => setScoutTarget(null)} />

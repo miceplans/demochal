@@ -6,6 +6,7 @@ import { UserShell } from '@/components/common/UserShell';
 import { SectionHeader, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
 import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
+import { challengeToContest } from '@/components/contests/challenge-to-contest';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel, type AdCarouselItem } from '@/components/ads/AdCarousel';
 import { fallbackAds, fillWithFallback } from '@/components/ads/fallback-ads';
@@ -14,7 +15,6 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
-import { daysUntil, isPastDeadline } from '@/lib/date';
 import { ScrollRail } from '@/components/ui/ScrollRail';
 
 // 홈 '마감임박' 섹션 노출 기준(일).
@@ -230,32 +230,6 @@ export function HomePage() {
       </UserShell>
     </PreviewLock>
   );
-}
-
-function challengeToContest(
-  challenge: {
-    id?: string;
-    title?: string;
-    category?: string;
-    endDate?: string;
-    posterUrl?: string | null;
-    thumbnailUrl?: string | null;
-    prizeAmount?: number | null;
-  },
-  now: number,
-): Contest {
-  return {
-    id: challenge.id ?? '',
-    title: challenge.title ?? '챌린지',
-    category: challenge.category ?? '기타',
-    days: daysUntil(challenge.endDate, now),
-    closed: isPastDeadline(challenge.endDate, now),
-    // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
-    teams: undefined,
-    posterUrl: challenge.posterUrl ?? null,
-    thumbnailUrl: challenge.thumbnailUrl ?? null,
-    prizeAmount: challenge.prizeAmount ?? null,
-  };
 }
 
 // 상단 광고와 첫 섹션이 붙지 않도록 데스크톱에서 섹션 간격(60px)과 동일하게 띄운다.

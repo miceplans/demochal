@@ -112,3 +112,39 @@ describe('PeopleService.list', () => {
     expect(orderBy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('PeopleService.recommended', () => {
+  const row = (id: string, stacks: string[], region: string | null = null) => ({
+    id,
+    name: id,
+    position: null,
+    region,
+    stacks,
+    externalLinks: [],
+    awardHistory: [],
+    profileImageFileId: null,
+  });
+
+  it('ranks people sharing the viewer stacks/region first and honors the limit', async () => {
+    const viewerLimit = vi
+      .fn()
+      .mockResolvedValue([{ stacks: ['React', 'Python'], region: '부산' }]);
+    const viewerQuery = { from: () => ({ where: () => ({ limit: viewerLimit }) }) };
+    const rowsLimit = vi
+      .fn()
+      .mockResolvedValue([
+        row('c', ['Go']),
+        row('a', ['react', 'python']),
+        row('b', ['React'], '부산'),
+      ]);
+    const rowsQuery = {
+      from: () => ({ where: () => ({ orderBy: () => ({ limit: rowsLimit }) }) }),
+    };
+    const db = { select: vi.fn().mockReturnValueOnce(viewerQuery).mockReturnValueOnce(rowsQuery) };
+    const service = new PeopleService(db as any);
+
+    const result = await service.recommended('viewer', 2);
+
+    expect(result.map((p) => p.id)).toEqual(['a', 'b']);
+  });
+});

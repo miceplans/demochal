@@ -186,6 +186,8 @@ export * from './listPublicAdsParams';
 export * from './listPublicAdsPlacement';
 export * from './listRecommendedChallenges200';
 export * from './listRecommendedChallengesParams';
+export * from './listRecommendedPeopleParams';
+export * from './listRecommendedTeamsParams';
 export * from './listTeamsParams';
 export * from './login200';
 export * from './loginBody';

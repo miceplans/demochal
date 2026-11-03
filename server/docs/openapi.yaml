@@ -1024,6 +1024,26 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Team' }
+  /teams/recommended:
+    get:
+      tags: [Teams]
+      summary: 추천 팀 모집글 조회
+      operationId: listRecommendedTeams
+      x-impl-status: implemented
+      description: |
+        모집 중이고 내가 팀장/멤버/지원·초대 상태가 아닌 팀을 내 포지션(모집 역할 일치)·지역 일치 순,
+        동점이면 최신순으로 정렬한다. 항목 형태는 `GET /teams`와 같다. 로그인 필요.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 4, minimum: 1, maximum: 20 }
+      responses:
+        '200':
+          description: 추천 팀 모집글 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /teams/applications/me:
     get:
       tags: [Teams]
@@ -1056,6 +1076,26 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+  /people/recommended:
+    get:
+      tags: [People]
+      summary: 나와 맞는 사람 추천 조회
+      operationId: listRecommendedPeople
+      x-impl-status: implemented
+      description: |
+        사람찾기 "나와 맞는 사람 찾기". 본인을 제외한 사용자 중 내 기술스택·지역이 겹치는 순으로
+        정렬한다(동점은 id순으로 결정론적). 카드 형태는 `GET /people`과 같다. 로그인 필요.
+      parameters:
+        - name: limit
+          in: query
+          schema: { type: integer, default: 3, minimum: 1, maximum: 20 }
+      responses:
+        '200':
+          description: 추천 사람 카드 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/PersonCard' } }
         '401': { $ref: '#/components/responses/Unauthorized' }
   /people:
     get:

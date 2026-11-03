@@ -7,6 +7,11 @@ import { PeopleService } from './people.service.js';
 export class PeopleController {
   constructor(private readonly peopleService: PeopleService) {}
 
+  @Get('recommended')
+  recommended(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
+    return this.peopleService.recommended(user.id, limit ? Number(limit) : undefined);
+  }
+
   @Get()
   list(
     @CurrentUser() user: AuthenticatedUser,
