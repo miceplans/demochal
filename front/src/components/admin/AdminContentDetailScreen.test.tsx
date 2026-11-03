@@ -118,4 +118,12 @@ describe('AdminTeamDetailScreen 참여 팀원', () => {
     expect(within(membersSection).getByText('작성되지 않았어요')).toBeTruthy();
     expect(screen.queryByRole('table', { name: '참여 팀원' })).toBeNull();
   });
+
+  it('단일 정보 탭을 누를 수 없는 탭 버튼이 아닌 정적 라벨로 표시한다', () => {
+    renderScreen();
+
+    // 팀 상세에는 탭이 하나뿐이라 전환 기능이 없다 — 반응 없는 탭 버튼을 남기지 않는다.
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByText('정보')).toBeTruthy();
+  });
 });
