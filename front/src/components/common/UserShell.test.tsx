@@ -63,6 +63,24 @@ describe('FormContent', () => {
   });
 });
 
+describe('데스크톱 헤더 주 나브바', () => {
+  afterEach(cleanup);
+
+  it('주 나브바 링크를 16px로 렌더링한다', () => {
+    const { container } = render(
+      <ThemeProvider theme={theme}>
+        <UserShell footer={false} navigation={false}>
+          <div />
+        </UserShell>
+      </ThemeProvider>,
+    );
+
+    const navLink = container.querySelector('header nav a');
+    expect(navLink).toBeTruthy();
+    expect(getComputedStyle(navLink as HTMLElement).fontSize).toBe('16px');
+  });
+});
+
 describe('로그인 사용자 프로필 아바타', () => {
   beforeEach(() => {
     mocks.auth = { status: 200, data: { name: '홍길동', profileImageUrl: null } };

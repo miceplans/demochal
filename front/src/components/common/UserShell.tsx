@@ -89,6 +89,7 @@ const Nav = styled.nav({
   '& a': {
     padding: '8px 10px',
     ...textStyle.body,
+    fontSize: 16,
     color: c.gray700,
     borderRadius: 6,
     transition: 'background 0.15s ease, color 0.15s ease',
