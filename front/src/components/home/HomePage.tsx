@@ -9,13 +9,8 @@ import { ContestCard } from '@/components/contests/ContestCard';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { AdCarousel, type AdCarouselItem } from '@/components/ads/AdCarousel';
 import { fallbackAds, fillWithFallback } from '@/components/ads/fallback-ads';
-import {
-  contests as fallbackContests,
-  teams as fallbackTeams,
-  type Contest,
-} from '@/data/user-design';
+import { type Contest } from '@/data/user-design';
 import { toTeamCard } from '@/components/teams/team-model';
-import { getHomeFallbackData } from '@/components/home/home-data';
 import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
@@ -102,16 +97,10 @@ export function HomePage() {
     .filter((challenge) => Boolean(challenge.endDate))
     .slice(0, 8)
     .map((challenge) => challengeToContest(challenge, now));
-  // 목업 데이터 폴백은 개발 환경 전용 — 프로덕션에서 API가 비어있거나 실패하면 빈 상태 그대로 둔다.
-  const useMockFallbacks = process.env.NODE_ENV === 'development';
-  const { recommendationContests, deadlineContests, teams, isFallbackTeamList } =
-    getHomeFallbackData({
-      recommendationContests: liveRecommendationContests,
-      deadlineContests: liveDeadlineContests,
-      teams: liveTeams,
-      fallbackContests: useMockFallbacks ? fallbackContests.slice(0, 4) : [],
-      fallbackTeams: useMockFallbacks ? fallbackTeams.slice(0, 4) : [],
-    });
+  // API가 비어있거나 실패하면 목업 없이 빈 상태로 둔다. 사용자 화면에는 실 데이터만 노출한다.
+  const recommendationContests = liveRecommendationContests;
+  const deadlineContests = liveDeadlineContests;
+  const teams = liveTeams;
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -207,33 +196,35 @@ export function HomePage() {
             interval={4000}
           />
           <Sections last>
-            <section>
-              <MobileOnly style={{ marginBottom: 16 }}>
-                <SectionHeader
-                  title="팀원모집중"
-                  action={
-                    <More href="/teams">
-                      더보기
-                      <MoreIcon />
-                    </More>
-                  }
-                />
-              </MobileOnly>
-              <DesktopOnly>
-                <ScrollRail as={TeamRail}>
-                  {teams.map((team) => (
-                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
-                  ))}
-                </ScrollRail>
-              </DesktopOnly>
-              <MobileOnly>
-                <ScrollRail as={TeamRail}>
-                  {teams.slice(0, 3).map((team) => (
-                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
-                  ))}
-                </ScrollRail>
-              </MobileOnly>
-            </section>
+            {teams.length > 0 && (
+              <section>
+                <MobileOnly style={{ marginBottom: 16 }}>
+                  <SectionHeader
+                    title="팀원모집중"
+                    action={
+                      <More href="/teams">
+                        더보기
+                        <MoreIcon />
+                      </More>
+                    }
+                  />
+                </MobileOnly>
+                <DesktopOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </ScrollRail>
+                </DesktopOnly>
+                <MobileOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.slice(0, 3).map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </ScrollRail>
+                </MobileOnly>
+              </section>
+            )}
           </Sections>
         </Home>
       </UserShell>

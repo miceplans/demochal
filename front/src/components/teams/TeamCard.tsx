@@ -7,11 +7,9 @@ import { textStyle } from '@/styles/typography';
 
 export function TeamCard({
   team,
-  displayOnly = false,
   manage,
 }: {
   team: Team;
-  displayOnly?: boolean;
   /** 내가 만든 팀: '지원하기' 대신 지원자 확인 버튼을 보여준다. 버튼이 링크라 카드 전체 링크는 걸지 않는다. */
   manage?: { href: string; applicants: number };
 }) {
@@ -57,7 +55,7 @@ export function TeamCard({
           {manage ? (
             <ApplyLink href={manage.href}>지원자 {manage.applicants}명 보기</ApplyLink>
           ) : (
-            !displayOnly && <Apply>지원하기</Apply>
+            <Apply>지원하기</Apply>
           )}
         </BottomRow>
       </Body>
@@ -65,7 +63,7 @@ export function TeamCard({
   );
   return (
     <Card data-component="team-card">
-      {displayOnly || manage ? (
+      {manage ? (
         content
       ) : (
         <CardLink href={`/teams/${team.id}`} aria-label={`${team.name} 상세 보기`}>
