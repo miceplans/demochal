@@ -607,6 +607,30 @@ describe('BizPostingFormPage', () => {
     expect(data.description).toContain('font-size: 18px');
     expect(data.description).not.toContain('<font');
   });
+
+  it('에디터 캐럿 위치의 굵게 서식을 툴 버튼 눌림 상태로 표시한다', async () => {
+    const queryCommandState = vi.fn().mockImplementation((command: string) => command === 'bold');
+    Object.defineProperty(document, 'queryCommandState', {
+      value: queryCommandState,
+      configurable: true,
+    });
+    renderForm();
+    const editor = screen.getByLabelText('상세정보 본문');
+    editor.innerHTML = '<div>hello</div>';
+    const range = document.createRange();
+    range.setStart(editor.firstChild!.firstChild!, 1);
+    range.collapse(true);
+    const selection = window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+    await act(async () => {
+      document.dispatchEvent(new Event('selectionchange'));
+    });
+    expect(screen.getByRole('button', { name: '굵게' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('button', { name: '기울임' }).getAttribute('aria-pressed')).toBe(
+      'false',
+    );
+  });
 });
 
 describe('normalizeFontTags', () => {

@@ -352,12 +352,15 @@ function ToolBtn({
   icon,
   glyph,
   command,
+  active = false,
   onRun,
 }: {
   label: string;
   icon?: string;
   glyph?: React.ReactNode;
   command?: EditorCommand;
+  /** 캐럿 위치에서 이 서식이 활성이면 눌림 상태로 표시한다. */
+  active?: boolean;
   onRun: (command: EditorCommand) => void;
 }) {
   return (
@@ -365,6 +368,8 @@ function ToolBtn({
       <ToolButton
         type="button"
         aria-label={label}
+        aria-pressed={active}
+        $active={active}
         disabled={!command}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => command && onRun(command)}
@@ -634,6 +639,25 @@ function DatePickerField({
  */
 const isPlainEnter = (event: React.KeyboardEvent) =>
   event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229;
+
+// 툴 버튼에 눌림 상태(aria-pressed)로 표시할 명령 키 — queryCommandState로 캐럿 위치의 서식을 받아온다.
+const STATEFUL_COMMAND_KEYS = [
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'superscript',
+  'subscript',
+  'alignLeft',
+  'alignCenter',
+  'alignRight',
+  'alignJustify',
+  'bullet',
+  'number',
+] as const;
+
+const sameCommandSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every((key) => b.has(key));
 
 /**
  * 에디터 본문에 생긴 <font size/color/face>를 정화 화이트리스트에 맞는 <span style>로 바꾼다.
@@ -990,12 +1014,27 @@ function PostingForm({
   const savedRange = useRef<Range | null>(null);
   // 마지막으로 적용한 글자 크기 — 캐럿 상태에서 입력 중 물질화되는 font[size=7] 변환에 쓴다.
   const lastFontSizePx = useRef<number | null>(null);
+  // 캐럿 위치에서 활성인 서식 명령 — 툴 버튼의 눌림 상태로 표시한다.
+  const [activeStates, setActiveStates] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
     const remember = () => {
       const selection = window.getSelection();
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-      if (range && editorRef.current?.contains(range.commonAncestorContainer))
-        savedRange.current = range.cloneRange();
+      if (!(range && editorRef.current?.contains(range.commonAncestorContainer))) {
+        setActiveStates((prev) => (prev.size ? new Set<string>() : prev));
+        return;
+      }
+      savedRange.current = range.cloneRange();
+      // 동일하면 재설정하지 않아 selectionchange 폭주 시 불필요한 리렌더를 막는다.
+      const next = new Set<string>();
+      for (const key of STATEFUL_COMMAND_KEYS) {
+        try {
+          if (document.queryCommandState(EDITOR_COMMANDS[key])) next.add(key);
+        } catch {
+          // 일부 환경(jsdom 등)에서 지원하지 않으면 무시한다.
+        }
+      }
+      setActiveStates((prev) => (sameCommandSet(prev, next) ? prev : next));
     };
     document.addEventListener('selectionchange', remember);
     return () => document.removeEventListener('selectionchange', remember);
@@ -1561,24 +1600,28 @@ function PostingForm({
                     label="굵게"
                     icon="figma-bold.svg"
                     command="bold"
+                    active={activeStates.has('bold')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="기울임"
                     icon="figma-italic.svg"
                     command="italic"
+                    active={activeStates.has('italic')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="밑줄"
                     icon="figma-underline.svg"
                     command="underline"
+                    active={activeStates.has('underline')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="취소선"
                     icon="figma-strike.svg"
                     command="strike"
+                    active={activeStates.has('strike')}
                   />
                   <ToolBtn
                     onRun={runCommand}
@@ -1599,12 +1642,14 @@ function PostingForm({
                     label="위 첨자"
                     glyph={<ScriptGlyph>x²</ScriptGlyph>}
                     command="superscript"
+                    active={activeStates.has('superscript')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="아래 첨자"
                     glyph={<ScriptGlyph>x₂</ScriptGlyph>}
                     command="subscript"
+                    active={activeStates.has('subscript')}
                   />
                   <ColorPalette
                     label="글자 색"
@@ -1633,24 +1678,28 @@ function PostingForm({
                     label="왼쪽 정렬"
                     glyph={<AlignGlyph kind="left" />}
                     command="alignLeft"
+                    active={activeStates.has('alignLeft')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="가운데 정렬"
                     glyph={<AlignGlyph kind="center" />}
                     command="alignCenter"
+                    active={activeStates.has('alignCenter')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="오른쪽 정렬"
                     glyph={<AlignGlyph kind="right" />}
                     command="alignRight"
+                    active={activeStates.has('alignRight')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="양쪽 정렬"
                     glyph={<AlignGlyph kind="justify" />}
                     command="alignJustify"
+                    active={activeStates.has('alignJustify')}
                   />
                 </ToolGroup>
                 <ToolGroup>
@@ -1659,12 +1708,14 @@ function PostingForm({
                     label="글머리 기호 목록"
                     icon="figma-bullet-list.svg"
                     command="bullet"
+                    active={activeStates.has('bullet')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="번호 매기기 목록"
                     icon="figma-number-list.svg"
                     command="number"
+                    active={activeStates.has('number')}
                   />
                 </ToolGroup>
                 <ToolGroup>
@@ -2250,17 +2301,22 @@ const ToolGroup = styled('div', { shouldForwardProp: (prop) => prop !== 'borderl
   border: borderless ? 0 : '1px solid #e9ecef',
   borderRadius: 4,
 }));
-const ToolButton = styled.button({
+const ToolButton = styled('button', { shouldForwardProp: (prop) => prop !== '$active' })<{
+  $active?: boolean;
+}>(({ $active }) => ({
   width: 28,
   height: 28,
   border: 0,
   borderRadius: 4,
-  background: 'transparent',
+  background: $active ? c.lightBlue : 'transparent',
+  color: $active ? c.primary : 'inherit',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
-});
+  // 눌림 상태는 유지한 채 호버 배경이 덮이지 않게 한다.
+  '&[aria-pressed=true]:hover': { background: c.lightBlue },
+}));
 // 드롭다운 클릭이 에디터의 선택 영역을 풀지 않게 포커스 이동을 막는다.
 const ToolDrop = styled.div({ display: 'flex' });
 const RangeTilde = styled.span({ color: c.gray500, flexShrink: 0 });
