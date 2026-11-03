@@ -10,9 +10,8 @@ import type { SaveNotificationSettingsDto } from './dto/save-notification-settin
 export class InterestsService {
   constructor(@Inject(DRIZZLE) private readonly db: Database) {}
 
-  // 아직 PUT /interests로 저장한 적 없는 사용자(users.interests가 비어 있음)에게는
-  // 온볼딩 설문에서 선택한 관심분야를 기본값으로 낸다. 저장한 목록이 생기면 그것이
-  // 기준이 된다. 온볼딩을 완료하지 않은 사용자는 빈 배열을 유지한다.
+  // 저장한 관심분야를 먼저 유지하고, 온보딩 설문에서 선택한 관심분야 중
+  // 저장 목록에 없는 값만 뒤에 붙인다. 온보딩을 완료하지 않은 사용자는 빈 배열을 유지한다.
   async getInterests(userId: string) {
     const [user] = await this.db
       .select({ interests: users.interests, onboardingSurvey: users.onboardingSurvey })
@@ -20,8 +19,8 @@ export class InterestsService {
       .where(eq(users.id, userId))
       .limit(1);
     const interests = user?.interests ?? [];
-    if (interests.length > 0) return { categories: interests };
-    return { categories: surveyInterests(user?.onboardingSurvey) };
+    const surveyCategories = surveyInterests(user?.onboardingSurvey);
+    return { categories: [...new Set([...interests, ...surveyCategories])] };
   }
 
   async saveInterests(userId: string, dto: SaveInterestsDto) {
