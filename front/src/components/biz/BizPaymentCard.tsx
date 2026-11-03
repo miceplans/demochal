@@ -3,7 +3,6 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { MaskedText } from '@/components/ui/MaskedText';
 
 interface BizPaymentCardProps {
   label: string;
@@ -32,9 +31,8 @@ export function BizPaymentCard({ label, amount, maskedNumber, cardName }: BizPay
       ) : null}
       <CardBottom>
         <CardBottomInner>
-          <CardNo>
-            <MaskedText value={maskedNumber} masked={maskedNumber} />
-          </CardNo>
+          {/* 원본 카드번호는 토스 응답에 없어 복원할 수 없으므로 마스킹 값을 평문으로만 표시한다. */}
+          <CardNo>{maskedNumber}</CardNo>
           <CardBrand src="/assets/card-brand.svg" alt="" />
         </CardBottomInner>
       </CardBottom>
