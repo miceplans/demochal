@@ -13,11 +13,6 @@ export class NotificationsController {
     return this.notificationsService.listForUser(user.id);
   }
 
-  @Patch('read-all')
-  markAllRead(@CurrentUser() user: AuthenticatedUser) {
-    return this.notificationsService.markAllRead(user.id);
-  }
-
   @Patch(':id/read')
   markRead(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
     return this.notificationsService.markRead(id, user.id);

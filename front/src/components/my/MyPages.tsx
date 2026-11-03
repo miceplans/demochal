@@ -1721,9 +1721,6 @@ export function NotificationsPage() {
   const invalidate = () =>
     queryClient.invalidateQueries({ queryKey: generated.getListMyNotificationsQueryKey() });
   const markRead = generated.useMarkNotificationRead({ mutation: { onSuccess: invalidate } });
-  const markAllRead = generated.useMarkAllNotificationsRead({
-    mutation: { onSuccess: invalidate },
-  });
   // 팀 초대 알림의 수락/거절 — 본인이 받은 invited 멤버 행을 결정한다(서버 권한과 동일).
   const [inviteResponses, setInviteResponses] = useState<Record<string, 'accepted' | 'rejected'>>(
     {},
@@ -1739,7 +1736,6 @@ export function NotificationsPage() {
   });
   const all = notificationsQuery.data?.data ?? [];
   const items = all.filter((x) => tab === '전체' || notificationCategory[x.type ?? ''] === tab);
-  const hasUnread = all.some((x) => !x.readAt);
   const openItem = (id?: string, readAt?: string | null, href?: string) => {
     if (id && !readAt) markRead.mutate({ id });
     if (href) router.push(href);
@@ -1761,16 +1757,6 @@ export function NotificationsPage() {
               </NotificationTabButton>
             ))}
           </NotificationTabs>
-          <EndRow>
-            <Button
-              small
-              tone="plain"
-              disabled={!hasUnread || markAllRead.isPending}
-              onClick={() => markAllRead.mutate()}
-            >
-              모두 읽음
-            </Button>
-          </EndRow>
           <NotificationList>
             {items.map((item) => {
               const payload = (item.payload ?? {}) as Record<string, unknown>;

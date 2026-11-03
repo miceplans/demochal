@@ -203,7 +203,6 @@ export function createApiClient(options: HttpClientOptions) {
     notifications: {
       list: () => http.get<Notification[]>('/notifications'),
       markRead: (id: string) => http.patch<Notification>(`/notifications/${id}/read`),
-      markAllRead: () => http.patch<{ read: boolean }>('/notifications/read-all'),
     },
   };
 }
