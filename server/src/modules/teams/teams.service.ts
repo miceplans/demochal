@@ -131,6 +131,46 @@ export class TeamsService {
     );
   }
 
+  /**
+   * 팀 추천: 모집 중이고 내가 속하지 않은 팀을 내 포지션(모집 역할 일치)·지역·최신순으로 정렬한다.
+   * list()의 응답 형태를 그대로 쓰므로 프론트가 팀 카드를 재사용한다.
+   */
+  async listRecommended(userId: string, requestedLimit?: number) {
+    const limit = Math.max(1, Math.min(20, Number.isFinite(requestedLimit) ? requestedLimit! : 4));
+    const [viewer] = await this.db
+      .select({ position: users.position, region: users.region })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const mine = await this.db
+      .select({ teamId: teamMembers.teamId })
+      .from(teamMembers)
+      .where(
+        and(
+          eq(teamMembers.userId, userId),
+          inArray(teamMembers.status, ['accepted', 'pending', 'invited']),
+        ),
+      );
+    const excluded = new Set(mine.map((row) => row.teamId));
+
+    const all = await this.list({});
+    const ranked = all
+      .filter((team) => team.status === 'recruiting' && team.leaderUserId !== userId)
+      .filter((team) => !excluded.has(team.id))
+      .map((team) => ({
+        team,
+        score:
+          (viewer?.position && (team.openRoles ?? []).some((slot) => slot.role === viewer.position)
+            ? 10
+            : 0) + (viewer?.region && team.region === viewer.region ? 5 : 0),
+      }))
+      // list()가 최신순이라 stable sort로 동점은 최신 모집글이 먼저 온다.
+      .sort((left, right) => right.score - left.score)
+      .slice(0, limit)
+      .map(({ team }) => team);
+    return ranked;
+  }
+
   async create(dto: CreateTeamDto, user: AuthenticatedUser) {
     const [challenge] = await this.db
       .select({ id: challenges.id })

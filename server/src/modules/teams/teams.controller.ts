@@ -33,6 +33,11 @@ export class TeamsController {
     return this.teamsService.list({ challengeId, role, region, q });
   }
 
+  @Get('recommended')
+  listRecommended(@CurrentUser() user: AuthenticatedUser, @Query('limit') limit?: string) {
+    return this.teamsService.listRecommended(user.id, limit ? Number(limit) : undefined);
+  }
+
   @Get('applications/me')
   listMyApplications(@CurrentUser() user: AuthenticatedUser) {
     return this.teamsService.listMyApplications(user.id);

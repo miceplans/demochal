@@ -125,6 +125,8 @@ import type {
   ListPublicAdsParams,
   ListRecommendedChallenges200,
   ListRecommendedChallengesParams,
+  ListRecommendedPeopleParams,
+  ListRecommendedTeamsParams,
   ListTeamsParams,
   LoginBody,
   LoginResponse,
@@ -4129,6 +4131,135 @@ export const useCreateTeam = <TError = unknown,
       return useMutation(getCreateTeamMutationOptions(options), queryClient);
     }
 
+export type listRecommendedTeamsResponse200 = {
+  data: Team[]
+  status: 200
+}
+
+export type listRecommendedTeamsResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type listRecommendedTeamsResponseSuccess = (listRecommendedTeamsResponse200) & {
+  headers: Headers;
+};
+export type listRecommendedTeamsResponseError = (listRecommendedTeamsResponse401) & {
+  headers: Headers;
+};
+
+export type listRecommendedTeamsResponse = (listRecommendedTeamsResponseSuccess | listRecommendedTeamsResponseError)
+
+export const getListRecommendedTeamsUrl = (params?: ListRecommendedTeamsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/teams/recommended?${stringifiedParams}` : `/teams/recommended`
+}
+
+/**
+ * 모집 중이고 내가 팀장/멤버/지원·초대 상태가 아닌 팀을 내 포지션(모집 역할 일치)·지역 일치 순,
+ * 동점이면 최신순으로 정렬한다. 항목 형태는 `GET /teams`와 같다. 로그인 필요.
+ * @summary 추천 팀 모집글 조회
+ */
+export const listRecommendedTeams = async (params?: ListRecommendedTeamsParams, options?: Parameters<typeof apiFetch>[1]): Promise<listRecommendedTeamsResponse> => {
+
+  return apiFetch<listRecommendedTeamsResponse>(getListRecommendedTeamsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecommendedTeamsQueryKey = (params?: ListRecommendedTeamsParams,) => {
+    return [
+    `/teams/recommended`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRecommendedTeamsQueryOptions = <TData = Awaited<ReturnType<typeof listRecommendedTeams>>, TError = UnauthorizedResponse>(params?: ListRecommendedTeamsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecommendedTeamsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecommendedTeams>>> = ({ signal }) => listRecommendedTeams(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRecommendedTeamsQueryResult = NonNullable<Awaited<ReturnType<typeof listRecommendedTeams>>>
+export type ListRecommendedTeamsQueryError = UnauthorizedResponse
+
+
+export function useListRecommendedTeams<TData = Awaited<ReturnType<typeof listRecommendedTeams>>, TError = UnauthorizedResponse>(
+ params: undefined |  ListRecommendedTeamsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedTeams>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRecommendedTeams<TData = Awaited<ReturnType<typeof listRecommendedTeams>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedTeamsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedTeams>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedTeams>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRecommendedTeams<TData = Awaited<ReturnType<typeof listRecommendedTeams>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedTeamsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 추천 팀 모집글 조회
+ */
+
+export function useListRecommendedTeams<TData = Awaited<ReturnType<typeof listRecommendedTeams>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedTeamsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedTeams>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRecommendedTeamsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type listMyTeamApplicationsResponse200 = {
   data: TeamMember[]
   status: 200
@@ -4362,6 +4493,135 @@ export function useListManagedTeams<TData = Awaited<ReturnType<typeof listManage
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getListManagedTeamsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type listRecommendedPeopleResponse200 = {
+  data: PersonCard[]
+  status: 200
+}
+
+export type listRecommendedPeopleResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type listRecommendedPeopleResponseSuccess = (listRecommendedPeopleResponse200) & {
+  headers: Headers;
+};
+export type listRecommendedPeopleResponseError = (listRecommendedPeopleResponse401) & {
+  headers: Headers;
+};
+
+export type listRecommendedPeopleResponse = (listRecommendedPeopleResponseSuccess | listRecommendedPeopleResponseError)
+
+export const getListRecommendedPeopleUrl = (params?: ListRecommendedPeopleParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/people/recommended?${stringifiedParams}` : `/people/recommended`
+}
+
+/**
+ * 사람찾기 "나와 맞는 사람 찾기". 본인을 제외한 사용자 중 내 기술스택·지역이 겹치는 순으로
+ * 정렬한다(동점은 id순으로 결정론적). 카드 형태는 `GET /people`과 같다. 로그인 필요.
+ * @summary 나와 맞는 사람 추천 조회
+ */
+export const listRecommendedPeople = async (params?: ListRecommendedPeopleParams, options?: Parameters<typeof apiFetch>[1]): Promise<listRecommendedPeopleResponse> => {
+
+  return apiFetch<listRecommendedPeopleResponse>(getListRecommendedPeopleUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRecommendedPeopleQueryKey = (params?: ListRecommendedPeopleParams,) => {
+    return [
+    `/people/recommended`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRecommendedPeopleQueryOptions = <TData = Awaited<ReturnType<typeof listRecommendedPeople>>, TError = UnauthorizedResponse>(params?: ListRecommendedPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRecommendedPeopleQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRecommendedPeople>>> = ({ signal }) => listRecommendedPeople(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRecommendedPeopleQueryResult = NonNullable<Awaited<ReturnType<typeof listRecommendedPeople>>>
+export type ListRecommendedPeopleQueryError = UnauthorizedResponse
+
+
+export function useListRecommendedPeople<TData = Awaited<ReturnType<typeof listRecommendedPeople>>, TError = UnauthorizedResponse>(
+ params: undefined |  ListRecommendedPeopleParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedPeople>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedPeople>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRecommendedPeople<TData = Awaited<ReturnType<typeof listRecommendedPeople>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRecommendedPeople>>,
+          TError,
+          Awaited<ReturnType<typeof listRecommendedPeople>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRecommendedPeople<TData = Awaited<ReturnType<typeof listRecommendedPeople>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 나와 맞는 사람 추천 조회
+ */
+
+export function useListRecommendedPeople<TData = Awaited<ReturnType<typeof listRecommendedPeople>>, TError = UnauthorizedResponse>(
+ params?: ListRecommendedPeopleParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRecommendedPeople>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRecommendedPeopleQueryOptions(params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 
