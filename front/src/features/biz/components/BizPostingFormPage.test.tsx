@@ -2,7 +2,7 @@ import { ThemeProvider } from '@emotion/react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { BizPostingFormPage } from './BizPostingFormPage';
+import { BizPostingFormPage, normalizeFontTags } from './BizPostingFormPage';
 
 const renderForm = () =>
   render(
@@ -585,5 +585,97 @@ describe('BizPostingFormPage', () => {
       await Promise.resolve();
     });
     expect(modalPreviewLeft()).toBeCloseTo(-0.2 * LEFT_FACTOR, 3);
+  });
+
+  it('캐럿 상태에서 적용한 글자 크기도 제출 시 span으로 바꿔 서버에 별다른 손실 없이 보낸다', async () => {
+    // jsdom에는 execCommand가 없어 스텁한다 — 크기 선택의 핵심은 마지막 크기 추적이다.
+    Object.defineProperty(document, 'execCommand', { value: vi.fn(), configurable: true });
+    renderForm();
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+    // 캐럿 상태에서 글자 크기 18px 적용.
+    fireEvent.click(screen.getByRole('combobox', { name: '글자 크기' }));
+    fireEvent.click(screen.getByRole('option', { name: '18px' }));
+    // Chrome은 이어지는 입력을 <font size="7">으로 물질화한다 — 같은 HTML을 심어 제출 경로를 검증한다.
+    const editor = screen.getByLabelText('상세정보 본문');
+    editor.innerHTML = '<div>AAA <font size="7">BBB</font></div>';
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    const { data } = mocks.create.mock.calls[0]![0];
+    expect(data.description).toContain('font-size: 18px');
+    expect(data.description).not.toContain('<font');
+  });
+});
+
+describe('normalizeFontTags', () => {
+  const build = (html: string) => {
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    return root;
+  };
+
+  it('font[size=7]를 지정한 px의 span으로 바꾼다', () => {
+    const root = build('<div>AAA <font size="7">BBB</font></div>');
+    normalizeFontTags(root, 18);
+    expect(root.innerHTML).toBe('<div>AAA <span style="font-size: 18px;">BBB</span></div>');
+  });
+
+  it('px 정보가 없으면 font-size 없이 span으로만 바꾼다', () => {
+    const root = build('<font size="7">x</font>');
+    normalizeFontTags(root, null);
+    expect(root.innerHTML).toBe('<span>x</span>');
+  });
+
+  it('color·face 속성을 span style로 옮긴다', () => {
+    const root = build('<font color="#ef4444" face="Nanum Myeongjo, serif">x</font>');
+    normalizeFontTags(root, null);
+    const style = root.querySelector('span')!.getAttribute('style')!;
+    expect(style).toContain('color:');
+    expect(style).toContain('font-family:');
+  });
+
+  it('color·face·size를 한 span에 모두 옮긴다', () => {
+    const root = build('<font size="7" color="#ef4444" face="Nanum Myeongjo, serif">x</font>');
+    normalizeFontTags(root, 24);
+    const style = root.querySelector('span')!.getAttribute('style')!;
+    expect(style).toContain('font-size: 24px');
+    expect(style).toContain('color:');
+    expect(style).toContain('font-family:');
+  });
+
+  it('font 안의 캐럿을 변환 뒤 같은 텍스트 오프셋에 되살린다', () => {
+    const root = build('<div>a<font size="7">bcde</font>f</div>');
+    // jsdom은 document 안의 트리에서만 selection을 유지하므로 붙여서 검증한다.
+    document.body.appendChild(root);
+    try {
+      const fontText = root.querySelector('font')!.firstChild!;
+      const range = document.createRange();
+      range.setStart(fontText, 2);
+      range.collapse(true);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      normalizeFontTags(root, 18);
+      expect(root.querySelector('font')).toBeNull();
+      const spanText = root.querySelector('span')!.firstChild!;
+      expect(selection.anchorNode).toBe(spanText);
+      expect(selection.anchorOffset).toBe(2);
+    } finally {
+      root.remove();
+    }
+  });
+
+  it('빈 style 속성을 정리한다', () => {
+    const root = build('<b style="">x</b><font size="7">y</font>');
+    normalizeFontTags(root, 18);
+    expect(root.innerHTML).toBe('<b>x</b><span style="font-size: 18px;">y</span>');
+  });
+
+  it('font 태그가 없으면 본문을 그대로 둔다', () => {
+    const root = build('<p>hello</p>');
+    normalizeFontTags(root, 18);
+    expect(root.innerHTML).toBe('<p>hello</p>');
   });
 });
