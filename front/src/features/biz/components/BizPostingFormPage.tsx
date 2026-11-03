@@ -352,12 +352,15 @@ function ToolBtn({
   icon,
   glyph,
   command,
+  active = false,
   onRun,
 }: {
   label: string;
   icon?: string;
   glyph?: React.ReactNode;
   command?: EditorCommand;
+  /** 캐럿 위치에서 이 서식이 활성이면 눌림 상태로 표시한다. */
+  active?: boolean;
   onRun: (command: EditorCommand) => void;
 }) {
   return (
@@ -365,6 +368,8 @@ function ToolBtn({
       <ToolButton
         type="button"
         aria-label={label}
+        aria-pressed={active}
+        $active={active}
         disabled={!command}
         onMouseDown={(event) => event.preventDefault()}
         onClick={() => command && onRun(command)}
@@ -634,6 +639,90 @@ function DatePickerField({
  */
 const isPlainEnter = (event: React.KeyboardEvent) =>
   event.key === 'Enter' && !event.nativeEvent.isComposing && event.keyCode !== 229;
+
+// 툴 버튼에 눌림 상태(aria-pressed)로 표시할 명령 키 — queryCommandState로 캐럿 위치의 서식을 받아온다.
+const STATEFUL_COMMAND_KEYS = [
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'superscript',
+  'subscript',
+  'alignLeft',
+  'alignCenter',
+  'alignRight',
+  'alignJustify',
+  'bullet',
+  'number',
+] as const;
+
+const sameCommandSet = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every((key) => b.has(key));
+
+/**
+ * 에디터 본문에 생긴 <font size/color/face>를 정화 화이트리스트에 맞는 <span style>로 바꾼다.
+ * 평문만 붙여넣게 막아 두어 font 태그는 오직 에디터 명령(크기·색·글꼴)으로만 생긴다.
+ * 캐럿만 있는 상태에서 명령을 적용하면 Chrome이 입력이 이어질 때 font 태그를 만들므로,
+ * 입력 시점(onInput/compositionend)에 이 변환을 거쳐 저장 시 서식이 사라지지 않게 한다.
+ * 캐럿이 font 안에 있으면 변환 뒤 같은 텍스트 오프셋으로 캐럿을 되살린다.
+ */
+export function normalizeFontTags(root: HTMLElement, fontSizePx: number | null) {
+  const fonts = Array.from(root.querySelectorAll('font'));
+  const selection = window.getSelection();
+  let caret: { font: Element; offset: number } | null = null;
+  if (fonts.length && selection?.rangeCount && selection.isCollapsed) {
+    const node = selection.anchorNode;
+    const host = (node instanceof Element ? node : node?.parentElement)?.closest('font');
+    if (host && root.contains(host)) {
+      // font 내부에서의 텍스트 오프셋을 복원 기준으로 기억한다.
+      const range = selection.getRangeAt(0);
+      const prefix = range.cloneRange();
+      prefix.selectNodeContents(host);
+      prefix.setEnd(range.endContainer, range.endOffset);
+      caret = { font: host, offset: prefix.toString().length };
+    }
+  }
+  for (const font of fonts) {
+    const span = document.createElement('span');
+    // 크기 7은 applyFontSize가 execCommand에 넘기는 고정 단계다.
+    if (font.getAttribute('size') === '7' && fontSizePx) span.style.fontSize = `${fontSizePx}px`;
+    const color = font.getAttribute('color');
+    if (color) span.style.color = color;
+    const face = font.getAttribute('face');
+    if (face) span.style.fontFamily = face;
+    span.append(...font.childNodes);
+    font.replaceWith(span);
+    // 캐럿을 새 span 안의 같은 오프셋으로 옮긴다.
+    if (caret && caret.font === font && selection) {
+      const restore = (container: Node, offset: number) => {
+        const range = document.createRange();
+        range.setStart(container, offset);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      };
+      let remaining = caret.offset;
+      const walker = document.createTreeWalker(span, NodeFilter.SHOW_TEXT);
+      let text = walker.nextNode();
+      let restored = false;
+      while (text) {
+        const length = text.textContent?.length ?? 0;
+        if (remaining <= length) {
+          restore(text, remaining);
+          restored = true;
+          break;
+        }
+        remaining -= length;
+        text = walker.nextNode();
+      }
+      if (!restored) restore(span, span.childNodes.length);
+    }
+  }
+  // 서식 제거 뒤 남는 빈 style 잔재를 정리한다.
+  root.querySelectorAll('[style]').forEach((el) => {
+    if (!(el as HTMLElement).getAttribute('style')?.trim()) el.removeAttribute('style');
+  });
+}
 
 /** 주소에 스킴이 없으면 https://를 붙여 http(s) URL로 정규화한다. 올바르지 않으면 null. */
 function normalizeLinkUrl(raw: string) {
@@ -923,12 +1012,29 @@ function PostingForm({
     setTargets((s) => (s.includes(target) ? s.filter((x) => x !== target) : [...s, target]));
   // 크기 드롭다운이 포커스를 가져가면 에디터 선택이 풀리므로, 마지막 선택 영역을 기억했다가 복원한다.
   const savedRange = useRef<Range | null>(null);
+  // 마지막으로 적용한 글자 크기 — 캐럿 상태에서 입력 중 물질화되는 font[size=7] 변환에 쓴다.
+  const lastFontSizePx = useRef<number | null>(null);
+  // 캐럿 위치에서 활성인 서식 명령 — 툴 버튼의 눌림 상태로 표시한다.
+  const [activeStates, setActiveStates] = useState<ReadonlySet<string>>(new Set());
   useEffect(() => {
     const remember = () => {
       const selection = window.getSelection();
       const range = selection?.rangeCount ? selection.getRangeAt(0) : null;
-      if (range && editorRef.current?.contains(range.commonAncestorContainer))
-        savedRange.current = range.cloneRange();
+      if (!(range && editorRef.current?.contains(range.commonAncestorContainer))) {
+        setActiveStates((prev) => (prev.size ? new Set<string>() : prev));
+        return;
+      }
+      savedRange.current = range.cloneRange();
+      // 동일하면 재설정하지 않아 selectionchange 폭주 시 불필요한 리렌더를 막는다.
+      const next = new Set<string>();
+      for (const key of STATEFUL_COMMAND_KEYS) {
+        try {
+          if (document.queryCommandState(EDITOR_COMMANDS[key])) next.add(key);
+        } catch {
+          // 일부 환경(jsdom 등)에서 지원하지 않으면 무시한다.
+        }
+      }
+      setActiveStates((prev) => (sameCommandSet(prev, next) ? prev : next));
     };
     document.addEventListener('selectionchange', remember);
     return () => document.removeEventListener('selectionchange', remember);
@@ -963,15 +1069,13 @@ function PostingForm({
   // execCommand는 1~7단계 크기만 지원하므로, 최대 단계(7)로 감싼 뒤 고른 px 값의 span으로 바꾼다.
   const applyFontSize = (px: number) =>
     withEditorSelection(() => {
+      lastFontSizePx.current = px;
       const editor = editorRef.current;
       if (!editor) return;
       document.execCommand('fontSize', false, '7');
-      editor.querySelectorAll('font[size="7"]').forEach((node) => {
-        const span = document.createElement('span');
-        span.style.fontSize = `${px}px`;
-        span.append(...node.childNodes);
-        node.replaceWith(span);
-      });
+      // 선택 영역이 있으면 font[size=7]이 즉시 생겨 여기서 span이 된다. 캐럿만 있으면 입력이
+      // 이어질 때 font 태그가 물질화되므로, onInput의 normalizeFontTags가 같은 px로 변환한다.
+      normalizeFontTags(editor, lastFontSizePx.current);
     });
   const runCommand = (command: EditorCommand) => {
     withEditorSelection(() => {});
@@ -1171,6 +1275,7 @@ function PostingForm({
   // 현재 입력값으로 상세 페이지 미리보기를 만든다(저장 없음). 본문은 게시 때와 같이 정화한다.
   const openPreview = () => {
     const editor = editorRef.current;
+    if (editor) normalizeFontTags(editor, lastFontSizePx.current);
     const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
     setPreview({
       posterUrl: poster?.previewUrl ?? existingPosterUrl,
@@ -1204,6 +1309,8 @@ function PostingForm({
     setError('');
     setInvalid(new Set());
     const editor = editorRef.current;
+    // 저장 직전까지 남은 font 태그 잔재까지 span으로 바꿔 정화에서 서식이 사라지지 않게 한다.
+    if (editor) normalizeFontTags(editor, lastFontSizePx.current);
     const hasContent = Boolean(editor?.querySelector('img')) || Boolean(editor?.innerText.trim());
     const description = hasContent ? sanitizeRichHtml(editor?.innerHTML ?? '').trim() : '';
     const parsedPrizeAmount = prizeAmount === '' ? null : Number(prizeAmount);
@@ -1488,24 +1595,33 @@ function PostingForm({
                   />
                 </ToolGroup>
                 <ToolGroup>
-                  <ToolBtn onRun={runCommand} label="굵게" icon="figma-bold.svg" command="bold" />
+                  <ToolBtn
+                    onRun={runCommand}
+                    label="굵게"
+                    icon="figma-bold.svg"
+                    command="bold"
+                    active={activeStates.has('bold')}
+                  />
                   <ToolBtn
                     onRun={runCommand}
                     label="기울임"
                     icon="figma-italic.svg"
                     command="italic"
+                    active={activeStates.has('italic')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="밑줄"
                     icon="figma-underline.svg"
                     command="underline"
+                    active={activeStates.has('underline')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="취소선"
                     icon="figma-strike.svg"
                     command="strike"
+                    active={activeStates.has('strike')}
                   />
                   <ToolBtn
                     onRun={runCommand}
@@ -1526,12 +1642,14 @@ function PostingForm({
                     label="위 첨자"
                     glyph={<ScriptGlyph>x²</ScriptGlyph>}
                     command="superscript"
+                    active={activeStates.has('superscript')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="아래 첨자"
                     glyph={<ScriptGlyph>x₂</ScriptGlyph>}
                     command="subscript"
+                    active={activeStates.has('subscript')}
                   />
                   <ColorPalette
                     label="글자 색"
@@ -1560,24 +1678,28 @@ function PostingForm({
                     label="왼쪽 정렬"
                     glyph={<AlignGlyph kind="left" />}
                     command="alignLeft"
+                    active={activeStates.has('alignLeft')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="가운데 정렬"
                     glyph={<AlignGlyph kind="center" />}
                     command="alignCenter"
+                    active={activeStates.has('alignCenter')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="오른쪽 정렬"
                     glyph={<AlignGlyph kind="right" />}
                     command="alignRight"
+                    active={activeStates.has('alignRight')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="양쪽 정렬"
                     glyph={<AlignGlyph kind="justify" />}
                     command="alignJustify"
+                    active={activeStates.has('alignJustify')}
                   />
                 </ToolGroup>
                 <ToolGroup>
@@ -1586,12 +1708,14 @@ function PostingForm({
                     label="글머리 기호 목록"
                     icon="figma-bullet-list.svg"
                     command="bullet"
+                    active={activeStates.has('bullet')}
                   />
                   <ToolBtn
                     onRun={runCommand}
                     label="번호 매기기 목록"
                     icon="figma-number-list.svg"
                     command="number"
+                    active={activeStates.has('number')}
                   />
                 </ToolGroup>
                 <ToolGroup>
@@ -1631,9 +1755,19 @@ function PostingForm({
                 }}
                 onInput={(event) => {
                   clearInvalid('description');
-                  // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
                   const el = event.currentTarget;
-                  if (!el.innerText.trim() && !el.querySelector('img,hr')) el.innerHTML = '';
+                  // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
+                  if (!el.innerText.trim() && !el.querySelector('img,hr')) {
+                    el.innerHTML = '';
+                    return;
+                  }
+                  // IME 조합 중에 DOM을 건드리면 한글 조합이 깨지므로, 조합이 끝난 뒤 input에서 정규화한다.
+                  if (event.nativeEvent.isComposing) return;
+                  normalizeFontTags(el, lastFontSizePx.current);
+                }}
+                onCompositionEnd={(event) => {
+                  // 조합이 끝난 시점에 남은 font 태그를 span으로 바꾼다(캐럿 보존).
+                  normalizeFontTags(event.currentTarget, lastFontSizePx.current);
                 }}
                 contentEditable
                 suppressContentEditableWarning
@@ -2167,17 +2301,22 @@ const ToolGroup = styled('div', { shouldForwardProp: (prop) => prop !== 'borderl
   border: borderless ? 0 : '1px solid #e9ecef',
   borderRadius: 4,
 }));
-const ToolButton = styled.button({
+const ToolButton = styled('button', { shouldForwardProp: (prop) => prop !== '$active' })<{
+  $active?: boolean;
+}>(({ $active }) => ({
   width: 28,
   height: 28,
   border: 0,
   borderRadius: 4,
-  background: 'transparent',
+  background: $active ? c.lightBlue : 'transparent',
+  color: $active ? c.primary : 'inherit',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
   '&:hover': { background: c.gray100 },
-});
+  // 눌림 상태는 유지한 채 호버 배경이 덮이지 않게 한다.
+  '&[aria-pressed=true]:hover': { background: c.lightBlue },
+}));
 // 드롭다운 클릭이 에디터의 선택 영역을 풀지 않게 포커스 이동을 막는다.
 const ToolDrop = styled.div({ display: 'flex' });
 const RangeTilde = styled.span({ color: c.gray500, flexShrink: 0 });
