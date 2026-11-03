@@ -107,6 +107,15 @@ const TabButton = styled.button<{ active: boolean }>(({ active }) => ({
   fontWeight: active ? 600 : 400,
   color: active ? c.primary : c.gray500,
 }));
+// 탭이 하나뿐이라 전환 기능이 없는 화면(팀 상세)용 — 버튼이 아닌 정적 라벨로 활성 탭과 같은 스타일을 준다.
+const TabLabel = styled.span({
+  display: 'inline-block',
+  padding: '10px 20px',
+  borderBottom: `2px solid ${c.primary}`,
+  fontSize: 14,
+  fontWeight: 600,
+  color: c.primary,
+});
 const InfoRow = styled.div({ display: 'flex', alignItems: 'flex-start', gap: 32 });
 const InfoBody = styled.div({ flex: '1 1 0', minWidth: 0 });
 const Poster = styled.img({
@@ -677,10 +686,8 @@ export function AdminTeamDetailScreen({ id }: { id: string }) {
           </Header>
 
           <div>
-            <Tabs role="tablist">
-              <TabButton type="button" role="tab" aria-selected active>
-                정보
-              </TabButton>
+            <Tabs>
+              <TabLabel>정보</TabLabel>
             </Tabs>
             <Body style={{ padding: 0 }}>
               <Section title="팀 소개">{team.introduction}</Section>
