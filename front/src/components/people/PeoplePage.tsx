@@ -99,6 +99,8 @@ export function PeoplePage() {
       <Content>
         <Stack gap={28}>
           <PeopleBanners />
+          {/* Figma 01-B: 배너의 "지금 사용하기"가 이 영역으로 스크롤한다. */}
+          <RecommendedPeople onSelect={setScoutTarget} />
           <Stack gap={20}>
             <Filters>
               <SearchBox className="search" role="search">
@@ -145,14 +147,10 @@ export function PeoplePage() {
             {query.isPending && <LoadingState label="불러오는 중이에요." />}
             {query.isError && <Muted>목록을 불러오지 못했어요.</Muted>}
             {query.isSuccess && people.length === 0 && (
-              <>
-                <Empty>
-                  <strong>조건에 맞는 분이 없어요</strong>
-                  <Muted>선택한 필터 조건에 맞는 분이 없어요. 조건을 조금 넓혀보세요.</Muted>
-                </Empty>
-                {/* Figma 01-B 빈 상태: 맞는 사람이 없을 때 추천 인물 카드를 대신 보여준다. */}
-                <RecommendedPeople onSelect={setScoutTarget} />
-              </>
+              <Empty>
+                <strong>조건에 맞는 분이 없어요</strong>
+                <Muted>선택한 필터 조건에 맞는 분이 없어요. 조건을 조금 넓혀보세요.</Muted>
+              </Empty>
             )}
             {people.length > 0 && (
               <Grid>

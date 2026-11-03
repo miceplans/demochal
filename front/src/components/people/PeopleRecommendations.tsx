@@ -143,7 +143,7 @@ export function RecommendedPeople({ onSelect }: { onSelect: (person: PersonCardM
   const people = query.data?.status === 200 ? query.data.data : [];
   if (people.length === 0) return null;
   return (
-    <Section>
+    <Section id="recommended-people" style={{ scrollMarginTop: 80 }}>
       <Heading>
         <img src="/assets/people/recommend-icon.png" alt="" />
         나와 맞는 사람 찾기
