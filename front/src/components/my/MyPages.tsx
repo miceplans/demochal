@@ -1331,8 +1331,22 @@ export function ApplicationsPage() {
                   const chatLink = acceptedChatLink(row.status, row.chatLink);
                   return (
                     <tr key={row.id}>
-                      <td>{row.challengeTitle ?? '챌린지'}</td>
-                      <td>{row.teamTitle ?? '팀'}</td>
+                      <td>
+                        {row.teamId ? (
+                          <Link href={`/teams/${row.teamId}`}>
+                            {row.challengeTitle ?? '챌린지'}
+                          </Link>
+                        ) : (
+                          (row.challengeTitle ?? '챌린지')
+                        )}
+                      </td>
+                      <td>
+                        {row.teamId ? (
+                          <Link href={`/teams/${row.teamId}`}>{row.teamTitle ?? '팀'}</Link>
+                        ) : (
+                          (row.teamTitle ?? '팀')
+                        )}
+                      </td>
                       <td>
                         <Row gap={8} style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
                           <Tag tone={result.tone}>{result.label}</Tag>
