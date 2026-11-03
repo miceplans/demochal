@@ -60,6 +60,23 @@ describe('ContestCard poster link', () => {
     render(<ContestCard contest={base} href="/contests/contest-1" />);
     expect(screen.queryByText('마감된 공고입니다.')).toBeNull();
   });
+
+  it('복수 분야를 개별 태그로 나눠 표시한다', () => {
+    render(
+      <ContestCard
+        contest={{
+          id: 'contest-1',
+          title: '복수 분야 테스트',
+          category: 'IT/SW, 디자인,,IT/SW',
+          days: 3,
+        }}
+        href="/contests/contest-1"
+      />,
+    );
+
+    expect(screen.getAllByText('IT/SW')).toHaveLength(1);
+    expect(screen.getAllByText('디자인')).toHaveLength(1);
+  });
 });
 
 describe('ContestCard 기본 상세 링크', () => {

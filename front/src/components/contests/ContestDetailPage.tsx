@@ -32,6 +32,7 @@ import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
 import { daysUntil, isPastDeadline, formatDateDot, formatDateTimeDot } from '@/lib/date';
 import { challengeEligibility } from '@/lib/challenge';
+import { splitCategories } from '@/lib/categories';
 
 const formatDate = (value?: string) => (value ? formatDateDot(value) : '');
 const formatDateTime = (value?: string) => (value ? formatDateTimeDot(value) : '');
@@ -230,7 +231,17 @@ export function ContestDetailPage({
         {summaryRows.map(([label, value]) => (
           <Fragment key={label}>
             <dt>{label}</dt>
-            <dd>{value}</dd>
+            <dd>
+              {label === '분야' && value !== '-' ? (
+                <SummaryTags>
+                  {splitCategories(value).map((category) => (
+                    <SummaryTag key={category}>{category}</SummaryTag>
+                  ))}
+                </SummaryTags>
+              ) : (
+                value
+              )}
+            </dd>
           </Fragment>
         ))}
       </dl>
@@ -569,6 +580,20 @@ const Summary = styled.div({
   },
   '& dt': { color: c.gray500 },
   '& dd': { textAlign: 'right', fontWeight: 600 },
+});
+const SummaryTags = styled.div({
+  display: 'flex',
+  flexWrap: 'wrap',
+  justifyContent: 'flex-end',
+  gap: 6,
+});
+const SummaryTag = styled.span({
+  display: 'inline-flex',
+  padding: '3px 8px',
+  borderRadius: 4,
+  background: c.gray200,
+  color: c.gray700,
+  ...textStyle.finePrint,
 });
 const IconLink = styled(Link)({
   display: 'inline-flex',

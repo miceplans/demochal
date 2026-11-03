@@ -4,6 +4,7 @@ import type { KeyboardEvent } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { splitCategories } from '@/lib/categories';
 
 /* ---------- 카드 행 타입 ---------- */
 
@@ -136,6 +137,7 @@ export const CategoryTag = styled.span({
   textOverflow: 'ellipsis',
   boxSizing: 'border-box',
 });
+const CategoryTags = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 6 });
 export const DDay = styled.span({
   ...textStyle.overline,
   color: c.primary,
@@ -205,7 +207,11 @@ export const contestCardContent = (contest: ContestCardRow) => (
     </ContestCover>
     <ContestBody>
       <ContestTitle>{contest.title}</ContestTitle>
-      <CategoryTag>{contest.category}</CategoryTag>
+      <CategoryTags aria-label="분야">
+        {splitCategories(contest.category).map((category) => (
+          <CategoryTag key={category}>{category}</CategoryTag>
+        ))}
+      </CategoryTags>
       <ContestMetaRow>
         <DDay>{contest.dday}</DDay>
         <TeamCount>{contest.teams}</TeamCount>

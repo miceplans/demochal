@@ -21,6 +21,7 @@ import {
 import { Icon } from '@/components/common/Primitives';
 import { apiErrorMessage } from '@/lib/api-error';
 import { challengeEligibility } from '@/lib/challenge';
+import { splitCategories } from '@/lib/categories';
 
 const formatDate = (iso: string) => iso.slice(0, 10).replaceAll('-', '.');
 const daysLeft = (endDate: string) =>
@@ -172,6 +173,7 @@ export function BizPostingsPage() {
                       {g.items.map((item) => {
                         const left = daysLeft(item.endDate);
                         const closed = g.key === 'closed';
+                        const categoryLabels = splitCategories(item.category);
                         return (
                           <CardBox key={item.id} href={`/postings/${item.id}`}>
                             <CardThumb closed={closed}>
@@ -183,7 +185,12 @@ export function BizPostingsPage() {
                             <CardBody>
                               <CardTitle>{item.title}</CardTitle>
                               <CardMeta>
-                                <CategoryTag>{item.category ?? '미분류'}</CategoryTag>
+                                <CategoryTags aria-label="분야">
+                                  {categoryLabels.map((category) => (
+                                    <CategoryTag key={category}>{category}</CategoryTag>
+                                  ))}
+                                  {categoryLabels.length === 0 && <CategoryTag>미분류</CategoryTag>}
+                                </CategoryTags>
                                 {g.key === 'open' && (
                                   <Dday>{left === 0 ? 'D-DAY' : `D-${left}`}</Dday>
                                 )}
@@ -372,6 +379,7 @@ const CategoryTag = styled.span({
   padding: '3px 8px',
   ...textStyle.finePrint,
 });
+const CategoryTags = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 6, minWidth: 0 });
 const Dday = styled.span({ color: c.primary, ...textStyle.overline });
 const CardBottom = styled.div({
   display: 'flex',
