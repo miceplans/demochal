@@ -18,7 +18,7 @@ describe('InterestsService', () => {
     return db;
   }
 
-  it('getInterests returns the stored categories, or an empty list for a missing user', async () => {
+  it('getInterests keeps stored categories first and appends onboarding picks without duplicates', async () => {
     const db = selectDb([{ interests: ['디자인'], onboardingSurvey: null }]);
     const service = new InterestsService(db);
 
@@ -34,11 +34,15 @@ describe('InterestsService', () => {
     });
   });
 
-  it('getInterests keeps saved categories authoritative over the onboarding survey', async () => {
-    const db = selectDb([{ interests: ['디자인'], onboardingSurvey: { interests: ['IT/SW'] } }]);
+  it('getInterests merges stored and onboarding categories in order and removes duplicates', async () => {
+    const db = selectDb([
+      { interests: ['디자인', '마케팅'], onboardingSurvey: { interests: ['IT/SW', '디자인'] } },
+    ]);
     const service = new InterestsService(db);
 
-    await expect(service.getInterests('user-1')).resolves.toEqual({ categories: ['디자인'] });
+    await expect(service.getInterests('user-1')).resolves.toEqual({
+      categories: ['디자인', '마케팅', 'IT/SW'],
+    });
   });
 
   it('getInterests returns an empty list when the survey is missing or has no picks', async () => {
