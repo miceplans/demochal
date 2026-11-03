@@ -674,7 +674,7 @@ export function normalizeFontTags(root: HTMLElement, fontSizePx: number | null) 
     const node = selection.anchorNode;
     const host = (node instanceof Element ? node : node?.parentElement)?.closest('font');
     if (host && root.contains(host)) {
-      // font 낭비 내에서의 텍스트 오프셋을 복원 기준으로 기억한다.
+      // font 내부에서의 텍스트 오프셋을 복원 기준으로 기억한다.
       const range = selection.getRangeAt(0);
       const prefix = range.cloneRange();
       prefix.selectNodeContents(host);
