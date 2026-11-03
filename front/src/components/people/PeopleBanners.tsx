@@ -166,8 +166,8 @@ export function PeopleBanners() {
           <br />
           추천기능으로 찾아보세요
         </TeamTitle>
-        {/* TODO: 팀원 추천 전용 화면이 아직 없어 팀 탐색으로 연결한다. */}
-        <UseButton href="/teams">지금 사용하기</UseButton>
+        {/* 같은 페이지의 "나와 맞는 사람 찾기" 추천 영역(PeopleRecommendations)으로 스크롤한다. */}
+        <UseButton href="#recommended-people">지금 사용하기</UseButton>
       </TeamBanner>
       <ContestBanner href="/explore" aria-label="합격 확률 높은 공모전 추천">
         <Layer style={{ left: -13, top: -717.5, width: 632, height: 1122, opacity: 0.12 }}>
