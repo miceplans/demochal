@@ -235,6 +235,7 @@ export class AdminService {
       .from(reports)
       .orderBy(desc(reports.createdAt))
       .limit(5);
+    const recentReporterNames = await this.resolveReporterNames(recentReports);
 
     const [unit, count] = RANGE_BUCKETS[range ?? ''] ?? RANGE_BUCKETS['1year']!;
     const buckets = timeBuckets(unit, count, now);
@@ -311,7 +312,7 @@ export class AdminService {
         primary: seriesOf(signupRows),
         secondary: seriesOf(submissionRows),
       },
-      reports: recentReports.map((row) => this.toReport(row)),
+      reports: recentReports.map((row) => this.toReport(row, recentReporterNames)),
       generatedAt: now.toISOString(),
     };
   }
@@ -725,7 +726,7 @@ export class AdminService {
       openRoles: team.openRoles ?? [],
       members: memberRows.map((member) => ({ name: member.name, role: member.role ?? '' })),
       createdAt: team.createdAt.toISOString(),
-      reports: reportRows.map((report) => this.toReport(report)),
+      reports: reportRows,
     };
   }
 
@@ -776,17 +777,19 @@ export class AdminService {
         status: team.status,
       })),
       createdAt: challenge.createdAt.toISOString(),
-      reports: reportRows.map((report) => this.toReport(report)),
+      reports: reportRows,
     };
   }
 
-  private listTargetReports(targetType: 'team' | 'challenge', targetId: string) {
-    return this.db
+  private async listTargetReports(targetType: 'team' | 'challenge', targetId: string) {
+    const rows = await this.db
       .select()
       .from(reports)
       .where(and(eq(reports.targetType, targetType), eq(reports.targetId, targetId)))
       .orderBy(desc(reports.createdAt))
       .limit(20);
+    const reporterNames = await this.resolveReporterNames(rows);
+    return rows.map((row) => this.toReport(row, reporterNames));
   }
 
   /**
@@ -1134,7 +1137,8 @@ export class AdminService {
       .from(reports)
       .where(conditions.length ? and(...conditions) : undefined)
       .orderBy(desc(reports.createdAt));
-    return rows.map((row) => this.toReport(row));
+    const reporterNames = await this.resolveReporterNames(rows);
+    return rows.map((row) => this.toReport(row, reporterNames));
   }
 
   async resolveReport(id: string, dto: ResolveReportDto) {
@@ -1148,7 +1152,10 @@ export class AdminService {
       })
       .where(and(eq(reports.id, id), eq(reports.status, 'open')))
       .returning();
-    if (updated) return this.toReport(updated);
+    if (updated) {
+      const reporterNames = await this.resolveReporterNames([updated]);
+      return this.toReport(updated, reporterNames);
+    }
     const [existing] = await this.db
       .select({ id: reports.id })
       .from(reports)
@@ -1463,8 +1470,21 @@ export class AdminService {
 
   // ------------------------------------------------------------------ helpers
 
-  /** Contract Report shape: reporter is the masked name; reportedAt = createdAt. */
-  private toReport(row: ReportRow) {
+  /** 저장된 reporterName은 접수 시점에 마스킹돼 복원이 불가능하다 — 관리자 응답 시점에 users에서 원본 이름을 조회해 날린다. */
+  private async resolveReporterNames(rows: ReportRow[]) {
+    const ids = [
+      ...new Set(rows.map((row) => row.reporterUserId).filter((id): id is string => Boolean(id))),
+    ];
+    if (ids.length === 0) return new Map<string, string>();
+    const found = await this.db
+      .select({ id: users.id, name: users.name })
+      .from(users)
+      .where(inArray(users.id, ids));
+    return new Map(found.map((row): [string, string] => [row.id, row.name ?? '']));
+  }
+
+  /** Contract Report shape: reportedAt = createdAt. reporter는 관리자 확인용 원본 이름이며, 탈퇴·미조회 시 저장된 마스킹 값으로 폰백한다. */
+  private toReport(row: ReportRow, reporterNames?: Map<string, string>) {
     return {
       id: row.id,
       content: row.content,
@@ -1472,7 +1492,7 @@ export class AdminService {
       org: row.org,
       summary: row.summary,
       detail: row.detail,
-      reporter: row.reporterName,
+      reporter: (row.reporterUserId && reporterNames?.get(row.reporterUserId)) || row.reporterName,
       reportedAt: row.createdAt,
       status: row.status,
     };
