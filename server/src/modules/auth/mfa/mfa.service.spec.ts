@@ -124,6 +124,9 @@ describe('MfaService TOTP 등록', () => {
   });
 
   it('confirm은 저장된 시크릿으로 코드를 검증해 verifiedAt을 찍고 첫 수단이면 복구 코드 10개를 발급한다', async () => {
+    // step 경계(30초 배수)에 걸리면 서비스와 기대값의 step이 달라지는 플레이크를 막기 위해 시간을 고정한다.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-15T00:00:15Z'));
     const secret = generateSecret();
     const code = generateSync({ secret });
     const db = dbWithSelect(
@@ -137,7 +140,12 @@ describe('MfaService TOTP 등록', () => {
     const fullDb = { ...db, ...update, ...insertC };
     const { service } = makeService(fullDb);
 
-    const result = await service.confirmTotp(admin, code);
+    let result: Awaited<ReturnType<typeof service.confirmTotp>>;
+    try {
+      result = await service.confirmTotp(admin, code);
+    } finally {
+      vi.useRealTimers();
+    }
 
     expect(result.firstMethod).toBe(true);
     expect(result.recoveryCodes).toHaveLength(10);
@@ -152,7 +160,7 @@ describe('MfaService TOTP 등록', () => {
     }
     expect(update.set).toHaveBeenCalledWith({
       verifiedAt: expect.any(Date),
-      lastUsedStep: Math.floor(Date.now() / 1000 / 30),
+      lastUsedStep: Math.floor(new Date('2026-10-15T00:00:15Z').getTime() / 1000 / 30),
     });
   });
 
