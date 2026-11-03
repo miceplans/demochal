@@ -228,22 +228,29 @@ export function ContestDetailPage({
     <Summary>
       <b>대회 요약</b>
       <dl>
-        {summaryRows.map(([label, value]) => (
-          <Fragment key={label}>
-            <dt>{label}</dt>
-            <dd>
-              {label === '분야' && value !== '-' ? (
-                <SummaryTags>
-                  {splitCategories(value).map((category) => (
-                    <SummaryTag key={category}>{category}</SummaryTag>
-                  ))}
-                </SummaryTags>
-              ) : (
-                value
-              )}
-            </dd>
-          </Fragment>
-        ))}
+        {summaryRows.map(([label, value]) => {
+          const categoryLabels = label === '분야' ? splitCategories(value) : [];
+          return (
+            <Fragment key={label}>
+              <dt>{label}</dt>
+              <dd>
+                {label === '분야' ? (
+                  categoryLabels.length > 0 ? (
+                    <SummaryTags>
+                      {categoryLabels.map((category) => (
+                        <SummaryTag key={category}>{category}</SummaryTag>
+                      ))}
+                    </SummaryTags>
+                  ) : (
+                    '-'
+                  )
+                ) : (
+                  value
+                )}
+              </dd>
+            </Fragment>
+          );
+        })}
       </dl>
     </Summary>
   );
