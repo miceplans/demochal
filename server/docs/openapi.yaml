@@ -4975,7 +4975,11 @@ components:
         org: { type: string, description: 소속 (기관명 또는 개인) }
         summary: { type: string, description: '신고 사유 요약 (예: 피싱 의심)' }
         detail: { type: string, description: 신고 상세 내용 }
-        reporter: { type: string, description: '신고자 (마스킹, 예: 김*아)' }
+        reporter:
+          {
+            type: string,
+            description: '신고자 이름 (관리자 확인용 원본 — 화면에서는 기본 마스킹, 호버/포커스 시 원본 노출)',
+          }
         reportedAt: { type: string, format: date-time }
         status:
           {

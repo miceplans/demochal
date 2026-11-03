@@ -34,7 +34,7 @@ export interface Report {
   summary?: string;
   /** 신고 상세 내용 */
   detail?: string;
-  /** 신고자 (마스킹, 예: 김*아) */
+  /** 신고자 이름 (관리자 확인용 원본 — 화면에서는 기본 마스킹, 호버/포커스 시 원본 노출) */
   reporter?: string;
   reportedAt?: string;
   /** 처리 상태 — 대기/승인(조치 완료)/거부(기각) */

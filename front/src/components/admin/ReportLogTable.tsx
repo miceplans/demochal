@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -8,6 +8,8 @@ import type { ReportRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
+import { MaskedText } from '@/components/ui/MaskedText';
+import { maskName } from '@/lib/mask';
 import { AdminInlineNotice, AdminTable, Badge, type AdminColumn } from './parts';
 import { CloseIcon } from './AdminIcons';
 
@@ -74,8 +76,12 @@ function ReportDetailPanel({
   onResolve: (action: 'resolve' | 'dismiss') => void;
   pending: boolean;
 }) {
-  const details = [
-    ['신고자', row.reporter],
+  const details: [string, ReactNode][] = [
+    // 관리자에게는 원본 이름이 날아오지만, 목록·캡처에서의 개인정보 노출을 막기 위해 기본 마스킹 + 호버/포커스 노출로 표시한다.
+    [
+      '신고자',
+      row.reporter ? <MaskedText value={row.reporter} masked={maskName(row.reporter)} /> : '-',
+    ],
     ['신고 일시', row.reportedAt],
     ['콘텐츠 유형', row.type],
     ['등록 기관', row.org],
