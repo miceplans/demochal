@@ -5,6 +5,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { type Contest } from '@/data/user-design';
 import { HeartIcon, Icon, IconButton, Row, Tag } from '@/components/common/Primitives';
+import { splitCategories } from '@/lib/categories';
 import { contestHref } from './contest-links';
 import { isBookmarkableId, useBookmarks } from '@/features/bookmarks/useBookmarks';
 
@@ -15,6 +16,12 @@ const TeamTag = styled(Tag)({
   ...textStyle.mBadgeText,
   lineHeight: 'normal',
   [mobile]: { padding: '3px 6px', lineHeight: 'normal', background: c.lightBlue },
+});
+const CategoryTags = styled.div({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 6,
+  minWidth: 0,
 });
 // 북마크 저장 순간 팝 + 저장 상태 배경 강조로 토글 피드백을 준다(저장 해제는 틴트만 사라지게).
 const ScrapButton = styled(IconButton, {
@@ -146,6 +153,7 @@ export function ContestCard({
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
   const bookmarkable = isBookmarkableId(contest.id);
   const saved = bookmarks.some((challenge) => challenge.id === contest.id);
+  const categoryLabels = splitCategories(contest.category);
   const scrapButton = (
     <ScrapButton
       aria-label={`${contest.title} 북마크`}
@@ -176,7 +184,11 @@ export function ContestCard({
         )}
         {simple ? (
           <Row style={{ justifyContent: 'space-between' }}>
-            <CategoryTag>{contest.category}</CategoryTag>
+            <CategoryTags aria-label="분야">
+              {categoryLabels.map((category) => (
+                <CategoryTag key={category}>{category}</CategoryTag>
+              ))}
+            </CategoryTags>
             {scrapButton}
           </Row>
         ) : !row && !horizontal ? (
@@ -188,7 +200,13 @@ export function ContestCard({
                   {contest.prizeAmount ? (
                     <span className="prize">{contest.prizeAmount}만원</span>
                   ) : null}
-                  <CategoryTag className="tag">{contest.category}</CategoryTag>
+                  <CategoryTags aria-label="분야">
+                    {categoryLabels.map((category) => (
+                      <CategoryTag key={category} className="tag">
+                        {category}
+                      </CategoryTag>
+                    ))}
+                  </CategoryTags>
                 </Row>
                 {scrapButton}
               </Row>
@@ -203,7 +221,13 @@ export function ContestCard({
         ) : (
           <div className="meta">
             <Row style={{ justifyContent: 'space-between' }}>
-              <CategoryTag className="tag">{contest.category}</CategoryTag>
+              <CategoryTags aria-label="분야">
+                {categoryLabels.map((category) => (
+                  <CategoryTag key={category} className="tag">
+                    {category}
+                  </CategoryTag>
+                ))}
+              </CategoryTags>
               {!contest.closed && <span className="dday">D-{contest.days}</span>}
             </Row>
             <Row style={{ justifyContent: 'space-between' }}>

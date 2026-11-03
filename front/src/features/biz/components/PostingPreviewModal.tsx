@@ -5,6 +5,7 @@ import styled from '@emotion/styled';
 import { RichDescription } from '@/components/common/RichDescription';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { splitCategories } from '@/lib/categories';
 
 export type PostingPreview = {
   posterUrl: string | null;
@@ -56,6 +57,7 @@ export function PostingPreviewModal({
     ['협찬', data.sponsor],
     ['후원', data.supporter],
   ].filter(([, value]) => value);
+  const categoryLabels = splitCategories(data.category);
 
   return (
     <Backdrop onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -90,10 +92,16 @@ export function PostingPreviewModal({
                     <dd>{period(data.eventStartDate, data.eventEndDate)}</dd>
                   </>
                 )}
-                {data.category && (
+                {categoryLabels.length > 0 && (
                   <>
                     <dt>분야</dt>
-                    <dd>{data.category}</dd>
+                    <dd>
+                      <CategoryTags>
+                        {categoryLabels.map((category) => (
+                          <CategoryTag key={category}>{category}</CategoryTag>
+                        ))}
+                      </CategoryTags>
+                    </dd>
                   </>
                 )}
                 {data.topics.length > 0 && (
@@ -148,6 +156,16 @@ export function PostingPreviewModal({
     </Backdrop>
   );
 }
+
+const CategoryTags = styled.div({ display: 'flex', flexWrap: 'wrap', gap: 6 });
+const CategoryTag = styled.span({
+  display: 'inline-flex',
+  padding: '3px 8px',
+  borderRadius: 4,
+  background: c.gray100,
+  color: c.gray700,
+  ...textStyle.finePrint,
+});
 
 const Backdrop = styled.div({
   position: 'fixed',
