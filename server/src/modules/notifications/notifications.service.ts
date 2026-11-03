@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { notifications, users } from '../../db/schema.js';
 import { OutboxService } from '../../outbox/outbox.service.js';
@@ -107,13 +107,5 @@ export class NotificationsService {
       .returning();
     if (!notification) throw new NotFoundException('알림을 찾을 수 없습니다.');
     return notification;
-  }
-
-  async markAllRead(userId: string) {
-    await this.db
-      .update(notifications)
-      .set({ readAt: new Date() })
-      .where(and(eq(notifications.userId, userId), isNull(notifications.readAt)));
-    return { read: true };
   }
 }

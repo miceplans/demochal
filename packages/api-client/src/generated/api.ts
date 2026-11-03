@@ -128,7 +128,6 @@ import type {
   ListTeamsParams,
   LoginBody,
   LoginResponse,
-  MarkAllNotificationsRead200,
   MfaPasskeyAuthOptionsResponse,
   MfaPasskeyRegisterOptionsResponse,
   MfaPasskeyRegisterResponse,
@@ -6641,92 +6640,6 @@ export function useListMyNotifications<TData = Awaited<ReturnType<typeof listMyN
 
 
 
-
-export type markAllNotificationsReadResponse200 = {
-  data: MarkAllNotificationsRead200
-  status: 200
-}
-
-export type markAllNotificationsReadResponseSuccess = (markAllNotificationsReadResponse200) & {
-  headers: Headers;
-};
-;
-
-export type markAllNotificationsReadResponse = (markAllNotificationsReadResponseSuccess)
-
-export const getMarkAllNotificationsReadUrl = () => {
-
-
-
-
-  return `/notifications/read-all`
-}
-
-/**
- * @summary 내 알림 전체 읽음 처리
- */
-export const markAllNotificationsRead = async ( options?: Parameters<typeof apiFetch>[1]): Promise<markAllNotificationsReadResponse> => {
-
-  return apiFetch<markAllNotificationsReadResponse>(getMarkAllNotificationsReadUrl(),
-  {
-    ...options,
-    method: 'PATCH'
-
-
-  }
-);}
-
-
-
-
-
-export const getMarkAllNotificationsReadMutationKey = () => ['markAllNotificationsRead'] as const;
-
-export const getMarkAllNotificationsReadMutationOptions = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext> => {
-
-const mutationKey = getMarkAllNotificationsReadMutationKey();
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAllNotificationsRead>>, void> = () => {
-
-
-          return  markAllNotificationsRead(requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type MarkAllNotificationsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAllNotificationsRead>>>
-
-    export type MarkAllNotificationsReadMutationError = unknown
-
-
-    /**
- * @summary 내 알림 전체 읽음 처리
- */
-export const useMarkAllNotificationsRead = <TError = unknown,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof markAllNotificationsRead>>,
-        TError,
-        void,
-        TContext
-      > => {
-      return useMutation(getMarkAllNotificationsReadMutationOptions(options), queryClient);
-    }
 
 export type markNotificationReadResponse200 = {
   data: Notification

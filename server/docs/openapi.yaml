@@ -1569,18 +1569,6 @@ paths:
           content:
             application/json:
               schema: { type: array, items: { $ref: '#/components/schemas/Notification' } }
-  /notifications/read-all:
-    patch:
-      tags: [Notifications]
-      summary: 내 알림 전체 읽음 처리
-      operationId: markAllNotificationsRead
-      x-impl-status: implemented
-      responses:
-        '200':
-          description: 처리 결과
-          content:
-            application/json:
-              schema: { type: object, properties: { read: { type: boolean } } }
   /notifications/{id}/read:
     patch:
       tags: [Notifications]

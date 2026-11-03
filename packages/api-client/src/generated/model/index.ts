@@ -192,7 +192,6 @@ export * from './loginBody';
 export * from './loginMfaChallengeResponse';
 export * from './loginResponse';
 export * from './loginSessionResponse';
-export * from './markAllNotificationsRead200';
 export * from './metricTotals';
 export * from './mfaMethod';
 export * from './mfaPasskeyAuthOptionsResponse';
