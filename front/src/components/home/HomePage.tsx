@@ -101,7 +101,6 @@ export function HomePage() {
   const recommendationContests = liveRecommendationContests;
   const deadlineContests = liveDeadlineContests;
   const teams = liveTeams;
-  const isFallbackTeamList = teams.length === 0;
 
   return (
     <PreviewLock locked={adPreviewPrice !== null}>
@@ -197,33 +196,35 @@ export function HomePage() {
             interval={4000}
           />
           <Sections last>
-            <section>
-              <MobileOnly style={{ marginBottom: 16 }}>
-                <SectionHeader
-                  title="팀원모집중"
-                  action={
-                    <More href="/teams">
-                      더보기
-                      <MoreIcon />
-                    </More>
-                  }
-                />
-              </MobileOnly>
-              <DesktopOnly>
-                <ScrollRail as={TeamRail}>
-                  {teams.map((team) => (
-                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
-                  ))}
-                </ScrollRail>
-              </DesktopOnly>
-              <MobileOnly>
-                <ScrollRail as={TeamRail}>
-                  {teams.slice(0, 3).map((team) => (
-                    <TeamCard key={team.id} team={team} displayOnly={isFallbackTeamList} />
-                  ))}
-                </ScrollRail>
-              </MobileOnly>
-            </section>
+            {teams.length > 0 && (
+              <section>
+                <MobileOnly style={{ marginBottom: 16 }}>
+                  <SectionHeader
+                    title="팀원모집중"
+                    action={
+                      <More href="/teams">
+                        더보기
+                        <MoreIcon />
+                      </More>
+                    }
+                  />
+                </MobileOnly>
+                <DesktopOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </ScrollRail>
+                </DesktopOnly>
+                <MobileOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.slice(0, 3).map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </ScrollRail>
+                </MobileOnly>
+              </section>
+            )}
           </Sections>
         </Home>
       </UserShell>
