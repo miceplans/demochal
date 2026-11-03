@@ -75,7 +75,6 @@ vi.mock('@semochal/api-client', () => ({
     }),
     getListMyNotificationsQueryKey: () => ['notifications'],
     useMarkNotificationRead: () => ({ mutate: vi.fn(), isPending: false }),
-    useMarkAllNotificationsRead: () => ({ mutate: vi.fn(), isPending: false }),
     useUpdateTeamMember: () => ({ mutate: vi.fn(), isPending: false }),
     getGetMyAuthInfoQueryKey: () => ['myAuthInfo'],
   },
