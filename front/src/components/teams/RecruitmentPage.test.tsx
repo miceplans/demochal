@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FormEventHandler, ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 import { RecruitmentPage } from './RecruitmentPage';
 
 const h = vi.hoisted(() => ({

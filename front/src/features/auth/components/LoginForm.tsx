@@ -7,8 +7,8 @@ import styled from '@emotion/styled';
 import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
-import { adApi } from '@/lib/ad-api';
-import { apiErrorMessage } from '@/lib/api-error';
+import { adApi } from '@/api/ad-api';
+import { apiErrorMessage } from '@/api/api-error';
 import { loginSchema, type LoginFormValues } from '../schema';
 
 const Form = styled.form`

@@ -15,7 +15,7 @@ import {
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { challengeEligibility } from '@/lib/challenge';
 
 const formatDate = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');

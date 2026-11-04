@@ -1,6 +1,6 @@
 'use client';
 
-import '@/lib/api'; // generated API 공통 설정(configureGeneratedApi) — 최초 import 시 1회 실행
+import '@/api/api'; // generated API 공통 설정(configureGeneratedApi) — 최초 import 시 1회 실행
 import { ThemeProvider } from '@emotion/react';
 import { type ReactNode } from 'react';
 import { EmotionRegistry } from '@/lib/emotion-registry';

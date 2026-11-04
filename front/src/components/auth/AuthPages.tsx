@@ -8,7 +8,7 @@ import { Button, Icon, Stack, Chip, Wrap } from '@/components/common/Primitives'
 import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';

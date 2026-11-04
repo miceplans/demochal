@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { ThemeProvider } from '@emotion/react';
 import { theme } from '@/styles/theme';
 import { OnboardingPage } from './AuthPages';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 
 const mocks = vi.hoisted(() => {
   class MockApiError extends Error {

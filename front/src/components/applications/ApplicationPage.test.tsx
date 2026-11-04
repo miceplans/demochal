@@ -6,7 +6,7 @@ import { ApplicationPage } from './ApplicationPage';
 import { ThemeProvider } from '@emotion/react';
 import { theme } from '@/styles/theme';
 import type { Question } from './ApplicationQuestions';
-import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
+import { NETWORK_ERROR_MESSAGE } from '@/api/api-error';
 import { ApiError } from '@semochal/api-client';
 
 const mocks = vi.hoisted(() => ({
@@ -41,12 +41,12 @@ vi.mock('@/components/common/UserShell', () => ({
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));
-vi.mock('@/stores/useUserStore', () => ({
+vi.mock('@/store/useUserStore', () => ({
   useUserStore: (selector: (s: unknown) => unknown) =>
     selector({ applicationDraft: null, saveApplication: mocks.save }),
 }));
-vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
-vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.pay }));
+vi.mock('@/api/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
+vi.mock('@/api/payments', () => ({ requestTossPayment: mocks.pay }));
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {

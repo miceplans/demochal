@@ -8,7 +8,7 @@ import { MyShell } from '@/components/common/UserShell';
 import { Button, IconButton, Input, Tag } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { roles as presetRoles } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import {

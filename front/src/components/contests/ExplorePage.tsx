@@ -20,7 +20,7 @@ import { generated } from '@semochal/api-client';
 import { toTeamCard } from '@/components/teams/team-model';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ChallengeSearch } from './ChallengeSearch';
 import { RangeSlider } from '@/components/ui/RangeSlider';
@@ -32,7 +32,7 @@ import {
   FilterPopover,
   toggleValue,
 } from './ExploreFilters';
-import { daysUntil, isPastDeadline } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/utils/date';
 
 // 상금 필터 범위(만원). 전체 범위이면 서버에 상금 조건을 보내지 않는다.
 const PRIZE_MIN = 0;

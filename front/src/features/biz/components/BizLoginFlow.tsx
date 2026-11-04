@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { StepProgressBar } from '@/components/ui/StepProgressBar';

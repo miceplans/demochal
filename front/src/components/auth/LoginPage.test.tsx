@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { LoginPage } from './AuthPages';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 
 const mocks = vi.hoisted(() => ({ assign: vi.fn() }));
 

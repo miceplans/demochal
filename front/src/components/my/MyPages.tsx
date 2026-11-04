@@ -36,7 +36,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
-import { daysUntil, isPastDeadline } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/utils/date';
 import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
 import legalCopy from '@/data/design-copy.json';
 

@@ -15,7 +15,7 @@ vi.mock('@semochal/api-client', async (importOriginal) => ({
     useFindMyBusiness: () => ({ data: { status: 200, data: { name: '예시 기업' } } }),
   },
 }));
-vi.mock('@/lib/ad-api', () => ({
+vi.mock('@/api/ad-api', () => ({
   adApi: { files: { get: vi.fn().mockRejectedValue(new Error('missing')) } },
 }));
 vi.mock('@/components/biz/BizShell', () => ({

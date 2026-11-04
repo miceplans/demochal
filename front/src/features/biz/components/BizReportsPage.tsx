@@ -10,7 +10,7 @@ import { BizContent, useBizHref } from '@/components/biz/BizShell';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 
 const formatMonthDay = (iso: string) => {
   const [, month, day] = iso.slice(0, 10).split('-');

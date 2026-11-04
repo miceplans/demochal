@@ -33,7 +33,7 @@ vi.mock('@/components/biz/BizShell', () => ({
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
 }));
-vi.mock('@/lib/ad-api', () => ({
+vi.mock('@/api/ad-api', () => ({
   adError: () => '오류',
   adApi: {
     businesses: { me: async () => ({ id: 'biz-1' }) },

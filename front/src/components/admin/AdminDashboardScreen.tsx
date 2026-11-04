@@ -6,7 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { TrafficRange } from '@/data/admin-design';
-import { formatDateTimeDotKst as formatBaseDate } from '@/lib/date';
+import { formatDateTimeDotKst as formatBaseDate } from '@/utils/date';
 import { AdminSectionTitle, StatCard, StatRow } from './parts';
 import { AdRatioChart, TrafficChart } from './charts';
 import { ReportLogTable } from './ReportLogTable';

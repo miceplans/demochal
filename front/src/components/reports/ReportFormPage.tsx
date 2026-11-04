@@ -11,7 +11,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { formatDateDot as formatDate } from '@/lib/date';
+import { formatDateDot as formatDate } from '@/utils/date';
 import { challengeEligibility } from '@/lib/challenge';
 
 const REPORT_REASONS = ['비방', '스팸/도배', '사기 또는 허위 정보', '저작권 침해', '기타'];

@@ -17,7 +17,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { ChallengeSearch } from '@/components/contests/ChallengeSearch';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import {
   CUSTOM_ROLE,

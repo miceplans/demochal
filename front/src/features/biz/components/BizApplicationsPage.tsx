@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { LoadingState } from '@/components/common/LoadingState';
 import { BizContent, StatBox, useBizHref } from '@/components/biz/BizShell';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 

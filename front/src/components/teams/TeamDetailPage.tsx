@@ -25,10 +25,10 @@ import {
   isAnswerValid,
   type Answers,
 } from '@/components/applications/ApplicationQuestions';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { formatDateDot as formatDate } from '@/lib/date';
+import { formatDateDot as formatDate } from '@/utils/date';
 import { teamCapacity } from './team-model';
 import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 

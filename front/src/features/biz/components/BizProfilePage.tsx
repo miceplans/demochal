@@ -4,14 +4,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
-import { adApi } from '@/lib/ad-api';
+import { adApi } from '@/api/ad-api';
 import { Modal } from '@/components/common/Feedback';
 import { useToast } from '@/components/common/Toast';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { BizContent, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 // import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
 async function resolveFileUrl(fileId?: string | null): Promise<string | null> {

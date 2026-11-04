@@ -1,24 +1,6 @@
 const MAINTENANCE_START_KEY = 'maintenanceStartAt';
 const MAINTENANCE_END_KEY = 'maintenanceEndAt';
 
-/** ISO 문자열을 datetime-local 입력값(로컬 YYYY-MM-DDTHH:mm)으로 바꾼다. null이면 빈 값. */
-function toLocalInputValue(iso: string | null | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
-    date.getHours(),
-  )}:${pad(date.getMinutes())}`;
-}
-
-/** datetime-local 값을 ISO로 바꾼다. 빈 값은 null(점검 기간 초기화)이다. */
-function toIsoOrNull(local: string): string | null {
-  if (!local) return null;
-  const date = new Date(local);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString();
-}
-
 type MaintenanceStatus = { label: string; tone: 'active' | 'scheduled' | 'ended' | 'none' };
 
 /** 화면에 표시할 점검 상태 — 미저장 변경분이 있으면 그 값 기준으로 계산한다. */
@@ -37,10 +19,5 @@ function resolveStatus(
 }
 
 export type { MaintenanceStatus };
-export {
-  MAINTENANCE_END_KEY,
-  MAINTENANCE_START_KEY,
-  resolveStatus,
-  toIsoOrNull,
-  toLocalInputValue,
-};
+export { MAINTENANCE_END_KEY, MAINTENANCE_START_KEY, resolveStatus };
+export { toDateTimeInput as toLocalInputValue, toIsoOrNull } from '@/utils/date';

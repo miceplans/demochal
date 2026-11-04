@@ -1,5 +1,5 @@
 import { generated } from '@semochal/api-client';
-import { toDateKey } from '@/lib/date';
+import { toDateKey } from '@/utils/date';
 import { organizerTypes } from '@/data/user-design';
 
 type Attachment = { fileId: string; name: string; size: number };
@@ -195,18 +195,6 @@ function isHttpUrl(value: string) {
   }
 }
 
-function toDateInput(value: string | undefined) {
-  return value ? toDateKey(new Date(value)) : '';
-}
-
-/** datetime-local 입력용 로컬 시각(YYYY-MM-DDTHH:mm). */
-function toDateTimeInput(value: string | undefined) {
-  if (!value) return '';
-  const date = new Date(value);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${toDateKey(date)}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 export type { Attachment, PostingInput, PostingValues };
 export {
   ATTACHMENT_ACCEPT,
@@ -219,6 +207,5 @@ export {
   normalizeLinkUrl,
   POSTER_THUMBNAIL_ASPECT,
   POSTER_TYPES,
-  toDateInput,
-  toDateTimeInput,
 };
+export { toDateInput, toDateTimeInput } from '@/utils/date';

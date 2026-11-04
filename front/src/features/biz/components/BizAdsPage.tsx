@@ -19,14 +19,14 @@ import {
   type AdPreviewView,
 } from '@/components/ads/AdPlacementPreview';
 import { generated } from '@semochal/api-client';
-import { toDateKey } from '@/lib/date';
+import { toDateKey } from '@/utils/date';
 import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 import { extractErrorMessage, formatSlash } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
-import { requestTossPayment } from '@/lib/payments';
-import { adApi } from '@/lib/ad-api';
+import { requestTossPayment } from '@/api/payments';
+import { adApi } from '@/api/ad-api';
 
 export function BizAdsPage() {
   // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.

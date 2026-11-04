@@ -7,9 +7,9 @@ import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
-import { useUserStore } from '@/stores/useUserStore';
+import { useUserStore } from '@/store/useUserStore';
 import { generated } from '@semochal/api-client';
-import { useNotificationStream } from '@/lib/useNotificationStream';
+import { useNotificationStream } from '@/hooks/useNotificationStream';
 import { categories, roles } from '@/data/user-design';
 
 const Brand = styled(Link)({

@@ -10,12 +10,12 @@ import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
-import { requestTossBillingAuth } from '@/lib/payments';
-import { apiErrorMessage } from '@/lib/api-error';
+import { requestTossBillingAuth } from '@/api/payments';
+import { apiErrorMessage } from '@/api/api-error';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adApi } from '@/lib/ad-api';
+import { adApi } from '@/api/ad-api';
 
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const weekdayLabel = (date: string) => WEEKDAYS[new Date(date).getDay()] ?? date;

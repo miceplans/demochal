@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { MyShell } from '@/components/common/UserShell';
 import { Button, Input, Stack, Title, Muted } from '@/components/common/Primitives';
-import { adApi } from '@/lib/ad-api';
-import { useUserStore } from '@/stores/useUserStore';
+import { adApi } from '@/api/ad-api';
+import { useUserStore } from '@/store/useUserStore';
 
 export function AccountSettings() {
   const router = useRouter();

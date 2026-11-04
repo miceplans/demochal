@@ -1,5 +1,5 @@
 import { generated } from '@semochal/api-client';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import type { AdPlacement } from '@/components/ads/AdPlacementPreview';
 
 type Ad = Awaited<ReturnType<typeof generated.listMyAds>>['data'][number];
@@ -15,11 +15,6 @@ type SelectedAd = {
   product: AdProduct;
 };
 
-function formatSlash(dateKey: string) {
-  const [, month, day] = dateKey.split('-');
-  return `${Number(month)}/${Number(day)}`;
-}
-
 // 서버가 남긴 message가 있으면 그대로 보여주고, 없으면 네트워크 오류 구분 후 공통 안내 문구로 대체한다.
 function extractErrorMessage(error: unknown): string {
   return apiErrorMessage(
@@ -29,4 +24,5 @@ function extractErrorMessage(error: unknown): string {
 }
 
 export type { Ad, AdProduct, AdsScreen, SelectedAd };
-export { extractErrorMessage, formatSlash };
+export { extractErrorMessage };
+export { formatSlash } from '@/utils/date';

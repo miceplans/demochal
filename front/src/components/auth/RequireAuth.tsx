@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { adApi } from '@/lib/ad-api';
+import { adApi } from '@/api/ad-api';
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const router = useRouter();

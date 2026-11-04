@@ -10,7 +10,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
 export type ApplicationPatch = Parameters<
-  typeof import('@/lib/ad-api').adApi.applications.update
+  typeof import('@/api/ad-api').adApi.applications.update
 >[1];
 
 export const STATUS_LABEL: Record<Application['status'], string> = {

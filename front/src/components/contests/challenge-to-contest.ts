@@ -1,5 +1,5 @@
 import type { Contest } from '@/data/user-design';
-import { daysUntil, isPastDeadline } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/utils/date';
 
 // 챌린지 API 응답을 ContestCard 모델로 바꾼다(홈·사람찾기 추천 공용).
 export function challengeToContest(

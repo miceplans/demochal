@@ -21,20 +21,11 @@ const blankQuestion = (type: QuestionType = 'radio'): Question => ({
   required: false,
 });
 
-function formatPeriod(startDate?: string, endDate?: string) {
-  const format = (value: string) => {
-    const date = new Date(value);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
-  };
-  if (!startDate || !endDate) return '';
-  return `${format(startDate)} ~ ${format(endDate)}`;
-}
-
 type ChallengeDetail = Extract<
   Awaited<ReturnType<typeof generated.getMyChallenge>>,
   { status: 200 }
 >['data'];
 
 export type { ChallengeDetail, Question, QuestionType };
-export { blankQuestion, formatPeriod, isChoiceType };
+export { blankQuestion, isChoiceType };
+export { formatPeriod } from '@/utils/date';

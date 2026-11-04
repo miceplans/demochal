@@ -30,7 +30,7 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { generated } from '@semochal/api-client';
 import type { Contest } from '@/data/user-design';
 import { desktopContests, contests, contestDetail } from '@/data/user-design';
-import { daysUntil, isPastDeadline, formatDateDot, formatDateTimeDot } from '@/lib/date';
+import { daysUntil, isPastDeadline, formatDateDot, formatDateTimeDot } from '@/utils/date';
 import { challengeEligibility } from '@/lib/challenge';
 import { splitCategories } from '@/lib/categories';
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { Button } from '@/components/common/Primitives';
-import { adApi } from '@/lib/ad-api';
+import { adApi } from '@/api/ad-api';
 import { colors as c, mobile } from '@/styles/design';
 
 // 서버는 웹훅(Toss 재검증)으로 정산하므로, 성공 리다이렉트 시점에는 주문이 아직 pending일 수 있다.

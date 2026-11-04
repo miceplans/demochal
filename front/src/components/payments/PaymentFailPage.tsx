@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { Button } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
-import { adApi } from '@/lib/ad-api';
+import { adApi } from '@/api/ad-api';
 
 const PageWrap = styled.div({
   display: 'flex',

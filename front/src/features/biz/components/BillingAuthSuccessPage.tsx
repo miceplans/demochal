@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { Button } from '@/components/common/Primitives';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { colors as c } from '@/styles/design';
 
 const PageWrap = styled.div({

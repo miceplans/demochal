@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
 import { generated } from '@semochal/api-client';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 // import { MfaStep } from './MfaStep';
 import { loginSchema, type LoginFormValues } from '../schema';
 import type { /* MfaChallenge, */ MfaUser } from '../mfa-types';

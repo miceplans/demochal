@@ -6,7 +6,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PrimaryButton } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 
 type InquiryField = 'name' | 'contact' | 'content';
 

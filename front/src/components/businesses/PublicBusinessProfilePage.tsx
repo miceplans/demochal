@@ -11,7 +11,7 @@ import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { daysUntil, isPastDeadline } from '@/lib/date';
+import { daysUntil, isPastDeadline } from '@/utils/date';
 import { PAGE_SIZE, verificationTone } from './PublicBusinessProfilePage.logic';
 import type { IntroBlock } from './PublicBusinessProfilePage.logic';
 

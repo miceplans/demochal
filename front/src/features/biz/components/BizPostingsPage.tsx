@@ -19,7 +19,7 @@ import {
   useBizHref,
 } from '@/components/biz/BizShell';
 import { Icon } from '@/components/common/Primitives';
-import { apiErrorMessage } from '@/lib/api-error';
+import { apiErrorMessage } from '@/api/api-error';
 import { challengeEligibility } from '@/lib/challenge';
 import { splitCategories } from '@/lib/categories';
 

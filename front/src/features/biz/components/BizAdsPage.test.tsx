@@ -87,12 +87,12 @@ vi.mock('@/lib/image-compression', () => ({
   formatBytes: (size: number) => `${size}B`,
 }));
 
-vi.mock('@/lib/api-error', () => ({
+vi.mock('@/api/api-error', () => ({
   apiErrorMessage: (_: unknown, fallback: string) => fallback,
 }));
 
-vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.requestPayment }));
-vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
+vi.mock('@/api/payments', () => ({ requestTossPayment: mocks.requestPayment }));
+vi.mock('@/api/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),

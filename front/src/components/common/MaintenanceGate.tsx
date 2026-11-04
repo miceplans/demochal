@@ -3,7 +3,7 @@
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, useState, type ReactNode } from 'react';
 import { API_ERROR_EVENT, ApiError, generated, getApiErrorMessage } from '@semochal/api-client';
-import { NETWORK_ERROR_MESSAGE } from '@/lib/api-error';
+import { NETWORK_ERROR_MESSAGE } from '@/api/api-error';
 import { useToast } from './Toast';
 import { MaintenanceScreen } from './MaintenanceScreen';
 

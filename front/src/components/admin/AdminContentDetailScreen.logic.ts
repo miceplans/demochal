@@ -1,7 +1,4 @@
 const formatDateDot = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
-const daysLeft = (iso: string | undefined, now: number) =>
-  iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 86_400_000)) : 0;
-
 type ReportEntry = {
   id?: string;
   summary?: string;
@@ -12,4 +9,5 @@ type ReportEntry = {
 };
 
 export type { ReportEntry };
-export { daysLeft, formatDateDot };
+export { formatDateDot };
+export { daysUntil as daysLeft } from '@/utils/date';

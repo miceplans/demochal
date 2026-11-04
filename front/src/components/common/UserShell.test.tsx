@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@semochal/api-client', () => ({
   generated: { useGetMyAuthInfo: () => ({ data: mocks.auth }) },
 }));
-vi.mock('@/lib/useNotificationStream', () => ({ useNotificationStream: vi.fn() }));
+vi.mock('@/hooks/useNotificationStream', () => ({ useNotificationStream: vi.fn() }));
 
 function emotionCss() {
   return Array.from(document.querySelectorAll('style[data-emotion]'))
