@@ -12,6 +12,8 @@ import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
 import { useAdminHref } from './AdminShell';
+import { daysLeft, formatDateDot } from './AdminContentDetailScreen.logic';
+import type { ReportEntry } from './AdminContentDetailScreen.logic';
 
 /* ---------- 레이아웃: 좌측 본문 + 우측 신고·확인 목록 ---------- */
 
@@ -256,9 +258,6 @@ const ReasonTextarea = styled.textarea({
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: -12 });
 
 const EMPTY = '작성되지 않았어요';
-const formatDateDot = (iso?: string) => (iso ? iso.slice(0, 10).replaceAll('-', '.') : '');
-const daysLeft = (iso: string | undefined, now: number) =>
-  iso ? Math.max(0, Math.ceil((new Date(iso).getTime() - now) / 86_400_000)) : 0;
 
 function Section({ title, children }: { title: string; children?: ReactNode }) {
   return (
@@ -280,15 +279,6 @@ function BackRow() {
     </BackButton>
   );
 }
-
-type ReportEntry = {
-  id?: string;
-  summary?: string;
-  detail?: string | null;
-  reporter?: string;
-  reportedAt?: string;
-  status?: string;
-};
 
 function ReportsBox({ title, reports }: { title: string; reports: ReportEntry[] }) {
   return (
