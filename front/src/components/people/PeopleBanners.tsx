@@ -48,18 +48,18 @@ const TeamTitle = styled.p({
   color: '#000',
   [mobile]: { left: 20, top: 24, fontSize: 22 },
 });
-const UseButton = styled(Link)({
+const UseButton = styled.button({
   position: 'absolute',
   left: 26,
   bottom: 24,
   padding: 10,
+  border: 0,
   borderRadius: 8,
   background: c.primary,
   color: c.white,
   fontSize: 14,
   fontWeight: 600,
   lineHeight: 'normal',
-  textDecoration: 'none',
   '&:hover': { background: c.primaryHover },
   [mobile]: { left: 20, bottom: 16 },
 });
@@ -167,7 +167,18 @@ export function PeopleBanners() {
           추천기능으로 찾아보세요
         </TeamTitle>
         {/* 같은 페이지의 "나와 맞는 사람 찾기" 추천 영역(PeopleRecommendations)으로 스크롤한다. */}
-        <UseButton href="#recommended-people">지금 사용하기</UseButton>
+        <UseButton
+          type="button"
+          onClick={() =>
+            document.getElementById('recommended-people')?.scrollIntoView({
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                ? 'auto'
+                : 'smooth',
+            })
+          }
+        >
+          지금 사용하기
+        </UseButton>
       </TeamBanner>
       <ContestBanner href="/explore" aria-label="합격 확률 높은 공모전 추천">
         <Layer style={{ left: -13, top: -717.5, width: 632, height: 1122, opacity: 0.12 }}>
