@@ -43,15 +43,8 @@ function GripIcon({ size = 24 }: { size?: number }) {
 }
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
-
-type QuestionType = 'dropdown' | 'checkbox' | 'radio' | 'file' | 'short' | 'long';
-type Question = {
-  id: string;
-  title: string;
-  type: QuestionType;
-  options: string[];
-  required: boolean;
-};
+import { blankQuestion, formatPeriod, isChoiceType } from './BizApplicationFormPage.logic';
+import type { ChallengeDetail, Question, QuestionType } from './BizApplicationFormPage.logic';
 
 const QUESTION_TYPES: DropdownOption[] = [
   { value: 'dropdown', label: '드롭다운' },
@@ -61,9 +54,6 @@ const QUESTION_TYPES: DropdownOption[] = [
   { value: 'short', label: '단문형 질문' },
   { value: 'long', label: '장문형 질문' },
 ];
-const isChoiceType = (type: QuestionType) =>
-  type === 'dropdown' || type === 'checkbox' || type === 'radio';
-
 const Page = styled.div({
   width: '100%',
   maxWidth: 1200,
@@ -272,26 +262,7 @@ const ToolButton = styled.button({
   '&:disabled': { opacity: 0.35, cursor: 'not-allowed' },
 });
 
-const blankQuestion = (type: QuestionType = 'radio'): Question => ({
-  // 저장된 질문 id(q-N)와 충돌하지 않도록 전역 유일 id를 쓴다(리뷰 #264-2).
-  id: crypto.randomUUID(),
-  title: '',
-  type,
-  options: isChoiceType(type) ? ['', ''] : [],
-  required: false,
-});
-
 const Message = styled.p({ ...textStyle.finePrint, color: c.gray500 });
-
-function formatPeriod(startDate?: string, endDate?: string) {
-  const format = (value: string) => {
-    const date = new Date(value);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${date.getFullYear()}.${pad(date.getMonth() + 1)}.${pad(date.getDate())}`;
-  };
-  if (!startDate || !endDate) return '';
-  return `${format(startDate)} ~ ${format(endDate)}`;
-}
 
 export function BizApplicationFormPage() {
   const { id } = useParams<{ id: string }>();
@@ -315,11 +286,6 @@ export function BizApplicationFormPage() {
   // 공고 id가 바뀌면 편집 state를 초기화하기 위해 key로 에디터를 리셋한다(리뷰 #264-3).
   return <ApplicationFormEditor key={id} id={id} challenge={challenge} />;
 }
-
-type ChallengeDetail = Extract<
-  Awaited<ReturnType<typeof generated.getMyChallenge>>,
-  { status: 200 }
->['data'];
 
 function ApplicationFormEditor({ id, challenge }: { id: string; challenge: ChallengeDetail }) {
   const router = useRouter();
