@@ -38,7 +38,7 @@ vi.mock('@/apps/biz/components/BizShell', () => ({
   ),
   useBizHref: () => (path: string) => `/biz${path}`,
 }));
-vi.mock('@/components/common/Toast', () => ({ useToast: () => ({ error: mocks.toastError }) }));
+vi.mock('@/apps/user/components/common/Toast', () => ({ useToast: () => ({ error: mocks.toastError }) }));
 vi.mock('@semochal/api-client', () => ({
   ApiError: mocks.MockApiError,
   getApiErrorMessage: () => null,

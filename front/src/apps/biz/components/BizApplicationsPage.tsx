@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { BizContent, StatBox, useBizHref } from '@/apps/biz/components/BizShell';
 import { apiErrorMessage } from '@/api/api-error';
 import { colors as c } from '@/styles/design';

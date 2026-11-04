@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import styled from '@emotion/styled';
-import { RichDescription } from '@/components/common/RichDescription';
+import { RichDescription } from '@/apps/user/components/common/RichDescription';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { splitCategories } from '@/lib/categories';

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { MyPage as UserMyPage } from '@/components/my/MyPages';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { MyPage as UserMyPage } from '@/apps/user/components/my/MyPages';
+import { RequireAuth } from '@/apps/user/components/auth/RequireAuth';
 
 export const metadata: Metadata = {
   title: '마이페이지',

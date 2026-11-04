@@ -4,8 +4,8 @@ import type { ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
-import { Badge as BaseBadge, type BadgeTone } from '@/components/ui/Badge';
+import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
+import { Badge as BaseBadge, type BadgeTone } from '@/apps/user/components/ui/Badge';
 import { SearchIcon } from './AdminIcons';
 
 /* ---------- Table ---------- */

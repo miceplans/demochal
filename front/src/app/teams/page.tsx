@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ExplorePage } from '@/components/contests/ExplorePage';
+import { ExplorePage } from '@/apps/user/components/contests/ExplorePage';
 import { pageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = pageMetadata({

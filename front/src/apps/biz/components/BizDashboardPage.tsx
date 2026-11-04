@@ -1,7 +1,7 @@
 'use client';
 
 import styled from '@emotion/styled';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { generated } from '@semochal/api-client';
 import { BizPaymentCard } from '@/apps/biz/components/BizPaymentCard';
 import { ExposureChart } from '@/apps/biz/components/ExposureChart';

@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizProfilePage } from '../components/BizProfilePage';
 
 const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn(), success: vi.fn(), error: vi.fn() }));
-vi.mock('@/features/auth/components/MfaSettingsCard', () => ({ MfaSettingsCard: () => null }));
+vi.mock('@/apps/user/components/auth/MfaSettingsCard', () => ({ MfaSettingsCard: () => null }));
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {
@@ -26,10 +26,10 @@ vi.mock('@/apps/biz/components/BizShell', () => ({
   useBizHref: () => (path: string) => path,
 }));
 vi.mock('@/apps/biz/components/BizOrgProfile', () => ({ BizOrgProfile: () => <div /> }));
-vi.mock('@/components/common/Toast', () => ({
+vi.mock('@/apps/user/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));
-vi.mock('@/components/common/Feedback', () => ({
+vi.mock('@/apps/user/components/common/Feedback', () => ({
   Modal: ({
     open,
     title,

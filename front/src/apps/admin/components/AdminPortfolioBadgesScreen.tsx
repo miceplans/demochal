@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,

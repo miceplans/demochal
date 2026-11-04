@@ -5,7 +5,7 @@ import type { Application } from '@semochal/api-client';
 import { ApplicationResponsePanel } from '../components/ApplicationResponsePanel';
 
 vi.mock('@semochal/api-client', () => ({ generated: { getApplicationAttachment: vi.fn() } }));
-vi.mock('@/components/common/Toast', () => ({ useToast: () => ({ error: vi.fn() }) }));
+vi.mock('@/apps/user/components/common/Toast', () => ({ useToast: () => ({ error: vi.fn() }) }));
 afterEach(cleanup);
 
 const application: Application = {

@@ -1,5 +1,5 @@
-import { OfferDetailPage } from '@/components/people/OfferDetailPage';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { OfferDetailPage } from '@/apps/user/components/people/OfferDetailPage';
+import { RequireAuth } from '@/apps/user/components/auth/RequireAuth';
 export default function Page() {
   return (
     <RequireAuth>

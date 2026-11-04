@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LegalPageBody } from '@/components/my/MyPages';
+import { LegalPageBody } from '@/apps/user/components/my/MyPages';
 
 export const metadata: Metadata = {
   title: '광고 운영정책',

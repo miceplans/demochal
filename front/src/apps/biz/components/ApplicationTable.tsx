@@ -5,7 +5,7 @@ import { Fragment } from 'react';
 import { ApplicationAnswers } from './ApplicationAnswers';
 import { OutlineButton as ShellOutlineButton } from '@/apps/biz/components/BizShell';
 import type { Application } from '@semochal/api-client';
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
+import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 

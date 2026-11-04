@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { AdminGlobalStyles } from '@/apps/admin/components/AdminShell';
-import { AdminLoginForm } from '@/features/auth/components/AdminLoginForm';
+import { AdminLoginForm } from '@/apps/user/components/auth/AdminLoginForm';
 
 export function AdminLoginScreen() {
   return (

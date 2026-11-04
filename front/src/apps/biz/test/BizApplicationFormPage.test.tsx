@@ -56,11 +56,11 @@ vi.mock('@/apps/biz/components/BizShell', () => ({
   useBizHref: () => (path: string) => path,
 }));
 
-vi.mock('@/components/common/Toast', () => ({
+vi.mock('@/apps/user/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));
 
-vi.mock('@/components/ui/Dropdown', () => ({
+vi.mock('@/apps/user/components/ui/Dropdown', () => ({
   Dropdown: ({ 'aria-label': label }: { 'aria-label'?: string }) => <div aria-label={label} />,
 }));
 

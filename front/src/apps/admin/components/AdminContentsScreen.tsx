@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/apps/user/components/common/Toast';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -18,7 +18,7 @@ import {
 } from './parts';
 import { useAdminHref } from './AdminShell';
 import { ReportLogTable } from './ReportLogTable';
-import { ScrollRail } from '@/components/ui/ScrollRail';
+import { ScrollRail } from '@/apps/user/components/ui/ScrollRail';
 import {
   contestCardContent,
   openOnKey,

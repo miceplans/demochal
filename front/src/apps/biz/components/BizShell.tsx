@@ -7,7 +7,7 @@ import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
-import { Badge as BaseBadge } from '@/components/ui/Badge';
+import { Badge as BaseBadge } from '@/apps/user/components/ui/Badge';
 import {
   FLOAT_MAX_WIDTH,
   FLOAT_SCROLL_RANGE,

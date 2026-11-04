@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { ToastProvider } from '@/components/common/Toast';
+import { ToastProvider } from '@/apps/user/components/common/Toast';
 import { AdminSettingsScreen } from '../components/AdminSettingsScreen';
 
 vi.mock('@semochal/api-client', async (importOriginal) => {

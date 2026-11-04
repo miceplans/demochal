@@ -81,7 +81,7 @@ vi.mock('@/apps/biz/components/BizOrgProfile', () => ({
     </div>
   ),
 }));
-vi.mock('@/components/common/Toast', () => ({
+vi.mock('@/apps/user/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
 }));
 vi.mock('@/lib/google-maps', () => ({

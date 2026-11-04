@@ -1,5 +1,5 @@
-import { NotFound } from '@/components/common/NotFound';
-import { UserShell } from '@/components/common/UserShell';
+import { NotFound } from '@/apps/user/components/common/NotFound';
+import { UserShell } from '@/apps/user/components/common/UserShell';
 
 export default function RootNotFound() {
   return (

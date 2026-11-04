@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import styled from '@emotion/styled';
 import { generated, type ApplicationFormAnswer } from '@semochal/api-client';
-import { useToast } from '@/components/common/Toast';
-import { fileAnswerIds } from '@/components/applications/ApplicationQuestions';
+import { useToast } from '@/apps/user/components/common/Toast';
+import { fileAnswerIds } from '@/apps/user/components/applications/ApplicationQuestions';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 

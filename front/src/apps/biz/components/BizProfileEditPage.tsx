@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -14,7 +14,7 @@ import {
 } from '@/apps/biz/components/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { apiErrorMessage } from '@/api/api-error';
 import { searchAddress } from '@/lib/google-maps';

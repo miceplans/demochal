@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { BizRow } from '@/data/admin-design';
 import { maskBizNumber } from '@/lib/mask';
-import { MaskedText } from '@/components/ui/MaskedText';
+import { MaskedText } from '@/apps/user/components/ui/MaskedText';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {

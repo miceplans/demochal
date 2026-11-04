@@ -6,12 +6,12 @@ import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizContent, useBizHref } from '@/apps/biz/components/BizShell';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { DayPicker } from 'react-day-picker';
 import { ko } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
-import { FileUploader } from '@/components/ui/FileUploader';
+import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
+import { FileUploader } from '@/apps/user/components/ui/FileUploader';
 import { adApi, adError } from '@/api/ad-api';
 import { toDateKey } from '@/utils/date';
 import { colors as c } from '@/styles/design';
@@ -20,10 +20,10 @@ import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { cropErrorMessage, readImage, type CropImage } from '@/lib/image-crop';
 import { recommendPosterCropPosition, type Position } from '@/lib/poster-ocr';
-import { ImageCropModal } from '@/components/ui/ImageCropModal';
+import { ImageCropModal } from '@/apps/user/components/ui/ImageCropModal';
 import { isRichHtml, sanitizeRichHtml } from '@/lib/rich-text';
 import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
-import { richContentStyles } from '@/components/common/RichDescription';
+import { richContentStyles } from '@/apps/user/components/common/RichDescription';
 import {
   ATTACHMENT_ACCEPT,
   attachmentContentType,

@@ -1,15 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { AdReport } from '@semochal/api-client';
 import { BizContent, SectionTitle } from '@/apps/biz/components/BizShell';
 import { ExposureChart } from '@/apps/biz/components/ExposureChart';
 import { BizPaymentCard } from '@/apps/biz/components/BizPaymentCard';
-import { Button } from '@/components/common/Primitives';
-import { useToast } from '@/components/common/Toast';
+import { Button } from '@/apps/user/components/common/Primitives';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { requestTossBillingAuth } from '@/api/payments';
 import { apiErrorMessage } from '@/api/api-error';
 import { won } from '@/data/biz-design';

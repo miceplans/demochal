@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { ExposureChart } from '@/apps/biz/components/ExposureChart';
 import { BizContent, useBizHref } from '@/apps/biz/components/BizShell';
-import { Dropdown } from '@/components/ui/Dropdown';
+import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/api/api-error';

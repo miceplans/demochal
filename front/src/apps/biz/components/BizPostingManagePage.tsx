@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';

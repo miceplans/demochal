@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { Button } from '@/components/common/Primitives';
+import { Button } from '@/apps/user/components/common/Primitives';
 import { colors as c } from '@/styles/design';
 
 const PageWrap = styled.div({

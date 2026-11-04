@@ -4,10 +4,10 @@ import '@/api/api'; // generated API 공통 설정(configureGeneratedApi) — �
 import { ThemeProvider } from '@emotion/react';
 import { type ReactNode } from 'react';
 import { EmotionRegistry } from '@/lib/emotion-registry';
-import { ToastProvider } from '@/components/common/Toast';
-import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
-import { MaintenanceGate } from '@/components/common/MaintenanceGate';
-import { OnboardingGate } from '@/components/common/OnboardingGate';
+import { ToastProvider } from '@/apps/user/components/common/Toast';
+import { InputSecurityBoundary } from '@/apps/user/components/common/InputSecurityBoundary';
+import { MaintenanceGate } from '@/apps/user/components/common/MaintenanceGate';
+import { OnboardingGate } from '@/apps/user/components/common/OnboardingGate';
 import { theme } from '@/styles/theme';
 
 export function Providers({ children }: { children: ReactNode }) {

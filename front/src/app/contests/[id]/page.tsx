@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { ContestDetailPage } from '@/components/contests/ContestDetailPage';
+import { ContestDetailPage } from '@/apps/user/components/contests/ContestDetailPage';
 import { DEFAULT_SITE_ORIGIN, SITE_ORIGIN } from '@/lib/biz';
 import { JsonLd } from '@/lib/JsonLd';
 import { pageMetadata } from '@/lib/seo';

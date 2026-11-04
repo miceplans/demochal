@@ -1,5 +1,5 @@
-import { ReportFormPage } from '@/components/reports/ReportFormPage';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { ReportFormPage } from '@/apps/user/components/reports/ReportFormPage';
+import { RequireAuth } from '@/apps/user/components/auth/RequireAuth';
 export default function Page() {
   return (
     <RequireAuth>

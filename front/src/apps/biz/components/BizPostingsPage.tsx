@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { generated } from '@semochal/api-client';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { siteHref } from '@/lib/biz';
 import { colors as c, mobile } from '@/styles/design';
@@ -18,7 +18,7 @@ import {
   StatBox,
   useBizHref,
 } from '@/apps/biz/components/BizShell';
-import { Icon } from '@/components/common/Primitives';
+import { Icon } from '@/apps/user/components/common/Primitives';
 import { apiErrorMessage } from '@/api/api-error';
 import { challengeEligibility } from '@/lib/challenge';
 import { splitCategories } from '@/lib/categories';

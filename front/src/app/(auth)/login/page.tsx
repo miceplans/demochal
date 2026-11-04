@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LoginPage as UserLoginPage } from '@/components/auth/AuthPages';
+import { LoginPage as UserLoginPage } from '@/apps/user/components/auth/AuthPages';
 import { sanitizeNextPath } from '@/lib/next-path';
 
 export const metadata: Metadata = {

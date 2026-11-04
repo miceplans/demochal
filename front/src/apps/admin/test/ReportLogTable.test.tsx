@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@emotion/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { ToastProvider } from '@/components/common/Toast';
+import { ToastProvider } from '@/apps/user/components/common/Toast';
 import { ReportLogTable } from '../components/ReportLogTable';
 
 vi.mock('@semochal/api-client', () => ({

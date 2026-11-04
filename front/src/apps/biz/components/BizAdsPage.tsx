@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -17,17 +17,17 @@ import {
   PrimaryButton,
   useBizHref,
 } from '@/apps/biz/components/BizShell';
-import { Button } from '@/components/common/Primitives';
+import { Button } from '@/apps/user/components/common/Primitives';
 import {
   AdPlacementPreview,
   type AdPlacement,
   type AdPreviewView,
-} from '@/components/ads/AdPlacementPreview';
+} from '@/apps/user/components/ads/AdPlacementPreview';
 import { generated } from '@semochal/api-client';
 import { toDateKey } from '@/utils/date';
 import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { extractErrorMessage, formatSlash } from '../services/BizAdsPage';
 import type { Ad, AdsScreen, SelectedAd } from '../services/BizAdsPage';
 import { requestTossPayment } from '@/api/payments';

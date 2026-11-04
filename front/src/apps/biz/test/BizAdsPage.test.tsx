@@ -94,7 +94,7 @@ vi.mock('@/api/api-error', () => ({
 vi.mock('@/api/payments', () => ({ requestTossPayment: mocks.requestPayment }));
 vi.mock('@/api/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
-vi.mock('@/components/common/Toast', () => ({
+vi.mock('@/apps/user/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
 }));
 
@@ -109,7 +109,7 @@ vi.mock('@/apps/biz/components/BizShell', () => ({
   useBizHref: () => (path: string) => path,
 }));
 
-vi.mock('@/components/ads/AdPlacementPreview', () => ({
+vi.mock('@/apps/user/components/ads/AdPlacementPreview', () => ({
   AdPlacementPreview: ({
     onImagePicked,
     processing,

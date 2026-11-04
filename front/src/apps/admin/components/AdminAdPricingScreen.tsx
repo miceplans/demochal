@@ -8,14 +8,14 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { desktopContests, teams } from '@/data/user-design';
-import { Dropdown } from '@/components/ui/Dropdown';
-import { ContestCard } from '@/components/contests/ContestCard';
-import { TeamCard } from '@/components/teams/TeamCard';
-import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/components/ads/AdPlacementPreview';
-import { MovingAds } from '@/components/ads/MovingAds';
-import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
+import { Dropdown } from '@/apps/user/components/ui/Dropdown';
+import { ContestCard } from '@/apps/user/components/contests/ContestCard';
+import { TeamCard } from '@/apps/user/components/teams/TeamCard';
+import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/apps/user/components/ads/AdPlacementPreview';
+import { MovingAds } from '@/apps/user/components/ads/MovingAds';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/apps/user/components/common/Toast';
 import { useAdminHref } from './AdminShell';
-import { ScrollRail } from '@/components/ui/ScrollRail';
+import { ScrollRail } from '@/apps/user/components/ui/ScrollRail';
 
 type PreviewView = 'mobile' | 'pc';
 

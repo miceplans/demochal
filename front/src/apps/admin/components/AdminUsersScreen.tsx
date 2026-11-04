@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import type { UserRow } from '@/data/admin-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';

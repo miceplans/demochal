@@ -30,7 +30,7 @@ vi.mock('@/apps/biz/components/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useBizHref: () => (path: string) => path,
 }));
-vi.mock('@/components/common/Toast', () => ({
+vi.mock('@/apps/user/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
 }));
 vi.mock('@/api/ad-api', () => ({

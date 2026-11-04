@@ -1,5 +1,5 @@
-import { MyTeamsPage } from '@/components/my/MyPages';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { MyTeamsPage } from '@/apps/user/components/my/MyPages';
+import { RequireAuth } from '@/apps/user/components/auth/RequireAuth';
 export default function Page() {
   return (
     <RequireAuth>

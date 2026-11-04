@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider } from '@/components/common/Toast';
+import { ToastProvider } from '@/apps/user/components/common/Toast';
 import { AdminContentsScreen } from '../components/AdminContentsScreen';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), contents: vi.fn() }));
@@ -29,7 +29,7 @@ vi.mock('../components/parts', () => ({
 }));
 
 vi.mock('../components/ReportLogTable', () => ({ ReportLogTable: () => <div /> }));
-vi.mock('@/components/ui/ScrollRail', () => ({
+vi.mock('@/apps/user/components/ui/ScrollRail', () => ({
   ScrollRail: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 

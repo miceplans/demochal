@@ -6,7 +6,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { certificateTabs, type CertificateRow } from '@/data/admin-design';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import {
   AdminPageTitle,
   ApproveButton,

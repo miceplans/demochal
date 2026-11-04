@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { SITE_OPEN_GRAPH } from '@/lib/seo';
-import { HomePage as UserHomePage } from '@/components/home/HomePage';
+import { HomePage as UserHomePage } from '@/apps/user/components/home/HomePage';
 
 export const metadata: Metadata = {
   alternates: { canonical: '/' },

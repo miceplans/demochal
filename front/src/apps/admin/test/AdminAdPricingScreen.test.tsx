@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
-import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/components/ads/AdPlacementPreview';
+import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/apps/user/components/ads/AdPlacementPreview';
 import { PRICING_DIALOG_THUMB, PRICING_MOCK_LAYOUT } from '../components/AdminAdPricingScreen';
 
 vi.mock('next/link', () => ({

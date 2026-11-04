@@ -5,7 +5,7 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PrimaryButton } from '@/apps/biz/components/BizShell';
-import { useToast } from '@/components/common/Toast';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { apiErrorMessage } from '@/api/api-error';
 
 type InquiryField = 'name' | 'contact' | 'content';

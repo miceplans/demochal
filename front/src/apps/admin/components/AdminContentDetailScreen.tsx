@@ -1,6 +1,6 @@
 'use client';
 
-import { RichDescription } from '@/components/common/RichDescription';
+import { RichDescription } from '@/apps/user/components/common/RichDescription';
 import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -9,7 +9,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/apps/user/components/common/Toast';
 import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
 import { useAdminHref } from './AdminShell';
 import { daysLeft, formatDateDot } from '../services/AdminContentDetailScreen';

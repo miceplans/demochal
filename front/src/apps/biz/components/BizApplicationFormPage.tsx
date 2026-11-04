@@ -1,6 +1,6 @@
 'use client';
 import { useRef, useState, type ChangeEvent } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
@@ -8,7 +8,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PrimaryButton, FieldInput, useBizHref } from '@/apps/biz/components/BizShell';
-import { Icon, Toggle } from '@/components/common/Primitives';
+import { Icon, Toggle } from '@/apps/user/components/common/Primitives';
 
 function XIcon({ size = 16 }: { size?: number }) {
   return (
@@ -41,8 +41,8 @@ function GripIcon({ size = 24 }: { size?: number }) {
     </svg>
   );
 }
-import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
-import { useToast } from '@/components/common/Toast';
+import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { blankQuestion, formatPeriod, isChoiceType } from '../services/BizApplicationFormPage';
 import type { ChallengeDetail, Question, QuestionType } from '../services/BizApplicationFormPage';
 

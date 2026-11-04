@@ -1,18 +1,18 @@
 'use client';
 
 import { useEffect, useState, type FormEvent } from 'react';
-import { LoadingState } from '@/components/common/LoadingState';
+import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { adApi } from '@/api/ad-api';
-import { Modal } from '@/components/common/Feedback';
-import { useToast } from '@/components/common/Toast';
+import { Modal } from '@/apps/user/components/common/Feedback';
+import { useToast } from '@/apps/user/components/common/Toast';
 import { BizOrgProfile } from '@/apps/biz/components/BizOrgProfile';
 import { BizContent, PrimaryButton, useBizHref } from '@/apps/biz/components/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/api/api-error';
-// import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
+// import { MfaSettingsCard } from '@/apps/user/components/auth/MfaSettingsCard';
 
 async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
   if (!fileId) return null;

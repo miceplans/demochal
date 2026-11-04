@@ -8,10 +8,10 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { useToast } from '@/components/common/Toast';
-// import { MfaStep } from '@/features/auth/components/MfaStep';
+import { useToast } from '@/apps/user/components/common/Toast';
+// import { MfaStep } from '@/apps/user/components/auth/MfaStep';
 import { BizGlobalStyles, Logo, PrimaryButton, useBizHref } from '@/apps/biz/components/BizShell';
-// import type { MfaChallenge, MfaUser } from '@/features/auth/mfa-types';
+// import type { MfaChallenge, MfaUser } from '@/apps/user/types/mfa-types';
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;
 

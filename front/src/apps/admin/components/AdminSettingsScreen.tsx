@@ -7,8 +7,8 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { AdminPageTitle, ApproveButton } from './parts';
-import { Input, Toggle } from '@/components/common/Primitives';
-import { useToast } from '@/components/common/Toast';
+import { Input, Toggle } from '@/apps/user/components/common/Primitives';
+import { useToast } from '@/apps/user/components/common/Toast';
 import {
   MAINTENANCE_END_KEY,
   MAINTENANCE_START_KEY,
@@ -17,7 +17,7 @@ import {
   toLocalInputValue,
 } from '../services/AdminSettingsScreen';
 import type { MaintenanceStatus } from '../services/AdminSettingsScreen';
-// import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
+// import { MfaSettingsCard } from '@/apps/user/components/auth/MfaSettingsCard';
 
 export function AdminSettingsScreen() {
   // 서버 값 위에 아직 저장하지 않은 로컬 토글 변경분만 덮어쓴다 (서버 데이터를 state로 복제하지 않음).

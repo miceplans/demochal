@@ -1,6 +1,6 @@
 import { generated } from '@semochal/api-client';
 import { apiErrorMessage } from '@/api/api-error';
-import type { AdPlacement } from '@/components/ads/AdPlacementPreview';
+import type { AdPlacement } from '@/apps/user/components/ads/AdPlacementPreview';
 
 type Ad = Awaited<ReturnType<typeof generated.listMyAds>>['data'][number];
 type AdProduct = Awaited<ReturnType<typeof generated.listAdProducts>>['data'][number];

@@ -2,7 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ToastProvider } from '@/components/common/Toast';
+import { ToastProvider } from '@/apps/user/components/common/Toast';
 import { AdminTeamDetailScreen } from '../components/AdminContentDetailScreen';
 
 const mocks = vi.hoisted(() => ({
