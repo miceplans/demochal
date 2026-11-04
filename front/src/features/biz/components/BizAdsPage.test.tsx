@@ -91,7 +91,10 @@ vi.mock('@/lib/api-error', () => ({
   apiErrorMessage: (_: unknown, fallback: string) => fallback,
 }));
 
-vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.requestPayment }));
+vi.mock('@/lib/payments', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/payments')>()),
+  requestTossPayment: mocks.requestPayment,
+}));
 vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
 vi.mock('@/components/common/Toast', () => ({
@@ -164,7 +167,12 @@ async function submitReservation() {
   fireEvent.click(await screen.findByRole('button', { name: '계약 신청' }));
   await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
   expect(mocks.requestPayment).toHaveBeenCalledWith(
-    expect.objectContaining({ orderId: 'order-1', amount: 100000, flow: 'ad' }),
+    expect.objectContaining({
+      orderId: 'order-1',
+      amount: 100000,
+      flow: 'ad',
+      method: 'CARD',
+    }),
   );
 }
 

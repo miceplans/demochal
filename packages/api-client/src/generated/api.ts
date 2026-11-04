@@ -77,6 +77,7 @@ import type {
   CheckHealth503,
   ConfirmMfaTotpBody,
   ConfirmPaymentRequest,
+  ConfirmPaymentResult,
   CreateAdBody,
   CreateAdminEmail,
   CreateCertificateRequest,
@@ -9520,7 +9521,7 @@ export function useListRefundRequests<TData = Awaited<ReturnType<typeof listRefu
 
 
 export type confirmPaymentResponse200 = {
-  data: Order
+  data: ConfirmPaymentResult
   status: 200
 }
 
@@ -9566,6 +9567,8 @@ export const getConfirmPaymentUrl = () => {
  * `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
  * 하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
  * 재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+ * 가상계좌는 발급만 끝난 상태(`WAITING_FOR_DEPOSIT`)라 주문을 `pending`으로 두고 `virtualAccount`(입금 계좌)를
+ * 돌려준다. 입금되면 `DONE` 웹훅이 주문을 확정하고, 기한이 지나면 `EXPIRED` 웹훅이 주문을 취소한다.
  * @summary 토스 결제 승인(신청자 본인)
  */
 export const confirmPayment = async (confirmPaymentRequest: ConfirmPaymentRequest, options?: Parameters<typeof apiFetch>[1]): Promise<confirmPaymentResponse> => {
