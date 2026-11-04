@@ -74,7 +74,7 @@ const ActionLink = styled(Link)({
   justifyContent: 'center',
 });
 
-const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+import { DEFAULT_PROFILE_IMAGE } from '../../constants/profile';
 const Avatar = styled.img({
   flexShrink: 0,
   width: 59,

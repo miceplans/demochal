@@ -5,8 +5,6 @@ export type Question = NonNullable<
 >[number];
 export type Answers = Record<string, string | string[]>;
 
-export const MAX_FILE_ANSWERS = 10;
-
 /** 파일 답변은 예전 초안에 UUID 문자열 하나로 남아 있을 수 있어 배열로 맞춘다. */
 export function fileAnswerIds(value: string | string[] | undefined): string[] {
   if (Array.isArray(value)) return value;
@@ -34,3 +32,4 @@ const isAnswered = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value.length > 0 : Boolean(value?.trim());
 
 export { isAnswered };
+export { MAX_FILE_ANSWERS } from '../constants/applications';

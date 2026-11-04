@@ -1,4 +1,5 @@
 import { generated } from '@semochal/api-client';
+import { ATTACHMENT_TYPES } from '../constants/attachments';
 import { organizerTypes } from '@/data/user-design';
 
 type Attachment = { fileId: string; name: string; size: number };
@@ -80,28 +81,6 @@ const EMPTY_POSTING: PostingInput = {
   prizeAmount: '',
   visibility: 'public',
 };
-
-const ATTACHMENT_TYPES: Record<string, string> = {
-  pdf: 'application/pdf',
-  zip: 'application/zip',
-  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  hwp: 'application/x-hwp',
-  hwpx: 'application/hwp+zip',
-  png: 'image/png',
-  jpg: 'image/jpeg',
-  jpeg: 'image/jpeg',
-  webp: 'image/webp',
-};
-const ATTACHMENT_ACCEPT = Object.keys(ATTACHMENT_TYPES)
-  .map((ext) => `.${ext}`)
-  .join(',');
-const POSTER_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-// 카드 썸네일 슬롯 비율 — 크롭 모달 프레임과 OCR 위치 계산이 같이 쓴다.
-const POSTER_THUMBNAIL_ASPECT = 416 / 415;
-const MAX_ATTACHMENTS = 10;
-const MAX_ATTACHMENT_BYTES = 10 * 1024 * 1024;
 
 function attachmentContentType(file: File) {
   const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
@@ -195,16 +174,13 @@ function isHttpUrl(value: string) {
 }
 
 export type { Attachment, PostingInput, PostingValues };
+export { attachmentContentType, EMPTY_POSTING, escapeHtml, isHttpUrl, normalizeLinkUrl };
+export { toDateInput, toDateTimeInput } from '@/utils/date';
 export {
   ATTACHMENT_ACCEPT,
-  attachmentContentType,
-  EMPTY_POSTING,
-  escapeHtml,
-  isHttpUrl,
+  ATTACHMENT_TYPES,
   MAX_ATTACHMENTS,
   MAX_ATTACHMENT_BYTES,
-  normalizeLinkUrl,
   POSTER_THUMBNAIL_ASPECT,
   POSTER_TYPES,
-};
-export { toDateInput, toDateTimeInput } from '@/utils/date';
+} from '../constants/attachments';

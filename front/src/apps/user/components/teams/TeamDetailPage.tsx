@@ -32,7 +32,7 @@ import { formatDateDot as formatDate } from '@/utils/date';
 import { teamCapacity } from './team-model';
 import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 
-const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+import { DEFAULT_PROFILE_IMAGE } from '../../constants/profile';
 
 // 팀 상세 응답의 멤버 중 프로필 모달에 필요한 필드만 갖는 구조 타입(표의 행 그대로 넘긴다).
 type MemberSummary = {
