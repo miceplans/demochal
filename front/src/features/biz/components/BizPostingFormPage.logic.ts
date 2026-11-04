@@ -35,7 +35,7 @@ type PostingInput = {
   inquiryContact?: string;
   visibility?: 'public' | 'private';
 };
-// 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긴다.
+// 생성/수정 API의 본문 타입과 1:1로 맞춘다 — `as` 캐스트 없이 mutate에 그대로 넘긬다.
 // 폼에서 항상 값이 있는 핵심 필드는 필수로 좁혀, 수기 create 클라이언트의 Pick<Challenge, ...> 계약에도 맞는다.
 type PostingValues = generated.UpdateChallengeMutationBody & {
   title: string;

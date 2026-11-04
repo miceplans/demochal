@@ -24,7 +24,7 @@ import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/ima
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 import { extractErrorMessage, formatSlash } from './BizAdsPage.logic';
-import type { Ad, AdProduct, AdsScreen, SelectedAd } from './BizAdsPage.logic';
+import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestTossPayment } from '@/lib/payments';
 import { adApi } from '@/lib/ad-api';
 
