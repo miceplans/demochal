@@ -11,6 +11,8 @@ export interface PaymentHistoryRange {
 // Mirrors packages/api-client PaymentHistoryItem (field names must match).
 export interface PaymentHistoryItem {
   id: string;
+  /** 환불 요청(`POST /orders/{id}/refund-requests`)에 쓰는 주문 ID. */
+  orderId: string;
   name: string;
   amount: number;
   paidAt: string | null;
@@ -37,6 +39,7 @@ export class BillingHistoryService {
     const rows = await this.db
       .select({
         id: payments.id,
+        orderId: payments.orderId,
         name: sql<string | null>`coalesce(${ads.title}, ${challenges.title})`,
         amount: payments.amount,
         refundedAmount: payments.refundedAmount,
@@ -66,6 +69,7 @@ export class BillingHistoryService {
       const amount = status === 'refunded' ? row.amount : -netAmount;
       return {
         id: row.id,
+        orderId: row.orderId,
         name: row.name ?? '주문',
         amount,
         paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,

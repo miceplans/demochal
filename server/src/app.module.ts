@@ -12,6 +12,7 @@ import { ChallengesModule } from './modules/challenges/challenges.module.js';
 import { ApplicationsModule } from './modules/applications/applications.module.js';
 import { OrdersModule } from './modules/orders/orders.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
+import { RefundsModule } from './modules/refunds/refunds.module.js';
 import { FilesModule } from './modules/files/files.module.js';
 import {
   NotificationsModule,
@@ -53,6 +54,7 @@ import { EmailModule } from './modules/email/email.module.js';
     ApplicationsModule,
     OrdersModule,
     PaymentsModule,
+    RefundsModule,
     FilesModule,
     NotificationsModule,
     NotificationsStreamModule,
