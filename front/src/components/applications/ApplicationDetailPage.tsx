@@ -15,8 +15,8 @@ import {
   ApplicationQuestions,
   fileAnswerIds,
   isAnswerValid,
-  type Answers,
 } from './ApplicationQuestions';
+import { answersFromSaved, EDITABLE_STATUSES } from './ApplicationDetailPage.logic';
 
 // biz 지원서 관리(ApplicationTable)의 STATUS_LABEL과 같은 매핑을 쓴다.
 const STATUS_LABEL: Record<string, string> = {
@@ -27,8 +27,6 @@ const STATUS_LABEL: Record<string, string> = {
   accepted: '합격',
   rejected: '불합격',
 };
-// 지원자 본인이 내용을 수정할 수 있는 상태 — 서버의 상태 가드와 동일하게 유지한다.
-const EDITABLE_STATUSES = ['pending', 'submitted', 'needs_revision'];
 
 const Stack = styled.div({
   display: 'flex',
@@ -146,11 +144,6 @@ const AttachmentButton = styled.button({
   cursor: 'pointer',
   '&:disabled': { cursor: 'not-allowed', color: c.gray500 },
 });
-
-/** 저장된 답변(questionId → value)을 편집 폼의 초기값으로 쓴다. */
-function answersFromSaved(formAnswers: ApplicationFormAnswer[] | undefined): Answers {
-  return Object.fromEntries((formAnswers ?? []).map((answer) => [answer.questionId, answer.value]));
-}
 
 function Attachment({
   applicationId,
