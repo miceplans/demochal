@@ -818,7 +818,8 @@ describe('PaymentsService', () => {
       expect(ordersUpdateSet).toHaveBeenCalledTimes(1);
       expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
       expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
-      expect(adsUpdateSet).not.toHaveBeenCalled();
+      // 만료된 예약은 주문 취소와 함께 preparing 광고도 종료된다.
+      expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'ended' });
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
       );
@@ -886,7 +887,8 @@ describe('PaymentsService', () => {
       );
       expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
       expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
-      expect(adsUpdateSet).not.toHaveBeenCalled();
+      // 만료된 예약은 주문 취소와 함께 preparing 광고도 종료된다.
+      expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'ended' });
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
       );
