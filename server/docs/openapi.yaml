@@ -2134,6 +2134,8 @@ paths:
         `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
         하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
         재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+        가상계좌는 발급만 끝난 상태(`WAITING_FOR_DEPOSIT`)라 주문을 `pending`으로 두고 `virtualAccount`(입금 계좌)를
+        돌려준다. 입금되면 `DONE` 웹훅이 주문을 확정하고, 기한이 지나면 `EXPIRED` 웹훅이 주문을 취소한다.
       requestBody:
         required: true
         content:
@@ -2141,10 +2143,10 @@ paths:
             schema: { $ref: '#/components/schemas/ConfirmPaymentRequest' }
       responses:
         '200':
-          description: 확정된 주문
+          description: 확정된 주문(가상계좌는 입금 대기 중인 pending 주문 + 계좌 정보)
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Order' }
+              schema: { $ref: '#/components/schemas/ConfirmPaymentResult' }
         '401': { $ref: '#/components/responses/Unauthorized' }
         '404': { $ref: '#/components/responses/NotFound' }
         '409': { description: 결제할 수 없는 주문 상태(paid/canceled 등) }
@@ -4567,6 +4569,19 @@ components:
         amount: { type: integer, description: 결제 금액 (원) }
         status: { type: string, enum: [pending, paid, canceled] }
         createdAt: { type: string, format: date-time }
+    ConfirmPaymentResult:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            virtualAccount:
+              type: object
+              description: 가상계좌 결제에서 입금 전일 때만 포함된다.
+              required: [bankCode, accountNumber, dueDate]
+              properties:
+                bankCode: { type: string, description: '금융결제원 은행 코드 (예: 088 신한)' }
+                accountNumber: { type: string }
+                dueDate: { type: string, format: date-time, description: 입금 기한 }
     ConfirmPaymentRequest:
       type: object
       required: [orderId, paymentKey, amount]

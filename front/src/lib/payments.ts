@@ -17,11 +17,29 @@ export function getTossPayment(): Promise<TossPaymentsPayment> | null {
   return paymentPromise;
 }
 
+/**
+ * 구매자가 고르는 결제 수단. CARD는 카드 결제창, 나머지 간편결제는 해당 앱 자체창을 바로 연다.
+ * VIRTUAL_ACCOUNT는 계좌만 발급하므로 입금 확인까지 주문이 pending으로 남는다.
+ */
+export type PaymentMethod = 'CARD' | 'TOSSPAY' | 'KAKAOPAY' | 'NAVERPAY' | 'VIRTUAL_ACCOUNT';
+
+export const paymentMethodOptions: ReadonlyArray<{ value: PaymentMethod; label: string }> = [
+  { value: 'CARD', label: '카드' },
+  { value: 'TOSSPAY', label: '토스페이' },
+  { value: 'KAKAOPAY', label: '카카오페이' },
+  { value: 'NAVERPAY', label: '네이버페이' },
+  { value: 'VIRTUAL_ACCOUNT', label: '가상계좌' },
+];
+
+// 가상계좌 입금 기한. 기한이 지나면 토스가 EXPIRED 웹훅을 보내 서버가 주문을 취소한다.
+const VIRTUAL_ACCOUNT_VALID_HOURS = 24;
+
 export interface TossPaymentParams {
   orderId: string;
   amount: number;
   orderName: string;
   flow?: 'ad';
+  method?: PaymentMethod;
 }
 
 /**
@@ -34,18 +52,38 @@ export async function requestTossPayment({
   amount,
   orderName,
   flow,
+  method = 'CARD',
 }: TossPaymentParams): Promise<boolean> {
   const payment = getTossPayment();
   if (!payment) return false;
   const tossPayment = await payment;
-  await tossPayment.requestPayment({
-    method: 'CARD',
-    amount: { value: amount, currency: 'KRW' },
+  const common = {
+    amount: { value: amount, currency: 'KRW' as const },
     orderId,
     orderName,
     successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
     failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
-  });
+  };
+  if (method === 'VIRTUAL_ACCOUNT') {
+    await tossPayment.requestPayment({
+      ...common,
+      method: 'VIRTUAL_ACCOUNT',
+      virtualAccount: {
+        cashReceipt: { type: '미발행' },
+        validHours: VIRTUAL_ACCOUNT_VALID_HOURS,
+      },
+    });
+  } else if (method === 'CARD') {
+    await tossPayment.requestPayment({ ...common, method: 'CARD' });
+  } else {
+    // 간편결제: DIRECT로 해당 간편결제 앱 자체창을 바로 연다.
+    // https://docs.tosspayments.com/codes/org-codes#간편결제사-코드
+    await tossPayment.requestPayment({
+      ...common,
+      method: 'CARD',
+      card: { flowMode: 'DIRECT', easyPay: method },
+    });
+  }
   return true;
 }
 

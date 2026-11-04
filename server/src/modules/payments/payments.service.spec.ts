@@ -573,6 +573,70 @@ describe('PaymentsService', () => {
   describe('confirmPayment', () => {
     const confirmDto = { orderId: 'order-1', paymentKey: 'pay-key-1', amount: 50000 };
 
+    it('keeps the order pending and returns the account for a WAITING_FOR_DEPOSIT virtual account', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'WAITING_FOR_DEPOSIT',
+          orderId: 'order-1',
+          paymentKey: 'pay-key-1',
+          totalAmount: 50000,
+          virtualAccount: {
+            bankCode: '088',
+            accountNumber: 'X1234567890',
+            dueDate: '2026-11-05T12:00:00+09:00',
+          },
+        }),
+      });
+      const { db, transaction } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      const result = await service.confirmPayment('user-1', confirmDto);
+
+      expect(result).toMatchObject({
+        id: 'order-1',
+        status: 'pending',
+        virtualAccount: {
+          bankCode: '088',
+          accountNumber: 'X1234567890',
+          dueDate: '2026-11-05T12:00:00+09:00',
+        },
+      });
+      expect(transaction).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('rejects a WAITING_FOR_DEPOSIT response whose amount does not match the order', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          status: 'WAITING_FOR_DEPOSIT',
+          orderId: 'order-1',
+          paymentKey: 'pay-key-1',
+          totalAmount: 1,
+          virtualAccount: { bankCode: '088', accountNumber: 'X', dueDate: 'd' },
+        }),
+      });
+      const { db } = createDbStub();
+      const orders = {
+        ...createOrdersStub('pending'),
+        findById: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: 'pending', userId: 'user-1' }),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(service.confirmPayment('user-1', confirmDto)).rejects.toThrow(
+        '결제 정보가 주문 내용과 일치하지 않습니다.',
+      );
+    });
+
     it('confirms with Toss and settles the order in ONE transaction', async () => {
       fetchMock.mockResolvedValue(tossResponse('DONE'));
       const { db, tx, transaction, insertValues } = createDbStub();
@@ -892,6 +956,17 @@ describe('PaymentsService', () => {
       );
     });
   });
+  it('acks webhooks without a data wrapper (legacy DEPOSIT_CALLBACK) instead of throwing', async () => {
+    fetchMock.mockClear();
+    const { db } = createDbStub();
+    const service = new PaymentsService(db, createOrdersStub('pending') as any);
+
+    await expect(
+      service.handleTossWebhook({ eventType: 'DEPOSIT_CALLBACK' } as any),
+    ).resolves.toBeUndefined();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('acks IN_PROGRESS/READY webhooks without calling Toss or touching the order', async () => {
     fetchMock.mockClear();
     const { db, transaction } = createDbStub();
