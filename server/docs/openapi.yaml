@@ -2376,8 +2376,13 @@ paths:
                   }
                 imageFileId: { type: string, format: uuid }
                 landingUrl: { type: string }
-                startDate: { type: string, format: date }
-                endDate: { type: string, format: date }
+                startDate: { type: string, format: date, description: 오늘(KST) 이후 }
+                endDate:
+                  {
+                    type: string,
+                    format: date,
+                    description: 시작일 이후. 시작일 포함 최대 365일(1년)까지만 허용하며 넘으면 400.,
+                  }
                 title:
                   {
                     type: string,
