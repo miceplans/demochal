@@ -7,12 +7,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  fileAnswerIds,
-  isAnswered,
-  isAnswerValid,
-  MAX_FILE_ANSWERS,
-} from './ApplicationQuestions.logic';
+import { fileAnswerIds, isAnswered, MAX_FILE_ANSWERS } from './ApplicationQuestions.logic';
 import type { Answers, Question } from './ApplicationQuestions.logic';
 
 export { fileAnswerIds, isAnswerValid, MAX_FILE_ANSWERS } from './ApplicationQuestions.logic';
