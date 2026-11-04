@@ -26,7 +26,9 @@ export type CreateAdBody = {
   expectedDailyPrice?: number;
   imageFileId?: string;
   landingUrl?: string;
+  /** 오늘(KST) 이후 */
   startDate: string;
+  /** 시작일 이후. 시작일 포함 최대 365일(1년)까지만 허용하며 넘으면 400. */
   endDate: string;
   /** implemented 확장 — 원 스키마엔 title/challengeId가 없어 Ad.title의 출처가 비어 있었음. 생략 시 "{상품명} 광고"로 대체. */
   title?: string;

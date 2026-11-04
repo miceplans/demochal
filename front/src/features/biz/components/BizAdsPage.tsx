@@ -56,6 +56,10 @@ function extractErrorMessage(error: unknown): string {
 
 // 광고 예약은 결제 전 30분만 날짜를 잡아두므로(서버 PREPARING_TTL_MS) 24시간 입금 기한의
 // 가상계좌는 입금 시점에 예약이 풀려 자동 환불될 수 있다 — 광고 결제에서는 제외한다.
+// 광고 계약 최대 기간(시작·종료일 포함 일수). 서버 ad-period.ts의 AD_MAX_DAYS와 같은 값이다.
+const AD_MAX_DAYS = 365;
+const DAY_MS = 86_400_000;
+
 const AD_PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'TOSSPAY', 'KAKAOPAY', 'NAVERPAY'];
 
 export function BizAdsPage() {
@@ -234,6 +238,10 @@ export function BizAdsPage() {
   };
   const submitReservation = async () => {
     if (!selectedAd || submitting) return;
+    if (paymentDays > AD_MAX_DAYS) {
+      toast.error('광고 기간이 너무 길어요', '광고 계약은 최대 1년까지 신청할 수 있어요');
+      return;
+    }
     if (overlaps) {
       toast.error('이미 계약된 기간이 포함되어 있습니다.');
       return;
@@ -567,6 +575,16 @@ export function BizAdsPage() {
                           mode="range"
                           disabled={[
                             { before: new Date(`${toDateKey(new Date())}T00:00:00`) },
+                            // 시작일을 고른 뒤에는 최대 1년을 넘는 종료일을 고를 수 없게 막는다.
+                            ...(pendingRange?.from && !pendingRange.to
+                              ? [
+                                  {
+                                    after: new Date(
+                                      pendingRange.from.getTime() + (AD_MAX_DAYS - 1) * DAY_MS,
+                                    ),
+                                  },
+                                ]
+                              : []),
                             ...reserved.map((period) => ({
                               from: new Date(`${period.startDate.slice(0, 10)}T00:00:00`),
                               to: new Date(`${period.endDate.slice(0, 10)}T00:00:00`),
