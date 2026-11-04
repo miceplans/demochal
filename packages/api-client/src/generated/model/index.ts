@@ -109,6 +109,8 @@ export * from './checkHealth200';
 export * from './checkHealth503';
 export * from './confirmMfaTotpBody';
 export * from './confirmPaymentRequest';
+export * from './confirmPaymentResult';
+export * from './confirmPaymentResultVirtualAccount';
 export * from './contentBlock';
 export * from './contentBlockContent';
 export * from './contentBlockType';

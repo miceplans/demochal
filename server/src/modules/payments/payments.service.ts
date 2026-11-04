@@ -41,6 +41,15 @@ interface TossPayment {
   // Present on DONE/CANCELED/PARTIAL_CANCELED responses: the amount still not
   // canceled. https://docs.tosspayments.com/reference#payment-객체
   balanceAmount?: number;
+  // 가상계좌 결제에만 있다. https://docs.tosspayments.com/reference#virtualaccount
+  virtualAccount?: { accountNumber?: string; bankCode?: string; dueDate?: string };
+}
+
+/** 가상계좌 발급 직후(입금 전) 구매자에게 안내할 계좌 정보. */
+export interface PendingVirtualAccount {
+  bankCode: string;
+  accountNumber: string;
+  dueDate: string;
 }
 
 @Injectable()
@@ -53,6 +62,14 @@ export class PaymentsService {
   ) {}
 
   async handleTossWebhook(payload: TossWebhookPayload): Promise<void> {
+    // 구형 DEPOSIT_CALLBACK 등 data 래퍼가 없는 페이로드는 paymentKey가 없어 재조회 대사를 할 수
+    // 없다. 500(→재전송 폭주) 대신 로그를 남기고 수신 확인한다.
+    // TODO: 가상계좌 입금은 PAYMENT_STATUS_CHANGED 웹훅으로 처리한다 —
+    // https://docs.tosspayments.com/reference/using-api/webhook-events
+    if (!payload?.data) {
+      this.logger.warn(`Ignoring Toss webhook without data (eventType=${payload?.eventType})`);
+      return;
+    }
     const { status, paymentKey, orderId } = payload.data;
     if (!paymentKey || !orderId) return;
 
@@ -115,11 +132,28 @@ export class PaymentsService {
 
     // 토스 승인 요청에는 클라이언트가 본 금액이 아니라 서버에 저장된 주문 금액을 싣는다.
     const tossPayment = await this.confirmWithToss(dto, order.amount);
-    if (
-      tossPayment.status !== 'DONE' ||
-      tossPayment.orderId !== order.id ||
-      tossPayment.totalAmount !== order.amount
-    ) {
+    if (tossPayment.orderId !== order.id || tossPayment.totalAmount !== order.amount) {
+      this.logger.warn(`Rejected unverified Toss confirmation for order ${order.id}`);
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+    }
+    if (tossPayment.status === 'WAITING_FOR_DEPOSIT') {
+      // 가상계좌는 발급만 끝난 상태다. 주문은 pending으로 두고 입금 시 DONE 웹훅(Toss 재조회
+      // 대사)이 확정한다 — 입금 기한이 지나면 EXPIRED 웹훅이 주문을 취소한다.
+      // 새로고침으로 승인을 다시 호출해도 토스가 같은 결과(ALREADY_PROCESSED_PAYMENT)를 돌려준다.
+      const account = tossPayment.virtualAccount;
+      if (!account?.accountNumber || !account.bankCode || !account.dueDate) {
+        throw new BadGatewayException('가상계좌 정보를 확인할 수 없습니다.');
+      }
+      return {
+        ...order,
+        virtualAccount: {
+          bankCode: account.bankCode,
+          accountNumber: account.accountNumber,
+          dueDate: account.dueDate,
+        },
+      };
+    }
+    if (tossPayment.status !== 'DONE') {
       this.logger.warn(`Rejected unverified Toss confirmation for order ${order.id}`);
       throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
