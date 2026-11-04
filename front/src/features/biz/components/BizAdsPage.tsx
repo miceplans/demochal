@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { createPortal } from 'react-dom';
@@ -536,6 +537,7 @@ export function BizAdsPage() {
                     기존 계약 종료일 다음 날부터 신청할 수 있습니다. 기존 계약의 금액과 기간은
                     유지됩니다.
                   </p>
+                  <ProductLink href={hrefOf('/advertising/products')}>상품 설명 &gt;</ProductLink>
                   {reserved.map((period) => (
                     <small key={period.startDate}>
                       예약 불가: {period.startDate.slice(0, 10)} ~ {period.endDate.slice(0, 10)}
@@ -770,6 +772,13 @@ const PaymentPopup = styled.div({
   borderRadius: 9,
   background: c.white,
   boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+});
+const ProductLink = styled(Link)({
+  alignSelf: 'flex-start',
+  color: c.primary,
+  textDecoration: 'none',
+  ...textStyle.subtitle,
+  '&:hover': { textDecoration: 'underline' },
 });
 const PaymentDate = styled.div({
   display: 'flex',
