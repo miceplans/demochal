@@ -81,6 +81,24 @@ describe('데스크톱 헤더 주 나브바', () => {
   });
 });
 
+describe('공개 푸터 정책 링크', () => {
+  afterEach(cleanup);
+
+  it('환불 정책 페이지 링크를 포함한다', () => {
+    render(
+      <ThemeProvider theme={theme}>
+        <UserShell navigation={false}>
+          <div />
+        </UserShell>
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByRole('link', { name: '환불 정책' }).getAttribute('href')).toBe(
+      '/refund-policy',
+    );
+  });
+});
+
 describe('로그인 사용자 프로필 아바타', () => {
   beforeEach(() => {
     mocks.auth = { status: 200, data: { name: '홍길동', profileImageUrl: null } };

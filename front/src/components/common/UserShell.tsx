@@ -269,6 +269,7 @@ export function Footer() {
           <Link href="/privacy">개인정보처리방침</Link>
           <Link href="/terms">이용약관</Link>
           <Link href="/youth">청소년 보호 정책</Link>
+          <Link href="/refund-policy">환불 정책</Link>
         </Row>
       </Row>
       <Row style={{ justifyContent: 'space-between', alignItems: 'flex-end' }}>
