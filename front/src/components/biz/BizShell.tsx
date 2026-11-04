@@ -8,6 +8,16 @@ import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
 import { Badge as BaseBadge } from '@/components/ui/Badge';
+import {
+  FLOAT_MAX_WIDTH,
+  FLOAT_SCROLL_RANGE,
+  isMenuActive,
+  lerp,
+  lerpRgba,
+  routeOf,
+} from './BizShell.logic';
+
+export { isMenuActive, routeOf } from './BizShell.logic';
 
 const BizNavContext = createContext('');
 export function BizNavProvider({ base, children }: { base: string; children: ReactNode }) {
@@ -24,9 +34,6 @@ export function BizLink({
 }: { href: string; children: ReactNode } & Omit<Parameters<typeof Link>[0], 'href'>) {
   const hrefOf = useBizHref();
   return <Link href={hrefOf(href)} {...rest} />;
-}
-export function routeOf(pathname: string) {
-  return pathname.startsWith('/biz') ? pathname.slice(4) || '/' : pathname;
 }
 
 export const BizGlobalStyles = (
@@ -64,14 +71,6 @@ export function Logo({ size = 24, mono = false }: { size?: number; mono?: boolea
     </BizBrand>
   );
 }
-
-const lerp = (from: number, to: number, t: number) => from + (to - from) * t;
-const lerpRgba = (
-  from: [number, number, number, number],
-  to: [number, number, number, number],
-  t: number,
-) =>
-  `rgba(${lerp(from[0], to[0], t).toFixed(1)}, ${lerp(from[1], to[1], t).toFixed(1)}, ${lerp(from[2], to[2], t).toFixed(1)}, ${lerp(from[3], to[3], t).toFixed(3)})`;
 
 const LandingHeaderBar = styled.header<{ progress: number; width: string }>(
   ({ progress: p, width }) => ({
@@ -127,9 +126,6 @@ const HeaderSignup = styled(BizLink)({
   fontSize: 12,
   [mobile]: { width: 'auto', padding: '0 12px' },
 });
-
-const FLOAT_SCROLL_RANGE = 96;
-const FLOAT_MAX_WIDTH = 1280;
 
 export function BizLandingHeader() {
   const [progress, setProgress] = useState(0);
@@ -239,18 +235,6 @@ export const menu: [string, string][] = [
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
 ];
-
-// 메뉴에 없는 하위 화면이 어느 메뉴 아래에 속하는지 (Figma: 리포트는 광고 관리)
-const menuAliases: Record<string, string[]> = {
-  '/ads': ['/reports'],
-};
-
-export function isMenuActive(route: string, href: string) {
-  if (href === '/dashboard') return route === '/' || route === '/dashboard';
-  return [href, ...(menuAliases[href] ?? [])].some(
-    (prefix) => route === prefix || route.startsWith(`${prefix}/`),
-  );
-}
 
 export function BizSidebar() {
   const route = routeOf(usePathname());

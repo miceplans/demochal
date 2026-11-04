@@ -18,17 +18,13 @@ import {
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
+import { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from './charts.logic';
+import type { TooltipEntry } from './charts.logic';
+
+export { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from './charts.logic';
+export type { TooltipEntry } from './charts.logic';
 
 /* ---------- shared tooltip ---------- */
-
-interface TooltipEntry {
-  dataKey?: string | number;
-  name?: string | number;
-  value?: string | number;
-  color?: string;
-  stroke?: string;
-  fill?: string;
-}
 
 function ChartTooltip({
   active,
@@ -84,25 +80,6 @@ const ChartCard = styled.div({
   borderRadius: 16,
   background: c.white,
 });
-
-function arcPath(
-  cx: number,
-  cy: number,
-  radius: number,
-  startAngle: number,
-  endAngle: number,
-): string {
-  const toPoint = (angle: number) => {
-    const rad = (angle * Math.PI) / 180;
-    return [cx + radius * Math.cos(rad), cy + radius * Math.sin(rad)] as const;
-  };
-  const [startX, startY] = toPoint(startAngle);
-  const [endX, endY] = toPoint(endAngle);
-  let delta = endAngle - startAngle;
-  if (delta < 0) delta += 360;
-  const largeArc = delta > 180 ? 1 : 0;
-  return `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`;
-}
 
 function GaugeBar(props: {
   cx?: number;
@@ -233,15 +210,6 @@ const Tab = styled.button<{ active?: boolean }>(({ active }) => ({
   color: active ? c.white : c.gray900,
   ...textStyle.finePrint,
 }));
-
-const TRAFFIC_TICK_COUNT = 5;
-
-/** 시리즈 최댓값을 TRAFFIC_TICK_COUNT 등분했을 때 눈금이 정수로 떨어지는 상한. */
-function trafficTop(values: number[]) {
-  const max = Math.max(0, ...values);
-  const step = Math.max(1, Math.ceil(max / TRAFFIC_TICK_COUNT));
-  return step * TRAFFIC_TICK_COUNT;
-}
 
 const compactNumber = new Intl.NumberFormat('ko-KR', { notation: 'compact' });
 

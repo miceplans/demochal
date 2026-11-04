@@ -11,9 +11,7 @@ import { toTeamCard } from '@/components/teams/team-model';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { PersonCardModel } from './person';
-
-// Figma 1376:8413 — 사람찾기 빈 상태: "나와 맞는 사람 찾기" 인물 카드 3장 + 아래에 공모전·팀 추천.
-const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+import { DEFAULT_PROFILE_IMAGE } from './PeopleRecommendations.logic';
 
 const Section = styled.section({ display: 'flex', flexDirection: 'column', gap: 10 });
 const Heading = styled.h2({

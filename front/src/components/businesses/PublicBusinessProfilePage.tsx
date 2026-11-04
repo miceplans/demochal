@@ -7,22 +7,13 @@ import { UserShell, Content } from '@/components/common/UserShell';
 import { LoadingState } from '@/components/common/LoadingState';
 import { NotFound } from '@/components/common/NotFound';
 import { Muted, Tag } from '@/components/common/Primitives';
-import type { BadgeTone } from '@/components/ui/Badge';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { daysUntil, isPastDeadline } from '@/lib/date';
-
-// 서버 displayStatus는 verified→'승인', rejected→'반려'를 내린다(server business-status.ts).
-// 그 외 값(레거시 가승인 등)이 날아와도 뱃지가 깨지지 않도록 amber으로 폰백한다.
-const verificationTone = (displayStatus?: string): BadgeTone =>
-  displayStatus === '승인' ? 'green' : displayStatus === '반려' ? 'red' : 'amber';
-
-interface IntroBlock {
-  type?: string;
-  content?: Record<string, unknown>;
-}
+import { PAGE_SIZE, verificationTone } from './PublicBusinessProfilePage.logic';
+import type { IntroBlock } from './PublicBusinessProfilePage.logic';
 
 // contentBlocks 편집기가 아직 없어 실제로는 빈 배열이지만, 저장된 블록이 있으면 읽기 전용으로 보여준다.
 function IntroBlocks({ blocks }: { blocks?: readonly IntroBlock[] }) {
@@ -199,7 +190,6 @@ function ChallengeSection({
   );
 }
 
-const PAGE_SIZE = 8;
 const Pager = styled.nav({
   display: 'flex',
   justifyContent: 'center',
