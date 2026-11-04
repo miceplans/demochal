@@ -8,6 +8,7 @@ import { textStyle } from '@/styles/typography';
 import { usePathname, useRouter } from 'next/navigation';
 import { generated } from '@semochal/api-client';
 import { Badge as BaseBadge } from '@/apps/user/components/ui/Badge';
+import { useUserStore } from '@/store/useUserStore';
 import {
   FLOAT_MAX_WIDTH,
   FLOAT_SCROLL_RANGE,
@@ -348,6 +349,10 @@ export function BizFooter({ logoSize = 31 }: { logoSize?: number }) {
 }
 
 export function BizShell({ children, footer = true }: { children: ReactNode; footer?: boolean }) {
+  // 사용자 스토어 재수화는 UserShell에만 있어, 비즈 콘솔에서도 공고 드래프트 복원이 동작하게 맞춘다.
+  useEffect(() => {
+    void useUserStore.persist.rehydrate();
+  }, []);
   return (
     <>
       {BizGlobalStyles}
