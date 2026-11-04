@@ -93,3 +93,7 @@ export const useUserStore = create<UserState>()(
     },
   ),
 );
+
+// skipHydration이라도 최초 진입(새로고침/직접 URL)에서 렌더 전에 저장값을 불러오게 한다.
+// UserShell/BizShell의 effect 재수화는 이미 수화된 뒤라 무해하다.
+if (typeof window !== 'undefined') void useUserStore.persist.rehydrate();

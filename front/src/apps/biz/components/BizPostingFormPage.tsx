@@ -765,7 +765,7 @@ function PostingForm({
   const [sponsor, setSponsor] = useState(base.sponsor);
   const [supporter, setSupporter] = useState(base.supporter);
   const [targetOther, setTargetOther] = useState(base.targetOther);
-  const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
+  const [attachments, setAttachments] = useState<Attachment[]>(base.attachments);
   const [preview, setPreview] = useState<PostingPreview | null>(null);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [textColor, setTextColor] = useState('#000000');
@@ -799,21 +799,21 @@ function PostingForm({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const posterObjectUrl = useRef<string | null>(null);
   const [recruit, setRecruit] = useState<'semo' | 'external'>(
-    initial.recruitMethod === 'external' ? 'external' : 'semo',
+    base.recruitMethod === 'external' ? 'external' : 'semo',
   );
   const [recruitUrl, setRecruitUrl] = useState(base.recruitUrl ?? '');
   const [summary, setSummary] = useState(base.summary ?? '');
   const [hashtags, setHashtags] = useState(base.hashtags ?? '');
-  const [topics, setTopics] = useState<string[]>(initial.topics ?? []);
+  const [topics, setTopics] = useState<string[]>(base.topics ?? []);
   const [inquiryContact, setInquiryContact] = useState(base.inquiryContact ?? '');
-  const [visibility, setVisibility] = useState<'public' | 'private'>(
-    initial.visibility ?? 'public',
-  );
+  const [visibility, setVisibility] = useState<'public' | 'private'>(base.visibility ?? 'public');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
   const [failSeq, setFailSeq] = useState(0);
+  // 본문 에디터 변경을 드래프트 저장 effect에 전달하는 신호.
+  const [descriptionTick, setDescriptionTick] = useState(0);
   const isInvalid = (key: string) => invalid.has(key);
   const clearInvalid = (...keys: string[]) =>
     setInvalid((prev) =>
@@ -1295,6 +1295,7 @@ function PostingForm({
   }, [
     persistDraft,
     savePosting,
+    descriptionTick,
     initial.price,
     title,
     startDate,
@@ -1677,6 +1678,8 @@ function PostingForm({
                 }}
                 onInput={(event) => {
                   clearInvalid('description');
+                  // 드래프트 저장 effect가 본문 변경도 감지하게 변경 사실을 알린다.
+                  setDescriptionTick((n) => n + 1);
                   const el = event.currentTarget;
                   // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
                   if (!el.innerText.trim() && !el.querySelector('img,hr')) {
@@ -1690,6 +1693,7 @@ function PostingForm({
                 onCompositionEnd={(event) => {
                   // 조합이 끝난 시점에 남은 font 태그를 span으로 바꾼다(캐럿 보존).
                   normalizeFontTags(event.currentTarget, lastFontSizePx.current);
+                  setDescriptionTick((n) => n + 1);
                 }}
                 contentEditable
                 suppressContentEditableWarning

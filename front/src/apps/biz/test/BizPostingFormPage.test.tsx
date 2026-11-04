@@ -78,6 +78,43 @@ async function fillRequired() {
 }
 
 describe('BizPostingFormPage', () => {
+  it('store에 저장된 공고 드래프트가 있으면 작성 폼을 되살린다', () => {
+    useUserStore.setState({
+      postingDraft: {
+        title: '저장된 공고',
+        description: '<p>저장된 본문</p>',
+        price: 0,
+        startDate: '2026-11-10T10:00',
+        endDate: '2026-11-20T18:00',
+        eventStartDate: '',
+        eventEndDate: '',
+        host: '세모챌',
+        supervisor: '',
+        sponsor: '',
+        supporter: '',
+        targetOther: '',
+        attachments: [],
+        category: 'IT/SW',
+        targets: [],
+        organizerType: null,
+        prizeAmount: '',
+        topics: ['# 과학/IT/AI'],
+        visibility: 'private',
+        recruitMethod: 'external',
+        recruitUrl: 'https://example.com/apply',
+      },
+    });
+    renderForm();
+    // 제목·주최·주제·비공개·외부 모집 URL까지 드래프트 값이 그대로 복원된다.
+    expect((screen.getByLabelText('공고 제목') as HTMLInputElement).value).toBe('저장된 공고');
+    expect((screen.getByLabelText('주최') as HTMLInputElement).value).toBe('세모챌');
+    expect(screen.getByText('# 과학/IT/AI')).not.toBeNull();
+    expect((screen.getByLabelText('비공개') as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByLabelText('외부 링크') as HTMLInputElement).value).toBe(
+      'https://example.com/apply',
+    );
+  });
+
   beforeEach(() => {
     // 드래프트 저장이 테스트 간에 새지 않도록 초기화한다.
     useUserStore.setState({ postingDraft: null });
