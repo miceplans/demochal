@@ -15,6 +15,7 @@ import {
   ApplicationQuestions,
   fileAnswerIds,
   isAnswerValid,
+  type Answers,
 } from './ApplicationQuestions';
 import { answersFromSaved, EDITABLE_STATUSES } from './ApplicationDetailPage.logic';
 
