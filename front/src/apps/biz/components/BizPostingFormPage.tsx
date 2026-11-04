@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizContent, useBizHref } from '@/apps/biz/components/BizShell';
 import { useToast } from '@/apps/user/components/common/Toast';
+import { useUserStore } from '@/store/useUserStore';
 import { DayPicker } from 'react-day-picker';
 import { ko } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
@@ -97,6 +98,7 @@ export function BizPostingFormPage() {
   return (
     <PostingForm
       initial={EMPTY_POSTING}
+      persistDraft
       submitLabel="게시하기"
       submittingLabel="게시 중…"
       disabled={loading || !businessId}
@@ -126,6 +128,7 @@ export function BizPostingFormPage() {
             visibility: values.visibility,
           },
         });
+        useUserStore.getState().savePosting(null);
         router.push(hrefOf(`/postings/${response.data.id}`));
       }}
       showRecruitMethod
@@ -728,6 +731,7 @@ function PostingForm({
   disabled = false,
   initialError = '',
   showRecruitMethod = false,
+  persistDraft = false,
   onSubmit,
 }: {
   initial: PostingInput;
@@ -736,38 +740,55 @@ function PostingForm({
   disabled?: boolean;
   initialError?: string;
   showRecruitMethod?: boolean;
+  /** 생성 모드에서 페이지를 벗어나도 작성 중인 내용을 store 드래프트로 유지할지 여부. */
+  persistDraft?: boolean;
   onSubmit: (values: PostingValues) => Promise<void>;
 }) {
+  // 생성 모드에서는 store의 공고 드래프트가 있으면 그것으로 폼을 되살린다.
+  // 마운트 시 한 번만 스냅샷해 두고, 이후 렌더에서 live draft를 읽으면
+  // 저장 effect로 바뀐 값이 폼을 다시 덮어쓰는 루프가 생긴다.
+  const [base] = useState<PostingInput & { posterFileId?: string }>(() =>
+    persistDraft ? (useUserStore.getState().postingDraft ?? initial) : initial,
+  );
+  const restored = persistDraft ? base : null;
   const router = useRouter();
   const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  const [title, setTitle] = useState(initial.title);
-  const [startDate, setStartDate] = useState(initial.startDate);
-  const [endDate, setEndDate] = useState(initial.endDate);
-  const [eventStartDate, setEventStartDate] = useState(initial.eventStartDate);
-  const [eventEndDate, setEventEndDate] = useState(initial.eventEndDate);
-  const [host, setHost] = useState(initial.host);
-  const [supervisor, setSupervisor] = useState(initial.supervisor);
-  const [sponsor, setSponsor] = useState(initial.sponsor);
-  const [supporter, setSupporter] = useState(initial.supporter);
-  const [targetOther, setTargetOther] = useState(initial.targetOther);
+  const [title, setTitle] = useState(base.title);
+  const [startDate, setStartDate] = useState(base.startDate);
+  const [endDate, setEndDate] = useState(base.endDate);
+  const [eventStartDate, setEventStartDate] = useState(base.eventStartDate);
+  const [eventEndDate, setEventEndDate] = useState(base.eventEndDate);
+  const [host, setHost] = useState(base.host);
+  const [supervisor, setSupervisor] = useState(base.supervisor);
+  const [sponsor, setSponsor] = useState(base.sponsor);
+  const [supporter, setSupporter] = useState(base.supporter);
+  const [targetOther, setTargetOther] = useState(base.targetOther);
   const [attachments, setAttachments] = useState<Attachment[]>(initial.attachments);
   const [preview, setPreview] = useState<PostingPreview | null>(null);
   const [uploadingAttachments, setUploadingAttachments] = useState(false);
   const [textColor, setTextColor] = useState('#000000');
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0]!);
-  const [category, setCategory] = useState(initial.category);
-  const [targets, setTargets] = useState(initial.targets);
-  const [organizerType, setOrganizerType] = useState(initial.organizerType);
-  const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
+  const [category, setCategory] = useState(base.category);
+  const [targets, setTargets] = useState(base.targets);
+  const [organizerType, setOrganizerType] = useState(base.organizerType);
+  const [prizeAmount, setPrizeAmount] = useState(base.prizeAmount);
   // 포스터는 크롭 모달에서 썸네일 영역까지 함께 확정된 뒤 원본+썸네일을 같이 올린다.
   const [poster, setPoster] = useState<{
     posterFileId: string;
     thumbnailFileId: string;
     previewUrl: string;
-  } | null>(null);
-  const existingPosterUrl = initial.posterUrl ?? null;
+  } | null>(
+    restored?.posterFileId
+      ? {
+          posterFileId: restored.posterFileId,
+          thumbnailFileId: restored.thumbnailFileId ?? '',
+          previewUrl: restored.posterUrl ?? '',
+        }
+      : null,
+  );
+  const existingPosterUrl = base.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
   // OCR 자동 추천 위치 — 포스터를 고른 뒤 백그라운드 인식이 끝나면 늦게 세팅된다.
   const [posterAutoPosition, setPosterAutoPosition] = useState<Position | null>(null);
@@ -780,11 +801,11 @@ function PostingForm({
   const [recruit, setRecruit] = useState<'semo' | 'external'>(
     initial.recruitMethod === 'external' ? 'external' : 'semo',
   );
-  const [recruitUrl, setRecruitUrl] = useState(initial.recruitUrl ?? '');
-  const [summary, setSummary] = useState(initial.summary ?? '');
-  const [hashtags, setHashtags] = useState(initial.hashtags ?? '');
+  const [recruitUrl, setRecruitUrl] = useState(base.recruitUrl ?? '');
+  const [summary, setSummary] = useState(base.summary ?? '');
+  const [hashtags, setHashtags] = useState(base.hashtags ?? '');
   const [topics, setTopics] = useState<string[]>(initial.topics ?? []);
-  const [inquiryContact, setInquiryContact] = useState(initial.inquiryContact ?? '');
+  const [inquiryContact, setInquiryContact] = useState(base.inquiryContact ?? '');
   const [visibility, setVisibility] = useState<'public' | 'private'>(
     initial.visibility ?? 'public',
   );
@@ -828,9 +849,9 @@ function PostingForm({
     const editor = editorRef.current;
     if (!editor) return;
     // 서식 저장 도입 전의 평문 공고는 텍스트로, 이후 공고는 정화한 HTML로 불러온다.
-    if (isRichHtml(initial.description)) editor.innerHTML = sanitizeRichHtml(initial.description);
-    else editor.innerText = initial.description;
-  }, [initial.description]);
+    if (isRichHtml(base.description)) editor.innerHTML = sanitizeRichHtml(base.description);
+    else editor.innerText = base.description;
+  }, [base.description]);
   const pendingPosterRef = useRef<CropImage | null>(null);
   useEffect(() => {
     // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
@@ -1238,7 +1259,70 @@ function PostingForm({
     }
   }
 
+  // 생성 모드에서는 작성 내용을 store 드래프트에 계속 저장해 페이지를 나갔다 돌아와도 유지한다.
+  const savePosting = useUserStore((s) => s.savePosting);
+  useEffect(() => {
+    if (!persistDraft) return;
+    savePosting({
+      title,
+      description: editorRef.current?.innerHTML ?? '',
+      price: initial.price,
+      startDate,
+      endDate,
+      eventStartDate,
+      eventEndDate,
+      host,
+      supervisor,
+      sponsor,
+      supporter,
+      targetOther,
+      attachments,
+      category,
+      posterUrl: poster?.previewUrl ?? null,
+      thumbnailFileId: poster?.thumbnailFileId ?? null,
+      posterFileId: poster?.posterFileId,
+      targets,
+      organizerType,
+      prizeAmount,
+      recruitMethod: recruit === 'external' ? 'external' : 'seMOchall',
+      recruitUrl,
+      summary,
+      hashtags,
+      topics,
+      inquiryContact,
+      visibility,
+    });
+  }, [
+    persistDraft,
+    savePosting,
+    initial.price,
+    title,
+    startDate,
+    endDate,
+    eventStartDate,
+    eventEndDate,
+    host,
+    supervisor,
+    sponsor,
+    supporter,
+    targetOther,
+    attachments,
+    category,
+    poster,
+    targets,
+    organizerType,
+    prizeAmount,
+    recruit,
+    recruitUrl,
+    summary,
+    hashtags,
+    topics,
+    inquiryContact,
+    visibility,
+  ]);
+
   const radioIcon = (on: boolean) => `${ICON}/figma-radio-${on ? 'on' : 'off'}.svg`;
+
   return (
     <FormWrap ref={formRef}>
       <Uploader>

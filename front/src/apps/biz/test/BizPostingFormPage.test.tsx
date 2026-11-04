@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
 import { BizPostingFormPage, normalizeFontTags } from '../components/BizPostingFormPage';
+import { useUserStore } from '@/store/useUserStore';
 
 const renderForm = () =>
   render(
@@ -78,6 +79,8 @@ async function fillRequired() {
 
 describe('BizPostingFormPage', () => {
   beforeEach(() => {
+    // 드래프트 저장이 테스트 간에 새지 않도록 초기화한다.
+    useUserStore.setState({ postingDraft: null });
     // jsdom에는 innerText가 없어 에디터 본문 검사가 동작하도록 textContent로 대신한다.
     Object.defineProperty(HTMLElement.prototype, 'innerText', {
       configurable: true,

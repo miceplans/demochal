@@ -1,6 +1,7 @@
 'use client';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { PostingInput } from '@/apps/biz/services/BizPostingFormPage';
 type UserState = {
   interests: string[];
   query: string;
@@ -23,12 +24,15 @@ type UserState = {
     challengeId?: string;
     answers?: Record<string, string | string[]>;
   } | null;
+  /** 공고 작성 폼 드래프트(생성 모드). posterFileId는 업로드 완료된 신규 포스터 복원용. */
+  postingDraft: (PostingInput & { posterFileId?: string }) | null;
   logout: () => void;
   setQuery: (value: string) => void;
   setSurvey: (step: string, values: string[]) => void;
   completeOnboarding: () => void;
   setRecruitment: (value: UserState['recruitment']) => void;
   saveApplication: (value: NonNullable<UserState['applicationDraft']>) => void;
+  savePosting: (value: UserState['postingDraft']) => void;
 };
 export const useUserStore = create<UserState>()(
   persist(
@@ -46,12 +50,14 @@ export const useUserStore = create<UserState>()(
         etc: '',
       },
       applicationDraft: null,
-      logout: () => set({ applicationDraft: null }),
+      logout: () => set({ applicationDraft: null, postingDraft: null }),
       setQuery: (query) => set({ query }),
       setSurvey: (step, values) => set((s) => ({ survey: { ...s.survey, [step]: values } })),
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
       setRecruitment: (recruitment) => set({ recruitment }),
       saveApplication: (applicationDraft) => set({ applicationDraft }),
+      postingDraft: null,
+      savePosting: (postingDraft) => set({ postingDraft }),
     }),
     {
       name: 'semo-user-publishing',
@@ -74,12 +80,14 @@ export const useUserStore = create<UserState>()(
         hasCompletedOnboarding,
         recruitment,
         applicationDraft,
+        postingDraft,
       }) => ({
         interests,
         survey,
         hasCompletedOnboarding,
         recruitment,
         applicationDraft,
+        postingDraft,
       }),
       skipHydration: true,
     },
