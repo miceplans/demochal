@@ -1,7 +1,7 @@
 import { ApiError } from '@semochal/api-client';
 import type { Answers } from './ApplicationQuestions';
 
-// 서버가 신청을 거부하며 날려주는 무효 첨부파일 ID(없으면 빈 배열).
+// 서버가 신청을 거부하며 내려주는 무효 첨부파일 ID(없으면 빈 배열).
 function invalidFileIdsOf(error: unknown): string[] {
   if (!(error instanceof ApiError) || !error.body || typeof error.body !== 'object') return [];
   const ids = (error.body as { invalidFileIds?: unknown }).invalidFileIds;
