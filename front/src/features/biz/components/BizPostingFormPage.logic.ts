@@ -1,5 +1,4 @@
 import { generated } from '@semochal/api-client';
-import { toDateKey } from '@/utils/date';
 import { organizerTypes } from '@/data/user-design';
 
 type Attachment = { fileId: string; name: string; size: number };

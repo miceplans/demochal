@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { formatTime } from '@/utils/date';
 import {
   AdminInlineNotice,
   AdminPageTitle,
@@ -80,18 +81,6 @@ function markThreadRead(id: string) {
   } catch {
     // 저장소를 쓸 수 없으면 읽음 표시만 생략한다.
   }
-}
-
-function formatTime(value?: string) {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString('ko-KR', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
 }
 
 export function AdminEmailsScreen() {
