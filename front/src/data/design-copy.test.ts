@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import legalCopy from './design-copy.json';
 
-const LEGAL_KEYS = ['terms', 'privacy', 'advertisingPolicy', 'youthProtection'] as const;
+const LEGAL_KEYS = [
+  'terms',
+  'privacy',
+  'advertisingPolicy',
+  'youthProtection',
+  'refundPolicy',
+] as const;
 
 const PLACEHOLDER_PATTERN = /20XX|OOO|\[[^\]]*\]/;
 
@@ -10,5 +16,13 @@ describe('design-copy legal sections', () => {
     const paragraphs = (legalCopy as Record<string, string[]>)[key];
     const offenders = paragraphs.filter((paragraph) => PLACEHOLDER_PATTERN.test(paragraph));
     expect(offenders).toEqual([]);
+  });
+
+  it('refundPolicy states the statutory withdrawal and refund basics', () => {
+    const policy = (legalCopy as Record<string, string[]>).refundPolicy.join('\n');
+    expect(policy).toContain('7일 이내');
+    expect(policy).toContain('3개월 이내');
+    expect(policy).toContain('3영업일 이내');
+    expect(policy).toContain('법정 권리');
   });
 });

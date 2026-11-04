@@ -1899,7 +1899,7 @@ export function NotificationsPage() {
 export function LegalPageBody({
   kind,
 }: {
-  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' | 'refund-policy';
 }) {
   const paragraphs =
     kind === 'privacy'
@@ -1908,7 +1908,9 @@ export function LegalPageBody({
         ? (legalCopy as { youthProtection: string[] }).youthProtection
         : kind === 'advertising-policy'
           ? (legalCopy as { advertisingPolicy: string[] }).advertisingPolicy
-          : (legalCopy as { terms: string[] }).terms;
+          : kind === 'refund-policy'
+            ? (legalCopy as { refundPolicy: string[] }).refundPolicy
+            : (legalCopy as { terms: string[] }).terms;
   // Data shape: [title, intro, heading, body?, heading, body?, ...] — a heading
   // (조/장) isn't always followed by a body: chapter dividers like "제1장 총칙"
   // sit directly before the next heading with no body of their own.
@@ -1965,7 +1967,7 @@ export function LegalPageBody({
 export function LegalPage({
   kind,
 }: {
-  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy';
+  kind: 'privacy' | 'terms' | 'youth-protection' | 'advertising-policy' | 'refund-policy';
 }) {
   return (
     <UserShell
@@ -1976,7 +1978,9 @@ export function LegalPage({
             ? '청소년 보호 정책'
             : kind === 'advertising-policy'
               ? '광고 운영 정책'
-              : '이용약관'
+              : kind === 'refund-policy'
+                ? '환불 정책'
+                : '이용약관'
       }
     >
       <LegalPageBody kind={kind} />
