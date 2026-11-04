@@ -55,6 +55,7 @@ import type {
   AdminEmailMessage,
   AdminEmailThread,
   AdminEmailThreadDetail,
+  AdminRefundRequest,
   AdminRejectResult,
   AdminSettings,
   AdminTeamDetail,
@@ -80,6 +81,7 @@ import type {
   CreateAdminEmail,
   CreateCertificateRequest,
   CreateChallengeRequest,
+  CreateRefundRequestBody,
   CreateReportRequest,
   CreateTeamRequest,
   DeleteMfaPasskeyBody,
@@ -109,6 +111,7 @@ import type {
   ListAdminContentsParams,
   ListAdminEmailsParams,
   ListAdminPortfolioBadgeRequests200Item,
+  ListAdminRefundRequestsParams,
   ListAdminReportsParams,
   ListAdminUsersParams,
   ListChallenges200,
@@ -149,12 +152,15 @@ import type {
   PublicBusiness,
   PublicBusinessChallenge,
   PublishAdminChallenge200,
+  RefundRequest,
+  RefundRequestResult,
   RegenerateMfaRecoveryCodesBody,
   Register201,
   RegisterBody,
   RegisterBusinessRequest,
   RejectAdminChallengeBody,
   RejectAdminTeamBody,
+  RejectRefundRequestBody,
   RejectVerificationBody,
   Report,
   RequestPresignedUpload201,
@@ -9277,6 +9283,242 @@ export const useCancelOrder = <TError = NotFoundResponse | void,
       return useMutation(getCancelOrderMutationOptions(options), queryClient);
     }
 
+export type createRefundRequestResponse201 = {
+  data: RefundRequest
+  status: 201
+}
+
+export type createRefundRequestResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type createRefundRequestResponse409 = {
+  data: void
+  status: 409
+}
+
+export type createRefundRequestResponseSuccess = (createRefundRequestResponse201) & {
+  headers: Headers;
+};
+export type createRefundRequestResponseError = (createRefundRequestResponse404 | createRefundRequestResponse409) & {
+  headers: Headers;
+};
+
+export type createRefundRequestResponse = (createRefundRequestResponseSuccess | createRefundRequestResponseError)
+
+export const getCreateRefundRequestUrl = (id: string,) => {
+
+
+
+
+  return `/orders/${id}/refund-requests`
+}
+
+/**
+ * 신청자 본인의 `paid` 주문에 대해 환불을 요청한다. 실제 결제 취소는 관리자가 승인할 때
+ * (`POST /admin/refund-requests/{id}/approve`) 이루어진다. 주문당 처리 대기(`requested`) 요청은
+ * 하나만 허용하며, 반려된 뒤에는 다시 요청할 수 있다. `paid`가 아닌 주문은 409.
+ * @summary 환불 요청(구매자 본인, 결제 완료 주문)
+ */
+export const createRefundRequest = async (id: string,
+    createRefundRequestBody: CreateRefundRequestBody, options?: Parameters<typeof apiFetch>[1]): Promise<createRefundRequestResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<createRefundRequestResponse>(getCreateRefundRequestUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createRefundRequestBody)
+  }
+);}
+
+
+
+
+
+export const getCreateRefundRequestMutationKey = () => ['createRefundRequest'] as const;
+
+export const getCreateRefundRequestMutationOptions = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,CreateRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,CreateRefundRequestMutationVariables, TContext> => {
+
+const mutationKey = getCreateRefundRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRefundRequest>>, CreateRefundRequestMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createRefundRequest(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRefundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof createRefundRequest>>>
+    export type CreateRefundRequestMutationBody = CreateRefundRequestBody
+    export type CreateRefundRequestMutationError = NotFoundResponse | void
+    export type CreateRefundRequestMutationVariables = {id: string;data: CreateRefundRequestBody}
+
+    /**
+ * @summary 환불 요청(구매자 본인, 결제 완료 주문)
+ */
+export const useCreateRefundRequest = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRefundRequest>>, TError,CreateRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createRefundRequest>>,
+        TError,
+        CreateRefundRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateRefundRequestMutationOptions(options), queryClient);
+    }
+
+export type listRefundRequestsResponse200 = {
+  data: RefundRequest[]
+  status: 200
+}
+
+export type listRefundRequestsResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type listRefundRequestsResponseSuccess = (listRefundRequestsResponse200) & {
+  headers: Headers;
+};
+export type listRefundRequestsResponseError = (listRefundRequestsResponse404) & {
+  headers: Headers;
+};
+
+export type listRefundRequestsResponse = (listRefundRequestsResponseSuccess | listRefundRequestsResponseError)
+
+export const getListRefundRequestsUrl = (id: string,) => {
+
+
+
+
+  return `/orders/${id}/refund-requests`
+}
+
+/**
+ * @summary 환불 요청 이력(구매자 본인, 최신순)
+ */
+export const listRefundRequests = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<listRefundRequestsResponse> => {
+
+  return apiFetch<listRefundRequestsResponse>(getListRefundRequestsUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRefundRequestsQueryKey = (id: string,) => {
+    return [
+    `/orders/${id}/refund-requests`
+    ] as const;
+    }
+
+
+export const getListRefundRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listRefundRequests>>, TError = NotFoundResponse>(id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRefundRequestsQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRefundRequests>>> = ({ signal }) => listRefundRequests(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRefundRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listRefundRequests>>>
+export type ListRefundRequestsQueryError = NotFoundResponse
+
+
+export function useListRefundRequests<TData = Awaited<ReturnType<typeof listRefundRequests>>, TError = NotFoundResponse>(
+ id: string, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRefundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listRefundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRefundRequests<TData = Awaited<ReturnType<typeof listRefundRequests>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRefundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listRefundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRefundRequests<TData = Awaited<ReturnType<typeof listRefundRequests>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 환불 요청 이력(구매자 본인, 최신순)
+ */
+
+export function useListRefundRequests<TData = Awaited<ReturnType<typeof listRefundRequests>>, TError = NotFoundResponse>(
+ id: string, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRefundRequestsQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export type confirmPaymentResponse200 = {
   data: Order
   status: 200
@@ -9424,9 +9666,15 @@ export const getHandleTossWebhookUrl = () => {
 }
 
 /**
- * 토스페이먼츠 웹훅. `status=DONE`이면 해당 주문을 paid로 처리.
- * **TODO**: 웹훅 신원 미검증 — 토스 시크릿키로 `GET /v1/payments/{paymentKey}` 조회 후 상태 확인 필요.
- * CANCELED/PARTIAL_CANCELED/EXPIRED 및 Payment 레코드 저장도 TODO.
+ * 토스페이먼츠 웹훅. 토스 웹훅은 서명이 없으므로 페이로드를 신뢰하지 않고, 시크릿 키로
+ * `GET /v1/payments/{paymentKey}`를 재조회해 상태·주문 ID·금액을 대사한 뒤에만 반영한다
+ * (불일치 시 401, 토스 조회 실패 시 502로 재전송 유도). 선택적으로 `TOSS_WEBHOOK_ALLOWED_IPS`
+ * 허용목록과 호출 빈도 제한을 적용한다.
+ * - `DONE`: 결제 저장 + 주문 `paid` 전이(멱등). 정산 불가 주문은 자동 환불, 실패 시 `refund_pending`으로 남겨 워커가 재시도
+ * - `CANCELED`/`EXPIRED`/`ABORTED`: 결제 상태 반영 + 주문 취소(멱등)
+ * - `PARTIAL_CANCELED`: 토스 `balanceAmount` 기준으로 `refundedAmount` 갱신(누적 아님, 재전송 멱등)
+ * - `WAITING_FOR_DEPOSIT`/`READY`/`IN_PROGRESS`: 승인 전 중간 상태 — 반영할 것이 없어 수신 확인만 한다
+ * - 그 외 알 수 없는 상태는 경고 로그를 남기고 수신 확인한다
  * @summary 토스 결제 웹훅 수신
  */
 export const handleTossWebhook = async (tossWebhookPayload: TossWebhookPayload, options?: Parameters<typeof apiFetch>[1]): Promise<handleTossWebhookResponse> => {
@@ -13676,6 +13924,348 @@ export const useResolveReport = <TError = unknown,
         TContext
       > => {
       return useMutation(getResolveReportMutationOptions(options), queryClient);
+    }
+
+export type listAdminRefundRequestsResponse200 = {
+  data: AdminRefundRequest[]
+  status: 200
+}
+
+export type listAdminRefundRequestsResponseSuccess = (listAdminRefundRequestsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listAdminRefundRequestsResponse = (listAdminRefundRequestsResponseSuccess)
+
+export const getListAdminRefundRequestsUrl = (params?: ListAdminRefundRequestsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/refund-requests?${stringifiedParams}` : `/admin/refund-requests`
+}
+
+/**
+ * 구매자 환불 요청 큐(최신순). 요청자 이메일은 마스킹된다.
+ * @summary 환불 요청 목록
+ */
+export const listAdminRefundRequests = async (params?: ListAdminRefundRequestsParams, options?: Parameters<typeof apiFetch>[1]): Promise<listAdminRefundRequestsResponse> => {
+
+  return apiFetch<listAdminRefundRequestsResponse>(getListAdminRefundRequestsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAdminRefundRequestsQueryKey = (params?: ListAdminRefundRequestsParams,) => {
+    return [
+    `/admin/refund-requests`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAdminRefundRequestsQueryOptions = <TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = unknown>(params?: ListAdminRefundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAdminRefundRequestsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAdminRefundRequests>>> = ({ signal }) => listAdminRefundRequests(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListAdminRefundRequestsQueryResult = NonNullable<Awaited<ReturnType<typeof listAdminRefundRequests>>>
+export type ListAdminRefundRequestsQueryError = unknown
+
+
+export function useListAdminRefundRequests<TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = unknown>(
+ params: undefined |  ListAdminRefundRequestsParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminRefundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminRefundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminRefundRequests<TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = unknown>(
+ params?: ListAdminRefundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listAdminRefundRequests>>,
+          TError,
+          Awaited<ReturnType<typeof listAdminRefundRequests>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListAdminRefundRequests<TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = unknown>(
+ params?: ListAdminRefundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 환불 요청 목록
+ */
+
+export function useListAdminRefundRequests<TData = Awaited<ReturnType<typeof listAdminRefundRequests>>, TError = unknown>(
+ params?: ListAdminRefundRequestsParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listAdminRefundRequests>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListAdminRefundRequestsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type approveRefundRequestResponse200 = {
+  data: RefundRequestResult
+  status: 200
+}
+
+export type approveRefundRequestResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type approveRefundRequestResponse409 = {
+  data: void
+  status: 409
+}
+
+export type approveRefundRequestResponse502 = {
+  data: void
+  status: 502
+}
+
+export type approveRefundRequestResponseSuccess = (approveRefundRequestResponse200) & {
+  headers: Headers;
+};
+export type approveRefundRequestResponseError = (approveRefundRequestResponse404 | approveRefundRequestResponse409 | approveRefundRequestResponse502) & {
+  headers: Headers;
+};
+
+export type approveRefundRequestResponse = (approveRefundRequestResponseSuccess | approveRefundRequestResponseError)
+
+export const getApproveRefundRequestUrl = (id: string,) => {
+
+
+
+
+  return `/admin/refund-requests/${id}/approve`
+}
+
+/**
+ * 토스 결제 취소 API로 잔액 전액을 취소한 뒤, 결제 `canceled`·주문 `canceled`(광고 주문이면
+ * 활성 광고 종료)·요청 `approved` 전환과 구매자 알림(`refund.result`)을 한 트랜잭션으로 커밋한다.
+ * 토스 취소는 주문 단위 Idempotency-Key로 호출해 재시도해도 이중 취소되지 않고, 이미 취소된
+ * 결제는 성공으로 수렴한다. 토스 호출이 실패하면(502) 요청은 `requested`로 남아 다시 시도할 수 있다.
+ * @summary 환불 승인(토스 결제 취소)
+ */
+export const approveRefundRequest = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<approveRefundRequestResponse> => {
+
+  return apiFetch<approveRefundRequestResponse>(getApproveRefundRequestUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveRefundRequestMutationKey = () => ['approveRefundRequest'] as const;
+
+export const getApproveRefundRequestMutationOptions = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRefundRequest>>, TError,ApproveRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveRefundRequest>>, TError,ApproveRefundRequestMutationVariables, TContext> => {
+
+const mutationKey = getApproveRefundRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveRefundRequest>>, ApproveRefundRequestMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveRefundRequest(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveRefundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof approveRefundRequest>>>
+
+    export type ApproveRefundRequestMutationError = NotFoundResponse | void
+    export type ApproveRefundRequestMutationVariables = {id: string}
+
+    /**
+ * @summary 환불 승인(토스 결제 취소)
+ */
+export const useApproveRefundRequest = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveRefundRequest>>, TError,ApproveRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof approveRefundRequest>>,
+        TError,
+        ApproveRefundRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getApproveRefundRequestMutationOptions(options), queryClient);
+    }
+
+export type rejectRefundRequestResponse200 = {
+  data: RefundRequestResult
+  status: 200
+}
+
+export type rejectRefundRequestResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type rejectRefundRequestResponse409 = {
+  data: void
+  status: 409
+}
+
+export type rejectRefundRequestResponseSuccess = (rejectRefundRequestResponse200) & {
+  headers: Headers;
+};
+export type rejectRefundRequestResponseError = (rejectRefundRequestResponse404 | rejectRefundRequestResponse409) & {
+  headers: Headers;
+};
+
+export type rejectRefundRequestResponse = (rejectRefundRequestResponseSuccess | rejectRefundRequestResponseError)
+
+export const getRejectRefundRequestUrl = (id: string,) => {
+
+
+
+
+  return `/admin/refund-requests/${id}/reject`
+}
+
+/**
+ * 요청을 `rejected`로 전환하고 사유를 구매자에게 알림(`refund.result`)으로 전달한다. 토스는 호출하지 않는다.
+ * @summary 환불 반려
+ */
+export const rejectRefundRequest = async (id: string,
+    rejectRefundRequestBody: RejectRefundRequestBody, options?: Parameters<typeof apiFetch>[1]): Promise<rejectRefundRequestResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<rejectRefundRequestResponse>(getRejectRefundRequestUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(rejectRefundRequestBody)
+  }
+);}
+
+
+
+
+
+export const getRejectRefundRequestMutationKey = () => ['rejectRefundRequest'] as const;
+
+export const getRejectRefundRequestMutationOptions = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRefundRequest>>, TError,RejectRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectRefundRequest>>, TError,RejectRefundRequestMutationVariables, TContext> => {
+
+const mutationKey = getRejectRefundRequestMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectRefundRequest>>, RejectRefundRequestMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rejectRefundRequest(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectRefundRequestMutationResult = NonNullable<Awaited<ReturnType<typeof rejectRefundRequest>>>
+    export type RejectRefundRequestMutationBody = RejectRefundRequestBody
+    export type RejectRefundRequestMutationError = NotFoundResponse | void
+    export type RejectRefundRequestMutationVariables = {id: string;data: RejectRefundRequestBody}
+
+    /**
+ * @summary 환불 반려
+ */
+export const useRejectRefundRequest = <TError = NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectRefundRequest>>, TError,RejectRefundRequestMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof rejectRefundRequest>>,
+        TError,
+        RejectRefundRequestMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRejectRefundRequestMutationOptions(options), queryClient);
     }
 
 export type listAdminContentsResponse200 = {

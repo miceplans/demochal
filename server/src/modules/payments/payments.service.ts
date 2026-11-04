@@ -84,9 +84,16 @@ export class PaymentsService {
       return;
     }
 
-    // TODO: other non-terminal/rare Toss statuses (IN_PROGRESS —
-    // https://docs.tosspayments.com/reference#status) are still silently
-    // ignored; none of them require a balance reconciliation today.
+    if (status === 'READY' || status === 'IN_PROGRESS') {
+      // 결제창 진입(READY)·인증 완료 후 승인 대기(IN_PROGRESS)는 승인 전 중간 상태다.
+      // 승인(DONE) 또는 실패(ABORTED/EXPIRED) 웹훅이 뒤따르므로 대사할 잔액이 없다.
+      this.logger.debug(`Toss payment ${paymentKey} is ${status} for order ${orderId}`);
+      return;
+    }
+
+    // 알 수 없는 상태는 조용히 버리지 않고 남겨 운영자가 새 상태 추가를 알아챌 수 있게 한다.
+    // TODO: https://docs.tosspayments.com/reference#status 에 새 상태가 생기면 분기를 추가한다.
+    this.logger.warn(`Ignoring Toss webhook with unhandled status ${status} for order ${orderId}`);
   }
 
   /**
@@ -310,6 +317,75 @@ export class PaymentsService {
         (error as Error | undefined)?.stack,
       );
     }
+  }
+
+  /**
+   * 관리자가 승인한 환불: Toss 결제 전액(잔액) 취소 → 결제 canceled + 주문 canceled 전이를
+   * `settle` 콜백(환불 요청 상태 갱신 등)과 같은 트랜잭션으로 커밋한다.
+   * Toss 취소는 주문 단위 Idempotency-Key라 재시도해도 이중 취소되지 않고, 이미 취소된 결제
+   * (ALREADY_CANCELED_PAYMENT — 이전 시도의 응답 유실·웹훅 선행)는 성공으로 수렴한다.
+   * @returns 환불된 결제 금액(원 결제액 - 이전 부분 환불액)
+   */
+  async refundPaidOrder(
+    orderId: string,
+    cancelReason: string,
+    settle: (tx: DbTx, refundedAmount: number) => Promise<void>,
+  ): Promise<number> {
+    const [payment] = await this.db
+      .select()
+      .from(payments)
+      .where(eq(payments.orderId, orderId))
+      .limit(1);
+    if (!payment || payment.status !== 'paid') {
+      throw new ConflictException('환불할 수 있는 결제가 아닙니다.');
+    }
+
+    if (!env.tossSecretKey) {
+      throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
+    }
+    const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
+    let response;
+    try {
+      response = await fetchJson(
+        `https://api.tosspayments.com/v1/payments/${encodeURIComponent(payment.providerPaymentKey)}/cancel`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${authorization}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `refund:${orderId}`,
+          },
+          body: JSON.stringify({ cancelReason }),
+          signal: AbortSignal.timeout(10_000),
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Toss refund transport failed for order ${orderId}`,
+        (error as Error | undefined)?.stack,
+      );
+      throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    }
+    if (!response.ok) {
+      let code: string | undefined;
+      try {
+        code = ((await response.json()) as { code?: string } | null)?.code;
+      } catch {
+        // Error body is not JSON — treat as a plain rejection below.
+      }
+      if (code !== 'ALREADY_CANCELED_PAYMENT') {
+        this.logger.error(`Toss refund rejected for order ${orderId}: HTTP ${response.status}`);
+        throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+      }
+    }
+
+    const refundedAmount = payment.amount - payment.refundedAmount;
+    await this.db.transaction(async (tx) => {
+      await tx.update(payments).set({ status: 'canceled' }).where(eq(payments.id, payment.id));
+      await this.ordersService.cancelOrder(tx, orderId);
+      await settle(tx, refundedAmount);
+    });
+    return refundedAmount;
   }
 
   private async cancelWithToss(

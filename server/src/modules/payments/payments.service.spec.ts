@@ -892,4 +892,105 @@ describe('PaymentsService', () => {
       );
     });
   });
+  it('acks IN_PROGRESS/READY webhooks without calling Toss or touching the order', async () => {
+    fetchMock.mockClear();
+    const { db, transaction } = createDbStub();
+    const orders = createOrdersStub('pending');
+    const service = new PaymentsService(db, orders as any);
+
+    await service.handleTossWebhook(webhook('IN_PROGRESS'));
+    await service.handleTossWebhook(webhook('READY'));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(transaction).not.toHaveBeenCalled();
+    expect(orders.cancelOrder).not.toHaveBeenCalled();
+  });
+
+  describe('refundPaidOrder', () => {
+    function createRefundDb(payment: Record<string, unknown> | null) {
+      const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+      const update = vi.fn(() => ({ set }));
+      const tx = { update };
+      const limit = vi.fn().mockResolvedValue(payment ? [payment] : []);
+      const select = vi.fn(() => ({ from: () => ({ where: () => ({ limit }) }) }));
+      const transaction = vi.fn(async (fn: (t: unknown) => Promise<void>) => fn(tx));
+      return { db: { select, transaction } as any, tx, set, transaction };
+    }
+    const paid = {
+      id: 'pay-1',
+      orderId: 'order-1',
+      providerPaymentKey: 'pay-key-1',
+      status: 'paid',
+      amount: 50000,
+      refundedAmount: 10000,
+    };
+
+    it('cancels at Toss, then settles payment/order and the callback in ONE transaction', async () => {
+      fetchMock.mockClear();
+      fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+      const { db, tx, set, transaction } = createRefundDb(paid);
+      const orders = createOrdersStub('paid');
+      const service = new PaymentsService(db, orders as any);
+      const settle = vi.fn().mockResolvedValue(undefined);
+
+      const refunded = await service.refundPaidOrder('order-1', '단순 변심', settle);
+
+      expect(refunded).toBe(40000);
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toContain('/v1/payments/pay-key-1/cancel');
+      expect(init.headers['Idempotency-Key']).toBe('refund:order-1');
+      expect(JSON.parse(init.body)).toEqual({ cancelReason: '단순 변심' });
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(set).toHaveBeenCalledWith({ status: 'canceled' });
+      expect(orders.cancelOrder).toHaveBeenCalledWith(tx, 'order-1');
+      expect(settle).toHaveBeenCalledWith(tx, 40000);
+    });
+
+    it('converges when Toss reports the payment was already canceled', async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 400,
+        json: async () => ({ code: 'ALREADY_CANCELED_PAYMENT' }),
+      });
+      const { db } = createRefundDb(paid);
+      const orders = createOrdersStub('paid');
+      const service = new PaymentsService(db, orders as any);
+      const settle = vi.fn().mockResolvedValue(undefined);
+
+      await service.refundPaidOrder('order-1', 'x', settle);
+
+      expect(orders.cancelOrder).toHaveBeenCalled();
+      expect(settle).toHaveBeenCalled();
+    });
+
+    it('leaves local state untouched and throws when Toss rejects the cancel', async () => {
+      fetchMock.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: async () => ({ code: 'FAILED_INTERNAL_SYSTEM_PROCESSING' }),
+      });
+      const { db, transaction } = createRefundDb(paid);
+      const orders = createOrdersStub('paid');
+      const service = new PaymentsService(db, orders as any);
+      const settle = vi.fn();
+
+      await expect(service.refundPaidOrder('order-1', 'x', settle)).rejects.toThrow(
+        '결제 취소에 실패했습니다',
+      );
+      expect(transaction).not.toHaveBeenCalled();
+      expect(settle).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the payment is missing or not paid, without calling Toss', async () => {
+      fetchMock.mockClear();
+      for (const payment of [null, { ...paid, status: 'canceled' }]) {
+        const { db } = createRefundDb(payment);
+        const service = new PaymentsService(db, createOrdersStub('paid') as any);
+        await expect(service.refundPaidOrder('order-1', 'x', vi.fn())).rejects.toBeInstanceOf(
+          ConflictException,
+        );
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
 });

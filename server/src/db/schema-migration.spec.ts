@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(44);
+    expect(journal.entries).toHaveLength(45);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -651,5 +651,18 @@ describe('0043_business_map_location migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "map_longitude" double precision');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[43]!.when).toBeGreaterThan(journal.entries[42]!.when);
+  });
+});
+
+describe('0044_refund_requests migration', () => {
+  it('creates refund_requests with a one-open-request-per-order index without destructive DDL', () => {
+    const tag = journal.entries[44]?.tag;
+    expect(tag).toBe('0044_refund_requests');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "refund_requests"');
+    expect(sql).toContain('CREATE UNIQUE INDEX IF NOT EXISTS "refund_requests_open_order_unique"');
+    expect(sql).toContain(`WHERE "status" = 'requested'`);
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[44]!.when).toBeGreaterThan(journal.entries[43]!.when);
   });
 });

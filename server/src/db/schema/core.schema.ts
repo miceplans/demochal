@@ -397,6 +397,34 @@ export const payments = pgTable(
   // duplicating rows.
   (table) => [uniqueIndex('payments_order_id_unique').on(table.orderId)],
 );
+// 구매자의 환불 요청. 관리자가 승인하면 Toss 결제를 취소하고 주문을 canceled로 전이한다.
+export const refundRequests = pgTable(
+  'refund_requests',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    orderId: uuid('order_id')
+      .notNull()
+      .references(() => orders.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    reason: text('reason').notNull(),
+    // Valid values: requested | approved | rejected
+    status: varchar('status', { length: 20 }).notNull().default('requested'),
+    // 관리자 메모 — 반려 시에는 구매자에게 전달되는 사유.
+    adminNote: text('admin_note'),
+    processedBy: uuid('processed_by').references(() => users.id),
+    processedAt: timestamp('processed_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  // 주문당 처리 대기 중인 요청은 하나만 둔다(반려 후에는 재요청 가능).
+  (table) => [
+    uniqueIndex('refund_requests_open_order_unique')
+      .on(table.orderId)
+      .where(sql`${table.status} = 'requested'`),
+    index('refund_requests_status_created_idx').on(table.status, table.createdAt),
+  ],
+);
 export const files = pgTable('files', {
   id: uuid('id').defaultRandom().primaryKey(),
   bucket: varchar('bucket', { length: 20 }).notNull(),

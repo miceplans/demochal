@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -27,6 +28,23 @@ export function BizBillingPage() {
   const historyQuery = generated.useListPaymentHistory();
   const cards = cardsQuery.data?.data ?? [];
   const history = historyQuery.data?.data;
+  const queryClient = useQueryClient();
+  // 환불 요청 대상 결제(orderId 기준)와 입력한 사유. 승인·반려는 관리자가 처리한다.
+  const [refundTarget, setRefundTarget] = useState<{ orderId: string; name: string } | null>(null);
+  const [refundReason, setRefundReason] = useState('');
+  const refundMutation = generated.useCreateRefundRequest({
+    mutation: {
+      onSuccess: () => {
+        toast.success('환불을 요청했어요', '관리자 확인 후 결과를 알림으로 알려드려요');
+        setRefundTarget(null);
+        setRefundReason('');
+      },
+      onError: (error) =>
+        toast.error('환불 요청에 실패했어요', apiErrorMessage(error, '잠시 후 다시 시도해주세요')),
+      onSettled: () =>
+        queryClient.invalidateQueries({ queryKey: generated.getListPaymentHistoryQueryKey() }),
+    },
+  });
   const [ctrReport, setCtrReport] = useState<AdReport | null>(null);
   // 가장 최근 광고의 일별 클릭률로 클릭률 차트를 그린다.
   useEffect(() => {
@@ -118,11 +136,58 @@ export function BizBillingPage() {
               <span style={{ flexShrink: 0, color: p.amount > 0 ? c.green : c.red }}>
                 {won(p.amount)}
               </span>
+              {p.status === 'paid' && (
+                <RefundButton
+                  type="button"
+                  onClick={() => setRefundTarget({ orderId: p.orderId, name: p.name })}
+                >
+                  환불 요청
+                </RefundButton>
+              )}
             </PaymentItem>
           ))}
           {history && history.items.length === 0 && <Empty>결제 내역이 없어요.</Empty>}
         </PaymentList>
       </Column>
+      {refundTarget && (
+        <RefundOverlay
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="refund-request-title"
+          onClick={() => setRefundTarget(null)}
+        >
+          <RefundDialog onClick={(event) => event.stopPropagation()}>
+            <RefundTitle id="refund-request-title">환불을 요청할까요?</RefundTitle>
+            <StatusText>{refundTarget.name}</StatusText>
+            <StatusText>관리자가 확인한 뒤 승인하면 결제가 취소돼요.</StatusText>
+            <RefundTextarea
+              aria-label="환불 사유"
+              value={refundReason}
+              onChange={(event) => setRefundReason(event.target.value)}
+              placeholder="환불 사유를 입력해주세요"
+              rows={3}
+              maxLength={1000}
+              autoFocus
+            />
+            <RefundActions>
+              <Button tone="outline" onClick={() => setRefundTarget(null)}>
+                취소
+              </Button>
+              <Button
+                disabled={refundMutation.isPending || !refundReason.trim()}
+                onClick={() =>
+                  refundMutation.mutate({
+                    id: refundTarget.orderId,
+                    data: { reason: refundReason.trim() },
+                  })
+                }
+              >
+                {refundMutation.isPending ? '요청 중…' : '환불 요청'}
+              </Button>
+            </RefundActions>
+          </RefundDialog>
+        </RefundOverlay>
+      )}
     </BizContent>
   );
 }
@@ -182,3 +247,45 @@ const Ellipsis = styled.span({
   whiteSpace: 'nowrap',
 });
 const Empty = styled.li({ padding: 16, listStyle: 'none', color: c.gray500 });
+const RefundButton = styled.button({
+  flexShrink: 0,
+  height: 32,
+  padding: '0 12px',
+  border: `0.5px solid ${c.gray300}`,
+  borderRadius: 6,
+  background: c.white,
+  color: c.gray700,
+  cursor: 'pointer',
+  ...textStyle.bodySmall,
+  '&:hover': { background: c.gray50 },
+});
+const RefundOverlay = styled.div({
+  position: 'fixed',
+  inset: 0,
+  zIndex: 100,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(0,0,0,0.2)',
+});
+const RefundDialog = styled.div({
+  width: 400,
+  maxWidth: 'calc(100vw - 32px)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 12,
+  padding: 24,
+  borderRadius: 12,
+  background: c.white,
+});
+const RefundTitle = styled.h2({ margin: 0, ...textStyle.h3_2, color: c.gray900 });
+const RefundTextarea = styled.textarea({
+  resize: 'vertical',
+  padding: '10px 12px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  color: c.gray900,
+  ...textStyle.bodySmall,
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const RefundActions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });
