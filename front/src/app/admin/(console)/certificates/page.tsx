@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminCertificatesScreen } from '@/components/admin/AdminCertificatesScreen';
+import { AdminCertificatesScreen } from '@/apps/admin/components/AdminCertificatesScreen';
 
 export const metadata: Metadata = {
   title: '상장 인증',

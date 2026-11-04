@@ -4,7 +4,7 @@ import { ThemeProvider } from '@emotion/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
 import { ToastProvider } from '@/components/common/Toast';
-import { ReportLogTable } from './ReportLogTable';
+import { ReportLogTable } from '../components/ReportLogTable';
 
 vi.mock('@semochal/api-client', () => ({
   generated: {

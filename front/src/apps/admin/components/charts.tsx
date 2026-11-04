@@ -18,11 +18,11 @@ import {
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
-import { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from './charts.logic';
-import type { TooltipEntry } from './charts.logic';
+import { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from '../services/charts';
+import type { TooltipEntry } from '../services/charts';
 
-export { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from './charts.logic';
-export type { TooltipEntry } from './charts.logic';
+export { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from '../services/charts';
+export type { TooltipEntry } from '../services/charts';
 
 /* ---------- shared tooltip ---------- */
 

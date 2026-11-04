@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminChallengeDetailScreen } from '@/components/admin/AdminContentDetailScreen';
+import { AdminChallengeDetailScreen } from '@/apps/admin/components/AdminContentDetailScreen';
 
 export const metadata: Metadata = { title: '챌린지 상세' };
 

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminAdsScreen } from '@/components/admin/AdminAdsScreen';
+import { AdminAdsScreen } from '@/apps/admin/components/AdminAdsScreen';
 
 export const metadata: Metadata = {
   title: '광고 관리',

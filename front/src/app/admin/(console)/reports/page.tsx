@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminReportsScreen } from '@/components/admin/AdminReportsScreen';
+import { AdminReportsScreen } from '@/apps/admin/components/AdminReportsScreen';
 
 export const metadata: Metadata = {
   title: '신고 처리',

@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/common/Toast';
-import { AdminContestListScreen, AdminTeamListScreen } from './AdminContentListScreens';
+import { AdminContestListScreen, AdminTeamListScreen } from '../components/AdminContentListScreens';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), contents: vi.fn() }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
-vi.mock('./AdminShell', () => ({
+vi.mock('../components/AdminShell', () => ({
   useAdminHref: () => (path: string) => `/admin${path}`,
 }));
 
@@ -18,7 +18,7 @@ vi.mock('@semochal/api-client', () => ({
   generated: { useListAdminContents: mocks.contents },
 }));
 
-vi.mock('./parts', () => ({
+vi.mock('../components/parts', () => ({
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
   AdminInlineNotice: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

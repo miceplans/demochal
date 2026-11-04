@@ -7,7 +7,7 @@ import {
   AdminEmailComposeScreen,
   AdminEmailThreadScreen,
   AdminEmailsScreen,
-} from './AdminEmailsScreen';
+} from '../components/AdminEmailsScreen';
 
 const mocks = vi.hoisted(() => ({
   list: vi.fn(),
@@ -34,7 +34,7 @@ vi.mock('@semochal/api-client', () => ({
   },
 }));
 
-vi.mock('./parts', () => ({
+vi.mock('../components/parts', () => ({
   AdminTable: ({
     rows,
     onRowClick,

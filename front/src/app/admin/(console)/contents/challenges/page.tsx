@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminContestListScreen } from '@/components/admin/AdminContentListScreens';
+import { AdminContestListScreen } from '@/apps/admin/components/AdminContentListScreens';
 
 export const metadata: Metadata = { title: '확인해야하는 챌린지' };
 

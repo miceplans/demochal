@@ -15,8 +15,8 @@ import {
   resolveStatus,
   toIsoOrNull,
   toLocalInputValue,
-} from './AdminSettingsScreen.logic';
-import type { MaintenanceStatus } from './AdminSettingsScreen.logic';
+} from '../services/AdminSettingsScreen';
+import type { MaintenanceStatus } from '../services/AdminSettingsScreen';
 // import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
 export function AdminSettingsScreen() {

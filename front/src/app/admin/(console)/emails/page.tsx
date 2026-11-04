@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminEmailsScreen } from '@/components/admin/AdminEmailsScreen';
+import { AdminEmailsScreen } from '@/apps/admin/components/AdminEmailsScreen';
 
 export const metadata: Metadata = { title: '메일함' };
 

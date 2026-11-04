@@ -4,7 +4,7 @@ import Image from 'next/image';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { AdminGlobalStyles } from '@/components/admin/AdminShell';
+import { AdminGlobalStyles } from '@/apps/admin/components/AdminShell';
 import { AdminLoginForm } from '@/features/auth/components/AdminLoginForm';
 
 export function AdminLoginScreen() {

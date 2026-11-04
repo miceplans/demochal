@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/common/Toast';
-import { AdminTeamDetailScreen } from './AdminContentDetailScreen';
+import { AdminTeamDetailScreen } from '../components/AdminContentDetailScreen';
 
 const mocks = vi.hoisted(() => ({
   teamDetail: vi.fn(),
@@ -21,9 +21,11 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-vi.mock('./AdminShell', () => ({ useAdminHref: () => (path: string) => `/admin${path}` }));
+vi.mock('../components/AdminShell', () => ({
+  useAdminHref: () => (path: string) => `/admin${path}`,
+}));
 
-vi.mock('./parts', () => ({
+vi.mock('../components/parts', () => ({
   AdminInlineNotice: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   ApproveButton: ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button {...props}>{children}</button>

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { ToastProvider } from '@/components/common/Toast';
-import { AdminSettingsScreen } from './AdminSettingsScreen';
+import { AdminSettingsScreen } from '../components/AdminSettingsScreen';
 
 vi.mock('@semochal/api-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@semochal/api-client')>();
@@ -19,7 +19,7 @@ vi.mock('@semochal/api-client', async (importOriginal) => {
   };
 });
 
-vi.mock('./parts', () => ({
+vi.mock('../components/parts', () => ({
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
   ApproveButton: ({ children, ...props }: { children: ReactNode }) => (
     <button {...props}>{children}</button>

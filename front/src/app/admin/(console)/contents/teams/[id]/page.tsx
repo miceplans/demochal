@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminTeamDetailScreen } from '@/components/admin/AdminContentDetailScreen';
+import { AdminTeamDetailScreen } from '@/apps/admin/components/AdminContentDetailScreen';
 
 export const metadata: Metadata = { title: '팀 상세' };
 

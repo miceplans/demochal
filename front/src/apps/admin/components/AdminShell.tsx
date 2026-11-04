@@ -11,9 +11,9 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
-import { routeOf } from './AdminShell.logic';
+import { routeOf } from '../services/AdminShell';
 
-export { routeOf } from './AdminShell.logic';
+export { routeOf } from '../services/AdminShell';
 
 const roleLabel: Record<string, string> = {
   admin: '관리자',

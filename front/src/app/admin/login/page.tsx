@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminLoginScreen } from '@/components/admin/AdminLoginScreen';
+import { AdminLoginScreen } from '@/apps/admin/components/AdminLoginScreen';
 
 export const metadata: Metadata = {
   title: '관리자 로그인',

@@ -4,13 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/common/Toast';
-import { AdminContentsScreen } from './AdminContentsScreen';
+import { AdminContentsScreen } from '../components/AdminContentsScreen';
 
 const mocks = vi.hoisted(() => ({ push: vi.fn(), contents: vi.fn() }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
-vi.mock('./AdminShell', () => ({
+vi.mock('../components/AdminShell', () => ({
   useAdminHref: () => (path: string) => `/admin${path}`,
 }));
 
@@ -18,7 +18,7 @@ vi.mock('@semochal/api-client', () => ({
   generated: { useListAdminContents: mocks.contents },
 }));
 
-vi.mock('./parts', () => ({
+vi.mock('../components/parts', () => ({
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
   AdminSectionTitle: ({ children }: { children: ReactNode }) => <h2>{children}</h2>,
   AdminInlineNotice: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -28,7 +28,7 @@ vi.mock('./parts', () => ({
   SectionHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
-vi.mock('./ReportLogTable', () => ({ ReportLogTable: () => <div /> }));
+vi.mock('../components/ReportLogTable', () => ({ ReportLogTable: () => <div /> }));
 vi.mock('@/components/ui/ScrollRail', () => ({
   ScrollRail: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

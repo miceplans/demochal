@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AdminSettingsScreen } from '@/components/admin/AdminSettingsScreen';
+import { AdminSettingsScreen } from '@/apps/admin/components/AdminSettingsScreen';
 
 export const metadata: Metadata = {
   title: '설정',

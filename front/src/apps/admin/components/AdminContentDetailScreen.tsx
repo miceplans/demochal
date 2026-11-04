@@ -12,8 +12,8 @@ import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
 import { useAdminHref } from './AdminShell';
-import { daysLeft, formatDateDot } from './AdminContentDetailScreen.logic';
-import type { ReportEntry } from './AdminContentDetailScreen.logic';
+import { daysLeft, formatDateDot } from '../services/AdminContentDetailScreen';
+import type { ReportEntry } from '../services/AdminContentDetailScreen';
 
 /* ---------- 레이아웃: 좌측 본문 + 우측 신고·확인 목록 ---------- */
 
