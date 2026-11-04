@@ -10,9 +10,10 @@ import { useToast } from '@/components/common/Toast';
 import { adApi } from '@/lib/ad-api';
 import { apiErrorMessage } from '@/lib/api-error';
 import { requestTossPayment } from '@/lib/payments';
-import { ApiError, generated } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 import { ApplicationQuestions, isAnswerValid, type Answers } from './ApplicationQuestions';
+import { invalidFileIdsOf, withoutFileIds } from './ApplicationPage.logic';
 
 const Form = styled(FormContent)({
   gap: 60,
@@ -70,26 +71,6 @@ const Spinner = styled.span({
   '@keyframes semo-spin': { to: { transform: 'rotate(360deg)' } },
   '@media (prefers-reduced-motion: reduce)': { animation: 'none' },
 });
-// 서버가 신청을 거부하며 내려주는 무효 첨부파일 ID(없으면 빈 배열).
-function invalidFileIdsOf(error: unknown): string[] {
-  if (!(error instanceof ApiError) || !error.body || typeof error.body !== 'object') return [];
-  const ids = (error.body as { invalidFileIds?: unknown }).invalidFileIds;
-  return Array.isArray(ids) ? ids.filter((id): id is string => typeof id === 'string') : [];
-}
-
-function withoutFileIds(answers: Answers, fileIds: string[]): Answers {
-  return Object.fromEntries(
-    Object.entries(answers).map(([questionId, value]) => [
-      questionId,
-      Array.isArray(value)
-        ? value.filter((id) => !fileIds.includes(id))
-        : fileIds.includes(value)
-          ? ''
-          : value,
-    ]),
-  );
-}
-
 export function ApplicationPage() {
   // useSearchParams는 Suspense 경계가 필요해(정적 프리렌더) 폼을 안쪽 컴포넌트로 감싼다.
   return (
