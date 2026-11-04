@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizOperationsPage } from '@/features/biz/components/BizOperationsPage';
+import { BizOperationsPage } from '@/apps/biz/components/BizOperationsPage';
 
 export const metadata: Metadata = {
   title: '운영대행',

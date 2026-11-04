@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizAdsPage } from '@/features/biz/components/BizAdsPage';
+import { BizAdsPage } from '@/apps/biz/components/BizAdsPage';
 
 export const metadata: Metadata = {
   title: '광고 관리',

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { BillingAuthFailPage } from '@/features/biz/components/BillingAuthFailPage';
+import { BillingAuthFailPage } from '@/apps/biz/components/BillingAuthFailPage';
 
 export default function Page() {
   return (

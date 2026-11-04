@@ -7,7 +7,7 @@ import { UserShell, Content } from '@/components/common/UserShell';
 import { LoadingState } from '@/components/common/LoadingState';
 import { NotFound } from '@/components/common/NotFound';
 import { Muted, Tag } from '@/components/common/Primitives';
-import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
+import { BizOrgProfile } from '@/apps/biz/components/BizOrgProfile';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';

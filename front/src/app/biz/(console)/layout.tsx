@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { BizShell } from '@/components/biz/BizShell';
-import { BizAccessCover } from '@/components/biz/BizAccessCover';
+import { BizShell } from '@/apps/biz/components/BizShell';
+import { BizAccessCover } from '@/apps/biz/components/BizAccessCover';
 import { noIndexMetadata } from '@/lib/seo';
 
 export const metadata = noIndexMetadata;

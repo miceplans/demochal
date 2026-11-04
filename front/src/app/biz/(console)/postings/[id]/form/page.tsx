@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizApplicationFormPage } from '@/features/biz/components/BizApplicationFormPage';
+import { BizApplicationFormPage } from '@/apps/biz/components/BizApplicationFormPage';
 
 export const metadata: Metadata = {
   title: '신청서 만들기',

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizReportsPage } from '@/features/biz/components/BizReportsPage';
+import { BizReportsPage } from '@/apps/biz/components/BizReportsPage';
 
 export const metadata: Metadata = {
   title: '성과 리포트',

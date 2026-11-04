@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizDashboardPage } from '@/features/biz/components/BizDashboardPage';
+import { BizDashboardPage } from '@/apps/biz/components/BizDashboardPage';
 
 export const metadata: Metadata = {
   title: '대시보드',

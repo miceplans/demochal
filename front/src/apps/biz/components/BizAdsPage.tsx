@@ -1,0 +1,857 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { LoadingState } from '@/components/common/LoadingState';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import { createPortal } from 'react-dom';
+import styled from '@emotion/styled';
+import { DayPicker, type DateRange } from 'react-day-picker';
+import { ko } from 'react-day-picker/locale';
+import 'react-day-picker/style.css';
+import { colors as c } from '@/styles/design';
+import { textStyle } from '@/styles/typography';
+import {
+  BizContent,
+  OutlineButton,
+  PrimaryButton,
+  useBizHref,
+} from '@/apps/biz/components/BizShell';
+import { Button } from '@/components/common/Primitives';
+import {
+  AdPlacementPreview,
+  type AdPlacement,
+  type AdPreviewView,
+} from '@/components/ads/AdPlacementPreview';
+import { generated } from '@semochal/api-client';
+import { toDateKey } from '@/utils/date';
+import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
+import type { CompressedAdImage } from '@/lib/image-compression';
+import { useToast } from '@/components/common/Toast';
+import { extractErrorMessage, formatSlash } from '../services/BizAdsPage';
+import type { Ad, AdsScreen, SelectedAd } from '../services/BizAdsPage';
+import { requestTossPayment } from '@/api/payments';
+import { adApi } from '@/api/ad-api';
+
+export function BizAdsPage() {
+  // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.
+  // 오류 토스트는 전역 QueryCache onError가 담당한다(401은 제외).
+  const queryClient = useQueryClient();
+  const contractsQuery = generated.useListMyAds();
+  const contracts = contractsQuery.data?.status === 200 ? contractsQuery.data.data : [];
+  const contractsLoading = contractsQuery.isPending;
+  const contractsError = contractsQuery.isError;
+  const updateAdMutation = generated.useUpdateAd();
+  const createAdMutation = generated.useCreateAd();
+  const requestPresignedUpload = generated.useRequestPresignedUpload();
+  const finalizeUpload = generated.useFinalizeUpload();
+  // 알림 폴링 30초 간격 — 401은 전역 QueryCache onError에서 이미 제외된다.
+  const notificationsQuery = generated.useListMyNotifications(undefined, {
+    query: { refetchInterval: 30_000 },
+  });
+  const priceNotices = (notificationsQuery.data?.data ?? []).filter(
+    (item) => item.type === 'ad_price_changed',
+  );
+  const [pausingId, setPausingId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
+  const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [adTitles, setAdTitles] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [adLinks, setAdLinks] = useState<Partial<Record<AdPlacement, string>>>({});
+  const [processing, setProcessing] = useState(false);
+  const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
+  const [adName, setAdName] = useState('');
+  const [adLink, setAdLink] = useState('');
+  const previewUrls = useRef<Set<string>>(new Set());
+  const toast = useToast();
+  const hrefOf = useBizHref();
+
+  useEffect(
+    () => () => {
+      previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    },
+    [],
+  );
+  const pauseAd = async (ad: Ad) => {
+    if (ad.status !== 'active' || pausingId) return;
+    setPausingId(ad.id);
+    try {
+      await updateAdMutation.mutateAsync({ id: ad.id, data: { status: 'paused' } });
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
+      toast.success('광고를 중단했습니다.');
+    } catch {
+      // 전역 MutationCache onError 토스트가 실패를 알린다.
+    } finally {
+      setPausingId(null);
+    }
+  };
+  const [view, setView] = useState<AdPreviewView>('pc');
+  const [screen, setScreen] = useState<AdsScreen>('manage');
+  const [selectedAd, setSelectedAd] = useState<SelectedAd | null>(null);
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentStart, setPaymentStart] = useState(() => toDateKey(new Date()));
+  const [paymentEnd, setPaymentEnd] = useState(() => toDateKey(new Date()));
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
+  const [pendingRange, setPendingRange] = useState<DateRange | undefined>();
+  const [calendarViewMonth, setCalendarViewMonth] = useState(() => new Date());
+  const datePickerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+  // 미리보기 툴팁 가격을 서버 상품 가격과 맞춘다. 실패 시 미리보기의 fallback 가격을 쓴다.
+  const productsQuery = generated.useListAdProducts();
+  const dailyPrices: Partial<Record<AdPlacement, number>> = {};
+  for (const product of productsQuery.data?.data ?? []) {
+    if (product.placement === 'hero' || product.placement === 'gallery') {
+      dailyPrices[product.placement] = product.dailyPrice;
+    }
+  }
+  const openPayment = async (placement: AdPlacement, meta?: { name: string; link: string }) => {
+    try {
+      // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
+      const { data: products } = await generated.listAdProducts();
+      const product = products.find((item) => item.placement === placement);
+      if (!product) throw new Error('상품 없음');
+      let start = toDateKey(new Date());
+      for (const period of [...(product.reservedPeriods ?? [])].sort((a, b) =>
+        a.startDate.localeCompare(b.startDate),
+      )) {
+        if (period.startDate.slice(0, 10) <= start && period.endDate.slice(0, 10) >= start) {
+          start = new Date(new Date(period.endDate.slice(0, 10)).getTime() + 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+        }
+      }
+      setSelectedAd({
+        placement,
+        // 모달에서 방금 입력한 이름/링크를 우선 쓴다. 바로 전 setState가 아직
+        // 반영되지 않았을 때 state를 읽으면 입력값이 무시되기 때문이다.
+        name: meta?.name || adTitles[placement]?.trim() || product.name,
+        // 모달 경로(meta)는 입력값을 그대로 쓴다 — 비운 링크가 이전 state로 되살아나면 안 된다.
+        landingUrl: meta ? meta.link || undefined : adLinks[placement] || undefined,
+        price: product.dailyPrice,
+        period: start,
+        product,
+      });
+      setPaymentStart(start);
+      setPaymentEnd(start);
+      setPendingRange({ from: new Date(`${start}T00:00:00`), to: new Date(`${start}T00:00:00`) });
+      setDatePickerOpen(false);
+      setPaymentOpen(true);
+    } catch (error) {
+      toast.error('광고 상품 정보를 불러오지 못했습니다', extractErrorMessage(error));
+    }
+  };
+  const paymentDays = Math.max(
+    1,
+    Math.round((new Date(paymentEnd).getTime() - new Date(paymentStart).getTime()) / 86_400_000) +
+      1,
+  );
+  const paymentAmount = paymentDays * (selectedAd?.product.dailyPrice ?? 0);
+  const reserved = selectedAd?.product.reservedPeriods ?? [];
+  const overlaps = reserved.some(
+    (period) =>
+      period.startDate.slice(0, 10) <= paymentEnd && period.endDate.slice(0, 10) >= paymentStart,
+  );
+
+  const handleSelectPlacement = (placement: AdPlacement) => {
+    if (uploadedImages[placement]) {
+      void openPayment(placement);
+      return;
+    }
+    setUploadPlacement((current) => (current === placement ? null : placement));
+  };
+
+  const handleImagePicked = async (placement: AdPlacement, file: File): Promise<void> => {
+    setProcessing(true);
+    let image: CompressedAdImage | undefined;
+    try {
+      image = await compressToWebP(file, CROPPED_AD_IMAGE_PRESETS[placement]);
+      const presigned = await requestPresignedUpload.mutateAsync({
+        data: {
+          bucket: 'public',
+          // compressToWebP는 항상 image/webp로 재인코딩한다.
+          contentType: 'image/webp',
+          fileName: image.file.name,
+          sizeBytes: image.file.size,
+        },
+      });
+      const uploadRes = await fetch(presigned.data.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': image.file.type },
+        body: image.file,
+      });
+      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
+      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
+
+      const previous = uploadedImages[placement];
+      if (previous) {
+        URL.revokeObjectURL(previous);
+        previewUrls.current.delete(previous);
+      }
+      previewUrls.current.add(image.previewUrl);
+      setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.data.fileId }));
+      setUploadPlacement(null);
+      toast.success(
+        '업로드 되었습니다',
+        `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
+      );
+      setAdName(adTitles[placement] ?? '');
+      setAdLink(adLinks[placement] ?? '');
+      setNameModalPlacement(placement);
+    } catch {
+      if (image) URL.revokeObjectURL(image.previewUrl);
+      toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
+    } finally {
+      setProcessing(false);
+    }
+  };
+  const submitReservation = async () => {
+    if (!selectedAd || submitting) return;
+    if (overlaps) {
+      toast.error('이미 계약된 기간이 포함되어 있습니다.');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const created = await createAdMutation.mutateAsync({
+        data: {
+          productId: selectedAd.product.id,
+          startDate: paymentStart,
+          endDate: paymentEnd,
+          expectedDailyPrice: selectedAd.product.dailyPrice,
+          title: selectedAd.name,
+          imageFileId: uploadedFileIds[selectedAd.placement],
+          // 빈 문자열은 전송하지 않는다(서버 @IsUrl 검증 대상이 된다).
+          landingUrl: selectedAd.landingUrl,
+        },
+      });
+      if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
+      // 주문이 없으면(결제 우회) Toss 결제 단계를 걸러 등록 완료로 바로 넘어간다.
+      // 결제 복원 시 아래 if 블록을 제거하고 !created.data.order 검사를 복원할 것.
+      if (created.data.order) {
+        const started = await requestTossPayment({
+          orderId: created.data.order.id,
+          amount: created.data.order.amount,
+          orderName: created.data.order.name,
+          flow: 'ad',
+        });
+        if (!started) {
+          await adApi.orders.cancel(created.data.order.id).catch(() => {});
+          throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+        }
+      }
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
+      setSelectedAd({
+        ...selectedAd,
+        price: created.data.paidAmount,
+        period: `${paymentStart} ~ ${paymentEnd}`,
+      });
+      setPaymentOpen(false);
+      setScreen('complete');
+    } catch (error) {
+      toast.error('광고 계약 신청에 실패했습니다', extractErrorMessage(error));
+      try {
+        const { data: products } = await generated.listAdProducts();
+        const product = products.find((item) => item.id === selectedAd.product.id);
+        if (product) setSelectedAd({ ...selectedAd, product });
+      } catch {
+        /* Refreshing product info is best-effort; the toast above already reported the failure. */
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!datePickerOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
+        setDatePickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [datePickerOpen]);
+
+  const toggleDatePicker = () => {
+    setDatePickerOpen((open) => {
+      const next = !open;
+      if (next) {
+        setCalendarViewMonth(new Date(`${paymentStart}T00:00:00`));
+        setPendingRange({
+          from: new Date(`${paymentStart}T00:00:00`),
+          to: new Date(`${paymentEnd}T00:00:00`),
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleRangeSelect = (range: DateRange | undefined) => {
+    setPendingRange(range);
+    if (!range?.from) return;
+    setPaymentStart(toDateKey(range.from));
+    setPaymentEnd(toDateKey(range.to ?? range.from));
+    if (range.to) setDatePickerOpen(false);
+  };
+
+  const isEnded = (ad: Ad) =>
+    ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date());
+  const currentAd =
+    contracts.find((ad) => ad.status === 'active' && ad.imageUrl) ??
+    contracts.find((ad) => ad.imageUrl);
+
+  if (screen === 'manage')
+    return (
+      <ManageBody>
+        {priceNotices.map((notice) => (
+          <p role="status" key={notice.id}>
+            {String(
+              notice.payload.message ??
+                '광고 단가가 변경되었습니다. 기존 계약의 금액과 기간은 유지됩니다.',
+            )}
+          </p>
+        ))}
+        <section
+          style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+          aria-labelledby="current-ad-title"
+        >
+          <HeaderRow>
+            <h1 id="current-ad-title" style={{ margin: 0, ...textStyle.display }}>
+              현재 나의 광고
+            </h1>
+            <span style={{ display: 'flex', gap: 8 }}>
+              <OutlineButton type="button" onClick={() => setScreen('products')}>
+                수정하기
+              </OutlineButton>
+              <PrimaryButton type="button" onClick={() => router.push(hrefOf('/reports'))}>
+                리포트 보기
+              </PrimaryButton>
+            </span>
+          </HeaderRow>
+          <CurrentBanner>
+            {currentAd?.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={currentAd.imageUrl} alt={currentAd.title} />
+            ) : (
+              <CurrentBannerEmpty>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/assets/empty-contents.png" alt="" />
+                <p>광고가 없어요</p>
+              </CurrentBannerEmpty>
+            )}
+          </CurrentBanner>
+        </section>
+        <ManageSection aria-labelledby="ad-management-title">
+          <HeaderRow>
+            <h2 id="ad-management-title" style={{ margin: 0, ...textStyle.h1_2 }}>
+              광고 관리
+            </h2>
+            <PrimaryButton type="button" onClick={() => setScreen('products')}>
+              광고 추가
+            </PrimaryButton>
+          </HeaderRow>
+          <AdsTable role="table" aria-label="광고 관리 목록">
+            <TableHead role="row">
+              <span role="columnheader">제목 / 계약 기간</span>
+              <span role="columnheader">계약 금액</span>
+              <span role="columnheader" style={{ justifySelf: 'end', width: 80 }}>
+                상태
+              </span>
+              <span role="columnheader" style={{ justifySelf: 'end' }}>
+                관리
+              </span>
+            </TableHead>
+            {contractsLoading && (
+              <TableRow role="row">
+                <FullSpan>
+                  <LoadingState compact label="광고 목록을 불러오는 중이에요." />
+                </FullSpan>
+              </TableRow>
+            )}
+            {!contractsLoading && contractsError && (
+              <TableRow role="row">
+                <span>
+                  광고 목록을 불러오지 못했어요.{' '}
+                  <button type="button" onClick={() => void contractsQuery.refetch()}>
+                    다시 시도
+                  </button>
+                </span>
+              </TableRow>
+            )}
+            {!contractsLoading && !contractsError && contracts.length === 0 && (
+              <TableRow role="row">
+                <span>등록된 광고가 없어요. 광고를 추가해보세요.</span>
+              </TableRow>
+            )}
+            {!contractsLoading &&
+              !contractsError &&
+              contracts.map((ad) => (
+                <TableRow key={ad.id} role="row">
+                  <span role="cell">
+                    {ad.title}
+                    <small style={{ display: 'block' }}>
+                      {ad.startDate.slice(0, 10)} ~ {ad.endDate.slice(0, 10)}
+                    </small>
+                  </span>
+                  <span role="cell">{ad.paidAmount.toLocaleString()}원</span>
+                  <StatusCell role="cell" ended={isEnded(ad)}>
+                    {ad.status === 'preparing'
+                      ? '결제 대기'
+                      : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
+                        ? '종료'
+                        : ad.status === 'paused'
+                          ? '일시 정지'
+                          : ad.startDate.slice(0, 10) > toDateKey(new Date())
+                            ? '시작 대기'
+                            : '진행중'}
+                  </StatusCell>
+                  <span role="cell" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    <Button
+                      type="button"
+                      tone="outline"
+                      small
+                      onClick={() =>
+                        router.push(hrefOf(`/reports?adId=${encodeURIComponent(ad.id)}`))
+                      }
+                    >
+                      리포트
+                    </Button>
+                    <Button
+                      type="button"
+                      tone="plain"
+                      small
+                      disabled={ad.status !== 'active' || pausingId === ad.id}
+                      onClick={() => void pauseAd(ad)}
+                    >
+                      {pausingId === ad.id ? '처리 중…' : '중단'}
+                    </Button>
+                  </span>
+                </TableRow>
+              ))}
+          </AdsTable>
+          <Footnote>
+            기존 계약의 결제 금액과 기간은 단가가 변경되어도 유지됩니다. 새 계약에는 신청 시점의
+            최신 단가가 적용됩니다.
+          </Footnote>
+        </ManageSection>
+      </ManageBody>
+    );
+
+  if (screen === 'complete' && selectedAd)
+    return (
+      <CheckoutBody style={{ alignItems: 'center', paddingTop: 110 }}>
+        <SuccessIcon aria-hidden>✓</SuccessIcon>
+        <div style={{ textAlign: 'center' }}>
+          <h1 style={{ margin: 0, ...textStyle.h1_2 }}>광고 계약 신청이 완료되었습니다</h1>
+          <p>
+            {selectedAd.name} · {selectedAd.period} · {selectedAd.price.toLocaleString()}원
+          </p>
+          <p>결제 대기 중입니다. 결제 확인 후 계약 기간에 광고가 진행됩니다.</p>
+        </div>
+        <PrimaryButton type="button" onClick={() => setScreen('manage')}>
+          광고 관리로 이동
+        </PrimaryButton>
+      </CheckoutBody>
+    );
+
+  return (
+    <BizContent style={{ maxWidth: 1220, gap: 32, alignItems: 'center' }}>
+      <HeaderRow style={{ width: '100%' }}>
+        <OutlineButton type="button" onClick={() => setScreen('manage')}>
+          광고 관리로 돌아가기
+        </OutlineButton>
+        <ViewToggle role="tablist" aria-label="광고 노출 화면">
+          <ViewTab
+            type="button"
+            role="tab"
+            active={view === 'mobile'}
+            aria-selected={view === 'mobile'}
+            onClick={() => setView('mobile')}
+          >
+            모바일 뷰
+          </ViewTab>
+          <ViewTab
+            type="button"
+            role="tab"
+            active={view === 'pc'}
+            aria-selected={view === 'pc'}
+            onClick={() => setView('pc')}
+          >
+            PC 뷰
+          </ViewTab>
+        </ViewToggle>
+      </HeaderRow>
+      <AdPlacementPreview
+        view={view}
+        dailyPrices={dailyPrices}
+        onSelect={handleSelectPlacement}
+        uploadPlacement={uploadPlacement}
+        uploadedImages={uploadedImages}
+        onImagePicked={handleImagePicked}
+        processing={processing}
+      />
+      {paymentOpen &&
+        selectedAd &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <PaymentBackdrop role="presentation" onMouseDown={() => setPaymentOpen(false)}>
+            <PaymentPopup
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="biz-payment-popup-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+                  <h2 id="biz-payment-popup-title" style={{ margin: 0, ...textStyle.h1_2 }}>
+                    광고 계약 신청
+                  </h2>
+                  <p style={{ margin: 0 }}>
+                    새 계약 하루 광고비 {selectedAd.product.dailyPrice.toLocaleString()}원 · 종료일
+                    포함 {paymentDays}일
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    기존 계약 종료일 다음 날부터 신청할 수 있습니다. 기존 계약의 금액과 기간은
+                    유지됩니다.
+                  </p>
+                  {reserved.map((period) => (
+                    <small key={period.startDate}>
+                      예약 불가: {period.startDate.slice(0, 10)} ~ {period.endDate.slice(0, 10)}
+                    </small>
+                  ))}
+                  <div style={{ position: 'relative' }} ref={datePickerRef}>
+                    <PaymentDate>
+                      <PaymentDateText>
+                        {formatSlash(paymentStart)}~{formatSlash(paymentEnd)}
+                      </PaymentDateText>
+                      <CalendarToggle
+                        type="button"
+                        active={datePickerOpen}
+                        aria-label="광고 기간 선택"
+                        aria-expanded={datePickerOpen}
+                        onClick={toggleDatePicker}
+                      >
+                        <CalendarIcon src="/assets/icons/figma-role-calendar.svg" alt="" />
+                      </CalendarToggle>
+                      <span>까지 광고비</span>
+                    </PaymentDate>
+                    {datePickerOpen && (
+                      <CalendarPopover role="dialog" aria-label="광고 기간 달력">
+                        <CalendarDayPicker
+                          mode="range"
+                          disabled={[
+                            { before: new Date(`${toDateKey(new Date())}T00:00:00`) },
+                            ...reserved.map((period) => ({
+                              from: new Date(`${period.startDate.slice(0, 10)}T00:00:00`),
+                              to: new Date(`${period.endDate.slice(0, 10)}T00:00:00`),
+                            })),
+                          ]}
+                          excludeDisabled
+                          locale={ko}
+                          navLayout="around"
+                          showOutsideDays
+                          resetOnSelect
+                          selected={pendingRange}
+                          month={calendarViewMonth}
+                          onMonthChange={setCalendarViewMonth}
+                          onSelect={handleRangeSelect}
+                        />
+                      </CalendarPopover>
+                    )}
+                    <strong
+                      style={{
+                        display: 'block',
+                        marginTop: 1,
+                        fontSize: 24,
+                        fontWeight: 600,
+                        lineHeight: 1.3,
+                        letterSpacing: '-0.24px',
+                      }}
+                    >
+                      {paymentAmount.toLocaleString()}원
+                    </strong>
+                  </div>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
+                  <PopupAction type="button" secondary onClick={() => setPaymentOpen(false)}>
+                    취소
+                  </PopupAction>
+                  <PopupAction type="button" disabled={submitting} onClick={submitReservation}>
+                    {submitting ? '신청 중…' : '계약 신청'}
+                  </PopupAction>
+                </div>
+              </div>
+            </PaymentPopup>
+          </PaymentBackdrop>,
+          document.body,
+        )}
+      {nameModalPlacement &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <NameBackdrop role="presentation" onMouseDown={() => setNameModalPlacement(null)}>
+            <NamePopup
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="ad-name-title"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <h2 id="ad-name-title" style={{ margin: 0, ...textStyle.display }}>
+                광고명
+              </h2>
+              <NameFields>
+                <NameInput
+                  value={adName}
+                  onChange={(event) => setAdName(event.target.value)}
+                  placeholder="광고명을 입력해주세요"
+                  aria-label="광고명"
+                  maxLength={30}
+                  autoFocus
+                />
+                <NameInput
+                  value={adLink}
+                  onChange={(event) => setAdLink(event.target.value)}
+                  placeholder="https:// 광고 클릭 시 이동할 링크 (선택)"
+                  aria-label="광고 링크"
+                  inputMode="url"
+                />
+              </NameFields>
+              <PopupActions>
+                <PopupAction type="button" secondary onClick={() => setNameModalPlacement(null)}>
+                  취소
+                </PopupAction>
+                <PopupAction
+                  type="button"
+                  disabled={!adName.trim()}
+                  onClick={() => {
+                    const placement = nameModalPlacement;
+                    const link = adLink.trim();
+                    // 홈 캐러셀은 http(s)만 랜딩으로 쓴다 — 나머지 스킴은 여기서 막는다.
+                    if (link && !/^https?:\/\//i.test(link)) {
+                      toast.error(
+                        '링크 주소를 확인해주세요',
+                        'http:// 또는 https://로 시작하는 주소만 등록할 수 있어요',
+                      );
+                      return;
+                    }
+                    setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
+                    setAdLinks((current) => ({ ...current, [placement]: link }));
+                    setNameModalPlacement(null);
+                    void openPayment(placement, { name: adName.trim(), link });
+                  }}
+                >
+                  등록하기
+                </PopupAction>
+              </PopupActions>
+            </NamePopup>
+          </NameBackdrop>,
+          document.body,
+        )}
+    </BizContent>
+  );
+}
+
+const ViewToggle = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 8,
+  padding: '6px 20px',
+  borderRadius: 6,
+  background: c.white,
+});
+const ViewTab = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active: boolean;
+}>(({ active }) => ({
+  width: 80,
+  border: 0,
+  borderRadius: 6,
+  padding: 10,
+  background: active ? c.primary : 'transparent',
+  color: active ? c.white : c.gray900,
+  ...textStyle.subtitle,
+}));
+const ManageBody = styled(BizContent)({ maxWidth: 1100, gap: 48 });
+const HeaderRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 16,
+});
+const ManageSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
+const AdsTable = styled.div({
+  overflow: 'hidden',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 12,
+});
+const TableRow = styled.div({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(180px, 1fr) 180px 100px 140px',
+  alignItems: 'center',
+  minHeight: 56,
+  padding: '0 16px',
+  borderTop: `0.5px solid ${c.gray200}`,
+  ...textStyle.body,
+});
+const FullSpan = styled.div({ gridColumn: '1 / -1' });
+const TableHead = styled(TableRow)({
+  minHeight: 48,
+  borderTop: 0,
+  background: c.gray100,
+  ...textStyle.h1,
+});
+const CurrentBanner = styled.div({
+  height: 236,
+  borderRadius: 12,
+  overflow: 'hidden',
+  '& > img': { width: '100%', height: '100%', objectFit: 'cover' },
+});
+const CurrentBannerEmpty = styled.div({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 4,
+  '& img': { width: 140, height: 'auto', objectFit: 'contain' },
+  '& p': { margin: 0, color: c.gray500, ...textStyle.body },
+});
+const StatusCell = styled.span<{ ended: boolean }>(({ ended }) => ({
+  justifySelf: 'end',
+  width: 80,
+  color: ended ? c.red : c.primary,
+}));
+const Footnote = styled.p({ margin: 0, ...textStyle.metaText, color: c.gray500 });
+const CheckoutBody = styled(BizContent)({ maxWidth: 680, gap: 24, paddingTop: 36 });
+const SuccessIcon = styled.div({
+  width: 56,
+  height: 56,
+  borderRadius: '50%',
+  display: 'grid',
+  placeItems: 'center',
+  margin: '0 auto',
+  background: '#e7f2ff',
+  color: c.primary,
+  fontSize: 28,
+  fontWeight: 700,
+});
+const PaymentBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 24, 39, .46)',
+});
+const PaymentPopup = styled.div({
+  width: 'min(100%, 384px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+});
+const PaymentDate = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 4,
+  color: c.gray900,
+  ...textStyle.metaText,
+});
+const PaymentDateText = styled.span({ color: c.gray900, ...textStyle.metaText });
+const CalendarToggle = styled('button', { shouldForwardProp: (prop) => prop !== 'active' })<{
+  active?: boolean;
+}>(({ active }) => ({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 22,
+  height: 22,
+  padding: 0,
+  border: 0,
+  borderRadius: 6,
+  background: active ? c.gray100 : 'transparent',
+  cursor: 'pointer',
+}));
+const CalendarIcon = styled.img({ width: 15, height: 15 });
+const CalendarPopover = styled.div({
+  position: 'absolute',
+  zIndex: 10,
+  top: 'calc(100% + 6px)',
+  left: 0,
+  width: 'max-content',
+  padding: 14,
+  borderRadius: 10,
+  background: c.white,
+  border: `0.5px solid ${c.gray200}`,
+  boxShadow: '0 12px 28px rgba(17, 24, 39, .18)',
+});
+const CalendarDayPicker = styled(DayPicker)({
+  '--rdp-accent-color': c.primary,
+  '--rdp-accent-background-color': c.lightBlue,
+  '--rdp-today-color': c.primary,
+  '--rdp-day-width': '30px',
+  '--rdp-day-height': '30px',
+  '--rdp-day_button-width': '30px',
+  '--rdp-day_button-height': '30px',
+  '--rdp-day_button-border': 'none',
+  '--rdp-selected-border': 'none',
+  '--rdp-nav_button-width': '22px',
+  '--rdp-nav_button-height': '22px',
+  '--rdp-nav-height': '26px',
+  '--rdp-weekday-opacity': 1,
+  '--rdp-outside-opacity': 1,
+  fontFamily: textStyle.metaText.fontFamily,
+  '.rdp-month_caption': { ...textStyle.subtitle, color: c.gray900, justifyContent: 'center' },
+  '.rdp-weekday': { ...textStyle.label, color: c.gray500 },
+  '.rdp-day_button': { ...textStyle.metaText, color: c.gray900 },
+  '.rdp-outside .rdp-day_button': { color: c.gray300 },
+  '.rdp-chevron': { fill: c.gray700 },
+});
+const PopupAction = styled('button', { shouldForwardProp: (prop) => prop !== 'secondary' })<{
+  secondary?: boolean;
+}>(({ secondary }) => ({
+  height: 37,
+  border: secondary ? `0.5px solid ${c.gray200}` : 0,
+  borderRadius: 6,
+  background: secondary ? c.white : c.primary,
+  color: secondary ? c.gray900 : c.white,
+  cursor: 'pointer',
+  fontSize: secondary ? 12 : 13,
+  fontWeight: 600,
+  lineHeight: secondary ? 'normal' : 1.4,
+  '&:disabled': { opacity: 0.4, cursor: 'not-allowed' },
+}));
+const NameBackdrop = styled.div({
+  position: 'fixed',
+  zIndex: 100,
+  inset: 0,
+  display: 'grid',
+  placeItems: 'center',
+  padding: 24,
+  background: 'rgba(17, 17, 17, .2)',
+});
+const NamePopup = styled.div({
+  width: 'min(100%, 427px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
+  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+});
+const NameFields = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const NameInput = styled.input({
+  width: '100%',
+  height: 44,
+  padding: '0 14px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: c.white,
+  color: c.gray900,
+  ...textStyle.body,
+  '&::placeholder': { color: c.gray500 },
+  '&:focus': { outline: 'none', borderColor: c.primary },
+});
+const PopupActions = styled.div({ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 });

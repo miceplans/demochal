@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizProfilePage } from '@/features/biz/components/BizProfilePage';
+import { BizProfilePage } from '@/apps/biz/components/BizProfilePage';
 
 export const metadata: Metadata = {
   title: '나의 정보',

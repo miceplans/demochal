@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizPostingEditPage } from '@/features/biz/components/BizPostingFormPage';
+import { BizPostingEditPage } from '@/apps/biz/components/BizPostingFormPage';
 
 export const metadata: Metadata = {
   title: '공고 수정',

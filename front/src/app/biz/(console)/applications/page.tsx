@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizApplicationsPage } from '@/features/biz/components/BizApplicationsPage';
+import { BizApplicationsPage } from '@/apps/biz/components/BizApplicationsPage';
 
 export const metadata: Metadata = {
   title: '신청자 응답',

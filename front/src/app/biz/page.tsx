@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { BizLanding } from '@/components/biz/BizLanding';
+import { BizLanding } from '@/apps/biz/components/BizLanding';
 
 export const metadata: Metadata = {
   title: 'SEMO.BIZ: 쉬운 행사 관리',
