@@ -216,6 +216,15 @@ describe('BizAdsPage 광고 링크 입력', () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
+  it('결제 모달에서 상품 설명 페이지 링크를 제공한다', async () => {
+    renderPage();
+    await openNameModal('hero');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    const productLink = await screen.findByRole('link', { name: '상품 설명 >' });
+    expect(productLink.getAttribute('href')).toBe('/advertising/products');
+  });
+
   it('http(s)가 아닌 링크는 등록이 거부되고 계약 신청되지 않는다', async () => {
     renderPage();
     await openNameModal('hero');
