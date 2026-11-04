@@ -8,12 +8,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { Icon } from '@/apps/user/components/common/Primitives';
 import { LoadingState } from '@/apps/user/components/common/LoadingState';
-import {
-  BizContent,
-  OutlineButton,
-  PrimaryButton,
-  useBizHref,
-} from '@/apps/biz/layouts/BizShell';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
 import { siteHref } from '@/lib/biz';
 import { challengeEligibility } from '@/lib/challenge';

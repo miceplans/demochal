@@ -11,12 +11,7 @@ import { ko } from 'react-day-picker/locale';
 import 'react-day-picker/style.css';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import {
-  BizContent,
-  OutlineButton,
-  PrimaryButton,
-  useBizHref,
-} from '@/apps/biz/layouts/BizShell';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { Button } from '@/apps/user/components/common/Primitives';
 import {
   AdPlacementPreview,

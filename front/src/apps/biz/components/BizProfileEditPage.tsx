@@ -6,12 +6,7 @@ import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizOrgProfile } from '@/apps/biz/components/BizOrgProfile';
-import {
-  BizContent,
-  OutlineButton,
-  PrimaryButton,
-  useBizHref,
-} from '@/apps/biz/layouts/BizShell';
+import { BizContent, OutlineButton, PrimaryButton, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/apps/user/components/common/Toast';
