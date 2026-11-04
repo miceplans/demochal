@@ -11,6 +11,9 @@ import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
+import { routeOf } from './AdminShell.logic';
+
+export { routeOf } from './AdminShell.logic';
 
 const roleLabel: Record<string, string> = {
   admin: '관리자',
@@ -27,10 +30,6 @@ export function useAdminHref() {
   const base = useAdminBase();
   return (path: string) => `${base}${path === '/' ? '' : path}`;
 }
-export function routeOf(pathname: string) {
-  return pathname.startsWith('/admin') ? pathname.slice('/admin'.length) || '/' : pathname;
-}
-
 export const AdminGlobalStyles = (
   <Global
     styles={{
