@@ -5,7 +5,9 @@ import { ApplicationAnswers } from '../components/ApplicationAnswers';
 
 const mocks = vi.hoisted(() => ({ getFile: vi.fn(), error: vi.fn() }));
 vi.mock('@semochal/api-client', () => ({ generated: { getApplicationAttachment: mocks.getFile } }));
-vi.mock('@/apps/user/components/common/Toast', () => ({ useToast: () => ({ error: mocks.error }) }));
+vi.mock('@/apps/user/components/common/Toast', () => ({
+  useToast: () => ({ error: mocks.error }),
+}));
 afterEach(cleanup);
 describe('Biz application answers', () => {
   it('shows the submitted question snapshots and multi-select answers', async () => {
