@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { BizShell } from '@/apps/biz/components/BizShell';
+import { BizShell } from '@/apps/biz/layouts/BizShell';
 import { BizAccessCover } from '@/apps/biz/components/BizAccessCover';
 import { noIndexMetadata } from '@/lib/seo';
 

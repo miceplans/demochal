@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import { useToast } from '@/apps/user/components/common/Toast';
 import { Button, Muted, Row, Stack } from '@/apps/user/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { keyframes } from '@emotion/react';
-import { UserShell } from '@/apps/user/components/common/UserShell';
+import { UserShell } from '@/apps/user/layouts/UserShell';
 import {
   DesktopOnly,
   EmptyState,

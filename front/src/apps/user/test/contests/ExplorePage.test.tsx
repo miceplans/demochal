@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
 import { ExplorePage } from '../../components/contests/ExplorePage';
 
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 

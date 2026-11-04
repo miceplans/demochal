@@ -4,7 +4,7 @@ import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { PrimaryButton } from '@/apps/biz/components/BizShell';
+import { PrimaryButton } from '@/apps/biz/layouts/BizShell';
 import { useToast } from '@/apps/user/components/common/Toast';
 import { apiErrorMessage } from '@/api/api-error';
 

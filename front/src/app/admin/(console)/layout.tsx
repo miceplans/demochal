@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { headers } from 'next/headers';
-import { AdminShell, AdminNavProvider } from '@/apps/admin/components/AdminShell';
+import { AdminShell, AdminNavProvider } from '@/apps/admin/layouts/AdminShell';
 import { isAdminHostHeader } from '@/lib/admin';
 
 export default async function AdminConsoleLayout({ children }: { children: ReactNode }) {

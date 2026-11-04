@@ -27,7 +27,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, back: vi.fn() }),
   useParams: () => ({}),
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   useBizHref: () => (path: string) => path,
 }));

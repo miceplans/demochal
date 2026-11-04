@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { colors as c } from '@/styles/design';
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { MyShell } from '@/apps/user/components/common/UserShell';
+import { MyShell } from '@/apps/user/layouts/UserShell';
 import { Button, Input, Stack, Title, Muted } from '@/apps/user/components/common/Primitives';
 import { adApi } from '@/api/ad-api';
 import { useUserStore } from '@/store/useUserStore';

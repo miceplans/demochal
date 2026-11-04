@@ -5,7 +5,7 @@ import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { AdReport } from '@semochal/api-client';
-import { BizContent, SectionTitle } from '@/apps/biz/components/BizShell';
+import { BizContent, SectionTitle } from '@/apps/biz/layouts/BizShell';
 import { ExposureChart } from '@/apps/biz/components/ExposureChart';
 import { BizPaymentCard } from '@/apps/biz/components/BizPaymentCard';
 import { Button } from '@/apps/user/components/common/Primitives';

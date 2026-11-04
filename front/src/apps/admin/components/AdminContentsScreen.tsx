@@ -16,7 +16,7 @@ import {
   SelectFilter,
   SectionHeader,
 } from './parts';
-import { useAdminHref } from './AdminShell';
+import { useAdminHref } from '../layouts/AdminShell';
 import { ReportLogTable } from './ReportLogTable';
 import { ScrollRail } from '@/apps/user/components/ui/ScrollRail';
 import {

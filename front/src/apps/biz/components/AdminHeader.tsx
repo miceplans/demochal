@@ -3,7 +3,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
-import { BizGlobalStyles, BizFooter, useBizHref } from '@/apps/biz/components/BizShell';
+import { BizGlobalStyles, BizFooter, useBizHref } from '@/apps/biz/layouts/BizShell';
 
 export function AdminHeader() {
   const hrefOf = useBizHref();

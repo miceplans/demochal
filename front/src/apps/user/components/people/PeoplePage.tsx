@@ -4,7 +4,7 @@ import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import type { PersonCardModel } from './person';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import { Icon, Input, Muted, Stack } from '@/apps/user/components/common/Primitives';
 import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';

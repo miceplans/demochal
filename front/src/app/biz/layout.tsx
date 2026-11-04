@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
-import { BizNavProvider } from '@/apps/biz/components/BizShell';
+import { BizNavProvider } from '@/apps/biz/layouts/BizShell';
 import { isBizHostHeader } from '@/lib/biz';
 import type { ReactNode } from 'react';
 

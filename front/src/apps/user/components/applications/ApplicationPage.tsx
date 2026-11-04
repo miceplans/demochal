@@ -3,7 +3,7 @@
 import { Suspense, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
-import { UserShell, FormContent } from '@/apps/user/components/common/UserShell';
+import { UserShell, FormContent } from '@/apps/user/layouts/UserShell';
 import { Button } from '@/apps/user/components/common/Primitives';
 import { useUserStore } from '@/store/useUserStore';
 import { useToast } from '@/apps/user/components/common/Toast';

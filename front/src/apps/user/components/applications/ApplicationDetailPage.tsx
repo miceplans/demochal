@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated, type ApplicationFormAnswer } from '@semochal/api-client';
-import { MyShell } from '@/apps/user/components/common/UserShell';
+import { MyShell } from '@/apps/user/layouts/UserShell';
 import { Button, IconButton, Input, Tag } from '@/apps/user/components/common/Primitives';
 import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { useToast } from '@/apps/user/components/common/Toast';

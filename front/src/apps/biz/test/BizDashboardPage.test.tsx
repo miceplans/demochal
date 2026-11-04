@@ -21,7 +21,7 @@ vi.mock('@semochal/api-client', () => ({
     useListPaymentCards: () => ({ data: { data: [] } }),
   },
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   BizLink: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
   SectionHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

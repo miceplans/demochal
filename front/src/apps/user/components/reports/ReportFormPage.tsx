@@ -5,7 +5,7 @@ import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import { Button, Muted, Title } from '@/apps/user/components/common/Primitives';
 import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { useToast } from '@/apps/user/components/common/Toast';

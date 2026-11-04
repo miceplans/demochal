@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
-import { BizContent, useBizHref } from '@/apps/biz/components/BizShell';
+import { BizContent, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { useToast } from '@/apps/user/components/common/Toast';
 import { useUserStore } from '@/store/useUserStore';
 import { DayPicker } from 'react-day-picker';

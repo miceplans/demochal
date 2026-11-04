@@ -33,7 +33,7 @@ vi.mock('next/link', () => ({
     <a href={href}>{children}</a>
   ),
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizGlobalStyles: null,
   Logo: () => <div />,
   PrimaryButton: ({ children, ...props }: { children: ReactNode }) => (

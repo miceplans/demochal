@@ -34,7 +34,7 @@ vi.mock('@semochal/api-client', () => ({
     useGetMyChallengeStats: () => ({ data: undefined, isPending: false, isError: false }),
   },
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   BizLink: ({ children, href }: { children: React.ReactNode; href: string }) => (
     <a href={mocks.hrefOf(href)}>{children}</a>

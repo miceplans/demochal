@@ -8,7 +8,7 @@ import { adApi } from '@/api/ad-api';
 import { Modal } from '@/apps/user/components/common/Feedback';
 import { useToast } from '@/apps/user/components/common/Toast';
 import { BizOrgProfile } from '@/apps/biz/components/BizOrgProfile';
-import { BizContent, PrimaryButton, useBizHref } from '@/apps/biz/components/BizShell';
+import { BizContent, PrimaryButton, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/api/api-error';

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import styled from '@emotion/styled';
-import { UserShell, Logo } from '@/apps/user/components/common/UserShell';
+import { UserShell, Logo } from '@/apps/user/layouts/UserShell';
 import { Button, Icon, Stack, Chip, Wrap } from '@/apps/user/components/common/Primitives';
 import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';

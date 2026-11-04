@@ -48,7 +48,7 @@ vi.mock('@semochal/api-client', () => ({
   },
 }));
 
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   PrimaryButton: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),

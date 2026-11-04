@@ -14,7 +14,7 @@ import { TeamCard } from '@/apps/user/components/teams/TeamCard';
 import { GALLERY_CROP_SPEC, HERO_CROP_SPEC } from '@/apps/user/components/ads/AdPlacementPreview';
 import { MovingAds } from '@/apps/user/components/ads/MovingAds';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/apps/user/components/common/Toast';
-import { useAdminHref } from './AdminShell';
+import { useAdminHref } from '../layouts/AdminShell';
 import { ScrollRail } from '@/apps/user/components/ui/ScrollRail';
 
 type PreviewView = 'mobile' | 'pc';

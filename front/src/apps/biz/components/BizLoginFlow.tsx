@@ -16,7 +16,7 @@ import {
   PrimaryButton,
   OutlineButton,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 
 const stepLabels = ['약관 동의', '계정 정보', '기관 인증'];
 

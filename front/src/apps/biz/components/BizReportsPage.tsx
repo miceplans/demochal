@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { ExposureChart } from '@/apps/biz/components/ExposureChart';
-import { BizContent, useBizHref } from '@/apps/biz/components/BizShell';
+import { BizContent, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { Dropdown } from '@/apps/user/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';

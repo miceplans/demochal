@@ -2,7 +2,7 @@
 import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
-import { UserShell } from '@/apps/user/components/common/UserShell';
+import { UserShell } from '@/apps/user/layouts/UserShell';
 import { SectionHeader, DesktopOnly, MobileOnly } from '@/apps/user/components/common/Primitives';
 import { contestHref } from '@/apps/user/components/contests/contest-links';
 import { ContestCard } from '@/apps/user/components/contests/ContestCard';

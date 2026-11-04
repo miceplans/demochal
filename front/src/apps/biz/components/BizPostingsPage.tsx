@@ -17,7 +17,7 @@ import {
   SectionTitle,
   StatBox,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { Icon } from '@/apps/user/components/common/Primitives';
 import { apiErrorMessage } from '@/api/api-error';
 import { challengeEligibility } from '@/lib/challenge';

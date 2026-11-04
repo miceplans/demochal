@@ -6,7 +6,15 @@ import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
+import {
+  Icon,
+  Row,
+  DesktopOnly,
+  MobileOnly,
+  Input,
+  IconButton,
+  Button,
+} from '../components/common/Primitives';
 import { useUserStore } from '@/store/useUserStore';
 import { generated } from '@semochal/api-client';
 import { useNotificationStream } from '@/hooks/useNotificationStream';

@@ -39,7 +39,7 @@ vi.mock('@semochal/api-client', () => ({
     getFindMyBusinessQueryKey: () => ['business'],
   },
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   OutlineButton: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>

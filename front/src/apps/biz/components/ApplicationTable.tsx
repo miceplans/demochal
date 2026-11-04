@@ -3,7 +3,7 @@
 import styled from '@emotion/styled';
 import { Fragment } from 'react';
 import { ApplicationAnswers } from './ApplicationAnswers';
-import { OutlineButton as ShellOutlineButton } from '@/apps/biz/components/BizShell';
+import { OutlineButton as ShellOutlineButton } from '@/apps/biz/layouts/BizShell';
 import type { Application } from '@semochal/api-client';
 import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';

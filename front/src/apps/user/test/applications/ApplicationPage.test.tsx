@@ -26,7 +26,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
   useSearchParams: () => new URLSearchParams('challenge=challenge-1'),
 }));
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => (
     <ThemeProvider theme={theme}>{children}</ThemeProvider>
   ),

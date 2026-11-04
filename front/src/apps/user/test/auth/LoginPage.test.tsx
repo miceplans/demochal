@@ -7,7 +7,7 @@ import { useUserStore } from '@/store/useUserStore';
 
 const mocks = vi.hoisted(() => ({ assign: vi.fn() }));
 
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Logo: () => <div />,
 }));

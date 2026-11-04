@@ -16,7 +16,7 @@ import {
   OutlineButton,
   PrimaryButton,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { Button } from '@/apps/user/components/common/Primitives';
 import {
   AdPlacementPreview,

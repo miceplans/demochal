@@ -10,7 +10,7 @@ import {
   BizLink,
   BizLandingHeader,
   Logo,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { BizOperationsPage } from '@/apps/biz/components/BizOperationsPage';
 import { DriftWall, type DriftWallItem } from '@/apps/biz/components/DriftWall';
 import { operationSteps, serviceCards } from '@/data/biz-design';

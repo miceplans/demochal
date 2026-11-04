@@ -401,7 +401,7 @@ describe('NotificationsPage 채팅방 링크', () => {
   });
 });
 
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Content: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   MyShell: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

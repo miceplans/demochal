@@ -4,7 +4,7 @@ import { isRichHtml } from '@/lib/rich-text';
 import { Fragment, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import {
   Button,
   DesktopOnly,

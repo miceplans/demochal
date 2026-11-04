@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { PrimaryButton, OutlineButton, useBizHref } from './BizShell';
+import { PrimaryButton, OutlineButton, useBizHref } from '../layouts/BizShell';
 
 export function BizAccessCover({ children }: { children: ReactNode }) {
   const hrefOf = useBizHref();

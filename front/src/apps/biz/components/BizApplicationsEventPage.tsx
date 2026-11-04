@@ -13,7 +13,7 @@ import {
   OutlineButton,
   PrimaryButton,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { Dropdown, type DropdownOption } from '@/apps/user/components/ui/Dropdown';
 import { siteHref } from '@/lib/biz';
 import { challengeEligibility } from '@/lib/challenge';

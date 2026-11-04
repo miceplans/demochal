@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({ push: vi.fn(), contents: vi.fn() }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.push }) }));
 
-vi.mock('../components/AdminShell', () => ({
+vi.mock('../layouts/AdminShell', () => ({
   useAdminHref: () => (path: string) => `/admin${path}`,
 }));
 

@@ -7,7 +7,7 @@ import { generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { PrimaryButton, FieldInput, useBizHref } from '@/apps/biz/components/BizShell';
+import { PrimaryButton, FieldInput, useBizHref } from '@/apps/biz/layouts/BizShell';
 import { Icon, Toggle } from '@/apps/user/components/common/Primitives';
 
 function XIcon({ size = 16 }: { size?: number }) {

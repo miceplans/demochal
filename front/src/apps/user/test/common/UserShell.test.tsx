@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { ThemeProvider } from '@emotion/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { Content, FormContent, MyShell, UserShell } from '../../components/common/UserShell';
+import { Content, FormContent, MyShell, UserShell } from '../../layouts/UserShell';
 
 const mocks = vi.hoisted(() => ({
   auth: undefined as

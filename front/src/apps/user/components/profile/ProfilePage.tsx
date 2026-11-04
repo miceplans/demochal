@@ -3,7 +3,7 @@ import { Suspense, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import {
   Button,
   Icon,

@@ -16,7 +16,7 @@ vi.mock('@semochal/api-client', async (importActual) => {
   };
 });
 
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Content: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));

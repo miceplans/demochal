@@ -2,7 +2,7 @@
 import { Suspense, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { generated } from '@semochal/api-client';
-import { UserShell, FormContent } from '@/apps/user/components/common/UserShell';
+import { UserShell, FormContent } from '@/apps/user/layouts/UserShell';
 import {
   Button,
   Input,

@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import {
   Button,
   HeartIcon,

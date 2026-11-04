@@ -19,7 +19,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('next/navigation', () => ({
   usePathname: () => '/my/applications/app-1',
 }));
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   MyShell: ({ children }: { children: ReactNode }) => (
     <ThemeProvider theme={theme}>{children}</ThemeProvider>
   ),

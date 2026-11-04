@@ -2,7 +2,7 @@
 import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { Logo } from '@/apps/biz/components/BizShell';
+import { Logo } from '@/apps/biz/layouts/BizShell';
 import { BizInquiryForm } from '@/apps/biz/components/BizInquiryForm';
 import { orgProfile } from '@/data/biz-design';
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ApiError, generated } from '@semochal/api-client';
 import styled from '@emotion/styled';
-import { UserShell, Content } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content } from '@/apps/user/layouts/UserShell';
 import { LoadingState } from '@/apps/user/components/common/LoadingState';
 import { NotFound } from '@/apps/user/components/common/NotFound';
 import { Muted, Tag } from '@/apps/user/components/common/Primitives';

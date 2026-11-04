@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
-import { UserShell, Content, MyShell, myMenu } from '@/apps/user/components/common/UserShell';
+import { UserShell, Content, MyShell, myMenu } from '@/apps/user/layouts/UserShell';
 import {
   Button,
   Chip,

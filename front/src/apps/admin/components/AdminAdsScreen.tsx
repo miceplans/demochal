@@ -18,7 +18,7 @@ import {
   SelectFilter,
   type AdminColumn,
 } from './parts';
-import { useAdminHref } from './AdminShell';
+import { useAdminHref } from '../layouts/AdminShell';
 
 const Page = styled.div({
   display: 'flex',

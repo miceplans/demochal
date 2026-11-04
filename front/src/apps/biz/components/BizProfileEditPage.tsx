@@ -11,7 +11,7 @@ import {
   OutlineButton,
   PrimaryButton,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/apps/user/components/common/Toast';

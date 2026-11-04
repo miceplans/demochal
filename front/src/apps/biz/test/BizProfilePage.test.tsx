@@ -18,7 +18,7 @@ vi.mock('@semochal/api-client', async (importOriginal) => ({
 vi.mock('@/api/ad-api', () => ({
   adApi: { files: { get: vi.fn().mockRejectedValue(new Error('missing')) } },
 }));
-vi.mock('@/apps/biz/components/BizShell', () => ({
+vi.mock('@/apps/biz/layouts/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PrimaryButton: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>

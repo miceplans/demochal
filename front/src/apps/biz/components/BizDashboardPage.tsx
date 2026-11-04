@@ -11,7 +11,7 @@ import {
   SectionHeader,
   SectionTitle,
   StatusTag,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';

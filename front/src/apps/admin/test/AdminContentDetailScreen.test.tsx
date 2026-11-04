@@ -21,7 +21,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-vi.mock('../components/AdminShell', () => ({
+vi.mock('../layouts/AdminShell', () => ({
   useAdminHref: () => (path: string) => `/admin${path}`,
 }));
 

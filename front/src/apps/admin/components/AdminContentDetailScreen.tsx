@@ -11,7 +11,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { LOCAL_ERROR_TOAST_META, useToast } from '@/apps/user/components/common/Toast';
 import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
-import { useAdminHref } from './AdminShell';
+import { useAdminHref } from '../layouts/AdminShell';
 import { daysLeft, formatDateDot } from '../services/AdminContentDetailScreen';
 import type { ReportEntry } from '../services/AdminContentDetailScreen';
 

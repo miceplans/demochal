@@ -10,7 +10,7 @@ import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/apps/user/components/common/Toast';
 // import { MfaStep } from '@/apps/user/components/auth/MfaStep';
-import { BizGlobalStyles, Logo, PrimaryButton, useBizHref } from '@/apps/biz/components/BizShell';
+import { BizGlobalStyles, Logo, PrimaryButton, useBizHref } from '@/apps/biz/layouts/BizShell';
 // import type { MfaChallenge, MfaUser } from '@/apps/user/types/mfa-types';
 
 const EMAIL_PATTERN = /^\S+@\S+\.\S+$/;

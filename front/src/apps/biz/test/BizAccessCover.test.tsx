@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BizNavProvider } from '../components/BizShell';
+import { BizNavProvider } from '../layouts/BizShell';
 import { BizAccessCover } from '../components/BizAccessCover';
 
 const mocks = vi.hoisted(() => ({

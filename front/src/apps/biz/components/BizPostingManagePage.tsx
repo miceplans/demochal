@@ -13,7 +13,7 @@ import {
   StatValue,
   Delta,
   useBizHref,
-} from '@/apps/biz/components/BizShell';
+} from '@/apps/biz/layouts/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApplicationTable, type ApplicationPatch } from './ApplicationTable';

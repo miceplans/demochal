@@ -35,7 +35,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
 }));
-vi.mock('@/apps/user/components/common/UserShell', () => ({
+vi.mock('@/apps/user/layouts/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Logo: () => <div />,
 }));
