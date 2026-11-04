@@ -910,7 +910,12 @@ describe('PaymentsService', () => {
     function createRefundDb(payment: Record<string, unknown> | null) {
       const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
       const update = vi.fn(() => ({ set }));
-      const tx = { update };
+      const tx = {
+        update,
+        select: vi.fn(() => ({
+          from: () => ({ where: () => ({ for: () => ({ limit }) }) }),
+        })),
+      };
       const limit = vi.fn().mockResolvedValue(payment ? [payment] : []);
       const select = vi.fn(() => ({ from: () => ({ where: () => ({ limit }) }) }));
       const transaction = vi.fn(async (fn: (t: unknown) => Promise<void>) => fn(tx));
@@ -977,7 +982,7 @@ describe('PaymentsService', () => {
       await expect(service.refundPaidOrder('order-1', 'x', settle)).rejects.toThrow(
         '결제 취소에 실패했습니다',
       );
-      expect(transaction).not.toHaveBeenCalled();
+      expect(transaction).toHaveBeenCalledTimes(1);
       expect(settle).not.toHaveBeenCalled();
     });
 

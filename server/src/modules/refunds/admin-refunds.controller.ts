@@ -5,6 +5,7 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
+  ParseEnumPipe,
   Post,
   Query,
   UseGuards,
@@ -12,7 +13,7 @@ import {
 import { AdminRoleGuard } from '../admin/admin-role.guard.js';
 import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
-import { RejectRefundRequestDto } from './dto/refund-request.dto.js';
+import { RefundRequestStatus, RejectRefundRequestDto } from './dto/refund-request.dto.js';
 import { RefundsService } from './refunds.service.js';
 
 @UseGuards(AdminRoleGuard)
@@ -21,7 +22,10 @@ export class AdminRefundsController {
   constructor(private readonly refundsService: RefundsService) {}
 
   @Get()
-  list(@Query('status') status?: string) {
+  list(
+    @Query('status', new ParseEnumPipe(RefundRequestStatus, { optional: true }))
+    status?: RefundRequestStatus,
+  ) {
     return this.refundsService.adminList(status);
   }
 
