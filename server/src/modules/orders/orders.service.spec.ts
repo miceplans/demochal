@@ -89,13 +89,20 @@ describe('OrdersService.markCancelled', () => {
     expect(adsUpdateWhere).toHaveBeenCalledWith(and(eq(ads.id, 'ad-1'), eq(ads.status, 'active')));
   });
 
-  it('does not revert an ad for a canceled pending order that never activated it', async () => {
-    const { db, adsUpdateSet } = createDbStub({ id: 'order-1', status: 'pending', adId: 'ad-1' });
+  it('ends the preparing ad when a pending order is canceled', async () => {
+    const { db, adsUpdateSet, adsUpdateWhere } = createDbStub({
+      id: 'order-1',
+      status: 'pending',
+      adId: 'ad-1',
+    });
     const service = new OrdersService(db, { create: vi.fn() } as never);
 
     await service.markCancelled('order-1');
 
-    expect(adsUpdateSet).not.toHaveBeenCalled();
+    expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'ended' });
+    expect(adsUpdateWhere).toHaveBeenCalledWith(
+      and(eq(ads.id, 'ad-1'), eq(ads.status, 'preparing')),
+    );
   });
 
   it('is idempotent for an already-canceled order', async () => {

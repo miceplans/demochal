@@ -107,6 +107,15 @@ export class OrdersService {
         .where(and(eq(ads.id, existing.adId), eq(ads.status, 'active')));
     }
 
+    // 결제 전(pending) 주문이 취소되면 날짜를 잡고 있던 preparing 광고도 함께 종료한다.
+    // 그대로 두면 만료(30분)까지 같은 기간으로 재신청이 겹침 오류로 막힌다.
+    if (existing.status === 'pending' && existing.adId) {
+      await tx
+        .update(ads)
+        .set({ status: 'ended' })
+        .where(and(eq(ads.id, existing.adId), eq(ads.status, 'preparing')));
+    }
+
     return order;
   }
 
