@@ -818,7 +818,7 @@ describe('PaymentsService', () => {
       expect(ordersUpdateSet).toHaveBeenCalledTimes(1);
       expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
       expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
-      expect(adsUpdateSet).not.toHaveBeenCalled();
+      expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'ended' });
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
       );
@@ -886,7 +886,7 @@ describe('PaymentsService', () => {
       );
       expect(ordersUpdateSet).not.toHaveBeenCalledWith({ status: 'paid' });
       expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'canceled' });
-      expect(adsUpdateSet).not.toHaveBeenCalled();
+      expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'ended' });
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', status: 'canceled' }),
       );
