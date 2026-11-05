@@ -46,7 +46,10 @@ export async function compressToWebP(
   }
   const compressed = await imageCompression(file, {
     fileType: 'image/webp',
-    useWebWorker: true,
+    // 워커를 켜면 blob 워커가 cdn.jsdelivr.net에서 스크립트를 불러오는데 CSP(script-src)가
+    // 이를 막아 Promise가 영원히 끝나지 않는다(업로드·결제 단계가 조용히 멈춤). CSP에 외부 CDN을
+    // 추가하지 않고 메인 스레드에서 압축한다.
+    useWebWorker: false,
     ...preset,
   });
   const webpFile = new File([compressed], `${file.name.replace(/\.[^.]+$/, '')}.webp`, {
