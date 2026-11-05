@@ -19,6 +19,7 @@
 - 구현 뒤에는 Issue criteria와 diff를 기준으로 happy path, edge case, 회귀, validation, 인증/인가, error handling test의 누락을 별도로 검사한다. 그 뒤 재현 가능한 Quality Gate(lint, format, typecheck, coverage test, build, secret/dependency scan)를 통과해야 독립 AI review로 넘어갈 수 있다.
 - Quality Gate/CI repair는 각각 최대 2회이며 테스트 삭제·검증 완화·규칙 비활성화로 통과시키지 않는다. 필수 검증과 Quality Gate가 성공하고 review가 `PASS`이면 해당 Issue의 PR을 반드시 생성한다. AI는 merge, 배포, production secret 변경, destructive DB migration을 하지 않는다.
 - 검증을 통과한 변경은 의미 있는 단위로 커밋한다. 커밋하지 않은 변경을 push하거나 PR로 만들지 않으며, 커밋·push·PR 생성까지 완료한 뒤 작업 결과를 보고한다.
+- 위 Issue 기반 범위 안에서는 Issue 생성/triage, worktree·branch 생성, 파일 수정, commit, push, PR 생성, worktree 정리를 별도 확인 요청 없이 수행할 수 있다. 허용 범위의 유일한 종료 권한 제한은 merge이며, AI는 merge하지 않는다.
 - 토큰, secret, 개인 정보는 코드, Issue, PR, comment, 로그에 절대 넣지 않는다.
 
 반복적인 GitHub 상태 변경은 `scripts/ai-workflow.sh`를 사용한다. 실제 명령과 템플릿은 `docs/ai-development-workflow.md`를 따른다.

@@ -13,6 +13,12 @@ gh auth login -h github.com
 
 CLI 토큰은 private repository에서 Issue/PR을 읽고 쓰며 branch를 push할 수 있는 `repo` 권한과 workflow 파일을 push할 수 있는 `workflow` 권한이 필요하다. 토큰 값은 Issue, PR, 로그에 기록하지 않는다.
 
+## AI 작업 권한 범위
+
+Issue 기반 작업의 범위가 정해지고 `ai-ready`가 된 뒤에는 다음 작업을 별도 확인 요청 없이 연속으로 수행한다: Issue 생성/triage, 전용 worktree·branch 생성, 파일 수정, 테스트·Quality Gate 실행, commit, 원격 branch push, PR 생성, worktree 제거·prune.
+
+이 목록에서 AI가 수행하지 않는 작업은 merge다. AI는 PR을 생성하고 필요한 상태·검증 정보를 남기지만 merge·배포·production secret 변경은 하지 않는다. 정책 결정, 모호한 요구사항, 위험한 변경, Issue scope 밖의 변경은 `needs-human` 또는 별도 Issue로 중단한다.
+
 ## 상태와 소유권
 
 | Label          | 의미                                                            |
@@ -198,7 +204,7 @@ PASS (reviewer: separate agent/session)
 ## 리뷰어 확인 포인트
 ```
 
-AI는 PR까지만 만든다. 인간 reviewer가 최종 merge를 담당한다.
+AI는 merge 직전인 PR 생성까지 모든 허용 절차를 수행한다. 인간 reviewer가 최종 merge를 담당한다.
 
 ### PR risk scoring
 
