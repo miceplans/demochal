@@ -11,7 +11,12 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PeopleBanners } from './PeopleBanners';
 import { PersonCard } from './PersonCard';
-import { RecommendedContests, RecommendedPeople, RecommendedTeams } from './PeopleRecommendations';
+import {
+  RecommendedContests,
+  RecommendedHighOdds,
+  RecommendedPeople,
+  RecommendedTeams,
+} from './PeopleRecommendations';
 import { ScoutModal } from './ScoutModal';
 
 const ALL = '';
@@ -168,6 +173,7 @@ export function PeoplePage() {
             )}
           </Stack>
           <RecommendedPeople onSelect={setScoutTarget} />
+          <RecommendedHighOdds />
           <RecommendedContests />
           <RecommendedTeams />
         </Stack>

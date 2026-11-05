@@ -86,6 +86,44 @@ const Grid = styled.div({
   [mobile]: { gridTemplateColumns: '1fr' },
 });
 
+const HighOddsSection = styled.section({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'flex-start',
+  gap: 24,
+  [mobile]: { flexDirection: 'column' },
+});
+const HighOddsTitle = styled.h2({
+  margin: 0,
+  fontSize: 24,
+  fontWeight: 600,
+  lineHeight: 1.2,
+  letterSpacing: '-0.02em',
+  color: c.gray900,
+});
+// Figma 01-B(1426:8431): 카드 3장이 52px씩 겹쳐 놓이고 그림자가 드리운다.
+const HighOddsCards = styled.div({
+  display: 'flex',
+  alignItems: 'flex-start',
+  paddingRight: 52,
+  '& > div': {
+    width: 249,
+    flexShrink: 0,
+    marginRight: -52,
+    position: 'relative',
+    filter: 'drop-shadow(4px 4px 5px rgb(0 0 0 / 20%))',
+    transition: 'transform 0.2s ease, filter 0.2s ease',
+    // 호버·키보드 포커스한 카드를 맨 위로 올리고 키우며, 뒤에 그림자를 더 크게 드리운다.
+    '&:hover, &:focus-within': {
+      zIndex: 1,
+      transform: 'scale(1.06)',
+      filter: 'drop-shadow(0 12px 24px rgb(0 0 0 / 30%))',
+    },
+    '@media (prefers-reduced-motion: reduce)': { transition: 'none' },
+  },
+  [mobile]: { maxWidth: '100%', overflowX: 'auto', paddingBottom: 8 },
+});
+
 function RecommendedPersonCard({
   person,
   onSelect,
@@ -193,5 +231,33 @@ export function RecommendedTeams() {
         ))}
       </Grid>
     </Section>
+  );
+}
+
+/** "나와 맞는 사람 찾기" 아래에 붙는 합격확률 높은 공모전 3장(Figma 01-B 1426:8431). */
+export function RecommendedHighOdds() {
+  // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다.
+  const [now] = useState(() => Date.now());
+  const query = generated.useListRecommendedChallenges({ limit: 3 });
+  const items = query.data?.status === 200 ? query.data.data.items : [];
+  if (items.length === 0) return null;
+  return (
+    <HighOddsSection aria-labelledby="high-odds-title">
+      <HighOddsTitle id="high-odds-title">
+        합격확률이
+        <br />
+        높아요!
+      </HighOddsTitle>
+      <HighOddsCards>
+        {items.slice(0, 3).map((challenge) => {
+          const contest = challengeToContest(challenge, now);
+          return (
+            <div key={contest.id}>
+              <ContestCard contest={contest} href={contestHref(contest.id)} />
+            </div>
+          );
+        })}
+      </HighOddsCards>
+    </HighOddsSection>
   );
 }
