@@ -26,6 +26,14 @@ const Filters = styled.div({
   gap: 12,
   [mobile]: { '& > .search': { width: '100%' } },
 });
+const PeopleTab = styled.h2({
+  ...textStyle.bodySmall,
+  alignSelf: 'flex-start',
+  margin: 0,
+  padding: '12px 16px',
+  borderBottom: `1px solid ${c.primary}`,
+  color: c.primary,
+});
 // 돋보기 아이콘 + 입력창을 한 테두리 안에 둔다(UserShell 검색창과 같은 구성).
 const SearchBox = styled.label({
   display: 'flex',
@@ -99,9 +107,8 @@ export function PeoplePage() {
       <Content>
         <Stack gap={28}>
           <PeopleBanners />
-          {/* Figma 01-B: 배너의 "지금 사용하기"가 이 영역으로 스크롤한다. */}
-          <RecommendedPeople onSelect={setScoutTarget} />
           <Stack gap={20}>
+            <PeopleTab>사람</PeopleTab>
             <Filters>
               <SearchBox className="search" role="search">
                 <Icon src="/assets/icons/search.png" size={16} alt="" />
@@ -160,7 +167,7 @@ export function PeoplePage() {
               </Grid>
             )}
           </Stack>
-          {/* 목록 아래 빈 공간에는 항상 공모전·팀 추천을 이어 붙인다. */}
+          <RecommendedPeople onSelect={setScoutTarget} />
           <RecommendedContests />
           <RecommendedTeams />
         </Stack>
