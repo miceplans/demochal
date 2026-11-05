@@ -13,6 +13,12 @@ gh auth login -h github.com
 
 CLI 토큰은 private repository에서 Issue/PR을 읽고 쓰며 branch를 push할 수 있는 `repo` 권한과 workflow 파일을 push할 수 있는 `workflow` 권한이 필요하다. 토큰 값은 Issue, PR, 로그에 기록하지 않는다.
 
+## AI 작업 권한 범위
+
+Issue 기반 작업의 범위가 정해지고 `ai-ready`가 된 뒤에는 다음 작업을 별도 확인 요청 없이 연속으로 수행한다: Issue 생성/triage, 전용 worktree·branch 생성, 파일 수정, 테스트·Quality Gate 실행, commit, 원격 branch push, PR 생성, worktree 제거·prune.
+
+이 목록에서 AI가 수행하지 않는 작업은 merge다. AI는 PR을 생성하고 필요한 상태·검증 정보를 남기지만 merge·배포·production secret 변경은 하지 않는다. 정책 결정, 모호한 요구사항, 위험한 변경, Issue scope 밖의 변경은 `needs-human` 또는 별도 Issue로 중단한다.
+
 ## 상태와 소유권
 
 | Label          | 의미                                                            |
@@ -60,6 +66,8 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 3. 현재 동작, 위험, 의존성을 근거와 함께 분석한다. 분석만으로 해결할 수 없는 정책 선택은 `needs-human` Issue로 만든다.
 4. 독립 구현·검증 가능한 최소 작업으로 나눈다. 의존 Issue가 있으면 본문 `Dependencies`에 `#번호`로 기록하고 Issue comment에도 링크한다.
 5. [AI work issue form](../.github/ISSUE_TEMPLATE/ai-work.yml)의 모든 섹션을 채운다. 구현 가능한 작업에만 `ai-ready`를 붙인다.
+
+코드·문서·설정 등 변경이 필요한 작업은 기존 열린 Issue가 정확히 다루는지 먼저 확인한다. 정확히 일치하는 Issue가 없으면 변경 전에 새 Issue를 만들고 `ai-triage`를 거쳐 `ai-ready`가 된 뒤에만 구현한다. 작업 중 Issue 본문 밖의 추가 변경이 필요해지면 scope를 넓히지 말고 별도 Issue를 만들거나 중단한다.
 
 `gh`로 본문 파일을 사용해 생성한다. 스크립트는 동일한 열린 제목이 있으면 생성을 거부한다.
 
@@ -117,6 +125,7 @@ cd ../semochall-issue-123
 Quality Gate PASS만 `ai-review` 상태로 전환한다. FAIL은 `MAX_QUALITY_GATE_RETRIES=2`(기존 CI repair 값과 동일)까지 수정할 수 있으며, 반복 실패·원인 불명·Gate 우회가 필요해 보이는 경우 `needs-human`으로 전환한다. 테스트 삭제, lint/typecheck/coverage/security 규칙 완화, 오류 ignore는 허용하지 않는다.
 
 7. 각 acceptance criterion과 결과를 확인해 Issue에 요약한다. 실패한 검증은 성공으로 표기하지 않는다.
+8. 검증을 통과한 변경을 의미 있는 단위로 커밋한다. 커밋하지 않은 변경이 남아 있으면 push/PR 단계로 진행하지 않는다.
 
 ### Test Agent 점검
 
@@ -157,9 +166,13 @@ REQUEST_CHANGES
 
 review `PASS`, 필수 검증 성공, Issue `ai-complete`일 때만 만든다. PR에는 사람이 판단할 수 있는 근거를 남긴다.
 
+PR 생성 전에 반드시 검증된 변경을 커밋한다. 커밋되지 않은 변경이 있으면 push/PR을 중단하고, Issue scope를 벗어난 변경이면 별도 Issue를 생성해 분리한다.
 PR 생성은 다음 두 명령을 같은 Issue branch에서 순서대로 실행한다. 첫 명령이 성공하고 원격 branch가 올라간 뒤 두 번째 명령을 실행한다.
 
 ```bash
+git status --short
+git add <validated-files>
+git commit -m 'chore: describe the change'
 git push -u origin HEAD
 ./scripts/ai-workflow.sh pr 123 'fix: prevent admin session redirect loop' /tmp/pr.md
 ```
@@ -205,7 +218,7 @@ PASS (reviewer: separate agent/session)
 ## 리뷰어 확인 포인트
 ```
 
-AI는 PR까지만 만든다. 인간 reviewer가 최종 merge를 담당한다.
+AI는 merge 직전인 PR 생성까지 모든 허용 절차를 수행한다. 인간 reviewer가 최종 merge를 담당한다.
 
 ### PR risk scoring
 
