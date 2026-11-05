@@ -39,6 +39,7 @@ export function BizAdsPage() {
   const contractsError = contractsQuery.isError;
   const updateAdMutation = generated.useUpdateAd();
   const createAdMutation = generated.useCreateAd();
+  const updateAdContentMutation = generated.useUpdateAdContent();
   const requestPresignedUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
   // 알림 폴링 30초 간격 — 401은 전역 QueryCache onError에서 이미 제외된다.
@@ -53,8 +54,8 @@ export function BizAdsPage() {
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
   const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
-  const [adTitles, setAdTitles] = useState<Partial<Record<AdPlacement, string>>>({});
-  const [adLinks, setAdLinks] = useState<Partial<Record<AdPlacement, string>>>({});
+  // 결제 → 이미지 업로드 → 광고명 순서. 결제가 끝나 내용(이미지·광고명) 등록을 기다리는 광고.
+  const [contentAd, setContentAd] = useState<Ad | null>(null);
   const [processing, setProcessing] = useState(false);
   const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
   const [adName, setAdName] = useState('');
@@ -101,7 +102,7 @@ export function BizAdsPage() {
       dailyPrices[product.placement] = product.dailyPrice;
     }
   }
-  const openPayment = async (placement: AdPlacement, meta?: { name: string; link: string }) => {
+  const openPayment = async (placement: AdPlacement) => {
     try {
       // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
       const { data: products } = await generated.listAdProducts();
@@ -119,11 +120,8 @@ export function BizAdsPage() {
       }
       setSelectedAd({
         placement,
-        // 모달에서 방금 입력한 이름/링크를 우선 쓴다. 바로 전 setState가 아직
-        // 반영되지 않았을 때 state를 읽으면 입력값이 무시되기 때문이다.
-        name: meta?.name || adTitles[placement]?.trim() || product.name,
-        // 모달 경로(meta)는 입력값을 그대로 쓴다 — 비운 링크가 이전 state로 되살아나면 안 된다.
-        landingUrl: meta ? meta.link || undefined : adLinks[placement] || undefined,
+        // 광고명·이미지·링크는 결제 후에 등록한다. 결제 단계에서는 상품명만 쓴다.
+        name: product.name,
         price: product.dailyPrice,
         period: start,
         product,
@@ -149,15 +147,44 @@ export function BizAdsPage() {
       period.startDate.slice(0, 10) <= paymentEnd && period.endDate.slice(0, 10) >= paymentStart,
   );
 
+  const placementOfAd = (ad: Ad): AdPlacement | null => {
+    const placement = (productsQuery.data?.data ?? []).find(
+      (product) => product.id === ad.productId,
+    )?.placement;
+    return placement === 'hero' || placement === 'gallery' ? placement : null;
+  };
+
+  const openProducts = () => {
+    setContentAd(null);
+    setUploadPlacement(null);
+    setScreen('products');
+  };
+
+  // 결제 완료 후 이미지·광고명 등록 단계로 들어간다.
+  const startContent = (ad: Ad) => {
+    const placement = placementOfAd(ad);
+    if (!placement) return;
+    setContentAd(ad);
+    setUploadPlacement(placement);
+    setScreen('products');
+  };
+
   const handleSelectPlacement = (placement: AdPlacement) => {
-    if (uploadedImages[placement]) {
+    // 결제 → 이미지 업로드 → 광고명. 결제가 끝난 광고가 없으면 선택은 결제로 이어진다.
+    if (!contentAd) {
       void openPayment(placement);
       return;
     }
-    setUploadPlacement((current) => (current === placement ? null : placement));
+    if (placementOfAd(contentAd) === placement) {
+      setUploadPlacement((current) => (current === placement ? null : placement));
+    }
   };
 
   const handleImagePicked = async (placement: AdPlacement, file: File): Promise<void> => {
+    if (!contentAd || placementOfAd(contentAd) !== placement) {
+      toast.error('결제를 완료한 광고만 이미지를 등록할 수 있습니다.');
+      return;
+    }
     setProcessing(true);
     let image: CompressedAdImage | undefined;
     try {
@@ -192,14 +219,49 @@ export function BizAdsPage() {
         '업로드 되었습니다',
         `성공적으로 업로드 되었습니다. (${formatBytes(image.originalSize)} → ${formatBytes(image.compressedSize)})`,
       );
-      setAdName(adTitles[placement] ?? '');
-      setAdLink(adLinks[placement] ?? '');
+      setAdName('');
+      setAdLink('');
       setNameModalPlacement(placement);
     } catch {
       if (image) URL.revokeObjectURL(image.previewUrl);
       toast.error('업로드 실패', '업로드에 실패했어요. 재시도해주세요');
     } finally {
       setProcessing(false);
+    }
+  };
+  const submitContent = async (placement: AdPlacement) => {
+    if (!contentAd || submitting) return;
+    const imageFileId = uploadedFileIds[placement];
+    if (!imageFileId) {
+      toast.error('이미지를 먼저 업로드해 주세요.');
+      return;
+    }
+    const link = adLink.trim();
+    // 홈 캐러셀은 http(s)만 랜딩으로 쓴다 — 나머지 스킴은 여기서 막는다.
+    if (link && !/^https?:\/\//i.test(link)) {
+      toast.error(
+        '링크 주소를 확인해주세요',
+        'http:// 또는 https://로 시작하는 주소만 등록할 수 있어요',
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await updateAdContentMutation.mutateAsync({
+        id: contentAd.id,
+        data: { imageFileId, title: adName.trim(), landingUrl: link || undefined },
+      });
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
+      toast.success('광고가 등록되었습니다.');
+      setNameModalPlacement(null);
+      setContentAd(null);
+      setUploadPlacement(null);
+      setUploadedFileIds({});
+      setScreen('manage');
+    } catch (error) {
+      toast.error('광고 등록에 실패했습니다', extractErrorMessage(error));
+    } finally {
+      setSubmitting(false);
     }
   };
   const submitReservation = async () => {
@@ -216,10 +278,6 @@ export function BizAdsPage() {
           startDate: paymentStart,
           endDate: paymentEnd,
           expectedDailyPrice: selectedAd.product.dailyPrice,
-          title: selectedAd.name,
-          imageFileId: uploadedFileIds[selectedAd.placement],
-          // 빈 문자열은 전송하지 않는다(서버 @IsUrl 검증 대상이 된다).
-          landingUrl: selectedAd.landingUrl,
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
@@ -290,6 +348,8 @@ export function BizAdsPage() {
 
   const isEnded = (ad: Ad) =>
     ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date());
+  // 결제는 끝났지만 이미지·광고명을 아직 등록하지 않은 광고.
+  const needsContent = (ad: Ad) => ad.status === 'active' && !ad.imageUrl && !isEnded(ad);
   const currentAd =
     contracts.find((ad) => ad.status === 'active' && ad.imageUrl) ??
     contracts.find((ad) => ad.imageUrl);
@@ -314,7 +374,7 @@ export function BizAdsPage() {
               현재 나의 광고
             </h1>
             <span style={{ display: 'flex', gap: 8 }}>
-              <OutlineButton type="button" onClick={() => setScreen('products')}>
+              <OutlineButton type="button" onClick={openProducts}>
                 수정하기
               </OutlineButton>
               <PrimaryButton type="button" onClick={() => router.push(hrefOf('/reports'))}>
@@ -340,7 +400,7 @@ export function BizAdsPage() {
             <h2 id="ad-management-title" style={{ margin: 0, ...textStyle.h1_2 }}>
               광고 관리
             </h2>
-            <PrimaryButton type="button" onClick={() => setScreen('products')}>
+            <PrimaryButton type="button" onClick={openProducts}>
               광고 추가
             </PrimaryButton>
           </HeaderRow>
@@ -391,15 +451,22 @@ export function BizAdsPage() {
                   <StatusCell role="cell" ended={isEnded(ad)}>
                     {ad.status === 'preparing'
                       ? '결제 대기'
-                      : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
-                        ? '종료'
-                        : ad.status === 'paused'
-                          ? '일시 정지'
-                          : ad.startDate.slice(0, 10) > toDateKey(new Date())
-                            ? '시작 대기'
-                            : '진행중'}
+                      : needsContent(ad)
+                        ? '이미지 등록 필요'
+                        : ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date())
+                          ? '종료'
+                          : ad.status === 'paused'
+                            ? '일시 정지'
+                            : ad.startDate.slice(0, 10) > toDateKey(new Date())
+                              ? '시작 대기'
+                              : '진행중'}
                   </StatusCell>
                   <span role="cell" style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                    {needsContent(ad) && (
+                      <Button type="button" tone="outline" small onClick={() => startContent(ad)}>
+                        이미지 등록
+                      </Button>
+                    )}
                     <Button
                       type="button"
                       tone="outline"
@@ -617,23 +684,8 @@ export function BizAdsPage() {
                 </PopupAction>
                 <PopupAction
                   type="button"
-                  disabled={!adName.trim()}
-                  onClick={() => {
-                    const placement = nameModalPlacement;
-                    const link = adLink.trim();
-                    // 홈 캐러셀은 http(s)만 랜딩으로 쓴다 — 나머지 스킴은 여기서 막는다.
-                    if (link && !/^https?:\/\//i.test(link)) {
-                      toast.error(
-                        '링크 주소를 확인해주세요',
-                        'http:// 또는 https://로 시작하는 주소만 등록할 수 있어요',
-                      );
-                      return;
-                    }
-                    setAdTitles((current) => ({ ...current, [placement]: adName.trim() }));
-                    setAdLinks((current) => ({ ...current, [placement]: link }));
-                    setNameModalPlacement(null);
-                    void openPayment(placement, { name: adName.trim(), link });
-                  }}
+                  disabled={!adName.trim() || submitting}
+                  onClick={() => void submitContent(nameModalPlacement)}
                 >
                   등록하기
                 </PopupAction>

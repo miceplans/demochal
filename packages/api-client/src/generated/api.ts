@@ -188,6 +188,7 @@ import type {
   TossWebhookPayload,
   UnauthorizedResponse,
   UpdateAdBody,
+  UpdateAdContentBody,
   UpdateAdPricingBodyItem,
   UpdateAdminEmailStatus,
   UpdateAdminSettingsBody,
@@ -10904,6 +10905,120 @@ export const useUpdateAd = <TError = unknown,
         TContext
       > => {
       return useMutation(getUpdateAdMutationOptions(options), queryClient);
+    }
+
+export type updateAdContentResponse200 = {
+  data: Ad
+  status: 200
+}
+
+export type updateAdContentResponse400 = {
+  data: void
+  status: 400
+}
+
+export type updateAdContentResponse403 = {
+  data: void
+  status: 403
+}
+
+export type updateAdContentResponseSuccess = (updateAdContentResponse200) & {
+  headers: Headers;
+};
+export type updateAdContentResponseError = (updateAdContentResponse400 | updateAdContentResponse403) & {
+  headers: Headers;
+};
+
+export type updateAdContentResponse = (updateAdContentResponseSuccess | updateAdContentResponseError)
+
+export const getUpdateAdContentUrl = (id: string,) => {
+
+
+
+
+  return `/ads/${id}/content`
+}
+
+/**
+ * 광고 신청 순서는 결제 → 이미지 업로드 → 광고명이다. 결제(주문 paid)가 확정된 광고의 소유 기업만 이미지·광고명·링크를 등록할 수 있다(미결제 400, 타 기업 403). 이미지가 없는 광고는 공개 노출되지 않는다.
+ * @summary 광고 이미지·광고명 등록 (결제 완료 후)
+ */
+export const updateAdContent = async (id: string,
+    updateAdContentBody: UpdateAdContentBody, options?: Parameters<typeof apiFetch>[1]): Promise<updateAdContentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<updateAdContentResponse>(getUpdateAdContentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(updateAdContentBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateAdContentMutationKey = () => ['updateAdContent'] as const;
+
+export const getUpdateAdContentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdContent>>, TError,UpdateAdContentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAdContent>>, TError,UpdateAdContentMutationVariables, TContext> => {
+
+const mutationKey = getUpdateAdContentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAdContent>>, UpdateAdContentMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAdContent(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAdContentMutationResult = NonNullable<Awaited<ReturnType<typeof updateAdContent>>>
+    export type UpdateAdContentMutationBody = UpdateAdContentBody
+    export type UpdateAdContentMutationError = void
+    export type UpdateAdContentMutationVariables = {id: string;data: UpdateAdContentBody}
+
+    /**
+ * @summary 광고 이미지·광고명 등록 (결제 완료 후)
+ */
+export const useUpdateAdContent = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAdContent>>, TError,UpdateAdContentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof updateAdContent>>,
+        TError,
+        UpdateAdContentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getUpdateAdContentMutationOptions(options), queryClient);
     }
 
 export type getAdReportResponse200 = {
