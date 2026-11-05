@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BizNavProvider, BizSidebar, isMenuActive } from './BizShell';
+import { BizFooter, BizNavProvider, BizSidebar, isMenuActive } from './BizShell';
 
 const mocks = vi.hoisted(() => ({
   push: vi.fn(),
@@ -111,6 +111,41 @@ describe('BizSidebar 프로필 아바타', () => {
     // 로그아웃 버튼이 동작한다.
     await user.click(screen.getByRole('button', { name: '로그아웃' }));
     expect(mocks.logoutMutate).toHaveBeenCalled();
+  });
+});
+
+describe('BizFooter 정책 링크', () => {
+  afterEach(cleanup);
+
+  function renderFooter() {
+    return render(
+      <BizNavProvider base="/biz">
+        <BizFooter />
+      </BizNavProvider>,
+    );
+  }
+
+  it('기존 법적 고지 링크를 유지한다', () => {
+    renderFooter();
+
+    expect(screen.getByRole('link', { name: '개인정보처리방침' }).getAttribute('href')).toBe(
+      '/biz/privacy',
+    );
+    expect(screen.getByRole('link', { name: '이용약관' }).getAttribute('href')).toBe('/biz/terms');
+    expect(screen.getByRole('link', { name: '광고 운영정책' }).getAttribute('href')).toBe(
+      '/biz/advertising',
+    );
+  });
+
+  it('상품 설명과 환불 정책 페이지 링크를 제공한다', () => {
+    renderFooter();
+
+    expect(screen.getByRole('link', { name: '상품 설명' }).getAttribute('href')).toBe(
+      '/biz/advertising/products',
+    );
+    expect(screen.getByRole('link', { name: '환불 정책' }).getAttribute('href')).toBe(
+      '/biz/refund-policy',
+    );
   });
 });
 

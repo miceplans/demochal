@@ -330,6 +330,8 @@ export function BizFooter({ logoSize = 31 }: { logoSize?: number }) {
           <Link href={hrefOf('/privacy')}>개인정보처리방침</Link>
           <Link href={hrefOf('/terms')}>이용약관</Link>
           <Link href={hrefOf('/advertising')}>광고 운영정책</Link>
+          <Link href={hrefOf('/advertising/products')}>상품 설명</Link>
+          <Link href={hrefOf('/refund-policy')}>환불 정책</Link>
         </nav>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
