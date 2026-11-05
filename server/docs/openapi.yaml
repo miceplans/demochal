@@ -2416,6 +2416,39 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Ad' }
+  /ads/{id}/content:
+    patch:
+      tags: [Ads]
+      summary: 광고 이미지·광고명 등록 (결제 완료 후)
+      operationId: updateAdContent
+      x-impl-status: implemented
+      description: 광고 신청 순서는 결제 → 이미지 업로드 → 광고명이다. 결제(주문 paid)가 확정된 광고의 소유 기업만 이미지·광고명·링크를 등록할 수 있다(미결제 400, 타 기업 403). 이미지가 없는 광고는 공개 노출되지 않는다.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [imageFileId, title]
+              properties:
+                imageFileId: { type: string, format: uuid }
+                title: { type: string, maxLength: 200 }
+                landingUrl: { type: string }
+      responses:
+        '200':
+          description: 내용이 등록된 광고
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ad' }
+        '400':
+          description: 결제 전 광고, 기간이 끝난 광고, 또는 업로드가 완료되지 않은 이미지
+        '403':
+          description: 해당 기업의 광고가 아님
   /ads/{id}/report:
     get:
       tags: [Ads]
