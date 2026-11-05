@@ -82,9 +82,15 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 
 예: `Issue #123 구현해줘.`
 
+Worker는 다음 순서를 하나의 작업 단위로 끝까지 수행한다. Issue 생성·triage가 끝났더라도 아래 단계 중 하나라도 생략하면 작업 완료로 보지 않는다.
+
+작업 완료 조건은 Issue 생성/triage, 전용 worktree와 branch 사용, 구현·검증·독립 review, 원격 branch push, Issue 연결 PR 생성, worktree 정리까지다. PR 생성 전후의 merge·배포는 작업 범위에 포함하지 않는다.
+
+세부 실행 절차:
+
 1. `gh issue view 123`으로 원문과 labels를 확인한다. `ai-ready`가 아니면 중단한다.
 2. 관련 코드, 현재 구현, 영향 범위와 repository 검증 명령을 탐색한다. 구현 계획을 Issue에 간결하게 comment한다.
-3. 깨끗한 작업 트리 또는 별도 worktree에서 branch를 만든다. 사용자 변경이 있는 worktree는 사용하지 않는다.
+3. 깨끗한 작업 트리 또는 별도 worktree에서 branch를 만든다. 사용자 변경이 있는 worktree는 사용하지 않는다. Issue branch를 만들기 전 `git worktree add <worktree-path> -b <issue-type>/#<number> origin/main`을 사용한다.
 
 ```bash
 git worktree add ../semochall-issue-123 -b fix/#123 origin/main
@@ -151,9 +157,18 @@ REQUEST_CHANGES
 
 review `PASS`, 필수 검증 성공, Issue `ai-complete`일 때만 만든다. PR에는 사람이 판단할 수 있는 근거를 남긴다.
 
+PR 생성은 다음 두 명령을 같은 Issue branch에서 순서대로 실행한다. 첫 명령이 성공하고 원격 branch가 올라간 뒤 두 번째 명령을 실행한다.
+
 ```bash
 git push -u origin HEAD
 ./scripts/ai-workflow.sh pr 123 'fix: prevent admin session redirect loop' /tmp/pr.md
+```
+
+`pr` 명령이 성공해 GitHub PR URL을 반환하면 Issue 구현 작업을 완료한 것이다. PR을 만들기 전에 push, `ai-complete`, Quality Gate PASS, 독립 review PASS 중 어느 하나라도 빠져 있으면 중단한다. AI는 PR 생성 이후 merge·배포를 수행하지 않으며, worktree를 사용한 경우 작업이 끝난 뒤 다음처럼 정리한다.
+
+```bash
+git worktree remove ../semochall-issue-123
+git worktree prune
 ```
 
 PR body는 한국어로, 핵심만 간략히 쓰고 맨 위에 `한줄요약`을 둔다. 다음을 포함한다.
