@@ -203,6 +203,34 @@ describe('BizAdsPage 광고 링크 입력', () => {
     vi.unstubAllGlobals();
   });
 
+  it('결제창을 연 직후에는 결제가 확정되지 않았으므로 완료 화면으로 넘어가지 않는다', async () => {
+    renderPage();
+    await openNameModal('hero');
+
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    await submitReservation();
+
+    await waitFor(() =>
+      expect(
+        (screen.getByRole('button', { name: '계약 신청' }) as HTMLButtonElement).disabled,
+      ).toBe(false),
+    );
+    expect(screen.queryByText('광고 계약 신청이 완료되었습니다')).toBeNull();
+  });
+
+  it('결제창을 열 수 없으면 주문을 취소하고 완료 화면 없이 오류를 표시한다', async () => {
+    mocks.requestPayment.mockResolvedValue(false);
+    renderPage();
+    await openNameModal('hero');
+
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    await submitReservation();
+
+    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith('order-1'));
+    expect(mocks.toastError).toHaveBeenCalled();
+    expect(screen.queryByText('광고 계약 신청이 완료되었습니다')).toBeNull();
+  });
+
   it('링크가 비어 있거나 공백만 있으면 landingUrl 없이 계약 신청된다', async () => {
     renderPage();
     await openNameModal('hero');
@@ -275,8 +303,9 @@ describe('BizAdsPage 광고 링크 입력', () => {
     fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
     await submitReservation();
 
-    // 계약 완료 화면에서 광고 관리로 돌아와 두 번째 placement를 진행한다.
-    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 이동' }));
+    // 실제로는 토스 결제창으로 이동했다가 /biz/ads로 돌아온다. 페이지를 새로 렌더링해 이를 흉내 낸다.
+    cleanup();
+    renderPage();
     await openNameModal('gallery');
     fillLink('https://example.com/gallery');
     fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
