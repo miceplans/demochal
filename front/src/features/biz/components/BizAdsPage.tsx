@@ -505,6 +505,7 @@ export function BizAdsPage() {
                     유지됩니다.
                   </p>
                   <ProductLink href={hrefOf('/advertising/products')}>상품 설명 &gt;</ProductLink>
+                  <ProductLink href={hrefOf('/refund-policy')}>환불 정책 &gt;</ProductLink>
                   {reserved.map((period) => (
                     <small key={period.startDate}>
                       예약 불가: {period.startDate.slice(0, 10)} ~ {period.endDate.slice(0, 10)}
