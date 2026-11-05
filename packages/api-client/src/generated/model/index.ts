@@ -293,6 +293,7 @@ export * from './trafficSeries';
 export * from './unauthorizedResponse';
 export * from './updateAdBody';
 export * from './updateAdBodyStatus';
+export * from './updateAdContentBody';
 export * from './updateAdminEmailStatus';
 export * from './updateAdminEmailStatusStatus';
 export * from './updateAdminSettingsBody';

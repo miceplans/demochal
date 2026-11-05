@@ -18,6 +18,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import { CreateAdDto } from './dto/create-ad.dto.js';
+import { UpdateAdContentDto } from './dto/update-ad-content.dto.js';
 import { UpdateAdDto } from './dto/update-ad.dto.js';
 import { RecordAdEventDto } from './dto/record-ad-event.dto.js';
 
@@ -59,6 +60,15 @@ export class AdsController {
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new UnauthorizedException('기업 계정이 필요합니다.');
     return this.adsService.create(dto, business.id, user.id);
+  }
+
+  @Patch(':id/content')
+  updateContent(
+    @Param('id') id: string,
+    @Body() dto: UpdateAdContentDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adsService.updateContent(id, dto, user);
   }
 
   @Patch(':id')
