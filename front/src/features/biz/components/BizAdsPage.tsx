@@ -234,14 +234,9 @@ export function BizAdsPage() {
         await adApi.orders.cancel(created.data.order.id).catch(() => {});
         throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
       }
+      // 결제창을 연 시점에는 아직 결제가 확정되지 않았다. 완료/실패 안내는 토스가 리다이렉트하는
+      // /payments/success(서버 승인) · /payments/fail 페이지가 맡으므로 여기서 화면을 전환하지 않는다.
       await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
-      setSelectedAd({
-        ...selectedAd,
-        price: created.data.paidAmount,
-        period: `${paymentStart} ~ ${paymentEnd}`,
-      });
-      setPaymentOpen(false);
-      setScreen('complete');
     } catch (error) {
       toast.error('광고 계약 신청에 실패했습니다', extractErrorMessage(error));
       try {
