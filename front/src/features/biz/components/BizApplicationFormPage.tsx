@@ -527,7 +527,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
 
       <Toolbar aria-label="질문 추가 도구">
         <ToolButton type="button" title="질문 추가" onClick={() => addQuestion('radio')}>
-          <Icon src="/assets/icons/add.svg" size={20} alt="질문 추가" />
+          <Icon src="/assets/icons/add-circle.svg" size={20} alt="질문 추가" />
         </ToolButton>
         <ToolButton type="button" title="링크 필드 추가" onClick={() => addQuestion('short')}>
           <Icon src="/assets/icons/toolbar-link.svg" size={20} alt="링크 필드 추가" />
