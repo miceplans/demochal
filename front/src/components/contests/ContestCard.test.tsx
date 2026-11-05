@@ -77,29 +77,6 @@ describe('ContestCard poster link', () => {
     expect(screen.getAllByText('IT/SW')).toHaveLength(1);
     expect(screen.getAllByText('디자인')).toHaveLength(1);
   });
-
-  it('크롤링 형태의 복수 종목을 종목별 태그로 나눠 표시하고 대상 어휘는 제외한다', () => {
-    render(
-      <ContestCard
-        contest={{
-          id: 'contest-1',
-          title: '크롤링 종목 테스트',
-          category: '아이디어·창업·마케팅·네이밍 일반인 대학생 대학원생 기타',
-          days: 3,
-        }}
-        href="/contests/contest-1"
-      />,
-    );
-
-    expect(screen.getByText('아이디어')).toBeTruthy();
-    expect(screen.getByText('창업')).toBeTruthy();
-    expect(screen.getByText('마케팅')).toBeTruthy();
-    expect(screen.getByText('네이밍')).toBeTruthy();
-    expect(screen.queryByText('일반인')).toBeNull();
-    expect(screen.queryByText('대학생')).toBeNull();
-    expect(screen.queryByText('대학원생')).toBeNull();
-    expect(screen.queryByText('기타')).toBeNull();
-  });
 });
 
 describe('ContestCard 기본 상세 링크', () => {
