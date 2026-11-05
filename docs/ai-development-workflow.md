@@ -61,6 +61,8 @@ Planner는 여러 Issue의 선후 관계를 분석하고 다음 명령으로 Git
 4. 독립 구현·검증 가능한 최소 작업으로 나눈다. 의존 Issue가 있으면 본문 `Dependencies`에 `#번호`로 기록하고 Issue comment에도 링크한다.
 5. [AI work issue form](../.github/ISSUE_TEMPLATE/ai-work.yml)의 모든 섹션을 채운다. 구현 가능한 작업에만 `ai-ready`를 붙인다.
 
+코드·문서·설정 등 변경이 필요한 작업은 기존 열린 Issue가 정확히 다루는지 먼저 확인한다. 정확히 일치하는 Issue가 없으면 변경 전에 새 Issue를 만들고 `ai-triage`를 거쳐 `ai-ready`가 된 뒤에만 구현한다. 작업 중 Issue 본문 밖의 추가 변경이 필요해지면 scope를 넓히지 말고 별도 Issue를 만들거나 중단한다.
+
 `gh`로 본문 파일을 사용해 생성한다. 스크립트는 동일한 열린 제목이 있으면 생성을 거부한다.
 
 ```bash
@@ -111,6 +113,7 @@ cd ../semochall-issue-123
 Quality Gate PASS만 `ai-review` 상태로 전환한다. FAIL은 `MAX_QUALITY_GATE_RETRIES=2`(기존 CI repair 값과 동일)까지 수정할 수 있으며, 반복 실패·원인 불명·Gate 우회가 필요해 보이는 경우 `needs-human`으로 전환한다. 테스트 삭제, lint/typecheck/coverage/security 규칙 완화, 오류 ignore는 허용하지 않는다.
 
 7. 각 acceptance criterion과 결과를 확인해 Issue에 요약한다. 실패한 검증은 성공으로 표기하지 않는다.
+8. 검증을 통과한 변경을 의미 있는 단위로 커밋한다. 커밋하지 않은 변경이 남아 있으면 push/PR 단계로 진행하지 않는다.
 
 ### Test Agent 점검
 
@@ -151,7 +154,12 @@ REQUEST_CHANGES
 
 review `PASS`, 필수 검증 성공, Issue `ai-complete`일 때만 만든다. PR에는 사람이 판단할 수 있는 근거를 남긴다.
 
+PR 생성 전에 반드시 검증된 변경을 커밋한다. 커밋되지 않은 변경이 있으면 push/PR을 중단하고, Issue scope를 벗어난 변경이면 별도 Issue를 생성해 분리한다.
+
 ```bash
+git status --short
+git add <validated-files>
+git commit -m 'chore: describe the change'
 git push -u origin HEAD
 ./scripts/ai-workflow.sh pr 123 'fix: prevent admin session redirect loop' /tmp/pr.md
 ```
