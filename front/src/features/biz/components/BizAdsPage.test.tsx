@@ -225,6 +225,15 @@ describe('BizAdsPage 광고 링크 입력', () => {
     expect(productLink.getAttribute('href')).toBe('/advertising/products');
   });
 
+  it('결제 모달에서 환불 정책 페이지 링크를 제공한다', async () => {
+    renderPage();
+    await openNameModal('hero');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    const refundLink = await screen.findByRole('link', { name: '환불 정책 >' });
+    expect(refundLink.getAttribute('href')).toBe('/refund-policy');
+  });
+
   it('http(s)가 아닌 링크는 등록이 거부되고 계약 신청되지 않는다', async () => {
     renderPage();
     await openNameModal('hero');
