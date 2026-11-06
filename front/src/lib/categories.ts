@@ -6,7 +6,7 @@ export function splitCategories(category?: string | null): string[] {
   return [
     ...new Set(
       (category ?? '')
-        .split(',')
+        .split(/[,·]/)
         .map((value) => value.trim())
         .filter(Boolean),
     ),
