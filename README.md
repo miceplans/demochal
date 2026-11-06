@@ -29,4 +29,4 @@ git aitubswitch miceplanscom-lab
 git aitubswitch hjy080530
 ```
 
-이 명령은 GitHub CLI의 활성 계정을 확인한 뒤, 성공했을 때만 전역 Git `user.name`과 `user.email`을 같은 계정의 값으로 설정한다. GitHub CLI 인증 또는 전환에 실패하면 기존 Git 작성자 정보는 변경하지 않는다.
+이 명령은 GitHub CLI의 활성 계정을 확인한 뒤, 성공했을 때만 전역 Git `user.name`과 `user.email`을 같은 계정의 값으로 설정한다. GitHub CLI 인증 또는 전환에 실패하면 기존 Git 작성자 정보는 변경하지 않는다. Git 작성자 갱신에 실패하면 GitHub CLI 계정을 기존 계정으로 되돌리고 기존 Git 작성자 정보 복구를 시도한다.

@@ -13,9 +13,11 @@ async function createFixture() {
   const directory = await mkdtemp(join(tmpdir(), 'git-account-switch-'));
   const binDirectory = join(directory, 'bin');
   const accountPath = join(directory, 'active-account');
-  const configPath = join(directory, 'gitconfig');
+  const configDirectory = join(directory, 'gitconfig.d');
+  const configPath = join(configDirectory, 'config');
   await writeFile(accountPath, 'hjy080530\n');
   await mkdir(binDirectory);
+  await mkdir(configDirectory);
   await writeFile(
     join(binDirectory, 'gh'),
     `#!/usr/bin/env bash
@@ -38,7 +40,7 @@ exit 1
     GIT_CONFIG_GLOBAL: configPath,
     GIT_CONFIG_NOSYSTEM: '1',
   };
-  return { accountPath, configPath, env };
+  return { accountPath, configDirectory, env };
 }
 
 async function setAuthor(env, name, email) {
@@ -72,6 +74,24 @@ test('keeps the Git author when GitHub CLI account switching fails', async () =>
     }),
   );
 
+  assert.deepEqual(await author(env), ['hjy080530', 'bomaye119@gmail.com']);
+});
+
+test('rolls the GitHub CLI account back when the Git author update fails', async () => {
+  const { accountPath, configDirectory, env } = await createFixture();
+  await setAuthor(env, 'hjy080530', 'bomaye119@gmail.com');
+  await chmod(configDirectory, 0o555);
+
+  let error;
+  try {
+    await execFileAsync('bash', [scriptPath, 'miceplanscom-lab'], { env });
+  } catch (caught) {
+    error = caught;
+  }
+
+  assert.ok(error instanceof Error);
+  assert.match(error.stderr, /Git 작성자 설정 갱신에 실패했습니다/);
+  assert.equal((await readFile(accountPath, 'utf8')).trim(), 'hjy080530');
   assert.deepEqual(await author(env), ['hjy080530', 'bomaye119@gmail.com']);
 });
 

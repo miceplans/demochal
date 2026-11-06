@@ -119,9 +119,10 @@ git_email_exists="${git_email_snapshot%%$'\n'*}"
 git_email_value="${git_email_snapshot#*$'\n'}"
 
 if ! git config --global user.name "$account_name" || ! git config --global user.email "$account_email"; then
-  restore_git_value user.name "$git_name_exists" "$git_name_value"
-  restore_git_value user.email "$git_email_exists" "$git_email_value"
-  fail "Git 작성자 설정 갱신에 실패했습니다. 기존 설정으로 복구했습니다."
+  gh auth switch --hostname github.com --user "$previous_account" >/dev/null 2>&1 || true
+  restore_git_value user.name "$git_name_exists" "$git_name_value" || true
+  restore_git_value user.email "$git_email_exists" "$git_email_value" || true
+  fail "Git 작성자 설정 갱신에 실패했습니다. GitHub CLI 계정을 되돌리고 기존 설정 복구를 시도했습니다."
 fi
 
 printf '활성 GitHub 계정과 Git 작성자를 %s <%s>로 설정했습니다.\n' "$account_name" "$account_email"
