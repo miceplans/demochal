@@ -78,10 +78,8 @@ const FanSection = styled.section({
   [mobile]: { flexDirection: 'column' },
 });
 const FanTitle = styled.h2({
-  ...textStyle.h2,
+  ...textStyle.mHeroHeading,
   margin: 0,
-  fontSize: 24,
-  fontWeight: 600,
   lineHeight: 1.2,
   letterSpacing: '-0.02em',
   color: c.gray900,
