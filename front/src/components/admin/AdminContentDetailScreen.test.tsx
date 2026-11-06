@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ToastProvider } from '@/components/common/Toast';
-import { AdminTeamDetailScreen } from './AdminContentDetailScreen';
+import { AdminChallengeDetailScreen, AdminTeamDetailScreen } from './AdminContentDetailScreen';
 
 const mocks = vi.hoisted(() => ({
   teamDetail: vi.fn(),
+  challengeDetail: vi.fn(),
   contents: vi.fn(),
   reject: vi.fn(),
   confirm: vi.fn(),
@@ -36,9 +37,12 @@ vi.mock('./parts', () => ({
 vi.mock('@semochal/api-client', () => ({
   generated: {
     useGetAdminTeamDetail: mocks.teamDetail,
+    useGetAdminChallengeDetail: mocks.challengeDetail,
     useListAdminContents: mocks.contents,
     useRejectAdminTeam: mocks.reject,
     useConfirmAdminTeam: mocks.confirm,
+    useRejectAdminChallenge: mocks.reject,
+    useConfirmAdminChallenge: mocks.confirm,
     getListAdminContentsQueryKey: vi.fn(),
     getListAdminReportsQueryKey: vi.fn(),
     getGetAdminTeamDetailQueryKey: vi.fn(),
@@ -57,6 +61,17 @@ function renderScreen() {
     <QueryClientProvider client={client}>
       <ToastProvider>
         <AdminTeamDetailScreen id="team-1" />
+      </ToastProvider>
+    </QueryClientProvider>,
+  );
+}
+
+function renderChallengeScreen() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  return render(
+    <QueryClientProvider client={client}>
+      <ToastProvider>
+        <AdminChallengeDetailScreen id="challenge-1" />
       </ToastProvider>
     </QueryClientProvider>,
   );
@@ -125,5 +140,52 @@ describe('AdminTeamDetailScreen 참여 팀원', () => {
     // 팀 상세에는 탭이 하나뿐이라 전환 기능이 없다 — 반응 없는 탭 버튼을 남기지 않는다.
     expect(screen.queryByRole('tab')).toBeNull();
     expect(screen.getByText('정보')).toBeTruthy();
+  });
+});
+
+describe('AdminChallengeDetailScreen 다음 공모전 분야', () => {
+  beforeEach(() => {
+    mocks.challengeDetail.mockReturnValue(
+      loaded({
+        id: 'challenge-1',
+        title: '현재 공모전',
+        organization: '세모챌',
+        startDate: '2026-11-01',
+        endDate: '2026-11-30',
+      }),
+    );
+    mocks.contents.mockReturnValue(
+      loaded({
+        teams: [],
+        contests: [
+          {
+            id: 'challenge-2',
+            title: '복수 분야 공모전',
+            category: '아이디어·창업, 마케팅',
+            dday: 'D-3',
+            teams: '팀 2',
+          },
+        ],
+      }),
+    );
+    mocks.reject.mockReturnValue({ isPending: false, mutate: vi.fn() });
+    mocks.confirm.mockReturnValue({ isPending: false, mutate: vi.fn() });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('복수 분야를 각각의 둥근 태그로 표시한다', () => {
+    renderChallengeScreen();
+
+    const categoryTags = screen.getByLabelText('분야');
+    expect(within(categoryTags).getByText('아이디어')).toBeTruthy();
+    expect(within(categoryTags).getByText('창업')).toBeTruthy();
+    expect(within(categoryTags).getByText('마케팅')).toBeTruthy();
+    expect(within(categoryTags).queryByText('아이디어·창업, 마케팅')).toBeNull();
+    expect(screen.getByText('D-3')).toBeTruthy();
+    expect(screen.getByText('팀 2')).toBeTruthy();
   });
 });

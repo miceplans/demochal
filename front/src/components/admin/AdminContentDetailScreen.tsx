@@ -14,6 +14,7 @@ import { AdminInlineNotice, ApproveButton, RejectButton } from './parts';
 import { useAdminHref } from './AdminShell';
 import { daysLeft, formatDateDot } from './AdminContentDetailScreen.logic';
 import type { ReportEntry } from './AdminContentDetailScreen.logic';
+import { splitCategories } from '@/lib/categories';
 
 /* ---------- 레이아웃: 좌측 본문 + 우측 신고·확인 목록 ---------- */
 
@@ -360,7 +361,11 @@ function NextList({ kind, currentId }: { kind: 'team' | 'challenge'; currentId: 
               <NextBody>
                 <NextTitle>{contest.title}</NextTitle>
                 <NextMeta>
-                  <MiniTag>{contest.category}</MiniTag>
+                  <MiniTags aria-label="분야">
+                    {splitCategories(contest.category).map((category) => (
+                      <MiniTag key={category}>{category}</MiniTag>
+                    ))}
+                  </MiniTags>
                   <MiniDday>{contest.dday}</MiniDday>
                 </NextMeta>
                 <NextMeta>
