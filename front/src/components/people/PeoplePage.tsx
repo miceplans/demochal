@@ -11,12 +11,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PeopleBanners } from './PeopleBanners';
 import { PersonCard } from './PersonCard';
-import {
-  RecommendedContests,
-  RecommendedHighOdds,
-  RecommendedPeople,
-  RecommendedTeams,
-} from './PeopleRecommendations';
+import { RecommendedContests, RecommendedPeople } from './PeopleRecommendations';
 import { ScoutModal } from './ScoutModal';
 
 const ALL = '';
@@ -30,14 +25,6 @@ const Filters = styled.div({
   flexWrap: 'wrap',
   gap: 12,
   [mobile]: { '& > .search': { width: '100%' } },
-});
-const PeopleTab = styled.h2({
-  ...textStyle.bodySmall,
-  alignSelf: 'flex-start',
-  margin: 0,
-  padding: '12px 16px',
-  borderBottom: `1px solid ${c.primary}`,
-  color: c.primary,
 });
 // 돋보기 아이콘 + 입력창을 한 테두리 안에 둔다(UserShell 검색창과 같은 구성).
 const SearchBox = styled.label({
@@ -113,7 +100,6 @@ export function PeoplePage() {
         <Stack gap={28}>
           <PeopleBanners />
           <Stack gap={20}>
-            <PeopleTab>사람</PeopleTab>
             <Filters>
               <SearchBox className="search" role="search">
                 <Icon src="/assets/icons/search.png" size={16} alt="" />
@@ -173,9 +159,7 @@ export function PeoplePage() {
             )}
           </Stack>
           <RecommendedPeople onSelect={setScoutTarget} />
-          <RecommendedHighOdds />
           <RecommendedContests />
-          <RecommendedTeams />
         </Stack>
       </Content>
       <ScoutModal person={scoutTarget} onClose={() => setScoutTarget(null)} />
