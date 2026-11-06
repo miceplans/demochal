@@ -86,7 +86,7 @@ const FanTitle = styled.h2({
   letterSpacing: '-0.02em',
   color: c.gray900,
 });
-// 카드끼리 52px씩 겹치고 오른쪽 카드가 위에 오도록 쌓는다.
+// 카드끼리 52px씩 겹친다. 왼쪽 카드가 위에 오도록 쌓아, 오른쪽 끝에 있는 북마크 버튼이 다음 카드에 가려지지 않게 한다.
 const FanCards = styled.div({
   display: 'flex',
   alignItems: 'flex-start',
@@ -98,6 +98,9 @@ const FanItem = styled.div({
   width: 249,
   marginRight: -52,
   '&:last-of-type': { marginRight: 0 },
+  '&:nth-of-type(1)': { zIndex: 3 },
+  '&:nth-of-type(2)': { zIndex: 2 },
+  '&:nth-of-type(3)': { zIndex: 1 },
   filter: 'drop-shadow(4px 4px 5px rgb(0 0 0 / 20%))',
   '& article': { border: 0, background: c.gray100 },
   // Figma 썸네일 영역: 249×205.
