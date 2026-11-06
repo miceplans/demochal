@@ -94,9 +94,9 @@ const HighOddsSection = styled.section({
   [mobile]: { flexDirection: 'column' },
 });
 const HighOddsTitle = styled.h2({
+  ...textStyle.mHeroHeading,
   margin: 0,
-  fontSize: 24,
-  fontWeight: 600,
+  // Figma 01-B 값(토큰 기본값과 다름)
   lineHeight: 1.2,
   letterSpacing: '-0.02em',
   color: c.gray900,
@@ -238,7 +238,8 @@ export function RecommendedTeams() {
 export function RecommendedHighOdds() {
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다.
   const [now] = useState(() => Date.now());
-  const query = generated.useListRecommendedChallenges({ limit: 3 });
+  // RecommendedContests와 같은 파라미터(limit 4)로 호출해 TanStack Query 캐시를 공유한다(요청 1회).
+  const query = generated.useListRecommendedChallenges({ limit: 4 });
   const items = query.data?.status === 200 ? query.data.data.items : [];
   if (items.length === 0) return null;
   return (
