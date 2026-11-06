@@ -145,5 +145,27 @@ export function renderNotificationEmail(
     );
   }
 
+  if (type === 'refund.result') {
+    if (payload.status === 'approved') {
+      const amount = typeof payload.amount === 'number' ? payload.amount : null;
+      return compose(
+        '환불이 승인되었습니다',
+        [
+          '환불 요청이 승인되었습니다.',
+          ...(amount === null ? [] : [`환불 금액: ${amount.toLocaleString('ko-KR')}원`]),
+        ],
+        origin,
+        'biz',
+      );
+    }
+    const reason = typeof payload.reason === 'string' ? payload.reason.trim() : '';
+    return compose(
+      '환불 요청 결과를 확인해 주세요',
+      ['환불 요청이 반려되었습니다.', ...(reason ? [`사유: ${reason}`] : [])],
+      origin,
+      'biz',
+    );
+  }
+
   return null;
 }

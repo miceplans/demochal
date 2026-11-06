@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { and, desc, eq } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { orders, payments, refundRequests, users } from '../../db/schema.js';
@@ -6,6 +12,7 @@ import { maskEmail } from '../admin/admin.service.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 import { OrdersService } from '../orders/orders.service.js';
 import { PaymentsService } from '../payments/payments.service.js';
+import { RefundRequestStatus } from './dto/refund-request.dto.js';
 
 export const REFUND_RESULT_NOTIFICATION = 'refund.result';
 const UNIQUE_VIOLATION = '23505';
@@ -21,6 +28,8 @@ export class RefundsService {
 
   /** 구매자 본인의 결제 완료 주문에 대해 환불을 요청한다(주문당 대기 요청 1건). */
   async request(userId: string, orderId: string, reason: string) {
+    const normalizedReason = reason.trim();
+    if (!normalizedReason) throw new BadRequestException('환불 사유를 입력해 주세요.');
     const order = await this.ordersService.findById(orderId, userId);
     if (order.status !== 'paid') {
       throw new ConflictException('결제가 완료된 주문만 환불을 요청할 수 있습니다.');
@@ -28,7 +37,7 @@ export class RefundsService {
     try {
       const [created] = await this.db
         .insert(refundRequests)
-        .values({ orderId: order.id, userId, reason: reason.trim() })
+        .values({ orderId: order.id, userId, reason: normalizedReason })
         .returning();
       return created;
     } catch (error) {
@@ -59,7 +68,7 @@ export class RefundsService {
       .orderBy(desc(refundRequests.createdAt));
   }
 
-  async adminList(status?: string) {
+  async adminList(status?: RefundRequestStatus) {
     const rows = await this.db
       .select({
         id: refundRequests.id,
@@ -114,6 +123,14 @@ export class RefundsService {
           tx,
         );
       },
+      async (tx) => {
+        const [locked] = await tx
+          .select({ id: refundRequests.id })
+          .from(refundRequests)
+          .where(and(eq(refundRequests.id, id), eq(refundRequests.status, 'requested')))
+          .for('update');
+        if (!locked) throw new ConflictException('이미 처리된 환불 요청입니다.');
+      },
     );
     return { id, status: 'approved' as const };
   }
@@ -121,6 +138,7 @@ export class RefundsService {
   async reject(id: string, adminId: string, reason: string) {
     const request = await this.getOpenRequest(id);
     const note = reason.trim();
+    if (!note) throw new BadRequestException('반려 사유를 입력해 주세요.');
     return this.db.transaction(async (tx) => {
       const [updated] = await tx
         .update(refundRequests)

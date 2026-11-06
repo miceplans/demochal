@@ -132,6 +132,24 @@ describe('renderNotificationEmail', () => {
     expect(challenge?.html).toContain('assets/SEMOBIZ.png');
   });
 
+  it('renders approved and rejected refund results as business service emails', () => {
+    const approved = renderNotificationEmail(
+      'refund.result',
+      { status: 'approved', amount: 40000 },
+      origin,
+    );
+    expect(approved?.subject).toContain('환불이 승인되었습니다');
+    expect(approved?.text).toContain('40,000원');
+
+    const rejected = renderNotificationEmail(
+      'refund.result',
+      { status: 'rejected', reason: '<반려 사유>' },
+      origin,
+    );
+    expect(rejected?.subject).toContain('환불 요청 결과');
+    expect(rejected?.html).toContain('&lt;반려 사유&gt;');
+  });
+
   it('escapes the link in HTML', () => {
     const email = renderNotificationEmail('team_matching', { status: 'accepted' }, 'https://x/"a');
     expect(email?.html).toContain('https://x/&quot;a/notifications');
