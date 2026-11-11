@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizAdsPage } from './BizAdsPage';
 import { theme } from '@/styles/theme';
+import { toDateKey } from '@/lib/date';
 
 type TestAd = {
   id: string;
@@ -276,6 +277,33 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
 
     const refundLink = await screen.findByRole('link', { name: '환불 정책 >' });
     expect(refundLink.getAttribute('href')).toBe('/refund-policy');
+  });
+
+  it('선택한 광고 기간이 늘어나면 표시 금액과 신청 기간이 함께 늘어난다', async () => {
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+
+    expect(await screen.findByText('100,000원')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '광고 기간 선택' }));
+    const endLabel = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' }).format(
+      end,
+    );
+    const dayButton = (label: string) =>
+      screen
+        .getAllByRole('button')
+        .find((button) => button.getAttribute('aria-label')?.includes(label)) as HTMLElement;
+    fireEvent.click(dayButton(endLabel));
+
+    expect(await screen.findByText('200,000원')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '계약 신청' }));
+    await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
+    expect(mocks.createAd.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ startDate: toDateKey(start), endDate: toDateKey(end) }),
+    );
   });
 
   it('결제 전에는 이미지를 업로드할 수 없다', async () => {

@@ -24,7 +24,7 @@ import { toDateKey } from '@/lib/date';
 import { CROPPED_AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
-import { extractErrorMessage, formatSlash } from './BizAdsPage.logic';
+import { adDays, adPaymentAmount, extractErrorMessage, formatSlash } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestTossPayment } from '@/lib/payments';
 import { adApi } from '@/lib/ad-api';
@@ -128,19 +128,22 @@ export function BizAdsPage() {
       });
       setPaymentStart(start);
       setPaymentEnd(start);
-      setPendingRange({ from: new Date(`${start}T00:00:00`), to: new Date(`${start}T00:00:00`) });
+      // 시작일을 고정점으로 두고 종료일을 새로 클릭할 수 있게 한다. 시작일과 종료일을
+      // 같은 값으로 controlled range에 넣으면 react-day-picker가 다음 클릭을 새 시작일로
+      // 해석해 기간 확장이 되지 않는다.
+      setPendingRange({ from: new Date(`${start}T00:00:00`), to: undefined });
       setDatePickerOpen(false);
       setPaymentOpen(true);
     } catch (error) {
       toast.error('광고 상품 정보를 불러오지 못했습니다', extractErrorMessage(error));
     }
   };
-  const paymentDays = Math.max(
-    1,
-    Math.round((new Date(paymentEnd).getTime() - new Date(paymentStart).getTime()) / 86_400_000) +
-      1,
+  const paymentDays = adDays(paymentStart, paymentEnd);
+  const paymentAmount = adPaymentAmount(
+    paymentStart,
+    paymentEnd,
+    selectedAd?.product.dailyPrice ?? 0,
   );
-  const paymentAmount = paymentDays * (selectedAd?.product.dailyPrice ?? 0);
   const reserved = selectedAd?.product.reservedPeriods ?? [];
   const overlaps = reserved.some(
     (period) =>
@@ -331,7 +334,7 @@ export function BizAdsPage() {
         setCalendarViewMonth(new Date(`${paymentStart}T00:00:00`));
         setPendingRange({
           from: new Date(`${paymentStart}T00:00:00`),
-          to: new Date(`${paymentEnd}T00:00:00`),
+          to: paymentEnd === paymentStart ? undefined : new Date(`${paymentEnd}T00:00:00`),
         });
       }
       return next;
@@ -616,7 +619,6 @@ export function BizAdsPage() {
                           locale={ko}
                           navLayout="around"
                           showOutsideDays
-                          resetOnSelect
                           selected={pendingRange}
                           month={calendarViewMonth}
                           onMonthChange={setCalendarViewMonth}
