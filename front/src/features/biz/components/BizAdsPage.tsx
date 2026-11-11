@@ -481,7 +481,7 @@ export function BizAdsPage() {
                       type="button"
                       tone="plain"
                       small
-                      disabled={ad.status !== 'active' || pausingId === ad.id}
+                      disabled={ad.status !== 'active' || needsContent(ad) || pausingId === ad.id}
                       onClick={() => void pauseAd(ad)}
                     >
                       {pausingId === ad.id ? '처리 중…' : '중단'}

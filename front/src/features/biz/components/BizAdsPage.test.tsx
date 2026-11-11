@@ -402,7 +402,7 @@ describe('BizAdsPage 광고 관리 목록 작업 버튼', () => {
         endDate: '2026-11-01',
         paidAmount: 100000,
         status: 'active',
-        imageUrl: null,
+        imageUrl: 'https://cdn.example.com/ad.webp',
       },
       {
         id: 'ad-paused',
@@ -449,5 +449,13 @@ describe('BizAdsPage 광고 관리 목록 작업 버튼', () => {
 
     resolvePause?.();
     await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith('광고를 중단했습니다.'));
+  });
+
+  it('이미지를 아직 등록하지 않은 광고는 중단할 수 없다(등록 진입점 유지)', () => {
+    mocks.ads = [{ ...PAID_NO_IMAGE, id: 'ad-no-image' }];
+    renderPage();
+
+    expect((screen.getByRole('button', { name: '중단' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByText('이미지 등록 필요')).toBeTruthy();
   });
 });
