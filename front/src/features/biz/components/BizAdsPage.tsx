@@ -224,15 +224,19 @@ export function BizAdsPage() {
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
       if (!created.data.order) throw new Error('결제 주문을 생성하지 못했습니다.');
-      const started = await requestTossPayment({
-        orderId: created.data.order.id,
-        amount: created.data.order.amount,
-        orderName: created.data.order.name,
-        flow: 'ad',
-      });
-      if (!started) {
+      try {
+        const started = await requestTossPayment({
+          orderId: created.data.order.id,
+          amount: created.data.order.amount,
+          orderName: created.data.order.name,
+          flow: 'ad',
+        });
+        if (!started)
+          throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+      } catch (error) {
+        // SDK 초기화나 결제창 진입이 실패하면 이 주문이 날짜를 계속 점유하지 않게 한다.
         await adApi.orders.cancel(created.data.order.id).catch(() => {});
-        throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+        throw error;
       }
       // 결제창을 연 시점에는 아직 결제가 확정되지 않았다. 완료/실패 안내는 토스가 리다이렉트하는
       // /payments/success(서버 승인) · /payments/fail 페이지가 맡으므로 여기서 화면을 전환하지 않는다.

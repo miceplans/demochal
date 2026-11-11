@@ -98,13 +98,14 @@ export class OrdersService {
       .where(eq(orders.id, id))
       .returning();
 
-    // Revert an ad this order had activated. Guarded on status = 'active' so
-    // this never clobbers an ad the owner already paused/ended themselves.
-    if (wasPaid && existing.adId) {
+    // A canceled pending ad must release its reserved dates immediately;
+    // reservingCondition checks ad status, not the linked order status.
+    // The order row lock serializes this with settlement.
+    if (existing.adId) {
       await tx
         .update(ads)
         .set({ status: 'ended' })
-        .where(and(eq(ads.id, existing.adId), eq(ads.status, 'active')));
+        .where(and(eq(ads.id, existing.adId), eq(ads.status, wasPaid ? 'active' : 'preparing')));
     }
 
     return order;

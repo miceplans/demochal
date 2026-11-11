@@ -43,6 +43,7 @@ export async function requestTossPayment({
     amount: { value: amount, currency: 'KRW' },
     orderId,
     orderName,
+    windowTarget: 'self',
     successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
     failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
   });

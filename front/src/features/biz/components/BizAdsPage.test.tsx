@@ -244,6 +244,17 @@ describe('BizAdsPage 광고 링크 입력', () => {
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
+  it('Toss SDK가 결제창 진입 중 예외를 던져도 예약 주문을 취소한다', async () => {
+    mocks.requestPayment.mockRejectedValue(new Error('결제창이 차단되었습니다'));
+    renderPage();
+    await openNameModal('hero');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    await submitReservation();
+
+    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith('order-1'));
+    expect(mocks.toastError).toHaveBeenCalled();
+  });
+
   it('결제 모달에서 상품 설명 페이지 링크를 제공한다', async () => {
     renderPage();
     await openNameModal('hero');
