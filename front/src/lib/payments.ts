@@ -61,7 +61,7 @@ export async function requestTossPayment({
     amount: { value: amount, currency: 'KRW' as const },
     orderId,
     orderName,
-    windowTarget: 'self',
+    windowTarget: 'self' as const,
     successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
     failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
   };
