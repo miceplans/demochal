@@ -21,7 +21,12 @@ function createService(opts: {
   const returning = vi.fn().mockResolvedValue(opts.updateReturning ?? [{ id: 'req-1' }]);
   const updateWhere = vi.fn(() => ({ returning }));
   const updateSet = vi.fn(() => ({ where: updateWhere }));
-  const tx = { update: vi.fn(() => ({ set: updateSet })) };
+  const tx = {
+    update: vi.fn(() => ({ set: updateSet })),
+    select: vi.fn(() => ({
+      from: () => ({ where: () => ({ for: vi.fn().mockResolvedValue([openRequest]) }) }),
+    })),
+  };
   const insertReturning = opts.insertError
     ? vi.fn().mockRejectedValue(opts.insertError)
     : vi.fn().mockResolvedValue([{ id: 'req-1' }]);
@@ -68,6 +73,14 @@ describe('RefundsService', () => {
       expect(insertValues).not.toHaveBeenCalled();
     });
 
+    it('rejects a whitespace-only reason', async () => {
+      const { service, insertValues } = createService({});
+      await expect(service.request('user-1', 'order-1', '   ')).rejects.toThrow(
+        '환불 사유를 입력해 주세요',
+      );
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
     it('maps the one-open-request unique violation to 409 (plain and wrapped pg errors)', async () => {
       for (const insertError of [{ code: '23505' }, { cause: { code: '23505' } }]) {
         const { service } = createService({ insertError });
@@ -92,6 +105,7 @@ describe('RefundsService', () => {
       expect(payments.refundPaidOrder).toHaveBeenCalledWith(
         'order-1',
         expect.stringContaining('단순 변심'),
+        expect.any(Function),
         expect.any(Function),
       );
       expect(updateSet).toHaveBeenCalledWith(
@@ -133,6 +147,14 @@ describe('RefundsService', () => {
   });
 
   describe('reject', () => {
+    it('rejects a whitespace-only reason', async () => {
+      const { service, updateSet } = createService({ selectRows: [openRequest] });
+      await expect(service.reject('req-1', 'admin-1', '   ')).rejects.toThrow(
+        '반려 사유를 입력해 주세요',
+      );
+      expect(updateSet).not.toHaveBeenCalled();
+    });
+
     it('marks rejected with the reason, notifies the buyer, and never calls Toss', async () => {
       const { service, payments, updateSet, notifications, tx } = createService({
         selectRows: [openRequest],

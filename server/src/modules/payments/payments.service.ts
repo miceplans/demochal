@@ -330,62 +330,65 @@ export class PaymentsService {
     orderId: string,
     cancelReason: string,
     settle: (tx: DbTx, refundedAmount: number) => Promise<void>,
+    beforeCancel?: (tx: DbTx) => Promise<void>,
   ): Promise<number> {
-    const [payment] = await this.db
-      .select()
-      .from(payments)
-      .where(eq(payments.orderId, orderId))
-      .limit(1);
-    if (!payment || payment.status !== 'paid') {
-      throw new ConflictException('환불할 수 있는 결제가 아닙니다.');
-    }
-
     if (!env.tossSecretKey) {
       throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }
     const authorization = Buffer.from(`${env.tossSecretKey}:`).toString('base64');
-    let response;
-    try {
-      response = await fetchJson(
-        `https://api.tosspayments.com/v1/payments/${encodeURIComponent(payment.providerPaymentKey)}/cancel`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${authorization}`,
-            'Content-Type': 'application/json',
-            'Idempotency-Key': `refund:${orderId}`,
-          },
-          body: JSON.stringify({ cancelReason }),
-          signal: AbortSignal.timeout(10_000),
-        },
-      );
-    } catch (error) {
-      this.logger.error(
-        `Toss refund transport failed for order ${orderId}`,
-        (error as Error | undefined)?.stack,
-      );
-      throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
-    }
-    if (!response.ok) {
-      let code: string | undefined;
-      try {
-        code = ((await response.json()) as { code?: string } | null)?.code;
-      } catch {
-        // Error body is not JSON — treat as a plain rejection below.
+    return this.db.transaction(async (tx) => {
+      // Keep request/payment locks until Toss cancel and local commit finish.
+      await beforeCancel?.(tx);
+      const [payment] = await tx
+        .select()
+        .from(payments)
+        .where(eq(payments.orderId, orderId))
+        .for('update')
+        .limit(1);
+      if (!payment || payment.status !== 'paid') {
+        throw new ConflictException('환불할 수 있는 결제가 아닙니다.');
       }
-      if (code !== 'ALREADY_CANCELED_PAYMENT') {
-        this.logger.error(`Toss refund rejected for order ${orderId}: HTTP ${response.status}`);
+      let response;
+      try {
+        response = await fetchJson(
+          `https://api.tosspayments.com/v1/payments/${encodeURIComponent(payment.providerPaymentKey)}/cancel`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Basic ${authorization}`,
+              'Content-Type': 'application/json',
+              'Idempotency-Key': `refund:${orderId}`,
+            },
+            body: JSON.stringify({ cancelReason }),
+            signal: AbortSignal.timeout(10_000),
+          },
+        );
+      } catch (error) {
+        this.logger.error(
+          `Toss refund transport failed for order ${orderId}`,
+          (error as Error | undefined)?.stack,
+        );
         throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
       }
-    }
+      if (!response.ok) {
+        let code: string | undefined;
+        try {
+          code = ((await response.json()) as { code?: string } | null)?.code;
+        } catch {
+          // Error body is not JSON — treat as a plain rejection below.
+        }
+        if (code !== 'ALREADY_CANCELED_PAYMENT') {
+          this.logger.error(`Toss refund rejected for order ${orderId}: HTTP ${response.status}`);
+          throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        }
+      }
 
-    const refundedAmount = payment.amount - payment.refundedAmount;
-    await this.db.transaction(async (tx) => {
+      const refundedAmount = payment.amount - payment.refundedAmount;
       await tx.update(payments).set({ status: 'canceled' }).where(eq(payments.id, payment.id));
       await this.ordersService.cancelOrder(tx, orderId);
       await settle(tx, refundedAmount);
+      return refundedAmount;
     });
-    return refundedAmount;
   }
 
   private async cancelWithToss(
