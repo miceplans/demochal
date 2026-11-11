@@ -229,7 +229,7 @@ describe('saved application questionnaires', () => {
     unmount();
     mocks.failed = false;
     mocks.questions = [questions[0]!];
-    mocks.apply.mockRejectedValueOnce(new Error('rejected'));
+    mocks.apply.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     const user = userEvent.setup();
     render(<ApplicationPage />);
     await user.type(screen.getByLabelText('short'), '내 답변');

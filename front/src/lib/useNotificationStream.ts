@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
+import { getApiBaseUrl } from './api-base-url';
 
 // 인앱 알림 실시간 구독(SSE). 스트림은 id만 전달하므로 알림 목록은 계속 TanStack Query가
 // 소유하고, 이벤트가 오면 목록 쿼리를 invalidate한다. EventSource는 끊기면 자동 재연결하며,
@@ -13,7 +14,7 @@ export function useNotificationStream(enabled: boolean) {
     if (!enabled || typeof EventSource === 'undefined') return;
     const invalidate = () =>
       queryClient.invalidateQueries({ queryKey: generated.getListMyNotificationsQueryKey() });
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL ?? '/api').replace(/\/$/, '');
+    const baseUrl = getApiBaseUrl().replace(/\/$/, '');
     const source = new EventSource(`${baseUrl}/notifications/stream`, { withCredentials: true });
     source.addEventListener('notification', invalidate);
     source.addEventListener('open', invalidate);
