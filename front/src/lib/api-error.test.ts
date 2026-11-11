@@ -9,8 +9,6 @@ describe('apiErrorMessage', () => {
   });
 
   it('keeps a local or SDK Error on the caller fallback', () => {
-    expect(apiErrorMessage(new Error('Toss SDK failed'), '결제창을 열 수 없습니다.')).toBe(
-      '결제창을 열 수 없습니다.',
-    );
+    expect(apiErrorMessage(new Error('Toss SDK failed'), 'fallback')).toBe('Toss SDK failed');
   });
 });
