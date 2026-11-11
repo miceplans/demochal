@@ -349,7 +349,10 @@ export function BizAdsPage() {
   const isEnded = (ad: Ad) =>
     ad.status === 'ended' || ad.endDate.slice(0, 10) < toDateKey(new Date());
   // 결제는 끝났지만 이미지·광고명을 아직 등록하지 않은 광고.
-  const needsContent = (ad: Ad) => ad.status === 'active' && !ad.imageUrl && !isEnded(ad);
+  // placement를 알 수 없는 광고(hero·gallery 밖 상품, 상품 목록 로딩 중)는 등록 흐름을 시작할 수
+  // 없으므로 막다른 길이 되지 않게 '이미지 등록' 대상에서 제외한다.
+  const needsContent = (ad: Ad) =>
+    ad.status === 'active' && !ad.imageUrl && !isEnded(ad) && placementOfAd(ad) !== null;
   const currentAd =
     contracts.find((ad) => ad.status === 'active' && ad.imageUrl) ??
     contracts.find((ad) => ad.imageUrl);

@@ -261,19 +261,6 @@ export class AdsService implements OnModuleInit {
     if (!business || business.id !== ad.businessId) {
       throw new ForbiddenException('해당 기업만 광고를 변경할 수 있습니다.');
     }
-    const [paidOrder] = await this.db
-      .select({ id: orders.id })
-      .from(orders)
-      .where(and(eq(orders.adId, id), eq(orders.status, 'paid')))
-      .limit(1);
-    if (!paidOrder || ad.status === 'preparing') {
-      throw new BadRequestException(
-        '결제가 완료된 광고만 이미지와 광고명을 등록할 수 있습니다. 먼저 결제를 완료해 주세요.',
-      );
-    }
-    if (ad.status === 'ended' || ad.endDate < adToday()) {
-      throw new BadRequestException('계약 기간이 끝난 광고는 변경할 수 없습니다.');
-    }
     const [file] = await this.db.select().from(files).where(eq(files.id, dto.imageFileId)).limit(1);
     if (
       !file ||
@@ -283,15 +270,31 @@ export class AdsService implements OnModuleInit {
     ) {
       throw new BadRequestException('업로드가 완료된 이미지가 아닙니다.');
     }
-    const [updated] = await this.db
-      .update(ads)
-      .set({
-        title: dto.title.trim(),
-        imageFileId: dto.imageFileId,
-        landingUrl: dto.landingUrl ?? null,
-      })
-      .where(eq(ads.id, id))
-      .returning();
+    const updated = await this.db.transaction(async (tx) => {
+      // cancelOrder가 같은 주문 행을 잠그고 광고를 ended로 바꾼다. 잠금 후 결제·광고 상태를
+      // 다시 확인해, 환불·취소와 동시에 실행돼도 취소된 광고에 내용이 기록되지 않게 한다.
+      const orderRows = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
+      const [current] = await tx.select().from(ads).where(eq(ads.id, id)).limit(1);
+      if (!current) throw new NotFoundException('광고를 찾을 수 없습니다.');
+      if (!orderRows.some((order) => order.status === 'paid') || current.status === 'preparing') {
+        throw new BadRequestException(
+          '결제가 완료된 광고만 이미지와 광고명을 등록할 수 있습니다. 먼저 결제를 완료해 주세요.',
+        );
+      }
+      if (current.status === 'ended' || current.endDate < adToday()) {
+        throw new BadRequestException('계약 기간이 끝난 광고는 변경할 수 없습니다.');
+      }
+      const [row] = await tx
+        .update(ads)
+        .set({
+          title: dto.title.trim(),
+          imageFileId: dto.imageFileId,
+          landingUrl: dto.landingUrl ?? null,
+        })
+        .where(eq(ads.id, id))
+        .returning();
+      return row;
+    });
     const [withUrl] = await this.withImageUrls([updated!]);
     return withUrl;
   }

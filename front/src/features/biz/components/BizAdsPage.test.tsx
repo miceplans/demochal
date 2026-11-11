@@ -307,6 +307,14 @@ describe('BizAdsPage 결제 완료 후 이미지·광고명 등록', () => {
     expect(screen.getByText('이미지 등록 필요')).toBeTruthy();
   });
 
+  it('hero·gallery 밖 상품의 이미지 없는 광고에는 등록 버튼을 표시하지 않는다', () => {
+    mocks.ads = [{ ...PAID_NO_IMAGE, id: 'ad-team', productId: 'team' }];
+    renderPage();
+
+    expect(screen.queryByRole('button', { name: '이미지 등록' })).toBeNull();
+    expect(screen.queryByText('이미지 등록 필요')).toBeNull();
+  });
+
   it('이미지를 올리고 광고명을 입력하면 해당 광고에 내용이 등록된다', async () => {
     renderPage();
     await openNameModalForPaidAd('https://example.com/hero');
