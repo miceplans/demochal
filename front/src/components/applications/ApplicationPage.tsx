@@ -11,7 +11,7 @@ import { adApi } from '@/lib/ad-api';
 import { apiErrorMessage } from '@/lib/api-error';
 import { requestTossPayment, type PaymentMethod } from '@/lib/payments';
 import { PaymentMethodSelect } from '@/components/payments/PaymentMethodSelect';
-import { ApiError, generated } from '@semochal/api-client';
+import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 import { ApplicationQuestions, isAnswerValid, type Answers } from './ApplicationQuestions';
 import { invalidFileIdsOf, withoutFileIds } from './ApplicationPage.logic';

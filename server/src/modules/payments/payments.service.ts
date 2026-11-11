@@ -64,7 +64,10 @@ export class PaymentsService {
   async handleTossWebhook(payload: TossWebhookPayload): Promise<void> {
     // 구형 DEPOSIT_CALLBACK 등 data 래퍼가 없는 페이로드는 paymentKey가 없어 재조회 대사를 할 수
     // 없다. 500(→재전송 폭주) 대신 로그를 남기고 수신 확인한다.
-    // TODO: 가상계좌 입금은 PAYMENT_STATUS_CHANGED 웹훅으로 처리한다 —
+    // TODO: 가상계좌 입금은 PAYMENT_STATUS_CHANGED 웹훅으로만 확정한다 — 토스 개발자센터 웹훅
+    // 설정에서 PAYMENT_STATUS_CHANGED가 활성화돼 있는지 운영 배포 전에 확인해야 한다(미활성이면
+    // 입금돼도 주문이 pending으로 남아 기한 만료 시 취소된다). 구형 DEPOSIT_CALLBACK은 orderId·
+    // secret 기준이라 paymentKey 재조회 대사 경로로 보낼 수 없다.
     // https://docs.tosspayments.com/reference/using-api/webhook-events
     if (!payload?.data) {
       this.logger.warn(`Ignoring Toss webhook without data (eventType=${payload?.eventType})`);
