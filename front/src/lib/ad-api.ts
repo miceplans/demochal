@@ -1,9 +1,10 @@
 import { HttpClient, createApiClient } from '@semochal/api-client';
 
 import { apiErrorMessage } from './api-error';
+import { getApiBaseUrl } from './api-base-url';
 
 const options = {
-  baseUrl: process.env.NEXT_PUBLIC_API_URL ?? '/api',
+  baseUrl: getApiBaseUrl(),
 };
 export const adApi = createApiClient(options);
 export const adHttp = new HttpClient(options);
