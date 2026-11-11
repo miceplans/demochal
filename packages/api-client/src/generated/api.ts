@@ -84,6 +84,7 @@ import type {
   CreateRefundRequestBody,
   CreateReportRequest,
   CreateTeamRequest,
+  DeleteAd200,
   DeleteMfaPasskeyBody,
   DeleteMfaTotpBody,
   FileMeta,
@@ -10905,6 +10906,93 @@ export const useUpdateAd = <TError = unknown,
         TContext
       > => {
       return useMutation(getUpdateAdMutationOptions(options), queryClient);
+    }
+
+export type deleteAdResponse200 = {
+  data: DeleteAd200
+  status: 200
+}
+
+export type deleteAdResponseSuccess = (deleteAdResponse200) & {
+  headers: Headers;
+};
+;
+
+export type deleteAdResponse = (deleteAdResponseSuccess)
+
+export const getDeleteAdUrl = (id: string,) => {
+
+
+
+
+  return `/ads/${id}`
+}
+
+/**
+ * 결제 대기(preparing) 광고만 삭제한다(이력 보존을 위해 광고·미결제 주문을 canceled로 전이). 소유 기업이 아니면 403, 결제 대기가 아니면 400.
+ * @summary 결제 대기 광고 삭제
+ */
+export const deleteAd = async (id: string, options?: Parameters<typeof apiFetch>[1]): Promise<deleteAdResponse> => {
+
+  return apiFetch<deleteAdResponse>(getDeleteAdUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAdMutationKey = () => ['deleteAd'] as const;
+
+export const getDeleteAdMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAd>>, TError,DeleteAdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAd>>, TError,DeleteAdMutationVariables, TContext> => {
+
+const mutationKey = getDeleteAdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAd>>, DeleteAdMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAd(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAdMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAd>>>
+
+    export type DeleteAdMutationError = unknown
+    export type DeleteAdMutationVariables = {id: string}
+
+    /**
+ * @summary 결제 대기 광고 삭제
+ */
+export const useDeleteAd = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAd>>, TError,DeleteAdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAd>>,
+        TError,
+        DeleteAdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteAdMutationOptions(options), queryClient);
     }
 
 export type updateAdContentResponse200 = {

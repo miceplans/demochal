@@ -2416,6 +2416,27 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Ad' }
+    delete:
+      tags: [Ads]
+      summary: 결제 대기 광고 삭제
+      operationId: deleteAd
+      x-impl-status: implemented
+      description: 결제 대기(preparing) 광고만 삭제한다(이력 보존을 위해 광고·미결제 주문을 canceled로 전이). 소유 기업이 아니면 403, 결제 대기가 아니면 400.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: 삭제된 광고 id
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id]
+                properties:
+                  id: { type: string, format: uuid }
   /ads/{id}/content:
     patch:
       tags: [Ads]

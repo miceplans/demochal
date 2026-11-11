@@ -83,6 +83,21 @@ export function BizAdsPage() {
       setPausingId(null);
     }
   };
+  const deleteAdMutation = generated.useDeleteAd();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const deleteAd = async (ad: Ad) => {
+    if (ad.status !== 'preparing' || deletingId) return;
+    setDeletingId(ad.id);
+    try {
+      await deleteAdMutation.mutateAsync({ id: ad.id });
+      await queryClient.invalidateQueries({ queryKey: generated.getListMyAdsQueryKey() });
+      toast.success('결제 대기 광고를 삭제했습니다.');
+    } catch {
+      // 전역 MutationCache onError 토스트가 실패를 알린다.
+    } finally {
+      setDeletingId(null);
+    }
+  };
   const [view, setView] = useState<AdPreviewView>('pc');
   const [screen, setScreen] = useState<AdsScreen>('manage');
   const [selectedAd, setSelectedAd] = useState<SelectedAd | null>(null);
@@ -483,15 +498,27 @@ export function BizAdsPage() {
                     >
                       리포트
                     </Button>
-                    <Button
-                      type="button"
-                      tone="plain"
-                      small
-                      disabled={ad.status !== 'active' || needsContent(ad) || pausingId === ad.id}
-                      onClick={() => void pauseAd(ad)}
-                    >
-                      {pausingId === ad.id ? '처리 중…' : '중단'}
-                    </Button>
+                    {ad.status === 'preparing' ? (
+                      <Button
+                        type="button"
+                        tone="plain"
+                        small
+                        disabled={deletingId === ad.id}
+                        onClick={() => void deleteAd(ad)}
+                      >
+                        {deletingId === ad.id ? '처리 중…' : '삭제'}
+                      </Button>
+                    ) : (
+                      <Button
+                        type="button"
+                        tone="plain"
+                        small
+                        disabled={ad.status !== 'active' || needsContent(ad) || pausingId === ad.id}
+                        onClick={() => void pauseAd(ad)}
+                      >
+                        {pausingId === ad.id ? '처리 중…' : '중단'}
+                      </Button>
+                    )}
                   </span>
                 </TableRow>
               ))}

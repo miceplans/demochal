@@ -749,3 +749,70 @@ describe('AdsService.recordEvent', () => {
     expect(insert).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('AdsService.deletePending', () => {
+  function createDeleteDbStub(
+    ad: Record<string, unknown>,
+    order: Record<string, unknown> | undefined,
+    lockedAd: Record<string, unknown> | undefined = ad,
+  ) {
+    const set = vi.fn();
+    const locked = [
+      Promise.resolve(order ? [order] : []),
+      Promise.resolve(lockedAd ? [lockedAd] : []),
+    ];
+    const db: any = {
+      select: vi
+        .fn()
+        .mockImplementationOnce(() => ({
+          from: vi.fn(() => ({ where: vi.fn(() => ({ limit: vi.fn().mockResolvedValue([ad]) })) })),
+        }))
+        .mockImplementation(() => ({
+          from: vi.fn(() => ({ where: vi.fn(() => ({ for: vi.fn(() => locked.shift()) })) })),
+        })),
+      update: vi.fn(() => ({
+        set: vi.fn((value: unknown) => {
+          set(value);
+          return { where: vi.fn().mockResolvedValue(undefined) };
+        }),
+      })),
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(db)),
+    };
+    return { db, set };
+  }
+  const PENDING_AD = { ...AD, status: 'preparing' };
+
+  it('cancels the pending order and the preparing ad', async () => {
+    const { db, set } = createDeleteDbStub(PENDING_AD, { id: 'order-1', status: 'pending' });
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.deletePending('ad-1', OWNER)).resolves.toEqual({ id: 'ad-1' });
+
+    expect(set).toHaveBeenCalledWith({ status: 'canceled' });
+    expect(set).toHaveBeenCalledTimes(2);
+  });
+
+  it('rejects a non-owning business with 403', async () => {
+    const { db, set } = createDeleteDbStub(PENDING_AD, undefined);
+    const service = new AdsService(db, createBusinessesStub({ id: 'other' }) as any);
+
+    await expect(service.deletePending('ad-1', OWNER)).rejects.toThrow('해당 기업만');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('rejects an ad that is no longer preparing', async () => {
+    const { db, set } = createDeleteDbStub(PENDING_AD, { id: 'order-1', status: 'pending' }, AD);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.deletePending('ad-1', OWNER)).rejects.toThrow('결제 대기 중인 광고만');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('rejects when the order is already paid', async () => {
+    const { db, set } = createDeleteDbStub(PENDING_AD, { id: 'order-1', status: 'paid' });
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.deletePending('ad-1', OWNER)).rejects.toThrow('결제 대기 중인 광고만');
+    expect(set).not.toHaveBeenCalled();
+  });
+});
