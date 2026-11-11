@@ -26,8 +26,13 @@ import type { CompressedAdImage } from '@/lib/image-compression';
 import { useToast } from '@/components/common/Toast';
 import { extractErrorMessage, formatSlash } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
-import { requestTossPayment } from '@/lib/payments';
+import { requestTossPayment, type PaymentMethod } from '@/lib/payments';
+import { PaymentMethodSelect } from '@/components/payments/PaymentMethodSelect';
 import { adApi } from '@/lib/ad-api';
+
+// 광고 예약은 결제 전 30분만 날짜를 잡아두므로(서버 PREPARING_TTL_MS) 24시간 입금 기한의
+// 가상계좌는 입금 시점에 예약이 풀려 자동 환불될 수 있다 — 광고 결제에서는 제외한다.
+const AD_PAYMENT_METHODS: PaymentMethod[] = ['CARD', 'TOSSPAY', 'KAKAOPAY', 'NAVERPAY'];
 
 export function BizAdsPage() {
   // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.
@@ -86,6 +91,7 @@ export function BizAdsPage() {
   const [screen, setScreen] = useState<AdsScreen>('manage');
   const [selectedAd, setSelectedAd] = useState<SelectedAd | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
   const [paymentStart, setPaymentStart] = useState(() => toDateKey(new Date()));
   const [paymentEnd, setPaymentEnd] = useState(() => toDateKey(new Date()));
   const [datePickerOpen, setDatePickerOpen] = useState(false);
@@ -230,6 +236,7 @@ export function BizAdsPage() {
           amount: created.data.order.amount,
           orderName: created.data.order.name,
           flow: 'ad',
+          method: paymentMethod,
         });
         if (!started)
           throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
@@ -568,6 +575,12 @@ export function BizAdsPage() {
                     </strong>
                   </div>
                 </div>
+                <PaymentMethodSelect
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                  disabled={submitting}
+                  methods={AD_PAYMENT_METHODS}
+                />
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
                   <PopupAction type="button" secondary onClick={() => setPaymentOpen(false)}>
                     취소

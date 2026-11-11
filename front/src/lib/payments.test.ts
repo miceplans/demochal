@@ -1,35 +1,66 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { requestTossPayment } from './payments';
 
-const mocks = vi.hoisted(() => ({
-  requestPayment: vi.fn(),
-  loadTossPayments: vi.fn(),
-}));
-
+const requestPayment = vi.fn().mockResolvedValue(undefined);
 vi.mock('@tosspayments/tosspayments-sdk', () => ({
   ANONYMOUS: 'ANONYMOUS',
-  loadTossPayments: mocks.loadTossPayments,
+  loadTossPayments: vi.fn().mockResolvedValue({ payment: () => ({ requestPayment }) }),
 }));
+
+const base = { orderId: 'order-1', amount: 50000, orderName: '챌린지 참가비' };
 
 describe('requestTossPayment', () => {
   beforeEach(() => {
-    vi.stubEnv('NEXT_PUBLIC_TOSS_CLIENT_KEY', 'test-client-key');
-    mocks.requestPayment.mockReset().mockResolvedValue(undefined);
-    mocks.loadTossPayments.mockReset().mockResolvedValue({
-      payment: () => ({ requestPayment: mocks.requestPayment }),
-    });
+    vi.resetModules();
+    requestPayment.mockClear();
+    vi.stubEnv('NEXT_PUBLIC_TOSS_CLIENT_KEY', 'test_ck');
   });
 
-  it('광고 결제창을 현재 탭에서 열고 복귀 URL에 flow를 유지한다', async () => {
-    await requestTossPayment({ orderId: 'order-1', amount: 100000, orderName: '광고', flow: 'ad' });
+  it('returns false without opening a window when the client key is missing', async () => {
+    vi.stubEnv('NEXT_PUBLIC_TOSS_CLIENT_KEY', '');
+    const { requestTossPayment } = await import('./payments');
+    await expect(requestTossPayment(base)).resolves.toBe(false);
+    expect(requestPayment).not.toHaveBeenCalled();
+  });
 
-    expect(mocks.requestPayment).toHaveBeenCalledWith(
+  it('opens the card window by default in the current tab and keeps flow on return URLs', async () => {
+    const { requestTossPayment } = await import('./payments');
+    await requestTossPayment({ ...base, flow: 'ad' });
+    expect(requestPayment).toHaveBeenCalledWith(
       expect.objectContaining({
         windowTarget: 'self',
         method: 'CARD',
         orderId: 'order-1',
         successUrl: `${window.location.origin}/payments/success?flow=ad`,
         failUrl: `${window.location.origin}/payments/fail?flow=ad`,
+      }),
+    );
+    expect(requestPayment.mock.calls[0]![0].card).toBeUndefined();
+  });
+
+  it.each(['TOSSPAY', 'KAKAOPAY', 'NAVERPAY'] as const)(
+    'opens the %s app window directly via the card method',
+    async (method) => {
+      const { requestTossPayment } = await import('./payments');
+      await requestTossPayment({ ...base, method });
+      expect(requestPayment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          windowTarget: 'self',
+          method: 'CARD',
+          card: { flowMode: 'DIRECT', easyPay: method },
+        }),
+      );
+    },
+  );
+
+  it('issues a virtual account with a 24h deposit window and no cash receipt', async () => {
+    const { requestTossPayment } = await import('./payments');
+    await requestTossPayment({ ...base, method: 'VIRTUAL_ACCOUNT', flow: 'ad' });
+    expect(requestPayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        windowTarget: 'self',
+        method: 'VIRTUAL_ACCOUNT',
+        virtualAccount: { cashReceipt: { type: '미발행' }, validHours: 24 },
+        successUrl: expect.stringContaining('/payments/success?flow=ad'),
       }),
     );
   });

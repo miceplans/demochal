@@ -9,7 +9,8 @@ import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
 import { adApi } from '@/lib/ad-api';
 import { apiErrorMessage } from '@/lib/api-error';
-import { requestTossPayment } from '@/lib/payments';
+import { requestTossPayment, type PaymentMethod } from '@/lib/payments';
+import { PaymentMethodSelect } from '@/components/payments/PaymentMethodSelect';
 import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 import { ApplicationQuestions, isAnswerValid, type Answers } from './ApplicationQuestions';
@@ -96,6 +97,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   });
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
   const [submitting, setSubmitting] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CARD');
   const [uploading, setUploading] = useState(false);
   const [answers, setAnswers] = useState<Answers>(
     draft?.challengeId === challengeId ? (draft.answers ?? {}) : {},
@@ -159,6 +161,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
         orderId: result.order.id,
         amount: result.order.amount,
         orderName: result.order.name,
+        method: paymentMethod,
       });
       if (!started) {
         await cancelPendingOrder();
@@ -193,6 +196,13 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
             onUploading={setUploading}
             disabled={submitting || uploading}
           />
+          {(challenge?.price ?? 0) > 0 && (
+            <PaymentMethodSelect
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              disabled={submitting}
+            />
+          )}
           {challengeId && challengeQuery.isError && (
             <p role="alert">
               공고 정보를 불러오지 못했습니다.{' '}

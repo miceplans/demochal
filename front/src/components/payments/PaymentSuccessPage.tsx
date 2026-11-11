@@ -5,14 +5,56 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { Button } from '@/components/common/Primitives';
 import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 
 // 서버는 웹훅(Toss 재검증)으로 정산하므로, 성공 리다이렉트 시점에는 주문이 아직 pending일 수 있다.
 // 터미널 상태(paid/canceled)가 올 때까지 주문을 폴리한다.
 const POLL_INTERVAL_MS = 2_000;
 const POLL_TIMEOUT_MS = 30_000;
+// 가상계좌 입금 대기 중에는 입금 기한(24시간)까지 느린 주기로 계속 확인한다.
+const DEPOSIT_POLL_INTERVAL_MS = 5_000;
 
-type PaymentState = 'checking' | 'paid' | 'failed' | 'timeout';
+type PaymentState = 'checking' | 'paid' | 'failed' | 'timeout' | 'deposit';
+
+interface DepositInfo {
+  bankCode: string;
+  accountNumber: string;
+  dueDate: string;
+}
+
+// 토스 은행 코드(금융결제원 공식 코드). 목록에 없는 코드는 코드 그대로 보여준다.
+// https://docs.tosspayments.com/codes/org-codes
+const BANK_NAMES: Record<string, string> = {
+  '002': '한국산업은행',
+  '003': 'IBK기업은행',
+  '004': 'KB국민은행',
+  '007': 'Sh수협은행',
+  '011': 'NH농협은행',
+  '012': '단위농협(지역농축협)',
+  '020': '우리은행',
+  '023': 'SC제일은행',
+  '027': '씨티은행',
+  '030': '수협중앙회',
+  '031': 'iM뱅크(대구)',
+  '032': '부산은행',
+  '034': '광주은행',
+  '035': '제주은행',
+  '037': '전북은행',
+  '039': '경남은행',
+  '045': '새마을금고',
+  '048': '신협',
+  '050': '저축은행중앙회',
+  '054': '홍콩상하이은행',
+  '060': 'Bank of America',
+  '064': '산림조합',
+  '071': '우체국예금보험',
+  '081': '하나은행',
+  '088': '신한은행',
+  '089': '케이뱅크',
+  '090': '카카오뱅크',
+  '092': '토스뱅크',
+};
 
 const PageWrap = styled.div({
   display: 'flex',
@@ -38,6 +80,26 @@ const Description = styled.p({
   fontSize: 15,
   lineHeight: 1.6,
   margin: 0,
+});
+const DepositBox = styled.dl({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  width: 'min(100%, 360px)',
+  margin: 0,
+  padding: '16px 20px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 12,
+  background: c.white,
+  textAlign: 'left',
+});
+const DepositRow = styled.div({
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: 16,
+  fontSize: 14,
+  color: c.gray500,
+  strong: { color: c.gray900, fontWeight: 600 },
 });
 const Actions = styled.div({
   display: 'flex',
@@ -88,6 +150,7 @@ export function PaymentSuccessPage() {
 
   const [state, setState] = useState<PaymentState>('checking');
   const [message, setMessage] = useState<string | null>(null);
+  const [deposit, setDeposit] = useState<DepositInfo | null>(null);
 
   useEffect(() => {
     if (!valid || !orderId) return;
@@ -96,6 +159,7 @@ export function PaymentSuccessPage() {
     const controller = new AbortController();
     const startedAt = Date.now();
     let finished = false;
+    let waitingDeposit = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
 
     const finish = (next: PaymentState, nextMessage?: string) => {
@@ -116,7 +180,7 @@ export function PaymentSuccessPage() {
     };
 
     const poll = async () => {
-      if (Date.now() - startedAt >= POLL_TIMEOUT_MS) {
+      if (!waitingDeposit && Date.now() - startedAt >= POLL_TIMEOUT_MS) {
         finish('timeout', '결제 확인이 지연되고 있어요. 잠시 후 새로고침해주세요.');
         return;
       }
@@ -126,29 +190,48 @@ export function PaymentSuccessPage() {
         if (order.status === 'paid') {
           finish('paid');
         } else if (order.status === 'canceled') {
-          finish('failed', '결제가 완료되지 않았어요. 다시 시도해주세요.');
+          finish(
+            'failed',
+            waitingDeposit
+              ? '입금 기한이 지나 주문이 취소됐어요. 다시 신청해주세요.'
+              : '결제가 완료되지 않았어요. 다시 시도해주세요.',
+          );
         } else {
           // pending이면 다음 폴리 틱까지 계속 대기한다.
-          schedule(POLL_INTERVAL_MS);
+          schedule(waitingDeposit ? DEPOSIT_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
         }
       } catch {
         // 조회 취소(언마운트/타임아웃) 외의 개별 실패(일시 네트워크 오류 등)는 타임아웃까지 재시도한다.
-        if (!controller.signal.aborted) schedule(POLL_INTERVAL_MS);
+        if (!controller.signal.aborted) {
+          schedule(waitingDeposit ? DEPOSIT_POLL_INTERVAL_MS : POLL_INTERVAL_MS);
+        }
       }
     };
 
-    // 카드 인증 성공 후 서버 승인을 먼저 요청한다 — 토스 카드 결제는 이 승인 없이는
+    // 결제 인증 성공 후 서버 승인을 먼저 요청한다 — 토스 결제는 이 승인 없이는
     // 웹훅 없이 종료되지 않는다. 성공하면 결제 저장+주문 확정이 동기 처리되므로
-    // 이후 폴리는 확정 상태를 확인만 하고, 실패(네트워크/토스 거절)는 폴리로 평가한다.
+    // 이후 폴링은 확정 상태를 확인만 하고, 실패(네트워크/토스 거절)는 폴링으로 평가한다.
+    // 가상계좌는 계좌 발급만 끝난 상태로 돌아오므로 입금 안내를 보여주고, 입금 웹훅으로
+    // 주문이 paid가 될 때까지 느린 주기로 폴링해 완료 화면으로 전환한다
+    // (새로고침해도 승인 재호출이 같은 계좌 정보를 돌려준다).
     void (async () => {
       try {
         const params = new URLSearchParams(window.location.search);
         const amount = Number(params.get('amount'));
         if (paymentKey && Number.isFinite(amount) && amount > 0) {
-          await adApi.payments.confirm({ orderId, paymentKey, amount });
+          const response = await generated.confirmPayment({ orderId, paymentKey, amount });
+          const account = response.status === 200 ? response.data.virtualAccount : undefined;
+          if (account) {
+            if (cancelled) return;
+            setDeposit(account);
+            setState('deposit');
+            waitingDeposit = true;
+            schedule(DEPOSIT_POLL_INTERVAL_MS);
+            return;
+          }
         }
       } catch {
-        // 승인 호출 실패는 폴리(pending/canceled/timeout)로 평가한다.
+        // 승인 호출 실패는 폴링(pending/canceled/timeout)으로 평가한다.
       }
       poll();
     })();
@@ -197,6 +280,34 @@ export function PaymentSuccessPage() {
             </Button>
           </Actions>
         </PaidBlock>
+      )}
+      {state === 'deposit' && deposit && (
+        <>
+          <Title>입금을 기다리고 있어요</Title>
+          <Description>
+            아래 가상계좌로 입금하면 {isAdFlow ? '광고 계약이' : '신청이'} 확정돼요.
+          </Description>
+          <DepositBox>
+            <DepositRow>
+              <span>은행</span>
+              <strong>{BANK_NAMES[deposit.bankCode] ?? deposit.bankCode}</strong>
+            </DepositRow>
+            <DepositRow>
+              <span>계좌번호</span>
+              <strong>{deposit.accountNumber}</strong>
+            </DepositRow>
+            <DepositRow>
+              <span>입금 기한</span>
+              <strong>{new Date(deposit.dueDate).toLocaleString('ko-KR')}</strong>
+            </DepositRow>
+          </DepositBox>
+          <Description>기한 안에 입금하지 않으면 주문이 자동으로 취소돼요.</Description>
+          <Actions>
+            <Button onClick={() => router.push(isAdFlow ? '/biz/ads' : '/my/applications')}>
+              {isAdFlow ? '광고 관리로 이동' : '내 신청 보기'}
+            </Button>
+          </Actions>
+        </>
       )}
       {state === 'failed' && (
         <>
