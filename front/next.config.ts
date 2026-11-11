@@ -55,8 +55,11 @@ const contentSecurityPolicy = [
   'frame-src https://*.tosspayments.com https://www.google.com https://maps.google.com',
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // Toss 결제 SDK가 현재 탭에서 결제 폼을 결제 도메인으로 제출한다.
+  "form-action 'self' https://*.tosspayments.com",
 ].join('; ');
+
+export { contentSecurityPolicy };
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
