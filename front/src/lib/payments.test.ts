@@ -1,36 +1,34 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { requestTossPayment } from './payments';
 
-const mocks = vi.hoisted(() => ({
+const { requestPayment, loadTossPayments } = vi.hoisted(() => ({
   requestPayment: vi.fn(),
   loadTossPayments: vi.fn(),
 }));
 
 vi.mock('@tosspayments/tosspayments-sdk', () => ({
-  ANONYMOUS: 'ANONYMOUS',
-  loadTossPayments: mocks.loadTossPayments,
+  ANONYMOUS: '@@ANONYMOUS',
+  loadTossPayments,
 }));
+
+import { CARD_COMPANIES_WITHOUT_BC, requestTossPayment } from './payments';
 
 describe('requestTossPayment', () => {
   beforeEach(() => {
-    vi.stubEnv('NEXT_PUBLIC_TOSS_CLIENT_KEY', 'test-client-key');
-    mocks.requestPayment.mockReset().mockResolvedValue(undefined);
-    mocks.loadTossPayments.mockReset().mockResolvedValue({
-      payment: () => ({ requestPayment: mocks.requestPayment }),
-    });
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_TOSS_CLIENT_KEY', 'test_ck_example');
+    requestPayment.mockReset();
+    loadTossPayments.mockResolvedValue({ payment: () => ({ requestPayment }) });
   });
 
-  it('광고 결제창을 현재 탭에서 열고 복귀 URL에 flow를 유지한다', async () => {
-    await requestTossPayment({ orderId: 'order-1', amount: 100000, orderName: '광고', flow: 'ad' });
+  it('excludes BC-family card company codes from the card window', async () => {
+    await requestTossPayment({ orderId: 'order-1', amount: 1000, orderName: '광고' });
 
-    expect(mocks.requestPayment).toHaveBeenCalledWith(
+    expect(requestPayment).toHaveBeenCalledWith(
       expect.objectContaining({
-        windowTarget: 'self',
         method: 'CARD',
-        orderId: 'order-1',
-        successUrl: `${window.location.origin}/payments/success?flow=ad`,
-        failUrl: `${window.location.origin}/payments/fail?flow=ad`,
+        card: { cardCompany: CARD_COMPANIES_WITHOUT_BC },
       }),
     );
+    expect(CARD_COMPANIES_WITHOUT_BC).not.toMatch(/(^|\|)(3K|31|33)(\||$)/);
   });
 });
