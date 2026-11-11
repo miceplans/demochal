@@ -13,7 +13,7 @@ type TestAd = {
   endDate: string;
   paidAmount: number;
   productId?: string;
-  status: 'active' | 'paused';
+  status: 'active' | 'paused' | 'preparing';
   imageUrl: string | null;
 };
 
@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   createAd: vi.fn(),
   updateAd: vi.fn(),
   updateContent: vi.fn(),
+  deleteAd: vi.fn(),
   routerPush: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
@@ -58,6 +59,7 @@ vi.mock('@semochal/api-client', () => ({
       refetch: vi.fn(),
     }),
     useUpdateAd: () => ({ mutateAsync: mocks.updateAd }),
+    useDeleteAd: () => ({ mutateAsync: mocks.deleteAd }),
     useCreateAd: () => ({ mutateAsync: mocks.createAd }),
     useUpdateAdContent: () => ({ mutateAsync: mocks.updateContent }),
     useRequestPresignedUpload: () => ({
@@ -453,10 +455,34 @@ describe('BizAdsPage 광고 관리 목록 작업 버튼', () => {
     mocks.routerPush.mockReset();
     mocks.updateAd.mockReset();
     mocks.updateAd.mockResolvedValue({ status: 200 });
+    mocks.deleteAd.mockReset();
+    mocks.deleteAd.mockResolvedValue({ status: 200 });
     mocks.toastSuccess.mockReset();
   });
 
   afterEach(() => cleanup());
+
+  it('결제 대기 광고만 삭제할 수 있다', async () => {
+    mocks.ads.push({
+      id: 'ad-pending',
+      title: '대기 광고',
+      startDate: '2026-10-01',
+      endDate: '2026-11-01',
+      paidAmount: 100000,
+      status: 'preparing',
+      imageUrl: null,
+    });
+    renderPage();
+
+    const deleteButtons = screen.getAllByRole('button', { name: '삭제' });
+    expect(deleteButtons).toHaveLength(1);
+    fireEvent.click(deleteButtons[0]);
+
+    expect(mocks.deleteAd).toHaveBeenCalledWith({ id: 'ad-pending' });
+    await waitFor(() =>
+      expect(mocks.toastSuccess).toHaveBeenCalledWith('결제 대기 광고를 삭제했습니다.'),
+    );
+  });
 
   it('리포트 버튼은 해당 광고의 기존 리포트 경로로 이동한다', () => {
     renderPage();

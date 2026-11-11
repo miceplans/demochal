@@ -8,7 +8,7 @@ import {
   OnModuleInit,
   UnauthorizedException,
 } from '@nestjs/common';
-import { and, asc, desc, eq, gt, gte, inArray, lt, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
 import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
@@ -99,6 +99,8 @@ export class AdsService implements OnModuleInit {
     if (!businessId) return [];
     const conditions = [eq(ads.businessId, businessId)];
     if (status) conditions.push(eq(ads.status, status));
+    // 삭제(canceled)된 결제 대기 광고는 상태를 명시해 조회하지 않는 한 목록에서 숨긴다.
+    else conditions.push(ne(ads.status, 'canceled'));
     if (opts?.withinServingWindow) {
       // listPublic과 동일한 노출 기간 조건이다(KST 날짜 기준). 계약이 만료된 'active'
       // 광고는 실제로 노출되지 않으므로 대시보드 진행중 광고 집계에서도 제외한다.
@@ -351,6 +353,33 @@ export class AdsService implements OnModuleInit {
       .where(eq(ads.id, id))
       .returning();
     return updated;
+  }
+
+  /**
+   * 결제 대기(preparing) 광고 삭제. 주문·결제 이력을 보존하려고 행을 지우지 않고
+   * 광고를 canceled, 미결제 주문을 canceled로 전이한다. 이후 늦게 도착한 결제는
+   * settleOrderPaid가 거절해 자동 환불로 이어진다(광고가 preparing이 아니므로).
+   */
+  async deletePending(id: string, user: AuthenticatedUser) {
+    const ad = await this.findById(id);
+    const business = await this.businessesService.findByOwner(user.id);
+    if (!business || business.id !== ad.businessId) {
+      throw new ForbiddenException('해당 기업만 광고를 삭제할 수 있습니다.');
+    }
+    await this.db.transaction(async (tx) => {
+      // settleOrderPaid와 같은 순서(주문 → 광고)로 잠가 결제 확정과 직렬화한다.
+      const [order] = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
+      if (order && order.status !== 'pending') {
+        throw new BadRequestException('결제 대기 중인 광고만 삭제할 수 있습니다.');
+      }
+      const [locked] = await tx.select().from(ads).where(eq(ads.id, id)).for('update');
+      if (!locked || locked.status !== 'preparing') {
+        throw new BadRequestException('결제 대기 중인 광고만 삭제할 수 있습니다.');
+      }
+      if (order) await tx.update(orders).set({ status: 'canceled' }).where(eq(orders.id, order.id));
+      await tx.update(ads).set({ status: 'canceled' }).where(eq(ads.id, id));
+    });
+    return { id };
   }
 
   async report(id: string, query: AdReportQueryDto, user: AuthenticatedUser) {

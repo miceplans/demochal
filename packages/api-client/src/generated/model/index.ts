@@ -127,6 +127,7 @@ export * from './createReportRequest';
 export * from './createReportRequestTargetType';
 export * from './createTeamRequest';
 export * from './dailyMetric';
+export * from './deleteAd200';
 export * from './deleteMfaPasskeyBody';
 export * from './deleteMfaTotpBody';
 export * from './externalLink';

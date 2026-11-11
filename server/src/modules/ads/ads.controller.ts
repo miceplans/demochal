@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -78,6 +79,11 @@ export class AdsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.adsService.updateStatus(id, dto, user);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: AuthenticatedUser) {
+    return this.adsService.deletePending(id, user);
   }
 
   @Get(':id/report')
