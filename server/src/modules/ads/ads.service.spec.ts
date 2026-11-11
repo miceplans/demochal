@@ -246,6 +246,144 @@ describe('AdsService.updateStatus', () => {
   });
 });
 
+describe('AdsService.updateContent', () => {
+  const DTO = { imageFileId: 'file-visible', title: ' 봄 이벤트 ', landingUrl: 'https://x.com' };
+  const FILE = {
+    id: 'file-visible',
+    uploaderUserId: 'user-1',
+    bucket: 'public',
+    uploadStatus: 'ready',
+  };
+  const futureAd = (overrides: Record<string, unknown> = {}) => ({
+    ...AD,
+    status: 'active',
+    endDate: new Date(Date.now() + 5 * 86_400_000),
+    ...overrides,
+  });
+
+  // select 호출 순서: 광고 → 파일 → (트랜잭션) 주문 잠금 조회 → 광고 재조회 (→ 결과 이미지 URL 조회).
+  // lockedAd로 잠금 후 재조회되는 광고 상태를 따로 지정해 환불·취소 경합을 재현한다.
+  function stub(
+    ad: Record<string, unknown> | undefined,
+    order?: unknown,
+    file?: unknown,
+    lockedAd: Record<string, unknown> | undefined = ad,
+  ) {
+    const rows = [
+      ad ? [ad] : [],
+      file ? [file] : [],
+      order ? [order] : [],
+      lockedAd ? [lockedAd] : [],
+    ];
+    const select = vi.fn(() => {
+      const result = rows.shift() ?? [];
+      const where = vi.fn(() =>
+        Object.assign(Promise.resolve(result), {
+          limit: vi.fn().mockResolvedValue(result),
+          for: vi.fn().mockResolvedValue(result),
+        }),
+      );
+      return { from: vi.fn(() => ({ where })) };
+    });
+    const set = vi.fn();
+    const returning = vi
+      .fn()
+      .mockResolvedValue([futureAd({ title: '봄 이벤트', imageFileId: 'file-visible' })]);
+    const db: any = {
+      select,
+      update: vi.fn(() => ({
+        set: vi.fn((value: unknown) => {
+          set(value);
+          return { where: vi.fn(() => ({ returning })) };
+        }),
+      })),
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(db)),
+    };
+    return { db, set };
+  }
+
+  it('결제가 완료된 광고에 이미지·광고명을 등록한다', async () => {
+    const { db, set } = stub(futureAd(), { id: 'order-1', status: 'paid' }, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await service.updateContent('ad-1', DTO, OWNER);
+
+    expect(set).toHaveBeenCalledWith({
+      title: '봄 이벤트',
+      imageFileId: 'file-visible',
+      landingUrl: 'https://x.com',
+    });
+  });
+
+  it('결제 전(preparing, paid 주문 없음) 광고는 내용 등록을 거부한다', async () => {
+    const { db, set } = stub(futureAd({ status: 'preparing' }), undefined, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('결제가 완료된 광고만');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('주문이 paid가 아니면 광고 status가 active여도 거부한다', async () => {
+    const { db, set } = stub(futureAd(), undefined, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('결제가 완료된 광고만');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('다른 기업의 광고는 403', async () => {
+    const { db } = stub(futureAd(), { id: 'order-1', status: 'paid' }, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-2' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('해당 기업만');
+  });
+
+  it('남이 올렸거나 업로드가 끝나지 않은 이미지는 거부한다', async () => {
+    for (const file of [
+      { ...FILE, uploaderUserId: 'someone-else' },
+      { ...FILE, uploadStatus: 'pending' },
+      { ...FILE, bucket: 'private' },
+    ]) {
+      const { db, set } = stub(futureAd(), { id: 'order-1', status: 'paid' }, file);
+      const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+      await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('업로드가 완료된');
+      expect(set).not.toHaveBeenCalled();
+    }
+  });
+
+  it('계약 기간이 끝난 광고는 거부한다', async () => {
+    const { db } = stub(
+      futureAd({ endDate: new Date('2020-01-01') }),
+      { id: 'order-1', status: 'paid' },
+      FILE,
+    );
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('끝난 광고');
+  });
+
+  it('잠금 후 광고가 환불·취소로 ended가 됐다면 내용을 기록하지 않는다', async () => {
+    const { db, set } = stub(
+      futureAd(),
+      { id: 'order-1', status: 'paid' },
+      FILE,
+      futureAd({ status: 'ended' }),
+    );
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('끝난 광고');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it('잠금 후 주문이 canceled로 바뀌었다면 내용을 기록하지 않는다', async () => {
+    const { db, set } = stub(futureAd(), { id: 'order-1', status: 'canceled' }, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateContent('ad-1', DTO, OWNER)).rejects.toThrow('결제가 완료된 광고만');
+    expect(set).not.toHaveBeenCalled();
+  });
+});
+
 describe('AdsService.create', () => {
   it('keeps an unknown string product ID on the existing 404 path', async () => {
     const limit = vi.fn().mockResolvedValue([]);
