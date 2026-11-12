@@ -29,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   fetchMock: vi.fn(),
   requestPayment: vi.fn(),
   cancelOrder: vi.fn(),
+  listAdProducts: vi.fn(),
+  compressToWebP: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: mocks.routerPush }) }));
@@ -70,7 +72,7 @@ vi.mock('@semochal/api-client', () => ({
     useFinalizeUpload: () => ({ mutateAsync: vi.fn(async () => undefined) }),
     useListMyNotifications: () => ({ data: { data: [] } }),
     useListAdProducts: () => ({ data: { status: 200, data: products } }),
-    listAdProducts: vi.fn(async () => ({ data: products })),
+    listAdProducts: mocks.listAdProducts,
     getListMyAdsQueryKey: () => ['my-ads'],
   },
 }));
@@ -84,12 +86,7 @@ vi.mock('@/lib/image-compression', () => ({
     hero: { initialQuality: 0.95, maxSizeMB: 1, maxWidthOrHeight: 2400 },
     gallery: { initialQuality: 0.95, maxSizeMB: 0.5, maxWidthOrHeight: 1200 },
   },
-  compressToWebP: vi.fn(async () => ({
-    file: new File(['webp'], 'ad.webp', { type: 'image/webp' }),
-    previewUrl: 'blob:preview',
-    originalSize: 1000,
-    compressedSize: 500,
-  })),
+  compressToWebP: mocks.compressToWebP,
   formatBytes: (size: number) => `${size}B`,
 }));
 
@@ -120,14 +117,19 @@ vi.mock('@/components/ads/AdPlacementPreview', () => ({
     onSelect,
     onImagePicked,
     processing,
+    uploadedImages,
   }: {
     onSelect?: (placement: 'hero' | 'gallery') => void;
     onImagePicked?: (placement: 'hero' | 'gallery', file: File) => void;
     processing?: boolean;
+    uploadedImages?: Partial<Record<'hero' | 'gallery', string>>;
   }) => (
     <>
       {(['hero', 'gallery'] as const).map((placement) => (
         <span key={placement}>
+          {uploadedImages?.[placement] ? (
+            <span data-testid={`${placement}-uploaded-image`}>업로드된 이미지</span>
+          ) : null}
           <button type="button" onClick={() => onSelect?.(placement)}>
             {placement} 선택
           </button>
@@ -206,6 +208,15 @@ function resetMocks() {
   mocks.requestPayment.mockResolvedValue(true);
   mocks.cancelOrder.mockReset();
   mocks.cancelOrder.mockResolvedValue({});
+  mocks.listAdProducts.mockReset();
+  mocks.listAdProducts.mockResolvedValue({ data: products });
+  mocks.compressToWebP.mockReset();
+  mocks.compressToWebP.mockResolvedValue({
+    file: new File(['webp'], 'ad.webp', { type: 'image/webp' }),
+    previewUrl: 'blob:preview',
+    originalSize: 1000,
+    compressedSize: 500,
+  });
   vi.stubGlobal('fetch', mocks.fetchMock);
 }
 
@@ -320,6 +331,57 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
     );
     expect(screen.queryByRole('dialog', { name: '광고명' })).toBeNull();
   });
+
+  it('새 등록을 시작한 뒤 늦게 완료된 상품 조회가 결제 모달을 다시 열지 않는다', async () => {
+    let resolveProducts: ((value: { data: typeof products }) => void) | undefined;
+    mocks.listAdProducts.mockImplementationOnce(
+      () => new Promise<{ data: typeof products }>((resolve) => (resolveProducts = resolve)),
+    );
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+
+    resolveProducts?.({ data: products });
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '광고 계약 신청' })).toBeNull(),
+    );
+  });
+
+  it('새 등록을 시작한 뒤 늦게 완료된 이미지 업로드가 이전 상태를 되살리지 않는다', async () => {
+    mocks.ads = [PAID_NO_IMAGE];
+    let resolveCompression:
+      | ((value: {
+          file: File;
+          previewUrl: string;
+          originalSize: number;
+          compressedSize: number;
+        }) => void)
+      | undefined;
+    mocks.compressToWebP.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveCompression = resolve;
+        }),
+    );
+    renderPage();
+
+    fireEvent.click(await screen.findByRole('button', { name: '이미지 등록' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 업로드' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+
+    resolveCompression?.({
+      file: new File(['webp'], 'ad.webp', { type: 'image/webp' }),
+      previewUrl: 'blob:late-preview',
+      originalSize: 1000,
+      compressedSize: 500,
+    });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: '광고명' })).toBeNull());
+    expect(screen.queryByTestId('hero-uploaded-image')).toBeNull();
+  });
 });
 
 describe('BizAdsPage 결제 완료 후 이미지·광고명 등록', () => {
@@ -403,6 +465,35 @@ describe('BizAdsPage 결제 완료 후 이미지·광고명 등록', () => {
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
     expect(mocks.toastSuccess).not.toHaveBeenCalledWith('광고가 등록되었습니다.');
+  });
+
+  it('광고 추가를 다시 시작하면 이전 업로드 상태를 초기화한다', async () => {
+    const revokeObjectURL = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    renderPage();
+    await openNameModalForPaidAd();
+
+    fireEvent.change(screen.getByPlaceholderText('광고명을 입력해주세요'), {
+      target: { value: '이전 광고명' },
+    });
+    fireEvent.change(screen.getByLabelText('광고 링크'), {
+      target: { value: 'https://previous.example' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
+    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+
+    expect(screen.queryByTestId('hero-uploaded-image')).toBeNull();
+    expect(screen.queryByRole('dialog', { name: '광고명' })).toBeNull();
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:preview');
+
+    fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
+    fireEvent.click(screen.getByRole('button', { name: '이미지 등록' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 업로드' }));
+    const nameDialog = await screen.findByRole('dialog', { name: '광고명' });
+    expect((within(nameDialog).getByLabelText('광고명') as HTMLInputElement).value).toBe('');
+    expect((within(nameDialog).getByLabelText('광고 링크') as HTMLInputElement).value).toBe('');
+    revokeObjectURL.mockRestore();
   });
 });
 

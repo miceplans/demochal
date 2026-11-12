@@ -61,6 +61,7 @@ export function BizAdsPage() {
   const [adName, setAdName] = useState('');
   const [adLink, setAdLink] = useState('');
   const previewUrls = useRef<Set<string>>(new Set());
+  const draftGeneration = useRef(0);
   const toast = useToast();
   const hrefOf = useBizHref();
 
@@ -118,9 +119,11 @@ export function BizAdsPage() {
     }
   }
   const openPayment = async (placement: AdPlacement) => {
+    const generation = draftGeneration.current;
     try {
       // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
       const { data: products } = await generated.listAdProducts();
+      if (generation !== draftGeneration.current) return;
       const product = products.find((item) => item.placement === placement);
       if (!product) throw new Error('상품 없음');
       let start = toDateKey(new Date());
@@ -173,8 +176,20 @@ export function BizAdsPage() {
   };
 
   const openProducts = () => {
+    draftGeneration.current += 1;
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
     setContentAd(null);
     setUploadPlacement(null);
+    setUploadedImages({});
+    setUploadedFileIds({});
+    setAdName('');
+    setAdLink('');
+    setNameModalPlacement(null);
+    setSelectedAd(null);
+    setPaymentOpen(false);
+    setDatePickerOpen(false);
+    setPendingRange(undefined);
     setScreen('products');
   };
 
@@ -203,6 +218,7 @@ export function BizAdsPage() {
       toast.error('결제를 완료한 광고만 이미지를 등록할 수 있습니다.');
       return;
     }
+    const generation = draftGeneration.current;
     setProcessing(true);
     let image: CompressedAdImage | undefined;
     try {
@@ -223,6 +239,11 @@ export function BizAdsPage() {
       });
       if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
       await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
+
+      if (generation !== draftGeneration.current) {
+        URL.revokeObjectURL(image.previewUrl);
+        return;
+      }
 
       const previous = uploadedImages[placement];
       if (previous) {
