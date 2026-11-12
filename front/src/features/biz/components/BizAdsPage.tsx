@@ -28,6 +28,12 @@ import { adDays, adPaymentAmount, extractErrorMessage, formatSlash } from './Biz
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestTossPayment } from '@/lib/payments';
 import { adApi } from '@/lib/ad-api';
+import {
+  clearAdPaymentDraft,
+  readAdPaymentDraft,
+  saveAdPaymentDraft,
+  type AdPaymentDraft,
+} from '@/lib/ad-payment-draft';
 
 export function BizAdsPage() {
   // 광고 목록은 TanStack Query가 한 번만 불러오고, 실패 시 재시도는 refetch로만 한다.
@@ -54,8 +60,14 @@ export function BizAdsPage() {
   const [uploadPlacement, setUploadPlacement] = useState<AdPlacement | null>(null);
   const [uploadedImages, setUploadedImages] = useState<Partial<Record<AdPlacement, string>>>({});
   const [uploadedFileIds, setUploadedFileIds] = useState<Partial<Record<AdPlacement, string>>>({});
-  // 결제 → 이미지 업로드 → 광고명 순서. 결제가 끝나 내용(이미지·광고명) 등록을 기다리는 광고.
+  // 결제 완료 후 내용(이미지·광고명) 등록을 기다리는 광고.
   const [contentAd, setContentAd] = useState<Ad | null>(null);
+  const [draftContent, setDraftContent] = useState<{
+    placement: AdPlacement;
+    imageFileId: string;
+    title: string;
+    landingUrl?: string;
+  } | null>(null);
   const [processing, setProcessing] = useState(false);
   const [nameModalPlacement, setNameModalPlacement] = useState<AdPlacement | null>(null);
   const [adName, setAdName] = useState('');
@@ -110,6 +122,19 @@ export function BizAdsPage() {
   const [calendarViewMonth, setCalendarViewMonth] = useState(() => new Date());
   const datePickerRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  useEffect(() => {
+    const draft = readAdPaymentDraft();
+    if (!draft) return;
+    // Defer restoration until after hydration so the server and first browser render match.
+    queueMicrotask(() => {
+      setDraftContent(draft);
+      setUploadedFileIds({ [draft.placement]: draft.imageFileId });
+      setAdName(draft.title);
+      setAdLink(draft.landingUrl ?? '');
+      setNameModalPlacement(draft.placement);
+      setScreen('products');
+    });
+  }, []);
   // 미리보기 툴팁 가격을 서버 상품 가격과 맞춘다. 실패 시 미리보기의 fallback 가격을 쓴다.
   const productsQuery = generated.useListAdProducts();
   const dailyPrices: Partial<Record<AdPlacement, number>> = {};
@@ -118,12 +143,12 @@ export function BizAdsPage() {
       dailyPrices[product.placement] = product.dailyPrice;
     }
   }
-  const openPayment = async (placement: AdPlacement) => {
+  const openPayment = async (placement: AdPlacement): Promise<boolean> => {
     const generation = draftGeneration.current;
     try {
       // 결제창을 열 때는 캐시된 값 대신 최신 단가/예약 현황을 다시 조회한다.
       const { data: products } = await generated.listAdProducts();
-      if (generation !== draftGeneration.current) return;
+      if (generation !== draftGeneration.current) return false;
       const product = products.find((item) => item.placement === placement);
       if (!product) throw new Error('상품 없음');
       let start = toDateKey(new Date());
@@ -152,8 +177,10 @@ export function BizAdsPage() {
       setPendingRange({ from: new Date(`${start}T00:00:00`), to: undefined });
       setDatePickerOpen(false);
       setPaymentOpen(true);
+      return true;
     } catch (error) {
       toast.error('광고 상품 정보를 불러오지 못했습니다', extractErrorMessage(error));
+      return false;
     }
   };
   const paymentDays = adDays(paymentStart, paymentEnd);
@@ -180,6 +207,8 @@ export function BizAdsPage() {
     previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
     previewUrls.current.clear();
     setContentAd(null);
+    setDraftContent(null);
+    clearAdPaymentDraft();
     setUploadPlacement(null);
     setUploadedImages({});
     setUploadedFileIds({});
@@ -203,9 +232,9 @@ export function BizAdsPage() {
   };
 
   const handleSelectPlacement = (placement: AdPlacement) => {
-    // 결제 → 이미지 업로드 → 광고명. 결제가 끝난 광고가 없으면 선택은 결제로 이어진다.
+    // 새 광고는 이미지·광고명을 먼저 입력하고, 결제 완료 광고는 기존 콘텐츠 등록 흐름을 따른다.
     if (!contentAd) {
-      void openPayment(placement);
+      setUploadPlacement(placement);
       return;
     }
     if (placementOfAd(contentAd) === placement) {
@@ -214,7 +243,7 @@ export function BizAdsPage() {
   };
 
   const handleImagePicked = async (placement: AdPlacement, file: File): Promise<void> => {
-    if (!contentAd || placementOfAd(contentAd) !== placement) {
+    if (contentAd && placementOfAd(contentAd) !== placement) {
       toast.error('결제를 완료한 광고만 이미지를 등록할 수 있습니다.');
       return;
     }
@@ -269,7 +298,7 @@ export function BizAdsPage() {
     }
   };
   const submitContent = async (placement: AdPlacement) => {
-    if (!contentAd || submitting) return;
+    if (submitting) return;
     const imageFileId = uploadedFileIds[placement];
     if (!imageFileId) {
       toast.error('이미지를 먼저 업로드해 주세요.');
@@ -284,6 +313,21 @@ export function BizAdsPage() {
       );
       return;
     }
+
+    if (!contentAd) {
+      const draft: AdPaymentDraft = {
+        placement,
+        imageFileId,
+        title: adName.trim(),
+        landingUrl: link || undefined,
+      };
+      setDraftContent(draft);
+      saveAdPaymentDraft(draft);
+      const opened = await openPayment(placement);
+      if (opened) setNameModalPlacement(null);
+      return;
+    }
+
     setSubmitting(true);
     try {
       await updateAdContentMutation.mutateAsync({
@@ -311,12 +355,21 @@ export function BizAdsPage() {
     }
     setSubmitting(true);
     try {
+      const draft =
+        !contentAd && draftContent?.placement === selectedAd.placement ? draftContent : null;
       const created = await createAdMutation.mutateAsync({
         data: {
           productId: selectedAd.product.id,
           startDate: paymentStart,
           endDate: paymentEnd,
           expectedDailyPrice: selectedAd.product.dailyPrice,
+          ...(draft
+            ? {
+                title: draft.title,
+                imageFileId: draft.imageFileId,
+                ...(draft.landingUrl ? { landingUrl: draft.landingUrl } : {}),
+              }
+            : {}),
         },
       });
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
@@ -688,6 +741,18 @@ export function BizAdsPage() {
                     </strong>
                   </div>
                 </div>
+                {draftContent && draftContent.placement === selectedAd.placement && (
+                  <PopupAction
+                    type="button"
+                    secondary
+                    onClick={() => {
+                      setPaymentOpen(false);
+                      setNameModalPlacement(draftContent.placement);
+                    }}
+                  >
+                    광고 정보 수정
+                  </PopupAction>
+                )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15 }}>
                   <PopupAction type="button" secondary onClick={() => setPaymentOpen(false)}>
                     취소

@@ -182,14 +182,28 @@ async function openNameModalForPaidAd(link?: string) {
     fireEvent.change(screen.getByLabelText('광고 링크'), { target: { value: link } });
 }
 
-async function startPayment(placement: 'hero' | 'gallery' = 'hero') {
+async function openPaymentForDraft(placement: 'hero' | 'gallery' = 'hero', link?: string) {
   fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
   fireEvent.click(screen.getByRole('button', { name: `${placement} 선택` }));
+  fireEvent.click(screen.getByRole('button', { name: `${placement} 업로드` }));
+  await screen.findByRole('dialog', { name: '광고명' });
+  fireEvent.change(screen.getByPlaceholderText('광고명을 입력해주세요'), {
+    target: { value: '봄 이벤트' },
+  });
+  if (link !== undefined)
+    fireEvent.change(screen.getByLabelText('광고 링크'), { target: { value: link } });
+  fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+  await screen.findByRole('button', { name: '계약 신청' });
+}
+
+async function startPayment(placement: 'hero' | 'gallery' = 'hero') {
+  await openPaymentForDraft(placement);
   fireEvent.click(await screen.findByRole('button', { name: '계약 신청' }));
   await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
 }
 
 function resetMocks() {
+  localStorage.clear();
   mocks.ads = [];
   mocks.createAd.mockReset();
   mocks.updateAd.mockReset();
@@ -220,24 +234,33 @@ function resetMocks() {
   vi.stubGlobal('fetch', mocks.fetchMock);
 }
 
-describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명)', () => {
+describe('BizAdsPage 결제 단계 (이미지 업로드 → 광고명 → 결제)', () => {
   beforeEach(resetMocks);
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
   });
 
-  it('상품을 선택하면 이미지·광고명 없이 결제부터 진행한다', async () => {
+  it('상품을 선택하면 날짜·결제 전에 이미지와 광고명을 입력한다', async () => {
     renderPage();
-    await startPayment('hero');
+    await openPaymentForDraft('hero', 'https://example.com/new');
 
-    const body = mocks.createAd.mock.calls[0][0].data;
-    expect(body).toEqual({
-      productId: 'hero',
-      startDate: expect.any(String),
-      endDate: expect.any(String),
-      expectedDailyPrice: 100000,
-    });
+    expect(screen.getByRole('button', { name: '계약 신청' })).toBeTruthy();
+    expect(mocks.createAd).not.toHaveBeenCalled();
+    expect(mocks.requestPayment).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '계약 신청' }));
+    await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
+    expect(mocks.createAd.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({
+        productId: 'hero',
+        title: '봄 이벤트',
+        imageFileId: 'file-1',
+        landingUrl: 'https://example.com/new',
+        startDate: expect.any(String),
+        endDate: expect.any(String),
+        expectedDailyPrice: 100000,
+      }),
+    );
     expect(mocks.requestPayment).toHaveBeenCalledWith(
       expect.objectContaining({ orderId: 'order-1', amount: 100000, flow: 'ad' }),
     );
@@ -263,6 +286,38 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
 
     await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith('order-1'));
     expect(mocks.toastError).toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: '광고 정보 수정' })).toBeTruthy();
+    expect(localStorage.getItem('semochal:biz-ad-payment-draft:v1')).not.toBeNull();
+  });
+
+  it('결제 실패 후 광고 관리로 돌아와도 광고 draft를 복원해 재결제할 수 있다', async () => {
+    localStorage.setItem(
+      'semochal:biz-ad-payment-draft:v1',
+      JSON.stringify({
+        placement: 'hero',
+        imageFileId: 'file-restored',
+        title: '복원 광고',
+        landingUrl: 'https://restored.example',
+      }),
+    );
+    renderPage();
+
+    const dialog = await screen.findByRole('dialog', { name: '광고명' });
+    expect((within(dialog).getByLabelText('광고명') as HTMLInputElement).value).toBe('복원 광고');
+    expect((within(dialog).getByLabelText('광고 링크') as HTMLInputElement).value).toBe(
+      'https://restored.example',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    fireEvent.click(await screen.findByRole('button', { name: '계약 신청' }));
+
+    await waitFor(() => expect(mocks.createAd).toHaveBeenCalled());
+    expect(mocks.createAd.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({
+        title: '복원 광고',
+        imageFileId: 'file-restored',
+        landingUrl: 'https://restored.example',
+      }),
+    );
   });
 
   it('Toss SDK가 결제창 진입 중 예외를 던져도 예약 주문을 취소한다', async () => {
@@ -276,8 +331,7 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
 
   it('결제 모달에서 상품 설명 페이지 링크를 제공한다', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+    await openPaymentForDraft('hero');
 
     const link = await screen.findByRole('link', { name: /상품 설명/ });
     expect(link.getAttribute('href')).toBe('/advertising/products');
@@ -285,8 +339,7 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
 
   it('결제 모달에서 환불 정책 페이지 링크를 제공한다', async () => {
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+    await openPaymentForDraft('hero');
 
     const refundLink = await screen.findByRole('link', { name: '환불 정책 >' });
     expect(refundLink.getAttribute('href')).toBe('/refund-policy');
@@ -297,8 +350,7 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
     const end = new Date(start);
     end.setDate(end.getDate() + 1);
     renderPage();
-    fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
-    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+    await openPaymentForDraft('hero');
 
     expect(await screen.findByText('100,000원')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '광고 기간 선택' }));
@@ -319,17 +371,14 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
     );
   });
 
-  it('결제 전에는 이미지를 업로드할 수 없다', async () => {
+  it('상품을 선택하면 결제 전에 이미지를 업로드할 수 있다', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
     fireEvent.click(screen.getByRole('button', { name: 'hero 업로드' }));
 
-    await waitFor(() =>
-      expect(mocks.toastError).toHaveBeenCalledWith(
-        '결제를 완료한 광고만 이미지를 등록할 수 있습니다.',
-      ),
-    );
-    expect(screen.queryByRole('dialog', { name: '광고명' })).toBeNull();
+    expect(await screen.findByRole('dialog', { name: '광고명' })).toBeTruthy();
+    expect(mocks.toastError).not.toHaveBeenCalled();
   });
 
   it('새 등록을 시작한 뒤 늦게 완료된 상품 조회가 결제 모달을 다시 열지 않는다', async () => {
@@ -341,6 +390,13 @@ describe('BizAdsPage 결제 단계 (결제 → 이미지 업로드 → 광고명
 
     fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
     fireEvent.click(screen.getByRole('button', { name: 'hero 선택' }));
+    fireEvent.click(screen.getByRole('button', { name: 'hero 업로드' }));
+    await screen.findByRole('dialog', { name: '광고명' });
+    fireEvent.change(screen.getByPlaceholderText('광고명을 입력해주세요'), {
+      target: { value: '봄 이벤트' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+    fireEvent.click(screen.getByRole('button', { name: '취소' }));
     fireEvent.click(screen.getByRole('button', { name: '광고 관리로 돌아가기' }));
     fireEvent.click(screen.getByRole('button', { name: '광고 추가' }));
 
