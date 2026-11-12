@@ -48,10 +48,8 @@ export function BizAdsPage() {
   const updateAdContentMutation = generated.useUpdateAdContent();
   const requestPresignedUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
-  // 알림 폴링 30초 간격 — 401은 전역 QueryCache onError에서 이미 제외된다.
-  const notificationsQuery = generated.useListMyNotifications(undefined, {
-    query: { refetchInterval: 30_000 },
-  });
+  // 실시간 갱신은 UserShell의 알림 SSE 스트림이 목록 쿼리를 invalidate하므로 폴링하지 않는다.
+  const notificationsQuery = generated.useListMyNotifications();
   const priceNotices = (notificationsQuery.data?.data ?? []).filter(
     (item) => item.type === 'ad_price_changed',
   );
