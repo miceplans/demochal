@@ -1,5 +1,6 @@
 'use client';
 
+import { AD_SALES_ENABLED } from '../adSales';
 import styled from '@emotion/styled';
 import { LoadingState } from '@/components/common/LoadingState';
 import { generated } from '@semochal/api-client';
@@ -295,42 +296,44 @@ export function BizDashboardPage() {
         </Column>
       </BillingRow>
 
-      <AdsRow>
-        <ChartCard>
-          <StatLabel>광고 노출수</StatLabel>
-          <StatNumber>{(data.stats?.exposure?.value ?? 0).toLocaleString()} 조회수</StatNumber>
-          <ExposureChart bars={data.monthlyAdExposure ?? []} />
-          <DeltaText negative={exposure.negative}>{exposure.text}</DeltaText>
-        </ChartCard>
-        <AdsSection aria-label="진행중인 광고">
-          <AdsTitle>진행중인 광고</AdsTitle>
-          <AdsTable>
-            <AdsHead>
-              <span style={{ flex: 1 }}>챌린지명</span>
-              <AdCol w={84}>상태</AdCol>
-              <AdCol w={84}>노출</AdCol>
-              <AdCol w={84}>북마크</AdCol>
-              <AdCol w={84}>관리</AdCol>
-            </AdsHead>
-            {activeAds.map((ad) => (
-              <AdsBody key={ad.id}>
-                <AdName>{ad.title}</AdName>
-                <AdCol w={84}>
-                  <AdStatusTag status={ad.status} />
-                </AdCol>
-                <AdCol w={84}>{ad.impressions?.toLocaleString() ?? '—'}</AdCol>
-                <AdCol w={84}>{ad.bookmarks?.toLocaleString() ?? '—'}</AdCol>
-                <AdCol w={84}>
-                  <BizLink href="/ads">
-                    <EditText>편집</EditText>
-                  </BizLink>
-                </AdCol>
-              </AdsBody>
-            ))}
-            {activeAds.length === 0 && <EmptyText>진행중인 광고가 없어요.</EmptyText>}
-          </AdsTable>
-        </AdsSection>
-      </AdsRow>
+      {AD_SALES_ENABLED && (
+        <AdsRow>
+          <ChartCard>
+            <StatLabel>광고 노출수</StatLabel>
+            <StatNumber>{(data.stats?.exposure?.value ?? 0).toLocaleString()} 조회수</StatNumber>
+            <ExposureChart bars={data.monthlyAdExposure ?? []} />
+            <DeltaText negative={exposure.negative}>{exposure.text}</DeltaText>
+          </ChartCard>
+          <AdsSection aria-label="진행중인 광고">
+            <AdsTitle>진행중인 광고</AdsTitle>
+            <AdsTable>
+              <AdsHead>
+                <span style={{ flex: 1 }}>챌린지명</span>
+                <AdCol w={84}>상태</AdCol>
+                <AdCol w={84}>노출</AdCol>
+                <AdCol w={84}>북마크</AdCol>
+                <AdCol w={84}>관리</AdCol>
+              </AdsHead>
+              {activeAds.map((ad) => (
+                <AdsBody key={ad.id}>
+                  <AdName>{ad.title}</AdName>
+                  <AdCol w={84}>
+                    <AdStatusTag status={ad.status} />
+                  </AdCol>
+                  <AdCol w={84}>{ad.impressions?.toLocaleString() ?? '—'}</AdCol>
+                  <AdCol w={84}>{ad.bookmarks?.toLocaleString() ?? '—'}</AdCol>
+                  <AdCol w={84}>
+                    <BizLink href="/ads">
+                      <EditText>편집</EditText>
+                    </BizLink>
+                  </AdCol>
+                </AdsBody>
+              ))}
+              {activeAds.length === 0 && <EmptyText>진행중인 광고가 없어요.</EmptyText>}
+            </AdsTable>
+          </AdsSection>
+        </AdsRow>
+      )}
     </BizContent>
   );
 }

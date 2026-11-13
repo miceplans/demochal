@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(45);
+    expect(journal.entries).toHaveLength(46);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -664,5 +664,16 @@ describe('0044_refund_requests migration', () => {
     expect(sql).toContain(`WHERE "status" = 'requested'`);
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[44]!.when).toBeGreaterThan(journal.entries[43]!.when);
+  });
+});
+
+describe('0045_design_product_orders migration', () => {
+  it('adds a nullable design_product column to orders without destructive DDL', () => {
+    const tag = journal.entries[45]?.tag;
+    expect(tag).toBe('0045_design_product_orders');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain('ADD COLUMN IF NOT EXISTS "design_product" varchar(30)');
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[45]!.when).toBeGreaterThan(journal.entries[44]!.when);
   });
 });

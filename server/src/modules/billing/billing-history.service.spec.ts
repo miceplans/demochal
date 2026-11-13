@@ -137,14 +137,15 @@ describe('BillingHistoryService', () => {
     expect(values).not.toContain('ready');
   });
 
-  it('scopes rows to the business via ads or applications→challenges', async () => {
+  it('scopes rows to the business via ads, applications→challenges or design orders', async () => {
     const { db, where } = createDbStub(ROWS);
     const service = new BillingHistoryService(db);
 
     await service.forBusiness('biz-1', {});
 
     const values = collectValues(where.mock.calls[0]![0]);
-    expect(values.filter((v) => v === 'biz-1')).toHaveLength(2);
+    // ads · challenges · 디자인 주문(소유자 서브쿼리) 세 조건에 각각 바인딩된다.
+    expect(values.filter((v) => v === 'biz-1')).toHaveLength(3);
     // No from/to → no approvedAt date conditions.
     expect(values.filter((v) => v instanceof Date)).toHaveLength(0);
   });
@@ -161,5 +162,21 @@ describe('BillingHistoryService', () => {
     expect(dates).toHaveLength(2);
     expect(dates[0]).toEqual(new Date('2026-09-01T00:00:00.000Z'));
     expect(dates[1]).toEqual(new Date('2026-09-30T23:59:59.999Z'));
+  });
+
+  it('디자인 상품 주문은 카탈로그 상품명으로 내역에 표시한다', async () => {
+    const { db } = createDbStub([
+      {
+        id: 'pay-d',
+        orderId: 'order-d',
+        name: null,
+        designProduct: 'poster',
+        amount: 500_000,
+        status: 'paid',
+        approvedAt: new Date('2026-11-01T09:00:00Z'),
+      },
+    ]);
+    const { items } = await new BillingHistoryService(db).forBusiness('biz-1', {});
+    expect(items[0]).toMatchObject({ name: '포스터 시안 제작', amount: -500_000, status: 'paid' });
   });
 });

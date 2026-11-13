@@ -19,6 +19,7 @@ import {
   NotificationsStreamModule,
 } from './modules/notifications/notifications.module.js';
 import { AdsModule } from './modules/ads/ads.module.js';
+import { DesignProductsModule } from './modules/design-products/design-products.module.js';
 import { CertificatesModule } from './modules/certificates/certificates.module.js';
 import { ReportsModule } from './modules/reports/reports.module.js';
 import { AdminSettingsModule } from './modules/admin/admin-settings.module.js';
@@ -59,6 +60,7 @@ import { EmailModule } from './modules/email/email.module.js';
     NotificationsModule,
     NotificationsStreamModule,
     AdsModule,
+    DesignProductsModule,
     CertificatesModule,
     ReportsModule,
     AdminSettingsModule,
