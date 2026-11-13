@@ -46,6 +46,13 @@ const envSchema = z
     // 잘못된 항목은 파싱 단계에서 throw해 서버 기동이 실패한다.
     TOSS_WEBHOOK_ALLOWED_IPS: z.string().default(''),
 
+    // 네이버페이(결제형) 가맹점 API 자격증명 — bz 서브도메인 결제에 쓴다.
+    // https://developer.pay.naver.com 가맹점 심사 후 발급받는다. 비워두면 네이버페이
+    // 결제 확인/취소 호출이 502 안내로 막힌다(프론트는 결제 진입 단계에서 이미 막는다).
+    NAVERPAY_CLIENT_ID: z.string().default(''),
+    NAVERPAY_CLIENT_SECRET: z.string().default(''),
+    NAVERPAY_CHAIN_ID: z.string().default(''),
+
     NTS_API_KEY: z.string().default(''),
 
     JWT_SECRET: z.string().min(1).optional(),
@@ -147,6 +154,10 @@ export const env = {
       .map((entry) => entry.trim())
       .filter(Boolean),
   ),
+
+  naverpayClientId: raw.NAVERPAY_CLIENT_ID,
+  naverpayClientSecret: raw.NAVERPAY_CLIENT_SECRET,
+  naverpayChainId: raw.NAVERPAY_CHAIN_ID,
 
   ntsApiKey: raw.NTS_API_KEY,
 

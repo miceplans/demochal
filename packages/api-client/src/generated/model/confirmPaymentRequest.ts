@@ -16,11 +16,16 @@
  *
  * OpenAPI spec version: 0.0.1
  */
+import type { ConfirmPaymentRequestProvider } from './confirmPaymentRequestProvider';
 
 export interface ConfirmPaymentRequest {
   orderId: string;
-  /** 토스 결제 키(successUrl 쿼리) */
-  paymentKey: string;
-  /** 주문 금액과 반드시 일치(위변조 방어) */
-  amount: number;
+  /** 결제 대행사. naverpay는 bz 서브도메인 네이버페이 결제 */
+  provider?: ConfirmPaymentRequestProvider;
+  /** 토스 결제 키(successUrl 쿼리) — provider=toss일 때 필수 */
+  paymentKey?: string;
+  /** 네이버페이 결제번호(returnUrl 쿼리) — provider=naverpay일 때 필수 */
+  paymentId?: string;
+  /** 주문 금액과 반드시 일치(토스 금액 위변조 방어) — provider=toss일 때 필수 */
+  amount?: number;
 }
