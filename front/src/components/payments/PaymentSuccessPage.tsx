@@ -80,12 +80,16 @@ const PaidBadge = styled.span({
 
 export function PaymentSuccessPage() {
   const router = useRouter();
-  // 토스 successUrl 쿼리(paymentKey·orderId·amount)는 클라이언트에서만 확정되므로 Suspense 경계 하위에서 읽는다.
+  // 토스 successUrl 쿼리(paymentKey·orderId·amount)와 네이버페이 returnUrl 쿼리(resultCode·paymentId·orderId)는
+  // 클라이언트에서만 확정되므로 Suspense 경계 하위에서 읽는다.
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const paymentKey = searchParams.get('paymentKey');
+  // 네이버페이(bz)는 returnUrl 쿼리로 결과가 돌아온다 — resultCode가 Success일 때만 paymentId로 승인한다.
+  const paymentId = searchParams.get('paymentId');
+  const naverPaySuccess = searchParams.get('resultCode') === 'Success' && Boolean(paymentId);
   const isAdFlow = searchParams.get('flow') === 'ad';
-  const valid = Boolean(orderId && paymentKey);
+  const valid = Boolean(orderId && paymentKey) || Boolean(orderId && naverPaySuccess);
 
   const [state, setState] = useState<PaymentState>('checking');
   const [message, setMessage] = useState<string | null>(null);
@@ -140,14 +144,19 @@ export function PaymentSuccessPage() {
     };
 
     // 카드 인증 성공 후 서버 승인을 먼저 요청한다 — 토스 카드 결제는 이 승인 없이는
-    // 웹훅 없이 종료되지 않는다. 성공하면 결제 저장+주문 확정이 동기 처리되므로
-    // 이후 폴리는 확정 상태를 확인만 하고, 실패(네트워크/토스 거절)는 폴리로 평가한다.
+    // 웹훅 없이 종료되지 않고, 네이버페이는 이 confirm이 정산 유일 진입점이다(서버의
+    // 가맹점 확인 API 재검증과 결제 저장+주문 확정 트랜잭션이 동기 처리된다). 성공하면
+    // 이후 폴리는 확정 상태를 확인만 하고, 실패(네트워크/PG 거절)는 폴리로 평가한다.
     void (async () => {
       try {
-        const params = new URLSearchParams(window.location.search);
-        const amount = Number(params.get('amount'));
-        if (paymentKey && Number.isFinite(amount) && amount > 0) {
-          await adApi.payments.confirm({ orderId, paymentKey, amount });
+        if (naverPaySuccess && orderId && paymentId) {
+          await adApi.payments.confirm({ orderId, provider: 'naverpay', paymentId });
+        } else {
+          const params = new URLSearchParams(window.location.search);
+          const amount = Number(params.get('amount'));
+          if (paymentKey && Number.isFinite(amount) && amount > 0) {
+            await adApi.payments.confirm({ orderId, paymentKey, amount });
+          }
         }
       } catch {
         // 승인 호출 실패는 폴리(pending/canceled/timeout)로 평가한다.
@@ -160,7 +169,7 @@ export function PaymentSuccessPage() {
       controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [valid, orderId, paymentKey, isAdFlow]);
+  }, [valid, orderId, paymentKey, paymentId, naverPaySuccess, isAdFlow]);
 
   if (!valid) {
     return (

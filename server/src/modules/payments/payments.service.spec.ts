@@ -1,4 +1,4 @@
-import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ads } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
@@ -6,6 +6,18 @@ import { PaymentsService } from './payments.service.js';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
+
+// 네이버페이 가맹점 API 클라이언트를 대역으로 교체해 서비스의 provider 분기만 검증한다.
+// 클라이언트 자체의 HTTP/env 동작은 naverpay.client.spec.ts가 검증한다.
+const naverpayMocks = vi.hoisted(() => ({
+  fetchNaverPayPaymentDetail: vi.fn(),
+  cancelNaverPayPayment: vi.fn(),
+}));
+vi.mock('./naverpay.client.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./naverpay.client.js')>()),
+  fetchNaverPayPaymentDetail: naverpayMocks.fetchNaverPayPaymentDetail,
+  cancelNaverPayPayment: naverpayMocks.cancelNaverPayPayment,
+}));
 
 /**
  * Drizzle stub. insert().values() returns the conflict handlers the service
@@ -991,6 +1003,188 @@ describe('PaymentsService', () => {
         );
       }
       expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('cancels a Naver Pay payment through the Naver Pay cancel API', async () => {
+      naverpayMocks.cancelNaverPayPayment.mockReset();
+      naverpayMocks.cancelNaverPayPayment.mockResolvedValue(undefined);
+      const { db, tx, set, transaction } = createRefundDb({
+        ...paid,
+        provider: 'naverpay',
+        providerPaymentKey: 'np-1',
+        refundedAmount: 0,
+      });
+      const orders = createOrdersStub('paid');
+      const service = new PaymentsService(db, orders as any);
+      const settle = vi.fn().mockResolvedValue(undefined);
+
+      const refunded = await service.refundPaidOrder('order-1', '단순 변심', settle);
+
+      expect(refunded).toBe(50000);
+      expect(naverpayMocks.cancelNaverPayPayment).toHaveBeenCalledWith({
+        paymentId: 'np-1',
+        orderId: 'order-1',
+        cancelAmount: 50000,
+        cancelReason: '단순 변심',
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(set).toHaveBeenCalledWith({ status: 'canceled' });
+      expect(orders.cancelOrder).toHaveBeenCalledWith(tx, 'order-1');
+      expect(settle).toHaveBeenCalledWith(tx, 50000);
+    });
+  });
+
+  describe('confirmPayment — Naver Pay(bz)', () => {
+    function createConfirmOrders(orderStatus = 'pending') {
+      return {
+        findById: vi.fn().mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
+        findByIdInternal: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
+        settleOrderPaid: vi.fn().mockResolvedValue({}),
+        cancelOrder: vi.fn().mockResolvedValue({}),
+      };
+    }
+
+    it('verifies via the Naver Pay history API and settles payment+order in one transaction', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'COMPLETED',
+        totalPayAmount: 50000,
+      });
+      const { db, tx, insertValues } = createDbStub();
+      const orders = createConfirmOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmPayment('user-1', {
+        orderId: 'order-1',
+        provider: 'naverpay',
+        paymentId: 'np-1',
+      });
+
+      expect(naverpayMocks.fetchNaverPayPaymentDetail).toHaveBeenCalledWith('np-1');
+      // The payment write and the order transition must commit or roll back together.
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: 'order-1',
+          provider: 'naverpay',
+          providerPaymentKey: 'np-1',
+          amount: 50000,
+          status: 'paid',
+        }),
+      );
+      expect(orders.settleOrderPaid).toHaveBeenCalledWith(tx, 'order-1');
+    });
+
+    it('rejects when the Naver Pay amount does not match the order', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'COMPLETED',
+        totalPayAmount: 40000,
+      });
+      const { db, insertValues } = createDbStub();
+      const orders = createConfirmOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-1',
+        }),
+      ).rejects.toThrow('결제 정보가 주문 내용과 일치하지 않습니다');
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the Naver Pay payment is not completed', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'CANCELED',
+        totalPayAmount: 50000,
+      });
+      const { db, insertValues } = createDbStub();
+      const orders = createConfirmOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-1',
+        }),
+      ).rejects.toThrow('결제 정보가 주문 내용과 일치하지 않습니다');
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('requires a paymentId for the naverpay provider', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      const { db, insertValues } = createDbStub();
+      const orders = createConfirmOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', { orderId: 'order-1', provider: 'naverpay' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(naverpayMocks.fetchNaverPayPaymentDetail).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('is idempotent for an already paid order without calling Naver Pay', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      const { db, insertValues } = createDbStub();
+      const orders = createConfirmOrders('paid');
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmPayment('user-1', {
+        orderId: 'order-1',
+        provider: 'naverpay',
+        paymentId: 'np-1',
+      });
+
+      expect(naverpayMocks.fetchNaverPayPaymentDetail).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('compensates with a Naver Pay cancel when the order can no longer be settled', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'COMPLETED',
+        totalPayAmount: 50000,
+      });
+      naverpayMocks.cancelNaverPayPayment.mockReset();
+      naverpayMocks.cancelNaverPayPayment.mockResolvedValue(undefined);
+      const { db, insertValues } = createDbStub();
+      const orders = createConfirmOrders();
+      orders.settleOrderPaid.mockRejectedValue(new ConflictException('취소된 주문입니다.'));
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-1',
+        }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(naverpayMocks.cancelNaverPayPayment).toHaveBeenCalledWith({
+        paymentId: 'np-1',
+        orderId: 'order-1',
+        cancelAmount: 50000,
+        cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+      });
+      // Don't wait for a webhook that does not exist: record the cancellation locally.
+      expect(insertValues).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orderId: 'order-1', provider: 'naverpay', status: 'canceled' }),
+      );
+      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
     });
   });
 });

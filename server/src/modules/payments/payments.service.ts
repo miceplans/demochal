@@ -14,6 +14,11 @@ import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js'
 import { payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 import type { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
+import {
+  NAVERPAY_PAYMENT_COMPLETED,
+  cancelNaverPayPayment,
+  fetchNaverPayPaymentDetail,
+} from './naverpay.client.js';
 
 // refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
 // 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
@@ -97,10 +102,10 @@ export class PaymentsService {
   }
 
   /**
-   * 토스 successUrl 리다이렉트에 대응하는 클라이언트 호출 승인 경로. 카드 결제는 토스가
-   * 웹훅 없이도 이 승인 호출을 요구하므로, 폴리만으로는 주문이 paid에 도달할 수 없다.
-   * 결제 저장과 주문 확정은 같은 트랜잭션에서 처리하고, 이미 확정된 주문의 재요청은
-   * 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등).
+   * 결제 승인 success 리다이렉트에 대응하는 클라이언트 호출 승인 경로. 카드 결제는
+   * 토스가 웹훅 없이도 이 승인 호출을 요구하고, 네이버페이는 웹훅 없이 이 confirm이
+   * 정산 유일 진입점이다. 결제 저장과 주문 확정은 같은 트랜잭션에서 처리하고,
+   * 이미 확정된 주문의 재요청은 PG 재호출 없이 기존 결과를 돌려준다(새로고침 멱등).
    */
   async confirmPayment(userId: string, dto: ConfirmPaymentDto) {
     const order = await this.ordersService.findById(dto.orderId, userId);
@@ -108,13 +113,29 @@ export class PaymentsService {
     if (order.status !== 'pending') {
       throw new ConflictException('결제할 수 없는 주문입니다.');
     }
+
+    // 네이버페이(bz 서브도메인) — 금액 위변조 방어는 클라이언트 금액 대조 대신
+    // 서버 주문 금액 기준 가맹점 확인 API 대사로 대신한다.
+    if (dto.provider === 'naverpay') {
+      if (!dto.paymentId?.trim()) {
+        throw new BadRequestException('네이버페이 결제번호가 필요합니다.');
+      }
+      return this.confirmNaverPay(order, dto.paymentId.trim());
+    }
+
+    if (!dto.paymentKey) {
+      throw new BadRequestException('결제 키가 필요합니다.');
+    }
     if (dto.amount !== order.amount) {
       this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
       throw new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.');
     }
 
     // 토스 승인 요청에는 클라이언트가 본 금액이 아니라 서버에 저장된 주문 금액을 싣는다.
-    const tossPayment = await this.confirmWithToss(dto, order.amount);
+    const tossPayment = await this.confirmWithToss(
+      { orderId: dto.orderId, paymentKey: dto.paymentKey },
+      order.amount,
+    );
     if (
       tossPayment.status !== 'DONE' ||
       tossPayment.orderId !== order.id ||
@@ -174,28 +195,111 @@ export class PaymentsService {
       // retryRefundPendingPayments scan retries the cancel with backoff and logs
       // when the retry cap is reached. DONE redelivery also retries the cancel.
       // https://docs.tosspayments.com/reference#결제-취소
-      await this.recordLocally(orderId, tossPayment, 'refund_pending');
+      await this.recordLocally(
+        orderId,
+        'toss',
+        { paymentKey: tossPayment.paymentKey, amount: tossPayment.totalAmount },
+        'refund_pending',
+      );
       return 'failed';
     }
     this.logger.warn(`Canceled Toss payment for unsettleable order ${orderId}`);
     // Don't wait for Toss's CANCELED webhook: record the cancellation and close the
     // order now, so a redelivered DONE sees a settled state instead of looping.
-    await this.recordLocally(orderId, tossPayment, 'canceled');
+    await this.recordLocally(
+      orderId,
+      'toss',
+      { paymentKey: tossPayment.paymentKey, amount: tossPayment.totalAmount },
+      'canceled',
+    );
+    return 'refunded';
+  }
+
+  /**
+   * 네이버페이 success 리다이렉트 confirm 경로. 네이버페이 결제형에는 토스 같은 정산용
+   * 웹훅이 없으므로 이 confirm이 주문 확정의 유일 진입점이다. 가맹점 확인 API로 결제
+   * 상태·금액을 서버 주문과 대조(재검증)한 뒤, 결제 저장과 주문 확정을 같은 트랜잭션에
+   * 묻는다 — 토스 confirm과 동일한 계약이다.
+   */
+  private async confirmNaverPay(order: { id: string; amount: number }, paymentId: string) {
+    const detail = await fetchNaverPayPaymentDetail(paymentId);
+    if (
+      detail.paymentStatus !== NAVERPAY_PAYMENT_COMPLETED ||
+      detail.totalPayAmount !== order.amount
+    ) {
+      this.logger.warn(`Rejected unverified Naver Pay confirmation for order ${order.id}`);
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+    }
+
+    try {
+      return await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId: order.id,
+          provider: 'naverpay',
+          providerPaymentKey: paymentId,
+          amount: order.amount,
+          status: 'paid',
+          approvedAt: new Date(),
+        });
+
+        return this.ordersService.settleOrderPaid(tx, order.id);
+      });
+    } catch (error) {
+      await this.compensateNaverPayIfUnsettleable(error, order.id, paymentId, order.amount);
+      throw error;
+    }
+  }
+
+  /**
+   * 네이버페이로 이미 청구됐지만 주문을 확정할 수 없게 된 경우(확인 창에서 취소 등)
+   * 네이버페이 취소로 보상한다. 토스 경로 compensateIfUnsettleable과 동일 계약 —
+   * 취소마저 실패하면 refund_pending으로 남겨 워커의 재시도 스캔이 잡는다.
+   */
+  private async compensateNaverPayIfUnsettleable(
+    error: unknown,
+    orderId: string,
+    paymentId: string,
+    amount: number,
+  ): Promise<'skipped' | 'refunded' | 'failed'> {
+    if (!(error instanceof ConflictException)) return 'skipped';
+    try {
+      await cancelNaverPayPayment({
+        paymentId,
+        orderId,
+        cancelAmount: amount,
+        cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+      });
+    } catch (cancelError) {
+      this.logger.error(
+        `Compensating Naver Pay cancel failed for order ${orderId} — manual refund required`,
+        (cancelError as Error | undefined)?.stack,
+      );
+      await this.recordLocally(
+        orderId,
+        'naverpay',
+        { paymentKey: paymentId, amount },
+        'refund_pending',
+      );
+      return 'failed';
+    }
+    this.logger.warn(`Canceled Naver Pay payment for unsettleable order ${orderId}`);
+    await this.recordLocally(orderId, 'naverpay', { paymentKey: paymentId, amount }, 'canceled');
     return 'refunded';
   }
 
   private async recordLocally(
     orderId: string,
-    tossPayment: TossPayment,
+    provider: 'toss' | 'naverpay',
+    payment: { paymentKey: string; amount: number },
     status: 'canceled' | 'refund_pending',
   ): Promise<void> {
     try {
       await this.db.transaction(async (tx) => {
         await this.persistPayment(tx, {
           orderId,
-          provider: 'toss',
-          providerPaymentKey: tossPayment.paymentKey,
-          amount: tossPayment.totalAmount,
+          provider,
+          providerPaymentKey: payment.paymentKey,
+          amount: payment.amount,
           status,
         });
         if (status === 'canceled') await this.ordersService.cancelOrder(tx, orderId);
@@ -238,12 +342,6 @@ export class PaymentsService {
     const summary = { scanned: candidates.length, attempted: 0, refunded: 0, failed: 0 };
     if (candidates.length === 0) return summary;
 
-    if (!env.tossSecretKey) {
-      // Misconfiguration must not burn retry attempts — every cancel would fail.
-      this.logger.error('Toss is not configured; skipping the refund_pending retry scan');
-      return summary;
-    }
-
     for (const payment of candidates) {
       // WHERE이 이미 좁혀줬지만, 재처리 대상 조건을 애플리케이션에서도 다시 검사해
       // 정산(취소)된 row가 절대 다시 취소되지 않도록 한다.
@@ -258,13 +356,34 @@ export class PaymentsService {
         : Number.NEGATIVE_INFINITY;
       if (dueAt > now.getTime()) continue;
 
+      const providerConfigured =
+        payment.provider === 'naverpay'
+          ? Boolean(env.naverpayClientId && env.naverpayClientSecret && env.naverpayChainId)
+          : Boolean(env.tossSecretKey);
+      if (!providerConfigured) {
+        // Misconfiguration must not burn retry attempts — every cancel would fail.
+        this.logger.error(
+          `${payment.provider} is not configured; skipping the refund_pending retry for order ${payment.orderId}`,
+        );
+        continue;
+      }
+
       summary.attempted += 1;
       try {
-        await this.cancelWithToss(
-          payment.orderId,
-          payment.providerPaymentKey,
-          '주문을 확정할 수 없어 자동 취소되었습니다.',
-        );
+        if (payment.provider === 'naverpay') {
+          await cancelNaverPayPayment({
+            paymentId: payment.providerPaymentKey,
+            orderId: payment.orderId,
+            cancelAmount: payment.amount,
+            cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+          });
+        } else {
+          await this.cancelWithToss(
+            payment.orderId,
+            payment.providerPaymentKey,
+            '주문을 확정할 수 없어 자동 취소되었습니다.',
+          );
+        }
       } catch (error) {
         summary.failed += 1;
         await this.recordRefundRetry(payment.id, payment.refundRetryCount + 1, now);
@@ -286,12 +405,8 @@ export class PaymentsService {
       this.logger.warn(`Refunded unsettleable payment for order ${payment.orderId} on retry`);
       await this.recordLocally(
         payment.orderId,
-        {
-          paymentKey: payment.providerPaymentKey,
-          orderId: payment.orderId,
-          status: 'DONE',
-          totalAmount: payment.amount,
-        },
+        payment.provider === 'naverpay' ? 'naverpay' : 'toss',
+        { paymentKey: payment.providerPaymentKey, amount: payment.amount },
         'canceled',
       );
       summary.refunded += 1;
@@ -320,8 +435,9 @@ export class PaymentsService {
   }
 
   /**
-   * 관리자가 승인한 환불: Toss 결제 전액(잔액) 취소 → 결제 canceled + 주문 canceled 전이를
-   * `settle` 콜백(환불 요청 상태 갱신 등)과 같은 트랜잭션으로 커밋한다.
+   * 관리자가 승인한 환불: 결제 row의 provider에 따라 네이버페이/토스 취소 API로 전액(잔액)
+   * 취소 → 결제 canceled + 주문 canceled 전이를 `settle` 콜백(환불 요청 상태 갱신 등)과
+   * 같은 트랜잭션으로 커밋한다.
    * Toss 취소는 주문 단위 Idempotency-Key라 재시도해도 이중 취소되지 않고, 이미 취소된 결제
    * (ALREADY_CANCELED_PAYMENT — 이전 시도의 응답 유실·웹훅 선행)는 성공으로 수렴한다.
    * @returns 환불된 결제 금액(원 결제액 - 이전 부분 환불액)
@@ -340,6 +456,35 @@ export class PaymentsService {
       throw new ConflictException('환불할 수 있는 결제가 아닙니다.');
     }
 
+    const refundedAmount = payment.amount - payment.refundedAmount;
+    // 네이버페이 결제는 네이버페이 취소 API로, 토스 결제는 토스 취소 API로 전액(잔액) 취소한다.
+    // 토스 취소는 주문 단위 Idempotency-Key라 재시도해도 이중 취소되지 않고, 이미 취소된 결제
+    // (ALREADY_CANCELED_PAYMENT — 이전 시도의 응답 유실·웹훅 선행)는 성공으로 수렴한다.
+    if (payment.provider === 'naverpay') {
+      await cancelNaverPayPayment({
+        paymentId: payment.providerPaymentKey,
+        orderId,
+        cancelAmount: refundedAmount,
+        cancelReason,
+      });
+    } else {
+      await this.cancelTossPayment(payment.providerPaymentKey, cancelReason, orderId);
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx.update(payments).set({ status: 'canceled' }).where(eq(payments.id, payment.id));
+      await this.ordersService.cancelOrder(tx, orderId);
+      await settle(tx, refundedAmount);
+    });
+    return refundedAmount;
+  }
+
+  // 토스 결제 전액(잔액) 취소 공통 처리 — refundPaidOrder와 cancelWithToss가 함께 쓴다.
+  private async cancelTossPayment(
+    paymentKey: string,
+    cancelReason: string,
+    orderId: string,
+  ): Promise<void> {
     if (!env.tossSecretKey) {
       throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }
@@ -347,7 +492,7 @@ export class PaymentsService {
     let response;
     try {
       response = await fetchJson(
-        `https://api.tosspayments.com/v1/payments/${encodeURIComponent(payment.providerPaymentKey)}/cancel`,
+        `https://api.tosspayments.com/v1/payments/${encodeURIComponent(paymentKey)}/cancel`,
         {
           method: 'POST',
           headers: {
@@ -378,14 +523,6 @@ export class PaymentsService {
         throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
       }
     }
-
-    const refundedAmount = payment.amount - payment.refundedAmount;
-    await this.db.transaction(async (tx) => {
-      await tx.update(payments).set({ status: 'canceled' }).where(eq(payments.id, payment.id));
-      await this.ordersService.cancelOrder(tx, orderId);
-      await settle(tx, refundedAmount);
-    });
-    return refundedAmount;
   }
 
   private async cancelWithToss(
@@ -415,7 +552,10 @@ export class PaymentsService {
     }
   }
 
-  private async confirmWithToss(dto: ConfirmPaymentDto, amount: number): Promise<TossPayment> {
+  private async confirmWithToss(
+    dto: { orderId: string; paymentKey: string },
+    amount: number,
+  ): Promise<TossPayment> {
     if (!env.tossSecretKey) {
       throw new BadGatewayException('결제 서비스가 구성되지 않았습니다.');
     }

@@ -94,7 +94,7 @@ vi.mock('@/lib/api-error', () => ({
   apiErrorMessage: (_: unknown, fallback: string) => fallback,
 }));
 
-vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.requestPayment }));
+vi.mock('@/lib/payments', () => ({ requestBizPayment: mocks.requestPayment }));
 vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
 vi.mock('@/components/common/Toast', () => ({

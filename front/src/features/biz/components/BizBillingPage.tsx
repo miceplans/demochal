@@ -11,7 +11,7 @@ import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
-import { requestTossBillingAuth } from '@/lib/payments';
+import { requestTossBillingAuth, paymentProviderForHost } from '@/lib/payments';
 import { apiErrorMessage } from '@/lib/api-error';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
@@ -62,7 +62,15 @@ export function BizBillingPage() {
   }, []);
 
   // 토스 빌링 인증창 → 성공 시 /biz/billing/auth/success으로 authKey와 함께 리다이렉트.
+  // bz(네이버페이) 호스트에서는 정기결제 심사 전이므로 진입을 안내와 함께 막는다.
   const handleRegister = async () => {
+    if (paymentProviderForHost(window.location.hostname) === 'naverpay') {
+      toast.error(
+        '네이버페이 자동결제는 준비 중이에요',
+        '네이버페이 정기결제 심사 완료 후 카드 등록이 열릴 예정이에요',
+      );
+      return;
+    }
     setRegistering(true);
     try {
       const { data } = await generated.getBillingCustomerKey();

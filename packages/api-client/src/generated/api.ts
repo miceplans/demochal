@@ -9564,11 +9564,14 @@ export const getConfirmPaymentUrl = () => {
 }
 
 /**
- * 토스 successUrl 리다이렉트 이후 클라이언트가 호출하는 승인 엔드포인트. `paymentKey`·`orderId`·
- * `amount`를 토스 승인 API(시크릿 키)로 제출해 결제를 완료하고, 결제 저장과 주문 `paid` 전이를
- * 하나의 트랜잭션으로 처리한다. 본인의 `pending` 주문만 승인할 수 있고, 이미 `paid`인 주문의
- * 재요청은 토스 재호출 없이 기존 결과를 돌려준다(새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
- * @summary 토스 결제 승인(신청자 본인)
+ * 결제창 success 리다이렉트 이후 클라이언트가 호출하는 승인 엔드포인트. `provider`에 따라
+ * PG를 나눈다 — 기본값은 toss로, 기존 `paymentKey`·`orderId`·`amount`를 토스 승인
+ * API(시크릿 키)로 제출해 결제를 완료한다. `provider: naverpay`(bz 서브도메인)는
+ * `paymentId`(네이버페이 결제번호)를 가맹점 확인 API로 재검증(상태·서버 주문 금액 대조)해
+ * 확정한다. 결제 저장과 주문 `paid` 전이는 하나의 트랜잭션으로 처리하고, 본인의 `pending`
+ * 주문만 승인할 수 있으며 이미 `paid`인 주문의 재요청은 PG 재호출 없이 기존 결과를 돌려준다
+ * (새로고침 멱등). 웹훅 재조회는 대사(reconciliation)로 유지.
+ * @summary 결제 승인(신청자 본인, 토스/네이버페이)
  */
 export const confirmPayment = async (confirmPaymentRequest: ConfirmPaymentRequest, options?: Parameters<typeof apiFetch>[1]): Promise<confirmPaymentResponse> => {
 
@@ -9634,7 +9637,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type ConfirmPaymentMutationVariables = {data: ConfirmPaymentRequest}
 
     /**
- * @summary 토스 결제 승인(신청자 본인)
+ * @summary 결제 승인(신청자 본인, 토스/네이버페이)
  */
 export const useConfirmPayment = <TError = UnauthorizedResponse | NotFoundResponse | void,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmPayment>>, TError,ConfirmPaymentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
