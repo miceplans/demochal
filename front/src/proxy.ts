@@ -5,8 +5,9 @@ const BIZ_ORIGIN = process.env.BIZ_ORIGIN;
 const BIZ_PATH = '/biz';
 
 // bz 호스트는 biz와 동일한 콘텐츠를 서비스하되 결제만 네이버페이로 쓴다.
-// NEXT_PUBLIC_BZ_SUBDOMAIN은 프론트 결제 분기(lib/payments)와 같은 값을 쓰게 하는 클라이언트 공개 변수다.
-const BZ_SUBDOMAIN = process.env.BZ_SUBDOMAIN ?? process.env.NEXT_PUBLIC_BZ_SUBDOMAIN ?? 'bz';
+// NEXT_PUBLIC_BZ_SUBDOMAIN을 먼저 봐서 프록시 rewrite와 클라이언트 결제 분기(lib/payments)의
+// 레이블이 항상 같게 유지되게 한다(서버 전용 BZ_SUBDOMAIN은 미설정 시 폴드백).
+const BZ_SUBDOMAIN = process.env.NEXT_PUBLIC_BZ_SUBDOMAIN ?? process.env.BZ_SUBDOMAIN ?? 'bz';
 
 const ADMIN_SUBDOMAIN = process.env.ADMIN_SUBDOMAIN ?? 'admin';
 const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN;

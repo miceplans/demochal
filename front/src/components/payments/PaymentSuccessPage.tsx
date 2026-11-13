@@ -177,7 +177,9 @@ export function PaymentSuccessPage() {
         <Title>결제를 완료하지 못했어요</Title>
         <Description>결제 정보가 올바르지 않아요. 다시 신청해주세요.</Description>
         <Actions>
-          <Button onClick={() => router.push('/contests/public-data')}>다시 신청하기</Button>
+          <Button onClick={() => router.push(isAdFlow ? '/biz/ads' : '/contests/public-data')}>
+            {isAdFlow ? '광고 관리로 이동' : '다시 신청하기'}
+          </Button>
         </Actions>
       </PageWrap>
     );

@@ -231,6 +231,22 @@ export class PaymentsService {
       throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
 
+    // paymentId는 네이버페이 결제 1건당 1개다. 이미 다른 주문의 결제 row에 바인딩된
+    // paymentId로 confirm하면 결제 1건으로 주문 2건이 정산된다(같은 금액의 주문 A·B를
+    // 만든 뒤 A의 결제로 B를 확정하는 공격). 토스 경로의 tossPayment.orderId 대조와
+    // 같은 역할의 안전망 — 확인 API 응답이 가맹점 주문번호를 주지 않아도 잡는다.
+    // 주의: 보상 취소(compensate)로 이어지는 ConflictException이 아니라 검증 실패로
+    // 거부해, 다른 주문 것인 결제가 취소되지 않게 한다.
+    const [bound] = await this.db
+      .select({ orderId: payments.orderId })
+      .from(payments)
+      .where(eq(payments.providerPaymentKey, paymentId))
+      .limit(1);
+    if (bound && bound.orderId !== order.id) {
+      this.logger.warn(`Rejected Naver Pay paymentId reuse across orders for order ${order.id}`);
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+    }
+
     try {
       return await this.db.transaction(async (tx) => {
         await this.persistPayment(tx, {
