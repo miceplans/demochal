@@ -11,6 +11,8 @@ export class DesignProductsService {
     return DESIGN_PRODUCTS.map((p) => ({ ...p }));
   }
 
+  // TODO: 결제 확정 시 운영자에게 주문 단위 알림(이메일/알림)을 보낸다 — Outbox 패턴 사용.
+  //   현재는 결제 내역(BillingHistoryService)과 관리자 매출 합계로만 확인된다.
   /** 결제 대기(pending) 주문을 만든다. 확정은 POST /payments/confirm · Toss 웹훅이 맡는다. */
   async createOrder(code: DesignProductCode, userId: string) {
     const product = DESIGN_PRODUCTS.find((p) => p.code === code);

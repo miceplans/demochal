@@ -7,7 +7,6 @@ import { BizContent, PrimaryButton, SectionTitle } from '@/components/biz/BizShe
 import { LoadingState } from '@/components/common/LoadingState';
 import { useToast } from '@/components/common/Toast';
 import { requestTossPayment } from '@/lib/payments';
-import { adApi } from '@/lib/ad-api';
 import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -16,6 +15,7 @@ export function BizDesignProductsPage() {
   const toast = useToast();
   const productsQuery = generated.useListDesignProducts();
   const createOrder = generated.useCreateDesignProductOrder();
+  const cancelOrder = generated.useCancelOrder();
   const [buyingCode, setBuyingCode] = useState<string | null>(null);
   const products = productsQuery.data?.status === 200 ? productsQuery.data.data : [];
 
@@ -37,7 +37,7 @@ export function BizDesignProductsPage() {
           throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
       } catch (error) {
         // 결제창 진입에 실패하면 남는 pending 주문을 정리한다.
-        await adApi.orders.cancel(order.id).catch(() => {});
+        await cancelOrder.mutateAsync({ id: order.id }).catch(() => {});
         throw error;
       }
     } catch (error) {
