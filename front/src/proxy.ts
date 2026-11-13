@@ -25,6 +25,11 @@ export function proxy(request: NextRequest) {
   const underAdminPath = pathname === ADMIN_PATH || pathname.startsWith(`${ADMIN_PATH}/`);
 
   if (isSubdomainHost(host, BIZ_SUBDOMAIN)) {
+    // 토스 결제 successUrl(/payments/success)도 앱 레벨 공유 페이지라 /biz catch-all(404)로
+    // rewrite되면 안 된다.
+    if (pathname.startsWith('/payments/')) {
+      return NextResponse.next();
+    }
     if (underBizPath) {
       const url = request.nextUrl.clone();
       url.pathname = pathname.slice(BIZ_PATH.length) || '/';

@@ -324,7 +324,7 @@ resource "aws_lb_listener" "https" {
 }
 
 locals {
-  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "KAKAO_REDIRECT_URI", "TOSS_SECRET_KEY", "TOSS_WEBHOOK_ALLOWED_IPS", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
+  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "KAKAO_REDIRECT_URI", "TOSS_SECRET_KEY", "TOSS_WEBHOOK_ALLOWED_IPS", "NAVERPAY_CLIENT_ID", "NAVERPAY_CLIENT_SECRET", "NAVERPAY_CHAIN_ID", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
   app_secrets = [for key in local.secret_keys : { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }]
   common_environment = [
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },

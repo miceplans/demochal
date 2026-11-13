@@ -227,6 +227,8 @@ export function buildNaverPayPaymentParams({
     totalPayAmount: amount,
     taxScopeAmount: amount,
     taxExScopeAmount: 0,
+    // 가맹점 결제 키 = 우리 주문 ID. 서버 confirm이 결제내역의 가맹점 키와 주문을 대조한다.
+    merchantPayKey: orderId,
     extraData: JSON.stringify({ orderId }),
     returnUrl: `${origin}/payments/success?${successParams.toString()}`,
     isPopup: true,

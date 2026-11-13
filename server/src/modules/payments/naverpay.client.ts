@@ -24,6 +24,8 @@ export interface NaverPayPaymentDetail {
   admissionStateCode?: string;
   admissionYmdt?: string;
   orderNo?: string;
+  // 결제 요청 시 가맹점이 실은 merchantPayKey(= 우리 주문 ID) — confirm에서 주문과 대조한다.
+  merchantPayKey?: string;
   productName?: string;
 }
 

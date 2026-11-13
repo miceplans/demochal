@@ -394,8 +394,15 @@ export const payments = pgTable(
   },
   // One payment row per order: webhook handlers upsert on order_id so that
   // concurrent Toss deliveries for the same order conflict instead of
-  // duplicating rows.
-  (table) => [uniqueIndex('payments_order_id_unique').on(table.orderId)],
+  // duplicating rows. A PG payment key can also bind to only one order, so a
+  // concurrent confirm cannot settle two orders with a single charge.
+  (table) => [
+    uniqueIndex('payments_order_id_unique').on(table.orderId),
+    uniqueIndex('payments_provider_payment_key_unique').on(
+      table.provider,
+      table.providerPaymentKey,
+    ),
+  ],
 );
 // 구매자의 환불 요청. 관리자가 승인하면 Toss 결제를 취소하고 주문을 canceled로 전이한다.
 export const refundRequests = pgTable(

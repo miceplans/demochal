@@ -231,6 +231,16 @@ export class PaymentsService {
       throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
 
+    // PG 레벨 결제-주문 바인딩: 결제 요청에 merchantPayKey=주문 ID를 실었으므로 응답에 값이
+    // 있으면 반드시 이 주문과 같아야 한다(토스의 tossPayment.orderId 대조와 같은 역할).
+    // TODO: 가맹점 연동 가이드(developer.pay.naver.com, 로그인 필요)로 응답 필드명
+    // (merchantPayKey/orderNo)을 실측 확인한 뒤, 값이 없을 때도 거부하도록 강화한다.
+    const boundMerchantKey = detail.merchantPayKey ?? detail.orderNo;
+    if (boundMerchantKey && boundMerchantKey !== order.id) {
+      this.logger.warn(`Rejected Naver Pay merchant key mismatch for order ${order.id}`);
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+    }
+
     // paymentId는 네이버페이 결제 1건당 1개다. 이미 다른 주문의 결제 row에 바인딩된
     // paymentId로 confirm하면 결제 1건으로 주문 2건이 정산된다(같은 금액의 주문 A·B를
     // 만든 뒤 A의 결제로 B를 확정하는 공격). 토스 경로의 tossPayment.orderId 대조와
@@ -261,6 +271,15 @@ export class PaymentsService {
         return this.ordersService.settleOrderPaid(tx, order.id);
       });
     } catch (error) {
+      // 사전 SELECT를 동시에 통과한 병렬 confirm은 payments(provider, provider_payment_key)
+      // unique 인덱스가 막는다 — 정산 불가(보상 취소 대상)가 아니라 검증 실패로 거부한다.
+      if (
+        (error as { code?: string; cause?: { code?: string } })?.code === '23505' ||
+        (error as { cause?: { code?: string } })?.cause?.code === '23505'
+      ) {
+        this.logger.warn(`Rejected concurrent Naver Pay paymentId reuse for order ${order.id}`);
+        throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+      }
       await this.compensateNaverPayIfUnsettleable(error, order.id, paymentId, order.amount);
       throw error;
     }

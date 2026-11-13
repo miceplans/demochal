@@ -66,6 +66,12 @@ describe('proxy subdomain routing', () => {
     expect(mocks.rewrite).not.toHaveBeenCalled();
   });
 
+  it('lets /payments result pages pass through on the biz host for the Toss success URL', () => {
+    const result = proxy(makeRequest('biz.example.com', '/payments/success', '?orderId=1'));
+    expect(result).toEqual({ kind: 'next' });
+    expect(mocks.rewrite).not.toHaveBeenCalled();
+  });
+
   it('keeps the biz host routing unchanged', () => {
     expect(proxy(makeRequest('biz.example.com', '/'))).toEqual({
       kind: 'rewrite',

@@ -1101,6 +1101,51 @@ describe('PaymentsService', () => {
       expect(orders.settleOrderPaid).toHaveBeenCalledWith(tx, 'order-1');
     });
 
+    it('rejects when the Naver Pay merchant key belongs to a different order', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'COMPLETED',
+        totalPayAmount: 50000,
+        merchantPayKey: 'order-2',
+      });
+      const { db, transaction } = createDbStub(null);
+      const service = new PaymentsService(db, createConfirmOrders() as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-1',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(transaction).not.toHaveBeenCalled();
+    });
+
+    it('rejects a concurrent paymentId reuse caught by the unique index without canceling', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.cancelNaverPayPayment.mockReset();
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentId: 'np-1',
+        paymentStatus: 'COMPLETED',
+        totalPayAmount: 50000,
+      });
+      const { db } = createDbStub(null);
+      db.transaction = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('dup'), { code: '23505' }));
+      const service = new PaymentsService(db, createConfirmOrders() as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-1',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(naverpayMocks.cancelNaverPayPayment).not.toHaveBeenCalled();
+    });
+
     it('rejects when the Naver Pay amount does not match the order', async () => {
       naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
       naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
