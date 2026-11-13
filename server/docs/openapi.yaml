@@ -46,6 +46,8 @@ tags:
     description: 기관 인증(사업자등록증 OCR 심사)
   - name: Ads
     description: 광고 상품·노출·리포트
+  - name: DesignProducts
+    description: 기업 디자인 상품(포스터 시안·오프닝 영상) 판매
   - name: Orders
     description: 주문
   - name: Payments
@@ -2031,6 +2033,40 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
 
   # ---------------------------------------------------------------- Orders / Payments
+  /design-products:
+    get:
+      tags: [DesignProducts]
+      summary: 디자인 상품 목록 조회
+      operationId: listDesignProducts
+      x-impl-status: implemented
+      description: 포스터 시안 제작·오프닝 영상 등 기업(BIZ) 디자인 상품과 서버 기준 가격(원).
+      responses:
+        '200':
+          description: 디자인 상품 목록
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/DesignProduct' } }
+  /design-products/orders:
+    post:
+      tags: [DesignProducts]
+      summary: 디자인 상품 주문 생성(결제 대기)
+      operationId: createDesignProductOrder
+      x-impl-status: implemented
+      description: |
+        기업 계정이 디자인 상품 결제 주문을 만든다. 금액은 서버 카탈로그 가격으로 고정되며,
+        응답의 `id`/`amount`/`name`으로 토스 결제창을 연다. 승인은 `/payments/confirm`이 맡는다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDesignOrderRequest' }
+      responses:
+        '201':
+          description: 결제 대기 주문
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DesignProductOrder' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
   /orders/{id}:
     get:
       tags: [Orders]
@@ -4612,6 +4648,26 @@ components:
           }
         fileName: { type: string, maxLength: 255, description: '경로 구분자(슬래시·역슬래시) 불가' }
         sizeBytes: { type: integer, minimum: 1, maximum: 10485760, description: 최대 10MB }
+    DesignProduct:
+      type: object
+      required: [code, name, description, price]
+      properties:
+        code: { type: string, enum: [poster, opening_video] }
+        name: { type: string }
+        description: { type: string }
+        price: { type: integer, description: 가격 (원) }
+    CreateDesignOrderRequest:
+      type: object
+      required: [productCode]
+      properties:
+        productCode: { type: string, enum: [poster, opening_video] }
+    DesignProductOrder:
+      type: object
+      required: [id, amount, name]
+      properties:
+        id: { type: string, format: uuid }
+        amount: { type: integer, description: 결제 금액 (원) }
+        name: { type: string, description: 토스 결제창 주문명 }
     Order:
       type: object
       properties:

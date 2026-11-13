@@ -1,4 +1,5 @@
 'use client';
+import { AD_SALES_ENABLED } from '@/features/biz/adSales';
 import Link from 'next/link';
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { Global } from '@emotion/react';
@@ -231,7 +232,8 @@ export const menu: [string, string][] = [
   ['/dashboard', '대시보드'],
   ['/postings', '공고 관리'],
   ['/applications', '신청자 응답'],
-  ['/ads', '광고 관리'],
+  ...(AD_SALES_ENABLED ? ([['/ads', '광고 관리']] as [string, string][]) : []),
+  ['/design-products', '디자인 상품'],
   ['/billing', '결제 내역 관리'],
   ['/operations', '운영대행'],
 ];

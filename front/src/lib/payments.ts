@@ -52,7 +52,7 @@ export interface TossPaymentParams {
   orderId: string;
   amount: number;
   orderName: string;
-  flow?: 'ad';
+  flow?: 'ad' | 'design';
 }
 
 /**

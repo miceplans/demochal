@@ -47,7 +47,11 @@ export function PaymentFailPage() {
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
   const orderId = searchParams.get('orderId');
-  const isAdFlow = searchParams.get('flow') === 'ad';
+  const flow = searchParams.get('flow');
+  // 'design'은 광고와 같은 기업(BIZ) 결제 흐름이지만 돌아갈 화면·안내 문구가 다르다.
+  const isAdFlow = flow === 'ad' || flow === 'design';
+  const adHome = flow === 'design' ? '/biz/design-products' : '/biz/ads';
+  const adHomeLabel = flow === 'design' ? '디자인 상품으로 이동' : '광고 관리로 이동';
 
   useEffect(() => {
     if (!orderId) return;
@@ -61,8 +65,8 @@ export function PaymentFailPage() {
       <Title>결제를 완료하지 못했어요</Title>
       <Description>{message ?? '결제가 취소됐거나 중단됐어요. 다시 시도해주세요.'}</Description>
       <Actions>
-        <Button onClick={() => router.push(isAdFlow ? '/biz/ads' : '/contests/public-data')}>
-          {isAdFlow ? '광고 관리로 이동' : '다시 신청하기'}
+        <Button onClick={() => router.push(isAdFlow ? adHome : '/contests/public-data')}>
+          {isAdFlow ? adHomeLabel : '다시 신청하기'}
         </Button>
         <Button onClick={() => router.push('/')} tone="outline">
           홈으로
