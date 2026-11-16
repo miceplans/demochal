@@ -81,12 +81,15 @@ import type {
   CreateAdminEmail,
   CreateCertificateRequest,
   CreateChallengeRequest,
+  CreateDesignOrderRequest,
   CreateRefundRequestBody,
   CreateReportRequest,
   CreateTeamRequest,
   DeleteAd200,
   DeleteMfaPasskeyBody,
   DeleteMfaTotpBody,
+  DesignProduct,
+  DesignProductOrder,
   FileMeta,
   ForbiddenResponse,
   GetAdReportParams,
@@ -9062,6 +9065,229 @@ export const useFinalizeUpload = <TError = NotFoundResponse,
         TContext
       > => {
       return useMutation(getFinalizeUploadMutationOptions(options), queryClient);
+    }
+
+export type listDesignProductsResponse200 = {
+  data: DesignProduct[]
+  status: 200
+}
+
+export type listDesignProductsResponseSuccess = (listDesignProductsResponse200) & {
+  headers: Headers;
+};
+;
+
+export type listDesignProductsResponse = (listDesignProductsResponseSuccess)
+
+export const getListDesignProductsUrl = () => {
+
+
+
+
+  return `/design-products`
+}
+
+/**
+ * 포스터 시안 제작·오프닝 영상 등 기업(BIZ) 디자인 상품과 서버 기준 가격(원).
+ * @summary 디자인 상품 목록 조회
+ */
+export const listDesignProducts = async ( options?: Parameters<typeof apiFetch>[1]): Promise<listDesignProductsResponse> => {
+
+  return apiFetch<listDesignProductsResponse>(getListDesignProductsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDesignProductsQueryKey = () => {
+    return [
+    `/design-products`
+    ] as const;
+    }
+
+
+export const getListDesignProductsQueryOptions = <TData = Awaited<ReturnType<typeof listDesignProducts>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDesignProductsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDesignProducts>>> = ({ signal }) => listDesignProducts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListDesignProductsQueryResult = NonNullable<Awaited<ReturnType<typeof listDesignProducts>>>
+export type ListDesignProductsQueryError = unknown
+
+
+export function useListDesignProducts<TData = Awaited<ReturnType<typeof listDesignProducts>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDesignProducts>>,
+          TError,
+          Awaited<ReturnType<typeof listDesignProducts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListDesignProducts<TData = Awaited<ReturnType<typeof listDesignProducts>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listDesignProducts>>,
+          TError,
+          Awaited<ReturnType<typeof listDesignProducts>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListDesignProducts<TData = Awaited<ReturnType<typeof listDesignProducts>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary 디자인 상품 목록 조회
+ */
+
+export function useListDesignProducts<TData = Awaited<ReturnType<typeof listDesignProducts>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listDesignProducts>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListDesignProductsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export type createDesignProductOrderResponse201 = {
+  data: DesignProductOrder
+  status: 201
+}
+
+export type createDesignProductOrderResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type createDesignProductOrderResponseSuccess = (createDesignProductOrderResponse201) & {
+  headers: Headers;
+};
+export type createDesignProductOrderResponseError = (createDesignProductOrderResponse401) & {
+  headers: Headers;
+};
+
+export type createDesignProductOrderResponse = (createDesignProductOrderResponseSuccess | createDesignProductOrderResponseError)
+
+export const getCreateDesignProductOrderUrl = () => {
+
+
+
+
+  return `/design-products/orders`
+}
+
+/**
+ * 기업 계정이 디자인 상품 결제 주문을 만든다. 금액은 서버 카탈로그 가격으로 고정되며,
+ * 응답의 `id`/`amount`/`name`으로 토스 결제창을 연다. 승인은 `/payments/confirm`이 맡는다.
+ * @summary 디자인 상품 주문 생성(결제 대기)
+ */
+export const createDesignProductOrder = async (createDesignOrderRequest: CreateDesignOrderRequest, options?: Parameters<typeof apiFetch>[1]): Promise<createDesignProductOrderResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<createDesignProductOrderResponse>(getCreateDesignProductOrderUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createDesignOrderRequest)
+  }
+);}
+
+
+
+
+
+export const getCreateDesignProductOrderMutationKey = () => ['createDesignProductOrder'] as const;
+
+export const getCreateDesignProductOrderMutationOptions = <TError = UnauthorizedResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext> => {
+
+const mutationKey = getCreateDesignProductOrderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createDesignProductOrder>>, CreateDesignProductOrderMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createDesignProductOrder(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateDesignProductOrderMutationResult = NonNullable<Awaited<ReturnType<typeof createDesignProductOrder>>>
+    export type CreateDesignProductOrderMutationBody = CreateDesignOrderRequest
+    export type CreateDesignProductOrderMutationError = UnauthorizedResponse
+    export type CreateDesignProductOrderMutationVariables = {data: CreateDesignOrderRequest}
+
+    /**
+ * @summary 디자인 상품 주문 생성(결제 대기)
+ */
+export const useCreateDesignProductOrder = <TError = UnauthorizedResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createDesignProductOrder>>,
+        TError,
+        CreateDesignProductOrderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateDesignProductOrderMutationOptions(options), queryClient);
     }
 
 export type getOrderResponse200 = {

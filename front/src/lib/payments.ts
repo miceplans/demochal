@@ -52,7 +52,7 @@ export interface TossPaymentParams {
   orderId: string;
   amount: number;
   orderName: string;
-  flow?: 'ad';
+  flow?: 'ad' | 'design';
 }
 
 /**
@@ -197,7 +197,7 @@ export interface NaverPayPaymentParams {
   orderId: string;
   amount: number;
   orderName: string;
-  flow?: 'ad';
+  flow?: 'ad' | 'design';
 }
 
 // 네이버페이 결제창 호출 파라미터 — 순수 함수로 분리해 검증한다.
@@ -245,7 +245,7 @@ export function buildNaverPayCallbackUrl({
   origin,
 }: {
   orderId: string;
-  flow?: 'ad';
+  flow?: 'ad' | 'design';
   result?: NaverPayResult;
   origin: string;
 }): string {

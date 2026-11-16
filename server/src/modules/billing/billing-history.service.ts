@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNotNull, lte, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { ads, applications, challenges, orders, payments } from '../../db/schema.js';
+import { ads, applications, businesses, challenges, orders, payments } from '../../db/schema.js';
+import { DESIGN_PRODUCTS } from '../design-products/design-products.catalog.js';
 
 export interface PaymentHistoryRange {
   from?: string;
@@ -29,7 +30,20 @@ export class BillingHistoryService {
    * 없는 행(결제 대기/실패)은 COALESCE로 정렬 시 맨 아래로 본다.
    */
   async forBusiness(businessId: string, range: PaymentHistoryRange) {
-    const conditions = [or(eq(ads.businessId, businessId), eq(challenges.businessId, businessId))];
+    // 디자인 상품 주문은 ad/application에 연결되지 않으므로 기업 소유자(userId) 기준으로 포함한다.
+    const conditions = [
+      or(
+        eq(ads.businessId, businessId),
+        eq(challenges.businessId, businessId),
+        and(
+          isNotNull(orders.designProduct),
+          eq(
+            orders.userId,
+            sql`(select ${businesses.ownerUserId} from ${businesses} where ${businesses.id} = ${businessId})`,
+          ),
+        ),
+      ),
+    ];
     // 결제되지 않은 시도(expired/ready)는 잔액 변동이 없으므로 내역에서 제외한다 —
     // 실패한 시도가 음수 과금 항목·1970년대 일시로 표시되는 것을 방지(총액에서도 이미 제외).
     conditions.push(inArray(payments.status, ['paid', 'done', 'canceled', 'cancelled']));
@@ -41,6 +55,7 @@ export class BillingHistoryService {
         id: payments.id,
         orderId: payments.orderId,
         name: sql<string | null>`coalesce(${ads.title}, ${challenges.title})`,
+        designProduct: orders.designProduct,
         amount: payments.amount,
         refundedAmount: payments.refundedAmount,
         status: payments.status,
@@ -70,7 +85,7 @@ export class BillingHistoryService {
       return {
         id: row.id,
         orderId: row.orderId,
-        name: row.name ?? '주문',
+        name: row.name ?? DESIGN_PRODUCTS.find((p) => p.code === row.designProduct)?.name ?? '주문',
         amount,
         paidAt: row.approvedAt ? row.approvedAt.toISOString() : null,
         status,
