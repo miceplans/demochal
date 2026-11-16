@@ -11,6 +11,7 @@ vi.mock('@tosspayments/tosspayments-sdk', () => ({
 }));
 
 import { CARD_COMPANIES_WITHOUT_BC, requestTossPayment } from './payments';
+import { TossPaymentError } from './toss-payment-error';
 
 describe('requestTossPayment', () => {
   beforeEach(() => {
@@ -30,5 +31,23 @@ describe('requestTossPayment', () => {
       }),
     );
     expect(CARD_COMPANIES_WITHOUT_BC).not.toMatch(/(^|\|)(3K|31|33)(\||$)/);
+  });
+
+  it('wraps a failing Toss SDK call in TossPaymentError and logs it', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+    requestPayment.mockRejectedValue(
+      Object.assign(new Error('키 종류 오류'), { code: 'INVALID_KEY' }),
+    );
+
+    await expect(
+      requestTossPayment({ orderId: 'order-1', amount: 1000, orderName: '광고' }),
+    ).rejects.toMatchObject({
+      name: 'TossPaymentError',
+      message: '키 종류 오류',
+      code: 'INVALID_KEY',
+    });
+    expect(consoleError).toHaveBeenCalled();
+    consoleError.mockRestore();
+    expect(TossPaymentError).toBeDefined();
   });
 });

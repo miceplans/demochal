@@ -1,5 +1,7 @@
 import { getApiErrorMessage } from '@semochal/api-client';
 
+import { TossPaymentError } from './toss-payment-error';
+
 export const NETWORK_ERROR_MESSAGE =
   '서버에 연결할 수 없어요. 네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
 
@@ -12,6 +14,8 @@ export const NETWORK_ERROR_MESSAGE =
 export function apiErrorMessage(error: unknown, fallback: string): string {
   const serverMessage = getApiErrorMessage(error);
   if (serverMessage) return serverMessage;
+  // 토스 결제창 실패는 네트워크 문제가 아니므로 SDK가 준 실제 사유를 보여준다.
+  if (error instanceof TossPaymentError) return error.message;
   // Toss SDK/local validation 예외도 Error이므로 모든 Error를 네트워크 오류로
   // 분류하면 Network 탭에 요청이 없는 경우에도 잘못된 토스트가 표시된다.
   if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE;

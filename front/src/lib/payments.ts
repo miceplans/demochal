@@ -4,6 +4,8 @@ import {
   type TossPaymentsPayment,
 } from '@tosspayments/tosspayments-sdk';
 
+import { TossPaymentError } from './toss-payment-error';
+
 let paymentPromise: Promise<TossPaymentsPayment> | null = null;
 
 // Toss 결제창은 cardCompany 허용 목록으로 카드사를 제한한다. BC(31), 기업BC(3K),
@@ -68,17 +70,28 @@ export async function requestTossPayment({
 }: TossPaymentParams): Promise<boolean> {
   const payment = getTossPayment();
   if (!payment) return false;
-  const tossPayment = await payment;
-  await tossPayment.requestPayment({
-    method: 'CARD',
-    card: { cardCompany: CARD_COMPANIES_WITHOUT_BC },
-    amount: { value: amount, currency: 'KRW' },
-    orderId,
-    orderName,
-    windowTarget: 'self',
-    successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
-    failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
-  });
+  try {
+    const tossPayment = await payment;
+    await tossPayment.requestPayment({
+      method: 'CARD',
+      card: { cardCompany: CARD_COMPANIES_WITHOUT_BC },
+      amount: { value: amount, currency: 'KRW' },
+      orderId,
+      orderName,
+      windowTarget: 'self',
+      successUrl: `${window.location.origin}/payments/success${flow ? `?flow=${flow}` : ''}`,
+      failUrl: `${window.location.origin}/payments/fail${flow ? `?flow=${flow}` : ''}`,
+    });
+  } catch (error) {
+    // 실패한 SDK 로드 Promise를 캐시에 남기면 재시도해도 계속 실패한다.
+    paymentPromise = null;
+    console.error('[toss] 결제창 호출 실패', error);
+    const code = (error as { code?: unknown } | null)?.code;
+    throw new TossPaymentError(
+      error instanceof Error && error.message ? error.message : '결제창을 열지 못했어요',
+      typeof code === 'string' ? code : undefined,
+    );
+  }
   return true;
 }
 
