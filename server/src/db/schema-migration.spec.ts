@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(46);
+    expect(journal.entries).toHaveLength(47);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -675,5 +675,18 @@ describe('0045_design_product_orders migration', () => {
     expect(sql).toContain('ADD COLUMN IF NOT EXISTS "design_product" varchar(30)');
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[45]!.when).toBeGreaterThan(journal.entries[44]!.when);
+  });
+});
+
+describe('0046_payments_provider_key_unique migration', () => {
+  it('adds a unique (provider, provider_payment_key) index without destructive DDL', () => {
+    const tag = journal.entries[46]?.tag;
+    expect(tag).toBe('0046_payments_provider_key_unique');
+    const sql = readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+    expect(sql).toContain(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "payments_provider_payment_key_unique"',
+    );
+    expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
+    expect(journal.entries[46]!.when).toBeGreaterThan(journal.entries[45]!.when);
   });
 });

@@ -1,4 +1,5 @@
 import { HttpClient, type HttpClientOptions } from './http';
+import type { ConfirmPaymentRequest } from './generated/model/confirmPaymentRequest';
 import type {
   Ad,
   AdProduct,
@@ -191,8 +192,7 @@ export function createApiClient(options: HttpClientOptions) {
       cancel: (id: string) => http.post<Order>(`/orders/${id}/cancel`),
     },
     payments: {
-      confirm: (body: { orderId: string; paymentKey: string; amount: number }) =>
-        http.post<Order>('/payments/confirm', body),
+      confirm: (body: ConfirmPaymentRequest) => http.post<Order>('/payments/confirm', body),
     },
     files: {
       requestUpload: (body: PresignedUploadRequest) =>

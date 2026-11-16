@@ -12,6 +12,7 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 
 // CSP 허용 목록은 코드베이스에서 실제 로드하는 외부 호스트만 담는다:
 // - 토스페이먼츠 SDK: js.tosspayments.com(스크립트), *.tosspayments.com(결제창 연결/iframe)
+// - 네이버페이 SDK(bz 서브도메인 결제): nsp.pay.naver.com(스크립트), *.pay.naver.com(결제창 연결/iframe)
 // - 구글 폰트(Material Symbols): fonts.googleapis.com(CSS), fonts.gstatic.com(폰트 파일)
 // - 구글 지도(기업 프로필 지도): maps.googleapis.com(JS API 스크립트/XHR), www.google.com·maps.google.com(키 없는 embed iframe).
 //   타일·마커 이미지는 img-src가 https:로 이미 허용돼 별도 항목이 필요 없다
@@ -24,12 +25,17 @@ if (process.env.NODE_ENV !== 'production') {
   // Next 개발 서버(HMR)가 eval을 쓴다 — 프로덕션에는 넣지 않는다.
   scriptSrc.push("'unsafe-eval'");
 }
-scriptSrc.push('https://js.tosspayments.com', 'https://maps.googleapis.com');
+scriptSrc.push(
+  'https://js.tosspayments.com',
+  'https://nsp.pay.naver.com',
+  'https://maps.googleapis.com',
+);
 
 // - 파일 업로드: 브라우저가 서버가 내려준 presigned URL로 S3에 직접 PUT한다(리전은 서버 AWS_REGION과 같다).
 const connectSrc = [
   "'self'",
   'https://*.tosspayments.com',
+  'https://*.pay.naver.com',
   'https://s3.ap-northeast-2.amazonaws.com',
   'https://*.s3.ap-northeast-2.amazonaws.com',
   'https://maps.googleapis.com',
@@ -52,11 +58,11 @@ const contentSecurityPolicy = [
   "worker-src 'self' blob:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
-  'frame-src https://*.tosspayments.com https://www.google.com https://maps.google.com',
+  'frame-src https://*.tosspayments.com https://*.pay.naver.com https://www.google.com https://maps.google.com',
   "object-src 'none'",
   "base-uri 'self'",
-  // Toss 결제 SDK가 현재 탭에서 결제 폼을 결제 도메인으로 제출한다.
-  "form-action 'self' https://*.tosspayments.com",
+  // 토스·네이버페이 결제 SDK가 현재 탭에서 결제 폼을 결제 도메인으로 제출한다.
+  "form-action 'self' https://*.tosspayments.com https://*.pay.naver.com",
 ].join('; ');
 
 export { contentSecurityPolicy };
