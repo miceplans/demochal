@@ -85,8 +85,6 @@ jobs:
       - run: node --test scripts/qa-report.test.mjs
       # QA dispatch payload privacy tests.
       - run: node --test scripts/ai-dispatch.test.mjs
-      # GLM PR review comment contract.
-      - run: node --test scripts/code-review-glm.test.mjs
       # GitHub CLI ↔ Git author account switcher tests.
       - run: node --test scripts/git-account-switch.test.mjs
       # Playwright/GLM contract tests do not launch a browser or call the network.

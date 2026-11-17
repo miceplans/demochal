@@ -55,5 +55,4 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 ## CI/CD
 
 - `ci.yml`: `main` push 시 format:check → lint → typecheck → server 테스트 → 빌드 + Docker 빌드 검증 후 `deploy-staging` 잡으로 staging ECS에 배포한다.
-- `code-review-glm.yml`: PR 리뷰(claude-code-action → Z.AI GLM). 알림 메일 폭주 방지를 위해 인라인 코멘트 없이 요약 코멘트 1건만 게시한다(`pull-requests: write` 필요).
 - `qodo-merge.yml`: PR-Agent 자동 describe/review/improve.
