@@ -12,7 +12,7 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync } from 'node:fs';
+import { copyFileSync, existsSync, realpathSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,6 +33,14 @@ export function composeProjectName(dir) {
 export function dbPortFor(dir) {
   const hash = createHash('sha1').update(dir).digest().readUInt16BE(0);
   return 55000 + (hash % 1000);
+}
+
+export function resolveDbPort(dir, override = process.env.SEMOCHAL_DB_PORT) {
+  return override ?? String(dbPortFor(dir));
+}
+
+export function isMainModule(argvPath, moduleUrl) {
+  return Boolean(argvPath) && realpathSync(argvPath) === realpathSync(fileURLToPath(moduleUrl));
 }
 
 function sh(cmd, cmdArgs, opts = {}) {
@@ -71,11 +79,11 @@ function ensureEnvFiles() {
 
 function main() {
   const project = composeProjectName(root);
-  const port = dbPortFor(root);
+  const port = resolveDbPort(root);
   const composeEnv = {
     ...process.env,
     COMPOSE_PROJECT_NAME: project,
-    SEMOCHAL_DB_PORT: String(port),
+    SEMOCHAL_DB_PORT: port,
   };
   const compose = (composeArgs) => sh('docker', ['compose', ...composeArgs], { env: composeEnv });
 
@@ -112,4 +120,4 @@ function main() {
   child.on('exit', (code, signal) => process.exit(code ?? (signal ? 130 : 1)));
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) main();
+if (isMainModule(process.argv[1], import.meta.url)) main();
