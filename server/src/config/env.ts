@@ -137,14 +137,8 @@ const envSchema = z
         message: 'KCP_SITE_CD must be set to the contracted site code when KCP_PRODUCTION is true',
       });
     }
-    // KCP를 켠 운영 환경에서 취소 서명 개인키가 없으면 환불·보상 취소가 항상 실패한다 — 부팅을 막는다.
-    if (value.NODE_ENV === 'production' && value.KCP_SITE_CD && !value.KCP_PRIVATE_KEY.trim()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['KCP_PRIVATE_KEY'],
-        message: 'KCP_PRIVATE_KEY must be set in production when KCP_SITE_CD is configured',
-      });
-    }
+    // KCP_PRIVATE_KEY는 아직 사용처가 없다(공통 API는 kcp_cert_info + 서명만 쓴다).
+    // 테스트 사이트(T0000)에는 공개된 개인키가 없으므로 빈 값을 허용한다.
   });
 
 const parsed = envSchema.safeParse(process.env);
