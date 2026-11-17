@@ -78,6 +78,17 @@ export class KcpAmountMismatchError extends Error {
   }
 }
 
+/**
+ * KCP 승인은 성공(res_cd 0000 + tno)했지만 응답에 금액이 없어 청구액을 검증할 수 없는 경우.
+ * 검증 불가한 채 청구만 남기면 안 되므로 서비스가 tno로 취소 보상을 이어간다.
+ */
+export class KcpAmountUnverifiableError extends Error {
+  constructor(readonly tno: string) {
+    super(`KCP approval response for tno ${tno} lacks the amount field`);
+    this.name = 'KcpAmountUnverifiableError';
+  }
+}
+
 function assertKcpConfigured() {
   if (!env.kcpSiteCd || !env.kcpCertInfo) {
     throw new BadGatewayException('결제 서비스가 구성되지 않았습니다. 잠시 후 다시 시도해 주세요.');
@@ -202,12 +213,21 @@ export async function approveKcpPayment(input: {
   // 승인 후에도 KCP 응답 금액이 서버 주문 금액과 같은지 한 번 더 확인한다(8350 계약).
   // res_cd=0000+tno까지 온 경우는 이미 청구된 결제 — 금액이 어긋나도 단순 거부만 하면
   // 구매자가 청구만 당한 결제가 남으므로, 서비스가 취소 보상을 이어갈 수 있게 tno를 싣는다.
-  const approvedAmount = payload?.amount === undefined ? input.amount : Number(payload.amount);
   if (!response.ok || payload?.res_cd !== '0000' || !payload.tno) {
     logger.error(`KCP approval rejected for order ${input.orderId}: HTTP ${response.status}`);
     throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
   }
-  if (!Number.isFinite(approvedAmount) || approvedAmount !== input.amount) {
+  // 승인 후에도 KCP 응답 금액이 서버 주문 금액과 같은지 한 번 더 확인한다(8350 계약).
+  // 금액 필드 자체가 없으면 청구액을 검증할 수 없으므로 명시 거부한다 — 응답 누락을 서버가
+  // 본 값으로 채워 대사를 조용히 건 넘기지 않는다(CLAUDE.md '미처리 상태 스킵 금지').
+  if (payload.amount === undefined || !Number.isFinite(Number(payload.amount))) {
+    logger.error(
+      `KCP approval response for order ${input.orderId} (tno ${payload.tno}) is missing the amount field`,
+    );
+    throw new KcpAmountUnverifiableError(payload.tno);
+  }
+  const approvedAmount = Number(payload.amount);
+  if (approvedAmount !== input.amount) {
     logger.error(
       `KCP approval amount mismatch for order ${input.orderId}: tno ${payload.tno} approved ${approvedAmount}, expected ${input.amount}`,
     );

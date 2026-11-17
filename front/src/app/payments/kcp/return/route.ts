@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { HttpClient } from '@semochal/api-client';
 import { getApiBaseUrl } from '@/lib/api-base-url';
 
 /**
@@ -14,6 +15,8 @@ interface KcpMobileOutcome {
   flow?: 'ad' | 'design';
   code?: string;
 }
+
+const API_TIMEOUT_MS = 30_000;
 
 export async function POST(request: Request) {
   const outcome = await settle(request);
@@ -41,15 +44,26 @@ async function settle(request: Request): Promise<KcpMobileOutcome> {
     const apiBase = getApiBaseUrl();
     // 서버 런타임에서 상대 '/api'면 요청 오리진(bz)의 same-origin 프록시로 절대화한다.
     const apiUrl = apiBase.startsWith('http') ? apiBase : new URL(apiBase, request.url).toString();
-    const response = await fetch(`${apiUrl}/payments/kcp/return`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(fields),
-      signal: AbortSignal.timeout(30_000),
-    });
-    if (!response.ok) throw new Error(`API responded ${response.status}`);
-    return (await response.json()) as KcpMobileOutcome;
+    // 공유 HttpClient로 본다(수기 fetch 우회 금지 — api-client README/CLAUDE.md 규약).
+    const http = new HttpClient({ baseUrl: apiUrl });
+    return await withTimeout(
+      http.post<KcpMobileOutcome>('/payments/kcp/return', fields),
+      API_TIMEOUT_MS,
+    );
   } catch {
     return { outcome: 'failed', code: 'res_error' };
   }
+}
+
+// HttpClient는 타임아웃 옵션이 없어 여기서 감싼다 — KCP 콜백 처리가 멈추면 브라우저가 멈춘다.
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error(`KCP return API timed out after ${timeoutMs}ms`)),
+        timeoutMs,
+      ),
+    ),
+  ]);
 }

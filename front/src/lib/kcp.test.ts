@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { confirmKcp, registerKcp } = vi.hoisted(() => ({
-  confirmKcp: vi.fn(),
-  registerKcp: vi.fn(),
+const { confirmKcpPayment, registerKcpTransaction } = vi.hoisted(() => ({
+  confirmKcpPayment: vi.fn(),
+  registerKcpTransaction: vi.fn(),
 }));
 
-vi.mock('@/lib/ad-api', () => ({
-  adApi: { payments: { confirmKcp, registerKcp } },
-}));
+// kcp.ts는 신규 엔드포인트를 orval 생성 클라이언트(공유 HttpClient 경유)로 호출한다 —
+// generated 모듈의 해당 동작만 대역으로 교체하고 나머지는 실제 모듈을 쓴다.
+vi.mock('@semochal/api-client', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@semochal/api-client')>();
+  return {
+    ...actual,
+    generated: { ...actual.generated, confirmKcpPayment, registerKcpTransaction },
+  };
+});
 
 vi.mock('@/lib/api-error', () => ({
   apiErrorMessage: (_: unknown, fallback: string) => fallback,
@@ -60,7 +66,7 @@ describe('requestKcpNaverPayPayment — PC window', () => {
   });
 
   it('confirms on the PC callback and converges onto the success URL', async () => {
-    confirmKcp.mockResolvedValue({});
+    confirmKcpPayment.mockResolvedValue({});
     const assign = vi.fn();
     vi.stubGlobal('location', { ...window.location, assign });
     const { requestKcpNaverPayPayment } = await importKcp();
@@ -89,8 +95,8 @@ describe('requestKcpNaverPayPayment — PC window', () => {
     );
     // 콜백은 동기적으로 결제창을 닫은 뒤 비동기 승인 → 성공 페이지 이동으로 이어진다.
     expect(closeEvent).toHaveBeenCalled();
-    await vi.waitFor(() => expect(confirmKcp).toHaveBeenCalledTimes(1));
-    expect(confirmKcp).toHaveBeenCalledWith({
+    await vi.waitFor(() => expect(confirmKcpPayment).toHaveBeenCalledTimes(1));
+    expect(confirmKcpPayment).toHaveBeenCalledWith({
       orderId: 'order-9',
       encData: 'enc-d',
       encInfo: 'enc-i',
@@ -118,12 +124,12 @@ describe('requestKcpNaverPayPayment — PC window', () => {
     expect(failUrl).toContain('/payments/fail?');
     expect(failUrl).toContain('orderId=order-9');
     expect(failUrl).toContain('code=3001');
-    expect(confirmKcp).not.toHaveBeenCalled();
+    expect(confirmKcpPayment).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
   it('redirects to the fail URL when the server confirm rejects', async () => {
-    confirmKcp.mockRejectedValue(new Error('network'));
+    confirmKcpPayment.mockRejectedValue(new Error('network'));
     const assign = vi.fn();
     vi.stubGlobal('location', { ...window.location, assign });
     const { requestKcpNaverPayPayment } = await importKcp();
@@ -151,10 +157,14 @@ describe('requestKcpNaverPayPayment — mobile window', () => {
   });
 
   it('registers the trade and submits the form to the KCP encoding filter', async () => {
-    registerKcp.mockResolvedValue({
-      approvalKey: 'approval-key',
-      payUrl: 'https://testsmpay.kcp.co.kr/pay/mobileGW.kcp',
-      retUrl: 'https://bz.example.com/payments/kcp/return',
+    // orval 생성 함수는 { data, status, headers } 엔벨로프를 반환한다.
+    registerKcpTransaction.mockResolvedValue({
+      status: 200,
+      data: {
+        approvalKey: 'approval-key',
+        payUrl: 'https://testsmpay.kcp.co.kr/pay/mobileGW.kcp',
+        retUrl: 'https://bz.example.com/payments/kcp/return',
+      },
     });
     const submit = vi.spyOn(HTMLFormElement.prototype, 'submit').mockImplementation(() => {});
     const { requestKcpNaverPayPayment } = await importKcp();
@@ -168,7 +178,7 @@ describe('requestKcpNaverPayPayment — mobile window', () => {
       }),
     ).resolves.toBe(true);
 
-    expect(registerKcp).toHaveBeenCalledWith({
+    expect(registerKcpTransaction).toHaveBeenCalledWith({
       orderId: 'order-m',
       orderName: '광고',
       flow: 'ad',

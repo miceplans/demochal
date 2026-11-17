@@ -141,6 +141,21 @@ describe('kcp.client', () => {
     );
   });
 
+  it('throws KcpAmountUnverifiableError when the approval response lacks the amount field', async () => {
+    const client = await loadClient(CONFIGURED);
+    // res_cd 0000 + tno까지 왔지만 금액 필드가 없으면 청구액 대사가 불가능 — 서버가 본 값으로
+    // 채워 조용히 통과시키지 않고 명시 예외로 본낸다(서비스가 취소 보상을 이어간다).
+    fetchMock.mockResolvedValue(jsonResponse({ res_cd: '0000', tno: 'tno-7' }));
+
+    const error = await client
+      .approveKcpPayment({ orderId: 'order-1', amount: 50000, encData: 'e', encInfo: 'i' })
+      .then(() => null)
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(client.KcpAmountUnverifiableError);
+    expect((error as InstanceType<typeof client.KcpAmountUnverifiableError>).tno).toBe('tno-7');
+  });
+
   it('rejects the approval when KCP returns a non-0000 res_cd', async () => {
     const client = await loadClient(CONFIGURED);
     fetchMock.mockResolvedValue(jsonResponse({ res_cd: '3001', res_msg: '취소' }, false, 200));

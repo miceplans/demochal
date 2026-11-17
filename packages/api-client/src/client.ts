@@ -193,14 +193,6 @@ export function createApiClient(options: HttpClientOptions) {
     },
     payments: {
       confirm: (body: ConfirmPaymentRequest) => http.post<Order>('/payments/confirm', body),
-      // KCP 네이버페이(bz) — 모바일 결제창 호출 전 거래등록과 PC 결제창 콜백 이후 승인.
-      registerKcp: (body: { orderId: string; orderName: string; flow?: 'ad' | 'design' }) =>
-        http.post<{ approvalKey: string; payUrl: string; retUrl: string }>(
-          '/payments/kcp/register',
-          body,
-        ),
-      confirmKcp: (body: { orderId: string; encData: string; encInfo: string; tranCd?: string }) =>
-        http.post<Order>('/payments/kcp/confirm', body),
     },
     files: {
       requestUpload: (body: PresignedUploadRequest) =>

@@ -1,4 +1,4 @@
-import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 import { apiErrorMessage } from '@/lib/api-error';
 
 /**
@@ -195,7 +195,7 @@ async function openKcpPcWindow(params: KcpPaymentParams & { origin: string }): P
     }
     void (async () => {
       try {
-        await adApi.payments.confirmKcp({
+        await generated.confirmKcpPayment({
           orderId: params.orderId,
           encData: result.encData,
           encInfo: result.encInfo,
@@ -247,11 +247,14 @@ async function openKcpPcWindow(params: KcpPaymentParams & { origin: string }): P
 async function submitKcpMobileWindow(
   params: KcpPaymentParams & { origin: string },
 ): Promise<boolean> {
-  const { approvalKey, payUrl, retUrl } = await adApi.payments.registerKcp({
+  const response = await generated.registerKcpTransaction({
     orderId: params.orderId,
     orderName: params.orderName,
     flow: params.flow,
   });
+  // 공유 HttpClient가 비-2xx를 throw로 본내지만, 생성 타입의 유니온은 status 판별로 좁힌다.
+  if (response.status !== 200) throw new Error('Unexpected KCP trade register response');
+  const { approvalKey, payUrl, retUrl } = response.data;
   // encoding_trans=UTF-8이면 submit 대상은 PayUrl 마지막 '/' 앞 + KCP 고정 경로(가이드 규약).
   const filterBase = payUrl.substring(0, payUrl.lastIndexOf('/'));
   const form = buildKcpOrderForm({

@@ -22,7 +22,7 @@ import {
   fetchNaverPayPaymentDetail,
 } from './naverpay.client.js';
 import { approveKcpPayment, cancelKcpPayment, registerKcpTransaction } from './kcp.client.js';
-import { KcpAmountMismatchError } from './kcp.client.js';
+import { KcpAmountMismatchError, KcpAmountUnverifiableError } from './kcp.client.js';
 
 // refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
 // 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
@@ -259,9 +259,13 @@ export class PaymentsService {
           tranCd: dto.tranCd,
         });
       } catch (error) {
-        // 승인 자체는 됐고 응답 금액만 어긋난 경우 — 이미 청구된 결제다. 다른 주문에 이미
-        // 바인딩된 tno는 우리 것이 아니므로 취소하지 않고, 우리 주문 것이면 취소로 보상한다.
-        if (error instanceof KcpAmountMismatchError) {
+        // 승인 자체는 됐는데 금액이 어긋나거나(amount) 검증할 금액이 없는(unverifiable) 경우 —
+        // 이미 청구된 결제다. 다른 주문에 이미 바인딩된 tno는 우리 것이 아니므로 취소하지
+        // 않고, 우리 주문 것이면 취소로 보상한다.
+        if (
+          error instanceof KcpAmountMismatchError ||
+          error instanceof KcpAmountUnverifiableError
+        ) {
           const [bound] = await this.db
             .select({ orderId: payments.orderId })
             .from(payments)
@@ -272,11 +276,15 @@ export class PaymentsService {
               `Not compensating KCP payment bound to another order (tno ${error.tno})`,
             );
           } else {
+            // 기록 금액은 실제 청구액을 쓰고, 검증 불가(unverifiable)일 땐 주문 금액을
+            // 기준으로 남긴다 — KCP 전체 취소(STSC)는 청구액 전체를 취소하므로 동작은 같다.
+            const recordedAmount =
+              error instanceof KcpAmountMismatchError ? error.approvedAmount : order.amount;
             await this.compensateKcpIfUnsettleable(
               new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.'),
               order.id,
               error.tno,
-              error.approvedAmount,
+              recordedAmount,
             );
           }
           throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');

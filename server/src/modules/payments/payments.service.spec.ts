@@ -1509,6 +1509,31 @@ describe('PaymentsService', () => {
       expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', ['pending']);
     });
 
+    it('compensates an unverifiable approval the same way as an amount mismatch', async () => {
+      const { KcpAmountUnverifiableError } = await import('./kcp.client.js');
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockRejectedValue(new KcpAmountUnverifiableError('kcp-tno-u'));
+      kcpMocks.cancelKcpPayment.mockResolvedValue(undefined);
+      const { db, insertValues } = createDbStub(null);
+      const orders = createKcpOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      // 금액을 검증할 수 없는 채 청구된 결제 — 취소 보상 후 검증 실패로 거부한다.
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toThrow('결제 정보가 주문 내용과 일치하지 않습니다');
+
+      expect(kcpMocks.cancelKcpPayment).toHaveBeenCalledWith({
+        tno: 'kcp-tno-u',
+        cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+      });
+      expect(insertValues).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orderId: 'order-1', provider: 'kcp', status: 'canceled' }),
+      );
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
     it('does not compensate a mismatched approval when the tno is bound to another order', async () => {
       const { KcpAmountMismatchError } = await import('./kcp.client.js');
       kcpMocks.approveKcpPayment.mockReset();
