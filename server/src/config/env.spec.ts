@@ -117,3 +117,44 @@ describe('env S3_ENDPOINT', () => {
     );
   });
 });
+
+describe('env KCP_PRIVATE_KEY validation', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const base = {
+    NODE_ENV: 'production',
+    JWT_SECRET: 'a'.repeat(32),
+    TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1',
+  };
+
+  it('rejects an empty private key when KCP_PRODUCTION is true', async () => {
+    await expect(
+      loadEnv({
+        ...base,
+        KCP_PRODUCTION: 'true',
+        KCP_SITE_CD: 'A1234',
+        KCP_PRIVATE_KEY: '',
+      }),
+    ).rejects.toThrow(/KCP_PRIVATE_KEY/);
+  });
+
+  it('accepts a private key when KCP_PRODUCTION is true', async () => {
+    const { env } = await loadEnv({
+      ...base,
+      KCP_PRODUCTION: 'true',
+      KCP_SITE_CD: 'A1234',
+      KCP_PRIVATE_KEY: 'pem',
+    });
+    expect(env.kcpPrivateKey).toBe('pem');
+  });
+
+  it('allows an empty private key for the test site (KCP_PRODUCTION=false)', async () => {
+    const { env } = await loadEnv({
+      ...base,
+      KCP_PRODUCTION: 'false',
+      KCP_SITE_CD: 'T0000',
+      KCP_PRIVATE_KEY: '',
+    });
+    expect(env.kcpPrivateKey).toBe('');
+  });
+});
