@@ -106,6 +106,11 @@ import type {
   InviteTeamRequest,
   IssueBillingAuthorizationBody,
   JoinTeamRequest,
+  KcpConfirmRequest,
+  KcpMobileReturnFields,
+  KcpMobileReturnOutcome,
+  KcpRegisterRequest,
+  KcpRegisterResponse,
   ListAdminAdsParams,
   ListAdminAutomatedEmailsParams,
   ListAdminBusinesses200,
@@ -9983,6 +9988,376 @@ export const useHandleTossWebhook = <TError = unknown,
         TContext
       > => {
       return useMutation(getHandleTossWebhookMutationOptions(options), queryClient);
+    }
+
+export type registerKcpTransactionResponse200 = {
+  data: KcpRegisterResponse
+  status: 200
+}
+
+export type registerKcpTransactionResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type registerKcpTransactionResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type registerKcpTransactionResponse409 = {
+  data: void
+  status: 409
+}
+
+export type registerKcpTransactionResponse502 = {
+  data: void
+  status: 502
+}
+
+export type registerKcpTransactionResponseSuccess = (registerKcpTransactionResponse200) & {
+  headers: Headers;
+};
+export type registerKcpTransactionResponseError = (registerKcpTransactionResponse401 | registerKcpTransactionResponse404 | registerKcpTransactionResponse409 | registerKcpTransactionResponse502) & {
+  headers: Headers;
+};
+
+export type registerKcpTransactionResponse = (registerKcpTransactionResponseSuccess | registerKcpTransactionResponseError)
+
+export const getRegisterKcpTransactionUrl = () => {
+
+
+
+
+  return `/payments/kcp/register`
+}
+
+/**
+ * KCP 네이버페이(bz) 모바일 결제창 호출 전 거래등록. 본인의 `pending` 주문만 등록할 수
+ * 있고 금액은 서버 주문 금액으로 고정된다. 응답의 `approvalKey`·`payUrl`로 프론트가
+ * 모바일 결제창을 열고, 결제창 호출 폼의 `Ret_URL`은 거래등록 때 본 `retUrl`과
+ * 동일하게 싣는다.
+ * @summary KCP 네이버페이 모바일 거래등록
+ */
+export const registerKcpTransaction = async (kcpRegisterRequest: KcpRegisterRequest, options?: Parameters<typeof apiFetch>[1]): Promise<registerKcpTransactionResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<registerKcpTransactionResponse>(getRegisterKcpTransactionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(kcpRegisterRequest)
+  }
+);}
+
+
+
+
+
+export const getRegisterKcpTransactionMutationKey = () => ['registerKcpTransaction'] as const;
+
+export const getRegisterKcpTransactionMutationOptions = <TError = UnauthorizedResponse | NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerKcpTransaction>>, TError,RegisterKcpTransactionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof registerKcpTransaction>>, TError,RegisterKcpTransactionMutationVariables, TContext> => {
+
+const mutationKey = getRegisterKcpTransactionMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof registerKcpTransaction>>, RegisterKcpTransactionMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  registerKcpTransaction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RegisterKcpTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof registerKcpTransaction>>>
+    export type RegisterKcpTransactionMutationBody = KcpRegisterRequest
+    export type RegisterKcpTransactionMutationError = UnauthorizedResponse | NotFoundResponse | void
+    export type RegisterKcpTransactionMutationVariables = {data: KcpRegisterRequest}
+
+    /**
+ * @summary KCP 네이버페이 모바일 거래등록
+ */
+export const useRegisterKcpTransaction = <TError = UnauthorizedResponse | NotFoundResponse | void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof registerKcpTransaction>>, TError,RegisterKcpTransactionMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof registerKcpTransaction>>,
+        TError,
+        RegisterKcpTransactionMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRegisterKcpTransactionMutationOptions(options), queryClient);
+    }
+
+export type confirmKcpPaymentResponse200 = {
+  data: Order
+  status: 200
+}
+
+export type confirmKcpPaymentResponse400 = {
+  data: void
+  status: 400
+}
+
+export type confirmKcpPaymentResponse401 = {
+  data: UnauthorizedResponse
+  status: 401
+}
+
+export type confirmKcpPaymentResponse404 = {
+  data: NotFoundResponse
+  status: 404
+}
+
+export type confirmKcpPaymentResponse409 = {
+  data: void
+  status: 409
+}
+
+export type confirmKcpPaymentResponse502 = {
+  data: void
+  status: 502
+}
+
+export type confirmKcpPaymentResponseSuccess = (confirmKcpPaymentResponse200) & {
+  headers: Headers;
+};
+export type confirmKcpPaymentResponseError = (confirmKcpPaymentResponse400 | confirmKcpPaymentResponse401 | confirmKcpPaymentResponse404 | confirmKcpPaymentResponse409 | confirmKcpPaymentResponse502) & {
+  headers: Headers;
+};
+
+export type confirmKcpPaymentResponse = (confirmKcpPaymentResponseSuccess | confirmKcpPaymentResponseError)
+
+export const getConfirmKcpPaymentUrl = () => {
+
+
+
+
+  return `/payments/kcp/confirm`
+}
+
+/**
+ * KCP 네이버페이 PC 결제창 콜백(`m_Completepayment`) 이후 클라이언트가 호출하는
+ * 승인 엔드포인트. 결제창 인증 결과(encData·encInfo)를 KCP SPL 승인 API로 제출하고
+ * `res_cd`·응답 금액·거래번호(tno)를 서버 주문과 대조한 뒤, 결제 저장 + 주문 확정을
+ * 하나의 트랜잭션으로 처리한다. 이미 `paid`인 주문은 PG 재호출 없이 멱등 처리하고,
+ * 승인 후 확정이 불가능한 경우는 KCP 취소로 보상한다(실패 시 `refund_pending`).
+ * @summary KCP 네이버페이 승인(PC 결제창 콜백 이후)
+ */
+export const confirmKcpPayment = async (kcpConfirmRequest: KcpConfirmRequest, options?: Parameters<typeof apiFetch>[1]): Promise<confirmKcpPaymentResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<confirmKcpPaymentResponse>(getConfirmKcpPaymentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(kcpConfirmRequest)
+  }
+);}
+
+
+
+
+
+export const getConfirmKcpPaymentMutationKey = () => ['confirmKcpPayment'] as const;
+
+export const getConfirmKcpPaymentMutationOptions = <TError = void | UnauthorizedResponse | NotFoundResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmKcpPayment>>, TError,ConfirmKcpPaymentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmKcpPayment>>, TError,ConfirmKcpPaymentMutationVariables, TContext> => {
+
+const mutationKey = getConfirmKcpPaymentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmKcpPayment>>, ConfirmKcpPaymentMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  confirmKcpPayment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmKcpPaymentMutationResult = NonNullable<Awaited<ReturnType<typeof confirmKcpPayment>>>
+    export type ConfirmKcpPaymentMutationBody = KcpConfirmRequest
+    export type ConfirmKcpPaymentMutationError = void | UnauthorizedResponse | NotFoundResponse
+    export type ConfirmKcpPaymentMutationVariables = {data: KcpConfirmRequest}
+
+    /**
+ * @summary KCP 네이버페이 승인(PC 결제창 콜백 이후)
+ */
+export const useConfirmKcpPayment = <TError = void | UnauthorizedResponse | NotFoundResponse,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmKcpPayment>>, TError,ConfirmKcpPaymentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof confirmKcpPayment>>,
+        TError,
+        ConfirmKcpPaymentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getConfirmKcpPaymentMutationOptions(options), queryClient);
+    }
+
+export type handleKcpMobileReturnResponse200 = {
+  data: KcpMobileReturnOutcome
+  status: 200
+}
+
+export type handleKcpMobileReturnResponse429 = {
+  data: void
+  status: 429
+}
+
+export type handleKcpMobileReturnResponseSuccess = (handleKcpMobileReturnResponse200) & {
+  headers: Headers;
+};
+export type handleKcpMobileReturnResponseError = (handleKcpMobileReturnResponse429) & {
+  headers: Headers;
+};
+
+export type handleKcpMobileReturnResponse = (handleKcpMobileReturnResponseSuccess | handleKcpMobileReturnResponseError)
+
+export const getHandleKcpMobileReturnUrl = () => {
+
+
+
+
+  return `/payments/kcp/return`
+}
+
+/**
+ * KCP 모바일 결제창 인증 결과를 수신하는 공개 엔드포인트(사용자 인증 없음 —
+ * enc_data·enc_info를 capability로 쓰고 주문·금액 대사는 전부 DB 기준으로 다시 한다).
+ * 프론트 `/payments/kcp/return` 경로 핸들러가 KCP의 폼 POST를 JSON으로 변환해 호출하고,
+ * 반환된 결과(outcome)로 브라우저를 성공/실패 페이지에 리다이렉트한다. 호출 빈도
+ * 제한(스로틀)을 적용한다.
+ * @summary KCP 네이버페이 모바일 인증 결과 수신(Ret_URL)
+ */
+export const handleKcpMobileReturn = async (kcpMobileReturnFields: KcpMobileReturnFields, options?: Parameters<typeof apiFetch>[1]): Promise<handleKcpMobileReturnResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<handleKcpMobileReturnResponse>(getHandleKcpMobileReturnUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(kcpMobileReturnFields)
+  }
+);}
+
+
+
+
+
+export const getHandleKcpMobileReturnMutationKey = () => ['handleKcpMobileReturn'] as const;
+
+export const getHandleKcpMobileReturnMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleKcpMobileReturn>>, TError,HandleKcpMobileReturnMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof handleKcpMobileReturn>>, TError,HandleKcpMobileReturnMutationVariables, TContext> => {
+
+const mutationKey = getHandleKcpMobileReturnMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof handleKcpMobileReturn>>, HandleKcpMobileReturnMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  handleKcpMobileReturn(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type HandleKcpMobileReturnMutationResult = NonNullable<Awaited<ReturnType<typeof handleKcpMobileReturn>>>
+    export type HandleKcpMobileReturnMutationBody = KcpMobileReturnFields
+    export type HandleKcpMobileReturnMutationError = void
+    export type HandleKcpMobileReturnMutationVariables = {data: KcpMobileReturnFields}
+
+    /**
+ * @summary KCP 네이버페이 모바일 인증 결과 수신(Ret_URL)
+ */
+export const useHandleKcpMobileReturn = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof handleKcpMobileReturn>>, TError,HandleKcpMobileReturnMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof handleKcpMobileReturn>>,
+        TError,
+        HandleKcpMobileReturnMutationVariables,
+        TContext
+      > => {
+      return useMutation(getHandleKcpMobileReturnMutationOptions(options), queryClient);
     }
 
 export type getBizDashboardResponse200 = {

@@ -6,11 +6,13 @@ describe('security headers', () => {
     expect(contentSecurityPolicy).toContain("form-action 'self' https://*.tosspayments.com");
   });
 
-  it('allows the Naver Pay SDK and payment window for the bz subdomain checkout', () => {
-    expect(contentSecurityPolicy).toContain('https://nsp.pay.naver.com');
+  it('allows the KCP Naver Pay window for the bz subdomain checkout', () => {
+    expect(contentSecurityPolicy).toContain('https://testspay.kcp.co.kr');
+    expect(contentSecurityPolicy).toContain('https://spay.kcp.co.kr');
+    expect(contentSecurityPolicy).toContain('https://*.kcp.co.kr');
     expect(contentSecurityPolicy).toContain('https://*.pay.naver.com');
     expect(contentSecurityPolicy).toContain(
-      "form-action 'self' https://*.tosspayments.com https://*.pay.naver.com",
+      "form-action 'self' https://*.tosspayments.com https://*.kcp.co.kr https://*.pay.naver.com",
     );
   });
 });

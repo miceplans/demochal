@@ -85,15 +85,15 @@ export function PaymentSuccessPage() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get('orderId');
   const paymentKey = searchParams.get('paymentKey');
-  // 네이버페이(bz)는 returnUrl 쿼리로 결과가 돌아온다 — resultCode가 Success일 때만 paymentId로 승인한다.
-  const paymentId = searchParams.get('paymentId');
-  const naverPaySuccess = searchParams.get('resultCode') === 'Success' && Boolean(paymentId);
+  // 네이버페이(bz, KCP 표준결제창)는 서버가 이미 승인·정산을 끝내고 본 페이지로 리다이렉트한다 —
+  // 클라이언트 confirm 없이 주문 폴리만 수행한다(provider=kcp 표시).
+  const provider = searchParams.get('provider');
   const flow = searchParams.get('flow');
   // 'design'은 광고와 같은 기업(BIZ) 결제 흐름이지만 돌아갈 화면·안내 문구가 다르다.
   const isAdFlow = flow === 'ad' || flow === 'design';
   const adHome = flow === 'design' ? '/biz/design-products' : '/biz/ads';
   const adHomeLabel = flow === 'design' ? '디자인 상품으로 이동' : '광고 관리로 이동';
-  const valid = Boolean(orderId && paymentKey) || Boolean(orderId && naverPaySuccess);
+  const valid = Boolean(orderId && paymentKey) || Boolean(orderId && provider === 'kcp');
 
   const [state, setState] = useState<PaymentState>('checking');
   const [message, setMessage] = useState<string | null>(null);
@@ -148,17 +148,16 @@ export function PaymentSuccessPage() {
     };
 
     // 카드 인증 성공 후 서버 승인을 먼저 요청한다 — 토스 카드 결제는 이 승인 없이는
-    // 웹훅 없이 종료되지 않고, 네이버페이는 이 confirm이 정산 유일 진입점이다(서버의
-    // 가맹점 확인 API 재검증과 결제 저장+주문 확정 트랜잭션이 동기 처리된다). 성공하면
-    // 이후 폴리는 확정 상태를 확인만 하고, 실패(네트워크/PG 거절)는 폴리로 평가한다.
+    // 웹훅 없이 종료되지 않는다(서버의 PG 재검증과 결제 저장+주문 확정 트랜잭션이 동기 처리된다).
+    // 네이버페이(KCP)는 결제창 콜백(PC)·모바일 Ret_URL(서버)에서 이미 정산했으므로 생략한다.
     void (async () => {
       try {
-        if (naverPaySuccess && orderId && paymentId) {
-          await adApi.payments.confirm({ orderId, provider: 'naverpay', paymentId });
-        } else {
+        if (provider === 'kcp' || !orderId) {
+          // 이미 정산된 흐름 — 폴리만 수행한다.
+        } else if (paymentKey) {
           const params = new URLSearchParams(window.location.search);
           const amount = Number(params.get('amount'));
-          if (paymentKey && Number.isFinite(amount) && amount > 0) {
+          if (Number.isFinite(amount) && amount > 0) {
             await adApi.payments.confirm({ orderId, paymentKey, amount });
           }
         }
@@ -173,7 +172,7 @@ export function PaymentSuccessPage() {
       controller.abort();
       if (timer) clearTimeout(timer);
     };
-  }, [valid, orderId, paymentKey, paymentId, naverPaySuccess, isAdFlow]);
+  }, [valid, orderId, paymentKey, provider, isAdFlow]);
 
   if (!valid) {
     return (
