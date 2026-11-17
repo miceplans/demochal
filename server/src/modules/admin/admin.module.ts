@@ -6,6 +6,7 @@ import { NotificationsModule } from '../notifications/notifications.module.js';
 import { AdminController } from './admin.controller.js';
 import { AdminSettingsModule } from './admin-settings.module.js';
 import { AdminService } from './admin.service.js';
+import { AdminVerificationsService } from './admin.verifications.service.js';
 import { EmailModule } from '../email/email.module.js';
 
 @Module({
@@ -18,6 +19,6 @@ import { EmailModule } from '../email/email.module.js';
     EmailModule,
   ],
   controllers: [AdminController],
-  providers: [AdminService],
+  providers: [AdminService, AdminVerificationsService],
 })
 export class AdminModule {}
