@@ -259,14 +259,26 @@ export class PaymentsService {
           tranCd: dto.tranCd,
         });
       } catch (error) {
-        // 승인 자체는 됐고 응답 금액만 어긋난 경우 — 이미 청구된 결제를 취소로 보상한다.
+        // 승인 자체는 됐고 응답 금액만 어긋난 경우 — 이미 청구된 결제다. 다른 주문에 이미
+        // 바인딩된 tno는 우리 것이 아니므로 취소하지 않고, 우리 주문 것이면 취소로 보상한다.
         if (error instanceof KcpAmountMismatchError) {
-          await this.compensateKcpIfUnsettleable(
-            new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.'),
-            order.id,
-            error.tno,
-            order.amount,
-          );
+          const [bound] = await this.db
+            .select({ orderId: payments.orderId })
+            .from(payments)
+            .where(and(eq(payments.provider, 'kcp'), eq(payments.providerPaymentKey, error.tno)))
+            .limit(1);
+          if (bound && bound.orderId !== order.id) {
+            this.logger.warn(
+              `Not compensating KCP payment bound to another order (tno ${error.tno})`,
+            );
+          } else {
+            await this.compensateKcpIfUnsettleable(
+              new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.'),
+              order.id,
+              error.tno,
+              error.approvedAmount,
+            );
+          }
           throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
         }
         throw error;
@@ -327,13 +339,21 @@ export class PaymentsService {
     amount: number,
   ): Promise<'skipped' | 'refunded' | 'failed'> {
     if (!(error instanceof ConflictException)) {
-      // 승인 후 트랜잭션 실패 — 커밋 여부를 주문 상태로 판별한다.
+      // 승인 후 트랜잭션 실패 — 커밋 여부를 주문 상태로 판별한다. 조회가 불가능하면
+      // 상태를 모르는 채 되돌릴 수 없는 취소를 하면 안 된다 — 흔적(로그)만 남기고
+      // 운영자가 KCP 거래내역과 주문을 수동 대사하도록 남긴다.
+      let order: { status: string } | null = null;
       try {
-        const order = await this.ordersService.findByIdInternal(orderId);
-        if (order.status === 'paid') return 'skipped'; // 정산은 커밋됐으니 취소하면 안 된다.
-      } catch {
-        // 주문 조회조차 실패하면 흔적은 남기고 계속 진행한다.
+        order = await this.ordersService.findByIdInternal(orderId);
+      } catch (lookupError) {
+        this.logger.error(
+          `Cannot verify order ${orderId} state after a failed settlement — ` +
+            `manual reconciliation required for KCP tno ${tno}`,
+          (lookupError as Error | undefined)?.stack,
+        );
+        return 'skipped';
       }
+      if (order.status === 'paid') return 'skipped'; // 정산은 커밋됐으니 취소하면 안 된다.
     }
     try {
       await cancelKcpPayment({ tno, cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.' });
@@ -346,7 +366,10 @@ export class PaymentsService {
       return 'failed';
     }
     this.logger.warn(`Canceled KCP payment for unsettleable order ${orderId}`);
-    await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'canceled');
+    // KCP 보상은 주문이 여전히 pending일 때만 기록한다 — 같은 주문의 다른 승인(tno2)이
+    // 그사이 정산을 커밋했을 때 cancelOrder가 Conflict로 트랜잭션을 롤백시켜, 이미 paid인
+    // 결제 row·주문을 취소로 덮어쓰는 경쟁 상태를 막는다.
+    await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'canceled', ['pending']);
     return 'refunded';
   }
 
@@ -510,6 +533,9 @@ export class PaymentsService {
     provider: 'toss' | 'naverpay' | 'kcp',
     payment: { paymentKey: string; amount: number },
     status: 'canceled' | 'refund_pending',
+    // 주문 취소가 허용되는 출발 상태 — KCP 보상처럼 pending에서만 기록해야 하는 경로가
+    // 있어 기본값(pending·paid)을 그대로 두고 필요한 경로만 좁힌다.
+    orderAllowedFrom: string[] = ['pending', 'paid'],
   ): Promise<void> {
     try {
       await this.db.transaction(async (tx) => {
@@ -520,7 +546,8 @@ export class PaymentsService {
           amount: payment.amount,
           status,
         });
-        if (status === 'canceled') await this.ordersService.cancelOrder(tx, orderId);
+        if (status === 'canceled')
+          await this.ordersService.cancelOrder(tx, orderId, orderAllowedFrom);
       });
     } catch (error) {
       this.logger.error(

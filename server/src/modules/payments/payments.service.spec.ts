@@ -404,7 +404,10 @@ describe('PaymentsService', () => {
     expect(url).toBe('https://api.tosspayments.com/v1/payments/pay-key-1/cancel');
     expect(init.method).toBe('POST');
     expect(init.headers['Idempotency-Key']).toBe('cancel:order-1');
-    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', [
+      'pending',
+      'paid',
+    ]);
   });
 
   it('records refund_pending and rethrows when the compensating cancel fails', async () => {
@@ -1326,7 +1329,10 @@ describe('PaymentsService', () => {
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', provider: 'naverpay', status: 'canceled' }),
       );
-      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', [
+        'pending',
+        'paid',
+      ]);
     });
   });
 
@@ -1499,7 +1505,48 @@ describe('PaymentsService', () => {
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', provider: 'kcp', status: 'canceled' }),
       );
-      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+      // KCP 보상은 주문이 pending일 때만 취소로 기록한다(경쟁 승인의 paid 정산을 덮지 않게).
+      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1', ['pending']);
+    });
+
+    it('does not compensate a mismatched approval when the tno is bound to another order', async () => {
+      const { KcpAmountMismatchError } = await import('./kcp.client.js');
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockRejectedValue(
+        new KcpAmountMismatchError('kcp-tno-x', 40000, 50000),
+      );
+      // 이미 다른 주문의 결제 row에 바인딩된 tno — 다른 주문 결제를 취소하면 안 된다.
+      const { db, insertValues } = createDbStub({ orderId: 'order-other' });
+      const service = new PaymentsService(db, createKcpOrders() as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toThrow('결제 정보가 주문 내용과 일치하지 않습니다');
+
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('skips the cancel when the order state cannot be read after a transient failure', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      const { db, insertValues } = createDbStub(null);
+      db.transaction = vi.fn().mockRejectedValue(new Error('db timeout'));
+      // 정산 직후 DB 장애로 주문 상태 조회마저 실패하는 경우 — 상태를 모르는 채 취소하지 않는다.
+      const orders = {
+        ...createKcpOrders(),
+        findByIdInternal: vi.fn().mockRejectedValue(new Error('db down')),
+      };
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toThrow('db timeout');
+
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
     });
 
     it('cancels and records locally when the approval amount mismatches the order', async () => {
