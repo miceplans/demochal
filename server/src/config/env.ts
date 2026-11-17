@@ -129,6 +129,22 @@ const envSchema = z
         message: 'TOSS_WEBHOOK_ALLOWED_IPS must be set in production',
       });
     }
+    // KCP 운영 전환 안전장치 — 한쪽만 운영 값으로 바뀐 설정이 조용히 부팅되는 걸 막는다.
+    if (value.KCP_PRODUCTION === 'true' && (!value.KCP_SITE_CD || value.KCP_SITE_CD === 'T0000')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['KCP_SITE_CD'],
+        message: 'KCP_SITE_CD must be set to the contracted site code when KCP_PRODUCTION is true',
+      });
+    }
+    // KCP를 켠 운영 환경에서 취소 서명 개인키가 없으면 환불·보상 취소가 항상 실패한다 — 부팅을 막는다.
+    if (value.NODE_ENV === 'production' && value.KCP_SITE_CD && !value.KCP_PRIVATE_KEY.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['KCP_PRIVATE_KEY'],
+        message: 'KCP_PRIVATE_KEY must be set in production when KCP_SITE_CD is configured',
+      });
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);

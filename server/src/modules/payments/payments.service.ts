@@ -22,6 +22,7 @@ import {
   fetchNaverPayPaymentDetail,
 } from './naverpay.client.js';
 import { approveKcpPayment, cancelKcpPayment, registerKcpTransaction } from './kcp.client.js';
+import { KcpAmountMismatchError } from './kcp.client.js';
 
 // refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
 // 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
@@ -206,17 +207,18 @@ export class PaymentsService {
     flow?: 'ad' | 'design';
     code?: string;
   }> {
-    const orderId = fields.ordr_idxx?.trim() || undefined;
-    const flow =
-      fields.param_opt_1 === 'ad' || fields.param_opt_1 === 'design'
-        ? fields.param_opt_1
-        : undefined;
+    // 공개 엔드포인트라 비문자열(객체·숫자) 필드가 올 수 있다 — 로직에 쓰는 값만 문자열로 좁혀 쓴다.
+    const asString = (value: unknown): string | undefined =>
+      typeof value === 'string' && value.trim() ? value : undefined;
+    const orderId = asString(fields?.ordr_idxx)?.trim() || undefined;
+    const paramOpt1 = asString(fields?.param_opt_1);
+    const flow = paramOpt1 === 'ad' || paramOpt1 === 'design' ? paramOpt1 : undefined;
     // 인증 실패(사용자 취소 res_cd 3001 포함)는 승인 요청 없이 실패 페이지로 본다.
-    if (fields.res_cd !== '0000') {
-      return { outcome: 'failed', orderId, flow, code: fields.res_cd || 'res_error' };
+    if (asString(fields?.res_cd) !== '0000') {
+      return { outcome: 'failed', orderId, flow, code: asString(fields?.res_cd) || 'res_error' };
     }
-    const encData = fields.enc_data;
-    const encInfo = fields.enc_info;
+    const encData = asString(fields?.enc_data);
+    const encInfo = asString(fields?.enc_info);
     if (!orderId || !encData || !encInfo) {
       this.logger.warn('Ignoring KCP mobile return with missing auth fields');
       return { outcome: 'failed', orderId, flow, code: 'res_error' };
@@ -224,7 +226,7 @@ export class PaymentsService {
 
     try {
       const order = await this.ordersService.findByIdInternal(orderId);
-      await this.confirmKcpOrder(order, { encData, encInfo, tranCd: fields.tran_cd });
+      await this.confirmKcpOrder(order, { encData, encInfo, tranCd: asString(fields?.tran_cd) });
       return { outcome: 'success', orderId, flow };
     } catch (error) {
       // 이미 확정된 주문의 KCP 재전송은 성공으로 수렴하고, 나머지 실패는 실패 페이지로 본다.
@@ -247,13 +249,29 @@ export class PaymentsService {
       throw new ConflictException('결제할 수 없는 주문입니다.');
     }
 
-    const approval = await approveKcpPayment({
-      orderId: order.id,
-      amount: order.amount,
-      encData: dto.encData,
-      encInfo: dto.encInfo,
-      tranCd: dto.tranCd,
-    });
+    const approval = await (async () => {
+      try {
+        return await approveKcpPayment({
+          orderId: order.id,
+          amount: order.amount,
+          encData: dto.encData,
+          encInfo: dto.encInfo,
+          tranCd: dto.tranCd,
+        });
+      } catch (error) {
+        // 승인 자체는 됐고 응답 금액만 어긋난 경우 — 이미 청구된 결제를 취소로 보상한다.
+        if (error instanceof KcpAmountMismatchError) {
+          await this.compensateKcpIfUnsettleable(
+            new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.'),
+            order.id,
+            error.tno,
+            order.amount,
+          );
+          throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+        }
+        throw error;
+      }
+    })();
 
     // tno는 KCP 결제 1건당 1개다. 이미 다른 주문의 결제 row에 바인딩된 tno로 confirm하면
     // 결제 1건으로 주문 2건이 정산된다 — 네이버페이 경로의 paymentId 대조와 같은 안전망.
@@ -296,9 +314,11 @@ export class PaymentsService {
   }
 
   /**
-   * KCP로 이미 승인됐지만 주문을 확정할 수 없게 된 경우(확인 창에서 취소 등) KCP 취소로
-   * 보상한다. 네이버페이 경로 compensateNaverPayIfUnsettleable과 동일 계약 — 취소마저
-   * 실패하면 refund_pending으로 남겨 워커의 재시도 스캔이 잡는다.
+   * KCP로 이미 승인됐지만 주문을 확정할 수 없게 된 경우 KCP 취소로 보상한다. 취소마저 실패하면
+   * refund_pending으로 남겨 워커의 재시도 스캔이 잡는다. ConflictException 외의 실패(DB 일시
+   * 오류 등)는 트랜잭션 커밋 여부를 주문 상태로 다시 읽어 판별한다 — 이미 paid면 정산 커밋으로
+   * 보상하지 않고, pending이면 승인만 남은 건으로 똑같이 보상한다. KCP에는 토스의 웹훅·재조회
+   * 같은 정산 안전망이 없어 토스보다 이 흔적이 중요하다.
    */
   private async compensateKcpIfUnsettleable(
     error: unknown,
@@ -306,7 +326,15 @@ export class PaymentsService {
     tno: string,
     amount: number,
   ): Promise<'skipped' | 'refunded' | 'failed'> {
-    if (!(error instanceof ConflictException)) return 'skipped';
+    if (!(error instanceof ConflictException)) {
+      // 승인 후 트랜잭션 실패 — 커밋 여부를 주문 상태로 판별한다.
+      try {
+        const order = await this.ordersService.findByIdInternal(orderId);
+        if (order.status === 'paid') return 'skipped'; // 정산은 커밋됐으니 취소하면 안 된다.
+      } catch {
+        // 주문 조회조차 실패하면 흔적은 남기고 계속 진행한다.
+      }
+    }
     try {
       await cancelKcpPayment({ tno, cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.' });
     } catch (cancelError) {

@@ -61,6 +61,23 @@ interface KcpApiResponse {
   [key: string]: unknown;
 }
 
+/**
+ * KCP 승인은 성공(res_cd 0000 + tno)했지만 응답 금액이 주문 금액과 다른 경우 — 이미 청구된
+ * 결제이므로 서비스가 tno로 취소 보상을 이어갈 수 있게 tno를 실어 던진다.
+ */
+export class KcpAmountMismatchError extends Error {
+  constructor(
+    readonly tno: string,
+    readonly approvedAmount: number,
+    readonly expectedAmount: number,
+  ) {
+    super(
+      `KCP approved amount ${approvedAmount} does not match the order amount ${expectedAmount}`,
+    );
+    this.name = 'KcpAmountMismatchError';
+  }
+}
+
 function assertKcpConfigured() {
   if (!env.kcpSiteCd || !env.kcpCertInfo) {
     throw new BadGatewayException('결제 서비스가 구성되지 않았습니다. 잠시 후 다시 시도해 주세요.');
@@ -170,6 +187,9 @@ export async function approveKcpPayment(input: {
       `KCP approval transport failed for order ${input.orderId}`,
       (error as Error | undefined)?.stack,
     );
+    // TODO: 이 타임아웃 직후 KCP에서 승인이 났을 수 있고, KCP에는 토스 paymentKey 재조회 같은
+    // 조회 수단을 붙이지 않았다. orphan 승인이 생기면 주문은 pending으로 남고 운영자가 KCP
+    // 관리자의 거래내역으로 찾아 취소해야 한다 — KCP 거래조회 API 연동으로 해소할 여지가 있다.
     throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
   });
 
@@ -180,16 +200,18 @@ export async function approveKcpPayment(input: {
     // Error body is not JSON — treat as a plain rejection below.
   }
   // 승인 후에도 KCP 응답 금액이 서버 주문 금액과 같은지 한 번 더 확인한다(8350 계약).
+  // res_cd=0000+tno까지 온 경우는 이미 청구된 결제 — 금액이 어긋나도 단순 거부만 하면
+  // 구매자가 청구만 당한 결제가 남으므로, 서비스가 취소 보상을 이어갈 수 있게 tno를 싣는다.
   const approvedAmount = payload?.amount === undefined ? input.amount : Number(payload.amount);
-  if (
-    !response.ok ||
-    payload?.res_cd !== '0000' ||
-    !payload.tno ||
-    !Number.isFinite(approvedAmount) ||
-    approvedAmount !== input.amount
-  ) {
+  if (!response.ok || payload?.res_cd !== '0000' || !payload.tno) {
     logger.error(`KCP approval rejected for order ${input.orderId}: HTTP ${response.status}`);
     throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+  if (!Number.isFinite(approvedAmount) || approvedAmount !== input.amount) {
+    logger.error(
+      `KCP approval amount mismatch for order ${input.orderId}: tno ${payload.tno} approved ${approvedAmount}, expected ${input.amount}`,
+    );
+    throw new KcpAmountMismatchError(payload.tno, approvedAmount, input.amount);
   }
   return { tno: payload.tno, amount: approvedAmount };
 }

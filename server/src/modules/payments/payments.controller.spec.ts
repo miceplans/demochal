@@ -165,4 +165,14 @@ describe('PaymentsController.handleTossWebhook', () => {
     );
     expect(TOSS_WEBHOOK_THROTTLE.default.limit).toBeLessThan(DEFAULT_THROTTLE.limit);
   });
+
+  it('applies the same webhook-grade throttle to the public KCP mobile return', () => {
+    const handler = PaymentsController.prototype.handleKcpMobileReturn;
+    expect(Reflect.getMetadata(THROTTLER_TTL + 'default', handler)).toBe(
+      TOSS_WEBHOOK_THROTTLE.default.ttl,
+    );
+    expect(Reflect.getMetadata(THROTTLER_LIMIT + 'default', handler)).toBe(
+      TOSS_WEBHOOK_THROTTLE.default.limit,
+    );
+  });
 });

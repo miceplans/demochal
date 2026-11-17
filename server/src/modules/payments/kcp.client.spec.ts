@@ -125,13 +125,20 @@ describe('kcp.client', () => {
     });
   });
 
-  it('rejects the approval when the KCP amount differs from the order amount', async () => {
+  it('throws KcpAmountMismatchError carrying the tno when the KCP amount differs from the order', async () => {
     const client = await loadClient(CONFIGURED);
     fetchMock.mockResolvedValue(jsonResponse({ res_cd: '0000', tno: 'tno-1', amount: '40000' }));
 
-    await expect(
-      client.approveKcpPayment({ orderId: 'order-1', amount: 50000, encData: 'e', encInfo: 'i' }),
-    ).rejects.toThrow('결제 승인에 실패했습니다');
+    const error = await client
+      .approveKcpPayment({ orderId: 'order-1', amount: 50000, encData: 'e', encInfo: 'i' })
+      .then(() => null)
+      .catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(client.KcpAmountMismatchError);
+    expect((error as InstanceType<typeof client.KcpAmountMismatchError>).tno).toBe('tno-1');
+    expect((error as InstanceType<typeof client.KcpAmountMismatchError>).approvedAmount).toBe(
+      40000,
+    );
   });
 
   it('rejects the approval when KCP returns a non-0000 res_cd', async () => {
@@ -179,7 +186,13 @@ describe('kcp.client', () => {
   });
 
   it('uses the production endpoints when KCP_PRODUCTION is true', async () => {
-    const client = await loadClient({ ...CONFIGURED, KCP_PRODUCTION: 'true' });
+    // KCP_PRODUCTION=true에서는 테스트 사이트코드(T0000) 사용이 부팅 검증에서 걸리므로
+    // 계약 사이트코드처럼 보이는 값으로 검증한다.
+    const client = await loadClient({
+      ...CONFIGURED,
+      KCP_SITE_CD: 'A1234',
+      KCP_PRODUCTION: 'true',
+    });
     fetchMock
       .mockResolvedValueOnce(jsonResponse({ res_cd: '0000', tno: 'tno-1', amount: '1000' }))
       .mockResolvedValueOnce(

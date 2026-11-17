@@ -45,9 +45,12 @@ export class PaymentsController {
   // 도착하는 공개 엔드포인트라 사용자 인증은 없다 — enc_data·enc_info 없이는 승인할 수 없고
   // 승인·정산은 서비스에서 주문·금액을 DB 기준으로 대조해 처리한다. 프론트의
   // /payments/kcp/return 경로 핸들러가 이 결과를 받아 브라우저를 성공/실패 페이지로 본다.
+  // 토스 웹훅과 같은 이유로 스로틀을 걸어 임의 orderId·enc_data로 KCP 승인 API를 대신
+  // 호출하는 증폭을 막는다.
   @Public()
   @Post('kcp/return')
   @HttpCode(200)
+  @Throttle(TOSS_WEBHOOK_THROTTLE)
   async handleKcpMobileReturn(@Body() body: Record<string, string>) {
     return this.paymentsService.handleKcpMobileReturn(body);
   }
