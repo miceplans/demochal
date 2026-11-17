@@ -881,16 +881,16 @@ export function BookmarksPage() {
         <BookmarkToolbar>
           <Row>
             {['마감임박', '최신', '인기'].map((x) => (
-              <Button
+              <SortButton
                 key={x}
                 tone="plain"
                 small
                 aria-pressed={sort === x}
-                className={sort === x ? 'selected' : undefined}
+                $selected={sort === x}
                 onClick={() => setSort(x)}
               >
                 {x}
-              </Button>
+              </SortButton>
             ))}
           </Row>
           <MobileOnly>
@@ -1295,9 +1295,9 @@ export function TeamApplicantsPage() {
               ) : (
                 <ApplicantTable>
                   <colgroup>
-                    <ApplicantColumn width="34%" />
-                    <ApplicantColumn width="36%" />
-                    <ApplicantColumn width="30%" />
+                    <ApplicantColumn $width="34%" />
+                    <ApplicantColumn $width="36%" />
+                    <ApplicantColumn $width="30%" />
                   </colgroup>
                   <thead>
                     <tr>
@@ -1877,7 +1877,12 @@ const NotificationDescription = styled.p({ marginTop: 24 });
 const SettingLabel = styled.p({ fontSize: 14, marginBottom: 4 });
 const SettingDescription = styled(Muted)({ fontSize: 12 });
 const InlineRow = styled(Row)({ alignItems: 'center', flexWrap: 'nowrap' });
-const ApplicantColumn = styled.col<{ width: string }>(({ width }) => ({ width }));
+const ApplicantColumn = styled.col<{ $width: string }>(({ $width }) => ({ width: $width }));
+const SortButton = styled(Button)<{ $selected?: boolean }>(({ $selected }) => ({
+  color: $selected ? c.primary : c.gray500,
+  border: 0,
+  padding: 0,
+}));
 const WarningText = styled(Muted)({ color: c.red });
 const SmallText = styled.p({ fontSize: 13 });
 const NotificationHeading = styled(Heading)({ fontSize: 14 });

@@ -110,7 +110,7 @@ export function describeNotification(type: string, payload: Record<string, unkno
   if (type === 'posting') {
     if (payload.kind === 'bookmark_open') return '북마크한 챌린지 참가접수가 시작되었어요';
     if (payload.kind === 'interest_new') return '관심분야 새 챌린지가 등록되었어요';
-    return '새 공고가 등록됐어요';
+    return '새 공고가 등록되었어요';
   }
   return '새 알림이 있어요';
 }
