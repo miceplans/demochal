@@ -19,9 +19,22 @@ vi.mock('./naverpay.client.js', async (importOriginal) => ({
   cancelNaverPayPayment: naverpayMocks.cancelNaverPayPayment,
 }));
 
-// retryRefundPendingPayments의 네이버페이 자격증명 판정 테스트를 위해 env를 보강한다.
+// KCP 클라이언트도 대역으로 교체해 서비스의 승인·보상·환불 분기만 검증한다.
+// 클라이언트 자체의 HTTP/서명 동작은 kcp.client.spec.ts가 검증한다.
+const kcpMocks = vi.hoisted(() => ({
+  registerKcpTransaction: vi.fn(),
+  approveKcpPayment: vi.fn(),
+  cancelKcpPayment: vi.fn(),
+}));
+vi.mock('./kcp.client.js', () => ({
+  registerKcpTransaction: kcpMocks.registerKcpTransaction,
+  approveKcpPayment: kcpMocks.approveKcpPayment,
+  cancelKcpPayment: kcpMocks.cancelKcpPayment,
+}));
+
+// retryRefundPendingPayments의 네이버페이/KCP 자격증명 판정 테스트를 위해 env를 보강한다.
 // 실제 env 값은 그대로 유지해 토스 경로 테스트에 영향을 주지 않는다.
-const envControl = vi.hoisted(() => ({ naverpayConfigured: true }));
+const envControl = vi.hoisted(() => ({ naverpayConfigured: true, kcpConfigured: true }));
 vi.mock('../../config/env.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../config/env.js')>();
   return {
@@ -36,6 +49,15 @@ vi.mock('../../config/env.js', async (importOriginal) => {
       },
       get naverpayChainId() {
         return envControl.naverpayConfigured ? 'np-chain' : '';
+      },
+      get kcpSiteCd() {
+        return envControl.kcpConfigured ? 'T0000' : '';
+      },
+      get kcpCertInfo() {
+        return envControl.kcpConfigured ? 'cert' : '';
+      },
+      get kcpPrivateKey() {
+        return envControl.kcpConfigured ? 'key' : '';
       },
     },
   };
@@ -1055,6 +1077,33 @@ describe('PaymentsService', () => {
       expect(orders.cancelOrder).toHaveBeenCalledWith(tx, 'order-1');
       expect(settle).toHaveBeenCalledWith(tx, 50000);
     });
+
+    it('cancels a KCP payment through the KCP cancel API', async () => {
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockResolvedValue(undefined);
+      const { db, tx, set, transaction } = createRefundDb({
+        ...paid,
+        provider: 'kcp',
+        providerPaymentKey: 'kcp-tno-1',
+        refundedAmount: 0,
+      });
+      const orders = createOrdersStub('paid');
+      const service = new PaymentsService(db, orders as any);
+      const settle = vi.fn().mockResolvedValue(undefined);
+
+      const refunded = await service.refundPaidOrder('order-1', '단순 변심', settle);
+
+      expect(refunded).toBe(50000);
+      expect(kcpMocks.cancelKcpPayment).toHaveBeenCalledWith({
+        tno: 'kcp-tno-1',
+        cancelReason: '단순 변심',
+      });
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(transaction).toHaveBeenCalledTimes(1);
+      expect(set).toHaveBeenCalledWith({ status: 'canceled' });
+      expect(orders.cancelOrder).toHaveBeenCalledWith(tx, 'order-1');
+      expect(settle).toHaveBeenCalledWith(tx, 50000);
+    });
   });
 
   describe('confirmPayment — Naver Pay(bz)', () => {
@@ -1276,6 +1325,305 @@ describe('PaymentsService', () => {
         expect.objectContaining({ orderId: 'order-1', provider: 'naverpay', status: 'canceled' }),
       );
       expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    });
+  });
+
+  describe('KCP 네이버페이(bz) — register/confirm/mobile return', () => {
+    function createKcpOrders(orderStatus = 'pending') {
+      return {
+        findById: vi.fn().mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
+        findByIdInternal: vi
+          .fn()
+          .mockResolvedValue({ id: 'order-1', amount: 50000, status: orderStatus }),
+        settleOrderPaid: vi.fn().mockResolvedValue({}),
+        cancelOrder: vi.fn().mockResolvedValue({}),
+      };
+    }
+
+    const approveOk = { tno: 'kcp-tno-1', amount: 50000 };
+
+    it('registers only a pending own order with the server-side amount', async () => {
+      kcpMocks.registerKcpTransaction.mockReset();
+      kcpMocks.registerKcpTransaction.mockResolvedValue({
+        approvalKey: 'ak',
+        payUrl: 'https://testsmpay.kcp.co.kr/pay/mobileGW.kcp',
+        retUrl: 'http://localhost:3000/payments/kcp/return',
+      });
+      const orders = createKcpOrders();
+      const service = new PaymentsService({} as any, orders as any);
+
+      await expect(
+        service.registerKcpTransaction('user-1', {
+          orderId: 'order-1',
+          orderName: '광고 상품',
+          flow: 'ad',
+        }),
+      ).resolves.toMatchObject({ approvalKey: 'ak' });
+
+      expect(kcpMocks.registerKcpTransaction).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        goodName: '광고 상품',
+        amount: 50000,
+        flow: 'ad',
+      });
+    });
+
+    it('rejects the trade registration for a non-pending order', async () => {
+      kcpMocks.registerKcpTransaction.mockReset();
+      const orders = createKcpOrders('canceled');
+      const service = new PaymentsService({} as any, orders as any);
+
+      await expect(
+        service.registerKcpTransaction('user-1', { orderId: 'order-1', orderName: '광고' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(kcpMocks.registerKcpTransaction).not.toHaveBeenCalled();
+    });
+
+    it('approves via the KCP API and settles payment+order in one transaction', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      const { db, tx, insertValues } = createDbStub(null);
+      const orders = createKcpOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmKcpPayment('user-1', {
+        orderId: 'order-1',
+        encData: 'enc-d',
+        encInfo: 'enc-i',
+        tranCd: '00100000',
+      });
+
+      expect(kcpMocks.approveKcpPayment).toHaveBeenCalledWith({
+        orderId: 'order-1',
+        amount: 50000,
+        encData: 'enc-d',
+        encInfo: 'enc-i',
+        tranCd: '00100000',
+      });
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: 'order-1',
+          provider: 'kcp',
+          providerPaymentKey: 'kcp-tno-1',
+          amount: 50000,
+          status: 'paid',
+        }),
+      );
+      expect(orders.settleOrderPaid).toHaveBeenCalledWith(tx, 'order-1');
+    });
+
+    it('is idempotent for an already paid order without calling KCP', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      const { db, insertValues } = createDbStub();
+      const orders = createKcpOrders('paid');
+      const service = new PaymentsService(db, orders as any);
+
+      await service.confirmKcpPayment('user-1', {
+        orderId: 'order-1',
+        encData: 'enc-d',
+        encInfo: 'enc-i',
+      });
+
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('rejects when the KCP approval fails without settling anything', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockRejectedValue(
+        new BadRequestException('결제 승인에 실패했습니다'),
+      );
+      const { db, transaction, insertValues } = createDbStub(null);
+      const orders = createKcpOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(transaction).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('rejects a tno already bound to another order', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      const { db, transaction, insertValues } = createDbStub({ orderId: 'order-other' });
+      const orders = createKcpOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toThrow('결제 정보가 주문 내용과 일치하지 않습니다');
+      expect(transaction).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
+    it('rejects a concurrent tno reuse caught by the unique index without canceling', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      const { db } = createDbStub(null);
+      db.transaction = vi
+        .fn()
+        .mockRejectedValue(Object.assign(new Error('dup'), { code: '23505' }));
+      const service = new PaymentsService(db, createKcpOrders() as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('compensates with a KCP cancel when the order can no longer be settled', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      kcpMocks.cancelKcpPayment.mockResolvedValue(undefined);
+      const { db, insertValues } = createDbStub(null);
+      const orders = createKcpOrders();
+      orders.settleOrderPaid.mockRejectedValue(new ConflictException('취소된 주문입니다.'));
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(kcpMocks.cancelKcpPayment).toHaveBeenCalledWith({
+        tno: 'kcp-tno-1',
+        cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+      });
+      expect(insertValues).toHaveBeenLastCalledWith(
+        expect.objectContaining({ orderId: 'order-1', provider: 'kcp', status: 'canceled' }),
+      );
+      expect(orders.cancelOrder).toHaveBeenCalledWith(expect.anything(), 'order-1');
+    });
+
+    it('maps the mobile return fields to a success outcome after settling', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      const { db } = createDbStub(null);
+      const orders = createKcpOrders();
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.handleKcpMobileReturn({
+          ordr_idxx: 'order-1',
+          res_cd: '0000',
+          res_msg: '정상처리',
+          enc_data: 'enc-d',
+          enc_info: 'enc-i',
+          tran_cd: '00100000',
+          param_opt_1: 'ad',
+        }),
+      ).resolves.toEqual({ outcome: 'success', orderId: 'order-1', flow: 'ad' });
+      expect(orders.settleOrderPaid).toHaveBeenCalled();
+    });
+
+    it('maps a user cancel (res_cd 3001) to a failed outcome without approving', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      const service = new PaymentsService({} as any, createKcpOrders() as any);
+
+      await expect(
+        service.handleKcpMobileReturn({
+          ordr_idxx: 'order-1',
+          res_cd: '3001',
+          res_msg: '사용자취소',
+          param_opt_1: 'design',
+        }),
+      ).resolves.toEqual({ outcome: 'failed', orderId: 'order-1', flow: 'design', code: '3001' });
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('maps a confirm failure to a failed outcome with a generic code', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockRejectedValue(new Error('transport'));
+      const { db } = createDbStub(null);
+      const service = new PaymentsService(db, createKcpOrders() as any);
+
+      await expect(
+        service.handleKcpMobileReturn({
+          ordr_idxx: 'order-1',
+          res_cd: '0000',
+          enc_data: 'enc-d',
+          enc_info: 'enc-i',
+        }),
+      ).resolves.toEqual({ outcome: 'failed', orderId: 'order-1', code: 'confirm_failed' });
+    });
+
+    it('ignores a return with missing auth fields', async () => {
+      const service = new PaymentsService({} as any, createKcpOrders() as any);
+
+      await expect(
+        service.handleKcpMobileReturn({ ordr_idxx: 'order-1', res_cd: '0000' }),
+      ).resolves.toEqual({ outcome: 'failed', orderId: 'order-1', code: 'res_error' });
+    });
+  });
+
+  describe('retryRefundPendingPayments — KCP(bz)', () => {
+    function createScanDb(rows: Record<string, unknown>[]) {
+      const limit = vi.fn().mockResolvedValue(rows);
+      const orderBy = vi.fn(() => ({ limit }));
+      const where = vi.fn(() => ({ orderBy }));
+      const from = vi.fn(() => ({ where }));
+      const select = vi.fn(() => ({ from }));
+      const insertValues = vi.fn(() => ({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+        onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
+      }));
+      const insert = vi.fn(() => ({ values: insertValues }));
+      const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+      const update = vi.fn(() => ({ set }));
+      const db: any = { select, insert, update };
+      db.transaction = vi.fn(async (fn: (tx: unknown) => unknown) => fn(db));
+      return { db, insertValues, limit };
+    }
+
+    const pendingRefundRow = {
+      id: 'pay-1',
+      orderId: 'order-1',
+      provider: 'kcp',
+      providerPaymentKey: 'kcp-tno-1',
+      amount: 50000,
+      status: 'refund_pending',
+      refundRetryCount: 0,
+      refundRetriedAt: null,
+    };
+
+    it('cancels a KCP refund_pending row via the KCP cancel API', async () => {
+      envControl.kcpConfigured = true;
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockResolvedValue(undefined);
+      const { db, insertValues } = createScanDb([pendingRefundRow]);
+      const orders = { findByIdInternal: vi.fn(), settleOrderPaid: vi.fn(), cancelOrder: vi.fn() };
+      const service = new PaymentsService(db, orders as never);
+
+      const summary = await service.retryRefundPendingPayments();
+
+      expect(kcpMocks.cancelKcpPayment).toHaveBeenCalledWith({
+        tno: 'kcp-tno-1',
+        cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+      });
+      expect(summary).toMatchObject({ scanned: 1, attempted: 1, refunded: 1, failed: 0 });
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ orderId: 'order-1', provider: 'kcp', status: 'canceled' }),
+      );
+      envControl.kcpConfigured = true;
+    });
+
+    it('skips the retry without burning attempts when KCP is not configured', async () => {
+      envControl.kcpConfigured = false;
+      kcpMocks.cancelKcpPayment.mockReset();
+      const { db, insertValues } = createScanDb([pendingRefundRow]);
+      const service = new PaymentsService(db, { cancelOrder: vi.fn() } as never);
+
+      const summary = await service.retryRefundPendingPayments();
+
+      expect(summary).toMatchObject({ scanned: 1, attempted: 0, refunded: 0, failed: 0 });
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
+      envControl.kcpConfigured = true;
     });
   });
 

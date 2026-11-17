@@ -14,11 +14,14 @@ import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js'
 import { payments } from '../../db/schema.js';
 import { OrdersService } from '../orders/orders.service.js';
 import type { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
+import type { KcpConfirmDto } from './dto/kcp-confirm.dto.js';
+import type { KcpRegisterDto } from './dto/kcp-register.dto.js';
 import {
   NAVERPAY_PAYMENT_COMPLETED,
   cancelNaverPayPayment,
   fetchNaverPayPaymentDetail,
 } from './naverpay.client.js';
+import { approveKcpPayment, cancelKcpPayment, registerKcpTransaction } from './kcp.client.js';
 
 // refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
 // 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
@@ -165,6 +168,158 @@ export class PaymentsService {
       await this.compensateIfUnsettleable(error, order.id, tossPayment);
       throw error;
     }
+  }
+
+  /**
+   * KCP 네이버페이 모바일 결제창 호출 전 거래등록. 본인의 pending 주문만 등록할 수 있고,
+   * 금액은 서버 주문 금액으로 고정해 거래등록 자체의 금액 위변조를 막는다.
+   * 응답의 approvalKey·PayUrl로 프론트가 모바일 결제창을 연다.
+   */
+  async registerKcpTransaction(userId: string, dto: KcpRegisterDto) {
+    const order = await this.ordersService.findById(dto.orderId, userId);
+    if (order.status !== 'pending') {
+      throw new ConflictException('결제할 수 없는 주문입니다.');
+    }
+    return registerKcpTransaction({
+      orderId: order.id,
+      goodName: dto.orderName,
+      amount: order.amount,
+      flow: dto.flow,
+    });
+  }
+
+  /** KCP 네이버페이 PC 결제창 콜백 경로 — 인증된 신청자 본인 주문만 승인한다. */
+  async confirmKcpPayment(userId: string, dto: KcpConfirmDto) {
+    const order = await this.ordersService.findById(dto.orderId, userId);
+    return this.confirmKcpOrder(order, dto);
+  }
+
+  /**
+   * KCP 모바일 결제창 인증 결과(Ret_URL) 처리. 가맹점 브라우저가 KCP 창에서 전체 페이지로
+   * 도착하는 공개 진입점이므로 사용자 인증 대신 enc_data·enc_info(KCP 발급 암호화 값)를
+   * capability로 쓰고, 주문·금액 대사는 전부 DB 기준으로 다시 한다. 결과를 리다이렉트
+   * 대상으로 번역해 컨트롤러에 넘긴다 — 예외가 나도 브라우저에는 실패 페이지로 본다.
+   */
+  async handleKcpMobileReturn(fields: Record<string, string | undefined>): Promise<{
+    outcome: 'success' | 'failed';
+    orderId?: string;
+    flow?: 'ad' | 'design';
+    code?: string;
+  }> {
+    const orderId = fields.ordr_idxx?.trim() || undefined;
+    const flow =
+      fields.param_opt_1 === 'ad' || fields.param_opt_1 === 'design'
+        ? fields.param_opt_1
+        : undefined;
+    // 인증 실패(사용자 취소 res_cd 3001 포함)는 승인 요청 없이 실패 페이지로 본다.
+    if (fields.res_cd !== '0000') {
+      return { outcome: 'failed', orderId, flow, code: fields.res_cd || 'res_error' };
+    }
+    const encData = fields.enc_data;
+    const encInfo = fields.enc_info;
+    if (!orderId || !encData || !encInfo) {
+      this.logger.warn('Ignoring KCP mobile return with missing auth fields');
+      return { outcome: 'failed', orderId, flow, code: 'res_error' };
+    }
+
+    try {
+      const order = await this.ordersService.findByIdInternal(orderId);
+      await this.confirmKcpOrder(order, { encData, encInfo, tranCd: fields.tran_cd });
+      return { outcome: 'success', orderId, flow };
+    } catch (error) {
+      // 이미 확정된 주문의 KCP 재전송은 성공으로 수렴하고, 나머지 실패는 실패 페이지로 본다.
+      this.logger.warn(`KCP mobile return confirm failed for order ${orderId}`);
+      return { outcome: 'failed', orderId, flow, code: 'confirm_failed' };
+    }
+  }
+
+  /**
+   * KCP 네이버페이 승인 공통 코어(PC confirm·모바일 return이 함께 쓴다). 토스 confirm과
+   * 동일한 계약 — KCP 승인 API의 res_cd·금액 대사, 거래번호(tno)의 주문 간 재사용 방어,
+   * 결제 저장+주문 확정 트랜잭션, 확정 불가 시 KCP 취소 보상.
+   */
+  private async confirmKcpOrder(
+    order: { id: string; amount: number; status: string },
+    dto: { encData: string; encInfo: string; tranCd?: string },
+  ) {
+    if (order.status === 'paid') return order;
+    if (order.status !== 'pending') {
+      throw new ConflictException('결제할 수 없는 주문입니다.');
+    }
+
+    const approval = await approveKcpPayment({
+      orderId: order.id,
+      amount: order.amount,
+      encData: dto.encData,
+      encInfo: dto.encInfo,
+      tranCd: dto.tranCd,
+    });
+
+    // tno는 KCP 결제 1건당 1개다. 이미 다른 주문의 결제 row에 바인딩된 tno로 confirm하면
+    // 결제 1건으로 주문 2건이 정산된다 — 네이버페이 경로의 paymentId 대조와 같은 안전망.
+    const [bound] = await this.db
+      .select({ orderId: payments.orderId })
+      .from(payments)
+      .where(and(eq(payments.provider, 'kcp'), eq(payments.providerPaymentKey, approval.tno)))
+      .limit(1);
+    if (bound && bound.orderId !== order.id) {
+      this.logger.warn(`Rejected KCP tno reuse across orders for order ${order.id}`);
+      throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+    }
+
+    try {
+      return await this.db.transaction(async (tx) => {
+        await this.persistPayment(tx, {
+          orderId: order.id,
+          provider: 'kcp',
+          providerPaymentKey: approval.tno,
+          amount: order.amount,
+          status: 'paid',
+          approvedAt: new Date(),
+        });
+
+        return this.ordersService.settleOrderPaid(tx, order.id);
+      });
+    } catch (error) {
+      // 사전 SELECT를 동시에 통과한 병렬 confirm은 payments(provider, provider_payment_key)
+      // unique 인덱스가 막는다 — 정산 불가(보상 취소 대상)가 아니라 검증 실패로 거부한다.
+      if (
+        (error as { code?: string; cause?: { code?: string } })?.code === '23505' ||
+        (error as { cause?: { code?: string } })?.cause?.code === '23505'
+      ) {
+        this.logger.warn(`Rejected concurrent KCP tno reuse for order ${order.id}`);
+        throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
+      }
+      await this.compensateKcpIfUnsettleable(error, order.id, approval.tno, order.amount);
+      throw error;
+    }
+  }
+
+  /**
+   * KCP로 이미 승인됐지만 주문을 확정할 수 없게 된 경우(확인 창에서 취소 등) KCP 취소로
+   * 보상한다. 네이버페이 경로 compensateNaverPayIfUnsettleable과 동일 계약 — 취소마저
+   * 실패하면 refund_pending으로 남겨 워커의 재시도 스캔이 잡는다.
+   */
+  private async compensateKcpIfUnsettleable(
+    error: unknown,
+    orderId: string,
+    tno: string,
+    amount: number,
+  ): Promise<'skipped' | 'refunded' | 'failed'> {
+    if (!(error instanceof ConflictException)) return 'skipped';
+    try {
+      await cancelKcpPayment({ tno, cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.' });
+    } catch (cancelError) {
+      this.logger.error(
+        `Compensating KCP cancel failed for order ${orderId} — manual refund required`,
+        (cancelError as Error | undefined)?.stack,
+      );
+      await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'refund_pending');
+      return 'failed';
+    }
+    this.logger.warn(`Canceled KCP payment for unsettleable order ${orderId}`);
+    await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'canceled');
+    return 'refunded';
   }
 
   /**
@@ -324,7 +479,7 @@ export class PaymentsService {
 
   private async recordLocally(
     orderId: string,
-    provider: 'toss' | 'naverpay',
+    provider: 'toss' | 'naverpay' | 'kcp',
     payment: { paymentKey: string; amount: number },
     status: 'canceled' | 'refund_pending',
   ): Promise<void> {
@@ -392,9 +547,11 @@ export class PaymentsService {
       if (dueAt > now.getTime()) continue;
 
       const providerConfigured =
-        payment.provider === 'naverpay'
-          ? Boolean(env.naverpayClientId && env.naverpayClientSecret && env.naverpayChainId)
-          : Boolean(env.tossSecretKey);
+        payment.provider === 'kcp'
+          ? Boolean(env.kcpSiteCd && env.kcpCertInfo && env.kcpPrivateKey)
+          : payment.provider === 'naverpay'
+            ? Boolean(env.naverpayClientId && env.naverpayClientSecret && env.naverpayChainId)
+            : Boolean(env.tossSecretKey);
       if (!providerConfigured) {
         // Misconfiguration must not burn retry attempts — every cancel would fail.
         this.logger.error(
@@ -405,7 +562,12 @@ export class PaymentsService {
 
       summary.attempted += 1;
       try {
-        if (payment.provider === 'naverpay') {
+        if (payment.provider === 'kcp') {
+          await cancelKcpPayment({
+            tno: payment.providerPaymentKey,
+            cancelReason: '주문을 확정할 수 없어 자동 취소되었습니다.',
+          });
+        } else if (payment.provider === 'naverpay') {
           await cancelNaverPayPayment({
             paymentId: payment.providerPaymentKey,
             orderId: payment.orderId,
@@ -440,7 +602,7 @@ export class PaymentsService {
       this.logger.warn(`Refunded unsettleable payment for order ${payment.orderId} on retry`);
       await this.recordLocally(
         payment.orderId,
-        payment.provider === 'naverpay' ? 'naverpay' : 'toss',
+        payment.provider === 'kcp' ? 'kcp' : payment.provider === 'naverpay' ? 'naverpay' : 'toss',
         { paymentKey: payment.providerPaymentKey, amount: payment.amount },
         'canceled',
       );
@@ -492,10 +654,16 @@ export class PaymentsService {
     }
 
     const refundedAmount = payment.amount - payment.refundedAmount;
-    // 네이버페이 결제는 네이버페이 취소 API로, 토스 결제는 토스 취소 API로 전액(잔액) 취소한다.
+    // KCP 결제는 KCP 취소 API(서명데이터 포함)로, 네이버페이 결제는 네이버페이 취소 API로,
+    // 토스 결제는 토스 취소 API로 전액(잔액) 취소한다.
     // 토스 취소는 주문 단위 Idempotency-Key라 재시도해도 이중 취소되지 않고, 이미 취소된 결제
     // (ALREADY_CANCELED_PAYMENT — 이전 시도의 응답 유실·웹훅 선행)는 성공으로 수렴한다.
-    if (payment.provider === 'naverpay') {
+    if (payment.provider === 'kcp') {
+      await cancelKcpPayment({
+        tno: payment.providerPaymentKey,
+        cancelReason,
+      });
+    } else if (payment.provider === 'naverpay') {
       await cancelNaverPayPayment({
         paymentId: payment.providerPaymentKey,
         orderId,
