@@ -326,6 +326,41 @@ export class PaymentsService {
   }
 
   /**
+   * 취소마저 실패한 KCP 보상 건의 refund_pending 흔적을 남긴다. 단, 이미 다른 결제(tno2)가
+   * 정산된 row가 있으면 절대 덮어쓰지 않는다 — 그 row를 refund_pending으로 바꾸면 워커가
+   * 정상 정산된 tno2를 취소하고 paid 주문까지 canceled로 돌리는 사고가 나기 때문이다.
+   * 흔적을 남길 수 없으면 수동 환불이 필요함을 로그로 남긴다.
+   */
+  private async recordKcpRefundPendingTrail(
+    orderId: string,
+    tno: string,
+    amount: number,
+  ): Promise<void> {
+    try {
+      const [existing] = await this.db
+        .select({ providerPaymentKey: payments.providerPaymentKey, status: payments.status })
+        .from(payments)
+        .where(eq(payments.orderId, orderId))
+        .limit(1);
+      if (existing && (existing.providerPaymentKey !== tno || existing.status === 'paid')) {
+        this.logger.error(
+          `Cannot record refund_pending for order ${orderId} — a settled payment ` +
+            `(${existing.providerPaymentKey}) is already on the order; manual refund required for KCP tno ${tno}`,
+        );
+        return;
+      }
+    } catch (lookupError) {
+      this.logger.error(
+        `Failed to inspect payments for order ${orderId} before recording refund_pending ` +
+          `— manual refund required for KCP tno ${tno}`,
+        (lookupError as Error | undefined)?.stack,
+      );
+      return;
+    }
+    await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'refund_pending');
+  }
+
+  /**
    * KCP로 이미 승인됐지만 주문을 확정할 수 없게 된 경우 KCP 취소로 보상한다. 취소마저 실패하면
    * refund_pending으로 남겨 워커의 재시도 스캔이 잡는다. ConflictException 외의 실패(DB 일시
    * 오류 등)는 트랜잭션 커밋 여부를 주문 상태로 다시 읽어 판별한다 — 이미 paid면 정산 커밋으로
@@ -362,7 +397,7 @@ export class PaymentsService {
         `Compensating KCP cancel failed for order ${orderId} — manual refund required`,
         (cancelError as Error | undefined)?.stack,
       );
-      await this.recordLocally(orderId, 'kcp', { paymentKey: tno, amount }, 'refund_pending');
+      await this.recordKcpRefundPendingTrail(orderId, tno, amount);
       return 'failed';
     }
     this.logger.warn(`Canceled KCP payment for unsettleable order ${orderId}`);
@@ -551,7 +586,8 @@ export class PaymentsService {
       });
     } catch (error) {
       this.logger.error(
-        `Failed to record ${status} payment for order ${orderId}`,
+        `Failed to record ${status} payment for order ${orderId} ` +
+          `(provider key ${payment.paymentKey})`,
         (error as Error | undefined)?.stack,
       );
     }

@@ -1605,6 +1605,33 @@ describe('PaymentsService', () => {
       );
     });
 
+    it('never overwrites a settled payment row when leaving the refund_pending trail', async () => {
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
+      kcpMocks.cancelKcpPayment.mockRejectedValue(new Error('kcp down'));
+      // 같은 주문에 이미 다른 결제(tno2)가 정산(paid)된 row가 있다 — 이 row를 덮어쓰면
+      // 워커가 정상 결제를 취소하는 사고가 나므로 흔적을 남기지 않는다.
+      const { db, insertValues } = createDbStub({
+        orderId: 'order-1',
+        status: 'paid',
+        providerPaymentKey: 'kcp-tno-2',
+      });
+      db.transaction = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('db timeout'))
+        .mockImplementationOnce(async (fn: (txArg: unknown) => unknown) => fn(db));
+      const orders = createKcpOrders('pending');
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toThrow('db timeout');
+
+      // 바인딩 검사(같은 주문)는 통과하지만, 기록은 생략된다 — 취소 대상은 여전히 tno1뿐이다.
+      expect(insertValues).not.toHaveBeenCalled();
+    });
+
     it('does not compensate when the failed transaction actually committed (order already paid)', async () => {
       kcpMocks.approveKcpPayment.mockReset();
       kcpMocks.cancelKcpPayment.mockReset();
