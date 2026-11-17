@@ -1268,6 +1268,7 @@ export function PostingForm({
 }
 
 const Error = styled.p({ color: c.red, margin: 0, textAlign: 'center' });
+// 업로드 직후에는 크롭된 썸네일을 같은 비율로 표시한다.
 const PosterPreview = styled.img<{ cropped?: boolean }>(({ cropped }) => ({
   width: '100%',
   ...(cropped
