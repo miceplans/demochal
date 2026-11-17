@@ -1581,7 +1581,7 @@ describe('PaymentsService', () => {
       kcpMocks.cancelKcpPayment.mockReset();
       kcpMocks.approveKcpPayment.mockResolvedValue(approveOk);
       kcpMocks.cancelKcpPayment.mockRejectedValue(new Error('kcp down'));
-      const { db, insertValues } = createDbStub(null);
+      const { db, insertValues, onConflictDoUpdate } = createDbStub(null);
       // 첫 번째 트랜잭션(결제 저장+주문 확정)만 일시 실패 — 두 번째(recordLocally)는 통과시킨다.
       db.transaction = vi
         .fn()
@@ -1603,6 +1603,10 @@ describe('PaymentsService', () => {
       expect(insertValues).toHaveBeenLastCalledWith(
         expect.objectContaining({ orderId: 'order-1', provider: 'kcp', status: 'refund_pending' }),
       );
+      // 원자적 경쟁 방지 — refund_pending upsert는 같은 거래번호·정산되지 않은 row만 갱신하는
+      // setWhere를 반드시 건다(확인과 기록 사이 창을 DB가 닫는다).
+      const upsertArg = onConflictDoUpdate.mock.calls.at(-1)?.[0] as { setWhere?: unknown };
+      expect(upsertArg?.setWhere).toBeTruthy();
     });
 
     it('never overwrites a settled payment row when leaving the refund_pending trail', async () => {

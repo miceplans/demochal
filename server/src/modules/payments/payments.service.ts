@@ -326,10 +326,10 @@ export class PaymentsService {
   }
 
   /**
-   * 취소마저 실패한 KCP 보상 건의 refund_pending 흔적을 남긴다. 단, 이미 다른 결제(tno2)가
-   * 정산된 row가 있으면 절대 덮어쓰지 않는다 — 그 row를 refund_pending으로 바꾸면 워커가
-   * 정상 정산된 tno2를 취소하고 paid 주문까지 canceled로 돌리는 사고가 나기 때문이다.
-   * 흔적을 남길 수 없으면 수동 환불이 필요함을 로그로 남긴다.
+   * 취소마저 실패한 KCP 보상 건의 refund_pending 흔적을 남긴다. 실제 경쟁 방지는
+   * persistPayment의 upsert setWhere(같은 거래번호·정산되지 않은 row만 갱신)가 원자적으로
+   * 수행하고, 이 사전 조회는 settled row가 있을 때 불필요한 upsert를 걸러내고 수동 환불
+   * 안내 로그를 남기는 관측 용도다.
    */
   private async recordKcpRefundPendingTrail(
     orderId: string,
@@ -344,8 +344,9 @@ export class PaymentsService {
         .limit(1);
       if (existing && (existing.providerPaymentKey !== tno || existing.status === 'paid')) {
         this.logger.error(
-          `Cannot record refund_pending for order ${orderId} — a settled payment ` +
-            `(${existing.providerPaymentKey}) is already on the order; manual refund required for KCP tno ${tno}`,
+          `Cannot record refund_pending for order ${orderId} — another payment ` +
+            `(${existing.providerPaymentKey}, ${existing.status}) is already on the order; ` +
+            `manual refund required for KCP tno ${tno}`,
         );
         return;
       }
@@ -1156,7 +1157,16 @@ export class PaymentsService {
               ne(payments.status, 'expired'),
               ne(payments.status, 'canceled'),
             )
-          : ne(payments.status, 'canceled'),
+          : values.status === 'refund_pending'
+            ? // 흔적 기록도 원자적으로 보호한다 — 확인(SELECT)과 기록 사이에 다른 거래가 정산을
+              // 커밋하면 orderId 충돌로 UPDATE 분기로 들어가는데, 이때 다른 거래번호의 paid row를
+              // 덮어 워커가 정상 결제를 취소하는 사고가 난다. 같은 거래번호·정산되지 않은 row만 갱신.
+              and(
+                eq(payments.providerPaymentKey, values.providerPaymentKey),
+                ne(payments.status, 'paid'),
+                ne(payments.status, 'canceled'),
+              )
+            : ne(payments.status, 'canceled'),
     });
   }
 
