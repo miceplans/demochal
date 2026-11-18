@@ -4733,7 +4733,23 @@ components:
       type: object
       required: [code, name, description, price]
       properties:
-        code: { type: string, enum: [poster, opening_video] }
+        code:
+          type: string
+          enum:
+            - poster
+            - poster_print
+            - key_visual_3
+            - key_visual_10
+            - opening_video_1m
+            - opening_video
+            - opening_video_5m
+            - highlight_video
+            - logo_motion
+            - event_bi
+            - card_news
+            - sns_banner_set
+            - event_signage
+            - certificate
         name: { type: string }
         description: { type: string }
         price: { type: integer, description: 가격 (원) }
@@ -4741,7 +4757,23 @@ components:
       type: object
       required: [productCode]
       properties:
-        productCode: { type: string, enum: [poster, opening_video] }
+        productCode:
+          type: string
+          enum:
+            - poster
+            - poster_print
+            - key_visual_3
+            - key_visual_10
+            - opening_video_1m
+            - opening_video
+            - opening_video_5m
+            - highlight_video
+            - logo_motion
+            - event_bi
+            - card_news
+            - sns_banner_set
+            - event_signage
+            - certificate
     DesignProductOrder:
       type: object
       required: [id, amount, name]

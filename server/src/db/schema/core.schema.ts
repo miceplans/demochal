@@ -354,7 +354,7 @@ export const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),
   applicationId: uuid('application_id').references(() => applications.id),
   adId: uuid('ad_id').references(() => ads.id),
-  // 디자인 상품 코드(poster | opening_video). 광고/챌린지 신청 주문이면 null.
+  // 디자인 상품 코드(design-products.catalog.ts의 code: poster | opening_video | key_visual_10 등). 광고/챌린지 신청 주문이면 null.
   designProduct: varchar('design_product', { length: 30 }),
   userId: uuid('user_id')
     .notNull()
