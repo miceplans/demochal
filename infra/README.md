@@ -36,6 +36,8 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 
 ### 필요할 때만 staging DB에 접속
 
+`db-admin` task와 이 task 전용 NAT Gateway는 상시 과금을 피하려고 기본값으로 생성하지 않습니다(`enable_db_admin = false`). 접속이 필요할 때만 `terraform apply -var-file=staging.tfvars -var enable_db_admin=true`로 만들고, 작업을 마치면 task를 중지한 뒤 같은 명령을 `enable_db_admin=false`로 다시 apply해 NAT Gateway를 제거합니다.
+
 `db-admin` task는 private subnet에서만 실행되고 public IP를 받지 않습니다. ECS Exec를 켜서 접속한 뒤 컨테이너 안의 `DATABASE_URL`을 그대로 `psql`에 전달합니다. 실제 secret 값은 출력하거나 명령행에 직접 넣지 않습니다.
 
 ```sh
