@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: semochal
       POSTGRES_DB: semochal
     ports:
-      - '127.0.0.1:5432:5432'
+      - '127.0.0.1:${SEMOCHAL_DB_PORT:-5432}:5432'
     volumes:
       - semochal-db-data:/var/lib/postgresql/data
     healthcheck:

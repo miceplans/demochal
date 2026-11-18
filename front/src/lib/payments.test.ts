@@ -34,7 +34,7 @@ describe('requestTossPayment', () => {
 });
 
 describe('paymentProviderForHost', () => {
-  it('uses Naver Pay only on the bz subdomain label', async () => {
+  it('routes the bz subdomain label to the Naver Pay (KCP window) provider', async () => {
     const { paymentProviderForHost } = await import('./payments');
 
     expect(paymentProviderForHost('bz.example.com')).toBe('naverpay');
@@ -47,79 +47,51 @@ describe('paymentProviderForHost', () => {
   });
 });
 
-describe('buildNaverPayPaymentParams', () => {
-  it('carries the order id in the return URL and passes amount/tax fields', async () => {
-    const { buildNaverPayPaymentParams } = await import('./payments');
-
-    const params = buildNaverPayPaymentParams({
-      orderId: 'order-1',
-      amount: 15000,
-      orderName: '광고',
-      flow: 'ad',
-      origin: 'https://bz.example.com',
-    });
-
-    expect(params.totalPayAmount).toBe(15000);
-    expect(params.taxScopeAmount).toBe(15000);
-    expect(params.taxExScopeAmount).toBe(0);
-    expect(params.returnUrl).toBe(
-      'https://bz.example.com/payments/success?orderId=order-1&flow=ad',
-    );
-    expect(params.callbackFunction).toBe('semochalNaverPayCallback');
-    expect(params.isPopup).toBe(true);
-    expect(params.productItems).toEqual([
-      {
-        categoryType: 'PRODUCT',
-        categoryId: 'GENERAL',
-        uid: 'order-1',
-        name: '광고',
-        count: 1,
-        price: 15000,
-      },
-    ]);
-  });
-});
-
-describe('requestNaverPayPayment', () => {
+describe('requestBizPayment — bz (KCP window)', () => {
   beforeEach(() => {
     vi.resetModules();
   });
 
-  it('returns false without a client key, like the Toss flow', async () => {
-    vi.stubEnv('NEXT_PUBLIC_NAVERPAY_CLIENT_ID', '');
-    const { requestNaverPayPayment } = await import('./payments');
+  it('opens the KCP Naver Pay window on the bz host', async () => {
+    vi.stubEnv('NEXT_PUBLIC_BZ_SUBDOMAIN', 'bz');
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', 'T0000');
+    // PC 환경(모바일 UA 아님) — 허브 JS가 이미 로드된 것으로 간주해 폼·콜백 동선만 검증한다.
+    const execute = vi.fn();
+    (window as unknown as { KCP_Pay_Execute_Web: unknown }).KCP_Pay_Execute_Web = execute;
+    // jsdom의 location 프로퍼티는 재정의가 불가능해 stubGlobal로 통째로 교체한다.
+    vi.stubGlobal('location', { ...window.location, hostname: 'bz.example.com' });
 
+    const { requestBizPayment } = await import('./payments');
     await expect(
-      requestNaverPayPayment({ orderId: 'order-1', amount: 1000, orderName: '광고' }),
-    ).resolves.toBe(false);
+      requestBizPayment({ orderId: 'order-1', amount: 1000, orderName: '광고' }),
+    ).resolves.toBe(true);
+
+    // KCP_Pay_Execute_Web에 네이버페이 단독 호출 폼이 전달됐는지 확인한다.
+    const form = execute.mock.calls[0]?.[0] as HTMLFormElement;
+    expect(form).toBeInstanceOf(HTMLFormElement);
+    const field = (name: string) =>
+      (form.elements.namedItem(name) as HTMLInputElement | null)?.value;
+    expect(field('site_cd')).toBe('T0000');
+    expect(field('pay_method')).toBe('100000000000');
+    expect(field('naverpay_direct')).toBe('B');
+    expect(field('ordr_idxx')).toBe('order-1');
+    expect(field('good_mny')).toBe('1000');
+    expect(field('good_name')).toBe('광고');
+    expect(field('currency')).toBe('410');
+    vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });
 
-  it('opens the Naver Pay window and converges the PC callback onto the success URL', async () => {
-    vi.stubEnv('NEXT_PUBLIC_NAVERPAY_CLIENT_ID', 'naver-client');
-    const requestPayment = vi.fn();
-    const create = vi.fn(() => ({ requestPayment }));
-    (window as unknown as { Naver: unknown }).Naver = { Pay: { create } };
+  it('returns false on the bz host without a KCP site code, like the Toss flow', async () => {
+    vi.stubEnv('NEXT_PUBLIC_BZ_SUBDOMAIN', 'bz');
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', '');
+    vi.stubGlobal('location', { ...window.location, hostname: 'bz.example.com' });
+    const { requestBizPayment } = await import('./payments');
 
-    const { requestNaverPayPayment, buildNaverPayCallbackUrl } = await import('./payments');
     await expect(
-      requestNaverPayPayment({ orderId: 'order-9', amount: 3000, orderName: '광고', flow: 'ad' }),
-    ).resolves.toBe(true);
-
-    expect(create).toHaveBeenCalledWith({ mode: 'development', clientId: 'naver-client' });
-    expect(requestPayment).toHaveBeenCalledWith(expect.objectContaining({ totalPayAmount: 3000 }));
-
-    // PC 팝업 결과를 모바일 returnUrl과 동일한 success URL로 수렴시킨다(콜백 등록 확인).
-    expect(window.semochalNaverPayCallback).toEqual(expect.any(Function));
-    const calledUrl = buildNaverPayCallbackUrl({
-      orderId: 'order-9',
-      flow: 'ad',
-      result: { resultCode: 'Success', paymentId: 'np-1' },
-      origin: 'https://bz.example.com',
-    });
-    expect(calledUrl).toBe(
-      'https://bz.example.com/payments/success?orderId=order-9&resultCode=Success&paymentId=np-1&flow=ad',
-    );
+      requestBizPayment({ orderId: 'order-1', amount: 1000, orderName: '광고' }),
+    ).resolves.toBe(false);
+    vi.unstubAllGlobals();
     vi.unstubAllEnvs();
   });
 });

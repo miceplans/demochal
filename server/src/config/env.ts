@@ -53,6 +53,21 @@ const envSchema = z
     NAVERPAY_CLIENT_SECRET: z.string().default(''),
     NAVERPAY_CHAIN_ID: z.string().default(''),
 
+    // ── NHN KCP 표준결제창 네이버페이 (bz 서브도메인) ────────────────────────────
+    // https://developer.kcp.co.kr/guide/config 기준. KCP_PRODUCTION=false(기본)이면
+    // 테스트 URL(testsmpay/stg-spl)과 사이트코드 T0000을 쓰고, true이면 운영 URL/사이트코드를 쓴다.
+    KCP_SITE_CD: z.string().default(''),
+    // 파트너관리자 인증센터에서 발급한 서비스 인증서 PEM 원문(헤더/푸터 포함, 줄바꿈 그대로).
+    KCP_CERT_INFO: z.string().default(''),
+    // 결제 취소 서명데이터(kcp_sign_data)용 개인키 — PKCS8 PEM. 승인에는 불필요하다.
+    KCP_PRIVATE_KEY: z.string().default(''),
+    // 개인키 비밀번호(암호화된 PKCS8 PEM일 때만 필요).
+    KCP_PRIVATE_KEY_PASSWORD: z.string().default(''),
+    KCP_PRODUCTION: z.enum(['true', 'false']).default('false'),
+    // 모바일 결제창 인증 결과(Ret_URL)를 받는 가맹점 엔드포인트 전체 URL.
+    // 비워두면 첫 번째 FRONTEND_ORIGIN + /payments/kcp/return을 쓴다(KCP 요구: https 도메인).
+    KCP_MOBILE_RETURN_URL: z.string().default(''),
+
     NTS_API_KEY: z.string().default(''),
 
     JWT_SECRET: z.string().min(1).optional(),
@@ -114,6 +129,24 @@ const envSchema = z
         message: 'TOSS_WEBHOOK_ALLOWED_IPS must be set in production',
       });
     }
+    // KCP 운영 전환 안전장치 — 한쪽만 운영 값으로 바뀐 설정이 조용히 부팅되는 걸 막는다.
+    if (value.KCP_PRODUCTION === 'true' && (!value.KCP_SITE_CD || value.KCP_SITE_CD === 'T0000')) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['KCP_SITE_CD'],
+        message: 'KCP_SITE_CD must be set to the contracted site code when KCP_PRODUCTION is true',
+      });
+    }
+    // 운영 KCP에서 취소 서명 개인키(kcp.client.ts buildKcpSignData)가 없으면 환불·보상 취소가
+    // 항상 실패한다 — 부팅을 막는다. 테스트 사이트(T0000)에는 공개 개인키가 없으므로
+    // KCP_PRODUCTION=false(staging)에서는 빈 값을 허용한다.
+    if (value.KCP_PRODUCTION === 'true' && !value.KCP_PRIVATE_KEY.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['KCP_PRIVATE_KEY'],
+        message: 'KCP_PRIVATE_KEY must be set when KCP_PRODUCTION is true',
+      });
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);
@@ -158,6 +191,14 @@ export const env = {
   naverpayClientId: raw.NAVERPAY_CLIENT_ID,
   naverpayClientSecret: raw.NAVERPAY_CLIENT_SECRET,
   naverpayChainId: raw.NAVERPAY_CHAIN_ID,
+
+  kcpSiteCd: raw.KCP_SITE_CD,
+  kcpCertInfo: raw.KCP_CERT_INFO,
+  kcpPrivateKey: raw.KCP_PRIVATE_KEY,
+  kcpPrivateKeyPassword: raw.KCP_PRIVATE_KEY_PASSWORD || undefined,
+  kcpProduction: raw.KCP_PRODUCTION === 'true',
+  kcpMobileReturnUrl:
+    raw.KCP_MOBILE_RETURN_URL || `${raw.FRONTEND_ORIGIN.split(',')[0]?.trim()}/payments/kcp/return`,
 
   ntsApiKey: raw.NTS_API_KEY,
 

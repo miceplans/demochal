@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { UnauthorizedException } from '@nestjs/common';
 import throttlerConstants from '@nestjs/throttler/dist/throttler.constants.js';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { env } from '../../config/env.js';
 import { DEFAULT_THROTTLE, TOSS_WEBHOOK_THROTTLE } from '../../common/throttling/throttling.js';
@@ -23,6 +23,97 @@ function createController() {
   const controller = new PaymentsController(paymentsService as unknown as PaymentsService);
   return { controller, paymentsService };
 }
+
+describe('PaymentsController — KCP 네이버페이(bz)', () => {
+  function createKcpController() {
+    const paymentsService = {
+      registerKcpTransaction: vi.fn(),
+      confirmKcpPayment: vi.fn(),
+      handleKcpMobileReturn: vi.fn(),
+    };
+    const controller = new PaymentsController(paymentsService as unknown as PaymentsService);
+    return { controller, paymentsService };
+  }
+
+  it('delegates the trade registration to the service with the current user', async () => {
+    const { controller, paymentsService } = createKcpController();
+    paymentsService.registerKcpTransaction.mockResolvedValue({
+      approvalKey: 'ak',
+      payUrl: 'https://testsmpay.kcp.co.kr/pay/mobileGW.kcp',
+      retUrl: 'http://localhost:3000/payments/kcp/return',
+    });
+
+    await expect(
+      controller.registerKcp({ orderId: 'order-1', orderName: '광고', flow: 'ad' }, {
+        id: 'user-1',
+      } as never),
+    ).resolves.toMatchObject({ approvalKey: 'ak' });
+    expect(paymentsService.registerKcpTransaction).toHaveBeenCalledWith('user-1', {
+      orderId: 'order-1',
+      orderName: '광고',
+      flow: 'ad',
+    });
+  });
+
+  it('delegates the PC confirm to the service with the current user', async () => {
+    const { controller, paymentsService } = createKcpController();
+    paymentsService.confirmKcpPayment.mockResolvedValue({ id: 'order-1', status: 'paid' });
+
+    await expect(
+      controller.confirmKcp(
+        { orderId: 'order-1', encData: 'enc-d', encInfo: 'enc-i', tranCd: '00100000' },
+        { id: 'user-1' } as never,
+      ),
+    ).resolves.toEqual({ id: 'order-1', status: 'paid' });
+    expect(paymentsService.confirmKcpPayment).toHaveBeenCalledWith('user-1', {
+      orderId: 'order-1',
+      encData: 'enc-d',
+      encInfo: 'enc-i',
+      tranCd: '00100000',
+    });
+  });
+
+  it('returns the settled outcome for the mobile return so the front route can redirect', async () => {
+    const { controller, paymentsService } = createKcpController();
+    paymentsService.handleKcpMobileReturn.mockResolvedValue({
+      outcome: 'success',
+      orderId: 'order-1',
+      flow: 'ad',
+    });
+
+    await expect(
+      controller.handleKcpMobileReturn({
+        ordr_idxx: 'order-1',
+        res_cd: '0000',
+        enc_data: 'd',
+        enc_info: 'i',
+      }),
+    ).resolves.toEqual({ outcome: 'success', orderId: 'order-1', flow: 'ad' });
+    expect(paymentsService.handleKcpMobileReturn).toHaveBeenCalledWith({
+      ordr_idxx: 'order-1',
+      res_cd: '0000',
+      enc_data: 'd',
+      enc_info: 'i',
+    });
+  });
+
+  it('returns the failed outcome with the res code for the front fail page', async () => {
+    const { controller, paymentsService } = createKcpController();
+    paymentsService.handleKcpMobileReturn.mockResolvedValue({
+      outcome: 'failed',
+      orderId: 'order-1',
+      flow: 'design',
+      code: '3001',
+    });
+
+    await expect(controller.handleKcpMobileReturn({ res_cd: '3001' })).resolves.toEqual({
+      outcome: 'failed',
+      orderId: 'order-1',
+      flow: 'design',
+      code: '3001',
+    });
+  });
+});
 
 describe('PaymentsController.handleTossWebhook', () => {
   afterEach(() => {
@@ -73,5 +164,15 @@ describe('PaymentsController.handleTossWebhook', () => {
       TOSS_WEBHOOK_THROTTLE.default.limit,
     );
     expect(TOSS_WEBHOOK_THROTTLE.default.limit).toBeLessThan(DEFAULT_THROTTLE.limit);
+  });
+
+  it('applies the same webhook-grade throttle to the public KCP mobile return', () => {
+    const handler = PaymentsController.prototype.handleKcpMobileReturn;
+    expect(Reflect.getMetadata(THROTTLER_TTL + 'default', handler)).toBe(
+      TOSS_WEBHOOK_THROTTLE.default.ttl,
+    );
+    expect(Reflect.getMetadata(THROTTLER_LIMIT + 'default', handler)).toBe(
+      TOSS_WEBHOOK_THROTTLE.default.limit,
+    );
   });
 });

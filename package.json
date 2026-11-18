@@ -9,6 +9,8 @@
     "prebuild": "pnpm --filter @semochal/api-client build",
     "pretypecheck": "pnpm --filter @semochal/api-client build",
     "dev": "node scripts/dev.mjs",
+    "dev:local": "node scripts/dev-local.mjs",
+    "dev:local:down": "node scripts/dev-local.mjs --down",
     "dev:front": "pnpm --filter ./front dev",
     "dev:server": "pnpm --filter ./server dev",
     "dev:worker": "pnpm --filter ./server dev:worker",

@@ -118,9 +118,9 @@ function runOnce(name, cmd, args, next) {
   });
 }
 
-// Migrations are applied manually (CI owns production migration), so boot only
-// probes DB connectivity: a down local DB must not abort `pnpm dev`, but the
-// dev should be told how to migrate before the servers start.
+// Plain `pnpm dev` does not migrate (CI owns deployed migrations, and app boot
+// never migrates); it only probes DB connectivity so a down local DB does not
+// abort startup. `pnpm dev:local` wraps this with a per-worktree DB + migrate.
 function probeDatabase(next) {
   let url;
   try {
@@ -132,8 +132,8 @@ function probeDatabase(next) {
   const port = Number(url.port || 5432);
   const hint = () =>
     console.error(
-      `[db] PostgreSQL is not reachable at ${host}:${port} — start it (e.g. docker compose up -d db)\n` +
-        '[db] and apply migrations manually: pnpm --filter @semochal/server db:migrate',
+      `[db] PostgreSQL is not reachable at ${host}:${port}\n` +
+        '[db] run `pnpm dev:local` instead to start a DB, migrate, and boot in one step',
     );
   const socket = net.connect(port, host);
   socket.setTimeout(2000);
@@ -160,7 +160,7 @@ function probeDatabase(next) {
 
 // 1) one-shot build (replaces the old `predev` hook)
 runOnce('api-client build', 'pnpm', ['--filter', '@semochal/api-client', 'build'], () => {
-  // 2) DB connectivity check (migrations stay manual — see probeDatabase)
+  // 2) DB connectivity check (see probeDatabase)
   probeDatabase(() => {
     // 3) start dev servers
     for (const task of TASKS) startTask(task);
