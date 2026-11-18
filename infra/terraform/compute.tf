@@ -341,11 +341,10 @@ locals {
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
-  # The worker has no HTTP path, so it must not receive the API-only Redis
-  # endpoint (its SG cannot even reach it); keep it on the API task only.
-  api_environment = concat(local.common_environment, [
-    { name = "REDIS_URL", value = "rediss://${aws_elasticache_replication_group.rate_limit.primary_endpoint_address}:6379" }
-  ])
+  # No REDIS_URL: with a single API task the server's in-memory throttler store
+  # is equivalent. Add a shared store before scaling the API beyond one task
+  # (issue #569).
+  api_environment = local.common_environment
   worker_environment = concat(local.common_environment, [
     { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
   ])
