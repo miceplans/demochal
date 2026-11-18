@@ -41,32 +41,38 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
+# Only created when enable_db_admin is true: the NAT gateway bills hourly and
+# exists solely for the on-demand db-admin task.
 # Private one-off tasks need outbound access through the NAT gateway to pull
 # the public postgres image and reach Secrets Manager, CloudWatch Logs and the
 # ECS Exec message service. They still have no public IP and cannot accept
 # unsolicited inbound traffic.
 resource "aws_eip" "nat" {
+  count  = var.enable_db_admin ? 1 : 0
   domain = "vpc"
 }
 
 resource "aws_nat_gateway" "this" {
-  allocation_id = aws_eip.nat.id
+  count         = var.enable_db_admin ? 1 : 0
+  allocation_id = aws_eip.nat[0].id
   subnet_id     = aws_subnet.public["0"].id
   depends_on    = [aws_internet_gateway.this]
 }
 
 resource "aws_route_table" "private" {
+  count  = var.enable_db_admin ? 1 : 0
   vpc_id = aws_vpc.this.id
 
   route {
     cidr_block     = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.this.id
+    nat_gateway_id = aws_nat_gateway.this[0].id
   }
 }
 
 resource "aws_route_table_association" "private" {
+  count          = var.enable_db_admin ? 1 : 0
   subnet_id      = aws_subnet.private["0"].id
-  route_table_id = aws_route_table.private.id
+  route_table_id = aws_route_table.private[0].id
 }
 
 resource "aws_security_group" "alb" {
@@ -133,14 +139,6 @@ resource "aws_security_group" "api_task" {
     description = "PostgreSQL in the VPC"
     from_port   = 5432
     to_port     = 5432
-    protocol    = "tcp"
-    cidr_blocks = [var.vpc_cidr]
-  }
-
-  egress {
-    description = "Redis rate-limit store in the VPC"
-    from_port   = 6379
-    to_port     = 6379
     protocol    = "tcp"
     cidr_blocks = [var.vpc_cidr]
   }
@@ -227,6 +225,7 @@ resource "aws_security_group" "migrate_task" {
 }
 
 resource "aws_security_group" "db_admin" {
+  count       = var.enable_db_admin ? 1 : 0
   name        = "${local.name_prefix}-db-admin"
   description = "On-demand database administration task; no inbound traffic"
   vpc_id      = aws_vpc.this.id
@@ -296,10 +295,11 @@ resource "aws_security_group" "database" {
 }
 
 resource "aws_security_group_rule" "database_from_db_admin" {
+  count                    = var.enable_db_admin ? 1 : 0
   type                     = "ingress"
   description              = "On-demand db-admin task"
   security_group_id        = aws_security_group.database.id
-  source_security_group_id = aws_security_group.db_admin.id
+  source_security_group_id = aws_security_group.db_admin[0].id
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"

@@ -156,3 +156,9 @@ variable "ses_support_from_email" {
     error_message = "ses_support_from_email must be empty or a single email address."
   }
 }
+
+variable "enable_db_admin" {
+  description = "Create the on-demand db-admin task and the NAT gateway it needs. The NAT gateway bills hourly, so keep this false and enable it only while DB access is needed."
+  type        = bool
+  default     = false
+}

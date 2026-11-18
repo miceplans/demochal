@@ -108,6 +108,7 @@ resource "aws_cloudwatch_log_group" "migrate" {
 }
 
 resource "aws_cloudwatch_log_group" "db_admin" {
+  count             = var.enable_db_admin ? 1 : 0
   name              = "/ecs/${local.name_prefix}/db-admin"
   retention_in_days = 7
 }
@@ -230,11 +231,13 @@ resource "aws_iam_role_policy" "worker_task" {
 }
 
 resource "aws_iam_role" "db_admin_task" {
+  count              = var.enable_db_admin ? 1 : 0
   name               = "${local.name_prefix}-db-admin-task"
   assume_role_policy = data.aws_iam_policy_document.task_assume_role.json
 }
 
 data "aws_iam_policy_document" "db_admin_task" {
+  count = var.enable_db_admin ? 1 : 0
   statement {
     # ECS Exec uses the SSM message channel. No Secrets Manager, S3, or other
     # application permissions are needed by the psql container.
@@ -249,9 +252,10 @@ data "aws_iam_policy_document" "db_admin_task" {
 }
 
 resource "aws_iam_role_policy" "db_admin_task" {
+  count  = var.enable_db_admin ? 1 : 0
   name   = "ecs-exec-ssm-messages"
-  role   = aws_iam_role.db_admin_task.id
-  policy = data.aws_iam_policy_document.db_admin_task.json
+  role   = aws_iam_role.db_admin_task[0].id
+  policy = data.aws_iam_policy_document.db_admin_task[0].json
 }
 
 # One-off migration task role: no AWS API calls happen inside the container
@@ -337,11 +341,10 @@ locals {
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
     { name = "PUBLIC_ASSETS_BASE_URL", value = "https://${aws_cloudfront_distribution.public.domain_name}" }
   ]
-  # The worker has no HTTP path, so it must not receive the API-only Redis
-  # endpoint (its SG cannot even reach it); keep it on the API task only.
-  api_environment = concat(local.common_environment, [
-    { name = "REDIS_URL", value = "rediss://${aws_elasticache_replication_group.rate_limit.primary_endpoint_address}:6379" }
-  ])
+  # No REDIS_URL: with a single API task the server's in-memory throttler store
+  # is equivalent. Add a shared store before scaling the API beyond one task
+  # (issue #569).
+  api_environment = local.common_environment
   worker_environment = concat(local.common_environment, [
     { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
   ])
@@ -408,13 +411,14 @@ resource "aws_ecs_task_definition" "migrate" {
 # definition only: operators launch it with `aws ecs run-task --enable-execute-command`
 # when they need psql access and stop it afterwards.
 resource "aws_ecs_task_definition" "db_admin" {
+  count                    = var.enable_db_admin ? 1 : 0
   family                   = "${local.name_prefix}-db-admin"
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
   cpu                      = 256
   memory                   = 512
   execution_role_arn       = aws_iam_role.execution.arn
-  task_role_arn            = aws_iam_role.db_admin_task.arn
+  task_role_arn            = aws_iam_role.db_admin_task[0].arn
   container_definitions = jsonencode([{
     name      = "db-admin"
     image     = "postgres:16-bookworm"
@@ -424,7 +428,7 @@ resource "aws_ecs_task_definition" "db_admin" {
     logConfiguration = {
       logDriver = "awslogs"
       options = {
-        awslogs-group         = aws_cloudwatch_log_group.db_admin.name
+        awslogs-group         = aws_cloudwatch_log_group.db_admin[0].name
         awslogs-region        = var.aws_region
         awslogs-stream-prefix = "db-admin"
       }

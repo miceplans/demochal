@@ -36,6 +36,8 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 
 ### 필요할 때만 staging DB에 접속
 
+`db-admin` task와 이 task 전용 NAT Gateway는 상시 과금을 피하려고 기본값으로 생성하지 않습니다(`enable_db_admin = false`). 접속이 필요할 때만 `terraform apply -var-file=staging.tfvars -var enable_db_admin=true`로 만들고, 작업을 마치면 task를 중지한 뒤 같은 명령을 `enable_db_admin=false`로 다시 apply해 NAT Gateway를 제거합니다.
+
 `db-admin` task는 private subnet에서만 실행되고 public IP를 받지 않습니다. ECS Exec를 켜서 접속한 뒤 컨테이너 안의 `DATABASE_URL`을 그대로 `psql`에 전달합니다. 실제 secret 값은 출력하거나 명령행에 직접 넣지 않습니다.
 
 ```sh
@@ -91,17 +93,10 @@ ECS task는 NAT Gateway 비용을 피하기 위해 public subnet에서 public IP
 
 DMARC는 `p=none`으로 시작합니다. 전달 상태를 확인한 뒤 `ses_dmarc_policy`를 `quarantine`/`reject`로 올립니다.
 
-## 분산 레이트리밋 저장소 (ElastiCache Redis)
+## 레이트리밋 저장소
 
-API의 `@nestjs/throttler` 저장소로 `cache.t4g.micro` 단일 노드 ElastiCache Redis(`redis.tf`)를 둡니다.
-기본 저장소가 태스크 메모리일 때는 ECS 태스크 수만큼 IP당 한도가 늘어나는 취약점(issue #569)이 있어,
-Terraform이 API task definition의 `REDIS_URL`(`rediss://<primary_endpoint>:6379`)로 주입하면
-모든 태스크가 하나의 공유 카운터를 봅니다. `REDIS_URL`이 비어 있으면 서버는 인메모리 저장소로
-돌아가므로 로컬 개발/docker compose(또는 미설정 환경)는 Redis 없이 동작합니다.
-
-- Redis는 private subnet에만 있고 API task 보안그룹에서만 6379로 접근할 수 있습니다. 인터넷 게이트웨이·NAT 경로가 없습니다.
-- 전송 암호화(TLS)와 저장 암호화를 켜고 인증 토큰은 두지 않습니다. 저장되는 값은 sha256으로 해시된 추적자 키와 만료 시각뿐이고(원본 IP/이메일 미보관), VPC 외부에서는 어차피 도달할 수 없습니다.
-- 리소스는 신규 추가만 하고 기존 리소스를 바꾸지 않습니다. `apply`는 승인된 운영자가 별도 세션에서 수행하며, 서비스는 task_definition을 무시하므로 다음 배포부터 새 revision이 Redis를 사용합니다.
+staging은 API 태스크가 1개라 별도 Redis 없이 서버의 인메모리 `@nestjs/throttler` 저장소를 씁니다(`REDIS_URL` 미주입).
+API 태스크를 2개 이상으로 늘리면 IP당 한도가 태스크 수만큼 늘어나므로(issue #569), 그 전에 공유 저장소(ElastiCache Redis 등)를 추가하고 API task definition에 `REDIS_URL`을 주입합니다.
 
 ## RDS TLS 서버 인증서 검증
 

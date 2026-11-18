@@ -31,8 +31,6 @@ output "worker_task_definition_arn" { value = aws_ecs_task_definition.worker.arn
 output "worker_task_definition_family" { value = aws_ecs_task_definition.worker.family }
 output "api_task_subnet_id" { value = aws_subnet.public["0"].id }
 output "api_task_security_group_id" { value = aws_security_group.api_task.id }
-output "rate_limit_redis_primary_endpoint" { value = aws_elasticache_replication_group.rate_limit.primary_endpoint_address }
-output "rate_limit_redis_security_group_id" { value = aws_security_group.rate_limit_redis.id }
 output "worker_task_security_group_id" { value = aws_security_group.worker_task.id }
 output "api_target_group_arn" { value = aws_lb_target_group.api.arn }
 output "ecs_execution_role_arn" { value = aws_iam_role.execution.arn }
@@ -43,11 +41,11 @@ output "migrate_task_definition_arn" { value = aws_ecs_task_definition.migrate.a
 output "migrate_task_definition_family" { value = aws_ecs_task_definition.migrate.family }
 output "migrate_task_subnet_id" { value = aws_subnet.public["0"].id }
 output "migrate_task_security_group_id" { value = aws_security_group.migrate_task.id }
-output "db_admin_task_definition_arn" { value = aws_ecs_task_definition.db_admin.arn }
-output "db_admin_task_definition_family" { value = aws_ecs_task_definition.db_admin.family }
-output "db_admin_subnet_id" { value = aws_subnet.private["0"].id }
-output "db_admin_security_group_id" { value = aws_security_group.db_admin.id }
-output "db_admin_task_role_arn" { value = aws_iam_role.db_admin_task.arn }
+output "db_admin_task_definition_arn" { value = one(aws_ecs_task_definition.db_admin[*].arn) }
+output "db_admin_task_definition_family" { value = one(aws_ecs_task_definition.db_admin[*].family) }
+output "db_admin_subnet_id" { value = var.enable_db_admin ? aws_subnet.private["0"].id : null }
+output "db_admin_security_group_id" { value = one(aws_security_group.db_admin[*].id) }
+output "db_admin_task_role_arn" { value = one(aws_iam_role.db_admin_task[*].arn) }
 
 output "grafana_cloudwatch_role_arn" {
   description = "IAM role ARN to register with the Grafana Cloud CloudWatch integration."
