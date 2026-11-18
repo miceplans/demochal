@@ -1,5 +1,6 @@
 import { vi, type Mock } from 'vitest';
 import { AdminService } from './admin.service.js';
+import { AdminVerificationsService } from './admin.verifications.service.js';
 import { DEFAULT_VALUES, SETTINGS_GROUPS } from './admin-settings.service.js';
 
 /**
@@ -127,6 +128,7 @@ export function createService(
       adsService as any,
       files as any,
       settings as any,
+      new AdminVerificationsService(db, notifications as any, files as any),
     ),
     notifications,
     adsService,
