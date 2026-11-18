@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { BizNavProvider } from '@/components/biz/BizShell';
-import { isBizHostHeader } from '@/lib/biz';
+import { isBizHostHeader, isBzHostHeader } from '@/lib/biz';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
@@ -15,5 +15,9 @@ export const metadata: Metadata = {
 export default async function BizLayout({ children }: { children: ReactNode }) {
   const host = (await headers()).get('host');
   const base = isBizHostHeader(host) ? '' : '/biz';
-  return <BizNavProvider base={base}>{children}</BizNavProvider>;
+  return (
+    <BizNavProvider base={base} isBz={isBzHostHeader(host)}>
+      {children}
+    </BizNavProvider>
+  );
 }

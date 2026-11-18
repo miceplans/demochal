@@ -12,6 +12,7 @@ import {
   SectionHeader,
   SectionTitle,
   StatusTag,
+  useIsBzHost,
 } from '@/components/biz/BizShell';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
@@ -186,6 +187,9 @@ function AdStatusTag({ status }: { status?: string }) {
 }
 
 export function BizDashboardPage() {
+  const isBz = useIsBzHost();
+  // bz 호스트는 광고형 상품 전용이라 빌드 플래그와 무관하게 광고 영역을 보인다.
+  const showAds = AD_SALES_ENABLED || isBz;
   const dashboardQuery = generated.useGetBizDashboard();
   const cardsQuery = generated.useListPaymentCards();
   const data = dashboardQuery.data?.data;
@@ -296,7 +300,7 @@ export function BizDashboardPage() {
         </Column>
       </BillingRow>
 
-      {AD_SALES_ENABLED && (
+      {showAds && (
         <AdsRow>
           <ChartCard>
             <StatLabel>광고 노출수</StatLabel>

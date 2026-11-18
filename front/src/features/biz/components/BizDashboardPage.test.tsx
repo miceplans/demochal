@@ -27,6 +27,7 @@ vi.mock('@/components/biz/BizShell', () => ({
   SectionHeader: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   SectionTitle: ({ children }: { children: React.ReactNode }) => <h2>{children}</h2>,
   StatusTag: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
+  useIsBzHost: () => false,
 }));
 vi.mock('@/components/biz/BizPaymentCard', () => ({ BizPaymentCard: () => null }));
 vi.mock('@/components/biz/ExposureChart', () => ({ ExposureChart: () => null }));
