@@ -26,7 +26,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import { Modal } from '@/components/common/Feedback';
 import { Badges, SkillStack, HistoryCard, AddButton } from '@/components/profile/ProfileCards';
-import { normalizeLinkUrl, isSafeLinkUrl, isGithubUrl } from '@/components/profile/link-model';
+import { normalizeLinkUrl, isGithubUrl } from '@/components/profile/link-model';
 import { ContestCard, ContestGrid } from '@/components/contests/ContestCard';
 import { TeamCard, TeamGrid } from '@/components/teams/TeamCard';
 import { toTeamCard } from '@/components/teams/team-model';
@@ -39,93 +39,28 @@ import { useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { daysUntil, isPastDeadline } from '@/lib/date';
 import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
 import legalCopy from '@/data/design-copy.json';
-
-const MobileMenu = styled.nav({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-  '& a': {
-    padding: '16px 8px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontWeight: 600,
-    borderRadius: 8,
-    transition: 'background 0.15s ease',
-  },
-  '& a:active': { background: c.gray50 },
-  '& a:hover span': { transform: 'translateX(3px)' },
-  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
-  borderBottom: `0.5px solid ${c.gray100}`,
-  paddingBottom: 24,
-});
-const Participating = styled.div({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: 20,
-  '& a': {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 22,
-    border: `0.5px solid ${c.gray100}`,
-    borderRadius: 12,
-    padding: 16,
-    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
-    '&:hover': {
-      transform: 'translateY(-3px)',
-      borderColor: c.gray200,
-      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
-    },
-  },
-  [mobile]: { gridTemplateColumns: '1fr' },
-});
-const HiddenInput = styled.input({
-  position: 'absolute',
-  width: 1,
-  height: 1,
-  opacity: 0,
-  overflow: 'hidden',
-  clip: 'rect(0 0 0 0)',
-});
-const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
-// ProfileCards.Identity는 user-design 목업 이름을 하드코딩해 실 이름을 못 쓴다.
-// 아바타 스타일만 맞춰 마이페이지에서 실 인증 정보를 직접 렌더한다.
-const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
-  width: large ? 110 : 64,
-  height: large ? 110 : 64,
-  borderRadius: '50%',
-  background: c.gray100,
-  flexShrink: 0,
-  overflow: 'hidden',
-  [mobile]: { width: 72, height: 72, background: c.paleBlue },
-}));
-const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
-// 아바타 자체가 파일 선택 트리거다(프로필 링크와 겹치지 않게 Link 밖에 둔다).
-const AvatarPicker = styled.label<{ busy?: boolean }>(({ busy }) => ({
-  position: 'relative',
-  display: 'block',
-  flexShrink: 0,
-  borderRadius: '50%',
-  cursor: busy ? 'progress' : 'pointer',
-  opacity: busy ? 0.6 : 1,
-  '&:focus-within': { outline: '2px solid currentColor', outlineOffset: 2 },
-}));
-const PROFILE_IMAGE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const PROFILE_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
-const certificateBadges = ['자격증', '수료증', '어학성적', '수상경력'];
-
-const CERTIFICATE_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-const CERTIFICATE_MAX_BYTES = 10 * 1024 * 1024;
-const CERTIFICATE_MAX_FILES = 5;
+import {
+  acceptedChatLink,
+  applicantResultOptions,
+  buildLegalSections,
+  challengeResultTag,
+  certificateBadges,
+  CERTIFICATE_CONTENT_TYPES,
+  CERTIFICATE_MAX_BYTES,
+  CERTIFICATE_MAX_FILES,
+  describeNotification,
+  formatParticipatingDay,
+  notificationCategory,
+  notificationTabs,
+  PROFILE_IMAGE_CONTENT_TYPES,
+  PROFILE_IMAGE_MAX_BYTES,
+  resultFromStatus,
+  teamResultTag,
+  timeAgo,
+  type ApplicantResult,
+  type ParticipatingItem,
+} from './Mypage';
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
-
-const EndRow = styled(Row)<{ $mt?: number }>(({ $mt }) => ({
-  justifyContent: 'flex-end',
-  marginTop: $mt,
-}));
-const HeadingSpaced = styled(Heading)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
-const TitleSpaced = styled(Title)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
-const MutedSpaced = styled(Muted)<{ $mt: number }>(({ $mt }) => ({ marginTop: $mt }));
 
 function CertificateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const toast = useToast();
@@ -272,11 +207,6 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 const BIO_MAX_LENGTH = 100;
 
-const BioText = styled(Muted)({
-  cursor: 'text',
-  borderRadius: 4,
-});
-
 // 더블클릭으로 여는 인라인 편집 — Enter 저장, Escape/blur 취소.
 function BioInlineEdit({
   initial,
@@ -298,7 +228,7 @@ function BioInlineEdit({
     if (!saving) onSubmit(value.trim());
   };
   return (
-    <form style={{ flex: 1 }} onSubmit={submit}>
+    <InlineEditForm onSubmit={submit}>
       <Stack gap={4}>
         <Input
           autoFocus
@@ -316,11 +246,11 @@ function BioInlineEdit({
           }}
           onBlur={cancel}
         />
-        <Muted style={{ textAlign: 'right' }}>
+        <InlineEditCount>
           {value.length}/{BIO_MAX_LENGTH}
-        </Muted>
+        </InlineEditCount>
       </Stack>
-    </form>
+    </InlineEditForm>
   );
 }
 
@@ -402,63 +332,6 @@ function SkillAddModal({
     </Modal>
   );
 }
-
-const LinkList = styled.div({ display: 'flex', flexDirection: 'column', gap: 12 });
-const LinkRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
-const linkInput = {
-  height: 40,
-  padding: '0 14px',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  minWidth: 0,
-  font: 'inherit',
-  fontSize: 15,
-  color: c.gray900,
-  background: 'transparent',
-  '&::placeholder': { color: c.gray200 },
-  '&:focus': { outline: 'none', borderColor: c.gray500 },
-} as const;
-const LinkLabelInput = styled.input({ ...linkInput, width: 101, flexShrink: 0 });
-const LinkUrlInput = styled.input({ ...linkInput, flex: 1 });
-const BadgeRequest = styled.label({
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 4,
-  flexShrink: 0,
-  fontSize: 13,
-  color: c.gray500,
-  cursor: 'pointer',
-});
-const LinkDeleteButton = styled.button({
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: 24,
-  height: 24,
-  flexShrink: 0,
-  border: 0,
-  background: 'transparent',
-  color: c.gray500,
-  cursor: 'pointer',
-  '&:hover': { color: c.gray900 },
-  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
-});
-const LinkAddButton = styled.button({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 6,
-  height: 40,
-  width: '100%',
-  border: `0.5px solid ${c.gray200}`,
-  borderRadius: 8,
-  background: 'transparent',
-  color: c.gray500,
-  ...textStyle.caption,
-  cursor: 'pointer',
-  '&:hover': { background: c.gray50 },
-  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
-});
 
 const LINK_LABEL_MAX_LENGTH = 50;
 const LINK_URL_MAX_LENGTH = 500;
@@ -584,17 +457,6 @@ function InlineLinks({
   );
 }
 
-const formatParticipatingDay = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' }) : '';
-type ParticipatingItem = {
-  key: string;
-  href: string;
-  title: string;
-  sub?: string;
-  role?: string;
-  meta: string;
-};
-
 // 모바일 마이페이지 '참가 이력' — 챌린지·팀 지원 내역을 실제 상세 링크와 함께 보여준다(#278).
 function ParticipationHistory() {
   const challengeQuery = generated.useListMyApplications();
@@ -717,7 +579,7 @@ function ProfileEditor() {
         )}
       </Stack>
       <div>
-        <Heading style={{ marginBottom: 12 }}>내 뱃지</Heading>
+        <BadgeHeading>내 뱃지</BadgeHeading>
         <Badges
           extra={certificates}
           trailing={
@@ -893,7 +755,7 @@ export function MyPage() {
           </AvatarPicker>
           <Link href="/profile">
             <Stack gap={8}>
-              <h2 style={{ fontSize: 20 }}>{displayName}</h2>
+              <ProfileName>{displayName}</ProfileName>
               {profileMeta && <Muted>{profileMeta}</Muted>}
             </Stack>
           </Link>
@@ -909,7 +771,7 @@ export function MyPage() {
               {[['/my/profile-edit', '내 프로필 수정'], ...myMenu].map(([href, label]) => (
                 <Link key={href} href={href}>
                   {label}
-                  <span style={{ fontSize: 14 }}>›</span>
+                  <MenuArrow>›</MenuArrow>
                 </Link>
               ))}
             </MobileMenu>
@@ -928,15 +790,15 @@ export function MyPage() {
               {participatingItems.map((item) => (
                 <Link key={item.key} href={item.href}>
                   <div>
-                    <Heading style={{ fontSize: 15 }}>{item.title}</Heading>
+                    <ParticipationTitle>{item.title}</ParticipationTitle>
                     {item.sub && <Muted>{item.sub}</Muted>}
                   </div>
                   {item.role && (
-                    <Wrap style={{ gap: 6 }}>
+                    <ParticipationTags>
                       <Tag tone="blue">{item.role}</Tag>
-                    </Wrap>
+                    </ParticipationTags>
                   )}
-                  <Muted style={{ fontSize: 12 }}>{item.meta}</Muted>
+                  <ParticipationMeta>{item.meta}</ParticipationMeta>
                 </Link>
               ))}
             </Participating>
@@ -972,14 +834,14 @@ export function MyTeamsPage() {
               const applicants = (team.members ?? []).length;
               return (
                 <Stack key={team.id} gap={8}>
-                  <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                  <TeamRow>
                     <Muted>{team.challengeTitle ?? '챌린지'}</Muted>
-                    <Row gap={8} style={{ flexShrink: 0, alignItems: 'center' }}>
+                    <TeamActions gap={8}>
                       <Tag tone={team.status === 'closed' ? 'gray' : 'green'}>
                         {team.status === 'closed' ? '모집마감' : '모집중'}
                       </Tag>
-                    </Row>
-                  </Row>
+                    </TeamActions>
+                  </TeamRow>
                   <TeamCard
                     team={toTeamCard(team)}
                     manage={{ href: '/my/teams/public-data', applicants }}
@@ -993,10 +855,6 @@ export function MyTeamsPage() {
     </MyShell>
   );
 }
-const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
-  gridTemplateColumns: 'repeat(4,minmax(0,1fr))',
-  [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
-}));
 export function BookmarksPage() {
   const [sort, setSort] = useState('마감임박');
   const [two, setTwo] = useState(false);
@@ -1020,19 +878,19 @@ export function BookmarksPage() {
         <DesktopOnly>
           <Title>북마크 챌린지</Title>
         </DesktopOnly>
-        <Row style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <BookmarkToolbar>
           <Row>
             {['마감임박', '최신', '인기'].map((x) => (
-              <Button
+              <SortButton
                 key={x}
                 tone="plain"
                 small
                 aria-pressed={sort === x}
-                style={{ color: sort === x ? c.primary : c.gray500, border: 0, padding: 0 }}
+                $selected={sort === x}
                 onClick={() => setSort(x)}
               >
                 {x}
-              </Button>
+              </SortButton>
             ))}
           </Row>
           <MobileOnly>
@@ -1040,7 +898,7 @@ export function BookmarksPage() {
               {two ? '1 열 보기' : '2 열 보기'}
             </Button>
           </MobileOnly>
-        </Row>
+        </BookmarkToolbar>
         <BookmarkGrid two={two}>
           {data.map((x) => (
             <ContestCard key={x.id} contest={x} />
@@ -1115,15 +973,13 @@ export function InterestsPage() {
         <DesktopOnly>
           <Title>관심분야 설정</Title>
         </DesktopOnly>
-        <p style={{ fontSize: 15 }}>
-          관심 있는 분야를 선택하면 맞춤 챌린지와 팀 모집을 추천해드려요
-        </p>
+        <IntroText>관심 있는 분야를 선택하면 맞춤 챌린지와 팀 모집을 추천해드려요</IntroText>
         {preferenceGroups.map((g) => {
           const options = g.key === 'interests' ? [...g.options, ...extraOptions] : g.options;
           return (
             <Stack key={g.key} gap={12}>
               <Heading>{g.title}</Heading>
-              <Wrap style={{ maxWidth: 550 }}>
+              <InterestOptions>
                 {options.map((x) => (
                   <Chip
                     key={x}
@@ -1135,41 +991,21 @@ export function InterestsPage() {
                     {x}
                   </Chip>
                 ))}
-              </Wrap>
+              </InterestOptions>
             </Stack>
           );
         })}
         {interestsQuery.isError && <Muted>관심분야를 불러오지 못했어요. 새로고침해주세요.</Muted>}
-        <Button
-          style={{ width: 160 }}
+        <WideButton
           onClick={save}
           disabled={!interestsReady || interests.length === 0 || saveInterests.isPending}
         >
           저장하기
-        </Button>
+        </WideButton>
       </Stack>
     </MyShell>
   );
 }
-const SettingsGroup = styled.section({
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 12,
-  overflow: 'hidden',
-  '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
-  '.setting': {
-    padding: '16px 20px',
-    display: 'flex',
-    gap: 16,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderTop: `0.5px solid ${c.gray100}`,
-  },
-  [mobile]: {
-    border: 0,
-    '& h2': { background: c.white, padding: '12px 0', fontWeight: 600 },
-    '.setting': { padding: '16px 0' },
-  },
-});
 const notificationSettingKeys = notificationSettings.flatMap((g) => g.rows.map(([key]) => key));
 export function NotificationSettingsPage() {
   const queryClient = useQueryClient();
@@ -1199,7 +1035,7 @@ export function NotificationSettingsPage() {
       <Stack>
         <DesktopOnly>
           <Title>알림 설정</Title>
-          <p style={{ marginTop: 24 }}>받고 싶은 알림을 선택하세요</p>
+          <NotificationDescription>받고 싶은 알림을 선택하세요</NotificationDescription>
         </DesktopOnly>
         {notificationSettings.map((g) => (
           <SettingsGroup key={g.title}>
@@ -1207,8 +1043,8 @@ export function NotificationSettingsPage() {
             {g.rows.map(([key, label, desc]) => (
               <div key={key} className="setting">
                 <div>
-                  <p style={{ fontSize: 14, marginBottom: 4 }}>{label}</p>
-                  <Muted style={{ fontSize: 12 }}>{desc}</Muted>
+                  <SettingLabel>{label}</SettingLabel>
+                  <SettingDescription>{desc}</SettingDescription>
                 </div>
                 <Toggle label={label} checked={values[key]} onChange={() => toggle(key)} />
               </div>
@@ -1218,41 +1054,6 @@ export function NotificationSettingsPage() {
       </Stack>
     </MyShell>
   );
-}
-const Table = styled.table({
-  width: '100%',
-  borderSpacing: 0,
-  border: `0.5px solid ${c.gray100}`,
-  borderRadius: 12,
-  ...textStyle.bodySmall,
-  '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
-  '& td, & th': { padding: '14px 16px', borderBottom: `0.5px solid ${c.gray100}` },
-  '& th:first-child': { borderRadius: '11px 0 0 0' },
-  '& th:last-child': { borderRadius: '0 11px 0 0' },
-  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
-  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
-  '& tbody tr': { transition: 'background 0.12s ease' },
-  '& tbody tr:hover': { background: c.gray50 },
-  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
-});
-// 지원현황 결과 태그 매핑 — 서버 status 값을 화면 라벨/색상으로 바꾼다.
-// 챌린지 지원: accepted→예선 통과, rejected→불합격, 그 외(pending 등)→심사중.
-function challengeResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
-  if (status === 'accepted') return { label: '예선 통과', tone: 'green' };
-  if (status === 'rejected') return { label: '불합격', tone: 'red' };
-  return { label: '심사중', tone: 'blue' };
-}
-// 팀 지원: accepted→합격, rejected→불합격, pending→검토중.
-function teamResultTag(status?: string): { label: string; tone: 'green' | 'blue' | 'red' } {
-  if (status === 'accepted') return { label: '합격', tone: 'blue' };
-  if (status === 'rejected') return { label: '불합격', tone: 'red' };
-  return { label: '검토중', tone: 'green' };
-}
-// 팀장이 합격과 함께 첨부한 채팅방 링크 — http(s)만 반환해 javascript: 같은 값이 href로 나가지 않게 한다.
-function acceptedChatLink(status: string | undefined, raw: unknown): string | undefined {
-  if (status !== 'accepted' || typeof raw !== 'string') return undefined;
-  const value = raw.trim();
-  return isSafeLinkUrl(value) ? value : undefined;
 }
 export function ApplicationsPage() {
   const challengeQuery = generated.useListMyApplications();
@@ -1348,14 +1149,14 @@ export function ApplicationsPage() {
                         )}
                       </td>
                       <td>
-                        <Row gap={8} style={{ alignItems: 'center', flexWrap: 'nowrap' }}>
+                        <InlineRow gap={8}>
                           <Tag tone={result.tone}>{result.label}</Tag>
                           {chatLink && (
                             <a href={chatLink} target="_blank" rel="noopener noreferrer">
                               채팅방 링크
                             </a>
                           )}
-                        </Row>
+                        </InlineRow>
                       </td>
                     </tr>
                   );
@@ -1368,29 +1169,6 @@ export function ApplicationsPage() {
     </MyShell>
   );
 }
-const applicantResultOptions = ['미정', '합격', '불합격'].map((x) => ({
-  value: x,
-  label: x,
-}));
-const ApplicantThumbnail = styled.div({
-  height: 221,
-  overflow: 'hidden',
-  borderRadius: 19,
-  background: c.gray100,
-  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  [mobile]: { height: 160 },
-});
-const TeamApplicantsSection = styled.section({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 16,
-});
-const ApplicantMeta = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
-const ApplicantHeader = styled(Row)({ justifyContent: 'space-between', marginTop: 8 });
-const ApplicantTable = styled(Table)({ tableLayout: 'fixed' });
-type ApplicantResult = '미정' | '합격' | '불합격';
-const resultFromStatus = (status?: string): ApplicantResult =>
-  status === 'accepted' ? '합격' : status === 'rejected' ? '불합격' : '미정';
 export function TeamApplicantsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -1517,9 +1295,9 @@ export function TeamApplicantsPage() {
               ) : (
                 <ApplicantTable>
                   <colgroup>
-                    <col style={{ width: '34%' }} />
-                    <col style={{ width: '36%' }} />
-                    <col style={{ width: '30%' }} />
+                    <ApplicantColumn $width="34%" />
+                    <ApplicantColumn $width="36%" />
+                    <ApplicantColumn $width="30%" />
                   </colgroup>
                   <thead>
                     <tr>
@@ -1536,7 +1314,7 @@ export function TeamApplicantsPage() {
                           {member.role ? <Tag tone="blue">{member.role}</Tag> : <Muted>-</Muted>}
                         </td>
                         <td>
-                          <Row gap={6} style={{ flexWrap: 'nowrap', alignItems: 'center' }}>
+                          <InlineRow gap={6}>
                             <Dropdown
                               aria-label={`${member.name ?? '지원자'} 결과`}
                               size="S"
@@ -1555,7 +1333,7 @@ export function TeamApplicantsPage() {
                             {member.id && failedIds.includes(member.id) && (
                               <Tag tone="red">전송 실패</Tag>
                             )}
-                          </Row>
+                          </InlineRow>
                         </td>
                       </tr>
                     ))}
@@ -1567,8 +1345,8 @@ export function TeamApplicantsPage() {
         )}
       </Stack>
       <Modal open={sendTarget !== undefined} onClose={closeSendModal} title="결과 전송하기">
-        <Muted style={{ color: c.red }}>*이 활동은 되돌릴 수 없어요</Muted>
-        <p style={{ fontSize: 13 }}>합격자들에게 전송할 채팅방 링크를 첨부해주세요.</p>
+        <WarningText>*이 활동은 되돌릴 수 없어요</WarningText>
+        <SmallText>합격자들에게 전송할 채팅방 링크를 첨부해주세요.</SmallText>
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -1597,139 +1375,6 @@ export function TeamApplicantsPage() {
   );
 }
 
-const NotificationTitle = styled.h1({
-  margin: 0,
-  textAlign: 'center',
-  fontSize: 22,
-  fontWeight: 700,
-  color: c.gray900,
-});
-const NotificationTabs = styled.div({
-  display: 'flex',
-  borderBottom: `0.5px solid ${c.gray100}`,
-});
-const NotificationTabButton = styled.button({
-  flex: 1,
-  minWidth: 0,
-  height: 40,
-  border: 0,
-  borderBottom: '0.5px solid transparent',
-  background: 'transparent',
-  fontFamily: 'inherit',
-  fontSize: 15,
-  color: c.gray700,
-  cursor: 'pointer',
-  '&[aria-pressed="true"]': {
-    borderBottomColor: c.primary,
-    color: c.primary,
-    fontSize: 14,
-    fontWeight: 600,
-  },
-});
-const NotificationList = styled.div({
-  display: 'flex',
-  flexDirection: 'column',
-});
-const NotificationItem = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 12,
-  padding: '16px 0',
-  borderBottom: `0.5px solid ${c.gray100}`,
-  cursor: 'pointer',
-  '&:last-of-type': { borderBottom: 0 },
-  '&:hover': { background: c.gray50 },
-  '&[data-unread] h2': { fontWeight: 600, color: c.gray900 },
-  '&:not([data-unread]) h2': { fontWeight: 400, color: c.gray500 },
-});
-const NotificationDot = styled.span({
-  flexShrink: 0,
-  width: 8,
-  height: 8,
-  borderRadius: '50%',
-  background: c.lightBlue,
-  '[data-unread] > &': { background: c.primary },
-});
-const NotificationBody = styled.div({
-  flex: 1,
-  minWidth: 0,
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 4,
-});
-// 서버는 team_matching, team.created, team.application.submitted, application.submitted(챌린지 신청 접수), verification.result, deadline(북마크 마감), posting(북마크 접수 시작·관심분야 새 챌린지), content.rejected(관리자 반려), refund.result(환불 승인·반려) 알림을 생성한다.
-// 매핑되지 않은 유형은 '전체'에서만 보인다.
-const notificationTabs = ['전체', '팀매칭', '공고'] as const;
-type NotificationTab = (typeof notificationTabs)[number];
-type NotificationCategory = NotificationTab | '인증·결과' | '마감';
-const notificationCategory: Record<string, NotificationCategory> = {
-  team_matching: '팀매칭',
-  'verification.result': '인증·결과',
-  'content.rejected': '인증·결과',
-  'refund.result': '인증·결과',
-  deadline: '마감',
-  posting: '공고',
-};
-function describeNotification(type: string, payload: Record<string, unknown>) {
-  if (type === 'team_matching') {
-    // 초대 알림은 invitedUserId, 지원 알림은 applicantUserId, 결과 알림은 status로 구분한다
-    // (NotificationsService.settingsKeyFor와 동일).
-    if (typeof payload.invitedUserId === 'string') return '팀에 초대가 왔어요';
-    if (typeof payload.applicantUserId === 'string') {
-      // 초대 수락은 팀장에게 가는 별도 알림 — 일반 지원과 문구를 구분한다.
-      if (payload.inviteAccepted === true) return '초대가 수락했어요';
-      // 목록 payload로는 팀명을 조회할 수 없어 generic 문구를 쓴다.
-      return '새 지원자가 팀에 지원했어요';
-    }
-    if (payload.status === 'accepted') return '지원이 수락됐어요';
-    if (payload.status === 'rejected') return '지원이 거절됐어요';
-    return '팀 매칭 알림이 있어요';
-  }
-  if (type === 'verification.result') {
-    if (payload.status === 'approved' || payload.status === 'verified')
-      return '사업자 인증이 승인됐어요';
-    if (payload.status === 'rejected') return '사업자 인증이 반려됐어요';
-    return '사업자 인증 결과가 도착했어요';
-  }
-  if (type === 'content.rejected') {
-    return payload.targetType === 'team' ? '팀 모집글이 반려됐어요' : '챌린지 공고가 반려됐어요';
-  }
-  if (type === 'refund.result') {
-    return payload.status === 'approved'
-      ? '환불이 승인되어 결제가 취소됐어요'
-      : '환불 요청이 반려됐어요';
-  }
-  if (type === 'application.submitted') {
-    const title = typeof payload.challengeTitle === 'string' ? payload.challengeTitle : '';
-    return title ? `'${title}' 참가 신청이 접수됐어요` : '챌린지 참가 신청이 접수됐어요';
-  }
-  if (type === 'team.created') {
-    const title = typeof payload.title === 'string' ? payload.title : '';
-    return title ? `'${title}' 팀을 만들었어요` : '팀을 만들었어요';
-  }
-  if (type === 'team.application.submitted') {
-    return '팀 참가 신청이 접수됐어요';
-  }
-  if (type === 'deadline') {
-    const daysLeft = typeof payload.daysLeft === 'number' ? payload.daysLeft : undefined;
-    const dday = daysLeft === undefined ? '' : daysLeft === 0 ? ' D-Day' : ` D-${daysLeft}`;
-    return `북마크한 챌린지 마감${dday}`;
-  }
-  if (type === 'posting') {
-    if (payload.kind === 'bookmark_open') return '북마크한 챌린지 참가접수가 시작되었어요';
-    if (payload.kind === 'interest_new') return '관심분야 새 챌린지가 등록되었어요';
-    return '새 공고가 등록되었어요';
-  }
-  return '새 알림이 있어요';
-}
-function timeAgo(iso: string | undefined, now: number) {
-  if (!iso) return '';
-  const minutes = Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60_000));
-  if (minutes < 1) return '방금 전';
-  if (minutes < 60) return `${minutes}분 전`;
-  if (minutes < 60 * 24) return `${Math.floor(minutes / 60)}시간 전`;
-  return `${Math.floor(minutes / (60 * 24))}일 전`;
-}
 export function NotificationsPage() {
   const [tab, setTab] = useState<string>('전체');
   // 상대 시간 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
@@ -1820,11 +1465,11 @@ export function NotificationsPage() {
                 >
                   <NotificationDot aria-hidden />
                   <NotificationBody>
-                    <Heading style={{ fontSize: 14 }}>
+                    <NotificationHeading>
                       {describeNotification(item.type ?? '', payload)}
-                    </Heading>
+                    </NotificationHeading>
                     {inviteMemberId && teamId && !inviteResponse && (
-                      <Row gap={8} style={{ marginTop: 8 }}>
+                      <InviteActions gap={8}>
                         <Button
                           small
                           disabled={respondInvite.isPending}
@@ -1854,7 +1499,7 @@ export function NotificationsPage() {
                         >
                           거절
                         </Button>
-                      </Row>
+                      </InviteActions>
                     )}
                     {inviteResponse && (
                       <MutedSpaced $mt={8}>
@@ -1863,10 +1508,10 @@ export function NotificationsPage() {
                     )}
                     {(item.type === 'content.rejected' || item.type === 'refund.result') &&
                       typeof payload.reason === 'string' && (
-                        <Muted style={{ fontSize: 13 }}>반려 사유: {payload.reason}</Muted>
+                        <NotificationDetail>반려 사유: {payload.reason}</NotificationDetail>
                       )}
                     {chatLink && (
-                      <Muted style={{ fontSize: 13 }}>
+                      <NotificationDetail>
                         채팅방 링크:{' '}
                         <a
                           href={chatLink}
@@ -1880,9 +1525,9 @@ export function NotificationsPage() {
                         >
                           {chatLink}
                         </a>
-                      </Muted>
+                      </NotificationDetail>
                     )}
-                    <Muted style={{ fontSize: 12 }}>{meta}</Muted>
+                    <NotificationMeta>{meta}</NotificationMeta>
                   </NotificationBody>
                 </NotificationItem>
               );
@@ -1915,48 +1560,21 @@ export function LegalPageBody({
   // (조/장) isn't always followed by a body: chapter dividers like "제1장 총칙"
   // sit directly before the next heading with no body of their own.
   const [title, intro, ...articles] = paragraphs;
-  const isHeading = (s: string) => /^제\s*\d+\s*(장|조)/.test(s);
-  const isChapter = (s: string) => /^제\s*\d+\s*장/.test(s);
-  const sections: { heading: string; body: string; isChapter: boolean }[] = [];
-  for (let i = 0; i < articles.length;) {
-    const next = articles[i + 1];
-    const hasBody = next !== undefined && !isHeading(next);
-    sections.push({
-      heading: articles[i],
-      body: hasBody ? next : '',
-      isChapter: isChapter(articles[i]),
-    });
-    i += hasBody ? 2 : 1;
-  }
+  const sections = buildLegalSections(articles);
   return (
     <Content>
       <Stack gap={24}>
-        <Title style={{ fontSize: 32, fontWeight: 700, lineHeight: 'normal', color: c.gray900 }}>
-          {title}
-        </Title>
-        <p style={{ ...textStyle.body, color: c.gray700, whiteSpace: 'pre-wrap' }}>{intro}</p>
+        <LegalTitle>{title}</LegalTitle>
+        <LegalIntro>{intro}</LegalIntro>
         {sections.map((s, i) => (
           <section key={i}>
-            <Heading
-              style={{
-                ...textStyle.h1_2,
-                color: c.gray900,
-                marginBottom: 8,
-                display: 'flex',
-                alignItems: 'center',
-                gap: s.isChapter ? 0 : 12,
-              }}
-            >
+            <LegalHeading chapter={s.isChapter}>
               {!s.isChapter && (
                 <Icon src="/assets/icons/bullet-icon.png" width={8} height={23} alt="" />
               )}
               {s.heading}
-            </Heading>
-            {s.body && (
-              <p style={{ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' }}>
-                {s.body}
-              </p>
-            )}
+            </LegalHeading>
+            {s.body && <LegalBody>{s.body}</LegalBody>}
           </section>
         ))}
       </Stack>
@@ -1987,3 +1605,287 @@ export function LegalPage({
     </UserShell>
   );
 }
+
+// Styles are kept together at the bottom so page behavior and layout definitions remain separate.
+const MobileMenu = styled.nav({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+  '& a': {
+    padding: '16px 8px',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontWeight: 600,
+    borderRadius: 8,
+    transition: 'background 0.15s ease',
+  },
+  '& a:active': { background: c.gray50 },
+  '& a:hover span': { transform: 'translateX(3px)' },
+  '& a span': { display: 'inline-block', transition: 'transform 0.15s ease' },
+  borderBottom: `0.5px solid ${c.gray100}`,
+  paddingBottom: 24,
+});
+const Participating = styled.div({
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 20,
+  '& a': {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 22,
+    border: `0.5px solid ${c.gray100}`,
+    borderRadius: 12,
+    padding: 16,
+    transition: 'box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      borderColor: c.gray200,
+      boxShadow: '0 8px 20px rgb(0 0 0 / 8%)',
+    },
+  },
+  [mobile]: { gridTemplateColumns: '1fr' },
+});
+const HiddenInput = styled.input({
+  position: 'absolute',
+  width: 1,
+  height: 1,
+  opacity: 0,
+  overflow: 'hidden',
+  clip: 'rect(0 0 0 0)',
+});
+const SkillGrid = styled(Wrap)({ maxHeight: 220, overflowY: 'auto', alignItems: 'flex-start' });
+const MyAvatar = styled.div<{ large?: boolean }>(({ large }) => ({
+  width: large ? 110 : 64,
+  height: large ? 110 : 64,
+  borderRadius: '50%',
+  background: c.gray100,
+  flexShrink: 0,
+  overflow: 'hidden',
+  [mobile]: { width: 72, height: 72, background: c.paleBlue },
+}));
+const AvatarImage = styled.img({ width: '100%', height: '100%', objectFit: 'cover' });
+const AvatarPicker = styled.label<{ busy?: boolean }>(({ busy }) => ({
+  position: 'relative',
+  display: 'block',
+  flexShrink: 0,
+  borderRadius: '50%',
+  cursor: busy ? 'progress' : 'pointer',
+  opacity: busy ? 0.6 : 1,
+  '&:focus-within': { outline: '2px solid currentColor', outlineOffset: 2 },
+}));
+const EndRow = styled(Row)<{ $mt?: number }>(({ $mt }) => ({
+  justifyContent: 'flex-end',
+  marginTop: $mt,
+}));
+const HeadingSpaced = styled(Heading)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const TitleSpaced = styled(Title)<{ $mb: number }>(({ $mb }) => ({ marginBottom: $mb }));
+const MutedSpaced = styled(Muted)<{ $mt: number }>(({ $mt }) => ({ marginTop: $mt }));
+const BioText = styled(Muted)({ cursor: 'text', borderRadius: 4 });
+const LinkList = styled.div({ display: 'flex', flexDirection: 'column', gap: 12 });
+const LinkRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12 });
+const linkInput = {
+  height: 40,
+  padding: '0 14px',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  minWidth: 0,
+  font: 'inherit',
+  fontSize: 15,
+  color: c.gray900,
+  background: 'transparent',
+  '&::placeholder': { color: c.gray200 },
+  '&:focus': { outline: 'none', borderColor: c.gray500 },
+} as const;
+const LinkLabelInput = styled.input({ ...linkInput, width: 101, flexShrink: 0 });
+const LinkUrlInput = styled.input({ ...linkInput, flex: 1 });
+const BadgeRequest = styled.label({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 4,
+  flexShrink: 0,
+  fontSize: 13,
+  color: c.gray500,
+  cursor: 'pointer',
+});
+const LinkDeleteButton = styled.button({
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  flexShrink: 0,
+  border: 0,
+  background: 'transparent',
+  color: c.gray500,
+  cursor: 'pointer',
+  '&:hover': { color: c.gray900 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const LinkAddButton = styled.button({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: 6,
+  height: 40,
+  width: '100%',
+  border: `0.5px solid ${c.gray200}`,
+  borderRadius: 8,
+  background: 'transparent',
+  color: c.gray500,
+  ...textStyle.caption,
+  cursor: 'pointer',
+  '&:hover': { background: c.gray50 },
+  '&:disabled': { cursor: 'not-allowed', opacity: 0.5 },
+});
+const BookmarkGrid = styled(ContestGrid)<{ two: boolean }>(({ two }) => ({
+  gridTemplateColumns: 'repeat(4,minmax(0,1fr))',
+  [mobile]: { gridTemplateColumns: two ? 'repeat(2,minmax(0,1fr))' : '1fr' },
+}));
+const SettingsGroup = styled.section({
+  border: `0.5px solid ${c.gray100}`,
+  borderRadius: 12,
+  overflow: 'hidden',
+  '& h2': { background: c.gray100, padding: '14px 20px', ...textStyle.body },
+  '.setting': {
+    padding: '16px 20px',
+    display: 'flex',
+    gap: 16,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderTop: `0.5px solid ${c.gray100}`,
+  },
+  [mobile]: {
+    border: 0,
+    '& h2': { background: c.white, padding: '12px 0', fontWeight: 600 },
+    '.setting': { padding: '16px 0' },
+  },
+});
+const Table = styled.table({
+  width: '100%',
+  borderSpacing: 0,
+  border: `0.5px solid ${c.gray100}`,
+  borderRadius: 12,
+  ...textStyle.bodySmall,
+  '& th': { background: c.gray100, textAlign: 'left', fontWeight: 500 },
+  '& td, & th': { padding: '14px 16px', borderBottom: `0.5px solid ${c.gray100}` },
+  '& th:first-child': { borderRadius: '11px 0 0 0' },
+  '& th:last-child': { borderRadius: '0 11px 0 0' },
+  '& tr:last-child td:first-child': { borderRadius: '0 0 0 11px' },
+  '& tr:last-child td:last-child': { borderRadius: '0 0 11px 0' },
+  '& tbody tr': { transition: 'background 0.12s ease' },
+  '& tbody tr:hover': { background: c.gray50 },
+  [mobile]: { '& td, & th': { padding: 10, fontSize: textStyle.mInfoText.fontSize } },
+});
+const ApplicantThumbnail = styled.div({
+  height: 221,
+  overflow: 'hidden',
+  borderRadius: 19,
+  background: c.gray100,
+  '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  [mobile]: { height: 160 },
+});
+const TeamApplicantsSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 16 });
+const ApplicantMeta = styled.div({ display: 'flex', flexDirection: 'column', gap: 8 });
+const ApplicantHeader = styled(Row)({ justifyContent: 'space-between', marginTop: 8 });
+const ApplicantTable = styled(Table)({ tableLayout: 'fixed' });
+const NotificationTitle = styled.h1({
+  margin: 0,
+  textAlign: 'center',
+  fontSize: 22,
+  fontWeight: 700,
+  color: c.gray900,
+});
+const NotificationTabs = styled.div({ display: 'flex', borderBottom: `0.5px solid ${c.gray100}` });
+const NotificationTabButton = styled.button({
+  flex: 1,
+  minWidth: 0,
+  height: 40,
+  border: 0,
+  borderBottom: '0.5px solid transparent',
+  background: 'transparent',
+  fontFamily: 'inherit',
+  fontSize: 15,
+  color: c.gray700,
+  cursor: 'pointer',
+  '&[aria-pressed="true"]': {
+    borderBottomColor: c.primary,
+    color: c.primary,
+    fontSize: 14,
+    fontWeight: 600,
+  },
+});
+const NotificationList = styled.div({ display: 'flex', flexDirection: 'column' });
+const NotificationItem = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 12,
+  padding: '16px 0',
+  borderBottom: `0.5px solid ${c.gray100}`,
+  cursor: 'pointer',
+  '&:last-of-type': { borderBottom: 0 },
+  '&:hover': { background: c.gray50 },
+  '&[data-unread] h2': { fontWeight: 600, color: c.gray900 },
+  '&:not([data-unread]) h2': { fontWeight: 400, color: c.gray500 },
+});
+const NotificationDot = styled.span({
+  flexShrink: 0,
+  width: 8,
+  height: 8,
+  borderRadius: '50%',
+  background: c.lightBlue,
+  '[data-unread] > &': { background: c.primary },
+});
+const NotificationBody = styled.div({
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 4,
+});
+const LegalTitle = styled(Title)({
+  fontSize: 32,
+  fontWeight: 700,
+  lineHeight: 'normal',
+  color: c.gray900,
+});
+const LegalIntro = styled.p({ ...textStyle.body, color: c.gray700, whiteSpace: 'pre-wrap' });
+const LegalHeading = styled(Heading)<{ chapter: boolean }>(({ chapter }) => ({
+  ...textStyle.h1_2,
+  color: c.gray900,
+  marginBottom: 8,
+  display: 'flex',
+  alignItems: 'center',
+  gap: chapter ? 0 : 12,
+}));
+const LegalBody = styled.p({ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' });
+const InlineEditForm = styled.form({ flex: 1 });
+const InlineEditCount = styled(Muted)({ textAlign: 'right' });
+const BadgeHeading = styled(Heading)({ marginBottom: 12 });
+const ProfileName = styled.h2({ fontSize: 20 });
+const MenuArrow = styled.span({ fontSize: 14 });
+const ParticipationTitle = styled(Heading)({ fontSize: 15 });
+const ParticipationTags = styled(Wrap)({ gap: 6 });
+const ParticipationMeta = styled(Muted)({ fontSize: 12 });
+const TeamRow = styled(Row)({ justifyContent: 'space-between', alignItems: 'center' });
+const TeamActions = styled(Row)({ flexShrink: 0, alignItems: 'center' });
+const BookmarkToolbar = styled(Row)({ justifyContent: 'space-between', flexWrap: 'wrap' });
+const IntroText = styled.p({ fontSize: 15 });
+const InterestOptions = styled(Wrap)({ maxWidth: 550 });
+const WideButton = styled(Button)({ width: 160 });
+const NotificationDescription = styled.p({ marginTop: 24 });
+const SettingLabel = styled.p({ fontSize: 14, marginBottom: 4 });
+const SettingDescription = styled(Muted)({ fontSize: 12 });
+const InlineRow = styled(Row)({ alignItems: 'center', flexWrap: 'nowrap' });
+const ApplicantColumn = styled.col<{ $width: string }>(({ $width }) => ({ width: $width }));
+const SortButton = styled(Button)<{ $selected?: boolean }>(({ $selected }) => ({
+  color: $selected ? c.primary : c.gray500,
+  border: 0,
+  padding: 0,
+}));
+const WarningText = styled(Muted)({ color: c.red });
+const SmallText = styled.p({ fontSize: 13 });
+const NotificationHeading = styled(Heading)({ fontSize: 14 });
+const InviteActions = styled(Row)({ marginTop: 8 });
+const NotificationDetail = styled(Muted)({ fontSize: 13 });
+const NotificationMeta = styled(Muted)({ fontSize: 12 });
