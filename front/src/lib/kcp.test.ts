@@ -203,3 +203,79 @@ describe('requestKcpNaverPayPayment — mobile window', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('loadKcpHub — 허브 로더 대기', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    document.head.innerHTML = '';
+    document.body.innerHTML = '';
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', 'T0000');
+    delete (window as unknown as { KCP_Pay_Execute_Web?: unknown }).KCP_Pay_Execute_Web;
+    vi.stubGlobal('navigator', { userAgent: DESKTOP_UA });
+  });
+
+  it('허브 onload 이후 비동기로 정의되는 KCP_Pay_Execute_Web을 기다려 결제창을 연다', async () => {
+    const { requestKcpNaverPayPayment } = await importKcp();
+    const pending = requestKcpNaverPayPayment({
+      orderId: 'order-hub',
+      amount: 1000,
+      orderName: '광고',
+    });
+
+    const script = document.head.querySelector('script');
+    expect(script).not.toBeNull();
+    // 실제 허브처럼 onload 시점에는 함수가 없고, 하위 스크립트가 나중에 정의한다.
+    script!.dispatchEvent(new Event('load'));
+    const execute = vi.fn();
+    setTimeout(() => {
+      (window as unknown as { KCP_Pay_Execute_Web: unknown }).KCP_Pay_Execute_Web = execute;
+    }, 120);
+
+    await expect(pending).resolves.toBe(true);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('허브 로드 실패를 캐시하지 않아 다음 시도에서 다시 로드한다', async () => {
+    const { requestKcpNaverPayPayment } = await importKcp();
+    const first = requestKcpNaverPayPayment({ orderId: 'o1', amount: 1000, orderName: '광고' });
+    document.head.querySelector('script')!.dispatchEvent(new Event('error'));
+    await expect(first).resolves.toBe(false);
+
+    const second = requestKcpNaverPayPayment({ orderId: 'o2', amount: 1000, orderName: '광고' });
+    const script = document.head.querySelector('script');
+    expect(script).not.toBeNull();
+    const execute = vi.fn();
+    (window as unknown as { KCP_Pay_Execute_Web: unknown }).KCP_Pay_Execute_Web = execute;
+    script!.dispatchEvent(new Event('load'));
+    await expect(second).resolves.toBe(true);
+    expect(execute).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('kcpHubUrl', () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.unstubAllEnvs();
+  });
+
+  it('운영 빌드라도 테스트 사이트코드(T0000)면 테스트 결제창을 쓴다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', 'T0000');
+    const { kcpHubUrl } = await importKcp();
+    expect(kcpHubUrl()).toBe('https://testspay.kcp.co.kr/plugin/kcp_spay_hub.js');
+  });
+
+  it('운영 빌드 + 계약 사이트코드면 운영 결제창을 쓴다', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', 'A1B2C');
+    const { kcpHubUrl } = await importKcp();
+    expect(kcpHubUrl()).toBe('https://spay.kcp.co.kr/plugin/kcp_spay_hub.js');
+  });
+
+  it('NEXT_PUBLIC_KCP_JS_URL이 있으면 그 값을 우선한다', async () => {
+    vi.stubEnv('NEXT_PUBLIC_KCP_JS_URL', 'https://example.test/hub.js');
+    vi.stubEnv('NEXT_PUBLIC_KCP_SITE_CD', 'T0000');
+    const { kcpHubUrl } = await importKcp();
+    expect(kcpHubUrl()).toBe('https://example.test/hub.js');
+  });
+});

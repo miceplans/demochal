@@ -42,36 +42,54 @@ declare global {
 }
 
 let kcpHubPromise: Promise<boolean> | null = null;
+// kcp_spay_hub.js는 로더일 뿐이다 — 실제 KCP_Pay_Execute_Web은 허브가 비동기로 붙이는
+// kcp_jquery → kcp_spay_cross_hub.js가 정의하므로 허브 onload 시점에는 아직 없다.
+const KCP_HUB_READY_TIMEOUT_MS = 10_000;
+const KCP_HUB_READY_POLL_MS = 50;
 
-// 허브 스크립트를 한 번만 주입한다. 로드 실패·비브라우저 환경은 false.
+function hasKcpExecute(): boolean {
+  return typeof window.KCP_Pay_Execute_Web === 'function';
+}
+
+// KCP_Pay_Execute_Web이 정의될 때까지 기다린다. 제한 시간 안에 없으면 false.
+function waitForKcpExecute(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const deadline = Date.now() + KCP_HUB_READY_TIMEOUT_MS;
+    const check = () => {
+      if (hasKcpExecute()) resolve(true);
+      else if (Date.now() >= deadline) resolve(false);
+      else setTimeout(check, KCP_HUB_READY_POLL_MS);
+    };
+    check();
+  });
+}
+
+// 허브 스크립트를 한 번만 주입하고, 결제 함수가 준비될 때까지 기다린다.
+// 로드 실패·시간 초과는 캐시하지 않는다 — 다음 클릭에서 다시 시도할 수 있어야 한다.
 function loadKcpHub(scriptUrl: string): Promise<boolean> {
-  kcpHubPromise ??= new Promise((resolve) => {
-    if (typeof document === 'undefined' || typeof window === 'undefined') {
-      resolve(false);
-      return;
-    }
-    if (typeof window.KCP_Pay_Execute_Web === 'function') {
-      resolve(true);
-      return;
-    }
+  if (typeof document === 'undefined' || typeof window === 'undefined') {
+    return Promise.resolve(false);
+  }
+  if (hasKcpExecute()) return Promise.resolve(true);
+  kcpHubPromise ??= new Promise<boolean>((resolve) => {
     const existing = document.querySelector<HTMLScriptElement>(`script[src="${scriptUrl}"]`);
     if (existing) {
-      existing.addEventListener(
-        'load',
-        () => resolve(typeof window.KCP_Pay_Execute_Web === 'function'),
-        {
-          once: true,
-        },
-      );
-      existing.addEventListener('error', () => resolve(false), { once: true });
+      // 이전 시도에서 이미 로드된 허브라면 결제 함수 준비만 기다린다.
+      void waitForKcpExecute().then(resolve);
       return;
     }
     const script = document.createElement('script');
     script.src = scriptUrl;
     script.async = true;
-    script.onload = () => resolve(typeof window.KCP_Pay_Execute_Web === 'function');
-    script.onerror = () => resolve(false);
+    script.onload = () => void waitForKcpExecute().then(resolve);
+    script.onerror = () => {
+      script.remove();
+      resolve(false);
+    };
     document.head.appendChild(script);
+  }).then((ready) => {
+    if (!ready) kcpHubPromise = null;
+    return ready;
   });
   return kcpHubPromise;
 }
@@ -122,13 +140,19 @@ function kcpSiteName(): string {
   return process.env.NEXT_PUBLIC_KCP_SITE_NAME ?? 'Semochal';
 }
 
-function kcpHubUrl(): string {
-  // NEXT_PUBLIC_KCP_JS_URL이 최우선. 미설정 시 빌드 환경으로 기본값을 고른다 —
-  // 로컬/미리보기는 테스트 창(testspay), 프로덕션 빌드는 운영 창(spay)을 연다.
-  return (
-    process.env.NEXT_PUBLIC_KCP_JS_URL ??
-    (process.env.NODE_ENV === 'production' ? KCP_HUB_URL_PRODUCTION : KCP_HUB_URL_TEST)
-  );
+// KCP 공용 테스트 사이트코드 — 운영 결제창(spay)에서는 3014(미등록 사이트 코드)로 거절된다.
+// 서버도 이 값을 운영 모드에서 거부하므로(server config/env.ts) 항상 테스트 창과 짝지어야 한다.
+const KCP_TEST_SITE_CD = 'T0000';
+
+export function kcpHubUrl(): string {
+  // NEXT_PUBLIC_KCP_JS_URL이 최우선. 미설정 시 테스트 사이트코드이거나 비운영 빌드면 테스트 창
+  // (testspay), 그 외 운영 빌드는 운영 창(spay)을 연다.
+  const configured = process.env.NEXT_PUBLIC_KCP_JS_URL;
+  if (configured) return configured;
+  if (kcpSiteCd() === KCP_TEST_SITE_CD || process.env.NODE_ENV !== 'production') {
+    return KCP_HUB_URL_TEST;
+  }
+  return KCP_HUB_URL_PRODUCTION;
 }
 
 export function isKcpMobileDevice(userAgent: string): boolean {
