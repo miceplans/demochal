@@ -19,7 +19,7 @@ export function BizDesignProductsPage() {
   const [buyingCode, setBuyingCode] = useState<string | null>(null);
   const products = productsQuery.data?.status === 200 ? productsQuery.data.data : [];
 
-  const buy = async (code: 'poster' | 'opening_video') => {
+  const buy = async (code: (typeof products)[number]['code']) => {
     if (buyingCode) return;
     setBuyingCode(code);
     try {

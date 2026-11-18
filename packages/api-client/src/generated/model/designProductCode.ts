@@ -22,5 +22,17 @@ export type DesignProductCode = typeof DesignProductCode[keyof typeof DesignProd
 
 export const DesignProductCode = {
   poster: 'poster',
+  poster_print: 'poster_print',
+  key_visual_3: 'key_visual_3',
+  key_visual_10: 'key_visual_10',
+  opening_video_1m: 'opening_video_1m',
   opening_video: 'opening_video',
+  opening_video_5m: 'opening_video_5m',
+  highlight_video: 'highlight_video',
+  logo_motion: 'logo_motion',
+  event_bi: 'event_bi',
+  card_news: 'card_news',
+  sns_banner_set: 'sns_banner_set',
+  event_signage: 'event_signage',
+  certificate: 'certificate',
 } as const;

@@ -13,7 +13,19 @@ describe('DesignProductsService', () => {
     const { service } = makeService();
     expect(service.list().map((p) => [p.code, p.price])).toEqual([
       ['poster', 500_000],
+      ['poster_print', 900_000],
+      ['key_visual_3', 1_200_000],
+      ['key_visual_10', 3_500_000],
+      ['opening_video_1m', 1_500_000],
       ['opening_video', 3_000_000],
+      ['opening_video_5m', 4_500_000],
+      ['highlight_video', 2_000_000],
+      ['logo_motion', 700_000],
+      ['event_bi', 1_500_000],
+      ['card_news', 400_000],
+      ['sns_banner_set', 300_000],
+      ['event_signage', 600_000],
+      ['certificate', 300_000],
     ]);
   });
 
