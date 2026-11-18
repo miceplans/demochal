@@ -6,7 +6,7 @@ import { generated } from '@semochal/api-client';
 import { BizContent, PrimaryButton, SectionTitle } from '@/components/biz/BizShell';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useToast } from '@/components/common/Toast';
-import { requestTossPayment } from '@/lib/payments';
+import { requestBizPayment } from '@/lib/payments';
 import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -27,14 +27,15 @@ export function BizDesignProductsPage() {
       if (created.status !== 201) throw new Error('예상하지 못한 응답입니다.');
       const order = created.data;
       try {
-        const started = await requestTossPayment({
+        // bz 서브도메인에서는 KCP 네이버페이, 그 외에는 토스 결제창이 열린다(lib/payments 참고).
+        const started = await requestBizPayment({
           orderId: order.id,
           amount: order.amount,
           orderName: order.name,
           flow: 'design',
         });
         if (!started)
-          throw new Error('결제창을 열 수 없습니다. Toss 클라이언트 키 설정을 확인해 주세요.');
+          throw new Error('결제창을 열 수 없습니다. 결제 클라이언트 키 설정을 확인해 주세요.');
       } catch (error) {
         // 결제창 진입에 실패하면 남는 pending 주문을 정리한다.
         await cancelOrder.mutateAsync({ id: order.id }).catch(() => {});

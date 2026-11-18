@@ -21,10 +21,25 @@ import {
 export { isMenuActive, routeOf } from './BizShell.logic';
 
 const BizNavContext = createContext('');
-export function BizNavProvider({ base, children }: { base: string; children: ReactNode }) {
-  return <BizNavContext.Provider value={base}>{children}</BizNavContext.Provider>;
+// bz 호스트(광고형 상품·네이버페이) 여부 — 레이아웃이 요청 호스트로 판별해 내려준다.
+const BizBzHostContext = createContext(false);
+export function BizNavProvider({
+  base,
+  isBz = false,
+  children,
+}: {
+  base: string;
+  isBz?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <BizNavContext.Provider value={base}>
+      <BizBzHostContext.Provider value={isBz}>{children}</BizBzHostContext.Provider>
+    </BizNavContext.Provider>
+  );
 }
 export const useBizBase = () => useContext(BizNavContext);
+export const useIsBzHost = () => useContext(BizBzHostContext);
 export function useBizHref() {
   const base = useBizBase();
   return (path: string) => `${base}${path === '/' ? '' : path}`;
@@ -228,19 +243,23 @@ const LogoutIcon = styled.button({
   padding: 0,
 });
 
-export const menu: [string, string][] = [
-  ['/dashboard', '대시보드'],
-  ['/postings', '공고 관리'],
-  ['/applications', '신청자 응답'],
-  ...(AD_SALES_ENABLED ? ([['/ads', '광고 관리']] as [string, string][]) : []),
-  ['/design-products', '디자인 상품'],
-  ['/billing', '결제 내역 관리'],
-  ['/operations', '운영대행'],
-];
+// bz 호스트는 광고형 상품을 판매하므로 디자인 상품 대신 광고 관리를 노출한다(빌드 플래그와 무관).
+export function bizMenu(isBz: boolean): [string, string][] {
+  return [
+    ['/dashboard', '대시보드'],
+    ['/postings', '공고 관리'],
+    ['/applications', '신청자 응답'],
+    ...(isBz || AD_SALES_ENABLED ? ([['/ads', '광고 관리']] as [string, string][]) : []),
+    ...(isBz ? [] : ([['/design-products', '디자인 상품']] as [string, string][])),
+    ['/billing', '결제 내역 관리'],
+    ['/operations', '운영대행'],
+  ];
+}
 
 export function BizSidebar() {
   const route = routeOf(usePathname());
   const base = useBizBase();
+  const menu = bizMenu(useIsBzHost());
   const router = useRouter();
   const { data: auth, isPending: authPending } = generated.useGetMyAuthInfo({
     query: { retry: false },
