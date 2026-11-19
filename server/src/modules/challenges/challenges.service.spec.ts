@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { challenges, type ApplicationFormQuestion } from '../../db/schema.js';
 import { ChallengesService } from './challenges.service.js';
 
@@ -1053,5 +1053,113 @@ describe('ChallengesService.findById', () => {
     const result = await service.findById('ch-1');
 
     expect(result.posterUrl).toBeNull();
+  });
+});
+
+describe('ChallengesService.importByAdmin', () => {
+  const dto = {
+    title: '제5회 공공데이터 공모전',
+    description: '<p>설명</p>',
+    price: 0,
+    host: ' 행정안전부 ',
+    startDate: '2029-01-01T00:00:00Z',
+    endDate: '2029-02-01T00:00:00Z',
+    recruitUrl: 'https://example.com/apply',
+    organizerType: '중앙정부/기관',
+  };
+
+  /** tx.select 결과를 호출 순서대로 돌려주고, insert 값을 테이블별로 기록하는 트랜잭션 스텁. */
+  function createImportService(selectResults: unknown[][]) {
+    const inserts: { table: unknown; values: Record<string, unknown> }[] = [];
+    const tx = {
+      execute: vi.fn().mockResolvedValue(undefined),
+      select: vi.fn(),
+      insert: vi.fn().mockImplementation((table) => ({
+        values: vi.fn().mockImplementation((values) => {
+          inserts.push({ table, values });
+          const row =
+            table === challenges
+              ? { id: 'ch-new', ...values }
+              : { id: 'biz-new', name: values.name };
+          return { returning: vi.fn().mockResolvedValue([row]) };
+        }),
+      })),
+    };
+    for (const rows of selectResults) tx.select.mockReturnValueOnce(queryChain(rows));
+    const db = { transaction: vi.fn((fn: (t: typeof tx) => unknown) => fn(tx)) } as any;
+    const files = {
+      ...createFilesStub(),
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({}),
+    };
+    const service = new ChallengesService(db, { isEnabled: vi.fn() } as any, files as any);
+    return { service, inserts, tx, files };
+  }
+
+  it('publishes under the existing business whose name matches the host', async () => {
+    const { service, inserts, tx } = createImportService([
+      [{ id: 'biz-1', name: '행정 안전부' }],
+      [],
+    ]);
+
+    const result = await service.importByAdmin(dto as any, 'admin-1');
+
+    expect(result.business).toEqual({ id: 'biz-1', name: '행정 안전부', created: false });
+    expect(inserts).toHaveLength(1);
+    expect(inserts[0]!.values).toMatchObject({
+      businessId: 'biz-1',
+      status: 'published',
+      host: '행정안전부',
+    });
+    expect(tx.execute).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates an admin-owned verified business when no business matches', async () => {
+    const { service, inserts } = createImportService([[]]);
+
+    const result = await service.importByAdmin(
+      { ...dto, organizerType: '대기업' } as any,
+      'admin-1',
+    );
+
+    expect(result.business).toEqual({ id: 'biz-new', name: '행정안전부', created: true });
+    expect(inserts[0]!.values).toMatchObject({
+      ownerUserId: 'admin-1',
+      name: '행정안전부',
+      type: '기업',
+      verificationStatus: 'verified',
+    });
+    expect(inserts[1]!.values).toMatchObject({ businessId: 'biz-new', status: 'published' });
+  });
+
+  it('rejects a duplicate title for the same business with 409', async () => {
+    const { service, inserts } = createImportService([
+      [{ id: 'biz-1', name: '행정안전부' }],
+      [{ id: 'ch-old' }],
+    ]);
+
+    await expect(service.importByAdmin(dto as any, 'admin-1')).rejects.toBeInstanceOf(
+      ConflictException,
+    );
+    expect(inserts).toHaveLength(0);
+  });
+
+  it('validates content before opening the transaction', async () => {
+    const { service, tx } = createImportService([]);
+
+    await expect(
+      service.importByAdmin({ ...dto, recruitUrl: undefined } as any, 'admin-1'),
+    ).rejects.toThrow('recruitUrl is required');
+    expect(tx.select).not.toHaveBeenCalled();
+  });
+
+  it('checks attachments against the importing admin as uploader', async () => {
+    const { service, files } = createImportService([[]]);
+
+    await service.importByAdmin(
+      { ...dto, attachments: [{ fileId: 'f-1', name: '요강.pdf', size: 10 }] } as any,
+      'admin-1',
+    );
+
+    expect(files.assertOwnedReadyPrivate).toHaveBeenCalledWith('f-1', 'admin-1');
   });
 });

@@ -3085,6 +3085,42 @@ paths:
                 properties:
                   id: { type: string, format: uuid }
                   status: { type: string, enum: [paused] }
+  /admin/challenges/import:
+    post:
+      tags: [Admin]
+      summary: 관리자 공고 일괄 등록
+      operationId: importAdminChallenge
+      x-impl-status: implemented
+      description: |
+        공모전·대외활동 일괄 등록(`/admin/contents/challenges/import`). 관리자가 정해진 형식(JSON)으로 넣은
+        공고를 한 건씩 등록한다. 주최(host)와 이름이 같은(공백·대소문자 무시) 기업 명의로 바로 게시(published)하고,
+        같은 이름의 기업이 없으면 관리자 소유의 기업을 새로 만든다. 포스터·썸네일·첨부파일은
+        `POST /files/presign` → S3 PUT → `POST /files/{id}/finalize`로 먼저 올린다.
+        같은 기업에 같은 제목의 공고가 이미 있으면 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdminImportChallengeRequest' }
+      responses:
+        '201':
+          description: 게시된 공고와 등록 명의 기업
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [challenge, business]
+                properties:
+                  challenge: { $ref: '#/components/schemas/Challenge' }
+                  business:
+                    type: object
+                    required: [id, name, created]
+                    properties:
+                      id: { type: string, format: uuid }
+                      name: { type: string, nullable: true }
+                      created: { type: boolean, description: 이번 요청으로 새로 만든 기업이면 true }
+        '409':
+          description: 같은 기업에 같은 제목의 공고가 이미 있음
   /admin/challenges/{id}/publish:
     post:
       tags: [Admin]
@@ -4188,6 +4224,94 @@ components:
             type: string,
             enum: [draft, published],
             description: '공개(published)/비공개(draft). 생략하면 관리자 설정 `contestAutoPublish`에 따라 결정한다.',
+          }
+        recruitMethod: { type: string, enum: [seMOchall, external], default: external }
+        recruitUrl:
+          {
+            type: string,
+            maxLength: 2048,
+            description: 'recruitMethod가 external(기본값 포함)이면 필수인 외부 지원 링크. seMOchall 공고에서는 저장하지 않는다.',
+          }
+    AdminImportChallengeRequest:
+      type: object
+      description: 기업 등록 요청(CreateChallengeRequest)에서 businessId·status를 뺀 형태. 기업은 host 이름으로 정하고 항상 published로 게시한다.
+      required: [title, description, price, host, startDate, endDate]
+      properties:
+        summary: { type: string, maxLength: 300 }
+        hashtags:
+          { type: array, maxItems: 20, uniqueItems: true, items: { type: string, maxLength: 50 } }
+        topics:
+          { type: array, maxItems: 30, uniqueItems: true, items: { type: string, maxLength: 100 } }
+        inquiryContact: { type: string, maxLength: 200 }
+        visibility: { type: string, enum: [public, private], default: public }
+        title: { type: string }
+        description: { type: string }
+        price: { type: integer, minimum: 1 }
+        startDate: { type: string, format: date-time, description: 접수 시작 시각 }
+        endDate: { type: string, format: date-time, description: 접수 종료 시각 }
+        eventStartDate:
+          { type: string, format: date-time, description: 행사 시작(종료와 함께 보낸다) }
+        eventEndDate: { type: string, format: date-time, description: 행사 종료 }
+        host: { type: string, minLength: 1, maxLength: 200, description: 주최 }
+        supervisor: { type: string, maxLength: 200, description: 주관 }
+        sponsor: { type: string, maxLength: 200, description: 협찬 }
+        supporter: { type: string, maxLength: 200, description: 후원 }
+        targetOther: { type: string, maxLength: 100, description: 대상 '기타' 직접 입력 }
+        attachments:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/ChallengeAttachment' }
+        category:
+          {
+            type: string,
+            description: '유사 챌린지 추천(`GET /challenges/{id}/similar`)에 쓰이는 분류 필드.',
+          }
+        targets:
+          {
+            type: array,
+            items:
+              {
+                type: string,
+                enum:
+                  [
+                    어린이,
+                    초등학생,
+                    중학생,
+                    고등학생,
+                    대학생,
+                    대학원생,
+                    제한없음,
+                    지역제한,
+                    기타,
+                    일반인,
+                    기업,
+                  ],
+              },
+          }
+        organizerType:
+          {
+            type: string,
+            enum:
+              [
+                중앙정부/기관,
+                대기업,
+                외국계기업,
+                학교/재단/협회,
+                학회/비영리단체,
+                진흥원,
+                언론,
+                지방자치단체,
+                중소/벤처기업,
+                기타,
+              ],
+          }
+        prizeAmount: { type: integer, minimum: 0, description: 총상금(만원) }
+        posterFileId: { type: string, format: uuid, description: 챌린지 포스터 파일 ID }
+        thumbnailFileId:
+          {
+            type: string,
+            format: uuid,
+            description: 카드 썸네일 파일 ID(포스터에서 잘라 만든 파일),
           }
         recruitMethod: { type: string, enum: [seMOchall, external], default: external }
         recruitUrl:
