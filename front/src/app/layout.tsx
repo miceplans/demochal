@@ -25,12 +25,12 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
   },
-  // Search Console / 네이버 서치어드바이저 소유 확인 토큰(서버 전용 env, 없으면 생략).
+  // Search Console / 네이버 서치어드바이저 소유 확인 토큰.
   verification: {
     google: process.env.GOOGLE_SITE_VERIFICATION,
-    other: process.env.NAVER_SITE_VERIFICATION
-      ? { 'naver-site-verification': process.env.NAVER_SITE_VERIFICATION }
-      : undefined,
+    other: {
+      'naver-site-verification': '79e6b66b6e1e3f5cf5282ed01b9f4d153bb78e5c',
+    },
   },
 };
 
