@@ -9196,10 +9196,15 @@ export type createDesignProductOrderResponse401 = {
   status: 401
 }
 
+export type createDesignProductOrderResponse403 = {
+  data: ForbiddenResponse
+  status: 403
+}
+
 export type createDesignProductOrderResponseSuccess = (createDesignProductOrderResponse201) & {
   headers: Headers;
 };
-export type createDesignProductOrderResponseError = (createDesignProductOrderResponse401) & {
+export type createDesignProductOrderResponseError = (createDesignProductOrderResponse401 | createDesignProductOrderResponse403) & {
   headers: Headers;
 };
 
@@ -9249,7 +9254,7 @@ return apiFetch<createDesignProductOrderResponse>(getCreateDesignProductOrderUrl
 
 export const getCreateDesignProductOrderMutationKey = () => ['createDesignProductOrder'] as const;
 
-export const getCreateDesignProductOrderMutationOptions = <TError = UnauthorizedResponse,
+export const getCreateDesignProductOrderMutationOptions = <TError = UnauthorizedResponse | ForbiddenResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
 ): UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext> => {
 
@@ -9278,13 +9283,13 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
     export type CreateDesignProductOrderMutationResult = NonNullable<Awaited<ReturnType<typeof createDesignProductOrder>>>
     export type CreateDesignProductOrderMutationBody = CreateDesignOrderRequest
-    export type CreateDesignProductOrderMutationError = UnauthorizedResponse
+    export type CreateDesignProductOrderMutationError = UnauthorizedResponse | ForbiddenResponse
     export type CreateDesignProductOrderMutationVariables = {data: CreateDesignOrderRequest}
 
     /**
  * @summary 디자인 상품 주문 생성(결제 대기)
  */
-export const useCreateDesignProductOrder = <TError = UnauthorizedResponse,
+export const useCreateDesignProductOrder = <TError = UnauthorizedResponse | ForbiddenResponse,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createDesignProductOrder>>, TError,CreateDesignProductOrderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createDesignProductOrder>>,
