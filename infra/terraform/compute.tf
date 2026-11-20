@@ -321,6 +321,8 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   certificate_arn   = aws_acm_certificate_validation.api.certificate_arn
+  # 미지정 시 기본값(ELBSecurityPolicy-2016-08)이 TLS 1.0/1.1까지 허용한다 — TLS 1.2/1.3 전용 정책을 명시한다.
+  ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
