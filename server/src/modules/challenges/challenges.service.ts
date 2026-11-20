@@ -37,6 +37,7 @@ import {
 import type { ChallengeAttachment } from '../../db/schema.js';
 import type { ChallengeAttachmentDto } from './dto/challenge-attachment.dto.js';
 import type { CreateChallengeDto } from './dto/create-challenge.dto.js';
+import type { AdminImportChallengeDto } from './dto/admin-import-challenge.dto.js';
 import type { UpdateChallengeDto } from './dto/update-challenge.dto.js';
 import type { UpdateChallengeStatusDto } from './dto/update-challenge-status.dto.js';
 import { AdminSettingsService } from '../admin/admin-settings.service.js';
@@ -98,6 +99,22 @@ function resolveEventPeriod(start?: string | null, end?: string | null) {
 }
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** 공고 내용 필드(기업·상태 제외) — 기업 등록과 관리자 일괄 등록이 함께 쓴다. */
+type ChallengeContentInput = Omit<CreateChallengeDto, 'businessId' | 'status'>;
+
+/** 기업명·공고명 비교 키: 공백을 모두 빼고 소문자로(SQL 쪽 regexp_replace + lower와 같은 규칙). */
+function normalizeNameKey(value: string) {
+  return value.replace(/\s/g, '').toLowerCase();
+}
+
+/** 주최 유형으로 새 기업의 기관 유형(기업 | 학교 | 비영리 | 협회)을 정한다. 애매하면 비워 둔다. */
+function businessTypeOf(organizerType?: string) {
+  if (!organizerType) return null;
+  if (['대기업', '외국계기업', '중소/벤처기업'].includes(organizerType)) return '기업';
+  if (organizerType === '학회/비영리단체') return '비영리';
+  return null;
+}
 
 // Exposure boost for challenges recruiting through the in-service (seMOchall)
 // application form, as advertised on the biz posting form. Chosen so a boosted
@@ -410,6 +427,84 @@ export class ChallengesService {
       .where(and(eq(businesses.id, dto.businessId), eq(businesses.ownerUserId, ownerUserId)))
       .limit(1);
     if (!business) throw new NotFoundException('기업 정보를 찾을 수 없거나 조회 권한이 없습니다.');
+
+    // 자동 게시가 꺼져 있으면 소유자가 published를 요청해도 draft로 저장하고
+    // 관리자 승인(POST /admin/challenges/{id}/publish) 뒤에 게시한다.
+    const autoPublish = await this.adminSettingsService.isEnabled('contestAutoPublish');
+    const requestedStatus = dto.status ?? (autoPublish ? 'published' : 'draft');
+    const status = requestedStatus === 'published' && !autoPublish ? 'draft' : requestedStatus;
+
+    const values = await this.buildChallengeValues(dto, ownerUserId);
+    const [challenge] = await this.db
+      .insert(challenges)
+      .values({ ...values, businessId: dto.businessId, status })
+      .returning();
+    return challenge;
+  }
+
+  /**
+   * 관리자 공고 일괄 등록(`POST /admin/challenges/import`). 공고에 적힌 주최(host)와 이름이 같은
+   * 기업 명의로 바로 게시(published)한다. 같은 이름의 기업이 없으면 관리자 소유 기업을 새로 만든다.
+   * 같은 기업에 같은 제목(공백·대소문자 무시)의 공고가 이미 있으면 409로 중복 등록을 막는다.
+   * TODO: 실제 기관이 가입하면 관리자 소유 기업의 소유권을 이전하는 절차가 필요하다
+   *   (https://github.com/miceplans/demochal/issues 에서 별도 이슈로 다룬다).
+   */
+  async importByAdmin(dto: AdminImportChallengeDto, adminUserId: string) {
+    const values = await this.buildChallengeValues(dto, adminUserId);
+    const hostKey = normalizeNameKey(values.host);
+    const titleKey = normalizeNameKey(values.title);
+
+    return this.db.transaction(async (tx) => {
+      // 같은 주최로 동시에 들어온 요청이 기업을 두 번 만들지 않도록 이름 단위로 직렬화한다.
+      await tx.execute(
+        sql`select pg_advisory_xact_lock(hashtext(${`challenge-import:${hostKey}`}))`,
+      );
+      const nameKey = sql`lower(regexp_replace(coalesce(${businesses.name}, ''), '[[:space:]]', '', 'g'))`;
+      const [existing] = await tx
+        .select({ id: businesses.id, name: businesses.name })
+        .from(businesses)
+        .where(sql`${nameKey} = ${hostKey}`)
+        .orderBy(asc(businesses.createdAt))
+        .limit(1);
+
+      let business = existing ? { ...existing, created: false } : null;
+      if (!business) {
+        const [inserted] = await tx
+          .insert(businesses)
+          .values({
+            ownerUserId: adminUserId,
+            name: values.host,
+            type: businessTypeOf(dto.organizerType),
+            verificationStatus: 'verified',
+          })
+          .returning({ id: businesses.id, name: businesses.name });
+        business = { ...inserted!, created: true };
+      } else {
+        const [duplicate] = await tx
+          .select({ id: challenges.id })
+          .from(challenges)
+          .where(
+            and(
+              eq(challenges.businessId, business.id),
+              sql`lower(regexp_replace(${challenges.title}, '[[:space:]]', '', 'g')) = ${titleKey}`,
+            ),
+          )
+          .limit(1);
+        if (duplicate) {
+          throw new ConflictException(`이미 같은 제목의 공고가 있습니다. (id: ${duplicate.id})`);
+        }
+      }
+
+      const [challenge] = await tx
+        .insert(challenges)
+        .values({ ...values, businessId: business.id, status: 'published' })
+        .returning();
+      return { challenge: challenge!, business };
+    });
+  }
+
+  /** 등록 요청을 검증해 insert 값으로 만든다(기업·상태 제외). 파일은 업로더 기준으로 확인한다. */
+  private async buildChallengeValues(dto: ChallengeContentInput, uploaderUserId: string) {
     if (dto.posterFileId) await this.filesService.assertReadyPublic(dto.posterFileId);
     if (dto.thumbnailFileId) await this.filesService.assertReadyPublic(dto.thumbnailFileId);
     const startDate = new Date(dto.startDate);
@@ -421,53 +516,41 @@ export class ChallengesService {
       dto.eventStartDate,
       dto.eventEndDate,
     );
-    const attachments = await this.resolveAttachments(dto.attachments ?? [], ownerUserId, []);
+    const attachments = await this.resolveAttachments(dto.attachments ?? [], uploaderUserId, []);
 
     const recruitMethod = dto.recruitMethod ?? 'external';
     if (recruitMethod === 'external' && !dto.recruitUrl) {
       throw new BadRequestException('recruitUrl is required when recruitMethod is external');
     }
 
-    // 자동 게시가 꺼져 있으면 소유자가 published를 요청해도 draft로 저장하고
-    // 관리자 승인(POST /admin/challenges/{id}/publish) 뒤에 게시한다.
-    const autoPublish = await this.adminSettingsService.isEnabled('contestAutoPublish');
-    const requestedStatus = dto.status ?? (autoPublish ? 'published' : 'draft');
-    const status = requestedStatus === 'published' && !autoPublish ? 'draft' : requestedStatus;
-
-    const [challenge] = await this.db
-      .insert(challenges)
-      .values({
-        businessId: dto.businessId,
-        title: dto.title,
-        description: sanitizeDescription(dto.description),
-        price: dto.price,
-        startDate,
-        endDate,
-        eventStartDate,
-        eventEndDate,
-        host: dto.host.trim(),
-        supervisor: dto.supervisor?.trim() || null,
-        sponsor: dto.sponsor?.trim() || null,
-        supporter: dto.supporter?.trim() || null,
-        targetOther: dto.targets?.includes('기타') ? dto.targetOther?.trim() || null : null,
-        attachments,
-        category: dto.category,
-        targets: dto.targets,
-        organizerType: dto.organizerType,
-        prizeAmount: dto.prizeAmount,
-        posterFileId: dto.posterFileId,
-        thumbnailFileId: dto.thumbnailFileId,
-        recruitMethod,
-        recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
-        summary: dto.summary,
-        hashtags: dto.hashtags ?? [],
-        topics: dto.topics ?? [],
-        inquiryContact: dto.inquiryContact,
-        visibility: dto.visibility ?? 'public',
-        status,
-      })
-      .returning();
-    return challenge;
+    return {
+      title: dto.title,
+      description: sanitizeDescription(dto.description),
+      price: dto.price,
+      startDate,
+      endDate,
+      eventStartDate,
+      eventEndDate,
+      host: dto.host.trim(),
+      supervisor: dto.supervisor?.trim() || null,
+      sponsor: dto.sponsor?.trim() || null,
+      supporter: dto.supporter?.trim() || null,
+      targetOther: dto.targets?.includes('기타') ? dto.targetOther?.trim() || null : null,
+      attachments,
+      category: dto.category,
+      targets: dto.targets,
+      organizerType: dto.organizerType,
+      prizeAmount: dto.prizeAmount,
+      posterFileId: dto.posterFileId,
+      thumbnailFileId: dto.thumbnailFileId,
+      recruitMethod,
+      recruitUrl: recruitMethod === 'external' ? dto.recruitUrl : null,
+      summary: dto.summary,
+      hashtags: dto.hashtags ?? [],
+      topics: dto.topics ?? [],
+      inquiryContact: dto.inquiryContact,
+      visibility: dto.visibility ?? 'public',
+    };
   }
 
   /**

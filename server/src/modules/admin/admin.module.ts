@@ -8,6 +8,7 @@ import { AdminSettingsModule } from './admin-settings.module.js';
 import { AdminService } from './admin.service.js';
 import { AdminVerificationsService } from './admin.verifications.service.js';
 import { EmailModule } from '../email/email.module.js';
+import { ChallengesModule } from '../challenges/challenges.module.js';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { EmailModule } from '../email/email.module.js';
     FilesModule,
     AdminSettingsModule,
     EmailModule,
+    ChallengesModule,
   ],
   controllers: [AdminController],
   providers: [AdminService, AdminVerificationsService],

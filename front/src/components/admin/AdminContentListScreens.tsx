@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -47,6 +48,17 @@ const HeaderRow = styled.div({
 });
 
 const CountCaption = styled.span({ ...textStyle.caption, color: c.gray500 });
+
+const ImportLink = styled(Link)({
+  marginLeft: 'auto',
+  borderRadius: 6,
+  padding: '8px 16px',
+  background: c.primary,
+  color: c.white,
+  ...textStyle.subtitle,
+  textDecoration: 'none',
+  '&:hover': { background: c.primaryDark },
+});
 
 const Body = styled.div({
   display: 'flex',
@@ -164,6 +176,7 @@ export function AdminContestListScreen() {
       <HeaderRow>
         <AdminPageTitle>확인해야하는 챌린지</AdminPageTitle>
         <CountCaption>총 {contestsTotal}개</CountCaption>
+        <ImportLink href={hrefOf('/contents/challenges/import')}>공고 일괄 등록</ImportLink>
       </HeaderRow>
       {contentsQuery.isPending ? <AdminInlineNotice>불러오는 중...</AdminInlineNotice> : null}
       {!contentsQuery.isPending && contests.length === 0 ? (

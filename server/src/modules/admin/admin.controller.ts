@@ -24,6 +24,8 @@ import { VerifyCertificateDto } from './dto/verify-certificate.dto.js';
 import { SendNewEmailDto, SendReplyDto } from '../email/dto/send-reply.dto.js';
 import { UpdateEmailStatusDto } from '../email/dto/update-email-status.dto.js';
 import { EmailService } from '../email/email.service.js';
+import { ChallengesService } from '../challenges/challenges.service.js';
+import { AdminImportChallengeDto } from '../challenges/dto/admin-import-challenge.dto.js';
 
 @UseGuards(AdminRoleGuard)
 @Controller('admin')
@@ -31,6 +33,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly emailService: EmailService,
+    private readonly challengesService: ChallengesService,
   ) {}
 
   @Get('emails')
@@ -115,6 +118,11 @@ export class AdminController {
   @Get('ads')
   listAds(@Query('q') q?: string, @Query('status') status?: string) {
     return this.adminService.listAds(q, status);
+  }
+
+  @Post('challenges/import')
+  importChallenge(@Body() dto: AdminImportChallengeDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.challengesService.importByAdmin(dto, user.id);
   }
 
   @Post('challenges/:id/publish')

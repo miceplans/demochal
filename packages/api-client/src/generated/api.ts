@@ -55,6 +55,7 @@ import type {
   AdminEmailMessage,
   AdminEmailThread,
   AdminEmailThreadDetail,
+  AdminImportChallengeRequest,
   AdminRefundRequest,
   AdminRejectResult,
   AdminSettings,
@@ -103,6 +104,7 @@ import type {
   GetMfaPasskeyAuthOptionsBody,
   GetMfaPasskeyRegisterOptionsBody,
   HandleTossWebhook200,
+  ImportAdminChallenge201,
   InviteTeamRequest,
   IssueBillingAuthorizationBody,
   JoinTeamRequest,
@@ -13984,6 +13986,118 @@ export const usePauseAdminAd = <TError = unknown,
         TContext
       > => {
       return useMutation(getPauseAdminAdMutationOptions(options), queryClient);
+    }
+
+export type importAdminChallengeResponse201 = {
+  data: ImportAdminChallenge201
+  status: 201
+}
+
+export type importAdminChallengeResponse409 = {
+  data: void
+  status: 409
+}
+
+export type importAdminChallengeResponseSuccess = (importAdminChallengeResponse201) & {
+  headers: Headers;
+};
+export type importAdminChallengeResponseError = (importAdminChallengeResponse409) & {
+  headers: Headers;
+};
+
+export type importAdminChallengeResponse = (importAdminChallengeResponseSuccess | importAdminChallengeResponseError)
+
+export const getImportAdminChallengeUrl = () => {
+
+
+
+
+  return `/admin/challenges/import`
+}
+
+/**
+ * 공모전·대외활동 일괄 등록(`/admin/contents/challenges/import`). 관리자가 정해진 형식(JSON)으로 넣은
+ * 공고를 한 건씩 등록한다. 주최(host)와 이름이 같은(공백·대소문자 무시) 기업 명의로 바로 게시(published)하고,
+ * 같은 이름의 기업이 없으면 관리자 소유의 기업을 새로 만든다. 포스터·썸네일·첨부파일은
+ * `POST /files/presign` → S3 PUT → `POST /files/{id}/finalize`로 먼저 올린다.
+ * 같은 기업에 같은 제목의 공고가 이미 있으면 409.
+ * @summary 관리자 공고 일괄 등록
+ */
+export const importAdminChallenge = async (adminImportChallengeRequest: AdminImportChallengeRequest, options?: Parameters<typeof apiFetch>[1]): Promise<importAdminChallengeResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<importAdminChallengeResponse>(getImportAdminChallengeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(adminImportChallengeRequest)
+  }
+);}
+
+
+
+
+
+export const getImportAdminChallengeMutationKey = () => ['importAdminChallenge'] as const;
+
+export const getImportAdminChallengeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminChallenge>>, TError,ImportAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof importAdminChallenge>>, TError,ImportAdminChallengeMutationVariables, TContext> => {
+
+const mutationKey = getImportAdminChallengeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof importAdminChallenge>>, ImportAdminChallengeMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  importAdminChallenge(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ImportAdminChallengeMutationResult = NonNullable<Awaited<ReturnType<typeof importAdminChallenge>>>
+    export type ImportAdminChallengeMutationBody = AdminImportChallengeRequest
+    export type ImportAdminChallengeMutationError = void
+    export type ImportAdminChallengeMutationVariables = {data: AdminImportChallengeRequest}
+
+    /**
+ * @summary 관리자 공고 일괄 등록
+ */
+export const useImportAdminChallenge = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof importAdminChallenge>>, TError,ImportAdminChallengeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof importAdminChallenge>>,
+        TError,
+        ImportAdminChallengeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getImportAdminChallengeMutationOptions(options), queryClient);
     }
 
 export type publishAdminChallengeResponse200 = {
