@@ -1,0 +1,43 @@
+# Copy to a local, ignored production.tfvars file. Do not put credentials or secret values here.
+# Init with a separate state key so staging state is untouched:
+#   tofu init -reconfigure -backend-config="key=production/terraform.tfstate"
+environment = "production"
+
+# Staging still owns the GitHub OIDC provider, the SES domain identity/DNS records and the
+# SES inbound receipt rule set. Keep false until they are moved to this stack (infra/README.md).
+manage_shared_resources = false
+
+api_image       = "ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/semochal-production-api@sha256:REPLACE"
+worker_image    = "ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/semochal-production-worker@sha256:REPLACE"
+frontend_origin = "https://semochall.com,https://admin.semochall.com,https://biz.semochall.com,https://www.semochall.com"
+api_domain_name = "prod-server.semochall.com"
+
+# Keep serving the existing API hostname: pre-stage its certificate, then flip the cutover flag
+# (see infra/README.md step 6). The name must be removed from the other stack's state first.
+api_alternate_domain_name    = "server.semochall.com"
+api_alternate_domain_cutover = false
+hosted_zone_id  = "ZREPLACE"
+alarm_email     = "ops@example.com"
+
+# Separate VPC from staging (10.42.0.0/16) and a distinct Grafana role name.
+vpc_cidr              = "10.43.0.0/16"
+grafana_external_id   = "REPLACE"
+grafana_iam_role_name = "GrafanaLabsCloudWatchIntegrationProductionNew"
+
+enable_runtime       = false
+api_desired_count    = 1
+worker_desired_count = 1
+
+ses_domain                 = "semochall.com"
+ses_configuration_set_name = "my-first-configuration-set"
+ses_from_email             = "noreply@semochall.com"
+ses_support_from_email     = "help@semochall.com"
+
+# Production-grade database settings.
+db_instance_class        = "db.t4g.small"
+db_multi_az              = true
+db_backup_retention_days = 14
+db_deletion_protection   = true
+db_skip_final_snapshot   = false
+# Restore the database from a snapshot when the instance is first created.
+# db_snapshot_identifier = "semochal-staging-for-production-restore-YYYYMMDD"

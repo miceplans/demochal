@@ -4,6 +4,21 @@ AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성�
 
 > `semochal-staging-*`는 이미 배포된 리소스입니다. 기존 S3 backend state로 `terraform plan -var-file=staging.tfvars`를 먼저 검토하고, re-create 또는 destroy가 있으면 apply하지 않습니다. GitHub `staging` Environment는 `main`의 승인된 자동 배포가 이 staging ECS 리소스로 향하는 release gate다. Vercel은 이 저장소의 관리 대상이 아닙니다.
 
+## production 스택 전환 (staging → production)
+
+> 현재 실제 서비스(`www.semochall.com`)는 `semochal-staging-*` 스택에서 돌아간다. AWS 리소스는 이름을 바꿀 수 없어 같은 모듈로 `production` 스택을 새로 만들어 옮긴다. 코드는 `environment = "production"`을 지원하며, 아래 순서는 승인된 운영자가 별도 세션에서 수행한다. 각 apply 전에 `plan`을 확인하고 destroy/replace가 있으면 멈춘다.
+
+1. **기준선 확인**: staging 상태에서 `tofu plan`이 상태 저장 리소스(RDS, S3, ALB)의 destroy/replace 없이 끝나는지 확인한다. OIDC 공급자는 `[0]` 주소로 `moved`만 표시된다.
+2. **production 스택 생성**: `production.tfvars.example`을 복사해 값을 채우고 `tofu init -reconfigure -backend-config="key=production/terraform.tfstate"` 후 `enable_runtime=false`로 apply한다. 먼저 정리할 잔재: Route 53의 옛 `prod-server` A 레코드(삭제된 ALB를 가리킴), ACM의 `prod-server` 인증서, 옛 `semochal-production-*` 로그 그룹·CloudFront·경보.
+3. **시크릿·이미지**: `semochal-production/app` 시크릿에 운영 값을 넣는다(Toss·KCP·네이버페이는 운영 키, `KCP_PRODUCTION=true`). `semochal-production-*` ECR에 `deploy-` 태그 이미지를 push하고 digest를 `api_image`·`worker_image`에 넣는다.
+4. **데이터 이전**: staging 쓰기를 잠시 멈추고(점검 공지) RDS 스냅샷을 만든 뒤 `db_snapshot_identifier`로 production RDS를 복원한다(변수를 바꾸면 인스턴스가 교체되므로 `db_deletion_protection=false`와 `db_skip_final_snapshot=true`로 먼저 apply하고 복원 후 다시 켠다). 첫 생성 때 쓰면 교체 없이 바로 복원된다. S3는 비공개·공개 버킷을 `aws s3 sync`로 복사한다(사업자 서류는 비공개 버킷에서 비공개 버킷으로만 복사한다).
+5. **마이그레이션·기동**: migrate 태스크를 실행하고 `enable_runtime=true`로 API·worker를 기동한 뒤 `/health`와 주요 흐름을 확인한다.
+6. **전환(DNS 한 단계)**: API 주소는 `server.semochall.com`을 그대로 쓴다. 사전에 `api_alternate_domain_name = "server.semochall.com"`으로 apply해 production ALB에 이 이름의 인증서를 붙여 둔다(트래픽은 그대로 staging). 검증이 끝나면 (a) staging 스택에서 해당 레코드를 상태에서 뺀다(`tofu state rm aws_route53_record.api`) — 그러지 않으면 staging apply가 레코드를 되돌린다 — 그리고 (b) production에서 `api_alternate_domain_cutover = true`로 apply하면 `server.semochall.com`이 production ALB를 가리킨다. 롤백은 `api_alternate_domain_cutover=false` 후 staging 상태에서 레코드를 다시 import하거나, Route 53에서 레코드를 staging ALB로 직접 되돌린다. 주소가 그대로라 Vercel `API_PROXY_TARGET`·`NEXT_PUBLIC_API_URL`, OAuth 콜백, Toss 웹훅 URL은 바꿀 필요가 없다. 이미지 CDN 주소(`PUBLIC_ASSETS_BASE_URL`)만 production CloudFront 주소로 바꾼다. 결제는 `PAYMENTS_ENABLED`와 `NEXT_PUBLIC_PAYMENTS_ENABLED`를 `true`로 켜기 전까지 막혀 있다.
+7. **공유 리소스 이전**: `tofu state pull`로 두 state를 백업한 뒤 로컬 파일 사이에서 `tofu state mv -state=<staging> -state-out=<production>`로 GitHub OIDC 공급자(`...github_actions` → `...github_actions[0]`), SES 도메인 identity·MAIL FROM·DKIM 3개·MX·SPF·DMARC 레코드를 옮기고 production → staging 순서로 `tofu state push`한다. 수신 규칙 세트는 이름에 스택 접두사가 들어가 이전하면 교체되므로 옮기지 않는다 — production이 `semochal-production-email-inbound`를 새로 만들어 활성화하게 하고(`manage_shared_resources=true`), staging state에서는 `aws_ses_active_receipt_rule_set.email_inbound[0]`를 `tofu state rm` 한다(남기면 staging 정리 때 production 수신까지 꺼진다). `server.semochall.com`의 ACM 검증 CNAME(`aws_route53_record.certificate["server.semochall.com"]`)도 staging state에서 `tofu state rm` 한다(production 인증서가 같은 레코드를 쓴다). DMARC 정책은 이때 `ses_dmarc_policy`로 올린다.
+8. **staging 정리**: 일정 기간 롤백용으로 두었다가 최종 스냅샷을 남기고 staging 스택을 destroy한다.
+
+이 PR은 코드(1~2번 준비)만 다룬다. CI의 production 배포 잡(`Production` GitHub Environment, 승인자 필요)은 production 스택이 생성되어 변수가 정해진 뒤 별도로 추가한다.
+
 ## 예정 구성
 
 - ECS Fargate + ALB (API 서비스, 워커 서비스 — 같은 소스, 다른 CMD)

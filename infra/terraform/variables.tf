@@ -5,14 +5,73 @@ variable "aws_region" {
 }
 
 variable "environment" {
-  description = "Environment name; this module is designed for staging only."
+  description = "Environment name used in resource names (staging or production)."
   type        = string
   default     = "staging"
 
   validation {
-    condition     = var.environment == "staging"
-    error_message = "This configuration is intentionally limited to the staging environment."
+    condition     = contains(["staging", "production"], var.environment)
+    error_message = "environment must be staging or production."
   }
+}
+
+variable "manage_shared_resources" {
+  description = "Create the account-level resources that only one stack per AWS account/region can own: the GitHub Actions OIDC provider, the SES domain identity with its DNS records, and the SES inbound receipt rule set. Set false on a second stack (for example production while staging still owns them) so it references the existing ones instead."
+  type        = bool
+  default     = true
+}
+
+variable "db_instance_class" {
+  type    = string
+  default = "db.t4g.micro"
+}
+
+variable "db_multi_az" {
+  type    = bool
+  default = false
+}
+
+variable "db_backup_retention_days" {
+  description = "Automated backup retention in days."
+  type        = number
+  default     = 1
+  validation {
+    condition     = var.db_backup_retention_days >= 1 && var.db_backup_retention_days <= 35
+    error_message = "db_backup_retention_days must be between 1 and 35."
+  }
+}
+
+variable "db_deletion_protection" {
+  type    = bool
+  default = false
+}
+
+variable "api_alternate_domain_name" {
+  description = "Existing API hostname (for example server.semochall.com, still served by another stack) that this stack should take over. Setting it issues and attaches a TLS certificate for the name ahead of time; it does not move traffic."
+  type        = string
+  default     = ""
+}
+
+variable "api_alternate_domain_cutover" {
+  description = "Point api_alternate_domain_name at this stack's load balancer (the traffic cutover). Requires api_alternate_domain_name. The other stack must drop its own record from state first (tofu state rm) so it does not point the name back."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.api_alternate_domain_cutover || var.api_alternate_domain_name != ""
+    error_message = "api_alternate_domain_cutover requires api_alternate_domain_name."
+  }
+}
+
+variable "db_snapshot_identifier" {
+  description = "Restore the DB instance from this snapshot (for example a manual copy of the staging database) when it is created. Changing it replaces the instance, so apply it only while db_deletion_protection is false and the instance holds no data you need."
+  type        = string
+  default     = null
+}
+
+variable "db_skip_final_snapshot" {
+  description = "Skip the final snapshot when the DB instance is destroyed. Keep false for production."
+  type        = bool
+  default     = true
 }
 
 variable "project" {

@@ -1,6 +1,10 @@
 locals {
   email_inbox_key_prefix = "inbound/"
   email_inbound_enabled  = local.ses_enabled && var.ses_support_from_email != ""
+  # SES allows one active receipt rule set per region, so only the stack that
+  # manages shared resources owns the rule set; other stacks keep their own
+  # bucket/lambda/queue ready until the rule is moved to them.
+  email_inbound_rules_managed = local.email_inbound_enabled && var.manage_shared_resources
 }
 
 resource "aws_s3_bucket" "email_inbox" {
@@ -154,12 +158,12 @@ resource "aws_lambda_function" "email_processor" {
 }
 
 resource "aws_ses_receipt_rule_set" "email_inbound" {
-  count         = local.email_inbound_enabled ? 1 : 0
+  count         = local.email_inbound_rules_managed ? 1 : 0
   rule_set_name = "${local.name_prefix}-email-inbound"
 }
 
 resource "aws_ses_receipt_rule" "help" {
-  count         = local.email_inbound_enabled ? 1 : 0
+  count         = local.email_inbound_rules_managed ? 1 : 0
   name          = "${local.name_prefix}-help"
   rule_set_name = aws_ses_receipt_rule_set.email_inbound[0].rule_set_name
   recipients    = [var.ses_support_from_email]
@@ -181,12 +185,12 @@ resource "aws_ses_receipt_rule" "help" {
 }
 
 resource "aws_ses_active_receipt_rule_set" "email_inbound" {
-  count         = local.email_inbound_enabled ? 1 : 0
+  count         = local.email_inbound_rules_managed ? 1 : 0
   rule_set_name = aws_ses_receipt_rule_set.email_inbound[0].rule_set_name
 }
 
 resource "aws_lambda_permission" "ses_email_processor" {
-  count          = local.email_inbound_enabled ? 1 : 0
+  count          = local.email_inbound_rules_managed ? 1 : 0
   statement_id   = "AllowSesReceiptRuleInvoke"
   action         = "lambda:InvokeFunction"
   function_name  = aws_lambda_function.email_processor[0].function_name
