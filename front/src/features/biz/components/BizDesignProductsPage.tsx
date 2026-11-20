@@ -7,6 +7,11 @@ import { BizContent, PrimaryButton, SectionTitle } from '@/components/biz/BizShe
 import { LoadingState } from '@/components/common/LoadingState';
 import { useToast } from '@/components/common/Toast';
 import { requestBizPayment } from '@/lib/payments';
+import {
+  PAYMENTS_DISABLED_DESCRIPTION,
+  PAYMENTS_DISABLED_TITLE,
+  PAYMENTS_ENABLED,
+} from '@/lib/payments-gate';
 import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -21,6 +26,10 @@ export function BizDesignProductsPage() {
 
   const buy = async (code: (typeof products)[number]['code']) => {
     if (buyingCode) return;
+    if (!PAYMENTS_ENABLED) {
+      toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
+      return;
+    }
     setBuyingCode(code);
     try {
       const created = await createOrder.mutateAsync({ data: { productCode: code } });

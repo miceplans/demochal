@@ -6,6 +6,7 @@ import { BillingHistoryService } from './billing-history.service.js';
 import { BillingService } from './billing.service.js';
 import { IssueBillingAuthorizationDto } from './dto/issue-billing-authorization.dto.js';
 import { PaymentHistoryQueryDto } from './dto/payment-history-query.dto.js';
+import { assertPaymentsEnabled } from '../payments/payments-enabled.js';
 
 @Controller('billing')
 export class BillingController {
@@ -47,6 +48,7 @@ export class BillingController {
     @Body() dto: IssueBillingAuthorizationDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    assertPaymentsEnabled();
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('기업 회원만 사용할 수 있는 기능입니다.');
     return this.billingService.issueCard(business.id, dto.authKey);

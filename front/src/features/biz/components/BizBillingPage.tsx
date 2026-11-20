@@ -12,6 +12,11 @@ import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
 import { useToast } from '@/components/common/Toast';
 import { requestTossBillingAuth, paymentProviderForHost } from '@/lib/payments';
+import {
+  PAYMENTS_DISABLED_DESCRIPTION,
+  PAYMENTS_DISABLED_TITLE,
+  PAYMENTS_ENABLED,
+} from '@/lib/payments-gate';
 import { apiErrorMessage } from '@/lib/api-error';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
@@ -64,6 +69,10 @@ export function BizBillingPage() {
   // 토스 빌링 인증창 → 성공 시 /biz/billing/auth/success으로 authKey와 함께 리다이렉트.
   // bz(네이버페이) 호스트에서는 정기결제 심사 전이므로 진입을 안내와 함께 막는다.
   const handleRegister = async () => {
+    if (!PAYMENTS_ENABLED) {
+      toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
+      return;
+    }
     if (paymentProviderForHost(window.location.hostname) === 'naverpay') {
       toast.error(
         '네이버페이 자동결제는 준비 중이에요',
