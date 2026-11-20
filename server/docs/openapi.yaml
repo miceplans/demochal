@@ -2067,6 +2067,8 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DesignProductOrder' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        # 기업 계정이 없거나 기업 인증이 완료되지 않은 인증 사용자.
+        '403': { $ref: '#/components/responses/Forbidden' }
   /orders/{id}:
     get:
       tags: [Orders]
