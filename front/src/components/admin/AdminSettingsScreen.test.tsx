@@ -19,6 +19,10 @@ vi.mock('@semochal/api-client', async (importOriginal) => {
   };
 });
 
+vi.mock('@/features/auth/components/MfaSettingsCard', () => ({
+  MfaSettingsCard: () => null,
+}));
+
 vi.mock('./parts', () => ({
   AdminPageTitle: ({ children }: { children: ReactNode }) => <h1>{children}</h1>,
   ApproveButton: ({ children, ...props }: { children: ReactNode }) => (

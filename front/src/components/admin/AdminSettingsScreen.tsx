@@ -17,7 +17,7 @@ import {
   toLocalInputValue,
 } from './AdminSettingsScreen.logic';
 import type { MaintenanceStatus } from './AdminSettingsScreen.logic';
-// import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
+import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
 export function AdminSettingsScreen() {
   // 서버 값 위에 아직 저장하지 않은 로컬 토글 변경분만 덮어쓴다 (서버 데이터를 state로 복제하지 않음).
@@ -158,8 +158,7 @@ export function AdminSettingsScreen() {
           </PeriodInputWrap>
         </SettingRow>
       </Card>
-      {/* TODO(2FA): 임시 비활성화 */}
-      {/* <MfaSettingsCard /> */}
+      <MfaSettingsCard />
       {(settings?.groups ?? []).map((group) => (
         <Card key={group.title} aria-label={group.title}>
           <CardTitle>{group.title}</CardTitle>

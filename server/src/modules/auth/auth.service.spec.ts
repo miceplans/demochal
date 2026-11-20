@@ -25,7 +25,7 @@ function dbSelecting(rows: unknown[]) {
 }
 
 function serviceWith(rows: unknown[]) {
-  return new AuthService(dbSelecting(rows) as never, {} as never, {} as never);
+  return new AuthService(dbSelecting(rows) as never, {} as never, {} as never, {} as never);
 }
 
 function containsLowerEmailComparison(value: unknown, seen = new WeakSet<object>()): boolean {
@@ -69,7 +69,12 @@ describe('AuthService.login', () => {
     const db = dbSelecting([{ id: 'u1', passwordHash: '$2b$10$hash', role: 'user' }]);
     const jwtService = { signAsync: vi.fn().mockResolvedValue('access-token') };
     const usersService = { findById: vi.fn().mockResolvedValue({ id: 'u1' }) };
-    const service = new AuthService(db as never, jwtService as never, usersService as never);
+    const service = new AuthService(
+      db as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+    );
 
     await expect(service.login('Member@SemoChal.kr', testPassword)).resolves.toEqual({
       accessToken: 'access-token',
@@ -80,18 +85,81 @@ describe('AuthService.login', () => {
 
   it('일반 user 로그인은 기존처럼 accessToken을 발급한다', async () => {
     compare.mockResolvedValue(true);
+    const mfaService = { describeLoginState: vi.fn(), signMfaToken: vi.fn() };
     const service = new AuthService(
       dbSelecting([
         { id: 'u1', email: 'u@semochal.kr', passwordHash: '$2b$10$hash', role: 'user' },
       ]) as never,
       { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
       { findById: vi.fn().mockResolvedValue({ id: 'u1' }) } as never,
+      mfaService as never,
     );
 
     await expect(service.login('u@semochal.kr', testPassword)).resolves.toEqual({
       accessToken: 'access-token',
       user: { id: 'u1' },
     });
+    expect(mfaService.describeLoginState).not.toHaveBeenCalled();
+  });
+});
+
+describe('AuthService.login — 관리자·사업자 2FA 분기', () => {
+  function privilegedLoginService({ role, methods }: { role: string; methods: string[] }) {
+    compare.mockResolvedValue(true);
+    const mfaService = {
+      describeLoginState: vi
+        .fn()
+        .mockResolvedValue({ methods, recoveryCodesRemaining: methods.length }),
+      signMfaToken: vi.fn().mockResolvedValue('mfa-jwt'),
+    };
+    const service = new AuthService(
+      dbSelecting([
+        { id: 'p1', email: 'privileged@semochal.kr', passwordHash: '$2b$10$hash', role },
+      ]) as never,
+      { signAsync: vi.fn().mockResolvedValue('access-token') } as never,
+      { findById: vi.fn().mockResolvedValue({ id: 'p1', role }) } as never,
+      mfaService as never,
+    );
+    return { service, mfaService };
+  }
+
+  it.each([['admin'], ['business']])(
+    '%s는 검증 가능한 수단이 없으면 enrollmentRequired 토큰만 내주고 세션은 발급하지 않는다',
+    async (role) => {
+      const { service, mfaService } = privilegedLoginService({ role, methods: [] });
+
+      await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
+        user: { id: 'p1', role },
+        mfa: { token: 'mfa-jwt', required: false, enrollmentRequired: true, methods: [] },
+      });
+      expect(mfaService.signMfaToken).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'p1', role }),
+        'mfa-enroll',
+        [],
+      );
+    },
+  );
+
+  it('수단이 있으면 required 토큰(purpose mfa-pending)을 내주고 methods를 함께 반환한다', async () => {
+    const { service, mfaService } = privilegedLoginService({
+      role: 'admin',
+      methods: ['totp', 'recovery'],
+    });
+
+    await expect(service.login('privileged@semochal.kr', testPassword)).resolves.toEqual({
+      user: { id: 'p1', role: 'admin' },
+      mfa: {
+        token: 'mfa-jwt',
+        required: true,
+        enrollmentRequired: false,
+        methods: ['totp', 'recovery'],
+      },
+    });
+    expect(mfaService.signMfaToken).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'p1', role: 'admin' }),
+      'mfa-pending',
+      ['totp', 'recovery'],
+    );
   });
 });
 
@@ -105,7 +173,12 @@ describe('AuthService.me — 세션 토큰 검증', () => {
   }) {
     const jwtService = { verifyAsync: vi.fn().mockResolvedValue(payload) };
     const usersService = { findById: vi.fn().mockResolvedValue(profile) };
-    const service = new AuthService({} as never, jwtService as never, usersService as never);
+    const service = new AuthService(
+      {} as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+    );
     return { service, jwtService, usersService };
   }
 
@@ -121,8 +194,7 @@ describe('AuthService.me — 세션 토큰 검증', () => {
     expect(usersService.findById).not.toHaveBeenCalled();
   });
 
-  // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 skip 제거.
-  it.skip.each([['admin'], ['business']])(
+  it.each([['admin'], ['business']])(
     '%s 프로필인데 세션에 mfa 클레임이 없으면 401로 거부한다',
     async (role) => {
       const { service } = meService({
@@ -186,7 +258,12 @@ describe('AuthService.register', () => {
     };
     const jwtService = { signAsync: vi.fn().mockResolvedValue('access-token') };
     const usersService = { findById: vi.fn().mockResolvedValue({ id: 'u1' }) };
-    const service = new AuthService(db as never, jwtService as never, usersService as never);
+    const service = new AuthService(
+      db as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+    );
 
     await service.register({
       email: 'Member@SemoChal.kr',
@@ -215,7 +292,7 @@ describe('AuthService.changePassword', () => {
       update: vi.fn(() => ({ set })),
     };
     return {
-      service: new AuthService(db as never, {} as never, {} as never),
+      service: new AuthService(db as never, {} as never, {} as never, {} as never),
       db,
       set,
     };
@@ -281,7 +358,12 @@ describe('AuthService.loginWithGoogle', () => {
     return {
       db,
       where,
-      service: new AuthService(db as never, jwtService as never, usersService as never),
+      service: new AuthService(
+        db as never,
+        jwtService as never,
+        usersService as never,
+        {} as never,
+      ),
     };
   }
 
@@ -344,7 +426,12 @@ describe('AuthService 소셜 로그인 — privileged 계정 현 동작', () => 
     const usersService = {
       findById: vi.fn().mockResolvedValue({ id: userRow.id, role: userRow.role }),
     };
-    const service = new AuthService(db as never, jwtService as never, usersService as never);
+    const service = new AuthService(
+      db as never,
+      jwtService as never,
+      usersService as never,
+      {} as never,
+    );
     return { service, jwtService };
   }
 
