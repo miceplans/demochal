@@ -22,4 +22,20 @@ describe('CreateAdDto', () => {
   it.each(['', '   ', 123, null])('rejects an empty or non-string product ID: %s', (productId) => {
     expect(errorsFor({ productId })).not.toHaveLength(0);
   });
+
+  it.each(['https://example.com/landing', 'http://example.com'])(
+    'accepts an http(s) landing URL: %s',
+    (landingUrl) => {
+      expect(errorsFor({ landingUrl })).toHaveLength(0);
+    },
+  );
+
+  it.each([
+    'javascript:alert(1)',
+    'data:text/html,<script></script>',
+    'ftp://example.com/x',
+    '//example.com',
+  ])('rejects a non-http(s) landing URL: %s', (landingUrl) => {
+    expect(errorsFor({ landingUrl })).not.toHaveLength(0);
+  });
 });

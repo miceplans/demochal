@@ -46,6 +46,11 @@ const envSchema = z
     // 잘못된 항목은 파싱 단계에서 throw해 서버 기동이 실패한다.
     TOSS_WEBHOOK_ALLOWED_IPS: z.string().default(''),
 
+    // 결제 진입점(토스/KCP 승인, KCP 거래등록, 빌링키 발급) 차단 스위치. 기본값 false(차단)라
+    // 명시적으로 'true'를 넣기 전에는 새 결제가 시작되지 않는다. 이미 결제된 건의 웹훅 정산과
+    // 환불 처리는 이 값과 무관하게 계속 동작한다.
+    PAYMENTS_ENABLED: z.enum(['true', 'false']).default('false'),
+
     // 네이버페이(결제형) 가맹점 API 자격증명 — bz 서브도메인 결제에 쓴다.
     // https://developer.pay.naver.com 가맹점 심사 후 발급받는다. 비워두면 네이버페이
     // 결제 확인/취소 호출이 502 안내로 막힌다(프론트는 결제 진입 단계에서 이미 막는다).
@@ -181,6 +186,7 @@ export const env = {
   sqsEmailsQueueUrl: raw.SQS_EMAILS_QUEUE_URL,
   sqsInboundEmailsQueueUrl: raw.SQS_INBOUND_EMAILS_QUEUE_URL,
 
+  paymentsEnabled: raw.PAYMENTS_ENABLED === 'true',
   tossSecretKey: raw.TOSS_SECRET_KEY,
   tossWebhookAllowlist: parseIpAllowlist(
     raw.TOSS_WEBHOOK_ALLOWED_IPS.split(',')

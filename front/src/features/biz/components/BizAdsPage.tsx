@@ -27,6 +27,11 @@ import { useToast } from '@/components/common/Toast';
 import { adDays, adPaymentAmount, extractErrorMessage, formatSlash } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestBizPayment } from '@/lib/payments';
+import {
+  PAYMENTS_DISABLED_DESCRIPTION,
+  PAYMENTS_DISABLED_TITLE,
+  PAYMENTS_ENABLED,
+} from '@/lib/payments-gate';
 import { adApi } from '@/lib/ad-api';
 import {
   clearAdPaymentDraft,
@@ -347,6 +352,10 @@ export function BizAdsPage() {
   };
   const submitReservation = async () => {
     if (!selectedAd || submitting) return;
+    if (!PAYMENTS_ENABLED) {
+      toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
+      return;
+    }
     if (overlaps) {
       toast.error('이미 계약된 기간이 포함되어 있습니다.');
       return;

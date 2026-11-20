@@ -220,7 +220,7 @@ const NavItem = styled(Link, { shouldForwardProp: (prop) => prop !== 'active' })
   ...textStyle.subtitle,
   color: c.gray900,
   background: active
-    ? 'linear-gradient(90deg, rgba(11,110,255,0.1) 0%, rgba(255,255,255,0.1) 100%)'
+    ? `linear-gradient(90deg, ${c.overlaySemo} 0%, ${c.overlayWhiteSoft} 100%)`
     : 'transparent',
 }));
 

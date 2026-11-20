@@ -15,7 +15,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { colors as c } from '@/styles/design';
+import { colors as c, shadows } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import type { AdDailyStat, TrafficRange } from '@/data/admin-design';
 import { arcPath, trafficTop, TRAFFIC_TICK_COUNT } from './charts.logic';
@@ -45,7 +45,7 @@ function ChartTooltip({
         color: c.white,
         fontSize: 12,
         lineHeight: 1.6,
-        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+        boxShadow: shadows.card,
         whiteSpace: 'nowrap',
       }}
     >

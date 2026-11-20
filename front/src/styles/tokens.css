@@ -23,6 +23,16 @@
   --color-overlay-white: rgb(255 255 255 / 85%);
   --color-overlay-black: rgb(0 0 0 / 50%);
   --shadow-carousel-nav: 0 4px 12px rgb(27 33 44 / 16%);
+  /* 관리자 콘솔 모달·스크림·그림자(#1065) */
+  --color-overlay-white-soft: rgb(255 255 255 / 10%);
+  --color-overlay-semo: rgb(0 111 255 / 10%);
+  --color-overlay-dim: rgb(17 24 39 / 46%);
+  --color-overlay-black-soft: rgb(0 0 0 / 20%);
+  --color-overlay-dark: rgb(16 16 16 / 60%);
+  --color-overlay-scrim: rgb(17 17 17 / 20%);
+  --shadow-modal: 0 20px 48px rgb(17 24 39 / 22%);
+  --shadow-card: 0 4px 12px rgb(0 0 0 / 15%);
+  --shadow-card-hover: 0 12px 28px rgb(27 33 44 / 18%);
 }
 
 .type-display {

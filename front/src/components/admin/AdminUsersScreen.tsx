@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { useToast } from '@/components/common/Toast';
 import type { UserRow } from '@/data/admin-design';
-import { colors as c } from '@/styles/design';
+import { colors as c, shadows } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import {
   AdminInlineNotice,
@@ -265,7 +265,7 @@ const Backdrop = styled.div({
   display: 'grid',
   placeItems: 'center',
   padding: 24,
-  background: 'rgba(17, 24, 39, .46)',
+  background: c.overlayDim,
 });
 const Modal = styled.div({
   display: 'flex',
@@ -274,7 +274,7 @@ const Modal = styled.div({
   padding: 28,
   borderRadius: 12,
   background: c.white,
-  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  boxShadow: shadows.modal,
 });
 const ModalTitle = styled.h2({ margin: 0, ...textStyle.h2_2, color: c.gray900 });
 const ModalText = styled.p({ margin: '8px 0 0', color: c.gray500, ...textStyle.body });

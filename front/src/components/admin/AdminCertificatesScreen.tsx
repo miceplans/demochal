@@ -384,7 +384,7 @@ const Actions = styled.div({ display: 'flex', gap: 8, marginLeft: 'auto', flexSh
 const Overlay = styled.div({
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.2)',
+  background: c.overlayBlackSoft,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
