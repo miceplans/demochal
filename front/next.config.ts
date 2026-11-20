@@ -13,7 +13,7 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 // CSP 허용 목록은 코드베이스에서 실제 로드하는 외부 호스트만 담는다:
 // - 토스페이먼츠 SDK: js.tosspayments.com(스크립트), *.tosspayments.com(결제창 연결/iframe)
 // - KCP 표준결제창 네이버페이(bz 서브도메인 결제): spay.kcp.co.kr(허브 JS·결제창 iframe),
-//   테스트 허브 testspay.kcp.co.kr은 개발 빌드에서만 허용한다.
+//   테스트 허브 testspay.kcp.co.kr은 개발 빌드와 테스트 사이트코드(T0000) 환경에서만 허용한다.
 //   모바일 결제창은 폼 제출로 *.kcp.co.kr로 이동하고 KCP 네이버페이 인증 중 *.pay.naver.com로 연결된다
 // - 구글 폰트(Material Symbols): fonts.googleapis.com(CSS), fonts.gstatic.com(폰트 파일)
 // - 구글 지도(기업 프로필 지도): maps.googleapis.com(JS API 스크립트/XHR), www.google.com·maps.google.com(키 없는 embed iframe).
@@ -27,8 +27,13 @@ export function buildContentSecurityPolicy(nodeEnv: string | undefined) {
   const isProduction = nodeEnv === 'production';
   const scriptSrc = ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"];
   if (!isProduction) {
-    // Next 개발 서버(HMR)의 eval과 KCP 테스트 결제 허브는 개발 전용 — 프로덕션에는 넣지 않는다.
-    scriptSrc.push("'unsafe-eval'", 'https://testspay.kcp.co.kr');
+    // Next 개발 서버(HMR)가 eval을 쓴다 — 프로덕션에는 넣지 않는다.
+    scriptSrc.push("'unsafe-eval'");
+  }
+  // kcpHubUrl()과 같은 조건: 테스트 사이트코드(T0000)면 스테이징의 운영 빌드에서도
+  // testspay 허브를 로드하므로 CSP도 맞춰 연다(front/src/lib/kcp.ts).
+  if (!isProduction || process.env.NEXT_PUBLIC_KCP_SITE_CD === 'T0000') {
+    scriptSrc.push('https://testspay.kcp.co.kr');
   }
   scriptSrc.push(
     'https://js.tosspayments.com',
