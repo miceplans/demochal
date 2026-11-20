@@ -22,10 +22,19 @@ export const colors = {
   gray900: theme.colors.gray[900],
   overlayWhite: theme.colors.overlayWhite,
   overlayBlack: theme.colors.overlayBlack,
+  overlayWhiteSoft: theme.colors.overlayWhiteSoft,
+  overlaySemo: theme.colors.overlaySemo,
+  overlayDim: theme.colors.overlayDim,
+  overlayBlackSoft: theme.colors.overlayBlackSoft,
+  overlayDark: theme.colors.overlayDark,
+  overlayScrim: theme.colors.overlayScrim,
 };
 export const shadows = {
   toast: theme.shadow.toast,
   focus: theme.shadow.focus,
   carouselNav: theme.shadow.carouselNav,
+  modal: theme.shadow.modal,
+  card: theme.shadow.card,
+  cardHover: theme.shadow.cardHover,
 };
 export const mobile = '@media (max-width: 480px)';

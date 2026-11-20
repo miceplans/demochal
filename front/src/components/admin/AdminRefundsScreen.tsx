@@ -261,7 +261,7 @@ const Empty = styled.li({
 const Overlay = styled.div({
   position: 'fixed',
   inset: 0,
-  background: 'rgba(0,0,0,0.2)',
+  background: c.overlayBlackSoft,
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',

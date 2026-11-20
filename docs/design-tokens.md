@@ -109,12 +109,21 @@ CSS의 `type-*` 클래스로 사용한다. 모든 자간은 0이다.
 
 Figma 추출 이후 컴포넌트 구현 과정에서 필요해진 값으로, 위 표의 원본 추출 토큰과 달리 `design-tokens.json`(Figma 소스)에는 없다. 하드코딩 대신 `tokens.css`/`theme.ts`에 등록해 재사용한다.
 
-| 용도                                      | CSS 변수                | `theme.ts` 경로             | 값                               |
-| ----------------------------------------- | ----------------------- | --------------------------- | -------------------------------- |
-| 반투명 흰색 표면(캐러셀 내비 버튼 등)     | `--color-overlay-white` | `theme.colors.overlayWhite` | `rgb(255 255 255 / 85%)`         |
-| 반투명 검정 스크림(마감 공고 오버레이 등) | `--color-overlay-black` | `theme.colors.overlayBlack` | `rgb(0 0 0 / 50%)`               |
-| 캐러셀 내비 버튼 그림자                   | `--shadow-carousel-nav` | `theme.shadow.carouselNav`  | `0 4px 12px rgb(27 33 44 / 16%)` |
-| 브랜드 블루 눌림/어두운 변형              | `--color-semo-dark`     | `theme.colors.semoDark`     | `#0056c2`                        |
-| 브랜드 블루 버튼 호버                     | `--color-semo-hover`    | `theme.colors.semoHover`    | `#005ee0`                        |
-| 아주 옅은 파랑 배경(아바타 등)            | `--color-pale-blue`     | `theme.colors.paleBlue`     | `#eaf3ff`                        |
-| 옅은 회색 면(업로더·입력 배경)            | `--color-surface`       | `theme.colors.surface`      | `#f8f8f8`                        |
+| 용도                                           | CSS 변수                     | `theme.ts` 경로                 | 값                                |
+| ---------------------------------------------- | ---------------------------- | ------------------------------- | --------------------------------- |
+| 반투명 흰색 표면(캐러셀 내비 버튼 등)          | `--color-overlay-white`      | `theme.colors.overlayWhite`     | `rgb(255 255 255 / 85%)`          |
+| 반투명 검정 스크림(마감 공고 오버레이 등)      | `--color-overlay-black`      | `theme.colors.overlayBlack`     | `rgb(0 0 0 / 50%)`                |
+| 캐러셀 내비 버튼 그림자                        | `--shadow-carousel-nav`      | `theme.shadow.carouselNav`      | `0 4px 12px rgb(27 33 44 / 16%)`  |
+| 관리자 활성 탭 그라디언트(흰색 끝)             | `--color-overlay-white-soft` | `theme.colors.overlayWhiteSoft` | `rgb(255 255 255 / 10%)`          |
+| 관리자 활성 탭 그라디언트(브랜드 끝, semo 10%) | `--color-overlay-semo`       | `theme.colors.overlaySemo`      | `rgb(0 111 255 / 10%)`            |
+| 관리자 모달 배경 딤                            | `--color-overlay-dim`        | `theme.colors.overlayDim`       | `rgb(17 24 39 / 46%)`             |
+| 관리자 확인 오버레이(얕은 검정)                | `--color-overlay-black-soft` | `theme.colors.overlayBlackSoft` | `rgb(0 0 0 / 20%)`                |
+| 관리자 이미지 위 라벨 배경                     | `--color-overlay-dark`       | `theme.colors.overlayDark`      | `rgb(16 16 16 / 60%)`             |
+| 관리자 다이얼로그 스크림                       | `--color-overlay-scrim`      | `theme.colors.overlayScrim`     | `rgb(17 17 17 / 20%)`             |
+| 관리자 모달 그림자                             | `--shadow-modal`             | `theme.shadow.modal`            | `0 20px 48px rgb(17 24 39 / 22%)` |
+| 차트 툴팁 그림자                               | `--shadow-card`              | `theme.shadow.card`             | `0 4px 12px rgb(0 0 0 / 15%)`     |
+| 관리자 카드 호버 그림자                        | `--shadow-card-hover`        | `theme.shadow.cardHover`        | `0 12px 28px rgb(27 33 44 / 18%)` |
+| 브랜드 블루 눌림/어두운 변형                   | `--color-semo-dark`          | `theme.colors.semoDark`         | `#0056c2`                         |
+| 브랜드 블루 버튼 호버                          | `--color-semo-hover`         | `theme.colors.semoHover`        | `#005ee0`                         |
+| 아주 옅은 파랑 배경(아바타 등)                 | `--color-pale-blue`          | `theme.colors.paleBlue`         | `#eaf3ff`                         |
+| 옅은 회색 면(업로더·입력 배경)                 | `--color-surface`            | `theme.colors.surface`          | `#f8f8f8`                         |

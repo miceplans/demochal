@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { colors as c } from '@/styles/design';
+import { colors as c, shadows } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { desktopContests, teams } from '@/data/user-design';
 import { Dropdown } from '@/components/ui/Dropdown';
@@ -159,11 +159,11 @@ const HeroCard = styled('button', { shouldForwardProp: (prop) => prop !== 'compa
   borderRadius: 12,
   cursor: 'pointer',
   textAlign: 'left',
-  backgroundImage: `linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, ${c.white} 100%), url(${HERO_IMAGE})`,
+  backgroundImage: `linear-gradient(180deg, transparent 0%, ${c.white} 100%), url(${HERO_IMAGE})`,
   backgroundSize: 'cover',
   backgroundPosition: 'center',
   transition: 'box-shadow 180ms ease',
-  '&:hover': { boxShadow: '0 12px 28px rgba(27, 33, 44, .18)' },
+  '&:hover': { boxShadow: shadows.cardHover },
   '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: 3 },
 }));
 const HeroLabel = styled('span', { shouldForwardProp: (prop) => prop !== 'compact' })<{
@@ -253,7 +253,7 @@ const GalleryNumber = styled.span({
   left: 12,
   padding: '4px 10px',
   borderRadius: 999,
-  background: 'rgba(16, 16, 16, .6)',
+  background: c.overlayDark,
   color: c.white,
   fontSize: 13,
   fontWeight: 600,
@@ -273,7 +273,7 @@ const Backdrop = styled.div({
   display: 'grid',
   placeItems: 'center',
   padding: 24,
-  background: 'rgba(17, 17, 17, 0.2)',
+  background: c.overlayScrim,
 });
 const Dialog = styled.div({
   width: 'min(100%, 606px)',
