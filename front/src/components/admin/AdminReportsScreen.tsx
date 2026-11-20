@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import { colors as c } from '@/styles/design';
+import { colors as c, shadows } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { downloadCsv } from '@/lib/csv';
 import { AdminPageTitle, FilterBar, SearchFilter, SelectFilter } from './parts';
@@ -147,14 +147,14 @@ const Backdrop = styled.div({
   display: 'grid',
   placeItems: 'center',
   padding: 24,
-  background: 'rgba(17, 24, 39, .46)',
+  background: c.overlayDim,
 });
 const Modal = styled.div({
   width: 'min(100%, 416px)',
   padding: 28,
   borderRadius: 12,
   background: c.white,
-  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  boxShadow: shadows.modal,
 });
 const ModalContent = styled.div({
   display: 'flex',

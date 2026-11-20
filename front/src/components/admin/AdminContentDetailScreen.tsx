@@ -172,7 +172,7 @@ const MemberTable = styled.table({
 /* ---------- 우측 ---------- */
 
 const SideSection = styled.section({ display: 'flex', flexDirection: 'column', gap: 4 });
-const SideTitle = styled.h2({ margin: 0, ...textStyle.h2, color: '#000' });
+const SideTitle = styled.h2({ margin: 0, ...textStyle.h2, color: c.gray900 });
 const ReportBox = styled.ul({
   margin: 0,
   padding: 0,
@@ -205,7 +205,7 @@ const NextThumb = styled.div({
   flex: '0 0 89px',
   height: 89,
   borderRadius: 11,
-  border: '0.9px solid #f0f1f3',
+  border: `0.9px solid ${c.gray100}`,
   background: c.gray100,
   overflow: 'hidden',
   '& img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },

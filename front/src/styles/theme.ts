@@ -28,6 +28,12 @@ declare module '@emotion/react' {
       foreground: string;
       overlayWhite: string;
       overlayBlack: string;
+      overlayWhiteSoft: string;
+      overlaySemo: string;
+      overlayDim: string;
+      overlayBlackSoft: string;
+      overlayDark: string;
+      overlayScrim: string;
     };
     typography: {
       fontFamily: string;
@@ -36,6 +42,9 @@ declare module '@emotion/react' {
       toast: string;
       focus: string;
       carouselNav: string;
+      modal: string;
+      card: string;
+      cardHover: string;
     };
   }
 }
@@ -67,6 +76,13 @@ export const theme = {
     foreground: '#101010',
     overlayWhite: 'rgb(255 255 255 / 85%)',
     overlayBlack: 'rgb(0 0 0 / 50%)',
+    // 관리자 콘솔 모달·배경 스크림용 알파 색상. 값은 기존 하드코딩 색을 토큰화한 것이다.
+    overlayWhiteSoft: 'rgb(255 255 255 / 10%)',
+    overlaySemo: 'rgb(0 111 255 / 10%)',
+    overlayDim: 'rgb(17 24 39 / 46%)',
+    overlayBlackSoft: 'rgb(0 0 0 / 20%)',
+    overlayDark: 'rgb(16 16 16 / 60%)',
+    overlayScrim: 'rgb(17 17 17 / 20%)',
   },
   typography: {
     fontFamily: 'Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
@@ -75,5 +91,9 @@ export const theme = {
     toast: '4px 4px 10px 0 rgb(0 0 0 / 20%)',
     focus: '2px 2px 20px 0 rgb(154 198 255 / 45%)',
     carouselNav: '0 1px 3px rgb(0 0 0 / 70%)',
+    // 관리자 모달/카드 그림자 — 기존 하드코딩 값을 토큰화했다.
+    modal: '0 20px 48px rgb(17 24 39 / 22%)',
+    card: '0 4px 12px rgb(0 0 0 / 15%)',
+    cardHover: '0 12px 28px rgb(27 33 44 / 18%)',
   },
 } as const;
