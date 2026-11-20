@@ -6,6 +6,9 @@ import { OutboxModule } from '../../outbox/outbox.module.js';
 import { AuthController } from './auth.controller.js';
 import { AuthService } from './auth.service.js';
 import { JwtAuthGuard } from './jwt-auth.guard.js';
+import { MfaController } from './mfa/mfa.controller.js';
+import { MfaService } from './mfa/mfa.service.js';
+import { MfaAuthGuard } from './mfa/mfa-auth.guard.js';
 
 @Module({
   imports: [
@@ -16,9 +19,8 @@ import { JwtAuthGuard } from './jwt-auth.guard.js';
       signOptions: { expiresIn: '7d' },
     }),
   ],
-  // TODO(2FA): 재활성화 시 MfaController 복구.
-  controllers: [AuthController /* , MfaController */],
-  providers: [AuthService, JwtAuthGuard],
+  controllers: [AuthController, MfaController],
+  providers: [AuthService, JwtAuthGuard, MfaService, MfaAuthGuard],
   exports: [JwtAuthGuard, JwtModule],
 })
 export class AuthModule {}
