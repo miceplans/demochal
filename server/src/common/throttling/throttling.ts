@@ -17,6 +17,11 @@ export const AUTH_THROTTLE = { default: { ttl: 60_000, limit: 10 } };
 // same per-process ceiling caveat as DEFAULT_THROTTLE applies.
 export const TOSS_WEBHOOK_THROTTLE = { default: { ttl: 60_000, limit: 30 } };
 
+// 디자인 상품 주문 생성(POST /design-products/orders) 한도. 주문은 결제 row를
+// 만드는 쓰기 작업이라 전역 기본값보다 조이되, 상품 재선택 같은 정상 재시도가
+// 분당 몇 회면 충분하므로 10회로 둔다.
+export const DESIGN_ORDER_THROTTLE = { default: { ttl: 60_000, limit: 10 } };
+
 /**
  * Tracks login attempts per target account instead of per client, so spreading a
  * password-guessing run across many IPs (or behind a shared proxy IP) still hits
