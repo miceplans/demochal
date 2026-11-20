@@ -76,7 +76,8 @@ export const theme = {
     foreground: '#101010',
     overlayWhite: 'rgb(255 255 255 / 85%)',
     overlayBlack: 'rgb(0 0 0 / 50%)',
-    // 관리자 콘솔 모달·배경 스크림용 알파 색상. 값은 기존 하드코딩 색을 토큰화한 것이다.
+    // 관리자 콘솔 모달·배경 스크림용 알파 색상. 값은 기존 하드코딩 색을 토큰화한 것이며,
+    // overlaySemo만 원값 rgb(11 110 255)를 브랜드 semo(#006fff) 기준으로 정렬했다(10% 알파라 시각 차는 미미).
     overlayWhiteSoft: 'rgb(255 255 255 / 10%)',
     overlaySemo: 'rgb(0 111 255 / 10%)',
     overlayDim: 'rgb(17 24 39 / 46%)',
