@@ -77,7 +77,7 @@ resource "aws_route_table_association" "private" {
 
 resource "aws_security_group" "alb" {
   name        = "${local.name_prefix}-alb"
-  description = "Public HTTPS ingress for the staging API load balancer"
+  description = "Public HTTPS ingress for the ${var.environment} API load balancer"
   vpc_id      = aws_vpc.this.id
 
   ingress {

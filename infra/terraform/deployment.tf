@@ -11,10 +11,35 @@ locals {
   worker_service_arn     = "${local.ecs_service_arn_prefix}/${aws_ecs_service.worker.name}"
 }
 
+# One OIDC provider per URL per AWS account: only the stack with
+# manage_shared_resources=true creates it; the others look it up.
 resource "aws_iam_openid_connect_provider" "github_actions" {
+  count           = var.manage_shared_resources ? 1 : 0
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
   thumbprint_list = [data.tls_certificate.github_actions.certificates[0].sha1_fingerprint]
+}
+
+moved {
+  from = aws_iam_openid_connect_provider.github_actions
+  to   = aws_iam_openid_connect_provider.github_actions[0]
+}
+
+data "aws_iam_openid_connect_provider" "github_actions" {
+  count = var.manage_shared_resources ? 0 : 1
+  url   = "https://token.actions.githubusercontent.com"
+}
+
+locals {
+  github_oidc_provider_arn = var.manage_shared_resources ? aws_iam_openid_connect_provider.github_actions[0].arn : data.aws_iam_openid_connect_provider.github_actions[0].arn
+  # staging keeps its existing trust (including the legacy Production subject);
+  # production trusts only the approval-gated Production GitHub Environment.
+  github_deploy_subjects = var.environment == "production" ? [
+    "repo:miceplans@297952556/demochal@1361046246:environment:Production",
+    ] : [
+    "repo:miceplans@297952556/demochal@1361046246:environment:staging",
+    "repo:miceplans@297952556/demochal@1361046246:environment:Production",
+  ]
 }
 
 data "aws_iam_policy_document" "github_actions_assume_role" {
@@ -22,7 +47,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     actions = ["sts:AssumeRoleWithWebIdentity"]
     principals {
       type        = "Federated"
-      identifiers = [aws_iam_openid_connect_provider.github_actions.arn]
+      identifiers = [local.github_oidc_provider_arn]
     }
     condition {
       test     = "StringEquals"
@@ -38,10 +63,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       variable = "token.actions.githubusercontent.com:sub"
       # TODO: remove the legacy Production subject once the staging Environment
       # deploy has succeeded (issue #863).
-      values = [
-        "repo:miceplans@297952556/demochal@1361046246:environment:staging",
-        "repo:miceplans@297952556/demochal@1361046246:environment:Production",
-      ]
+      values = local.github_deploy_subjects
     }
   }
 }

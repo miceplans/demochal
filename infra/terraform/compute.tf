@@ -204,7 +204,7 @@ data "aws_iam_policy_document" "worker_task" {
     for_each = local.ses_enabled && length([for address in [var.ses_from_email, var.ses_support_from_email] : address if address != ""]) > 0 ? [1] : []
     content {
       actions   = ["ses:SendEmail"]
-      resources = [aws_sesv2_email_identity.service[0].arn]
+      resources = [local.ses_identity_arn]
       condition {
         test     = "StringEquals"
         variable = "ses:FromAddress"

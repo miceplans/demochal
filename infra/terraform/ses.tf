@@ -5,6 +5,10 @@
 # https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html
 locals {
   ses_enabled = var.ses_domain != ""
+  # The domain identity and its DNS records are account/zone singletons.
+  ses_identity_managed = local.ses_enabled && var.manage_shared_resources
+  # Same ARN whether this stack owns the identity or only references it.
+  ses_identity_arn = local.ses_enabled ? "arn:${data.aws_partition.current.partition}:ses:${var.aws_region}:${data.aws_caller_identity.current.account_id}:identity/${var.ses_domain}" : null
 }
 
 data "aws_route53_zone" "ses" {
@@ -13,7 +17,7 @@ data "aws_route53_zone" "ses" {
 }
 
 resource "aws_sesv2_email_identity" "service" {
-  count                  = local.ses_enabled ? 1 : 0
+  count                  = local.ses_identity_managed ? 1 : 0
   email_identity         = var.ses_domain
   configuration_set_name = var.ses_configuration_set_name
 
@@ -35,7 +39,7 @@ resource "aws_sesv2_email_identity" "service" {
 }
 
 resource "aws_route53_record" "ses_dkim" {
-  count   = local.ses_enabled ? 3 : 0
+  count   = local.ses_identity_managed ? 3 : 0
   zone_id = var.hosted_zone_id
   name    = "${aws_sesv2_email_identity.service[0].dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.ses_domain}"
   type    = "CNAME"
@@ -46,14 +50,14 @@ resource "aws_route53_record" "ses_dkim" {
 # Custom MAIL FROM subdomain so the SPF check aligns with the From domain for DMARC.
 # https://docs.aws.amazon.com/ses/latest/dg/mail-from.html
 resource "aws_sesv2_email_identity_mail_from_attributes" "service" {
-  count                  = local.ses_enabled ? 1 : 0
+  count                  = local.ses_identity_managed ? 1 : 0
   email_identity         = aws_sesv2_email_identity.service[0].email_identity
   mail_from_domain       = "mail.${var.ses_domain}"
   behavior_on_mx_failure = "USE_DEFAULT_VALUE"
 }
 
 resource "aws_route53_record" "ses_mail_from_mx" {
-  count   = local.ses_enabled ? 1 : 0
+  count   = local.ses_identity_managed ? 1 : 0
   zone_id = var.hosted_zone_id
   name    = aws_sesv2_email_identity_mail_from_attributes.service[0].mail_from_domain
   type    = "MX"
@@ -62,7 +66,7 @@ resource "aws_route53_record" "ses_mail_from_mx" {
 }
 
 resource "aws_route53_record" "ses_mail_from_spf" {
-  count   = local.ses_enabled ? 1 : 0
+  count   = local.ses_identity_managed ? 1 : 0
   zone_id = var.hosted_zone_id
   name    = aws_sesv2_email_identity_mail_from_attributes.service[0].mail_from_domain
   type    = "TXT"
@@ -72,7 +76,7 @@ resource "aws_route53_record" "ses_mail_from_spf" {
 
 # https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dmarc.html
 resource "aws_route53_record" "ses_dmarc" {
-  count   = local.ses_enabled ? 1 : 0
+  count   = local.ses_identity_managed ? 1 : 0
   zone_id = var.hosted_zone_id
   name    = "_dmarc.${var.ses_domain}"
   type    = "TXT"

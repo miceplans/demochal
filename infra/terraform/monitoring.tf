@@ -18,7 +18,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_unhealthy" {
   period              = 60
   statistic           = "Maximum"
   threshold           = 0
-  alarm_description   = "The staging API has no healthy ALB targets."
+  alarm_description   = "The ${var.environment} API has no healthy ALB targets."
   alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
   dimensions = {
     LoadBalancer = aws_lb.api.arn_suffix
@@ -46,7 +46,7 @@ resource "aws_cloudwatch_metric_alarm" "alb_no_healthy_hosts" {
   statistic           = "Minimum"
   threshold           = 1
   treat_missing_data  = "breaching"
-  alarm_description   = "The staging API has zero healthy ALB targets registered."
+  alarm_description   = "The ${var.environment} API has zero healthy ALB targets registered."
   alarm_actions       = local.has_alarm_email ? [aws_sns_topic.alarms[0].arn] : []
   dimensions = {
     LoadBalancer = aws_lb.api.arn_suffix
