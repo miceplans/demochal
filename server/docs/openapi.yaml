@@ -2490,7 +2490,7 @@ paths:
                     description: 화면에서 확인한 단가. 최신 단가와 다르면 409로 재확인 요청.,
                   }
                 imageFileId: { type: string, format: uuid }
-                landingUrl: { type: string }
+                landingUrl: { type: string, format: uri, description: http/https 스킴만 허용. }
                 startDate: { type: string, format: date }
                 endDate: { type: string, format: date }
                 title:

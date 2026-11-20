@@ -25,8 +25,10 @@ export class CreateAdDto {
   @IsUUID()
   imageFileId?: string;
 
+  // 랜딩 링크는 공개 광고로 노출되므로 http/https만 허용한다 — javascript:/data:
+  // 같은 스킴은 저장 단계에서 거부한다.
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   landingUrl?: string;
 
   @IsDateString()
