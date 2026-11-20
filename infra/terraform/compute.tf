@@ -311,6 +311,52 @@ resource "aws_route53_record" "api" {
   }
 }
 
+# Pre-stage a certificate for a hostname another stack still serves, so the later
+# traffic cutover is only a DNS change. ACM validation CNAMEs are identical per
+# account and domain, so the existing record is reused (allow_overwrite).
+resource "aws_acm_certificate" "api_alternate" {
+  count             = var.api_alternate_domain_name != "" ? 1 : 0
+  domain_name       = var.api_alternate_domain_name
+  validation_method = "DNS"
+  lifecycle { create_before_destroy = true }
+}
+
+resource "aws_route53_record" "certificate_alternate" {
+  count           = var.api_alternate_domain_name != "" ? 1 : 0
+  allow_overwrite = true
+  zone_id         = var.hosted_zone_id
+  name            = tolist(aws_acm_certificate.api_alternate[0].domain_validation_options)[0].resource_record_name
+  type            = tolist(aws_acm_certificate.api_alternate[0].domain_validation_options)[0].resource_record_type
+  records         = [tolist(aws_acm_certificate.api_alternate[0].domain_validation_options)[0].resource_record_value]
+  ttl             = 60
+}
+
+resource "aws_acm_certificate_validation" "api_alternate" {
+  count                   = var.api_alternate_domain_name != "" ? 1 : 0
+  certificate_arn         = aws_acm_certificate.api_alternate[0].arn
+  validation_record_fqdns = [aws_route53_record.certificate_alternate[0].fqdn]
+}
+
+resource "aws_lb_listener_certificate" "api_alternate" {
+  count           = var.api_alternate_domain_name != "" ? 1 : 0
+  listener_arn    = aws_lb_listener.https.arn
+  certificate_arn = aws_acm_certificate_validation.api_alternate[0].certificate_arn
+}
+
+# The cutover: UPSERTs the alternate hostname onto this stack's load balancer.
+resource "aws_route53_record" "api_alternate" {
+  count           = var.api_alternate_domain_cutover ? 1 : 0
+  allow_overwrite = true
+  zone_id         = var.hosted_zone_id
+  name            = var.api_alternate_domain_name
+  type            = "A"
+  alias {
+    name                   = aws_lb.api.dns_name
+    zone_id                = aws_lb.api.zone_id
+    evaluate_target_health = true
+  }
+}
+
 resource "aws_acm_certificate_validation" "api" {
   certificate_arn         = aws_acm_certificate.api.arn
   validation_record_fqdns = values(aws_route53_record.certificate)[*].fqdn

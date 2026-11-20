@@ -46,6 +46,28 @@ variable "db_deletion_protection" {
   default = false
 }
 
+variable "api_alternate_domain_name" {
+  description = "Existing API hostname (for example server.semochall.com, still served by another stack) that this stack should take over. Setting it issues and attaches a TLS certificate for the name ahead of time; it does not move traffic."
+  type        = string
+  default     = ""
+}
+
+variable "api_alternate_domain_cutover" {
+  description = "Point api_alternate_domain_name at this stack's load balancer (the traffic cutover). Requires api_alternate_domain_name. The other stack must drop its own record from state first (tofu state rm) so it does not point the name back."
+  type        = bool
+  default     = false
+  validation {
+    condition     = !var.api_alternate_domain_cutover || var.api_alternate_domain_name != ""
+    error_message = "api_alternate_domain_cutover requires api_alternate_domain_name."
+  }
+}
+
+variable "db_snapshot_identifier" {
+  description = "Restore the DB instance from this snapshot (for example a manual copy of the staging database) when it is created. Changing it replaces the instance, so apply it only while db_deletion_protection is false and the instance holds no data you need."
+  type        = string
+  default     = null
+}
+
 variable "db_skip_final_snapshot" {
   description = "Skip the final snapshot when the DB instance is destroyed. Keep false for production."
   type        = bool

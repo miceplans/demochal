@@ -8,6 +8,7 @@ resource "aws_db_instance" "postgres" {
   engine                       = "postgres"
   engine_version               = "16"
   instance_class               = var.db_instance_class
+  snapshot_identifier          = var.db_snapshot_identifier
   allocated_storage            = 20
   storage_encrypted            = true
   db_name                      = var.db_name
