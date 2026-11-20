@@ -12,7 +12,8 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 
 // CSP 허용 목록은 코드베이스에서 실제 로드하는 외부 호스트만 담는다:
 // - 토스페이먼츠 SDK: js.tosspayments.com(스크립트), *.tosspayments.com(결제창 연결/iframe)
-// - KCP 표준결제창 네이버페이(bz 서브도메인 결제): testspay/spay.kcp.co.kr(허브 JS·결제창 iframe),
+// - KCP 표준결제창 네이버페이(bz 서브도메인 결제): spay.kcp.co.kr(허브 JS·결제창 iframe),
+//   테스트 허브 testspay.kcp.co.kr은 개발 빌드에서만 허용한다.
 //   모바일 결제창은 폼 제출로 *.kcp.co.kr로 이동하고 KCP 네이버페이 인증 중 *.pay.naver.com로 연결된다
 // - 구글 폰트(Material Symbols): fonts.googleapis.com(CSS), fonts.gstatic.com(폰트 파일)
 // - 구글 지도(기업 프로필 지도): maps.googleapis.com(JS API 스크립트/XHR), www.google.com·maps.google.com(키 없는 embed iframe).
@@ -21,54 +22,57 @@ const apiProxyTarget = (process.env.API_PROXY_TARGET ?? 'http://localhost:3001')
 // - 소셜 로그인은 서버 경유 리다이렉트라 별도 도메인이 필요 없다
 // - 포스터 OCR(tesseract.js)은 외부 CDN 없이 same-origin 자체 호스팅(public/tesseract)을 쓰고,
 //   WASM 컴파일만 'wasm-unsafe-eval'로 허용한다
-const scriptSrc = ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"];
-if (process.env.NODE_ENV !== 'production') {
-  // Next 개발 서버(HMR)가 eval을 쓴다 — 프로덕션에는 넣지 않는다.
-  scriptSrc.push("'unsafe-eval'");
-}
-scriptSrc.push(
-  'https://js.tosspayments.com',
-  'https://testspay.kcp.co.kr',
-  'https://spay.kcp.co.kr',
-  'https://maps.googleapis.com',
-);
+// CSP 문자열 생성을 함수로 분리해 환경별 결과를 테스트할 수 있게 한다.
+export function buildContentSecurityPolicy(nodeEnv: string | undefined) {
+  const isProduction = nodeEnv === 'production';
+  const scriptSrc = ["'self'", "'unsafe-inline'", "'wasm-unsafe-eval'"];
+  if (!isProduction) {
+    // Next 개발 서버(HMR)의 eval과 KCP 테스트 결제 허브는 개발 전용 — 프로덕션에는 넣지 않는다.
+    scriptSrc.push("'unsafe-eval'", 'https://testspay.kcp.co.kr');
+  }
+  scriptSrc.push(
+    'https://js.tosspayments.com',
+    'https://spay.kcp.co.kr',
+    'https://maps.googleapis.com',
+  );
 
-// - 파일 업로드: 브라우저가 서버가 내려준 presigned URL로 S3에 직접 PUT한다(리전은 서버 AWS_REGION과 같다).
-const connectSrc = [
-  "'self'",
-  'https://*.tosspayments.com',
-  'https://*.kcp.co.kr',
-  'https://*.pay.naver.com',
-  'https://s3.ap-northeast-2.amazonaws.com',
-  'https://*.s3.ap-northeast-2.amazonaws.com',
-  'https://maps.googleapis.com',
-];
-if (process.env.NODE_ENV !== 'production') {
-  // docker-compose의 LocalStack(S3_ENDPOINT) — 개발 전용.
-  connectSrc.push('http://localhost:4566');
-}
-const publicApiUrl = process.env.NEXT_PUBLIC_API_URL;
-if (publicApiUrl?.startsWith('http')) {
-  connectSrc.push(new URL(publicApiUrl).origin);
+  // - 파일 업로드: 브라우저가 서버가 내려준 presigned URL로 S3에 직접 PUT한다(리전은 서버 AWS_REGION과 같다).
+  const connectSrc = [
+    "'self'",
+    'https://*.tosspayments.com',
+    'https://*.kcp.co.kr',
+    'https://*.pay.naver.com',
+    'https://s3.ap-northeast-2.amazonaws.com',
+    'https://*.s3.ap-northeast-2.amazonaws.com',
+    'https://maps.googleapis.com',
+  ];
+  if (!isProduction) {
+    // docker-compose의 LocalStack(S3_ENDPOINT) — 개발 전용.
+    connectSrc.push('http://localhost:4566');
+  }
+  const publicApiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (publicApiUrl?.startsWith('http')) {
+    connectSrc.push(new URL(publicApiUrl).origin);
+  }
+
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc.join(' ')}`,
+    `connect-src ${connectSrc.join(' ')}`,
+    "img-src 'self' data: blob: https:",
+    // 이미지 압축(browser-image-compression)이 blob: 워커를 쓴다.
+    "worker-src 'self' blob:",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    'frame-src https://*.tosspayments.com https://*.kcp.co.kr https://*.pay.naver.com https://www.google.com https://maps.google.com',
+    "object-src 'none'",
+    "base-uri 'self'",
+    // 토스·KCP(네이버페이) 결제 SDK가 현재 탭에서 결제 폼을 결제 도메인으로 제출한다.
+    "form-action 'self' https://*.tosspayments.com https://*.kcp.co.kr https://*.pay.naver.com",
+  ].join('; ');
 }
 
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  `script-src ${scriptSrc.join(' ')}`,
-  `connect-src ${connectSrc.join(' ')}`,
-  "img-src 'self' data: blob: https:",
-  // 이미지 압축(browser-image-compression)이 blob: 워커를 쓴다.
-  "worker-src 'self' blob:",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  'frame-src https://*.tosspayments.com https://*.kcp.co.kr https://*.pay.naver.com https://www.google.com https://maps.google.com',
-  "object-src 'none'",
-  "base-uri 'self'",
-  // 토스·KCP(네이버페이) 결제 SDK가 현재 탭에서 결제 폼을 결제 도메인으로 제출한다.
-  "form-action 'self' https://*.tosspayments.com https://*.kcp.co.kr https://*.pay.naver.com",
-].join('; ');
-
-export { contentSecurityPolicy };
+export const contentSecurityPolicy = buildContentSecurityPolicy(process.env.NODE_ENV);
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
