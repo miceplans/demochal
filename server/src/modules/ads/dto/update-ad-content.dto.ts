@@ -20,7 +20,8 @@ export class UpdateAdContentDto {
   @MaxLength(200)
   title!: string;
 
+  // 생성 경로(CreateAdDto)와 같은 제한 — 어느 경로로 저장돼도 http/https만 허용한다.
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ protocols: ['http', 'https'], require_protocol: true })
   landingUrl?: string;
 }
