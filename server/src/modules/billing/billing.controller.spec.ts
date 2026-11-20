@@ -1,5 +1,6 @@
-import { ForbiddenException } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { env } from '../../config/env.js';
 import { BillingController } from './billing.controller.js';
 import type { BillingService } from './billing.service.js';
 import type { BillingHistoryService } from './billing-history.service.js';
@@ -24,6 +25,20 @@ function createController(business: { id: string } | null = { id: 'biz-1' }) {
 }
 
 describe('BillingController', () => {
+  afterEach(() => {
+    env.paymentsEnabled = true;
+  });
+
+  it('blocks billing key issuance with 503 when payments are disabled', async () => {
+    env.paymentsEnabled = false;
+    const { controller, billingService } = createController();
+
+    await expect(controller.issueCard({ authKey: 'auth-1' }, user)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(billingService.issueCard).not.toHaveBeenCalled();
+  });
+
   it('issues a card for the current business', async () => {
     const { controller, billingService } = createController();
     billingService.issueCard.mockResolvedValue({

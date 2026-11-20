@@ -14,6 +14,7 @@ export default defineConfig({
       JWT_SECRET: 'test-jwt-secret',
       NTS_API_KEY: 'test-nts-key',
       TOSS_SECRET_KEY: 'test-toss-secret',
+      PAYMENTS_ENABLED: 'true',
     },
     coverage: {
       provider: 'v8',

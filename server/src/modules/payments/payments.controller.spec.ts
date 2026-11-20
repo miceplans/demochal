@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { UnauthorizedException } from '@nestjs/common';
+import { ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import throttlerConstants from '@nestjs/throttler/dist/throttler.constants.js';
 import type { Request, Response } from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -174,5 +174,70 @@ describe('PaymentsController.handleTossWebhook', () => {
     expect(Reflect.getMetadata(THROTTLER_LIMIT + 'default', handler)).toBe(
       TOSS_WEBHOOK_THROTTLE.default.limit,
     );
+  });
+});
+
+describe('PaymentsController — PAYMENTS_ENABLED=false', () => {
+  function createDisabledController() {
+    const paymentsService = {
+      confirmPayment: vi.fn(),
+      registerKcpTransaction: vi.fn(),
+      confirmKcpPayment: vi.fn(),
+      handleKcpMobileReturn: vi.fn(),
+      handleTossWebhook: vi.fn().mockResolvedValue(undefined),
+    };
+    const controller = new PaymentsController(paymentsService as unknown as PaymentsService);
+    return { controller, paymentsService };
+  }
+
+  afterEach(() => {
+    env.paymentsEnabled = true;
+  });
+
+  it('rejects new payment confirmations and registrations with 503 without calling the service', async () => {
+    env.paymentsEnabled = false;
+    const { controller, paymentsService } = createDisabledController();
+    const user = { id: 'user-1' } as never;
+
+    await expect(
+      controller.confirm({ orderId: 'o', paymentKey: 'k', amount: 1000 } as never, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(
+      controller.registerKcp({ orderId: 'o', orderName: 'n', flow: 'ad' }, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(
+      controller.confirmKcp({ orderId: 'o', encData: 'e', encInfo: 'i' } as never, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(paymentsService.confirmPayment).not.toHaveBeenCalled();
+    expect(paymentsService.registerKcpTransaction).not.toHaveBeenCalled();
+    expect(paymentsService.confirmKcpPayment).not.toHaveBeenCalled();
+  });
+
+  it('turns the public KCP mobile return into a failed outcome instead of approving', async () => {
+    env.paymentsEnabled = false;
+    const { controller, paymentsService } = createDisabledController();
+
+    await expect(
+      controller.handleKcpMobileReturn({
+        res_cd: '0000',
+        ordr_idxx: 'o',
+        enc_data: 'e',
+        enc_info: 'i',
+      }),
+    ).resolves.toEqual({ outcome: 'failed', code: 'payments_disabled' });
+    expect(paymentsService.handleKcpMobileReturn).not.toHaveBeenCalled();
+  });
+
+  it('keeps processing Toss webhooks so already-paid orders still settle', async () => {
+    env.paymentsEnabled = false;
+    const { controller, paymentsService } = createDisabledController();
+
+    await expect(
+      controller.handleTossWebhook(payload, requestFrom('203.0.113.10')),
+    ).resolves.toEqual({
+      received: true,
+    });
+    expect(paymentsService.handleTossWebhook).toHaveBeenCalledWith(payload);
   });
 });
