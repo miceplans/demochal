@@ -391,12 +391,12 @@ const TeamRail = styled.div({
   '& > article': { flex: '0 0 241px' },
   [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
 });
-// Figma Frame 539: 패딩 위아래 160·좌우 40, 대표 카드 열(298) ↔ 레일 간격 120.
+// Figma Frame 539: 패딩 위아래 160·좌우 0, 대표 카드 열 ↔ 레일 간격 120.
 const Popular = styled.section({
   display: 'flex',
   alignItems: 'center',
   gap: 120,
-  padding: '160px 40px',
+  padding: '160px 0',
   overflow: 'hidden',
   [mobile]: { flexDirection: 'column', alignItems: 'stretch', gap: 16, padding: 0 },
 });
@@ -404,11 +404,12 @@ const PopularFeatured = styled.div({
   display: 'flex',
   flexDirection: 'column',
   gap: 16,
-  flex: '0 0 298px',
+  // 대표 카드는 기본 포스터(298×366)의 1.5배(447×549).
+  flex: '0 0 447px',
   minWidth: 0,
   [mobile]: { flex: 'none' },
 });
-// Figma 1667:14320: 대표 카드는 포스터(298×366) 아래쪽을 흰색 그라데이션으로 덮고 왼쪽 아래에 공모전 이름을 얹는다.
+// Figma 1667:14320: 대표 카드는 포스터(298:366 비율) 아래쪽을 흰색 그라데이션으로 덮고 왼쪽 아래에 공모전 이름을 얹는다.
 const FeaturedPoster = styled(Link)({
   position: 'relative',
   display: 'block',
