@@ -186,7 +186,9 @@ describe('AdPlacementPreview', () => {
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
     // 업로드하지 않은 gallery 레일은 기본 소재를 그대로 보여준다.
-    expect(container.querySelector('img[src="/assets/figma-ads/home-gallery.png"]')).not.toBeNull();
+    expect(
+      container.querySelector('img[src="/assets/ads/semo-challenge-gallery.png"]'),
+    ).not.toBeNull();
     expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
   });
 
@@ -200,7 +202,9 @@ describe('AdPlacementPreview', () => {
     expect(fileInputs.length).toBe(1);
     expect(screen.getAllByText('파일 찾기').length).toBe(1);
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
-    expect(container.querySelector('img[src="/assets/figma-ads/home-gallery.png"]')).not.toBeNull();
+    expect(
+      container.querySelector('img[src="/assets/ads/semo-challenge-gallery.png"]'),
+    ).not.toBeNull();
   });
 
   it('업로드 모드는 사용자가 선택한 칸에 업로더를 표시한다', () => {

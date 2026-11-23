@@ -50,4 +50,12 @@ describe('fallbackAds', () => {
     expect(new Set(fallbackAds.hero.map((ad) => ad.src)).size).toBe(4);
     expect(new Set(fallbackAds.gallery.map((ad) => ad.src)).size).toBe(6);
   });
+
+  it('모든 기본 광고를 SEMO 또는 SEMO.BIZ 자체 소재로만 구성한다', () => {
+    const allFallbackAds = [...fallbackAds.hero, ...fallbackAds.gallery];
+
+    expect(allFallbackAds.every((ad) => /SEMO(?:\.BIZ)?/i.test(ad.alt))).toBe(true);
+    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-gallery.png');
+    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-hero.png');
+  });
 });
