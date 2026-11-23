@@ -162,7 +162,8 @@ const PriceOverlayValue = styled.p({
 const GalleryViewport = styled.div({
   position: 'relative',
   overflow: 'hidden',
-  margin: '60px 0',
+  // 데스크톱 홈은 섹션 간격(flex gap 60)이 위아래를 띄우므로 자체 마진을 두지 않는다(Figma 1-홈).
+  margin: 0,
   padding: '0 calc((100% - 315px) / 2)',
   '& img': {
     width: '315px',

@@ -134,6 +134,8 @@ export interface Challenge {
      * @nullable
      */
   thumbnailUrl?: string | null;
+  /** 공개 목록(GET /challenges) 전용 — 이 챌린지에서 모집 중(status=recruiting)인 팀 수. 다른 응답에는 없다 */
+  teamCount?: number;
   organizer?: string;
   /** 지원 자격 */
   eligibility?: string;

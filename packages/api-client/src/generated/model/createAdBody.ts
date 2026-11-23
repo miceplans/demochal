@@ -25,6 +25,7 @@ export type CreateAdBody = {
      */
   expectedDailyPrice?: number;
   imageFileId?: string;
+  /** http/https 스킴만 허용. */
   landingUrl?: string;
   startDate: string;
   endDate: string;

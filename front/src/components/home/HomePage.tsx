@@ -3,7 +3,12 @@ import { useState, useSyncExternalStore } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
 import { UserShell } from '@/components/common/UserShell';
-import { SectionHeader, DesktopOnly, MobileOnly } from '@/components/common/Primitives';
+import {
+  SectionHeader,
+  SectionHeading,
+  DesktopOnly,
+  MobileOnly,
+} from '@/components/common/Primitives';
 import { contestHref } from '@/components/contests/contest-links';
 import { ContestCard } from '@/components/contests/ContestCard';
 import { challengeToContest } from '@/components/contests/challenge-to-contest';
@@ -64,7 +69,7 @@ function ResponsiveContestCard({
   mobileVariant = 'simple',
 }: {
   contest: Contest;
-  /** row: 데스크톱 목록형 가로 카드. */
+  /** card: Figma contestCard/normal 포스터 카드, row: Figma Variant4 가로형 카드. */
   desktop?: 'card' | 'row';
   /** horizontal: 모바일 가로형 카드. */
   mobileVariant?: 'simple' | 'horizontal';
@@ -73,7 +78,11 @@ function ResponsiveContestCard({
   return (
     <>
       <DesktopOnly>
-        <ContestCard contest={contest} href={href} row={desktop === 'row'} />
+        <ContestCard
+          contest={contest}
+          href={href}
+          variant={desktop === 'row' ? 'list' : 'poster'}
+        />
       </DesktopOnly>
       <MobileOnly>
         {mobileVariant === 'horizontal' ? (
@@ -110,7 +119,8 @@ export function HomePage() {
   const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
   const userName = auth?.status === 200 ? auth.data.name : undefined;
   const { data: teamList } = generated.useListTeams();
-  const liveTeams = (teamList?.data ?? []).slice(0, 4).map(toTeamCard);
+  // Figma sec3grid: 팀 카드 5장(오른쪽 끝은 잘려 보이며 레일로 스크롤).
+  const liveTeams = (teamList?.data ?? []).slice(0, 5).map(toTeamCard);
   // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않고 섹션 전체를 숨긴다.
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 8 },
@@ -206,11 +216,20 @@ export function HomePage() {
                     }
                   />
                 </MobileOnly>
-                <ScrollRail as={TeamRail}>
-                  {teams.map((team) => (
-                    <TeamCard key={team.id} team={team} />
-                  ))}
-                </ScrollRail>
+                <DesktopOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.map((team) => (
+                      <TeamCard key={team.id} team={team} variant="thumbnail" />
+                    ))}
+                  </ScrollRail>
+                </DesktopOnly>
+                <MobileOnly>
+                  <ScrollRail as={TeamRail}>
+                    {teams.slice(0, 3).map((team) => (
+                      <TeamCard key={team.id} team={team} />
+                    ))}
+                  </ScrollRail>
+                </MobileOnly>
               </section>
             )}
           </Sections>
@@ -226,7 +245,17 @@ export function HomePage() {
               <Popular aria-labelledby="home-popular-title">
                 <PopularFeatured>
                   <SubHeading id="home-popular-title">가장 인기많은 공모전</SubHeading>
-                  <ContestCard contest={featuredPopular} href={contestHref(featuredPopular.id)} />
+                  <FeaturedPoster
+                    href={contestHref(featuredPopular.id)}
+                    aria-label={`${featuredPopular.title} 상세`}
+                  >
+                    {(featuredPopular.thumbnailUrl ?? featuredPopular.posterUrl) ? (
+                      <img
+                        src={featuredPopular.thumbnailUrl ?? featuredPopular.posterUrl ?? ''}
+                        alt=""
+                      />
+                    ) : null}
+                  </FeaturedPoster>
                 </PopularFeatured>
                 {popularRail.length > 0 && (
                   <RailSlot>
@@ -357,7 +386,21 @@ const PopularFeatured = styled.div({
   minWidth: 0,
   [mobile]: { flex: 'none' },
 });
-const SubHeading = styled.h2({ ...textStyle.h1, color: c.gray900, margin: 0 });
+// Figma 1651:13817: 대표 카드는 본문 없이 포스터만(298×366).
+const FeaturedPoster = styled(Link)({
+  display: 'block',
+  width: '100%',
+  aspectRatio: '298 / 366',
+  borderRadius: 12,
+  background: c.gray100,
+  overflow: 'hidden',
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
+  img: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
+// 마감임박 등 다른 섹션 제목과 같은 SectionHeading(18 Bold)을 쓴다.
+const SubHeading = styled(SectionHeading)({ margin: 0 });
 // ScrollRail 래퍼가 flex 아이템이 되므로 남는 폭을 채우도록 감싼다.
 const RailSlot = styled.div({ flex: 1, minWidth: 0, width: '100%' });
 // Figma Frame 538: 229px 카드 가로 레일(간격 12), 넘치는 카드는 스크롤.
@@ -366,7 +409,8 @@ const CardRail = styled.div({
   gap: 12,
   overflowX: 'auto',
   scrollbarWidth: 'none',
-  '& > div': { flex: '0 0 229px' },
+  // 긴 제목(nowrap)이 카드 폭을 밀어내지 않도록 minWidth 0.
+  '& > div': { flex: '0 0 229px', minWidth: 0 },
   [mobile]: { '& > div': { flex: '0 0 160px' } },
 });
 // Figma Frame 541: 가운데 정렬 제목(24) + 카드 5열(간격 12).
@@ -385,7 +429,7 @@ const BootcampHeading = styled.h2({
   [mobile]: textStyle.mSectionHeading,
 });
 const BootcampRail = styled(CardRail)({
-  '& > div': { flex: '1 0 229px' },
+  '& > div': { flex: '1 0 229px', minWidth: 0 },
 });
 // Figma Frame 546: 가로형 카드 세로 목록(간격 20).
 const LatestList = styled.section({

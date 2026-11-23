@@ -8,11 +8,15 @@ import { textStyle } from '@/styles/typography';
 export function TeamCard({
   team,
   manage,
+  variant = 'default',
 }: {
   team: Team;
   /** 내가 만든 팀: '지원하기' 대신 지원자 확인 버튼을 보여준다. 버튼이 링크라 카드 전체 링크는 걸지 않는다. */
   manage?: { href: string; applicants: number };
+  /** thumbnail: 홈 레일용(Figma card/Thumnail 195:2930) — 공모전 포스터 카드와 같은 298:416 비율. */
+  variant?: 'default' | 'thumbnail';
 }) {
+  if (variant === 'thumbnail') return <ThumbnailTeamCard team={team} />;
   const poster = team.poster;
   const content = (
     <>
@@ -230,6 +234,147 @@ const Apply = styled.span({
 });
 
 const ApplyLink = Apply.withComponent(Link);
+
+// Figma card/Thumnail(195:2930): 사진이 카드 전체를 채우고 하단 흰 본문(패딩 16, 간격 10)에
+// 팀명·챌린지 / 역할 칩(모집 완료=초록, 모집 중=회색) / 참여 인원·지원하기를 둔다.
+function ThumbnailTeamCard({ team }: { team: Team }) {
+  return (
+    <ThumbCard data-component="team-card">
+      <ThumbLink href={`/teams/${team.id}`} aria-label={`${team.name} 상세 보기`}>
+        <span className="thumb-art">
+          {team.poster ? <img className="thumb-artwork" src={team.poster} alt="" /> : null}
+        </span>
+        <ThumbBody>
+          <ThumbTopRow>
+            <ThumbName>{team.name}</ThumbName>
+            {team.challenge ? <ThumbChallenge>{team.challenge}</ThumbChallenge> : null}
+          </ThumbTopRow>
+          <ThumbRoleRow aria-label="역할">
+            {[
+              ...team.filledRoles.map((role) => ({ role, filled: true })),
+              ...team.recruitingRoles.map((role) => ({ role, filled: false })),
+            ].map(({ role, filled }, i) => (
+              <ThumbRole
+                key={`${filled ? 'filled' : 'recruiting'}-${role}-${i}`}
+                filled={filled}
+                title={`${role} ${filled ? '모집 완료' : '모집 중'}`}
+                // 한 줄에 다 안 들어가면 뒤쪽 칩부터 줄어들며 말줄임(…)된다(앞 칩은 온전히 유지).
+                style={{ flexShrink: 1000 ** i }}
+              >
+                {role}
+              </ThumbRole>
+            ))}
+          </ThumbRoleRow>
+          <ThumbBottomRow>
+            <ThumbMembers>
+              {team.joined}/{team.capacity}명 참여중
+            </ThumbMembers>
+            <ThumbApply>지원하기</ThumbApply>
+          </ThumbBottomRow>
+        </ThumbBody>
+      </ThumbLink>
+    </ThumbCard>
+  );
+}
+
+const ellipsis = {
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+
+const ThumbCard = styled.article({
+  position: 'relative',
+  aspectRatio: '298 / 416',
+  minWidth: 0,
+  borderRadius: 12,
+  border: `0.5px solid ${c.gray200}`,
+  background: c.white,
+  overflow: 'hidden',
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
+  // 사진 영역이 남는 높이를 차지하고 본문은 그 아래에 쌓인다(모서리에 회색 배경이 비치지 않게).
+  '.thumb-art': { display: 'block', flex: 1, minHeight: 0, background: c.gray100 },
+  '.thumb-artwork': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+});
+
+const ThumbLink = styled(Link)({
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 'inherit',
+  '&:focus-visible': { outline: `2px solid ${c.primary}`, outlineOffset: -2 },
+});
+
+const ThumbBody = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 10,
+  padding: 16,
+  background: c.white,
+  minWidth: 0,
+});
+
+const ThumbTopRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  minWidth: 0,
+});
+
+const ThumbName = styled.h3({ ...textStyle.mNameLabel, color: c.gray900, margin: 0, ...ellipsis });
+
+const ThumbChallenge = styled.span({
+  ...textStyle.mInfoText,
+  color: c.gray500,
+  flexShrink: 1,
+  maxWidth: '50%',
+  ...ellipsis,
+});
+
+const ThumbRoleRow = styled.div({
+  display: 'flex',
+  flexWrap: 'nowrap',
+  gap: 6,
+  minWidth: 0,
+  overflow: 'hidden',
+});
+
+const ThumbRole = styled('span', { shouldForwardProp: (prop) => prop !== 'filled' })<{
+  filled?: boolean;
+}>(({ filled }) => ({
+  ...textStyle.mBadgeText,
+  padding: '4px 8px',
+  borderRadius: 4,
+  background: filled ? c.lightGreen : c.gray100,
+  border: filled ? 0 : `0.5px solid ${c.gray200}`,
+  color: filled ? c.green : c.gray500,
+  ...ellipsis,
+}));
+
+const ThumbBottomRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  minWidth: 0,
+});
+
+const ThumbMembers = styled.span({ ...textStyle.mInfoText, color: c.gray700, ...ellipsis });
+
+const ThumbApply = styled.span({
+  ...textStyle.mCounterText,
+  padding: '6px 12px',
+  borderRadius: 8,
+  border: `1px solid ${c.primary}`,
+  color: c.primary,
+  whiteSpace: 'nowrap',
+  flexShrink: 0,
+});
 
 export const TeamGrid = styled.div({
   display: 'grid',

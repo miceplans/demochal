@@ -285,10 +285,12 @@ describe('ChallengesService.list', () => {
     };
   }
 
-  function createListService(rows: unknown[]) {
+  function createListService(rows: unknown[], teamCounts: unknown[] = []) {
     const limit = vi.fn().mockResolvedValue(rows);
     const orderBy = vi.fn().mockReturnValue({ limit });
-    const where = vi.fn().mockReturnValue({ orderBy, limit });
+    // 팀 수 집계(withTeamCounts)는 where(...).groupBy(...)로 끝난다.
+    const groupBy = vi.fn().mockResolvedValue(teamCounts);
+    const where = vi.fn().mockReturnValue({ orderBy, limit, groupBy });
     const from = vi.fn().mockReturnValue({ where });
     const db = { select: vi.fn().mockReturnValue({ from }) } as any;
     return {
@@ -328,6 +330,17 @@ describe('ChallengesService.list', () => {
         ? 'asc'
         : undefined;
   }
+
+  it('attaches recruiting team counts per challenge (0 when none)', async () => {
+    const { service } = createListService([row('a'), row('b')], [{ challengeId: 'a', total: 3 }]);
+
+    const result = await service.list({ limit: 20 });
+
+    expect(result.items.map((item) => [item.id, item.teamCount])).toEqual([
+      ['a', 3],
+      ['b', 0],
+    ]);
+  });
 
   it('always excludes drafts from the public list', async () => {
     const { service, where } = createListService([]);
