@@ -17,10 +17,10 @@ export const fallbackAds: Record<'hero' | 'gallery', AdCarouselItem[]> = {
     { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
   ],
   // 중간(하단) 광고도 외부 브랜드 없이 SEMO/SEMO.BIZ 자체 소재로만 구성한다.
-  // 전용 소재를 먼저 쓰고, 마지막 2개는 상단 소재(home-hero-2/3)를 함께 쓴다.
+  // 저장소에 이미 있는 SEMO 소재를 재사용하며, 상단 소재도 함께 쓴다.
   gallery: [
-    { src: '/assets/ads/semo-challenge-gallery.png', alt: '도전이 기회가 되는 곳, SEMO 광고' },
-    { src: '/assets/ads/semo-biz-gallery.png', alt: '공모전 시작부터 끝까지, SEMO.BIZ 광고' },
+    { src: '/assets/SEMO.png', alt: 'SEMO 브랜드 로고 광고' },
+    { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },
     { src: '/assets/ads/hero-fallback.png', alt: 'SEMO 로고 광고' },
     { src: '/assets/ads/gallery-fallback.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
     { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
