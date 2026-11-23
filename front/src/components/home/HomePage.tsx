@@ -349,10 +349,10 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   gap: 60,
   [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
 }));
-// Figma 1-홈: 데스크톱 4열 1줄, 모바일 2열.
+// Figma Frame 97: 298px 카드 4장(간격 16, 총 1240) — 1200 컨테이너 오른쪽으로 40px 넘친다. 모바일 2열.
 const Rail = styled.div({
   display: 'grid',
-  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gridTemplateColumns: 'repeat(4, 298px)',
   gap: 16,
   [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
 });
@@ -403,15 +403,16 @@ const FeaturedPoster = styled(Link)({
 const SubHeading = styled(SectionHeading)({ margin: 0 });
 // ScrollRail 래퍼가 flex 아이템이 되므로 남는 폭을 채우도록 감싼다.
 const RailSlot = styled.div({ flex: 1, minWidth: 0, width: '100%' });
-// Figma Frame 538: 229px 카드 가로 레일(간격 12), 넘치는 카드는 스크롤.
+// Figma Frame 538: 298 카드를 229로 축소한 인스턴스(글자·여백까지 0.768배) 가로 레일(간격 12).
+// 카드 자체를 298로 그린 뒤 zoom으로 줄여 Figma 축소 인스턴스와 같은 비율을 낸다.
+const SMALL_CARD_ZOOM = 229 / 298;
 const CardRail = styled.div({
   display: 'flex',
   gap: 12,
   overflowX: 'auto',
   scrollbarWidth: 'none',
-  // 긴 제목(nowrap)이 카드 폭을 밀어내지 않도록 minWidth 0.
-  '& > div': { flex: '0 0 229px', minWidth: 0 },
-  [mobile]: { '& > div': { flex: '0 0 160px' } },
+  '& > div': { flex: '0 0 298px', minWidth: 0, zoom: SMALL_CARD_ZOOM },
+  [mobile]: { '& > div': { flex: '0 0 160px', zoom: 1 } },
 });
 // Figma Frame 541: 가운데 정렬 제목(24) + 카드 5열(간격 12).
 const Bootcamp = styled.section({
@@ -428,9 +429,7 @@ const BootcampHeading = styled.h2({
   textAlign: 'center',
   [mobile]: textStyle.mSectionHeading,
 });
-const BootcampRail = styled(CardRail)({
-  '& > div': { flex: '1 0 229px', minWidth: 0 },
-});
+const BootcampRail = CardRail;
 // Figma Frame 546: 가로형 카드 세로 목록(간격 20).
 const LatestList = styled.section({
   display: 'flex',

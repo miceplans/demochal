@@ -285,8 +285,6 @@ const ellipsis = {
 } as const;
 
 const ThumbCard = styled.article({
-  position: 'relative',
-  aspectRatio: '298 / 416',
   minWidth: 0,
   borderRadius: 12,
   border: `0.5px solid ${c.gray200}`,
@@ -295,14 +293,12 @@ const ThumbCard = styled.article({
   transition: 'box-shadow 0.2s ease, transform 0.2s ease',
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
   '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
-  // 사진 영역이 남는 높이를 차지하고 본문은 그 아래에 쌓인다(모서리에 회색 배경이 비치지 않게).
-  '.thumb-art': { display: 'block', flex: 1, minHeight: 0, background: c.gray100 },
+  // 사진은 공모전 카드(contestCard/normal) 사진 영역과 같은 298:315 비율, 본문은 그 아래에 쌓는다.
+  '.thumb-art': { display: 'block', aspectRatio: '298 / 315', background: c.gray100 },
   '.thumb-artwork': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
 });
 
 const ThumbLink = styled(Link)({
-  position: 'absolute',
-  inset: 0,
   display: 'flex',
   flexDirection: 'column',
   borderRadius: 'inherit',
@@ -351,7 +347,8 @@ const ThumbRole = styled('span', { shouldForwardProp: (prop) => prop !== 'filled
   padding: '4px 8px',
   borderRadius: 4,
   background: filled ? c.lightGreen : c.gray100,
-  border: filled ? 0 : `0.5px solid ${c.gray200}`,
+  // Figma 테두리는 안쪽(inside) 선이라 칩 높이(21)를 늘리지 않게 inset 그림자로 그린다.
+  boxShadow: filled ? 'none' : `inset 0 0 0 0.5px ${c.gray200}`,
   color: filled ? c.green : c.gray500,
   ...ellipsis,
 }));
@@ -370,7 +367,7 @@ const ThumbApply = styled.span({
   ...textStyle.mCounterText,
   padding: '6px 12px',
   borderRadius: 8,
-  border: `1px solid ${c.primary}`,
+  boxShadow: `inset 0 0 0 1px ${c.primary}`,
   color: c.primary,
   whiteSpace: 'nowrap',
   flexShrink: 0,
