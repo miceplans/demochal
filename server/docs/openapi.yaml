@@ -2069,6 +2069,8 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         # 기업 계정이 없거나 기업 인증이 완료되지 않은 인증 사용자.
         '403': { $ref: '#/components/responses/Forbidden' }
+        '503':
+          description: 결제 기능이 꺼져 있어(PAYMENTS_ENABLED≠true) 상품 판매를 막음
   /orders/{id}:
     get:
       tags: [Orders]
@@ -2506,8 +2508,12 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Ad' }
+        '400':
+          description: 오늘 이전 시작일, 종료일이 시작일보다 앞섬, 또는 종료일이 오늘로부터 3개월을 넘음
         '409':
           description: 기존 계약과 기간 중복 또는 확인한 단가가 변경됨
+        '503':
+          description: 결제 기능이 꺼져 있어(PAYMENTS_ENABLED≠true) 광고 상품 판매를 막음
   /ads/{id}:
     patch:
       tags: [Ads]

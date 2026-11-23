@@ -1,7 +1,8 @@
 import 'reflect-metadata';
-import { ForbiddenException } from '@nestjs/common';
+import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
 import throttlerConstants from '@nestjs/throttler/dist/throttler.constants.js';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { env } from '../../config/env.js';
 import { DEFAULT_THROTTLE, DESIGN_ORDER_THROTTLE } from '../../common/throttling/throttling.js';
 import type { BusinessesService } from '../businesses/businesses.service.js';
 import { DesignProductsController } from './design-products.controller.js';
@@ -23,6 +24,23 @@ const user = { id: 'user-1' } as never;
 const dto = { productCode: 'poster' } as const;
 
 describe('DesignProductsController.createOrder', () => {
+  afterEach(() => {
+    env.paymentsEnabled = true;
+  });
+
+  it('blocks product sales with 503 when payments are disabled', async () => {
+    env.paymentsEnabled = false;
+    const { controller, designProductsService } = createController({
+      id: 'biz-1',
+      verificationStatus: 'verified',
+    });
+
+    await expect(controller.createOrder(dto, user)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(designProductsService.createOrder).not.toHaveBeenCalled();
+  });
+
   it('rejects an authenticated user without a business with 403', async () => {
     const { controller, designProductsService } = createController(null);
 

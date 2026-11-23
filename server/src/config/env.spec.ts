@@ -3,6 +3,9 @@ import { parseIpAllowlist } from '../common/throttling/ip-allowlist.js';
 
 async function loadEnv(vars: Record<string, string>) {
   vi.resetModules();
+  // vitest.config의 전역 PAYMENTS_ENABLED=true는 운영 실결제 키 검증을 건드리므로, 각 케이스가
+  // 명시하지 않으면 꺼진 상태(운영 기본값)로 검증한다.
+  vi.stubEnv('PAYMENTS_ENABLED', 'false');
   for (const [key, value] of Object.entries(vars)) vi.stubEnv(key, value);
   return import('./env.js');
 }
@@ -156,5 +159,50 @@ describe('env KCP_PRIVATE_KEY validation', () => {
       KCP_PRIVATE_KEY: '',
     });
     expect(env.kcpPrivateKey).toBe('');
+  });
+});
+
+describe('env PAYMENTS_ENABLED live-credential guard', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  const base = {
+    NODE_ENV: 'production',
+    JWT_SECRET: 'a'.repeat(32),
+    TOSS_WEBHOOK_ALLOWED_IPS: '13.125.0.1',
+  };
+
+  it('rejects enabling payments in production with a Toss test key', async () => {
+    await expect(
+      loadEnv({ ...base, PAYMENTS_ENABLED: 'true', TOSS_SECRET_KEY: 'test_sk_x' }),
+    ).rejects.toThrow(/TOSS_SECRET_KEY/);
+  });
+
+  it('rejects enabling payments in production with the KCP test environment', async () => {
+    await expect(
+      loadEnv({ ...base, PAYMENTS_ENABLED: 'true', KCP_SITE_CD: 'T0000', KCP_PRODUCTION: 'false' }),
+    ).rejects.toThrow(/KCP_PRODUCTION/);
+  });
+
+  it('accepts enabling payments in production with live credentials', async () => {
+    const { env } = await loadEnv({
+      ...base,
+      PAYMENTS_ENABLED: 'true',
+      TOSS_SECRET_KEY: 'live_sk_x',
+      KCP_SITE_CD: 'A1234',
+      KCP_PRODUCTION: 'true',
+      KCP_PRIVATE_KEY: 'pem',
+    });
+    expect(env.paymentsEnabled).toBe(true);
+  });
+
+  it('keeps booting with test keys while payments stay disabled', async () => {
+    const { env } = await loadEnv({
+      ...base,
+      PAYMENTS_ENABLED: 'false',
+      TOSS_SECRET_KEY: 'test_sk_x',
+      KCP_SITE_CD: 'T0000',
+      KCP_PRODUCTION: 'false',
+    });
+    expect(env.paymentsEnabled).toBe(false);
   });
 });

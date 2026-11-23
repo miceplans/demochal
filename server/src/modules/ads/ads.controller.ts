@@ -17,6 +17,7 @@ import { OptionalJwtAuthGuard, type AuthenticatedUser } from '../auth/jwt-auth.g
 import { Public } from '../auth/public.decorator.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { AdsService } from './ads.service.js';
+import { assertPaymentsEnabled } from '../payments/payments-enabled.js';
 import { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import { CreateAdDto } from './dto/create-ad.dto.js';
 import { UpdateAdContentDto } from './dto/update-ad-content.dto.js';
@@ -58,6 +59,8 @@ export class AdsController {
 
   @Post()
   async create(@Body() dto: CreateAdDto, @CurrentUser() user: AuthenticatedUser) {
+    // 결제가 꺼진 환경(운영 기본값)에서는 광고 상품 판매 자체를 막는다 — 예약·주문을 만들지 않는다.
+    assertPaymentsEnabled();
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new UnauthorizedException('기업 계정이 필요합니다.');
     return this.adsService.create(dto, business.id, user.id);

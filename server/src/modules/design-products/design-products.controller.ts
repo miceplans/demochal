@@ -6,6 +6,7 @@ import { BusinessesService } from '../businesses/businesses.service.js';
 import { DESIGN_ORDER_THROTTLE } from '../../common/throttling/throttling.js';
 import { CreateDesignOrderDto } from './dto/create-design-order.dto.js';
 import { DesignProductsService } from './design-products.service.js';
+import { assertPaymentsEnabled } from '../payments/payments-enabled.js';
 
 @Controller('design-products')
 export class DesignProductsController {
@@ -25,6 +26,8 @@ export class DesignProductsController {
   @Post('orders')
   @Throttle(DESIGN_ORDER_THROTTLE)
   async createOrder(@Body() dto: CreateDesignOrderDto, @CurrentUser() user: AuthenticatedUser) {
+    // 결제가 꺼진 환경(운영 기본값)에서는 상품 판매 자체를 막는다 — 주문을 만들지 않는다.
+    assertPaymentsEnabled();
     const business = await this.businessesService.findByOwner(user.id);
     if (!business) throw new ForbiddenException('기업 계정이 필요합니다.');
     if (business.verificationStatus !== 'verified') {

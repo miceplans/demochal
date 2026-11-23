@@ -21,5 +21,6 @@ export type UpdateAdContentBody = {
   imageFileId: string;
   /** @maxLength 200 */
   title: string;
+  /** http/https 스킴만 허용. */
   landingUrl?: string;
 };

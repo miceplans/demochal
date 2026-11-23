@@ -152,6 +152,25 @@ const envSchema = z
         message: 'KCP_PRIVATE_KEY must be set when KCP_PRODUCTION is true',
       });
     }
+    // 운영(NODE_ENV=production)에서 결제를 켜려면 실결제 자격증명이어야 한다. 테스트 키로 결제를
+    // 열면 실제 청구 없이 주문이 paid로 정산되고, KCP는 거래조회·웹훅 같은 재대사 수단이 없어
+    // 어긋난 상태를 되돌릴 수 없다 — PAYMENTS_ENABLED 스위치만 켜서 열리지 않게 부팅을 막는다.
+    if (value.NODE_ENV === 'production' && value.PAYMENTS_ENABLED === 'true') {
+      if (value.TOSS_SECRET_KEY && !value.TOSS_SECRET_KEY.startsWith('live_')) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['TOSS_SECRET_KEY'],
+          message: 'TOSS_SECRET_KEY must be a live key when PAYMENTS_ENABLED is true in production',
+        });
+      }
+      if (value.KCP_SITE_CD && value.KCP_PRODUCTION !== 'true') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['KCP_PRODUCTION'],
+          message: 'KCP_PRODUCTION must be true when PAYMENTS_ENABLED is true in production',
+        });
+      }
+    }
   });
 
 const parsed = envSchema.safeParse(process.env);
