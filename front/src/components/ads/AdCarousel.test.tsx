@@ -1,4 +1,4 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   AdCarousel,
@@ -6,6 +6,7 @@ import {
   HERO_EDGE_FADE_STYLE,
   HERO_MEDIA_STYLE,
   HERO_VIEWPORT_STYLE,
+  INACTIVE_OVERLAY_STYLE,
   MOBILE_HERO_LAYOUT,
   MOBILE_HERO_MEDIA_STYLE,
   MOBILE_HERO_VIEWPORT_STYLE,
@@ -157,5 +158,73 @@ describe('AdCarousel', () => {
     });
     expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 15%');
     expect(HERO_EDGE_FADE_STYLE.background).toContain('transparent 85%');
+  });
+
+  it('darkens every slide except the centered active ad and updates after navigation', () => {
+    const { container } = render(
+      <AdCarousel
+        ariaLabel="홈 중간 광고"
+        variant="gallery"
+        items={[
+          { alt: '첫 광고', src: '/first.png' },
+          { alt: '두 번째 광고', src: '/second.png' },
+        ]}
+      />,
+    );
+
+    expect(screen.getAllByTestId('inactive-ad-overlay')).toHaveLength(
+      container.querySelectorAll('[data-ad-slide]').length - 1,
+    );
+    expect(container.querySelectorAll('[data-ad-slide][data-active="true"]')).toHaveLength(1);
+    expect(
+      screen
+        .getByAltText('첫 광고')
+        .closest('button')
+        ?.querySelector('[data-testid="inactive-ad-overlay"]'),
+    ).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: '다음 광고' }));
+
+    expect(screen.getAllByTestId('inactive-ad-overlay')).toHaveLength(
+      container.querySelectorAll('[data-ad-slide]').length - 1,
+    );
+    expect(container.querySelectorAll('[data-ad-slide][data-active="true"]')).toHaveLength(1);
+    expect(
+      screen.getByAltText('두 번째 광고').closest('button')?.querySelector('[data-testid]'),
+    ).toBe(null);
+  });
+
+  it('keeps the inactive overlay visual-only', () => {
+    expect(INACTIVE_OVERLAY_STYLE).toEqual({
+      pointerEvents: 'none',
+      background: 'rgb(0 0 0 / 48%)',
+    });
+  });
+
+  it('applies the same overlay rule to hero videos and previous navigation', () => {
+    const { container } = render(
+      <AdCarousel
+        ariaLabel="홈 상단 광고"
+        variant="hero"
+        items={[
+          { alt: '첫 영상 광고', src: '/first.webm', type: 'video' },
+          { alt: '두 번째 이미지 광고', src: '/second.png' },
+        ]}
+      />,
+    );
+
+    const activeVideo = screen.getByLabelText('첫 영상 광고');
+    expect(activeVideo.closest('[data-ad-slide]')?.getAttribute('data-active')).toBe('true');
+    expect(activeVideo.closest('[data-ad-slide]')?.querySelector('[data-testid]')).toBeNull();
+    expect(screen.getAllByTestId('inactive-ad-overlay')).toHaveLength(
+      container.querySelectorAll('[data-ad-slide]').length - 1,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '이전 광고' }));
+
+    const activeImage = screen.getByAltText('두 번째 이미지 광고');
+    expect(activeImage.closest('[data-ad-slide]')?.getAttribute('data-active')).toBe('true');
+    expect(activeImage.closest('[data-ad-slide]')?.querySelector('[data-testid]')).toBeNull();
+    expect(container.querySelectorAll('[data-ad-slide][data-active="true"]')).toHaveLength(1);
   });
 });

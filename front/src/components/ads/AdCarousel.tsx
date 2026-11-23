@@ -212,18 +212,33 @@ const Rail = styled.div<{ activeIndex: number; variant: AdCarouselProps['variant
   },
 );
 
-const SlideButton = styled.button({
+const SlideButton = styled.button<{ $variant: AdCarouselProps['variant'] }>(({ $variant }) => ({
+  position: 'relative',
   display: 'block',
   flex: '0 0 auto',
+  overflow: 'hidden',
   padding: 0,
   border: 0,
-  borderRadius: 'inherit',
+  borderRadius: $variant === 'hero' ? '12px' : '8px',
   background: 'transparent',
   cursor: 'pointer',
   '&:focus-visible': { outline: `3px solid ${c.primary}`, outlineOffset: '3px' },
-});
+  [mobile]: { borderRadius: $variant === 'hero' ? 0 : '6px' },
+}));
 
 const SlideLink = SlideButton.withComponent('a');
+
+export const INACTIVE_OVERLAY_STYLE = {
+  pointerEvents: 'none',
+  background: 'rgb(0 0 0 / 48%)',
+} as const;
+
+const InactiveOverlay = styled.span({
+  position: 'absolute',
+  inset: 0,
+  zIndex: 1,
+  ...INACTIVE_OVERLAY_STYLE,
+});
 
 // hero는 화면 중앙(50vw)에 놓인 900px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
@@ -518,6 +533,9 @@ export function AdCarousel({
             return item.href && isActive ? (
               <SlideLink
                 key={`${item.src}-${index}`}
+                $variant={variant}
+                data-ad-slide
+                data-active="true"
                 href={item.href}
                 target="_blank"
                 rel="noopener noreferrer sponsored"
@@ -528,6 +546,9 @@ export function AdCarousel({
             ) : (
               <SlideButton
                 key={`${item.src}-${index}`}
+                $variant={variant}
+                data-ad-slide
+                data-active={isActive ? 'true' : 'false'}
                 type="button"
                 onClick={() => {
                   recordClick();
@@ -535,6 +556,7 @@ export function AdCarousel({
                 }}
               >
                 {media}
+                {!isActive ? <InactiveOverlay data-testid="inactive-ad-overlay" /> : null}
               </SlideButton>
             );
           })}
