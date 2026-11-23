@@ -260,6 +260,32 @@ export function HomePage() {
             interval={4000}
           />
           <Sections last>
+            {deadlineContests.length > 0 && (
+              <section>
+                <DesktopOnly>
+                  <SectionHeader
+                    title={`마감임박 D-${DEADLINE_SOON_DAYS}`}
+                    action={<More href="/explore">더보기 →</More>}
+                  />
+                </DesktopOnly>
+                <MobileOnly>
+                  <SectionHeader
+                    title="마감임박! 지금 해야하는 챌린지"
+                    action={<More href="/explore">더보기 →</More>}
+                  />
+                </MobileOnly>
+                <div style={{ height: 16 }} />
+                <DeadlineRail>
+                  {deadlineContests.map((contest) => (
+                    <ResponsiveContestCard
+                      key={contest.id}
+                      contest={contest}
+                      mobileVariant="horizontal"
+                    />
+                  ))}
+                </DeadlineRail>
+              </section>
+            )}
             {featuredPopular && (
               <Popular aria-labelledby="home-popular-title">
                 <PopularFeatured>
@@ -287,32 +313,6 @@ export function HomePage() {
                   </RailSlot>
                 )}
               </Popular>
-            )}
-            {deadlineContests.length > 0 && (
-              <section>
-                <DesktopOnly>
-                  <SectionHeader
-                    title={`마감임박 D-${DEADLINE_SOON_DAYS}`}
-                    action={<More href="/explore">더보기 →</More>}
-                  />
-                </DesktopOnly>
-                <MobileOnly>
-                  <SectionHeader
-                    title="마감임박! 지금 해야하는 챌린지"
-                    action={<More href="/explore">더보기 →</More>}
-                  />
-                </MobileOnly>
-                <div style={{ height: 16 }} />
-                <DeadlineRail>
-                  {deadlineContests.map((contest) => (
-                    <ResponsiveContestCard
-                      key={contest.id}
-                      contest={contest}
-                      mobileVariant="horizontal"
-                    />
-                  ))}
-                </DeadlineRail>
-              </section>
             )}
             {bootcampContests.length > 0 && (
               <Bootcamp aria-labelledby="home-bootcamp-title">
@@ -391,12 +391,12 @@ const TeamRail = styled.div({
   '& > article': { flex: '0 0 241px' },
   [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
 });
-// Figma Frame 539: 패딩 40, 대표 카드 열(298) ↔ 레일 간격 120.
+// Figma Frame 539: 패딩 위아래 160·좌우 40, 대표 카드 열(298) ↔ 레일 간격 120.
 const Popular = styled.section({
   display: 'flex',
   alignItems: 'center',
   gap: 120,
-  padding: 40,
+  padding: '160px 40px',
   overflow: 'hidden',
   [mobile]: { flexDirection: 'column', alignItems: 'stretch', gap: 16, padding: 0 },
 });
