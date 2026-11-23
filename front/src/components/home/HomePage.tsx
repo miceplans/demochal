@@ -54,6 +54,38 @@ function MoreIcon() {
   );
 }
 
+// 부트캠프 섹션 검색어(전용 분야가 없어 제목/분야 ILIKE 검색을 쓴다).
+const BOOTCAMP_QUERY = '부트캠프';
+
+// 데스크톱/모바일 카드 형태를 CSS 미디어쿼리로 나눈다(SSR 불일치 없이 기존 DesktopOnly/MobileOnly 패턴 유지).
+function ResponsiveContestCard({
+  contest,
+  desktop = 'card',
+  mobileVariant = 'simple',
+}: {
+  contest: Contest;
+  /** row: 데스크톱 목록형 가로 카드. */
+  desktop?: 'card' | 'row';
+  /** horizontal: 모바일 가로형 카드. */
+  mobileVariant?: 'simple' | 'horizontal';
+}) {
+  const href = contestHref(contest.id);
+  return (
+    <>
+      <DesktopOnly>
+        <ContestCard contest={contest} href={href} row={desktop === 'row'} />
+      </DesktopOnly>
+      <MobileOnly>
+        {mobileVariant === 'horizontal' ? (
+          <ContestCard contest={contest} href={href} horizontal />
+        ) : (
+          <ContestCard contest={contest} href={href} simple />
+        )}
+      </MobileOnly>
+    </>
+  );
+}
+
 export function HomePage() {
   // D-day 계산 기준 시각은 마운트 시 한 번만 잡는다(렌더 중 Date.now() 호출 금지).
   const [now] = useState(() => Date.now());
@@ -87,7 +119,7 @@ export function HomePage() {
   const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
   );
-  // 마감 임박순으로 최대 8개(4열 2줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외하고, D-7 이내만 노출한다.
+  // 마감 임박순 4개(Figma 1-홈: 4열 1줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외한다.
   const { data: deadlineList } = generated.useListChallenges({
     sort: 'deadline',
     includeClosed: false,
@@ -95,8 +127,36 @@ export function HomePage() {
   });
   const liveDeadlineContests = (deadlineList?.data.items ?? [])
     .filter((challenge) => Boolean(challenge.endDate))
-    .slice(0, 8)
+    .slice(0, 4)
     .map((challenge) => challengeToContest(challenge, now));
+  // 가장 인기많은 공모전: 조회수순 1위는 대표 카드, 나머지는 가로 레일.
+  const { data: popularList } = generated.useListChallenges({
+    sort: 'popular',
+    includeClosed: false,
+    limit: 6,
+  });
+  const popularContests = (popularList?.data.items ?? []).map((challenge) =>
+    challengeToContest(challenge, now),
+  );
+  const [featuredPopular, ...popularRail] = popularContests;
+  // 부트캠프 전용 분야가 없어 제목/분야 검색(q)으로 모은다. 결과가 없으면 섹션을 숨긴다.
+  const { data: bootcampList } = generated.useListChallenges({
+    q: BOOTCAMP_QUERY,
+    includeClosed: false,
+    limit: 5,
+  });
+  const bootcampContests = (bootcampList?.data.items ?? []).map((challenge) =>
+    challengeToContest(challenge, now),
+  );
+  // 하단 가로형 목록: 최신 등록순 5개.
+  const { data: latestList } = generated.useListChallenges({
+    sort: 'latest',
+    includeClosed: false,
+    limit: 5,
+  });
+  const latestContests = (latestList?.data.items ?? []).map((challenge) =>
+    challengeToContest(challenge, now),
+  );
   // API가 비어있거나 실패하면 목업 없이 빈 상태로 둔다. 사용자 화면에는 실 데이터만 노출한다.
   const recommendationContests = liveRecommendationContests;
   const deadlineContests = liveDeadlineContests;
@@ -126,76 +186,13 @@ export function HomePage() {
                   action={<More href="/explore">더보기 →</More>}
                 />
                 <div style={{ height: 16 }} />
-                <DesktopOnly>
-                  <Rail>
-                    {recommendationContests.slice(0, 8).map((contest) => (
-                      <ContestCard
-                        key={contest.id}
-                        contest={contest}
-                        href={contestHref(contest.id)}
-                      />
-                    ))}
-                  </Rail>
-                </DesktopOnly>
-                <MobileOnly>
-                  <Rail>
-                    {recommendationContests.slice(0, 4).map((contest) => (
-                      <ContestCard
-                        key={contest.id}
-                        contest={contest}
-                        href={contestHref(contest.id)}
-                        simple
-                      />
-                    ))}
-                  </Rail>
-                </MobileOnly>
+                <Rail>
+                  {recommendationContests.slice(0, 4).map((contest) => (
+                    <ResponsiveContestCard key={contest.id} contest={contest} />
+                  ))}
+                </Rail>
               </section>
             )}
-            {deadlineContests.length > 0 && (
-              <section>
-                <DesktopOnly>
-                  <SectionHeader
-                    title={`마감임박 D-${DEADLINE_SOON_DAYS}`}
-                    action={<More href="/explore">더보기 →</More>}
-                  />
-                  <div style={{ height: 16 }} />
-                  <Rail>
-                    {deadlineContests.map((contest) => (
-                      <ContestCard
-                        key={contest.id}
-                        contest={contest}
-                        href={contestHref(contest.id)}
-                      />
-                    ))}
-                  </Rail>
-                </DesktopOnly>
-                <MobileOnly>
-                  <SectionHeader
-                    title="마감임박! 지금 해야하는 챌린지"
-                    action={<More href="/explore">더보기 →</More>}
-                  />
-                  <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
-                    {deadlineContests.map((contest) => (
-                      <ContestCard
-                        key={contest.id}
-                        contest={contest}
-                        href={contestHref(contest.id)}
-                        horizontal
-                      />
-                    ))}
-                  </div>
-                </MobileOnly>
-              </section>
-            )}
-          </Sections>
-          <AdCarousel
-            key={liveGalleryAds ? 'gallery-live' : 'gallery-default'}
-            ariaLabel="홈 중간 광고"
-            items={fillWithFallback(liveGalleryAds, fallbackAds.gallery)}
-            variant="gallery"
-            interval={4000}
-          />
-          <Sections last>
             {teams.length > 0 && (
               <section>
                 <MobileOnly style={{ marginBottom: 16 }}>
@@ -209,21 +206,90 @@ export function HomePage() {
                     }
                   />
                 </MobileOnly>
+                <ScrollRail as={TeamRail}>
+                  {teams.map((team) => (
+                    <TeamCard key={team.id} team={team} />
+                  ))}
+                </ScrollRail>
+              </section>
+            )}
+          </Sections>
+          <AdCarousel
+            key={liveGalleryAds ? 'gallery-live' : 'gallery-default'}
+            ariaLabel="홈 중간 광고"
+            items={fillWithFallback(liveGalleryAds, fallbackAds.gallery)}
+            variant="gallery"
+            interval={4000}
+          />
+          <Sections last>
+            {featuredPopular && (
+              <Popular aria-labelledby="home-popular-title">
+                <PopularFeatured>
+                  <SubHeading id="home-popular-title">가장 인기많은 공모전</SubHeading>
+                  <ContestCard contest={featuredPopular} href={contestHref(featuredPopular.id)} />
+                </PopularFeatured>
+                {popularRail.length > 0 && (
+                  <RailSlot>
+                    <ScrollRail as={CardRail}>
+                      {popularRail.map((contest) => (
+                        <ResponsiveContestCard key={contest.id} contest={contest} />
+                      ))}
+                    </ScrollRail>
+                  </RailSlot>
+                )}
+              </Popular>
+            )}
+            {deadlineContests.length > 0 && (
+              <section>
                 <DesktopOnly>
-                  <ScrollRail as={TeamRail}>
-                    {teams.map((team) => (
-                      <TeamCard key={team.id} team={team} />
-                    ))}
-                  </ScrollRail>
+                  <SectionHeader
+                    title={`마감임박 D-${DEADLINE_SOON_DAYS}`}
+                    action={<More href="/explore">더보기 →</More>}
+                  />
                 </DesktopOnly>
                 <MobileOnly>
-                  <ScrollRail as={TeamRail}>
-                    {teams.slice(0, 3).map((team) => (
-                      <TeamCard key={team.id} team={team} />
+                  <SectionHeader
+                    title="마감임박! 지금 해야하는 챌린지"
+                    action={<More href="/explore">더보기 →</More>}
+                  />
+                </MobileOnly>
+                <div style={{ height: 16 }} />
+                <DeadlineRail>
+                  {deadlineContests.map((contest) => (
+                    <ResponsiveContestCard
+                      key={contest.id}
+                      contest={contest}
+                      mobileVariant="horizontal"
+                    />
+                  ))}
+                </DeadlineRail>
+              </section>
+            )}
+            {bootcampContests.length > 0 && (
+              <Bootcamp aria-labelledby="home-bootcamp-title">
+                <BootcampHeading id="home-bootcamp-title">
+                  취준생에게 딱 맞는 부트 캠프!
+                </BootcampHeading>
+                <RailSlot>
+                  <ScrollRail as={BootcampRail}>
+                    {bootcampContests.map((contest) => (
+                      <ResponsiveContestCard key={contest.id} contest={contest} />
                     ))}
                   </ScrollRail>
-                </MobileOnly>
-              </section>
+                </RailSlot>
+              </Bootcamp>
+            )}
+            {latestContests.length > 0 && (
+              <LatestList aria-label="최신 공모전">
+                {latestContests.map((contest) => (
+                  <ResponsiveContestCard
+                    key={contest.id}
+                    contest={contest}
+                    desktop="row"
+                    mobileVariant="horizontal"
+                  />
+                ))}
+              </LatestList>
             )}
           </Sections>
         </Home>
@@ -254,20 +320,79 @@ const Sections = styled.div<{ last?: boolean }>(({ last }) => ({
   gap: 60,
   [mobile]: { gap: 32, padding: last ? '0 16px 32px' : '0 16px' },
 }));
-// 데스크톱 4열 × 2줄(최대 8개), 모바일 2열.
+// Figma 1-홈: 데스크톱 4열 1줄, 모바일 2열.
 const Rail = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
   gap: 16,
   [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 },
 });
+// 마감임박은 모바일에서 기존처럼 가로형 카드 한 줄씩 쌓는다.
+const DeadlineRail = styled(Rail)({
+  [mobile]: { gridTemplateColumns: 'minmax(0, 1fr)', gap: 14 },
+});
+// Figma sec3grid: 241px 팀 카드 가로 레일(간격 16).
 const TeamRail = styled.div({
   display: 'flex',
   gap: 16,
   overflowX: 'auto',
   scrollbarWidth: 'none',
-  '& > article': { flex: '0 0 362px' },
+  '& > article': { flex: '0 0 241px' },
   [mobile]: { flexDirection: 'column', gap: 12, '& > article': { flex: 'none' } },
+});
+// Figma Frame 539: 패딩 40, 대표 카드 열(298) ↔ 레일 간격 120.
+const Popular = styled.section({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 120,
+  padding: 40,
+  overflow: 'hidden',
+  [mobile]: { flexDirection: 'column', alignItems: 'stretch', gap: 16, padding: 0 },
+});
+const PopularFeatured = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 16,
+  flex: '0 0 298px',
+  minWidth: 0,
+  [mobile]: { flex: 'none' },
+});
+const SubHeading = styled.h2({ ...textStyle.h1, color: c.gray900, margin: 0 });
+// ScrollRail 래퍼가 flex 아이템이 되므로 남는 폭을 채우도록 감싼다.
+const RailSlot = styled.div({ flex: 1, minWidth: 0, width: '100%' });
+// Figma Frame 538: 229px 카드 가로 레일(간격 12), 넘치는 카드는 스크롤.
+const CardRail = styled.div({
+  display: 'flex',
+  gap: 12,
+  overflowX: 'auto',
+  scrollbarWidth: 'none',
+  '& > div': { flex: '0 0 229px' },
+  [mobile]: { '& > div': { flex: '0 0 160px' } },
+});
+// Figma Frame 541: 가운데 정렬 제목(24) + 카드 5열(간격 12).
+const Bootcamp = styled.section({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 20,
+  [mobile]: { alignItems: 'stretch', gap: 16 },
+});
+const BootcampHeading = styled.h2({
+  ...textStyle.display,
+  color: c.gray900,
+  margin: 0,
+  textAlign: 'center',
+  [mobile]: textStyle.mSectionHeading,
+});
+const BootcampRail = styled(CardRail)({
+  '& > div': { flex: '1 0 229px' },
+});
+// Figma Frame 546: 가로형 카드 세로 목록(간격 20).
+const LatestList = styled.section({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 20,
+  [mobile]: { gap: 14 },
 });
 const More = styled(Link)({
   ...textStyle.secondaryText,
