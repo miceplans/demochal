@@ -32,6 +32,7 @@ import {
   businesses,
   challengeViews,
   challenges,
+  teams,
   users,
 } from '../../db/schema.js';
 import type { ChallengeAttachment } from '../../db/schema.js';
@@ -175,7 +176,7 @@ export class ChallengesService {
         this.db.select({ value: count() }).from(challenges).where(where),
       ]);
       return {
-        items: await this.withPosterUrls(rows),
+        items: await this.withTeamCounts(await this.withPosterUrls(rows)),
         nextCursor: null,
         total: Number(totalRows[0]?.value ?? 0),
       };
@@ -193,7 +194,27 @@ export class ChallengesService {
     const items = rows.slice(0, limit);
     const last = items[items.length - 1];
     const nextCursor = hasMore && last ? this.encodeCursor(sort, last) : null;
-    return { items: await this.withPosterUrls(items), nextCursor };
+    return { items: await this.withTeamCounts(await this.withPosterUrls(items)), nextCursor };
+  }
+
+  /** 카드의 '팀 모집 N건' 배지용: 페이지의 챌린지별 모집 중 팀 수를 한 번의 집계로 붙인다. */
+  private async withTeamCounts<T extends { id: string }>(items: T[]) {
+    if (items.length === 0) return items.map((item) => ({ ...item, teamCount: 0 }));
+    const rows = await this.db
+      .select({ challengeId: teams.challengeId, total: count() })
+      .from(teams)
+      .where(
+        and(
+          inArray(
+            teams.challengeId,
+            items.map((item) => item.id),
+          ),
+          eq(teams.status, 'recruiting'),
+        ),
+      )
+      .groupBy(teams.challengeId);
+    const counts = new Map(rows.map((row) => [row.challengeId, Number(row.total)]));
+    return items.map((item) => ({ ...item, teamCount: counts.get(item.id) ?? 0 }));
   }
 
   /** 카드 목록 응답에 포스터·썸네일 공개 URL을 붙인다(한 번의 조회로 일괄 해석). */

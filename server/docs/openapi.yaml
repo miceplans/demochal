@@ -4052,6 +4052,11 @@ components:
             nullable: true,
             description: 카드 썸네일 공개 URL(public+ready 파일). 없으면 클라이언트는 posterUrl로 폰백,
           }
+        teamCount:
+          {
+            type: integer,
+            description: 공개 목록(GET /challenges) 전용 — 이 챌린지에서 모집 중(status=recruiting)인 팀 수. 다른 응답에는 없다,
+          }
         organizer: { type: string }
         eligibility: { type: string, description: 지원 자격 }
         hashtags: { type: array, items: { type: string } }

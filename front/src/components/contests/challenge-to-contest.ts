@@ -11,6 +11,7 @@ export function challengeToContest(
     posterUrl?: string | null;
     thumbnailUrl?: string | null;
     prizeAmount?: number | null;
+    teamCount?: number;
   },
   now: number,
 ): Contest {
@@ -20,8 +21,8 @@ export function challengeToContest(
     category: challenge.category ?? '기타',
     days: daysUntil(challenge.endDate, now),
     closed: isPastDeadline(challenge.endDate, now),
-    // 추천 응답에는 팀 모집 수가 없다 — 0으로 꾸며 보여주지 않고 카드에서 배지를 숨긴다.
-    teams: undefined,
+    // 공개 목록(GET /challenges)만 teamCount를 준다. 추천 등 값이 없는 응답은 0으로 꾸미지 않고 배지를 숨긴다.
+    teams: challenge.teamCount,
     posterUrl: challenge.posterUrl ?? null,
     thumbnailUrl: challenge.thumbnailUrl ?? null,
     prizeAmount: challenge.prizeAmount ?? null,

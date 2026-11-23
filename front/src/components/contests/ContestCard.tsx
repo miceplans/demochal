@@ -139,8 +139,14 @@ export function ContestCard({
   horizontal = false,
   row = false,
   simple = false,
+  variant,
   href: hrefProp,
 }: {
+  /**
+   * poster: 홈 카드(Figma contestCard/normal 500:1481) — 사진이 298:416 카드를 채우고 하단 본문에
+   * 제목 / 분야·D-day / 북마크·팀 모집 배지. list: 홈 가로형 목록(Variant4 1656:14149).
+   */
+  variant?: 'poster' | 'list';
   contest: Contest;
   horizontal?: boolean;
   /** 데스크톱 목록 보기(가로 카드). */
@@ -166,6 +172,66 @@ export function ContestCard({
       <HeartIcon filled={saved} size={16} />
     </ScrapButton>
   );
+  const artworkSrc = contest.thumbnailUrl ?? contest.posterUrl;
+  // 홈 카드: 모집 중인 팀이 있을 때만 배지를 단다('팀 모집 0건'은 노출하지 않음).
+  const teamBadge = contest.teams ? (
+    <Link href="/contests/public-data/teams">
+      <HomeTeamBadge>팀 모집 {contest.teams}건</HomeTeamBadge>
+    </Link>
+  ) : null;
+  const homeCategories = (
+    <HomeTags aria-label="분야">
+      {categoryLabels.map((category) => (
+        <HomeTag key={category}>{category}</HomeTag>
+      ))}
+    </HomeTags>
+  );
+  const dday = !contest.closed ? <HomeDday>D-{contest.days}</HomeDday> : null;
+  if (variant === 'poster') {
+    return (
+      <PosterCard data-component="contest-card">
+        <Link href={href} aria-label={`${contest.title} 상세`} className="poster-link">
+          {artworkSrc ? <img src={artworkSrc} alt="" /> : null}
+          {contest.closed && <div className="artwork-closed">마감된 공고입니다.</div>}
+        </Link>
+        <PosterBody>
+          <Link href={href} className="title-link">
+            <HomeTitle>{contest.title}</HomeTitle>
+          </Link>
+          <HomeRow>
+            {homeCategories}
+            {dday}
+          </HomeRow>
+          <HomeActionRow>
+            {scrapButton}
+            {teamBadge}
+          </HomeActionRow>
+        </PosterBody>
+      </PosterCard>
+    );
+  }
+  if (variant === 'list') {
+    return (
+      <ListCard data-component="contest-card">
+        <Link href={href} aria-label={`${contest.title} 상세`} className="list-artwork">
+          {artworkSrc ? <img src={artworkSrc} alt="" /> : null}
+        </Link>
+        <ListBody>
+          <ListTitleRow>
+            <Link href={href} className="title-link">
+              <HomeTitle>{contest.title}</HomeTitle>
+            </Link>
+            {dday}
+          </ListTitleRow>
+          {homeCategories}
+          <ListBottomRow>
+            {scrapButton}
+            {teamBadge}
+          </ListBottomRow>
+        </ListBody>
+      </ListCard>
+    );
+  }
   return (
     <Card horizontal={horizontal} row={row} data-component="contest-card">
       <Link href={href} aria-label={`${contest.title} 상세`}>
@@ -246,6 +312,125 @@ export function ContestCard({
     </Card>
   );
 }
+const ellipsis = {
+  minWidth: 0,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+} as const;
+const cardHover = {
+  transition: 'box-shadow 0.2s ease, transform 0.2s ease',
+  '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
+  '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
+} as const;
+const HomeTitle = styled.h3({ ...textStyle.mCardTitle, color: c.gray900, margin: 0, ...ellipsis });
+const HomeRow = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 8,
+  minWidth: 0,
+});
+// 팀 모집 배지(21px)가 없어도 본문 높이가 같도록 최소 높이를 고정한다.
+const HomeActionRow = styled(HomeRow)({ minHeight: 21 });
+// 분야 태그는 한 줄 고정 — 넘치면 마지막 태그부터 말줄임으로 잘린다.
+const HomeTags = styled.div({
+  display: 'flex',
+  flexWrap: 'nowrap',
+  gap: 4,
+  minWidth: 0,
+  overflow: 'hidden',
+});
+const HomeTag = styled.span({
+  ...textStyle.mTagText,
+  padding: '3px 8px',
+  borderRadius: 4,
+  background: c.gray100,
+  color: c.gray700,
+  flexShrink: 1,
+  ...ellipsis,
+});
+const HomeDday = styled.span({ ...textStyle.mCounterText, color: c.primary, flexShrink: 0 });
+const HomeTeamBadge = styled.span({
+  ...textStyle.mBadgeText,
+  display: 'inline-block',
+  padding: '4px 8px',
+  borderRadius: 4,
+  background: c.lightBlue,
+  color: c.primary,
+  whiteSpace: 'nowrap',
+});
+// 사진 영역(남는 높이)과 본문을 위아래로 쌓는다 — 본문을 사진 위에 겹치면 둥근 모서리에 회색 배경이 비친다.
+const PosterCard = styled.article({
+  aspectRatio: '298 / 416',
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  borderRadius: 12,
+  background: c.white,
+  overflow: 'hidden',
+  ...cardHover,
+  '.poster-link': {
+    position: 'relative',
+    display: 'block',
+    flex: 1,
+    minHeight: 0,
+    background: c.gray100,
+    overflow: 'hidden',
+  },
+  '.poster-link img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  '.artwork-closed': {
+    position: 'absolute',
+    inset: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: c.overlayBlack,
+    color: c.white,
+    ...textStyle.h3_2,
+  },
+  '.title-link': { display: 'block', minWidth: 0 },
+  // 북마크 버튼은 아이콘(16px)만 차지하게 기본 패딩을 없앤다.
+  'button[aria-pressed]': { padding: 0 },
+});
+const PosterBody = styled.div({
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: 14,
+  background: c.white,
+  minWidth: 0,
+});
+const ListCard = styled.article({
+  display: 'flex',
+  alignItems: 'stretch',
+  height: 105,
+  padding: 14,
+  borderRadius: 12,
+  background: c.white,
+  minWidth: 0,
+  ...cardHover,
+  '.list-artwork': {
+    flex: '0 0 141px',
+    borderRadius: 8,
+    background: c.gray100,
+    overflow: 'hidden',
+  },
+  '.list-artwork img': { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  '.title-link': { display: 'block', minWidth: 0 },
+  'button[aria-pressed]': { padding: 0 },
+  [mobile]: { height: 'auto', padding: 10, '.list-artwork': { flex: '0 0 100px', height: 100 } },
+});
+const ListBody = styled.div({
+  flex: 1,
+  minWidth: 0,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 8,
+  padding: '0 14px',
+});
+const ListTitleRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 });
+const ListBottomRow = styled.div({ display: 'flex', alignItems: 'center', gap: 12, minHeight: 21 });
 export const ContestGrid = styled.div({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
