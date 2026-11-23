@@ -40,7 +40,8 @@ type AdCarouselProps = {
   priceOverlay?: { label: string; value: string };
 };
 
-export const SLIDE_WIDTH = { hero: 900, gallery: 315 } as const;
+// Figma 1-홈 Hero(195:972): PC 상단 광고 822×193, 이웃 슬라이드 간격 60.
+export const SLIDE_WIDTH = { hero: 822, gallery: 315 } as const;
 // 이 거리(px) 이상 가로로 밀어야 스와이프로 본다. 세로 이동이 더 크면 페이지 스크롤로 둔다.
 const SWIPE_THRESHOLD = 40;
 const SLIDE_GAP = { hero: 60, gallery: 32 } as const;
@@ -51,11 +52,10 @@ export const GALLERY_LAYOUT = {
   mobile: { width: 240, height: Math.round((240 * 190) / 315) },
 } as const;
 const SLIDE_HEIGHT = {
-  // 폭 900 축소에도 원 노출 비율 1200:343(≈3.5:1)을 유지한다(갤러리 모바일 높이와 같은 반올림 관례).
-  hero: Math.round((SLIDE_WIDTH.hero * 343) / 1200),
+  hero: 193,
   gallery: GALLERY_LAYOUT.pc.height,
 } as const;
-// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) PC와 같은 3.5:1 비율을 쓴다.
+// 모바일 hero는 화면 폭을 꽉 채우고(여백·이웃 슬라이드 없음) 3.5:1 비율을 쓴다.
 // 소재가 3.5:1이 아니면 중앙을 기준으로 cover 크롭된다.
 export const MOBILE_HERO_LAYOUT = {
   width: 350,
@@ -226,7 +226,7 @@ const SlideButton = styled.button({
 
 const SlideLink = SlideButton.withComponent('a');
 
-// hero는 화면 중앙(50vw)에 놓인 900px 슬라이드의 가장자리에서 20px 안쪽,
+// hero는 화면 중앙(50vw)에 놓인 822px 슬라이드의 가장자리에서 20px 안쪽,
 // gallery는 뷰포트 중앙의 315px 슬라이드에서 좌우로 12px + 버튼 너비만큼 바깥에 버튼을 둡니다.
 const navOffset = {
   hero: `calc(50vw - ${SLIDE_WIDTH.hero / 2 - 20}px)`,

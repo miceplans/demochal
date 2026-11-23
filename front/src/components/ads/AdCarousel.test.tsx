@@ -141,13 +141,12 @@ describe('AdCarousel', () => {
 
   it('preserves the desktop hero media dimensions and aspect ratio', () => {
     expect(HERO_MEDIA_STYLE).toMatchObject({
-      width: '900px',
-      height: '257px',
+      width: '822px',
+      height: '193px',
       borderRadius: '12px',
     });
-    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '257px' });
-    // 폭 1200→900 축소에도 원 노출 비율 1200:343(≈3.5:1)을 유지한다.
-    expect(900 / 257).toBeCloseTo(1200 / 343, 2);
+    // Figma 1-홈 Hero(195:972) 822×193.
+    expect(HERO_VIEWPORT_STYLE).toEqual({ height: '193px' });
   });
 
   it('fades the desktop hero edges without blocking ad interaction', () => {

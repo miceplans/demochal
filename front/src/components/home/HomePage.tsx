@@ -121,7 +121,7 @@ export function HomePage() {
   const { data: teamList } = generated.useListTeams();
   // Figma sec3grid: 팀 카드 5장(오른쪽 끝은 잘려 보이며 레일로 스크롤).
   const liveTeams = (teamList?.data ?? []).slice(0, 5).map(toTeamCard);
-  // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않고 섹션 전체를 숨긴다.
+  // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않는다.
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 8 },
     { query: { enabled: auth?.status === 200 } },
@@ -129,6 +129,20 @@ export function HomePage() {
   const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
   );
+  // 비로그인(추천 API는 인증 필요)이거나 추천 결과가 비면 인기순 4개로 채워 섹션을 항상 노출한다(Figma 1-홈).
+  // 인증 상태(에러↔재조회 pending)에 따라 카드를 붙였다 뗐다 하면 카드의 인증 조회가 재시작되며 루프가 생기므로,
+  // 대체 목록은 항상 받아두고 '로그인 사용자의 추천을 기다리는 중'일 때만 숨긴다.
+  const { data: recommendationFallbackList } = generated.useListChallenges({
+    sort: 'popular',
+    includeClosed: false,
+    limit: 4,
+  });
+  const waitingForRecommendations = auth?.status === 200 && recommended === undefined;
+  const recommendationFallbackContests = waitingForRecommendations
+    ? []
+    : (recommendationFallbackList?.data.items ?? []).map((challenge) =>
+        challengeToContest(challenge, now),
+      );
   // 마감 임박순 4개(Figma 1-홈: 4열 1줄) — 마감일이 없는 챌린지는 D-day를 표시할 수 없어 제외한다.
   const { data: deadlineList } = generated.useListChallenges({
     sort: 'deadline',
@@ -168,7 +182,10 @@ export function HomePage() {
     challengeToContest(challenge, now),
   );
   // API가 비어있거나 실패하면 목업 없이 빈 상태로 둔다. 사용자 화면에는 실 데이터만 노출한다.
-  const recommendationContests = liveRecommendationContests;
+  const recommendationContests =
+    liveRecommendationContests.length > 0
+      ? liveRecommendationContests
+      : recommendationFallbackContests;
   const deadlineContests = liveDeadlineContests;
   const teams = liveTeams;
 
@@ -176,18 +193,20 @@ export function HomePage() {
     <PreviewLock locked={adPreviewPrice !== null}>
       <UserShell>
         <Home>
-          <AdCarousel
-            // 기본 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
-            key={liveHeroAds ? 'hero-live' : 'hero-default'}
-            ariaLabel="홈 상단 광고"
-            items={fillWithFallback(liveHeroAds, fallbackAds.hero)}
-            variant="hero"
-            priceOverlay={
-              adPreviewPrice
-                ? { label: '하루 광고비', value: `${adPreviewPrice.toLocaleString()}원` }
-                : undefined
-            }
-          />
+          <HeroSlot>
+            <AdCarousel
+              // 기본 광고 → DB 광고로 바뀌면 슬라이드 수가 달라지므로 캐러셀 위치를 새로 시작한다.
+              key={liveHeroAds ? 'hero-live' : 'hero-default'}
+              ariaLabel="홈 상단 광고"
+              items={fillWithFallback(liveHeroAds, fallbackAds.hero)}
+              variant="hero"
+              priceOverlay={
+                adPreviewPrice
+                  ? { label: '하루 광고비', value: `${adPreviewPrice.toLocaleString()}원` }
+                  : undefined
+              }
+            />
+          </HeroSlot>
           <Sections>
             {recommendationContests.length > 0 && (
               <section>
@@ -337,6 +356,8 @@ const Home = styled.div({
   gap: 60,
   [mobile]: { padding: 0, display: 'block' },
 });
+// Figma Frame 534: 상단 광고 줄 높이 250(광고 193) — 광고 아래 57px을 더 비운 뒤 섹션 간격 60이 이어진다.
+const HeroSlot = styled.div({ paddingBottom: 250 - 193, [mobile]: { paddingBottom: 0 } });
 const PreviewLock = styled('div', { shouldForwardProp: (prop) => prop !== 'locked' })<{
   locked: boolean;
 }>(({ locked }) => (locked ? { pointerEvents: 'none' } : undefined));
@@ -400,12 +421,12 @@ const FeaturedPoster = styled(Link)({
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
   '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
   img: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
-  // Figma Rectangle 289: 66% 지점부터 아래로 흰색 0 → 70%.
+  // Figma Rectangle 289: 53% 지점 흰색 0 → 83% 지점 70%, 그 아래는 70% 유지.
   '&::after': {
     content: '""',
     position: 'absolute',
     inset: 0,
-    background: `linear-gradient(to bottom, ${c.white}00 66%, ${c.white}b3 100%)`,
+    background: `linear-gradient(to bottom, ${c.white}00 53.37%, ${c.white}b3 83.17%)`,
     pointerEvents: 'none',
   },
 });
