@@ -255,6 +255,7 @@ export function HomePage() {
                         alt=""
                       />
                     ) : null}
+                    <FeaturedTitle>{featuredPopular.title}</FeaturedTitle>
                   </FeaturedPoster>
                 </PopularFeatured>
                 {popularRail.length > 0 && (
@@ -386,8 +387,9 @@ const PopularFeatured = styled.div({
   minWidth: 0,
   [mobile]: { flex: 'none' },
 });
-// Figma 1651:13817: 대표 카드는 본문 없이 포스터만(298×366).
+// Figma 1667:14320: 대표 카드는 포스터(298×366) 아래쪽을 흰색 그라데이션으로 덮고 왼쪽 아래에 공모전 이름을 얹는다.
 const FeaturedPoster = styled(Link)({
+  position: 'relative',
   display: 'block',
   width: '100%',
   aspectRatio: '298 / 366',
@@ -398,6 +400,27 @@ const FeaturedPoster = styled(Link)({
   '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 24px rgb(0 0 0 / 8%)' },
   '@media (prefers-reduced-motion: reduce)': { transition: 'none', transform: 'none' },
   img: { width: '100%', height: '100%', objectFit: 'cover', display: 'block' },
+  // Figma Rectangle 289: 66% 지점부터 아래로 흰색 0 → 70%.
+  '&::after': {
+    content: '""',
+    position: 'absolute',
+    inset: 0,
+    background: `linear-gradient(to bottom, ${c.white}00 66%, ${c.white}b3 100%)`,
+    pointerEvents: 'none',
+  },
+});
+// Figma sec1title: 18 Bold, 카드 왼쪽 15·아래 22 위치. 길면 한 줄 말줄임.
+const FeaturedTitle = styled.span({
+  ...textStyle.h2_2,
+  position: 'absolute',
+  left: 15,
+  right: 15,
+  bottom: 22,
+  zIndex: 1,
+  color: c.gray900,
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 });
 // 마감임박 등 다른 섹션 제목과 같은 SectionHeading(18 Bold)을 쓴다.
 const SubHeading = styled(SectionHeading)({ margin: 0 });
