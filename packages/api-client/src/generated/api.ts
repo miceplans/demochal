@@ -13934,7 +13934,7 @@ export const getCreateAdminAdUrl = () => {
 
 /**
  * 광고 관리(`/admin/ad-pricing`)의 광고 추가. 주문·결제를 만들지 않고 바로 `active`, `paidAmount=0`으로 생성한다.
- * 이미지는 관리자가 `POST /files/presign`(bucket=public) → S3 PUT → finalize로 올린 파일이어야 한다.
+ * 이미지는 호출한 관리자 본인이 `POST /files/presign`(bucket=public) → S3 PUT → finalize로 올린 파일이어야 한다(다른 사용자가 올린 파일은 400).
  * 같은 기관·상품의 기존 광고 기간과 겹치면 400, 기관·상품이 없으면 404.
  * @summary 관리자 광고 직접 등록 (결제 없음)
  */

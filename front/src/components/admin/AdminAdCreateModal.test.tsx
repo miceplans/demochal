@@ -57,13 +57,17 @@ describe('AdminAdCreateModal', () => {
     const submit = screen.getByRole('button', { name: '추가' }) as HTMLButtonElement;
     expect(submit.disabled).toBe(true);
 
-    fireEvent.change(screen.getByLabelText('기관'), { target: { value: 'biz-1' } });
-    fireEvent.change(screen.getByLabelText('위치'), { target: { value: 'hero' } });
+    const pick = (label: string, option: string) => {
+      fireEvent.click(screen.getByRole('combobox', { name: label }));
+      fireEvent.click(screen.getByRole('option', { name: option }));
+    };
+    pick('기관', '세모 기관');
+    pick('위치', '홈 히어로 배너');
     fireEvent.change(screen.getByLabelText('광고명'), { target: { value: ' 운영 광고 ' } });
-    fireEvent.change(screen.getByLabelText('이미지'), {
+    fireEvent.change(screen.getByLabelText('광고 이미지'), {
       target: { files: [new File(['x'], 'ad.png', { type: 'image/png' })] },
     });
-    await waitFor(() => expect(screen.getByText('업로드 완료')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('ad.png 업로드 완료')).toBeTruthy());
 
     fireEvent.click(submit);
     expect(create).toHaveBeenCalledWith({

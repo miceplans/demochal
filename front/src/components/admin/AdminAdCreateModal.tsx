@@ -1,12 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
+import { Dropdown } from '@/components/ui/Dropdown';
+import { DatePickerField } from '@/components/ui/DatePickerField';
+import { FileUploader } from '@/components/ui/FileUploader';
 import { apiErrorMessage } from '@/lib/api-error';
 import { toDateKey } from '@/lib/date';
 import { CROPPED_AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
@@ -17,8 +20,10 @@ type Props = {
 };
 
 // 관리자 광고 직접 등록 — 결제 단계 없이 POST /admin/ads가 바로 진행중 광고를 만든다.
+// 다이얼로그 모양은 같은 광고 메뉴의 광고비 수정 다이얼로그(AdminAdPricingScreen)를 따른다.
 export function AdminAdCreateModal({ onClose, onCreated }: Props) {
   const toast = useToast();
+  const titleId = useId();
   const today = toDateKey(new Date());
   const [businessId, setBusinessId] = useState('');
   const [productId, setProductId] = useState('');
@@ -26,8 +31,10 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
   const [landingUrl, setLandingUrl] = useState('');
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(today);
-  const [imageFileId, setImageFileId] = useState<string | null>(null);
+  const [image, setImage] = useState<{ fileId: string; name: string } | null>(null);
   const [uploading, setUploading] = useState(false);
+  // 업로드 도중 위치를 바꾸면 이전 위치 규격으로 압축된 결과가 늦게 도착한다. 세대 번호로 버린다.
+  const uploadGeneration = useRef(0);
 
   const businessesQuery = generated.useListAdminBusinesses({ status: 'verified' });
   const productsQuery = generated.useListAdProducts();
@@ -49,41 +56,57 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
     },
   });
 
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const changeProduct = (value: string) => {
+    setProductId(value);
+    // 위치마다 이미지 압축 규격이 달라, 위치를 바꾸면 진행 중 업로드를 버리고 다시 올리게 한다.
+    uploadGeneration.current += 1;
+    setUploading(false);
+    setImage(null);
+  };
+
   const handleImage = async (file: File) => {
-    if (!product) {
-      toast.error('광고 위치를 먼저 선택해주세요');
-      return;
-    }
+    if (!product) return;
+    const generation = ++uploadGeneration.current;
     setUploading(true);
-    setImageFileId(null);
+    setImage(null);
     try {
       const preset =
         product.placement === 'hero'
           ? CROPPED_AD_IMAGE_PRESETS.hero
           : CROPPED_AD_IMAGE_PRESETS.gallery;
-      const image = await compressToWebP(file, preset);
-      URL.revokeObjectURL(image.previewUrl);
+      const compressed = await compressToWebP(file, preset);
+      URL.revokeObjectURL(compressed.previewUrl);
       const presigned = await requestPresignedUpload.mutateAsync({
         data: {
           bucket: 'public',
           contentType: 'image/webp',
-          fileName: image.file.name,
-          sizeBytes: image.file.size,
+          fileName: compressed.file.name,
+          sizeBytes: compressed.file.size,
         },
       });
       // presigned S3 PUT은 API 서버가 아닌 S3로 직접 올리므로 api-client를 거치지 않는다(BizAdsPage와 동일).
       const uploadRes = await fetch(presigned.data.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
+        headers: { 'Content-Type': compressed.file.type },
+        body: compressed.file,
       });
       if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했어요.');
       await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
-      setImageFileId(presigned.data.fileId);
+      if (generation !== uploadGeneration.current) return;
+      setImage({ fileId: presigned.data.fileId, name: file.name });
     } catch (error) {
+      if (generation !== uploadGeneration.current) return;
       toast.error('이미지 업로드에 실패했어요', apiErrorMessage(error, '다시 시도해주세요'));
     } finally {
-      setUploading(false);
+      if (generation === uploadGeneration.current) setUploading(false);
     }
   };
 
@@ -91,7 +114,7 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
     !!businessId &&
     !!productId &&
     !!title.trim() &&
-    !!imageFileId &&
+    !!image &&
     !!startDate &&
     !!endDate &&
     startDate <= endDate &&
@@ -99,13 +122,13 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
     !createMutation.isPending;
 
   const submit = () => {
-    if (!canSubmit || !imageFileId) return;
+    if (!canSubmit || !image) return;
     createMutation.mutate({
       data: {
         businessId,
         productId,
         title: title.trim(),
-        imageFileId,
+        imageFileId: image.fileId,
         landingUrl: landingUrl.trim() || undefined,
         startDate,
         endDate,
@@ -113,123 +136,127 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
     });
   };
 
+  const uploaderLabel = uploading
+    ? '업로드 중…'
+    : image
+      ? `${image.name} 업로드 완료`
+      : product
+        ? '광고 이미지를 업로드해 주세요'
+        : '위치를 먼저 선택해 주세요';
+
   if (typeof document === 'undefined') return null;
   return createPortal(
     <Backdrop role="presentation" onMouseDown={onClose}>
-      <Modal
+      <Dialog
         role="dialog"
         aria-modal="true"
-        aria-labelledby="admin-ad-create-title"
+        aria-labelledby={titleId}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <ModalTitle id="admin-ad-create-title">광고 추가</ModalTitle>
+        <DialogTitle id={titleId}>광고 추가</DialogTitle>
         <ModalText>결제 없이 바로 진행중 광고로 등록돼요.</ModalText>
 
-        <Label htmlFor="admin-ad-business">기관</Label>
-        <Select
-          id="admin-ad-business"
-          value={businessId}
-          onChange={(event) => setBusinessId(event.target.value)}
-        >
-          <option value="">기관 선택</option>
-          {businesses.map((business) => (
-            <option key={business.id} value={business.id}>
-              {business.org}
-            </option>
-          ))}
-        </Select>
-
-        <Label htmlFor="admin-ad-product">위치</Label>
-        <Select
-          id="admin-ad-product"
-          value={productId}
-          onChange={(event) => {
-            setProductId(event.target.value);
-            // 위치마다 이미지 압축 규격이 달라 위치를 바꾸면 다시 올리게 한다.
-            setImageFileId(null);
-          }}
-        >
-          <option value="">위치 선택</option>
-          {products.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </Select>
-
-        <Label htmlFor="admin-ad-title">광고명</Label>
-        <Input
-          id="admin-ad-title"
-          value={title}
-          maxLength={200}
-          onChange={(event) => setTitle(event.target.value)}
-          placeholder="광고명을 입력해주세요"
-        />
-
-        <Label htmlFor="admin-ad-link">링크 (선택)</Label>
-        <Input
-          id="admin-ad-link"
-          type="url"
-          value={landingUrl}
-          onChange={(event) => setLandingUrl(event.target.value)}
-          placeholder="https://"
-        />
-
-        <Label as="span">기간</Label>
-        <DateRow>
-          <Input
-            type="date"
-            aria-label="시작일"
-            min={today}
-            value={startDate}
-            onChange={(event) => setStartDate(event.target.value)}
+        <Field>
+          <FieldLabel>기관</FieldLabel>
+          <Dropdown
+            aria-label="기관"
+            placeholder="기관 선택"
+            options={businesses.map((business) => ({
+              value: business.id ?? '',
+              label: business.org ?? '',
+            }))}
+            value={businessId}
+            onChange={setBusinessId}
           />
-          <span>~</span>
-          <Input
-            type="date"
-            aria-label="종료일"
-            min={startDate || today}
-            value={endDate}
-            onChange={(event) => setEndDate(event.target.value)}
+        </Field>
+
+        <Field>
+          <FieldLabel>위치</FieldLabel>
+          <Dropdown
+            aria-label="위치"
+            placeholder="위치 선택"
+            options={products.map((item) => ({ value: item.id, label: item.name }))}
+            value={productId}
+            onChange={changeProduct}
           />
-        </DateRow>
+        </Field>
 
-        <Label htmlFor="admin-ad-image">이미지</Label>
-        <Input
-          id="admin-ad-image"
-          type="file"
-          accept="image/*"
-          disabled={!product || uploading}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            event.target.value = '';
-            if (file) void handleImage(file);
-          }}
-        />
-        <Hint>
-          {uploading
-            ? '업로드 중…'
-            : imageFileId
-              ? '업로드 완료'
-              : product
-                ? '이미지를 선택해주세요'
-                : '위치를 먼저 선택해주세요'}
-        </Hint>
+        <Field as="label">
+          <FieldLabel>광고명</FieldLabel>
+          <InputBox>
+            <Input
+              aria-label="광고명"
+              value={title}
+              maxLength={200}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="광고명을 입력해 주세요"
+            />
+          </InputBox>
+        </Field>
 
-        <ModalActions>
-          <ActionButton type="button" onClick={onClose}>
+        <Field as="label">
+          <FieldLabel>링크 (선택)</FieldLabel>
+          <InputBox>
+            <Input
+              aria-label="링크"
+              type="url"
+              value={landingUrl}
+              onChange={(event) => setLandingUrl(event.target.value)}
+              placeholder="https://"
+            />
+          </InputBox>
+        </Field>
+
+        <Field>
+          <FieldLabel>기간</FieldLabel>
+          <DateRow>
+            <DatePickerField
+              aria-label="시작일"
+              size="L"
+              value={startDate}
+              minDate={today}
+              onChange={setStartDate}
+            />
+            <DateDivider>~</DateDivider>
+            <DatePickerField
+              aria-label="종료일"
+              size="L"
+              value={endDate}
+              minDate={startDate || today}
+              invalid={!!startDate && !!endDate && endDate < startDate}
+              onChange={setEndDate}
+            />
+          </DateRow>
+        </Field>
+
+        <Field>
+          <FieldLabel>이미지</FieldLabel>
+          <FileUploader
+            aria-label="광고 이미지"
+            accept="image/*"
+            label={uploaderLabel}
+            disabled={!product || uploading}
+            onFiles={([file]) => {
+              if (file) void handleImage(file);
+            }}
+          />
+        </Field>
+
+        <DialogActions>
+          <DialogButton type="button" onClick={onClose}>
             취소
-          </ActionButton>
-          <ActionButton type="button" primary disabled={!canSubmit} onClick={submit}>
-            {createMutation.isPending ? '처리 중…' : '추가'}
-          </ActionButton>
-        </ModalActions>
-      </Modal>
+          </DialogButton>
+          <DialogButton type="button" primary disabled={!canSubmit} onClick={submit}>
+            {createMutation.isPending ? '저장 중…' : '추가'}
+          </DialogButton>
+        </DialogActions>
+      </Dialog>
     </Backdrop>,
     document.body,
   );
 }
 
+// 다이얼로그 틀·버튼은 AdminAdPricingScreen의 광고비 수정 다이얼로그와 같은 값이다.
 const Backdrop = styled.div({
   position: 'fixed',
   zIndex: 100,
@@ -237,63 +264,56 @@ const Backdrop = styled.div({
   display: 'grid',
   placeItems: 'center',
   padding: 24,
-  background: 'rgba(17, 24, 39, .46)',
+  background: 'rgba(17, 17, 17, 0.2)',
 });
-const Modal = styled.div({
+const Dialog = styled.div({
+  width: 'min(100%, 606px)',
+  padding: 30,
+  borderRadius: 9,
+  background: c.white,
   display: 'flex',
   flexDirection: 'column',
-  width: 'min(100%, 460px)',
-  maxHeight: '100%',
-  overflowY: 'auto',
-  padding: 28,
-  borderRadius: 12,
-  background: c.white,
-  boxShadow: '0 20px 48px rgba(17, 24, 39, .22)',
+  gap: 15,
 });
-const ModalTitle = styled.h2({ margin: 0, ...textStyle.h2_2, color: c.gray900 });
-const ModalText = styled.p({ margin: '8px 0 0', color: c.gray500, ...textStyle.body });
-const Label = styled.label({ marginTop: 16, ...textStyle.metaText, color: c.gray500 });
-const fieldStyle = {
-  marginTop: 8,
-  height: 40,
-  padding: '0 12px',
+const DialogTitle = styled.h2({ margin: 0, ...textStyle.h1_2, color: c.gray900 });
+const ModalText = styled.p({ margin: 0, ...textStyle.caption, color: c.gray900 });
+const Field = styled.div({ display: 'grid', gap: 8 });
+const FieldLabel = styled.span({ ...textStyle.subtitle, color: c.gray900 });
+const InputBox = styled.div({
+  display: 'flex',
+  alignItems: 'center',
+  overflow: 'hidden',
+  // Dropdown size L·DatePickerField size L과 같은 높이로 맞춘다.
+  height: 44,
   border: `0.5px solid ${c.gray200}`,
   borderRadius: 8,
   background: c.white,
-  color: c.gray900,
-  ...textStyle.bodySmall,
-  '&:focus': { outline: 'none', borderColor: c.primary },
-} as const;
+  '&:focus-within': { borderColor: c.primary, boxShadow: `0 0 0 3px ${c.primary}20` },
+});
 const Input = styled.input({
-  ...fieldStyle,
+  width: '100%',
   minWidth: 0,
-  '&[type="file"]': { padding: '8px 0', border: 0 },
+  height: '100%',
+  padding: '0 14px',
+  border: 0,
+  outline: 0,
+  color: c.gray900,
+  background: 'transparent',
+  ...textStyle.body,
 });
-const Select = styled.select(fieldStyle);
-const DateRow = styled.div({
-  display: 'flex',
-  alignItems: 'center',
-  gap: 8,
-  '& > input': { flex: 1 },
-  '& > span': { marginTop: 8, color: c.gray500 },
-});
-const Hint = styled.span({ marginTop: 4, ...textStyle.metaText, color: c.gray500 });
-const ModalActions = styled.div({
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: 8,
-  marginTop: 24,
-});
-const ActionButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{
+const DateRow = styled.div({ display: 'flex', alignItems: 'center', gap: 8 });
+const DateDivider = styled.span({ ...textStyle.body, color: c.gray500 });
+const DialogActions = styled.div({ display: 'flex', gap: 15 });
+const DialogButton = styled('button', { shouldForwardProp: (prop) => prop !== 'primary' })<{
   primary?: boolean;
 }>(({ primary }) => ({
-  height: 32,
-  padding: '0 12px',
-  border: `0.5px solid ${primary ? c.primary : c.gray300}`,
+  flex: 1,
+  height: 37,
+  border: primary ? 0 : `0.5px solid ${c.gray200}`,
   borderRadius: 6,
   background: primary ? c.primary : c.white,
-  color: primary ? c.white : c.gray700,
+  color: primary ? c.white : c.gray900,
   cursor: 'pointer',
-  ...textStyle.buttonLabel,
+  ...(primary ? textStyle.mFeatureTitle : textStyle.overline),
   '&:disabled': { opacity: 0.5, cursor: 'not-allowed' },
 }));
