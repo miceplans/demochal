@@ -114,6 +114,7 @@ export * from './contentBlock';
 export * from './contentBlockContent';
 export * from './contentBlockType';
 export * from './createAdBody';
+export * from './createAdminAdBody';
 export * from './createAdminEmail';
 export * from './createCertificateRequest';
 export * from './createCertificateRequestCategory';

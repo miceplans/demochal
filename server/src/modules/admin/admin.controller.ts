@@ -14,6 +14,7 @@ import { CurrentUser } from '../auth/current-user.decorator.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { AdminService } from './admin.service.js';
 import { AdminRoleGuard } from './admin-role.guard.js';
+import { AdminCreateAdDto } from './dto/admin-create-ad.dto.js';
 import { AdPricingSlotDto } from './dto/update-ad-pricing.dto.js';
 import { RejectContentDto } from './dto/reject-content.dto.js';
 import { RejectVerificationDto } from './dto/reject-verification.dto.js';
@@ -115,6 +116,11 @@ export class AdminController {
   @Get('ads')
   listAds(@Query('q') q?: string, @Query('status') status?: string) {
     return this.adminService.listAds(q, status);
+  }
+
+  @Post('ads')
+  createAd(@Body() dto: AdminCreateAdDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.adminService.createAd(dto, user.id);
   }
 
   @Post('challenges/:id/publish')

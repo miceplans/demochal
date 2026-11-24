@@ -19,6 +19,7 @@ import {
   type AdminColumn,
 } from './parts';
 import { useAdminHref } from './AdminShell';
+import { AdminAdCreateModal } from './AdminAdCreateModal';
 
 const Page = styled.div({
   display: 'flex',
@@ -87,6 +88,7 @@ export function AdminAdsScreen() {
   const [query, setQuery] = useState('');
   const [statusLabel, setStatusLabel] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const toast = useToast();
   const hrefOf = useAdminHref();
 
@@ -130,6 +132,10 @@ export function AdminAdsScreen() {
   });
 
   const handleActivity = (value: string) => {
+    if (value === '광고 추가하기') {
+      setCreating(true);
+      return;
+    }
     if (value !== '광고 중단하기') return;
     if (pauseMutation.isPending) return;
     if (!selected) {
@@ -171,7 +177,11 @@ export function AdminAdsScreen() {
           value={statusLabel}
           onChange={setStatusLabel}
         />
-        <SelectFilter label="활동" options={['광고 중단하기']} onChange={handleActivity} />
+        <SelectFilter
+          label="활동"
+          options={['광고 추가하기', '광고 중단하기']}
+          onChange={handleActivity}
+        />
       </FilterBar>
       {adsQuery.isPending ? (
         <AdminInlineNotice>불러오는 중...</AdminInlineNotice>
@@ -183,6 +193,15 @@ export function AdminAdsScreen() {
           rows={rows}
           onRowClick={(row) => setSelectedId((current) => (current === row.id ? null : row.id))}
           selectedRowId={selectedId}
+        />
+      )}
+      {creating && (
+        <AdminAdCreateModal
+          onClose={() => setCreating(false)}
+          onCreated={() => {
+            setCreating(false);
+            void adsQuery.refetch();
+          }}
         />
       )}
       <Preview>

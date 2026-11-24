@@ -48,6 +48,7 @@ import { AdminVerificationsService } from './admin.verifications.service.js';
 import { countRows, formatMonthDayShort, like, maskEmail } from './admin.utils.js';
 import { FilesService } from '../files/files.service.js';
 import { AdsService } from '../ads/ads.service.js';
+import type { AdminCreateAdDto } from './dto/admin-create-ad.dto.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 
 export { escapeLike, maskEmail, maskBizNumber } from './admin.utils.js';
@@ -585,6 +586,11 @@ export class AdminService {
       .limit(1);
     if (!existing) throw new NotFoundException('광고를 찾을 수 없습니다.');
     throw new BadRequestException('진행 중인 광고만 일시정지할 수 있습니다.');
+  }
+
+  /** 관리자 광고 직접 등록 — 결제 없이 active로 생성한다(AdsService.createByAdmin). */
+  createAd(dto: AdminCreateAdDto, adminUserId: string) {
+    return this.adsService.createByAdmin(dto, adminUserId);
   }
 
   async listAds(q?: string, status?: string) {
