@@ -177,6 +177,16 @@ describe('AdsService.updateStatus', () => {
     expect(forUpdate).toHaveBeenCalledWith('update');
   });
 
+  it('주문이 없는 관리자 등록 광고(paidAmount 0)는 결제 확인 없이 재개한다', async () => {
+    const { db, returning } = createDbStub({ ...AD, status: 'paused', paidAmount: 0 });
+    returning.mockResolvedValue([{ ...AD, status: 'active' }]);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await expect(service.updateStatus('ad-1', { status: 'active' }, OWNER)).resolves.toMatchObject({
+      status: 'active',
+    });
+  });
+
   it('rejects pausing an ad that is not active with 400', async () => {
     const { db, set, returning } = createDbStub({ ...AD, status: 'ended' });
     returning.mockResolvedValue([{ ...AD, status: 'paused' }]);
@@ -331,6 +341,14 @@ describe('AdsService.updateContent', () => {
     expect(set).not.toHaveBeenCalled();
   });
 
+  it('주문이 없는 관리자 등록 광고(paidAmount 0)는 내용 등록을 허용한다', async () => {
+    const { db, set } = stub(futureAd({ paidAmount: 0 }), undefined, FILE);
+    const service = new AdsService(db, createBusinessesStub({ id: 'biz-1' }) as any);
+
+    await service.updateContent('ad-1', DTO, OWNER);
+    expect(set).toHaveBeenCalled();
+  });
+
   it('다른 기업의 광고는 403', async () => {
     const { db } = stub(futureAd(), { id: 'order-1', status: 'paid' }, FILE);
     const service = new AdsService(db, createBusinessesStub({ id: 'biz-2' }) as any);
@@ -413,6 +431,97 @@ describe('AdsService.create', () => {
     ).rejects.toThrow('광고 상품을 찾을 수 없습니다.');
 
     expect(limit).toHaveBeenCalledWith(1);
+  });
+});
+
+describe('AdsService.createByAdmin', () => {
+  const tomorrow = () => {
+    const date = adToday();
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  };
+  const PRODUCT = { id: 'hero', name: '홈 히어로 배너', placement: 'hero', dailyPrice: 100_000 };
+  const FILE = { id: 'file-1', uploaderUserId: 'admin-1', bucket: 'public', uploadStatus: 'ready' };
+  const DTO = () => ({
+    businessId: '00000000-0000-4000-8000-000000000001',
+    productId: 'hero',
+    title: ' 운영 광고 ',
+    imageFileId: '00000000-0000-4000-8000-000000000002',
+    startDate: tomorrow(),
+    endDate: tomorrow(),
+  });
+
+  // select 순서: 상품(잠금) → 기관 → 파일 → 겹치는 예약 → (결과) 이미지 파일.
+  function stub(rows: unknown[][]) {
+    const queue = [...rows];
+    const select = vi.fn(() => {
+      const result = queue.shift() ?? [];
+      const chain: any = Object.assign(Promise.resolve(result), {
+        limit: vi.fn().mockResolvedValue(result),
+        for: vi.fn(() => chain),
+      });
+      return { from: vi.fn(() => ({ where: vi.fn(() => chain) })) };
+    });
+    const values = vi.fn();
+    const db: any = {
+      select,
+      insert: vi.fn((table: unknown) => ({
+        values: vi.fn((value: Record<string, unknown>) => {
+          values(table, value);
+          return { returning: vi.fn().mockResolvedValue([{ id: 'ad-new', ...value }]) };
+        }),
+      })),
+      transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(db)),
+    };
+    return { db, values };
+  }
+
+  it('결제·주문 없이 active 광고를 paidAmount 0으로 만든다', async () => {
+    const { db, values } = stub([[PRODUCT], [{ id: 'biz-1' }], [FILE], [], []]);
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    const result = await service.createByAdmin(DTO(), 'admin-1');
+
+    expect(values).toHaveBeenCalledTimes(1);
+    expect(values.mock.calls[0]![0]).toBe(ads);
+    expect(values.mock.calls[0]![1]).toMatchObject({
+      status: 'active',
+      paidAmount: 0,
+      title: '운영 광고',
+    });
+    expect(result).toMatchObject({ id: 'ad-new', status: 'active' });
+  });
+
+  it('없는 기관이면 404, 광고를 만들지 않는다', async () => {
+    const { db, values } = stub([[PRODUCT], [], [FILE]]);
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(service.createByAdmin(DTO(), 'admin-1')).rejects.toThrow(
+      '기관을 찾을 수 없습니다',
+    );
+    expect(values).not.toHaveBeenCalled();
+  });
+
+  it('관리자가 올린 업로드 완료 공개 이미지가 아니면 거부한다', async () => {
+    const { db, values } = stub([[PRODUCT], [{ id: 'biz-1' }], [{ ...FILE, uploaderUserId: 'x' }]]);
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(service.createByAdmin(DTO(), 'admin-1')).rejects.toThrow('업로드가 완료된');
+    expect(values).not.toHaveBeenCalled();
+  });
+
+  it('같은 기관·상품의 기존 광고 기간과 겹치면 거부한다', async () => {
+    const day = new Date(tomorrow());
+    const { db, values } = stub([
+      [PRODUCT],
+      [{ id: 'biz-1' }],
+      [FILE],
+      [{ startDate: day, endDate: day }],
+    ]);
+    const service = new AdsService(db, createBusinessesStub() as any);
+
+    await expect(service.createByAdmin(DTO(), 'admin-1')).rejects.toThrow('겹칩니다');
+    expect(values).not.toHaveBeenCalled();
   });
 });
 

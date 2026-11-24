@@ -78,6 +78,7 @@ import type {
   ConfirmMfaTotpBody,
   ConfirmPaymentRequest,
   CreateAdBody,
+  CreateAdminAdBody,
   CreateAdminEmail,
   CreateCertificateRequest,
   CreateChallengeRequest,
@@ -13806,7 +13807,7 @@ export const getListAdminAdsUrl = (params?: ListAdminAdsParams,) => {
 }
 
 /**
- * 광고 관리(`/admin/ad-pricing`): 검색/상태 필터, 행 선택 후 광고 중단.
+ * 광고 관리(`/admin/ad-pricing`): 검색/상태 필터, 행 선택 후 광고 중단, 광고 추가(결제 없음).
  * @summary 전체 광고 목록 조회
  */
 export const listAdminAds = async (params?: ListAdminAdsParams, options?: Parameters<typeof apiFetch>[1]): Promise<listAdminAdsResponse> => {
@@ -13898,6 +13899,121 @@ export function useListAdminAds<TData = Awaited<ReturnType<typeof listAdminAds>>
 
 
 
+
+export type createAdminAdResponse201 = {
+  data: Ad
+  status: 201
+}
+
+export type createAdminAdResponse400 = {
+  data: void
+  status: 400
+}
+
+export type createAdminAdResponse404 = {
+  data: void
+  status: 404
+}
+
+export type createAdminAdResponseSuccess = (createAdminAdResponse201) & {
+  headers: Headers;
+};
+export type createAdminAdResponseError = (createAdminAdResponse400 | createAdminAdResponse404) & {
+  headers: Headers;
+};
+
+export type createAdminAdResponse = (createAdminAdResponseSuccess | createAdminAdResponseError)
+
+export const getCreateAdminAdUrl = () => {
+
+
+
+
+  return `/admin/ads`
+}
+
+/**
+ * 광고 관리(`/admin/ad-pricing`)의 광고 추가. 주문·결제를 만들지 않고 바로 `active`, `paidAmount=0`으로 생성한다.
+ * 이미지는 관리자가 `POST /files/presign`(bucket=public) → S3 PUT → finalize로 올린 파일이어야 한다.
+ * 같은 기관·상품의 기존 광고 기간과 겹치면 400, 기관·상품이 없으면 404.
+ * @summary 관리자 광고 직접 등록 (결제 없음)
+ */
+export const createAdminAd = async (createAdminAdBody: CreateAdminAdBody, options?: Parameters<typeof apiFetch>[1]): Promise<createAdminAdResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<createAdminAdResponse>(getCreateAdminAdUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createAdminAdBody)
+  }
+);}
+
+
+
+
+
+export const getCreateAdminAdMutationKey = () => ['createAdminAd'] as const;
+
+export const getCreateAdminAdMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAd>>, TError,CreateAdminAdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAdminAd>>, TError,CreateAdminAdMutationVariables, TContext> => {
+
+const mutationKey = getCreateAdminAdMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAdminAd>>, CreateAdminAdMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAdminAd(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAdminAdMutationResult = NonNullable<Awaited<ReturnType<typeof createAdminAd>>>
+    export type CreateAdminAdMutationBody = CreateAdminAdBody
+    export type CreateAdminAdMutationError = void
+    export type CreateAdminAdMutationVariables = {data: CreateAdminAdBody}
+
+    /**
+ * @summary 관리자 광고 직접 등록 (결제 없음)
+ */
+export const useCreateAdminAd = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAdminAd>>, TError,CreateAdminAdMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createAdminAd>>,
+        TError,
+        CreateAdminAdMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateAdminAdMutationOptions(options), queryClient);
+    }
 
 export type pauseAdminAdResponse200 = {
   data: PauseAdminAd200

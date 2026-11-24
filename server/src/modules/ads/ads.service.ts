@@ -10,12 +10,13 @@ import {
 } from '@nestjs/common';
 import { and, asc, desc, eq, gt, gte, inArray, lt, lte, ne, or, sql } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../../db/drizzle.provider.js';
-import { adEventCounters, adProducts, ads, files, orders } from '../../db/schema.js';
+import { adEventCounters, adProducts, ads, businesses, files, orders } from '../../db/schema.js';
 import type { AuthenticatedUser } from '../auth/jwt-auth.guard.js';
 import { BusinessesService } from '../businesses/businesses.service.js';
 import { adPeriod, adToday } from './ad-period.js';
 import { buildPublicFileUrl } from '../files/public-file-url.js';
 import type { CreateAdDto } from './dto/create-ad.dto.js';
+import type { AdminCreateAdDto } from '../admin/dto/admin-create-ad.dto.js';
 import type { AdReportQueryDto } from './dto/ad-report-query.dto.js';
 import type { UpdateAdContentDto } from './dto/update-ad-content.dto.js';
 import type { UpdateAdDto } from './dto/update-ad.dto.js';
@@ -249,6 +250,76 @@ export class AdsService implements OnModuleInit {
     };
   }
 
+  /**
+   * 관리자 광고 직접 등록 — 결제·주문(orders)을 만들지 않고 바로 active로 생성한다.
+   * paidAmount=0 + 주문 없음이 관리자 등록 광고의 표식이다(isAdminGranted). 기업 등록 광고는
+   * 단가가 1원 이상이라 항상 paidAmount>0이고 주문이 함께 생성된다.
+   */
+  async createByAdmin(dto: AdminCreateAdDto, adminUserId: string) {
+    const created = await this.db.transaction(async (tx) => {
+      // create()와 같은 상품 행 잠금으로 동시 등록의 기간 중복 검사를 직렬화한다.
+      const [product] = await tx
+        .select()
+        .from(adProducts)
+        .where(eq(adProducts.id, dto.productId))
+        .for('update')
+        .limit(1);
+      if (!product) throw new NotFoundException('광고 상품을 찾을 수 없습니다.');
+
+      const [business] = await tx
+        .select({ id: businesses.id })
+        .from(businesses)
+        .where(eq(businesses.id, dto.businessId))
+        .limit(1);
+      if (!business) throw new NotFoundException('기관을 찾을 수 없습니다.');
+
+      const [file] = await tx.select().from(files).where(eq(files.id, dto.imageFileId)).limit(1);
+      if (
+        !file ||
+        file.uploaderUserId !== adminUserId ||
+        file.bucket !== 'public' ||
+        file.uploadStatus !== 'ready'
+      ) {
+        throw new BadRequestException('업로드가 완료된 이미지가 아닙니다.');
+      }
+
+      const { startDate, endDate } = adPeriod(dto.startDate, dto.endDate);
+
+      const reserving = await tx
+        .select()
+        .from(ads)
+        .where(
+          and(
+            eq(ads.productId, dto.productId),
+            eq(ads.businessId, dto.businessId),
+            this.reservingCondition(),
+          ),
+        );
+      if (reserving.some((ad) => ad.startDate <= endDate && ad.endDate >= startDate)) {
+        throw new BadRequestException('선택한 날짜가 이 기관의 기존 광고 기간과 겹칩니다.');
+      }
+
+      const [ad] = await tx
+        .insert(ads)
+        .values({
+          businessId: dto.businessId,
+          productId: dto.productId,
+          title: dto.title.trim(),
+          imageFileId: dto.imageFileId,
+          landingUrl: dto.landingUrl ?? null,
+          startDate,
+          endDate,
+          status: 'active',
+          paidAmount: 0,
+        })
+        .returning();
+      if (!ad) throw new Error('Failed to create admin ad');
+      return ad;
+    });
+    const [withUrl] = await this.withImageUrls([created]);
+    return withUrl;
+  }
+
   async findById(id: string) {
     const [ad] = await this.db.select().from(ads).where(eq(ads.id, id)).limit(1);
     if (!ad) throw new NotFoundException('광고를 찾을 수 없습니다.');
@@ -278,7 +349,9 @@ export class AdsService implements OnModuleInit {
       const orderRows = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
       const [current] = await tx.select().from(ads).where(eq(ads.id, id)).limit(1);
       if (!current) throw new NotFoundException('광고를 찾을 수 없습니다.');
-      if (!orderRows.some((order) => order.status === 'paid') || current.status === 'preparing') {
+      const settled =
+        orderRows.some((order) => order.status === 'paid') || isAdminGranted(current, orderRows);
+      if (!settled || current.status === 'preparing') {
         throw new BadRequestException(
           '결제가 완료된 광고만 이미지와 광고명을 등록할 수 있습니다. 먼저 결제를 완료해 주세요.',
         );
@@ -331,8 +404,10 @@ export class AdsService implements OnModuleInit {
       return this.db.transaction(async (tx) => {
         // markCancelled locks this same order row. This makes cancellation and
         // reactivation serialize, so a refunded order cannot resume serving.
-        const [order] = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
-        if (!order || order.status !== 'paid') {
+        const orderRows = await tx.select().from(orders).where(eq(orders.adId, id)).for('update');
+        const [order] = orderRows;
+        // 관리자 직접 등록 광고는 주문이 없으므로 결제 확인 대신 그 표식으로 재개를 허용한다.
+        if (!isAdminGranted(ad, orderRows) && (!order || order.status !== 'paid')) {
           throw new BadRequestException('결제가 완료된 광고만 활성화할 수 있습니다.');
         }
         const [updated] = await tx
@@ -535,6 +610,11 @@ export class AdsService implements OnModuleInit {
       and(eq(ads.status, 'preparing'), gt(ads.expiresAt, new Date())),
     );
   }
+}
+
+/** 관리자 직접 등록(결제 없음) 광고인지 — createByAdmin 참고. */
+function isAdminGranted(ad: { paidAmount?: number | null }, orderRows: unknown[]) {
+  return ad.paidAmount === 0 && orderRows.length === 0;
 }
 
 function parseDate(value: string) {
