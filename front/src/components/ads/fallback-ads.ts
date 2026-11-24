@@ -12,6 +12,13 @@ export const fallbackAds: Record<'hero' | 'gallery', AdCarouselItem[]> = {
       alt: 'SEMO 브랜드 로고 애니메이션 광고',
       type: 'video' as const,
     },
+    // 광고 문의 배너 — 클릭 시 biz 도메인의 광고 문의(전화·입금 계좌) 안내로 이동한다.
+    // 메인 호스트의 /biz/* 경로는 proxy가 biz 오리진으로 리다이렉트한다.
+    {
+      src: '/assets/ads/ad-inquiry.png',
+      alt: '세모챌 홈 광고 문의 SEMO.BIZ 051-783-1170',
+      href: '/biz/ad-inquiry',
+    },
     { src: '/assets/figma-ads/home-hero-2.png', alt: '간편하고 쉬운 공모전을 위해, SEMO 광고' },
     { src: '/assets/figma-ads/home-hero-3.png', alt: '공모전 시작부터 끝까지 SEMO.BIZ 광고' },
     { src: '/assets/figma-ads/home-hero-1.png', alt: 'SEMO 브랜드 로고 광고' },

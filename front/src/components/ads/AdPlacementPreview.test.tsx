@@ -47,8 +47,8 @@ describe('AdPlacementPreview', () => {
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
     // 페이저 점 개수가 실제 광고 개수와 같다.
-    // 상단은 기본 세트(4개)보다 적어 부족한 2칸을 기본 광고로 채운다. 중간 기본 세트는 6개다.
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    // 상단은 기본 세트(5개)보다 적어 부족한 3칸을 기본 광고로 채운다. 중간 기본 세트는 6개다.
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     expect(screen.getByLabelText('중간 광고 1 / 6').children.length).toBe(6);
     // 레일은 [채움, 1, 2, 채움 2개, 1] 순으로 렌더되므로 노출 광고 소재는 3개 슬롯에 나온다.
     const heroImgs = container.querySelectorAll('img[src^="https://cdn.example/hero-"]');
@@ -66,7 +66,7 @@ describe('AdPlacementPreview', () => {
 
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     // 옆 슬롯은 같은 광고 복제가 아니라 서로 다른 기본 광고다.
     expect(container.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
@@ -94,7 +94,7 @@ describe('AdPlacementPreview', () => {
       />,
     );
 
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     const uploaded = container.querySelector<HTMLImageElement>('img[src="blob:uploaded-hero"]');
     expect(uploaded).not.toBeNull();
     expect(uploaded!.alt).toBe('업로드한 홈 상단 광고 이미지');
@@ -111,7 +111,7 @@ describe('AdPlacementPreview', () => {
     };
     rerender(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     const img = container.querySelector<HTMLImageElement>(
       'img[src="https://cdn.example/hero-only.webp"]',
     );
@@ -142,10 +142,10 @@ describe('AdPlacementPreview', () => {
     expect(keyConflicts.length).toBe(0);
   });
 
-  it('노출 광고가 없으면 홈과 같은 기본 광고(상단 4개, 중간 6개)를 보여준다', () => {
+  it('노출 광고가 없으면 홈과 같은 기본 광고(상단 5개, 중간 6개)를 보여준다', () => {
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     expect(screen.getByLabelText('중간 광고 1 / 6').children.length).toBe(6);
     // 홈 상단 기본 소재의 첫 번째는 자동재생이 허용되는 muted 영상이다.
     const video = container.querySelector<HTMLVideoElement>(
@@ -165,7 +165,7 @@ describe('AdPlacementPreview', () => {
 
     const { container } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     expect(screen.getByLabelText('중간 광고 1 / 6').children.length).toBe(6);
     expect(container.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
   });
@@ -187,7 +187,7 @@ describe('AdPlacementPreview', () => {
     expect(container.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
     // 업로드하지 않은 gallery 레일은 기본 소재를 그대로 보여준다.
     expect(container.querySelector('img[src="/assets/SEMO.png"]')).not.toBeNull();
-    expect(screen.getByLabelText('상단 광고 1 / 4').children.length).toBe(4);
+    expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
   });
 
   it('업로드 모드에서는 선택한 칸만 업로더로 보여주고 나머지 칸·레일은 기존 광고를 유지한다', () => {
@@ -287,7 +287,7 @@ describe('AdPlacementPreview', () => {
     render(<AdPlacementPreview view="mobile" onSelect={() => {}} />);
 
     expect(screen.getByLabelText('모바일 사용자 홈 광고 미리보기')).not.toBeNull();
-    expect(screen.getByLabelText('상단 광고 1 / 4')).not.toBeNull();
+    expect(screen.getByLabelText('상단 광고 1 / 5')).not.toBeNull();
   });
 
   it('업로드 크롭 사양은 각 뷰의 실제 홈 노출 비율과 동기화돼 있다', () => {
