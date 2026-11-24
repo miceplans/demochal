@@ -42,12 +42,16 @@ describe('fillWithFallback', () => {
 });
 
 describe('fallbackAds', () => {
-  it('상단 4개(첫 소재는 영상), 중간 6개를 각각 서로 다른 소재로 구성한다', () => {
-    expect(fallbackAds.hero).toHaveLength(4);
+  it('상단 5개(첫 소재는 영상, 둘째는 광고 문의 배너), 중간 6개를 각각 서로 다른 소재로 구성한다', () => {
+    expect(fallbackAds.hero).toHaveLength(5);
     expect(fallbackAds.hero[0].type).toBe('video');
+    expect(fallbackAds.hero[1]).toMatchObject({
+      src: '/assets/ads/ad-inquiry.png',
+      href: '/biz/ad-inquiry',
+    });
     expect(fallbackAds.gallery).toHaveLength(6);
     expect(fallbackAds.gallery.every((ad) => ad.type !== 'video')).toBe(true);
-    expect(new Set(fallbackAds.hero.map((ad) => ad.src)).size).toBe(4);
+    expect(new Set(fallbackAds.hero.map((ad) => ad.src)).size).toBe(5);
     expect(new Set(fallbackAds.gallery.map((ad) => ad.src)).size).toBe(6);
   });
 
