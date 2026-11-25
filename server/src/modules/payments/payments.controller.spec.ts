@@ -192,6 +192,7 @@ describe('PaymentsController — PAYMENTS_ENABLED=false', () => {
 
   afterEach(() => {
     env.paymentsEnabled = true;
+    env.tossPaymentsEnabled = false;
   });
 
   it('rejects new payment confirmations and registrations with 503 without calling the service', async () => {
@@ -212,6 +213,32 @@ describe('PaymentsController — PAYMENTS_ENABLED=false', () => {
     expect(paymentsService.confirmPayment).not.toHaveBeenCalled();
     expect(paymentsService.registerKcpTransaction).not.toHaveBeenCalled();
     expect(paymentsService.confirmKcpPayment).not.toHaveBeenCalled();
+  });
+
+  it('opens only Toss confirmations when TOSS_PAYMENTS_ENABLED is true', async () => {
+    env.paymentsEnabled = false;
+    env.tossPaymentsEnabled = true;
+    const { controller, paymentsService } = createDisabledController();
+    const user = { id: 'user-1' } as never;
+    const tossDto = { orderId: 'o', paymentKey: 'k', amount: 1000 } as never;
+
+    await controller.confirm(tossDto, user);
+    expect(paymentsService.confirmPayment).toHaveBeenCalledWith('user-1', tossDto);
+
+    await expect(
+      controller.confirm({ orderId: 'o', provider: 'naverpay', paymentId: 'p' } as never, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(
+      controller.registerKcp({ orderId: 'o', orderName: 'n', flow: 'ad' }, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(
+      controller.confirmKcp({ orderId: 'o', encData: 'e', encInfo: 'i' } as never, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(controller.handleKcpMobileReturn({})).resolves.toEqual({
+      outcome: 'failed',
+      code: 'payments_disabled',
+    });
+    expect(paymentsService.confirmPayment).toHaveBeenCalledTimes(1);
   });
 
   it('turns the public KCP mobile return into a failed outcome instead of approving', async () => {

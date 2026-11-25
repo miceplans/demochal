@@ -50,6 +50,10 @@ const envSchema = z
     // 명시적으로 'true'를 넣기 전에는 새 결제가 시작되지 않는다. 이미 결제된 건의 웹훅 정산과
     // 환불 처리는 이 값과 무관하게 계속 동작한다.
     PAYMENTS_ENABLED: z.enum(['true', 'false']).default('false'),
+    // 임시: 토스 단건 결제 승인만 여는 스위치. KCP·네이버페이·빌링키 발급은 PAYMENTS_ENABLED를 그대로 따른다.
+    // TODO: PAYMENTS_ENABLED로 전체 결제를 열 때 제거한다. 테스트 키로 켜면 실제 청구 없이 정산된다.
+    // https://docs.tosspayments.com/reference/using-api/api-keys
+    TOSS_PAYMENTS_ENABLED: z.enum(['true', 'false']).default('false'),
 
     // 네이버페이(결제형) 가맹점 API 자격증명 — bz 서브도메인 결제에 쓴다.
     // https://developer.pay.naver.com 가맹점 심사 후 발급받는다. 비워두면 네이버페이
@@ -187,6 +191,7 @@ export const env = {
   sqsInboundEmailsQueueUrl: raw.SQS_INBOUND_EMAILS_QUEUE_URL,
 
   paymentsEnabled: raw.PAYMENTS_ENABLED === 'true',
+  tossPaymentsEnabled: raw.TOSS_PAYMENTS_ENABLED === 'true',
   tossSecretKey: raw.TOSS_SECRET_KEY,
   tossWebhookAllowlist: parseIpAllowlist(
     raw.TOSS_WEBHOOK_ALLOWED_IPS.split(',')
