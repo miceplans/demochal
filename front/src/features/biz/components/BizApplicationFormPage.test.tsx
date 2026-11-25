@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
@@ -92,24 +92,30 @@ function publishedForm(): unknown {
   return mocks.mutateAsync.mock.calls[0]?.[0];
 }
 
+// form-draft.ts의 PREFIX + BizApplicationFormPage가 쓰는 키(모의 useParams id는 challenge-1).
+const DRAFT_KEY = 'semochal:form-draft:v1:application-form:challenge-1';
+
+const baseChallenge = (): FixtureChallenge => ({
+  title: '데모 챌린지',
+  startDate: '2026-10-01',
+  endDate: '2026-10-31',
+  applicationForm: [
+    {
+      id: 'q-1',
+      title: '지원 포지션',
+      type: 'radio',
+      options: ['옵션 1', '옵션 2', '옵션 3'],
+      required: true,
+    },
+  ],
+});
+
 describe('BizApplicationFormPage option reorder', () => {
   afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.challenge = {
-      title: '데모 챌린지',
-      startDate: '2026-10-01',
-      endDate: '2026-10-31',
-      applicationForm: [
-        {
-          id: 'q-1',
-          title: '지원 포지션',
-          type: 'radio',
-          options: ['옵션 1', '옵션 2', '옵션 3'],
-          required: true,
-        },
-      ],
-    };
+    localStorage.clear();
+    mocks.challenge = baseChallenge();
   });
 
   it('reorders options when option 1 is dropped on option 3’s row and publishes the new order', async () => {
@@ -243,5 +249,64 @@ describe('BizApplicationFormPage option reorder', () => {
     const firstOptionDeleteButtons = screen.getAllByRole('button', { name: '옵션 1 삭제' });
     expect(firstOptionDeleteButtons[0]).toHaveProperty('disabled', true);
     expect(firstOptionDeleteButtons[1]).toHaveProperty('disabled', false);
+  });
+});
+
+describe('BizApplicationFormPage draft', () => {
+  afterEach(cleanup);
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mocks.challenge = baseChallenge();
+  });
+
+  it('restores edited questions from the draft after a remount', async () => {
+    const first = render(<BizApplicationFormPage />);
+    fireEvent.change(screen.getByLabelText('질문 1 내용'), { target: { value: '수정된 질문' } });
+    // 초안 저장 디바운스(500ms)가 지나기를 기다린다.
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('수정된 질문'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    render(<BizApplicationFormPage />);
+    expect(screen.getByLabelText('질문 1 내용')).toHaveProperty('value', '수정된 질문');
+    expect(optionValues(1, 3)).toEqual(['옵션 1', '옵션 2', '옵션 3']);
+  });
+
+  it('leaves no draft when the builder is untouched', async () => {
+    render(<BizApplicationFormPage />);
+    // 디바운스가 지나도 baseline과 같아 초안이 저장되지 않아야 한다.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it('clears the draft after a successful publish', async () => {
+    const user = userEvent.setup();
+    render(<BizApplicationFormPage />);
+    fireEvent.change(screen.getByLabelText('질문 1 내용'), { target: { value: '게시할 질문' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+      timeout: 2000,
+    });
+
+    await user.click(screen.getByRole('button', { name: '신청서 게시' }));
+    await waitFor(() => expect(mocks.mutateAsync).toHaveBeenCalled());
+    expect(publishedForm()).toEqual({
+      id: 'challenge-1',
+      data: {
+        applicationForm: [
+          {
+            id: 'q-1',
+            title: '게시할 질문',
+            type: 'radio',
+            options: ['옵션 1', '옵션 2', '옵션 3'],
+            required: true,
+          },
+        ],
+      },
+    });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
   });
 });

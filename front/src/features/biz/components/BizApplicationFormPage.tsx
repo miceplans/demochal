@@ -9,6 +9,7 @@ import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { PrimaryButton, FieldInput, useBizHref } from '@/components/biz/BizShell';
 import { Icon, Toggle } from '@/components/common/Primitives';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 
 function XIcon({ size = 16 }: { size?: number }) {
   return (
@@ -54,6 +55,40 @@ const QUESTION_TYPES: DropdownOption[] = [
   { value: 'short', label: '단문형 질문' },
   { value: 'long', label: '장문형 질문' },
 ];
+const QUESTION_TYPE_VALUES = QUESTION_TYPES.map((option) => option.value);
+
+/** 초안 질문 배열 검증 — 저장된 JSON이 질문 모양이 아니면 복원하지 않는다. */
+function isQuestionDraft(value: unknown): value is Question[] {
+  if (!Array.isArray(value)) return false;
+  return value.every((question) => {
+    if (typeof question !== 'object' || question === null) return false;
+    const q = question as Record<keyof Question, unknown>;
+    return (
+      typeof q.id === 'string' &&
+      typeof q.title === 'string' &&
+      typeof q.type === 'string' &&
+      QUESTION_TYPE_VALUES.includes(q.type) &&
+      Array.isArray(q.options) &&
+      q.options.every((option) => typeof option === 'string') &&
+      typeof q.required === 'boolean'
+    );
+  });
+}
+
+/** useFormDraftSaver를 조건에 따라 끄기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
+}
+
 const Page = styled.div({
   width: '100%',
   maxWidth: 1200,
@@ -298,7 +333,9 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
   // 파생해 읽기 전용으로 보여준다. 편집할 수 없게 onChange 없이 readOnly로 렌더링한다.
   const title = challenge.title ? `${challenge.title} 신청서` : '신청서';
   const meta = `접수 ${formatPeriod(challenge.startDate, challenge.endDate)}`.trim();
-  const [questions, setQuestions] = useState<Question[]>(() =>
+  const draftKey = `application-form:${id}`;
+  // 공고의 신청서에서 파생한 초기 질문 — 손대지 않은 빌더가 초안을 남기지 않도록 baseline으로도 쓴다.
+  const [initialQuestions] = useState<Question[]>(() =>
     challenge.applicationForm && challenge.applicationForm.length > 0
       ? challenge.applicationForm.map((q) => ({
           id: q.id,
@@ -309,6 +346,12 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
         }))
       : [blankQuestion()],
   );
+  // 초안이 있으면 공고 값 대신 초안으로 시작한다(마운트 시 한 번만).
+  const [questions, setQuestions] = useState<Question[]>(
+    () => readFormDraft(draftKey, isQuestionDraft) ?? initialQuestions,
+  );
+  // 게시 성공 후에는 초안 저장기를 멈춰 지워진 초안이 디바운스 뒤 다시 저장되지 않게 한다.
+  const [published, setPublished] = useState(false);
 
   const addQuestion = (type: QuestionType) => {
     setQuestions((qs) => [...qs, blankQuestion(type)]);
@@ -391,6 +434,9 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
       // 전역 MutationCache(providers.tsx)가 실패 토스트를 띄운다.
       return;
     }
+    // 게시 성공 — 초안을 지우고 저장기를 멈춘다.
+    setPublished(true);
+    clearFormDraft(draftKey);
     await queryClient.invalidateQueries({ queryKey: generated.getGetMyChallengeQueryKey(id) });
     toast.success('신청서가 게시되었습니다');
     router.push(hrefOf(`/postings/${id}`));
@@ -398,6 +444,9 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
 
   return (
     <Page>
+      {!published ? (
+        <DraftSaver draftKey={draftKey} value={questions} baseline={initialQuestions} />
+      ) : null}
       <Main>
         <TopBar>
           <TitleCol>

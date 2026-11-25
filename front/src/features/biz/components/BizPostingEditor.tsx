@@ -309,8 +309,12 @@ export function LinkTool({
   const apply = () => {
     const normalized = normalizeLinkUrl(url);
     if (!normalized) return setError('http(s)://로 시작하는 올바른 주소를 입력해 주세요.');
-    if (existing) existing.setAttribute('href', normalized);
-    else
+    if (existing) {
+      existing.setAttribute('href', normalized);
+      // execCommand를 거치지 않는 직접 DOM 변경은 input이 발생하지 않으므로,
+      // 본문 미러(초안 저장)가 따라오도록 input을 직접 발생시킨다.
+      existing.dispatchEvent(new Event('input', { bubbles: true }));
+    } else
       withEditorSelection(() => {
         if (hasSelection) document.execCommand('createLink', false, normalized);
         else
