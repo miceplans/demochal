@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
  * Deterministic, dependency-free guard against accidentally adding credentials.
- * It scans only added lines in the requested git diff and deliberately reports
- * a rule and location, never the matched value.
+ * It scans added lines in the requested git diff, plus the names of files added or
+ * changed by any commit since the base (a file committed and later removed still stays
+ * in history). It deliberately reports a rule and location, never the matched value.
  */
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createInterface } from 'node:readline';
 import { pathToFileURL } from 'node:url';
 
@@ -39,6 +40,61 @@ export function scanLine(value) {
     if (match && !safeValue.test(match[1])) hits.push(rule);
   }
   return hits;
+}
+
+// Files that hold real settings or key material regardless of their contents.
+// `*.example` templates stay allowed; PEM private keys are covered by the content rule,
+// since public CA bundles also use the `.pem` extension.
+const sensitiveFiles = [
+  /^\.env(?:\..+)?$/i,
+  /\.tfvars(?:\.json)?$/i,
+  /\.tfstate(?:\..+)?$/i,
+  /\.(?:p12|pfx|jks|keystore)$/i,
+];
+
+export function isSensitivePath(path) {
+  const name = path.slice(path.lastIndexOf('/') + 1);
+  if (/\.example$/i.test(name)) return false;
+  return sensitiveFiles.some((pattern) => pattern.test(name));
+}
+
+// Throws when git fails, so an unreadable history never reads as a clean scan.
+function listPaths(args) {
+  const result = spawnSync('git', args, {
+    encoding: 'utf8',
+    maxBuffer: 64 * 1024 * 1024,
+    stdio: ['ignore', 'pipe', 'inherit'],
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) throw new Error(`git ${args[0]} failed (exit ${result.status})`);
+  return result.stdout.split('\0').map((path) => path.replace(/^\n+/, ''));
+}
+
+// Merge commits are compared with every parent (-m) so a file introduced only by a
+// conflict resolution is seen too.
+export function findSensitivePaths(base) {
+  const paths = [
+    ...listPaths([
+      'diff',
+      '--no-ext-diff',
+      '--no-renames',
+      '--diff-filter=d',
+      '--name-only',
+      '-z',
+      base,
+    ]),
+    ...listPaths([
+      'log',
+      '-m',
+      '--no-renames',
+      '--diff-filter=d',
+      '--name-only',
+      '--format=',
+      '-z',
+      `${base}..HEAD`,
+    ]),
+  ];
+  return [...new Set(paths)].filter((path) => path && isSensitivePath(path)).sort();
 }
 
 async function main() {
@@ -87,6 +143,9 @@ async function main() {
     console.error(`secret-scan: git diff failed (exit ${exitCode}) against base "${base}"`);
     process.exit(2);
   }
+
+  for (const path of findSensitivePaths(base))
+    findings.push({ file: path, line: 0, rule: 'sensitive-file' });
 
   if (findings.length) {
     console.error(
