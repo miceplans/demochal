@@ -29,6 +29,11 @@ const KCP_APPROVAL_URL = env.kcpProduction
 const KCP_CANCEL_URL = env.kcpProduction
   ? 'https://spl.kcp.co.kr/gw/mod/v1/cancel'
   : 'https://stg-spl.kcp.co.kr/gw/mod/v1/cancel';
+// 거래조회 API — tno를 모르면 주문번호(mod_ordr_idxx)와 결제일자로 조회한다.
+// https://developer.kcp.co.kr/reference/search
+const KCP_INQUIRY_URL = env.kcpProduction
+  ? 'https://spl.kcp.co.kr/std/inquery'
+  : 'https://stg-spl.kcp.co.kr/std/inquery';
 
 // 네이버페이 단독 호출 플래그 — 'B'는 카드·포인트 모두 허용(directpay 가이드 예시 값).
 export const KCP_NAVERPAY_DIRECT = 'B';
@@ -38,6 +43,12 @@ export const KCP_PAY_METHOD_MOBILE = 'CARD';
 export const KCP_PAY_METHOD_PC = '100000000000';
 // 승인 요청 시 결제정보 검증용 결제수단 코드 (간편결제 카드 → PACA).
 const KCP_PAY_TYPE_EASYPAY_CARD = 'PACA';
+// 네이버페이 포인트 전액 결제의 거래조회 결제수단 코드.
+const KCP_PAY_TYPE_NAVERPAY_POINT = 'PANP';
+// 카드 거래상태(stat_ca_cd) — https://developer.kcp.co.kr/code/status
+// 여기 없는 상태(부분취소·취소 진행 등)는 자동으로 판단하지 않는다.
+const KCP_CARD_APPROVED = new Set(['STSR', 'STMR', 'STMT']);
+const KCP_CARD_CANCELED = new Set(['STSC', 'STJO', 'STMO']);
 // 취소 서명 원문 조합 구분자 (rest-api-guide: site_cd + "^" + tno + "^" + mod_type).
 const KCP_SIGN_DELIMITER = '^';
 // 전체 취소 mod_type.
@@ -87,6 +98,29 @@ export class KcpAmountUnverifiableError extends Error {
     super(`KCP approval response for tno ${tno} lacks the amount field`);
     this.name = 'KcpAmountUnverifiableError';
   }
+}
+
+/**
+ * 승인 요청의 결과를 알 수 없는 경우(타임아웃·비정상 응답). KCP에서는 승인됐을 수 있으므로
+ * 서비스가 거래조회로 확인한다. KCP가 명시적으로 거절한 응답(res_cd≠0000)에는 쓰지 않는다.
+ */
+export class KcpApprovalUnknownError extends BadGatewayException {
+  constructor() {
+    super('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+  }
+}
+
+export type KcpInquiryResult =
+  | { kind: 'approved'; tno: string; amount: number }
+  | { kind: 'canceled'; tno: string }
+  // 거래는 있으나 승인 유지 여부를 확정할 수 없다 — 자동 정산·취소하지 않는다.
+  | { kind: 'unverifiable'; tno: string }
+  // 승인된 거래를 확인하지 못했다. '거래 없음' 응답 코드가 공식 문서에 없어 구분하지 않는다.
+  | { kind: 'not_confirmed'; resCd: string | undefined };
+
+/** 거래조회·취소에는 서명용 개인키까지 필요하다. */
+export function isKcpInquiryConfigured(): boolean {
+  return Boolean(env.kcpSiteCd && env.kcpCertInfo && env.kcpPrivateKey);
 }
 
 function assertKcpConfigured() {
@@ -198,10 +232,8 @@ export async function approveKcpPayment(input: {
       `KCP approval transport failed for order ${input.orderId}`,
       (error as Error | undefined)?.stack,
     );
-    // TODO: 이 타임아웃 직후 KCP에서 승인이 났을 수 있고, KCP에는 토스 paymentKey 재조회 같은
-    // 조회 수단을 붙이지 않았다. orphan 승인이 생기면 주문은 pending으로 남고 운영자가 KCP
-    // 관리자의 거래내역으로 찾아 취소해야 한다 — KCP 거래조회 API 연동으로 해소할 여지가 있다.
-    throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+    // 응답만 유실되고 KCP에서는 승인됐을 수 있다 — 서비스가 거래조회로 확인한다.
+    throw new KcpApprovalUnknownError();
   });
 
   let payload: KcpApiResponse | null = null;
@@ -213,7 +245,11 @@ export async function approveKcpPayment(input: {
   // 승인 후에도 KCP 응답 금액이 서버 주문 금액과 같은지 한 번 더 확인한다(8350 계약).
   // res_cd=0000+tno까지 온 경우는 이미 청구된 결제 — 금액이 어긋나도 단순 거부만 하면
   // 구매자가 청구만 당한 결제가 남으므로, 서비스가 취소 보상을 이어갈 수 있게 tno를 싣는다.
-  if (!response.ok || payload?.res_cd !== '0000' || !payload.tno) {
+  if (!response.ok || !payload?.res_cd || (payload.res_cd === '0000' && !payload.tno)) {
+    logger.error(`KCP approval result unknown for order ${input.orderId}: HTTP ${response.status}`);
+    throw new KcpApprovalUnknownError();
+  }
+  if (payload.res_cd !== '0000' || !payload.tno) {
     logger.error(`KCP approval rejected for order ${input.orderId}: HTTP ${response.status}`);
     throw new BadGatewayException('결제 승인에 실패했습니다. 잠시 후 다시 시도해 주세요.');
   }
@@ -280,4 +316,81 @@ export async function cancelKcpPayment(input: {
     logger.error(`KCP cancel rejected for tno ${input.tno}: HTTP ${response.status}`);
     throw new BadGatewayException('결제 취소에 실패했습니다. 잠시 후 다시 시도해 주세요.');
   }
+}
+
+// 주문번호 조회의 tno 자리에는 'YYYYMMDD' + '000000'(KST 결제일자)을 넣는다.
+function kcpInquiryDates(attemptedAt: Date): string[] {
+  const kst = (time: number) =>
+    new Date(time + 9 * 60 * 60 * 1000).toISOString().slice(0, 10).replaceAll('-', '');
+  // 자정 직전 요청은 다음 날 승인될 수 있다.
+  const start = attemptedAt.getTime();
+  return [...new Set([kst(start), kst(start + 60_000)])];
+}
+
+function classifyInquiry(payType: string, payload: KcpApiResponse): KcpInquiryResult | null {
+  const { tno } = payload;
+  if (!tno) return null;
+  const amount = Number(payload.amount);
+  // 포인트 결제는 취소 여부를 알려 주는 공식 필드가 없어 자동 판단하지 않는다.
+  if (payType !== KCP_PAY_TYPE_EASYPAY_CARD) return { kind: 'unverifiable', tno };
+  const state = String(payload.stat_ca_cd ?? '');
+  if (KCP_CARD_CANCELED.has(state)) return { kind: 'canceled', tno };
+  if (
+    KCP_CARD_APPROVED.has(state) &&
+    payload.canc_card_yn !== 'Y' &&
+    payload.amount !== undefined &&
+    Number.isFinite(amount)
+  ) {
+    return { kind: 'approved', tno, amount };
+  }
+  return { kind: 'unverifiable', tno };
+}
+
+/**
+ * 주문번호로 KCP 거래를 조회한다. 전송 실패·비정상 응답은 예외로 던져 '승인 없음'과 구분한다.
+ * TODO: 한 주문번호에 거래가 여러 건일 때 어떤 건을 돌려주는지 공식 문서에 없다 — 운영 전환 전
+ * KCP에 확인한다. https://developer.kcp.co.kr/reference/search
+ */
+export async function inquireKcpPaymentByOrder(input: {
+  orderId: string;
+  attemptedAt: Date;
+}): Promise<KcpInquiryResult> {
+  assertKcpConfigured();
+  let resCd: string | undefined;
+  for (const payType of [KCP_PAY_TYPE_EASYPAY_CARD, KCP_PAY_TYPE_NAVERPAY_POINT]) {
+    for (const date of kcpInquiryDates(input.attemptedAt)) {
+      const tno = `${date}000000`;
+      const signTarget = [env.kcpSiteCd, tno, payType].join(KCP_SIGN_DELIMITER);
+      let payload: KcpApiResponse | null = null;
+      try {
+        const response = await fetchJson(KCP_INQUIRY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          body: JSON.stringify({
+            site_cd: env.kcpSiteCd,
+            kcp_cert_info: env.kcpCertInfo,
+            kcp_sign_data: buildKcpSignData(signTarget),
+            tno,
+            mod_ordr_idxx: input.orderId,
+            pay_type: payType,
+          }),
+          signal: AbortSignal.timeout(10_000),
+        });
+        if (response.ok) payload = (await response.json()) as KcpApiResponse;
+      } catch (error) {
+        logger.error(
+          `KCP inquiry failed for order ${input.orderId}`,
+          (error as Error | undefined)?.stack,
+        );
+      }
+      if (!payload?.res_cd) throw new BadGatewayException('결제 내역을 확인하지 못했습니다.');
+      if (payload.res_cd === '0000') {
+        const result = classifyInquiry(payType, payload);
+        if (!result) throw new BadGatewayException('결제 내역을 확인하지 못했습니다.');
+        return result;
+      }
+      resCd = payload.res_cd;
+    }
+  }
+  return { kind: 'not_confirmed', resCd };
 }
