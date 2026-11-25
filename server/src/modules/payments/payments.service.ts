@@ -21,6 +21,7 @@ import {
   cancelNaverPayPayment,
   fetchNaverPayPaymentDetail,
 } from './naverpay.client.js';
+import { usesLiveTossKey } from './payments-enabled.js';
 import { approveKcpPayment, cancelKcpPayment, registerKcpTransaction } from './kcp.client.js';
 import { KcpAmountMismatchError, KcpAmountUnverifiableError } from './kcp.client.js';
 
@@ -953,6 +954,12 @@ export class PaymentsService {
       if (outcome === 'failed') {
         throw new BadGatewayException('Toss refund for a canceled order failed');
       }
+      return;
+    }
+    // 가상계좌처럼 승인 호출 없이 DONE이 오는 결제도 테스트 키로는 정산하지 않는다. 실제 청구가
+    // 없으므로 재전송을 유발하지 않게 수신만 확인한다.
+    if (!usesLiveTossKey()) {
+      this.logger.warn(`Ignoring test-key DONE for order ${orderId} in production`);
       return;
     }
     if (order.status !== 'pending') {

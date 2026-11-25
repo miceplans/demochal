@@ -36,13 +36,20 @@ vi.mock('./kcp.client.js', async (importOriginal) => ({
 
 // retryRefundPendingPayments의 네이버페이/KCP 자격증명 판정 테스트를 위해 env를 보강한다.
 // 실제 env 값은 그대로 유지해 토스 경로 테스트에 영향을 주지 않는다.
-const envControl = vi.hoisted(() => ({ naverpayConfigured: true, kcpConfigured: true }));
+const envControl = vi.hoisted(() => ({
+  naverpayConfigured: true,
+  kcpConfigured: true,
+  nodeEnv: 'test',
+}));
 vi.mock('../../config/env.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../config/env.js')>();
   return {
     ...actual,
     env: {
       ...actual.env,
+      get nodeEnv() {
+        return envControl.nodeEnv;
+      },
       get naverpayClientId() {
         return envControl.naverpayConfigured ? 'np-client' : '';
       },
@@ -142,6 +149,22 @@ describe('PaymentsService', () => {
     // DONE never overwrites an existing payment row.
     expect(onConflictDoNothing).toHaveBeenCalledWith({ target: expect.anything() });
     expect(onConflictDoUpdate).not.toHaveBeenCalled();
+  });
+
+  it('acks but never settles a test-key DONE in production', async () => {
+    fetchMock.mockResolvedValue(tossResponse('DONE'));
+    const { db, insertValues } = createDbStub();
+    const orders = createOrdersStub();
+    const service = new PaymentsService(db, orders as any);
+
+    envControl.nodeEnv = 'production';
+    try {
+      await expect(service.handleTossWebhook(webhook('DONE'))).resolves.toBeUndefined();
+    } finally {
+      envControl.nodeEnv = 'test';
+    }
+    expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    expect(insertValues).not.toHaveBeenCalled();
   });
 
   it('cancels a pending order and upserts an expired payment for ABORTED', async () => {

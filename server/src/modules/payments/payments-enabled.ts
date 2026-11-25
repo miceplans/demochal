@@ -9,9 +9,9 @@ export function assertPaymentsEnabled(): void {
 }
 
 // 테스트 자격증명은 실제 청구 없이 승인되므로 운영에서 주문을 paid로 만들면 안 된다. 부팅을
-// 막으면 이미 스위치가 켜진 환경의 배포(환불·웹훅 포함)까지 멈추므로 승인 진입점에서만 막는다.
+// 막으면 이미 스위치가 켜진 환경의 배포(환불 포함)까지 멈추므로 승인·정산 시점에서만 막는다.
 // https://docs.tosspayments.com/reference/using-api/api-keys
-function usesLiveTossKey(): boolean {
+export function usesLiveTossKey(): boolean {
   return env.nodeEnv !== 'production' || env.tossSecretKey.startsWith('live_');
 }
 

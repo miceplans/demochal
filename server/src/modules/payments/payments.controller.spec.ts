@@ -349,7 +349,7 @@ describe('PaymentsController — production requires live credentials', () => {
     expect(paymentsService.confirmKcpPayment).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps settling webhooks regardless of the credentials', async () => {
+  it('keeps accepting webhooks regardless of the credentials', async () => {
     Object.assign(env, { nodeEnv: 'production', tossSecretKey: 'test_sk_x' });
     const { controller } = create();
     await expect(
