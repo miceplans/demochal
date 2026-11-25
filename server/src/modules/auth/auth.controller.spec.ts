@@ -283,6 +283,19 @@ describe('AuthController Naver callback', () => {
     return { controller, service, mockedFetchJson, request, state: `${nonce}.${signature}` };
   }
 
+  it('keeps OAuth state and next cookies scoped to the API host', async () => {
+    const { controller } = await setup();
+    const res = response();
+
+    controller.naverLogin('/teams/new', res);
+
+    for (const name of ['semochal_naver_oauth_state', 'semochal_login_next']) {
+      const call = vi.mocked(res.cookie).mock.calls.find(([cookieName]) => cookieName === name);
+      expect(call).toBeDefined();
+      expect((call as unknown[] | undefined)?.[2]).not.toHaveProperty('domain');
+    }
+  });
+
   it('rejects a state that does not match the cookie nonce without exchanging the code', async () => {
     const { controller, service, mockedFetchJson, request } = await setup();
     const res = response();
