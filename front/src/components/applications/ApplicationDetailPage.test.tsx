@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { theme } from '@/styles/theme';
+import { writeFormDraft } from '@/lib/form-draft';
 import { ApplicationDetailPage } from './ApplicationDetailPage';
 
 const mocks = vi.hoisted(() => ({
@@ -84,12 +85,20 @@ function renderPage() {
   );
 }
 
+const editDraftStorageKey = 'semochal:form-draft:v1:application-edit:app-1';
+const readStoredEditDraft = () => {
+  const raw = localStorage.getItem(editDraftStorageKey);
+  return raw ? (JSON.parse(raw) as { value: unknown }).value : null;
+};
+
 describe('ApplicationDetailPage', () => {
   afterEach(() => {
     cleanup();
+    localStorage.clear();
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     mocks.meId = 'user-1';
     mocks.application = application('submitted');
     mocks.challenge = challenge;
@@ -180,5 +189,51 @@ describe('ApplicationDetailPage', () => {
     mocks.meId = 'other-user';
     renderPage();
     expect(screen.queryByRole('button', { name: '수정' })).toBeNull();
+  });
+
+  it('수정 모드 진입 시 작성하다 만 초안이 있으면 서버 값 대신 복원한다', async () => {
+    writeFormDraft('application-edit:app-1', {
+      role: '프론트엔드',
+      teammates: ['임시 팀원'],
+      answers: { q1: '초안 답변' },
+    });
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: '수정' }));
+
+    expect(screen.getByLabelText('지원 동기')).toHaveProperty('value', '초안 답변');
+    expect(screen.getByLabelText('팀원 1 이름')).toHaveProperty('value', '임시 팀원');
+    expect(screen.queryByLabelText('팀원 2 이름')).toBeNull();
+    expect(screen.getByRole('combobox', { name: '지원 역할' }).textContent).toContain('프론트엔드');
+  });
+
+  it('수정 내용을 디바운스 뒤 초안으로 저장하고, 저장 성공 시 초안을 지운다', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: '수정' }));
+
+    const answerInput = screen.getByLabelText('지원 동기');
+    await user.clear(answerInput);
+    await user.type(answerInput, '새로운 답변');
+    // 디바운스(500ms)가 지나면 수정 초안이 저장된다.
+    await waitFor(() => expect(readStoredEditDraft()).not.toBeNull(), { timeout: 2000 });
+    expect(readStoredEditDraft()).toEqual({
+      role: '백엔드',
+      teammates: ['홍길동', '김철수'],
+      answers: { q1: '새로운 답변', q2: [fileId] },
+    });
+
+    await user.click(screen.getByRole('button', { name: '저장' }));
+    await waitFor(() => expect(mocks.success).toHaveBeenCalledWith('지원서를 수정했어요'));
+    expect(readStoredEditDraft()).toBeNull();
+  });
+
+  it('수정 폼을 건드리지 않으면 초안을 남기지 않는다', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await user.click(screen.getByRole('button', { name: '수정' }));
+    // 서버 값(기준값)과 같으므로 디바운스가 지나도 초안이 생기지 않는다.
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(readStoredEditDraft()).toBeNull();
   });
 });

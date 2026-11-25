@@ -26,6 +26,7 @@ import {
   type Answers,
 } from '@/components/applications/ApplicationQuestions';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { formatDateDot as formatDate } from '@/lib/date';
@@ -33,6 +34,32 @@ import { teamCapacity } from './team-model';
 import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 import { DEFAULT_PROFILE_IMAGE, formatRegion } from './TeamDetailPage.logic';
 import type { MemberSummary } from './TeamDetailPage.logic';
+
+// 팀 지원서 모달 초안 — 실수로 모달을 닫거나 새로고침할 때 작성 중인 내용을 복원하기 위해 저장한다.
+type ApplyDraft = { role: string; answers: Answers };
+const APPLY_DRAFT_BASELINE: ApplyDraft = { role: '', answers: {} };
+
+function isApplyDraft(value: unknown): value is ApplyDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Record<string, unknown>;
+  return (
+    typeof draft.role === 'string' &&
+    !!draft.answers &&
+    typeof draft.answers === 'object' &&
+    !Array.isArray(draft.answers) &&
+    Object.values(draft.answers).every(
+      (answer) =>
+        typeof answer === 'string' ||
+        (Array.isArray(answer) && answer.every((item) => typeof item === 'string')),
+    )
+  );
+}
+
+// 신청서 모달이 열린 동안에만 초안을 저장한다 — 닫힌 상태에서 마운트되면 초안을 지워버리므로 분리한다.
+function ApplyDraftSaver({ draftKey, value }: { draftKey: string; value: ApplyDraft }) {
+  useFormDraftSaver(draftKey, value, { baseline: APPLY_DRAFT_BASELINE });
+  return null;
+}
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -68,11 +95,13 @@ export function TeamDetailPage() {
   const [applyOpen, setApplyOpen] = useState(false);
   const [answers, setAnswers] = useState<Answers>({});
   const [uploading, setUploading] = useState(false);
+  const draftKey = `team-apply:${id}`;
   const join = generated.useJoinTeam({
     mutation: {
       onSuccess: () => {
         setApplyOpen(false);
         setAnswers({});
+        clearFormDraft(draftKey);
         toast.success('팀 신청을 보냈어요', '팀장이 확인하면 알림으로 알려드릴게요');
         void queryClient.invalidateQueries({ queryKey: generated.getGetTeamQueryKey(id) });
       },
@@ -135,6 +164,12 @@ export function TeamDetailPage() {
     }
     // 신청서가 있는 팀은 모달에서 질문에 답한 뒤 제출하고, 없는 팀은 지금 바로 신청한다.
     if (questions.length > 0) {
+      // 작성하다 닫은 신청서 초안이 있으면 복원한다.
+      const draft = readFormDraft(draftKey, isApplyDraft);
+      if (draft) {
+        setPickedRole(draft.role);
+        setAnswers(draft.answers);
+      }
       setApplyOpen(true);
       return;
     }
@@ -305,6 +340,7 @@ export function TeamDetailPage() {
             </Stack>
           )}
         </Modal>
+        {applyOpen && <ApplyDraftSaver draftKey={draftKey} value={{ role: pickedRole, answers }} />}
         <Modal open={applyOpen} onClose={() => setApplyOpen(false)} title="팀 지원서" width={520}>
           <Stack gap={20}>
             {roleOptions.length > 0 && (

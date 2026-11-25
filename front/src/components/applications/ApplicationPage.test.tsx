@@ -16,11 +16,13 @@ const mocks = vi.hoisted(() => ({
   upload: vi.fn(),
   push: vi.fn(),
   save: vi.fn(),
+  clear: vi.fn(),
   error: vi.fn(),
   success: vi.fn(),
   pay: vi.fn(),
   questions: [] as Question[],
   failed: false,
+  draft: null as { challengeId?: string; answers?: Record<string, string | string[]> } | null,
 }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push }),
@@ -43,7 +45,11 @@ vi.mock('@/components/common/Toast', () => ({
 }));
 vi.mock('@/stores/useUserStore', () => ({
   useUserStore: (selector: (s: unknown) => unknown) =>
-    selector({ applicationDraft: null, saveApplication: mocks.save }),
+    selector({
+      applicationDraft: mocks.draft,
+      saveApplication: mocks.save,
+      clearApplication: mocks.clear,
+    }),
 }));
 vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
 vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.pay }));
@@ -79,6 +85,7 @@ describe('saved application questionnaires', () => {
     vi.clearAllMocks();
     mocks.questions = [];
     mocks.failed = false;
+    mocks.draft = null;
     mocks.apply.mockResolvedValue({ status: 201, data: { id: 'app-1', order: null } });
     mocks.presign.mockResolvedValue({
       status: 201,
@@ -238,5 +245,102 @@ describe('saved application questionnaires', () => {
       expect(mocks.error).toHaveBeenCalledWith('신청에 실패했어요', NETWORK_ERROR_MESSAGE),
     );
     expect((screen.getByLabelText('short') as HTMLInputElement).value).toBe('내 답변');
+  });
+
+  it('restores the saved draft when it belongs to the current challenge', () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    mocks.draft = { challengeId: 'challenge-1', answers: { short: '저장된 답변' } };
+    render(<ApplicationPage />);
+    expect((screen.getByLabelText('short') as HTMLInputElement).value).toBe('저장된 답변');
+  });
+
+  it('ignores a draft saved for a different challenge', () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    mocks.draft = { challengeId: 'challenge-2', answers: { short: '다른 챌린지 답변' } };
+    render(<ApplicationPage />);
+    expect((screen.getByLabelText('short') as HTMLInputElement).value).toBe('');
+  });
+
+  it('saves the draft manually with the 임시저장 button', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.type(screen.getByLabelText('short'), '수동 저장 답변');
+    await user.click(screen.getByRole('button', { name: '임시저장' }));
+    expect(mocks.save).toHaveBeenCalledWith({
+      challengeId: 'challenge-1',
+      answers: { short: '수동 저장 답변' },
+    });
+    expect(mocks.success).toHaveBeenCalledWith('임시저장했어요');
+  });
+
+  it('auto-saves edited answers to the store after the debounce', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.type(screen.getByLabelText('short'), '자동 저장할 답변');
+    // 디바운스(500ms)가 지나기 전에는 저장하지 않는다.
+    expect(mocks.save).not.toHaveBeenCalled();
+    await waitFor(
+      () =>
+        expect(mocks.save).toHaveBeenCalledWith({
+          challengeId: 'challenge-1',
+          answers: { short: '자동 저장할 답변' },
+        }),
+      { timeout: 2000 },
+    );
+  });
+
+  it('does not auto-save the untouched form on mount', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    render(<ApplicationPage />);
+    // 사용자가 고치기 전에는 디바운스가 지나도 초안을 저장하지 않는다(다른 챌린지 초안 보호).
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(mocks.save).not.toHaveBeenCalled();
+  });
+
+  it('clears the draft when a free application succeeds', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.type(screen.getByLabelText('short'), '답변');
+    await user.click(screen.getByRole('button', { name: '제출' }));
+    await waitFor(() => expect(mocks.clear).toHaveBeenCalled());
+    expect(mocks.push).toHaveBeenCalledWith('/my/applications');
+    // 초안이 지워진 뒤 남은 자동 저장 디바운스 타이머가 다시 저장하지 않는다.
+    const saveCallsAfterClear = mocks.save.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(mocks.save.mock.calls.length).toBe(saveCallsAfterClear);
+  });
+
+  it('clears the draft once a paid application is created, before the payment window', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    mocks.apply.mockResolvedValue({
+      status: 201,
+      data: { id: 'app-1', order: { id: 'order-1', amount: 1000, name: '공고' } },
+    });
+    mocks.pay.mockResolvedValue(true);
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.type(screen.getByLabelText('short'), '유료 답변');
+    await user.click(screen.getByRole('button', { name: '제출' }));
+    await waitFor(() => expect(mocks.clear).toHaveBeenCalled());
+    expect(mocks.pay).toHaveBeenCalled();
+    // 초안이 지워진 뒤 남은 자동 저장 디바운스 타이머가 다시 저장하지 않는다.
+    const saveCallsAfterClear = mocks.save.mock.calls.length;
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(mocks.save.mock.calls.length).toBe(saveCallsAfterClear);
+  });
+
+  it('keeps the draft when the application fails', async () => {
+    mocks.questions = [{ ...questions[0]!, required: false }];
+    mocks.apply.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const user = userEvent.setup();
+    render(<ApplicationPage />);
+    await user.click(screen.getByRole('button', { name: '제출' }));
+    await waitFor(() =>
+      expect(mocks.error).toHaveBeenCalledWith('신청에 실패했어요', NETWORK_ERROR_MESSAGE),
+    );
+    expect(mocks.clear).not.toHaveBeenCalled();
   });
 });
