@@ -253,27 +253,34 @@ export const challengeViews = pgTable('challenge_views', {
     .references(() => challenges.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const teams = pgTable('teams', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id),
-  leaderUserId: uuid('leader_user_id')
-    .notNull()
-    .references(() => users.id),
-  title: varchar('title', { length: 200 }).notNull(),
-  leaderRole: varchar('leader_role', { length: 50 }),
-  region: varchar('region', { length: 100 }),
-  openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
-  // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
-  introduction: text('introduction'),
-  preferred: varchar('preferred', { length: 200 }),
-  etc: varchar('etc', { length: 200 }),
-  status: varchar('status', { length: 20 }).notNull().default('recruiting'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 팀' 목록에서 제외한다.
-  adminReviewedAt: timestamp('admin_reviewed_at'),
-});
+export const teams = pgTable(
+  'teams',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    leaderUserId: uuid('leader_user_id')
+      .notNull()
+      .references(() => users.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    leaderRole: varchar('leader_role', { length: 50 }),
+    region: varchar('region', { length: 100 }),
+    openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
+    // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
+    introduction: text('introduction'),
+    preferred: varchar('preferred', { length: 200 }),
+    etc: varchar('etc', { length: 200 }),
+    status: varchar('status', { length: 20 }).notNull().default('recruiting'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 팀' 목록에서 제외한다.
+    adminReviewedAt: timestamp('admin_reviewed_at'),
+  },
+  (table) => [
+    index('teams_challenge_id_idx').on(table.challengeId),
+    index('teams_leader_user_id_idx').on(table.leaderUserId),
+  ],
+);
 export const teamMembers = pgTable('team_members', {
   id: uuid('id').defaultRandom().primaryKey(),
   teamId: uuid('team_id')
@@ -294,22 +301,29 @@ export const teamMembers = pgTable('team_members', {
   formAnswers: jsonb('form_answers').$type<TeamFormAnswer[]>().notNull().default([]),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const applications = pgTable('applications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  role: varchar('role', { length: 100 }),
-  teammates: jsonb('teammates').notNull().default([]),
-  formAnswers: jsonb('form_answers').notNull().default([]),
-  evaluation: varchar('evaluation', { length: 20 }).notNull().default('undecided'),
-  managerMemo: text('manager_memo'),
-});
+export const applications = pgTable(
+  'applications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    role: varchar('role', { length: 100 }),
+    teammates: jsonb('teammates').notNull().default([]),
+    formAnswers: jsonb('form_answers').notNull().default([]),
+    evaluation: varchar('evaluation', { length: 20 }).notNull().default('undecided'),
+    managerMemo: text('manager_memo'),
+  },
+  (table) => [
+    index('applications_challenge_id_idx').on(table.challengeId),
+    index('applications_user_id_idx').on(table.userId),
+  ],
+);
 export const bookmarks = pgTable('bookmarks', {
   id: uuid('id').defaultRandom().primaryKey(),
   userId: uuid('user_id')
@@ -329,40 +343,55 @@ export const adProducts = pgTable('ad_products', {
   previewImageUrl: text('preview_image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const ads = pgTable('ads', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  adNumber: serial('ad_number').notNull(),
-  businessId: uuid('business_id')
-    .notNull()
-    .references(() => businesses.id),
-  productId: varchar('product_id', { length: 50 })
-    .notNull()
-    .references(() => adProducts.id),
-  title: varchar('title', { length: 200 }).notNull(),
-  imageFileId: uuid('image_file_id'),
-  landingUrl: text('landing_url'),
-  startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('preparing'),
-  paidAmount: integer('paid_amount').notNull().default(0),
-  expiresAt: timestamp('expires_at'),
-  // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
-  pausedBy: varchar('paused_by', { length: 10 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-export const orders = pgTable('orders', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  applicationId: uuid('application_id').references(() => applications.id),
-  adId: uuid('ad_id').references(() => ads.id),
-  // 디자인 상품 코드(design-products.catalog.ts의 code: poster | opening_video | key_visual_10 등). 광고/챌린지 신청 주문이면 null.
-  designProduct: varchar('design_product', { length: 30 }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  amount: integer('amount').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const ads = pgTable(
+  'ads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    adNumber: serial('ad_number').notNull(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id),
+    productId: varchar('product_id', { length: 50 })
+      .notNull()
+      .references(() => adProducts.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    imageFileId: uuid('image_file_id'),
+    landingUrl: text('landing_url'),
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('preparing'),
+    paidAmount: integer('paid_amount').notNull().default(0),
+    expiresAt: timestamp('expires_at'),
+    // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
+    pausedBy: varchar('paused_by', { length: 10 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('ads_business_id_idx').on(table.businessId),
+    index('ads_product_id_idx').on(table.productId),
+  ],
+);
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    applicationId: uuid('application_id').references(() => applications.id),
+    adId: uuid('ad_id').references(() => ads.id),
+    // 디자인 상품 코드(design-products.catalog.ts의 code: poster | opening_video | key_visual_10 등). 광고/챌린지 신청 주문이면 null.
+    designProduct: varchar('design_product', { length: 30 }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    amount: integer('amount').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('orders_application_id_idx').on(table.applicationId),
+    index('orders_ad_id_idx').on(table.adId),
+    index('orders_user_id_idx').on(table.userId),
+  ],
+);
 export const payments = pgTable(
   'payments',
   {

@@ -15,7 +15,7 @@ const baselineTag = journal.entries[0]?.tag;
 
 describe('baseline schema migration', () => {
   it('tracks and creates every table in the current core schema', () => {
-    expect(journal.entries).toHaveLength(47);
+    expect(journal.entries).toHaveLength(48);
     expect(baselineTag).toMatch(/^0000_/);
 
     const sql = readFileSync(resolve(drizzleDirectory, `${baselineTag}.sql`), 'utf8');
@@ -688,5 +688,39 @@ describe('0046_payments_provider_key_unique migration', () => {
     );
     expect(sql).not.toMatch(/DROP (?:TABLE|COLUMN)/);
     expect(journal.entries[46]!.when).toBeGreaterThan(journal.entries[45]!.when);
+  });
+});
+
+describe('0047_core_foreign_key_indexes migration', () => {
+  const tag = journal.entries[47]?.tag;
+  const sql = () => readFileSync(resolve(drizzleDirectory, `${tag}.sql`), 'utf8');
+
+  it('is registered after 0046 without destructive or non-transactional DDL', () => {
+    expect(tag).toBe('0047_core_foreign_key_indexes');
+    expect(sql()).not.toMatch(/DROP /);
+    // drizzle migrator는 트랜잭션 안에서 실행하므로 CONCURRENTLY는 실패한다.
+    expect(sql()).not.toMatch(/INDEX CONCURRENTLY/);
+    expect(journal.entries[47]!.when).toBeGreaterThan(journal.entries[46]!.when);
+  });
+
+  it.each([
+    ['applications', schema.applications],
+    ['orders', schema.orders],
+    ['teams', schema.teams],
+    ['ads', schema.ads],
+  ])('indexes every foreign key of %s in both the schema and the migration', (name, table) => {
+    const { foreignKeys, indexes } = getTableConfig(table);
+    const foreignKeyColumns = foreignKeys.map((key) => key.reference().columns[0]!.name).sort();
+    const indexedColumns = indexes.map(
+      (index) => (index.config.columns[0] as { name: string }).name,
+    );
+
+    expect(foreignKeyColumns.length).toBeGreaterThan(0);
+    expect(indexedColumns.sort()).toEqual(foreignKeyColumns);
+    for (const column of foreignKeyColumns) {
+      expect(sql()).toContain(
+        `CREATE INDEX IF NOT EXISTS "${name}_${column}_idx" ON "${name}" ("${column}");`,
+      );
+    }
   });
 });
