@@ -24,18 +24,28 @@ export interface KcpApprovalAttempt {
 type AttemptRow = typeof outboxEvents.$inferSelect;
 
 function toAttempt(row: AttemptRow): KcpApprovalAttempt {
+  // created_at은 시간대가 없어 DB 세션 TZ에 좌우된다 — 거래조회 날짜는 기록해 둔 UTC 시각으로 만든다.
+  const payload = row.payload as { orderId: string; attemptedAt?: string };
   return {
     id: row.id,
-    orderId: (row.payload as { orderId: string }).orderId,
-    attemptedAt: row.createdAt,
+    orderId: payload.orderId,
+    // 시각을 기록하기 전(#1105)의 row는 created_at으로 대신한다.
+    attemptedAt: payload.attemptedAt ? new Date(payload.attemptedAt) : row.createdAt,
     checks: row.attempts,
   };
 }
 
-export async function openKcpApprovalAttempt(db: Database, orderId: string): Promise<string> {
+export async function openKcpApprovalAttempt(
+  db: Database,
+  orderId: string,
+  attemptedAt: Date,
+): Promise<string> {
   const [row] = await db
     .insert(outboxEvents)
-    .values({ eventType: KCP_APPROVAL_EVENT, payload: { orderId } })
+    .values({
+      eventType: KCP_APPROVAL_EVENT,
+      payload: { orderId, attemptedAt: attemptedAt.toISOString() },
+    })
     .returning({ id: outboxEvents.id });
   if (!row) throw new Error('Failed to record the KCP approval attempt');
   return row.id;
