@@ -286,8 +286,8 @@ export class PaymentsService {
       }
     }
 
-    const attemptId = await openKcpApprovalAttempt(this.db, order.id);
     const attemptedAt = new Date();
+    const attemptId = await openKcpApprovalAttempt(this.db, order.id, attemptedAt);
     try {
       const settled = await this.approveAndSettleKcp(order, dto);
       await this.closeKcpAttempt(attemptId);
