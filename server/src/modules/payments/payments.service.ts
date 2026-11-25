@@ -2,6 +2,7 @@ import {
   BadGatewayException,
   BadRequestException,
   ConflictException,
+  HttpException,
   Inject,
   Injectable,
   Logger,
@@ -21,8 +22,26 @@ import {
   cancelNaverPayPayment,
   fetchNaverPayPaymentDetail,
 } from './naverpay.client.js';
-import { approveKcpPayment, cancelKcpPayment, registerKcpTransaction } from './kcp.client.js';
-import { KcpAmountMismatchError, KcpAmountUnverifiableError } from './kcp.client.js';
+import {
+  KcpAmountMismatchError,
+  KcpAmountUnverifiableError,
+  KcpApprovalUnknownError,
+  approveKcpPayment,
+  cancelKcpPayment,
+  inquireKcpPaymentByOrder,
+  isKcpInquiryConfigured,
+  registerKcpTransaction,
+  type KcpInquiryResult,
+} from './kcp.client.js';
+import {
+  KCP_APPROVAL_MAX_CHECKS,
+  closeKcpApprovalAttempt,
+  countKcpApprovalCheck,
+  findOpenKcpApprovalAttempts,
+  listDueKcpApprovalAttempts,
+  openKcpApprovalAttempt,
+  type KcpApprovalAttempt,
+} from './kcp-approval-attempts.js';
 
 // refund_pending 재시도 정책(워커의 retryRefundPendingPayments 스캔이 사용):
 // 지수 백오프로 Toss API 호출을 제한하고, 시도 상한을 둬 '영원히 실패하는 취소'가
@@ -32,6 +51,8 @@ const REFUND_RETRY_BASE_BACKOFF_MS = 5 * 60 * 1000;
 const REFUND_RETRY_MAX_BACKOFF_MS = 6 * 60 * 60 * 1000;
 const REFUND_RETRY_MAX_ATTEMPTS = 5;
 const REFUND_RETRY_BATCH_LIMIT = 50;
+// 아직 진행 중일 수 있는 KCP 승인 요청(타임아웃 10초)과 겹친 재시도를 막는 시간.
+const KCP_APPROVAL_IN_FLIGHT_MS = 30 * 1000;
 
 export interface TossWebhookPayload {
   eventType: string;
@@ -130,6 +151,7 @@ export class PaymentsService {
     if (!dto.paymentKey) {
       throw new BadRequestException('결제 키가 필요합니다.');
     }
+    await this.assertNoPendingRefund(order.id);
     if (dto.amount !== order.amount) {
       this.logger.warn(`Rejected payment confirm with mismatched amount for order ${order.id}`);
       throw new ConflictException('결제 금액이 주문 금액과 일치하지 않습니다.');
@@ -154,7 +176,7 @@ export class PaymentsService {
     // unrecoverable.
     try {
       return await this.db.transaction(async (tx) => {
-        await this.persistPayment(tx, {
+        await this.persistPaidPayment(tx, {
           orderId: order.id,
           provider: 'toss',
           providerPaymentKey: tossPayment.paymentKey,
@@ -248,7 +270,50 @@ export class PaymentsService {
     if (order.status !== 'pending') {
       throw new ConflictException('결제할 수 없는 주문입니다.');
     }
+    await this.assertNoPendingRefund(order.id);
 
+    // 결과를 모르는 이전 승인이 있으면 먼저 확인한다 — 확인 없이 다시 승인하면 이중 청구될 수 있다.
+    for (const attempt of await findOpenKcpApprovalAttempts(this.db, order.id)) {
+      const outcome =
+        Date.now() - attempt.attemptedAt.getTime() < KCP_APPROVAL_IN_FLIGHT_MS
+          ? 'unknown'
+          : await this.resolveKcpAttempt(attempt);
+      if (outcome === 'settled') return this.ordersService.findByIdInternal(order.id);
+      if (outcome !== 'not_approved') {
+        throw new ConflictException(
+          '이전 결제 결과를 확인하고 있어요. 잠시 후 주문 상태를 확인해 주세요.',
+        );
+      }
+    }
+
+    const attemptId = await openKcpApprovalAttempt(this.db, order.id);
+    const attemptedAt = new Date();
+    try {
+      const settled = await this.approveAndSettleKcp(order, dto);
+      await this.closeKcpAttempt(attemptId);
+      return settled;
+    } catch (error) {
+      if (!(error instanceof KcpApprovalUnknownError)) {
+        // 거절되었거나 승인 뒤 보상까지 끝난 건이다. 커밋 여부를 모르는 실패(DB 오류)는
+        // 워커가 거래조회로 다시 확인하도록 열어 둔다.
+        if (error instanceof HttpException) await this.closeKcpAttempt(attemptId);
+        throw error;
+      }
+      const outcome = await this.resolveKcpAttempt({
+        id: attemptId,
+        orderId: order.id,
+        attemptedAt,
+        checks: 0,
+      });
+      if (outcome === 'settled') return this.ordersService.findByIdInternal(order.id);
+      throw error;
+    }
+  }
+
+  private async approveAndSettleKcp(
+    order: { id: string; amount: number; status: string },
+    dto: { encData: string; encInfo: string; tranCd?: string },
+  ) {
     const approval = await (async () => {
       try {
         return await approveKcpPayment({
@@ -304,13 +369,17 @@ export class PaymentsService {
       this.logger.warn(`Rejected KCP tno reuse across orders for order ${order.id}`);
       throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
     }
+    return this.settleKcpApproval(order, approval.tno);
+  }
 
+  /** 승인된 tno를 저장하고 주문을 확정한다. 확정할 수 없으면 KCP 취소로 보상하고 던진다. */
+  private async settleKcpApproval(order: { id: string; amount: number }, tno: string) {
     try {
       return await this.db.transaction(async (tx) => {
-        await this.persistPayment(tx, {
+        await this.persistPaidPayment(tx, {
           orderId: order.id,
           provider: 'kcp',
-          providerPaymentKey: approval.tno,
+          providerPaymentKey: tno,
           amount: order.amount,
           status: 'paid',
           approvedAt: new Date(),
@@ -328,8 +397,154 @@ export class PaymentsService {
         this.logger.warn(`Rejected concurrent KCP tno reuse for order ${order.id}`);
         throw new BadRequestException('결제 정보가 주문 내용과 일치하지 않습니다.');
       }
-      await this.compensateKcpIfUnsettleable(error, order.id, approval.tno, order.amount);
+      await this.compensateKcpIfUnsettleable(error, order.id, tno, order.amount);
       throw error;
+    }
+  }
+
+  // 닫기 실패는 승인 결과를 바꾸지 않는다 — 워커가 다음 스캔에서 같은 결론으로 다시 닫는다.
+  private async closeKcpAttempt(id: string, status: 'sent' | 'failed' = 'sent'): Promise<void> {
+    try {
+      await closeKcpApprovalAttempt(this.db, id, status);
+    } catch (error) {
+      this.logger.error(
+        `Failed to close KCP approval attempt ${id}`,
+        (error as Error | undefined)?.stack,
+      );
+    }
+  }
+
+  /**
+   * 결과를 모르는 KCP 승인을 거래조회로 확인한다. 승인됐으면 정산하고(확정 불가면 취소 보상),
+   * 취소됐으면 닫는다. 승인 유지 여부를 확정할 수 없으면 아무것도 바꾸지 않는다.
+   */
+  private async resolveKcpAttempt(
+    attempt: KcpApprovalAttempt,
+  ): Promise<'settled' | 'compensated' | 'not_approved' | 'unknown'> {
+    let result: KcpInquiryResult;
+    try {
+      if (!isKcpInquiryConfigured()) return 'unknown';
+      result = await inquireKcpPaymentByOrder(attempt);
+    } catch {
+      return 'unknown'; // 원인은 클라이언트가 로그로 남긴다.
+    }
+    if (result.kind === 'not_confirmed') return 'not_approved';
+    if (result.kind === 'unverifiable') {
+      this.logger.error(
+        `KCP payment state cannot be verified for order ${attempt.orderId} ` +
+          `(tno ${result.tno}) — manual reconciliation required`,
+      );
+      return 'unknown';
+    }
+    if (result.kind === 'canceled') {
+      await this.closeKcpAttempt(attempt.id);
+      return 'not_approved';
+    }
+
+    try {
+      const order = await this.ordersService.findByIdInternal(attempt.orderId);
+      const [bound] = await this.db
+        .select({ orderId: payments.orderId, status: payments.status })
+        .from(payments)
+        .where(and(eq(payments.provider, 'kcp'), eq(payments.providerPaymentKey, result.tno)))
+        .limit(1);
+      if (bound && bound.orderId !== order.id) {
+        this.logger.error(
+          `KCP tno ${result.tno} found for order ${order.id} is bound to another order`,
+        );
+        return 'unknown';
+      }
+      if (bound?.status === 'paid' && order.status === 'paid') {
+        await this.closeKcpAttempt(attempt.id);
+        return 'settled';
+      }
+      if (bound?.status === 'refund_pending') {
+        // 이미 환불 재시도 스캔(retryRefundPendingPayments)이 맡은 결제다.
+        await this.closeKcpAttempt(attempt.id);
+        return 'compensated';
+      }
+      if (order.status !== 'pending' || result.amount !== order.amount) {
+        // 주문이 이미 다른 결제로 확정/취소됐거나 금액이 다르다 — 이 결제만 되돌린다.
+        await this.compensateKcpIfUnsettleable(
+          new ConflictException('결제할 수 없는 주문입니다.'),
+          order.id,
+          result.tno,
+          result.amount,
+        );
+        await this.closeKcpAttempt(attempt.id);
+        return 'compensated';
+      }
+      await this.settleKcpApproval(order, result.tno);
+      await this.closeKcpAttempt(attempt.id);
+      this.logger.warn(`Recovered KCP payment for order ${order.id} by inquiry`);
+      return 'settled';
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        await this.closeKcpAttempt(attempt.id);
+        return 'compensated';
+      }
+      this.logger.error(
+        `Failed to settle recovered KCP payment for order ${attempt.orderId}`,
+        (error as Error | undefined)?.stack,
+      );
+      return 'unknown';
+    }
+  }
+
+  /** 워커가 주기적으로 호출한다 — 결과가 확정되지 않은 KCP 승인을 거래조회로 복구한다. */
+  async recoverKcpApprovals(now = new Date()): Promise<{
+    scanned: number;
+    settled: number;
+    compensated: number;
+    exhausted: number;
+  }> {
+    const summary = { scanned: 0, settled: 0, compensated: 0, exhausted: 0 };
+    const attempts = await listDueKcpApprovalAttempts(this.db, now);
+    summary.scanned = attempts.length;
+    if (attempts.length === 0) return summary;
+    if (!isKcpInquiryConfigured()) {
+      this.logger.error('KCP inquiry is not configured; unresolved KCP approvals are waiting');
+      return summary;
+    }
+    for (const attempt of attempts) {
+      try {
+        const outcome = await this.resolveKcpAttempt(attempt);
+        if (outcome === 'settled') summary.settled += 1;
+        else if (outcome === 'compensated') summary.compensated += 1;
+        else if (attempt.checks + 1 >= KCP_APPROVAL_MAX_CHECKS) {
+          summary.exhausted += 1;
+          await this.closeKcpAttempt(attempt.id, 'failed');
+          this.logger.error(
+            `KCP approval for order ${attempt.orderId} is still ${outcome} after ` +
+              `${attempt.checks + 1} checks — verify it in the KCP admin`,
+          );
+        } else {
+          await countKcpApprovalCheck(this.db, attempt.id);
+        }
+      } catch (error) {
+        this.logger.error(
+          `KCP approval recovery failed for order ${attempt.orderId}`,
+          (error as Error | undefined)?.stack,
+        );
+      }
+    }
+    return summary;
+  }
+
+  /**
+   * 환불 대기(refund_pending) 결제가 남은 주문은 다시 결제할 수 없다 — 새 결제가 정산되면
+   * 결제 row는 과거 결제를 가리킨 채 주문만 paid가 되어 환불 스캔이 정상 주문을 건드린다.
+   */
+  private async assertNoPendingRefund(orderId: string): Promise<void> {
+    const [existing] = await this.db
+      .select({ status: payments.status })
+      .from(payments)
+      .where(eq(payments.orderId, orderId))
+      .limit(1);
+    if (existing?.status === 'refund_pending') {
+      throw new ConflictException(
+        '이전 결제를 환불하고 있는 주문이에요. 환불이 끝난 뒤 새로 주문해 주세요.',
+      );
     }
   }
 
@@ -509,7 +724,7 @@ export class PaymentsService {
 
     try {
       return await this.db.transaction(async (tx) => {
-        await this.persistPayment(tx, {
+        await this.persistPaidPayment(tx, {
           orderId: order.id,
           provider: 'naverpay',
           providerPaymentKey: paymentId,
@@ -590,6 +805,16 @@ export class PaymentsService {
           amount: payment.amount,
           status,
         });
+        // 주문에 다른 결제가 묶여 있으면 이 결제의 취소로 주문을 건드리지 않는다.
+        if (!(await this.ownsPaymentRow(tx, orderId, provider, payment.paymentKey))) {
+          if (status === 'refund_pending') {
+            this.logger.error(
+              `Another payment is on order ${orderId} — manual refund required for ` +
+                `${provider} payment ${payment.paymentKey}`,
+            );
+          }
+          return;
+        }
         if (status === 'canceled')
           await this.ordersService.cancelOrder(tx, orderId, orderAllowedFrom);
       });
@@ -660,6 +885,26 @@ export class PaymentsService {
         continue;
       }
 
+      // 환불 대기 결제는 정산된 적이 없으므로 주문이 paid면 다른 결제로 확정된 상태다.
+      // 어느 결제를 되돌려야 할지 알 수 없으니 자동 취소하지 않고 수동 확인으로 넘긴다.
+      try {
+        const order = await this.ordersService.findByIdInternal(payment.orderId);
+        if (order.status === 'paid') {
+          await this.recordRefundRetry(payment.id, REFUND_RETRY_MAX_ATTEMPTS, now);
+          this.logger.error(
+            `Order ${payment.orderId} is paid while a refund_pending payment remains ` +
+              `— manual reconciliation required`,
+          );
+          continue;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to load order ${payment.orderId} for the refund retry`,
+          (error as Error | undefined)?.stack,
+        );
+        continue;
+      }
+
       summary.attempted += 1;
       try {
         if (payment.provider === 'kcp') {
@@ -705,6 +950,7 @@ export class PaymentsService {
         payment.provider === 'kcp' ? 'kcp' : payment.provider === 'naverpay' ? 'naverpay' : 'toss',
         { paymentKey: payment.providerPaymentKey, amount: payment.amount },
         'canceled',
+        ['pending'],
       );
       summary.refunded += 1;
     }
@@ -967,7 +1213,7 @@ export class PaymentsService {
     // unrecoverable.
     try {
       await this.db.transaction(async (tx) => {
-        await this.persistPayment(tx, {
+        await this.persistPaidPayment(tx, {
           orderId: order.id,
           provider: 'toss',
           providerPaymentKey: tossPayment.paymentKey,
@@ -1013,7 +1259,9 @@ export class PaymentsService {
         status: 'canceled',
       });
 
-      await this.ordersService.cancelOrder(tx, order.id);
+      if (await this.ownsPaymentRow(tx, order.id, 'toss', tossPayment.paymentKey)) {
+        await this.ordersService.cancelOrder(tx, order.id);
+      }
     });
   }
 
@@ -1139,6 +1387,48 @@ export class PaymentsService {
       });
   }
 
+  /** 결제를 저장하고, 주문에 다른 결제(환불 대기 포함)가 이미 묶여 있으면 정산을 거부한다. */
+  private async persistPaidPayment(
+    tx: DbTx,
+    values: Parameters<PaymentsService['persistPayment']>[1] & { status: 'paid' },
+  ): Promise<void> {
+    await this.persistPayment(tx, values);
+    if (
+      !(await this.ownsPaymentRow(
+        tx,
+        values.orderId,
+        values.provider,
+        values.providerPaymentKey,
+        'paid',
+      ))
+    ) {
+      throw new ConflictException('다른 결제가 처리 중인 주문입니다.');
+    }
+  }
+
+  private async ownsPaymentRow(
+    tx: DbTx,
+    orderId: string,
+    provider: string,
+    providerPaymentKey: string,
+    status?: string,
+  ): Promise<boolean> {
+    const [row] = await tx
+      .select({
+        provider: payments.provider,
+        providerPaymentKey: payments.providerPaymentKey,
+        status: payments.status,
+      })
+      .from(payments)
+      .where(eq(payments.orderId, orderId))
+      .limit(1);
+    return (
+      row?.provider === provider &&
+      row.providerPaymentKey === providerPaymentKey &&
+      (status === undefined || row.status === status)
+    );
+  }
+
   private persistPayment(
     tx: Database | DbTx,
     values: {
@@ -1174,7 +1464,11 @@ export class PaymentsService {
                 ne(payments.status, 'paid'),
                 ne(payments.status, 'canceled'),
               )
-            : ne(payments.status, 'canceled'),
+            : // 다른 결제의 취소가 주문에 묶인 결제 row를 덮지 않게 같은 거래번호만 갱신한다.
+              and(
+                eq(payments.providerPaymentKey, values.providerPaymentKey),
+                ne(payments.status, 'canceled'),
+              ),
     });
   }
 
