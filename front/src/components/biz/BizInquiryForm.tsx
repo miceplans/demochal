@@ -1,5 +1,5 @@
 'use client';
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -7,17 +7,39 @@ import { textStyle } from '@/styles/typography';
 import { PrimaryButton } from '@/components/biz/BizShell';
 import { useToast } from '@/components/common/Toast';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 
 type InquiryField = 'name' | 'contact' | 'content';
 
+type InquiryDraft = { name: string; contact: string; content: string };
+
+const INQUIRY_DRAFT_KEY = 'biz-inquiry';
+const EMPTY_INQUIRY: InquiryDraft = { name: '', contact: '', content: '' };
+
+const isInquiryDraft = (value: unknown): value is InquiryDraft => {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  return (
+    typeof v.name === 'string' && typeof v.contact === 'string' && typeof v.content === 'string'
+  );
+};
+
 export function BizInquiryForm() {
   const toast = useToast();
-  const [name, setName] = useState('');
-  const [contact, setContact] = useState('');
-  const [content, setContent] = useState('');
+  // 마운트 시 한 번만 초안을 읽어 각 state의 lazy initializer로 복원한다.
+  const [draft] = useState(() => readFormDraft<InquiryDraft>(INQUIRY_DRAFT_KEY, isInquiryDraft));
+  const [name, setName] = useState(draft?.name ?? '');
+  const [contact, setContact] = useState(draft?.contact ?? '');
+  const [content, setContent] = useState(draft?.content ?? '');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<InquiryField, string>>>({});
+
+  const draftValue = useMemo<InquiryDraft>(
+    () => ({ name, contact, content }),
+    [name, contact, content],
+  );
+  useFormDraftSaver(INQUIRY_DRAFT_KEY, draftValue, { baseline: EMPTY_INQUIRY });
 
   const clearFieldError = (field: InquiryField) => {
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
@@ -63,6 +85,8 @@ export function BizInquiryForm() {
     setStatus('문의 내용을 전송하고 있습니다.');
     try {
       await generated.submitOperationsInquiry(values);
+      // 전송에 성공했으므로 초안을 지운다.
+      clearFormDraft(INQUIRY_DRAFT_KEY);
       setName('');
       setContact('');
       setContent('');

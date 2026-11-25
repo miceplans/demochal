@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizProfileEditPage } from './BizProfileEditPage';
@@ -26,6 +26,7 @@ vi.mock('@tanstack/react-query', () => ({
   useQueryClient: () => ({ invalidateQueries: vi.fn() }),
 }));
 vi.mock('@semochal/api-client', () => ({
+  getApiErrorMessage: (error: unknown) => (error instanceof Error ? error.message : undefined),
   generated: {
     useFindMyBusiness: () => ({
       data: { status: 200, data: mocks.business },
@@ -89,9 +90,13 @@ vi.mock('@/lib/google-maps', () => ({
 }));
 
 describe('BizProfileEditPage', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+  });
   beforeEach(() => {
     vi.clearAllMocks();
+    localStorage.clear();
     delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
     // 저장 성공 후 페이지 이동(window.location.href 할당)이 jsdom 에러를 내지 않게 스텁한다.
     Object.defineProperty(window, 'location', {
@@ -238,6 +243,87 @@ describe('BizProfileEditPage', () => {
       delete process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
       render(<BizProfileEditPage />);
       expect(screen.queryByLabelText('지도 주소 검색')).toBeNull();
+    });
+  });
+
+  describe('form draft', () => {
+    const DRAFT_KEY = 'semochal:form-draft:v1:biz-profile:business-1';
+    const seedDraft = (value: unknown) =>
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ value, savedAt: Date.now() }));
+
+    it('복원된 초안이 서버값보다 우선한다', () => {
+      seedDraft({
+        name: '초안 기업',
+        address: '부산광역시 해울대구',
+        phone: '051-000-0000',
+        email: 'draft@example.com',
+        mapLatitude: 35.15,
+        mapLongitude: 129.05,
+      });
+      render(<BizProfileEditPage />);
+
+      expect((screen.getByLabelText('기업명') as HTMLInputElement).value).toBe('초안 기업');
+      expect((screen.getByLabelText('주소') as HTMLInputElement).value).toBe('부산광역시 해울대구');
+      expect((screen.getByLabelText('전화번호') as HTMLInputElement).value).toBe('051-000-0000');
+      expect((screen.getByLabelText('이메일') as HTMLInputElement).value).toBe('draft@example.com');
+      expect(screen.getByTestId('map-coords').textContent).toBe('35.15,129.05');
+    });
+
+    it('손대지 않은 폼은 초안을 남기지 않는다', () => {
+      vi.useFakeTimers();
+      try {
+        render(<BizProfileEditPage />);
+        act(() => {
+          vi.advanceTimersByTime(1000);
+        });
+        expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('편집 내용이 초안으로 저장되고 저장 성공 시 지워진다', async () => {
+      mocks.updateBusiness.mockResolvedValue({ status: 200, data: {} });
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      fireEvent.change(screen.getByLabelText('기업명'), { target: { value: '바뀐 기업' } });
+      await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+        timeout: 2500,
+      });
+      const draft = JSON.parse(localStorage.getItem(DRAFT_KEY)!) as {
+        value: Record<string, unknown>;
+      };
+      // 텍스트 필드와 지도 좌표만 저장한다 — 이미지 파일 id는 초안에 포함되지 않는다.
+      expect(draft.value).toEqual({
+        name: '바뀐 기업',
+        address: '서울특별시',
+        phone: '02-0000-0000',
+        email: 'biz@example.com',
+        mapLatitude: 37.5665,
+        mapLongitude: 126.978,
+      });
+
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      await waitFor(() => expect(mocks.updateBusiness).toHaveBeenCalled());
+      await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
+    });
+
+    it('저장 실패 시 초안을 지우지 않는다', async () => {
+      mocks.updateBusiness.mockRejectedValue(new Error('save failed'));
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      fireEvent.change(screen.getByLabelText('기업명'), { target: { value: '바뀐 기업' } });
+      await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+        timeout: 2500,
+      });
+
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
+      expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull();
     });
   });
 });
