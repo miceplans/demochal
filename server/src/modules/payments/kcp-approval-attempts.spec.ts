@@ -17,15 +17,22 @@ function createDb(rows: unknown[][] = []) {
 }
 
 describe('kcp-approval-attempts', () => {
-  it('records the attempt with only the order id', async () => {
+  const attemptedAt = new Date('2026-11-25T01:00:00Z');
+
+  it('records the attempt with only the order id and time', async () => {
     const { db, query } = createDb([['attempt-1']]);
-    await expect(openKcpApprovalAttempt(db, 'order-1')).resolves.toBe('attempt-1');
-    expect(query.mock.calls[0]![1]).toEqual([KCP_APPROVAL_EVENT, '{"orderId":"order-1"}']);
+    await expect(openKcpApprovalAttempt(db, 'order-1', attemptedAt)).resolves.toBe('attempt-1');
+    expect(query.mock.calls[0]![1]).toEqual([
+      KCP_APPROVAL_EVENT,
+      '{"orderId":"order-1","attemptedAt":"2026-11-25T01:00:00.000Z"}',
+    ]);
   });
 
   it('refuses to continue when the attempt could not be recorded', async () => {
     const { db } = createDb([]);
-    await expect(openKcpApprovalAttempt(db, 'order-1')).rejects.toThrow('Failed to record');
+    await expect(openKcpApprovalAttempt(db, 'order-1', attemptedAt)).rejects.toThrow(
+      'Failed to record',
+    );
   });
 
   it('lists only pending attempts past the in-flight grace period', async () => {
@@ -52,5 +59,23 @@ describe('kcp-approval-attempts', () => {
     await countKcpApprovalCheck(db, 'attempt-1');
     expect(query.mock.calls[0]![1]).toEqual(expect.arrayContaining(['failed', 'attempt-1']));
     expect(query.mock.calls[1]![0]).toMatch(/"attempts" \+ 1/);
+  });
+
+  it('restores the attempt time from the payload, not the timezone-less column', async () => {
+    const payload = { orderId: 'order-1', attemptedAt: attemptedAt.toISOString() };
+    const { db } = createDb([
+      ['a', KCP_APPROVAL_EVENT, payload, 'pending', 2, '2026-11-25 10:00:00', null],
+    ]);
+    await expect(findOpenKcpApprovalAttempts(db, 'order-1')).resolves.toEqual([
+      { id: 'a', orderId: 'order-1', attemptedAt, checks: 2 },
+    ]);
+  });
+
+  it('falls back to created_at for rows recorded without a time', async () => {
+    const { db } = createDb([
+      ['a', KCP_APPROVAL_EVENT, { orderId: 'order-1' }, 'pending', 0, '2026-11-25 01:00:00', null],
+    ]);
+    const [attempt] = await findOpenKcpApprovalAttempts(db, 'order-1');
+    expect(Number.isNaN(attempt!.attemptedAt.getTime())).toBe(false);
   });
 });
