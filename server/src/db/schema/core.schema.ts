@@ -147,105 +147,119 @@ export const userMfaChallenges = pgTable(
   (table) => [index('user_mfa_challenges_user_id_idx').on(table.userId)],
 );
 
-export const businesses = pgTable('businesses', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ownerUserId: uuid('owner_user_id')
-    .notNull()
-    .references(() => users.id),
-  // 가입 폼에서는 받지 않는다 — 사업자등록증 OCR 결과 또는 기업 프로필 편집으로 채운다.
-  name: varchar('name', { length: 200 }),
-  // 학교/비영리 등 사업자번호가 없는 기관은 null.
-  registrationNumber: varchar('registration_number', { length: 20 }),
-  // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨).
-  // 기관은 가입 시 자동 승인(verified)되며, pending/rejected는 0040에서 모두 verified로 정리했다.
-  verificationStatus: varchar('verification_status', { length: 20 }).notNull().default('verified'),
-  // 가입 시 국세청 조회 결과: registered | unavailable(조회 장애). null = 조회 대상 아님(기업 외 유형)이거나 기존 가입.
-  ntsResult: varchar('nts_result', { length: 20 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  // 기관 유형: 기업 | 학교 | 비영리 | 협회
-  type: varchar('type', { length: 50 }),
-  bannerImageFileId: uuid('banner_image_file_id'),
-  logoImageFileId: uuid('logo_image_file_id'),
-  address: varchar('address', { length: 300 }),
-  // 프로필 구글 지도 핀 위치(소수 좌표). 둘 다 있어야 지도에 핀을 찍는다.
-  mapLatitude: doublePrecision('map_latitude'),
-  mapLongitude: doublePrecision('map_longitude'),
-  phone: varchar('phone', { length: 30 }),
-  email: varchar('email', { length: 255 }),
-  contentBlocks: jsonb('content_blocks').notNull().default([]),
-});
-export const verifications = pgTable('verifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  businessId: uuid('business_id')
-    .notNull()
-    .references(() => businesses.id),
-  documentFileId: uuid('document_file_id').notNull(),
-  // pending | processing | verified | rejected
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  ocrResult: jsonb('ocr_result'),
-  rejectionReason: text('rejection_reason'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(),
-});
-export const challenges = pgTable('challenges', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  businessId: uuid('business_id')
-    .notNull()
-    .references(() => businesses.id),
-  title: varchar('title', { length: 200 }).notNull(),
-  description: text('description').notNull(),
-  price: integer('price').notNull(),
-  // 인원 제한 입력은 폼에서 제거됐다. null이면 정원 제한 없음(기존 공고는 값 유지).
-  capacity: integer('capacity'),
-  // 접수 기간(시각 포함). 행사 기간은 아래 eventStartDate/eventEndDate로 분리한다.
-  startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
-  // 행사 기간. 둘 다 null이면 미정.
-  eventStartDate: timestamp('event_start_date'),
-  eventEndDate: timestamp('event_end_date'),
-  status: varchar('status', { length: 20 }).notNull().default('draft'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 챌린지' 목록에서 제외한다.
-  adminReviewedAt: timestamp('admin_reviewed_at'),
-  category: varchar('category', { length: 100 }),
-  viewCount: integer('view_count').notNull().default(0),
-  // Valid values: seMOchall | external. Challenges recruiting through the
-  // in-service application form get an exposure boost in recommendations.
-  recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
-  // recruitMethod === 'external'일 때만 의미 있는 외부 지원 링크. seMOchall 공고에는 남기지 않는다.
-  recruitUrl: varchar('recruit_url', { length: 2048 }),
-  // 탐색 필터용 메타. 대상 유효값: 어린이 | 초등학생 | 중학생 | 고등학생 | 대학생 | 대학원생 |
-  // 제한없음 | 지역제한 | 일반인 | 기업 (복수 선택).
-  targets: text('targets').array(),
-  // 주최기관 유형. 유효값: 중앙정부/기관 | 대기업 | 외국계기업 | 학교/재단/협회 | 학회/비영리단체 |
-  // 진흥원 | 언론 | 지방자치단체 | 중소/벤처기업 | 기타
-  organizerType: varchar('organizer_type', { length: 30 }),
-  // 총상금(만원). null이면 상금 미정/없음.
-  prizeAmount: integer('prize_amount'),
-  // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
-  posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
-  // 카드 썸네일용 — 업로더가 포스터에서 썸네일로 보일 영역을 잘라 만든 별도 파일.
-  // null이면 카드는 posterUrl로 폰백한다(기존 공고 호환).
-  thumbnailFileId: uuid('thumbnail_file_id').references(() => files.id, { onDelete: 'set null' }),
-  // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 별도 테이블 대신
-  // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
-  // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
-  applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
-  // 주최(신규 공고는 필수 — 기존 공고 호환을 위해 DB는 nullable), 주관·협찬·후원(선택).
-  host: varchar('host', { length: 200 }),
-  supervisor: varchar('supervisor', { length: 200 }),
-  sponsor: varchar('sponsor', { length: 200 }),
-  supporter: varchar('supporter', { length: 200 }),
-  // 대상에 '기타'를 고른 경우 직접 입력한 내용.
-  targetOther: varchar('target_other', { length: 100 }),
-  // 첨부파일. 개인 파일과 같이 private 버킷에만 두고 다운로드는 presigned GET으로만 연다.
-  attachments: jsonb('attachments').$type<ChallengeAttachment[]>().notNull().default([]),
-  summary: varchar('summary', { length: 300 }),
-  hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
-  topics: jsonb('topics').$type<string[]>().notNull().default([]),
-  inquiryContact: varchar('inquiry_contact', { length: 200 }),
-  visibility: varchar('visibility', { length: 20 }).notNull().default('public'),
-});
+export const businesses = pgTable(
+  'businesses',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ownerUserId: uuid('owner_user_id')
+      .notNull()
+      .references(() => users.id),
+    // 가입 폼에서는 받지 않는다 — 사업자등록증 OCR 결과 또는 기업 프로필 편집으로 채운다.
+    name: varchar('name', { length: 200 }),
+    // 학교/비영리 등 사업자번호가 없는 기관은 null.
+    registrationNumber: varchar('registration_number', { length: 20 }),
+    // pending | verified | rejected ('approved'는 0021에서 verified로 정규화됨).
+    // 기관은 가입 시 자동 승인(verified)되며, pending/rejected는 0040에서 모두 verified로 정리했다.
+    verificationStatus: varchar('verification_status', { length: 20 })
+      .notNull()
+      .default('verified'),
+    // 가입 시 국세청 조회 결과: registered | unavailable(조회 장애). null = 조회 대상 아님(기업 외 유형)이거나 기존 가입.
+    ntsResult: varchar('nts_result', { length: 20 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    // 기관 유형: 기업 | 학교 | 비영리 | 협회
+    type: varchar('type', { length: 50 }),
+    bannerImageFileId: uuid('banner_image_file_id'),
+    logoImageFileId: uuid('logo_image_file_id'),
+    address: varchar('address', { length: 300 }),
+    // 프로필 구글 지도 핀 위치(소수 좌표). 둘 다 있어야 지도에 핀을 찍는다.
+    mapLatitude: doublePrecision('map_latitude'),
+    mapLongitude: doublePrecision('map_longitude'),
+    phone: varchar('phone', { length: 30 }),
+    email: varchar('email', { length: 255 }),
+    contentBlocks: jsonb('content_blocks').notNull().default([]),
+  },
+  (table) => [index('businesses_owner_user_id_idx').on(table.ownerUserId)],
+);
+export const verifications = pgTable(
+  'verifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id),
+    documentFileId: uuid('document_file_id').notNull(),
+    // pending | processing | verified | rejected
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    ocrResult: jsonb('ocr_result'),
+    rejectionReason: text('rejection_reason'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (table) => [index('verifications_business_id_idx').on(table.businessId)],
+);
+export const challenges = pgTable(
+  'challenges',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    description: text('description').notNull(),
+    price: integer('price').notNull(),
+    // 인원 제한 입력은 폼에서 제거됐다. null이면 정원 제한 없음(기존 공고는 값 유지).
+    capacity: integer('capacity'),
+    // 접수 기간(시각 포함). 행사 기간은 아래 eventStartDate/eventEndDate로 분리한다.
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date').notNull(),
+    // 행사 기간. 둘 다 null이면 미정.
+    eventStartDate: timestamp('event_start_date'),
+    eventEndDate: timestamp('event_end_date'),
+    status: varchar('status', { length: 20 }).notNull().default('draft'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 챌린지' 목록에서 제외한다.
+    adminReviewedAt: timestamp('admin_reviewed_at'),
+    category: varchar('category', { length: 100 }),
+    viewCount: integer('view_count').notNull().default(0),
+    // Valid values: seMOchall | external. Challenges recruiting through the
+    // in-service application form get an exposure boost in recommendations.
+    recruitMethod: varchar('recruit_method', { length: 20 }).notNull().default('external'),
+    // recruitMethod === 'external'일 때만 의미 있는 외부 지원 링크. seMOchall 공고에는 남기지 않는다.
+    recruitUrl: varchar('recruit_url', { length: 2048 }),
+    // 탐색 필터용 메타. 대상 유효값: 어린이 | 초등학생 | 중학생 | 고등학생 | 대학생 | 대학원생 |
+    // 제한없음 | 지역제한 | 일반인 | 기업 (복수 선택).
+    targets: text('targets').array(),
+    // 주최기관 유형. 유효값: 중앙정부/기관 | 대기업 | 외국계기업 | 학교/재단/협회 | 학회/비영리단체 |
+    // 진흥원 | 언론 | 지방자치단체 | 중소/벤처기업 | 기타
+    organizerType: varchar('organizer_type', { length: 30 }),
+    // 총상금(만원). null이면 상금 미정/없음.
+    prizeAmount: integer('prize_amount'),
+    // 챌린지 포스터. 파일이 제거되면 기존 공고는 placeholder를 표시한다.
+    posterFileId: uuid('poster_file_id').references(() => files.id, { onDelete: 'set null' }),
+    // 카드 썸네일용 — 업로더가 포스터에서 썸네일로 보일 영역을 잘라 만든 별도 파일.
+    // null이면 카드는 posterUrl로 폰백한다(기존 공고 호환).
+    thumbnailFileId: uuid('thumbnail_file_id').references(() => files.id, { onDelete: 'set null' }),
+    // biz 콘솔 "신청서(질문지) 만들기" 화면에서 작성한 질문 목록. 별도 테이블 대신
+    // 챌린지 레코드에 JSONB로 붙인다 — 질문 6종·순서·필수여부만 담는 단순 구조라
+    // 정규화 테이블보다 jsonb.$type<>()가 적합하다(#264). 저장 전 없으면 null.
+    applicationForm: jsonb('application_form').$type<ApplicationFormQuestion[]>(),
+    // 주최(신규 공고는 필수 — 기존 공고 호환을 위해 DB는 nullable), 주관·협찬·후원(선택).
+    host: varchar('host', { length: 200 }),
+    supervisor: varchar('supervisor', { length: 200 }),
+    sponsor: varchar('sponsor', { length: 200 }),
+    supporter: varchar('supporter', { length: 200 }),
+    // 대상에 '기타'를 고른 경우 직접 입력한 내용.
+    targetOther: varchar('target_other', { length: 100 }),
+    // 첨부파일. 개인 파일과 같이 private 버킷에만 두고 다운로드는 presigned GET으로만 연다.
+    attachments: jsonb('attachments').$type<ChallengeAttachment[]>().notNull().default([]),
+    summary: varchar('summary', { length: 300 }),
+    hashtags: jsonb('hashtags').$type<string[]>().notNull().default([]),
+    topics: jsonb('topics').$type<string[]>().notNull().default([]),
+    inquiryContact: varchar('inquiry_contact', { length: 200 }),
+    visibility: varchar('visibility', { length: 20 }).notNull().default('public'),
+  },
+  (table) => [index('challenges_business_id_idx').on(table.businessId)],
+);
 export const challengeViews = pgTable('challenge_views', {
   id: uuid('id').defaultRandom().primaryKey(),
   challengeId: uuid('challenge_id')
@@ -253,73 +267,95 @@ export const challengeViews = pgTable('challenge_views', {
     .references(() => challenges.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const teams = pgTable('teams', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id),
-  leaderUserId: uuid('leader_user_id')
-    .notNull()
-    .references(() => users.id),
-  title: varchar('title', { length: 200 }).notNull(),
-  leaderRole: varchar('leader_role', { length: 50 }),
-  region: varchar('region', { length: 100 }),
-  openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
-  // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
-  introduction: text('introduction'),
-  preferred: varchar('preferred', { length: 200 }),
-  etc: varchar('etc', { length: 200 }),
-  status: varchar('status', { length: 20 }).notNull().default('recruiting'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 팀' 목록에서 제외한다.
-  adminReviewedAt: timestamp('admin_reviewed_at'),
-});
-export const teamMembers = pgTable('team_members', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  teamId: uuid('team_id')
-    .notNull()
-    .references(() => teams.id),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  role: varchar('role', { length: 100 }),
-  // pending=지원 대기(사용자→리더), invited=초대 대기(리더→사용자, 수락/거절은 본인), accepted/rejected=확정.
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
-  chatLink: varchar('chat_link', { length: 500 }),
-  // 사람찾기 스카우트 제안(팀장→사용자)일 때만 채워진다. scoutedAt이 팀당 3회 제한의 집계 기준이다.
-  scoutedAt: timestamp('scouted_at'),
-  scoutMessage: varchar('scout_message', { length: 200 }),
-  // 지원자가 본인 지원 시 작성한 신청서 답변(챌린지 신청서 질문 기준). 지원·초대 구분 없이 pending 행에만 쓴다.
-  formAnswers: jsonb('form_answers').$type<TeamFormAnswer[]>().notNull().default([]),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-export const applications = pgTable('applications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-  role: varchar('role', { length: 100 }),
-  teammates: jsonb('teammates').notNull().default([]),
-  formAnswers: jsonb('form_answers').notNull().default([]),
-  evaluation: varchar('evaluation', { length: 20 }).notNull().default('undecided'),
-  managerMemo: text('manager_memo'),
-});
-export const bookmarks = pgTable('bookmarks', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  challengeId: uuid('challenge_id')
-    .notNull()
-    .references(() => challenges.id),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const teams = pgTable(
+  'teams',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    leaderUserId: uuid('leader_user_id')
+      .notNull()
+      .references(() => users.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    leaderRole: varchar('leader_role', { length: 50 }),
+    region: varchar('region', { length: 100 }),
+    openRoles: jsonb('open_roles').$type<OpenRole[]>().notNull().default([]),
+    // 모집글 작성 설문: 팀 소개(여러 줄) · 우대사항 · 기타. 모두 선택 입력.
+    introduction: text('introduction'),
+    preferred: varchar('preferred', { length: 200 }),
+    etc: varchar('etc', { length: 200 }),
+    status: varchar('status', { length: 20 }).notNull().default('recruiting'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    // 관리자 콘텐츠 모니터링에서 '확인' 처리한 시각. 값이 있으면 '확인해야하는 팀' 목록에서 제외한다.
+    adminReviewedAt: timestamp('admin_reviewed_at'),
+  },
+  (table) => [
+    index('teams_challenge_id_idx').on(table.challengeId),
+    index('teams_leader_user_id_idx').on(table.leaderUserId),
+  ],
+);
+export const teamMembers = pgTable(
+  'team_members',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    teamId: uuid('team_id')
+      .notNull()
+      .references(() => teams.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    role: varchar('role', { length: 100 }),
+    // pending=지원 대기(사용자→리더), invited=초대 대기(리더→사용자, 수락/거절은 본인), accepted/rejected=확정.
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    // 결과 전송 시 팀장이 합격자에게 별도로 저장하는 채팅방 링크(불합격/미정이면 NULL)
+    chatLink: varchar('chat_link', { length: 500 }),
+    // 사람찾기 스카우트 제안(팀장→사용자)일 때만 채워진다. scoutedAt이 팀당 3회 제한의 집계 기준이다.
+    scoutedAt: timestamp('scouted_at'),
+    scoutMessage: varchar('scout_message', { length: 200 }),
+    // 지원자가 본인 지원 시 작성한 신청서 답변(챌린지 신청서 질문 기준). 지원·초대 구분 없이 pending 행에만 쓴다.
+    formAnswers: jsonb('form_answers').$type<TeamFormAnswer[]>().notNull().default([]),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('team_members_user_id_idx').on(table.userId)],
+);
+export const applications = pgTable(
+  'applications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    role: varchar('role', { length: 100 }),
+    teammates: jsonb('teammates').notNull().default([]),
+    formAnswers: jsonb('form_answers').notNull().default([]),
+    evaluation: varchar('evaluation', { length: 20 }).notNull().default('undecided'),
+    managerMemo: text('manager_memo'),
+  },
+  (table) => [
+    index('applications_challenge_id_idx').on(table.challengeId),
+    index('applications_user_id_idx').on(table.userId),
+  ],
+);
+export const bookmarks = pgTable(
+  'bookmarks',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    challengeId: uuid('challenge_id')
+      .notNull()
+      .references(() => challenges.id),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [index('bookmarks_challenge_id_idx').on(table.challengeId)],
+);
 export const adProducts = pgTable('ad_products', {
   id: varchar('id', { length: 50 }).primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
@@ -329,40 +365,55 @@ export const adProducts = pgTable('ad_products', {
   previewImageUrl: text('preview_image_url'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
-export const ads = pgTable('ads', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  adNumber: serial('ad_number').notNull(),
-  businessId: uuid('business_id')
-    .notNull()
-    .references(() => businesses.id),
-  productId: varchar('product_id', { length: 50 })
-    .notNull()
-    .references(() => adProducts.id),
-  title: varchar('title', { length: 200 }).notNull(),
-  imageFileId: uuid('image_file_id'),
-  landingUrl: text('landing_url'),
-  startDate: timestamp('start_date').notNull(),
-  endDate: timestamp('end_date').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('preparing'),
-  paidAmount: integer('paid_amount').notNull().default(0),
-  expiresAt: timestamp('expires_at'),
-  // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
-  pausedBy: varchar('paused_by', { length: 10 }),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-export const orders = pgTable('orders', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  applicationId: uuid('application_id').references(() => applications.id),
-  adId: uuid('ad_id').references(() => ads.id),
-  // 디자인 상품 코드(design-products.catalog.ts의 code: poster | opening_video | key_visual_10 등). 광고/챌린지 신청 주문이면 null.
-  designProduct: varchar('design_product', { length: 30 }),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id),
-  amount: integer('amount').notNull(),
-  status: varchar('status', { length: 20 }).notNull().default('pending'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const ads = pgTable(
+  'ads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    adNumber: serial('ad_number').notNull(),
+    businessId: uuid('business_id')
+      .notNull()
+      .references(() => businesses.id),
+    productId: varchar('product_id', { length: 50 })
+      .notNull()
+      .references(() => adProducts.id),
+    title: varchar('title', { length: 200 }).notNull(),
+    imageFileId: uuid('image_file_id'),
+    landingUrl: text('landing_url'),
+    startDate: timestamp('start_date').notNull(),
+    endDate: timestamp('end_date').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('preparing'),
+    paidAmount: integer('paid_amount').notNull().default(0),
+    expiresAt: timestamp('expires_at'),
+    // 일시정지 주체: owner | admin. admin 정지는 기업이 재개할 수 없다. 정지 상태가 아니면 null.
+    pausedBy: varchar('paused_by', { length: 10 }),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('ads_business_id_idx').on(table.businessId),
+    index('ads_product_id_idx').on(table.productId),
+  ],
+);
+export const orders = pgTable(
+  'orders',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    applicationId: uuid('application_id').references(() => applications.id),
+    adId: uuid('ad_id').references(() => ads.id),
+    // 디자인 상품 코드(design-products.catalog.ts의 code: poster | opening_video | key_visual_10 등). 광고/챌린지 신청 주문이면 null.
+    designProduct: varchar('design_product', { length: 30 }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id),
+    amount: integer('amount').notNull(),
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (table) => [
+    index('orders_application_id_idx').on(table.applicationId),
+    index('orders_ad_id_idx').on(table.adId),
+    index('orders_user_id_idx').on(table.userId),
+  ],
+);
 export const payments = pgTable(
   'payments',
   {

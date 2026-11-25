@@ -322,6 +322,13 @@
       "when": 1793752381843,
       "tag": "0046_payments_provider_key_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795591372000,
+      "tag": "0047_core_foreign_key_indexes",
+      "breakpoints": true
     }
   ]
 }
