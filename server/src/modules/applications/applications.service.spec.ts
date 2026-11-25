@@ -34,6 +34,7 @@ function createDbStub(options: {
     ...options.challenge,
   };
   const limit = vi.fn();
+  const challengeLock = vi.fn().mockResolvedValue(challenge ? [challenge] : []);
   const selectFrom = vi.fn((table: unknown) => ({
     where: vi.fn((condition: any) => {
       if (table === files) {
@@ -44,8 +45,7 @@ function createDbStub(options: {
         return Promise.resolve(options.ownedFiles ?? []);
       }
       if (table === challenges) {
-        limit.mockResolvedValue(challenge ? [challenge] : []);
-        return { limit };
+        return { limit: vi.fn(() => ({ for: challengeLock })) };
       }
       if (table === applications) {
         limit.mockResolvedValue(options.existingApplication ? [options.existingApplication] : []);
@@ -79,7 +79,7 @@ function createDbStub(options: {
     }),
   }));
 
-  const db: any = { select, insert, values };
+  const db: any = { select, insert, values, challengeLock };
   db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
   return db;
 }
@@ -277,6 +277,18 @@ describe('ApplicationsService.apply', () => {
     const notifications = { create: vi.fn() };
     await new ApplicationsService(db, notifications as never).apply(dto, 'user-1');
     expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('locks the challenge row before checking duplicates and capacity', async () => {
+    const db = createDbStub({
+      challenge: { id: 'challenge-1', price: 0, title: 'Locked', capacity: 2 },
+      application: { id: 'app-1' },
+    });
+    await new ApplicationsService(db, { create: vi.fn() } as never).apply(dto, 'user-1');
+    expect(db.challengeLock).toHaveBeenCalledWith('no key update');
+    expect(db.challengeLock.mock.invocationCallOrder[0]).toBeLessThan(
+      db.insert.mock.invocationCallOrder[0],
+    );
   });
 
   it('accepts a new application while seats remain', async () => {
