@@ -723,4 +723,21 @@ describe('0047_core_foreign_key_indexes migration', () => {
       );
     }
   });
+
+  it.each([
+    ['businesses', 'owner_user_id', schema.businesses],
+    ['challenges', 'business_id', schema.challenges],
+    ['verifications', 'business_id', schema.verifications],
+    ['team_members', 'user_id', schema.teamMembers],
+    ['bookmarks', 'challenge_id', schema.bookmarks],
+  ])('indexes %s.%s in both the schema and the migration', (name, column, table) => {
+    const indexedColumns = getTableConfig(table).indexes.map(
+      (index) => (index.config.columns[0] as { name: string }).name,
+    );
+
+    expect(indexedColumns).toContain(column);
+    expect(sql()).toContain(
+      `CREATE INDEX IF NOT EXISTS "${name}_${column}_idx" ON "${name}" ("${column}");`,
+    );
+  });
 });
