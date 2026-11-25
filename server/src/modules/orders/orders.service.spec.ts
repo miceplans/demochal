@@ -1,7 +1,7 @@
 import { ConflictException, NotFoundException } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ads } from '../../db/schema.js';
+import { ads, applications, challenges, orders } from '../../db/schema.js';
 import { OrdersService } from './orders.service.js';
 
 /** Chainable drizzle stub for the select().from().where().for('update') / update().set().where().returning() shapes. */
@@ -242,5 +242,57 @@ describe('OrdersService.settleOrderPaid — ad reservation TTL', () => {
     expect(ordersUpdateSet).toHaveBeenCalledWith({ status: 'paid' });
     expect(adsUpdateSet).toHaveBeenCalledWith({ status: 'active' });
     expect(result).toEqual({ id: 'order-1', status: 'paid', adId: 'ad-1' });
+  });
+});
+
+describe('OrdersService.settleOrderPaid — challenge capacity', () => {
+  function createCapacityDb(capacity: number | null, acceptedOthers: number) {
+    const challengeLock = vi.fn().mockResolvedValue([{ capacity }]);
+    const set = vi.fn(() => ({
+      where: vi.fn(() => ({
+        returning: vi.fn().mockResolvedValue([{ id: 'order-1', status: 'paid', userId: 'user-1' }]),
+      })),
+    }));
+    const select = vi.fn((fields?: Record<string, unknown>) => ({
+      from: vi.fn((table: unknown) => ({
+        where: vi.fn(() => {
+          if (table === orders) {
+            return {
+              for: vi
+                .fn()
+                .mockResolvedValue([{ id: 'order-1', status: 'pending', applicationId: 'app-1' }]),
+            };
+          }
+          if (table === challenges) return { limit: vi.fn(() => ({ for: challengeLock })) };
+          if (table === applications && fields && 'total' in fields) {
+            return Promise.resolve([{ total: acceptedOthers }]);
+          }
+          return { limit: vi.fn().mockResolvedValue([{ challengeId: 'challenge-1' }]) };
+        }),
+      })),
+    }));
+    const db: any = { select, update: vi.fn(() => ({ set })) };
+    db.transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db));
+    return { db, set, challengeLock };
+  }
+
+  it('rejects settling a paid application once the capacity is filled', async () => {
+    const { db, set, challengeLock } = createCapacityDb(2, 2);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
+
+    await expect(service.markPaid('order-1')).rejects.toThrow(ConflictException);
+    expect(challengeLock).toHaveBeenCalledWith('no key update');
+    expect(set).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a seat remains', 2, 1],
+    ['the challenge has no capacity', null, 99],
+  ])('settles when %s', async (_label, capacity, others) => {
+    const { db, set } = createCapacityDb(capacity, others);
+    const service = new OrdersService(db, { create: vi.fn() } as never);
+
+    await service.markPaid('order-1');
+    expect(set).toHaveBeenCalledWith({ status: 'paid' });
   });
 });

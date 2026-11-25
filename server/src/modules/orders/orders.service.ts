@@ -1,8 +1,9 @@
 import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { and, eq } from 'drizzle-orm';
+import { and, count, eq, ne } from 'drizzle-orm';
 import { DRIZZLE, type Database, type DbTx } from '../../db/drizzle.provider.js';
 import { ads, applications, challenges, orders } from '../../db/schema.js';
 import { adToday } from '../ads/ad-period.js';
+import { effectiveApplicationCondition } from '../applications/effective-application.js';
 import { NotificationsService } from '../notifications/notifications.service.js';
 
 @Injectable()
@@ -48,6 +49,7 @@ export class OrdersService {
         throw new ConflictException('결제 마감 시간이 지난 광고 예약입니다.');
       }
     }
+    if (existing.applicationId) await this.assertSeatAvailable(tx, existing.applicationId);
     const [order] = await tx
       .update(orders)
       .set({ status: 'paid' })
@@ -77,6 +79,40 @@ export class OrdersService {
     }
 
     return order;
+  }
+
+  /**
+   * 유료 신청은 신청 시점이 아니라 결제 확정 시점에 정원을 차지하므로 여기서 다시 확인한다.
+   * ApplicationsService.apply와 같은 공고 row를 잠가 동시 결제·무료 신청과 직렬화하고,
+   * ConflictException으로 PaymentsService의 자동 환불을 유도한다(광고 예약 만료와 같은 계약).
+   */
+  private async assertSeatAvailable(tx: DbTx, applicationId: string) {
+    const [application] = await tx
+      .select({ challengeId: applications.challengeId })
+      .from(applications)
+      .where(eq(applications.id, applicationId))
+      .limit(1);
+    if (!application) return;
+    const [challenge] = await tx
+      .select({ capacity: challenges.capacity })
+      .from(challenges)
+      .where(eq(challenges.id, application.challengeId))
+      .limit(1)
+      .for('no key update');
+    if (challenge?.capacity === null || challenge?.capacity === undefined) return;
+    const [accepted] = await tx
+      .select({ total: count() })
+      .from(applications)
+      .where(
+        and(
+          eq(applications.challengeId, application.challengeId),
+          ne(applications.id, applicationId),
+          effectiveApplicationCondition,
+        ),
+      );
+    if (Number(accepted?.total ?? 0) >= challenge.capacity) {
+      throw new ConflictException('모집 정원이 마감된 챌린지입니다.');
+    }
   }
 
   async markCancelled(id: string) {

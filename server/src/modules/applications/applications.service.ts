@@ -45,7 +45,10 @@ export class ApplicationsService {
         })
         .from(challenges)
         .where(eq(challenges.id, dto.challengeId))
-        .limit(1);
+        .limit(1)
+        // 같은 공고의 신청을 직렬화한다 — 아래 중복·정원 검사와 INSERT 사이에 다른 신청이
+        // 끼어들지 못한다. FK 검사(KEY SHARE)는 막지 않도록 NO KEY UPDATE를 쓴다.
+        .for('no key update');
       if (!challenge) throw new NotFoundException('챌린지를 찾을 수 없습니다.');
       // Private visibility is a hard access boundary, including retries that
       // would otherwise reuse or replace a pending payment order.
