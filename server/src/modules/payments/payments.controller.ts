@@ -10,7 +10,12 @@ import { env } from '../../config/env.js';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 import { KcpConfirmDto } from './dto/kcp-confirm.dto.js';
 import { KcpRegisterDto } from './dto/kcp-register.dto.js';
-import { assertPaymentsEnabled, assertTossPaymentsEnabled } from './payments-enabled.js';
+import {
+  assertKcpPaymentsEnabled,
+  assertPaymentsEnabled,
+  assertTossPaymentsEnabled,
+  isKcpPaymentsEnabled,
+} from './payments-enabled.js';
 import { PaymentsService, type TossWebhookPayload } from './payments.service.js';
 
 @Controller('payments')
@@ -34,7 +39,7 @@ export class PaymentsController {
   @Post('kcp/register')
   @HttpCode(200)
   async registerKcp(@Body() dto: KcpRegisterDto, @CurrentUser() user: AuthenticatedUser) {
-    assertPaymentsEnabled();
+    assertKcpPaymentsEnabled();
     return this.paymentsService.registerKcpTransaction(user.id, dto);
   }
 
@@ -43,7 +48,7 @@ export class PaymentsController {
   @Post('kcp/confirm')
   @HttpCode(200)
   async confirmKcp(@Body() dto: KcpConfirmDto, @CurrentUser() user: AuthenticatedUser) {
-    assertPaymentsEnabled();
+    assertKcpPaymentsEnabled();
     return this.paymentsService.confirmKcpPayment(user.id, dto);
   }
 
@@ -59,7 +64,7 @@ export class PaymentsController {
   @Throttle(TOSS_WEBHOOK_THROTTLE)
   async handleKcpMobileReturn(@Body() body: Record<string, string>) {
     // 브라우저가 전체 페이지로 도착하는 공개 엔드포인트라 예외 대신 실패 결과로 돌려준다.
-    if (!env.paymentsEnabled) return { outcome: 'failed' as const, code: 'payments_disabled' };
+    if (!isKcpPaymentsEnabled()) return { outcome: 'failed' as const, code: 'payments_disabled' };
     return this.paymentsService.handleKcpMobileReturn(body);
   }
 

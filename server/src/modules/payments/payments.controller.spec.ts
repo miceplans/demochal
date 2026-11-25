@@ -268,3 +268,92 @@ describe('PaymentsController — PAYMENTS_ENABLED=false', () => {
     expect(paymentsService.handleTossWebhook).toHaveBeenCalledWith(payload);
   });
 });
+
+describe('PaymentsController — production requires live credentials', () => {
+  const original = {
+    nodeEnv: env.nodeEnv,
+    tossSecretKey: env.tossSecretKey,
+    kcpProduction: env.kcpProduction,
+  };
+  const user = { id: 'user-1' } as never;
+  const tossDto = { orderId: 'o', paymentKey: 'k', amount: 1000 } as never;
+  const kcpDto = { orderId: 'o', encData: 'e', encInfo: 'i' } as never;
+
+  function create() {
+    const paymentsService = {
+      confirmPayment: vi.fn(),
+      registerKcpTransaction: vi.fn(),
+      confirmKcpPayment: vi.fn(),
+      handleKcpMobileReturn: vi.fn().mockResolvedValue({ outcome: 'success' }),
+      handleTossWebhook: vi.fn().mockResolvedValue(undefined),
+    };
+    return {
+      paymentsService,
+      controller: new PaymentsController(paymentsService as unknown as PaymentsService),
+    };
+  }
+
+  afterEach(() => {
+    Object.assign(env, original, { paymentsEnabled: true, tossPaymentsEnabled: false });
+  });
+
+  it.each([
+    ['PAYMENTS_ENABLED', true, false],
+    ['TOSS_PAYMENTS_ENABLED', false, true],
+  ])('rejects Toss test keys opened by %s', async (_label, paymentsEnabled, tossOnly) => {
+    Object.assign(env, {
+      nodeEnv: 'production',
+      tossSecretKey: 'test_sk_x',
+      paymentsEnabled,
+      tossPaymentsEnabled: tossOnly,
+    });
+    const { controller, paymentsService } = create();
+
+    await expect(controller.confirm(tossDto, user)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    expect(paymentsService.confirmPayment).not.toHaveBeenCalled();
+  });
+
+  it('allows Toss live keys in production and test keys elsewhere', async () => {
+    const { controller, paymentsService } = create();
+    Object.assign(env, { nodeEnv: 'production', tossSecretKey: 'live_sk_x' });
+    await controller.confirm(tossDto, user);
+    Object.assign(env, { nodeEnv: 'development', tossSecretKey: 'test_sk_x' });
+    await controller.confirm(tossDto, user);
+    expect(paymentsService.confirmPayment).toHaveBeenCalledTimes(2);
+  });
+
+  it('blocks every KCP entry point in production test mode', async () => {
+    Object.assign(env, { nodeEnv: 'production', kcpProduction: false, paymentsEnabled: true });
+    const { controller, paymentsService } = create();
+
+    await expect(
+      controller.registerKcp({ orderId: 'o', orderName: 'n', flow: 'ad' }, user),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(controller.confirmKcp(kcpDto, user)).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+    await expect(controller.handleKcpMobileReturn({})).resolves.toEqual({
+      outcome: 'failed',
+      code: 'payments_disabled',
+    });
+    expect(paymentsService.confirmKcpPayment).not.toHaveBeenCalled();
+    expect(paymentsService.handleKcpMobileReturn).not.toHaveBeenCalled();
+  });
+
+  it('allows KCP once it runs in production mode', async () => {
+    Object.assign(env, { nodeEnv: 'production', kcpProduction: true, paymentsEnabled: true });
+    const { controller, paymentsService } = create();
+    await controller.confirmKcp(kcpDto, user);
+    expect(paymentsService.confirmKcpPayment).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps accepting webhooks regardless of the credentials', async () => {
+    Object.assign(env, { nodeEnv: 'production', tossSecretKey: 'test_sk_x' });
+    const { controller } = create();
+    await expect(
+      controller.handleTossWebhook(payload, requestFrom('203.0.113.10')),
+    ).resolves.toEqual({ received: true });
+  });
+});
