@@ -8,9 +8,9 @@ import { LoadingState } from '@/components/common/LoadingState';
 import { useToast } from '@/components/common/Toast';
 import { requestBizPayment } from '@/lib/payments';
 import {
+  isBizPaymentEnabled,
   PAYMENTS_DISABLED_DESCRIPTION,
   PAYMENTS_DISABLED_TITLE,
-  PAYMENTS_ENABLED,
 } from '@/lib/payments-gate';
 import { apiErrorMessage } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
@@ -26,7 +26,7 @@ export function BizDesignProductsPage() {
 
   const buy = async (code: (typeof products)[number]['code']) => {
     if (buyingCode) return;
-    if (!PAYMENTS_ENABLED) {
+    if (!isBizPaymentEnabled()) {
       toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
       return;
     }

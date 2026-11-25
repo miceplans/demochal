@@ -382,6 +382,7 @@ locals {
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
     { name = "DATABASE_SSL_CA_PATH", value = "/app/certs/global-bundle.pem" },
     { name = "KCP_PRODUCTION", value = "false" },
+    { name = "TOSS_PAYMENTS_ENABLED", value = tostring(var.toss_payments_enabled) },
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
     { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url },
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },

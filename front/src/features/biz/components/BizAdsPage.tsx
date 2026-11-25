@@ -28,9 +28,9 @@ import { adDays, adPaymentAmount, extractErrorMessage, formatSlash } from './Biz
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestBizPayment } from '@/lib/payments';
 import {
+  isBizPaymentEnabled,
   PAYMENTS_DISABLED_DESCRIPTION,
   PAYMENTS_DISABLED_TITLE,
-  PAYMENTS_ENABLED,
 } from '@/lib/payments-gate';
 import { adApi } from '@/lib/ad-api';
 import {
@@ -352,7 +352,7 @@ export function BizAdsPage() {
   };
   const submitReservation = async () => {
     if (!selectedAd || submitting) return;
-    if (!PAYMENTS_ENABLED) {
+    if (!isBizPaymentEnabled()) {
       toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
       return;
     }

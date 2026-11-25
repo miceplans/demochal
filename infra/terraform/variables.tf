@@ -155,6 +155,12 @@ variable "worker_desired_count" {
   }
 }
 
+variable "toss_payments_enabled" {
+  description = "Temporarily open Toss one-off payment confirmation while PAYMENTS_ENABLED stays off."
+  type        = bool
+  default     = false
+}
+
 variable "enable_runtime" {
   description = "Enable ECS services only after images and the app secret JSON have been provisioned."
   type        = bool

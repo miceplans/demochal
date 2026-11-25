@@ -7,3 +7,8 @@ export const PAYMENTS_DISABLED_MESSAGE = '결제 기능을 일시 중단했어�
 export function assertPaymentsEnabled(): void {
   if (!env.paymentsEnabled) throw new ServiceUnavailableException(PAYMENTS_DISABLED_MESSAGE);
 }
+
+/** 토스 단건 결제 승인용. 전체 스위치가 꺼져 있어도 TOSS_PAYMENTS_ENABLED(임시)가 true면 연다. */
+export function assertTossPaymentsEnabled(): void {
+  if (!env.tossPaymentsEnabled) assertPaymentsEnabled();
+}

@@ -13,7 +13,7 @@ import { requestTossPayment } from '@/lib/payments';
 import {
   PAYMENTS_DISABLED_DESCRIPTION,
   PAYMENTS_DISABLED_TITLE,
-  PAYMENTS_ENABLED,
+  TOSS_PAYMENTS_ENABLED,
 } from '@/lib/payments-gate';
 import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
@@ -160,7 +160,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
         return;
       }
       pendingOrderId = result.order.id;
-      if (!PAYMENTS_ENABLED) {
+      if (!TOSS_PAYMENTS_ENABLED) {
         await cancelPendingOrder();
         toast.error(PAYMENTS_DISABLED_TITLE, PAYMENTS_DISABLED_DESCRIPTION);
         return;

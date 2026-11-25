@@ -10,7 +10,7 @@ import { env } from '../../config/env.js';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto.js';
 import { KcpConfirmDto } from './dto/kcp-confirm.dto.js';
 import { KcpRegisterDto } from './dto/kcp-register.dto.js';
-import { assertPaymentsEnabled } from './payments-enabled.js';
+import { assertPaymentsEnabled, assertTossPaymentsEnabled } from './payments-enabled.js';
 import { PaymentsService, type TossWebhookPayload } from './payments.service.js';
 
 @Controller('payments')
@@ -23,7 +23,9 @@ export class PaymentsController {
   @Post('confirm')
   @HttpCode(200)
   async confirm(@Body() dto: ConfirmPaymentDto, @CurrentUser() user: AuthenticatedUser) {
-    assertPaymentsEnabled();
+    // TOSS_PAYMENTS_ENABLED는 토스만 연다 — 같은 엔드포인트를 쓰는 네이버페이는 전체 스위치를 따른다.
+    if (dto.provider === 'naverpay') assertPaymentsEnabled();
+    else assertTossPaymentsEnabled();
     return this.paymentsService.confirmPayment(user.id, dto);
   }
 
