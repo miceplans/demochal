@@ -1,5 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
 import { BizApplicationFormPage } from './BizApplicationFormPage';
@@ -272,6 +273,24 @@ describe('BizApplicationFormPage draft', () => {
     render(<BizApplicationFormPage />);
     expect(screen.getByLabelText('질문 1 내용')).toHaveProperty('value', '수정된 질문');
     expect(optionValues(1, 3)).toEqual(['옵션 1', '옵션 2', '옵션 3']);
+  });
+
+  it('keeps the server prerender pristine when a draft exists, then restores on mount', async () => {
+    const first = render(<BizApplicationFormPage />);
+    fireEvent.change(screen.getByLabelText('질문 1 내용'), { target: { value: '수정된 질문' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('수정된 질문'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    // SSR(renderToString)은 localStorage 없이 렌더하므로 순정 값이어야 hydration이 어긋나지 않는다.
+    const html = renderToString(<BizApplicationFormPage />);
+    expect(html).not.toContain('수정된 질문');
+    expect(html).toContain('지원 포지션');
+
+    // 클라이언트 마운트 뒤에는 effect가 초안을 복원한다.
+    render(<BizApplicationFormPage />);
+    expect(screen.getByLabelText('질문 1 내용')).toHaveProperty('value', '수정된 질문');
   });
 
   it('leaves no draft when the builder is untouched', async () => {

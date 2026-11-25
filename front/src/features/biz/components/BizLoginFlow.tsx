@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -92,25 +92,44 @@ export function BizSignupFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
-  // 마운트 시 한 번만 초안을 읽어 각 state의 lazy initializer로 복원한다.
-  const [draft] = useState(() => readFormDraft<SignupDraft>(SIGNUP_DRAFT_KEY, isSignupDraft));
-  const [step, setStep] = useState(draft?.step ?? 0);
-  const [agreed, setAgreed] = useState<AgreementKey[]>(draft?.agreed ?? []);
+  // SSR 프리렌더와 클라이언트 hydration 렌더가 일치하도록 모든 state는 pristine으로 시작하고,
+  // 초안은 마운트 effect에서 복원한다.
+  const [step, setStep] = useState(0);
+  const [agreed, setAgreed] = useState<AgreementKey[]>([]);
   const [account, setAccount] = useState({
-    name: draft?.accountName ?? '',
-    email: draft?.accountEmail ?? '',
+    name: '',
+    email: '',
     // 비밀번호는 초안에 저장하지 않으므로 항상 빈 값에서 시작한다.
     password: '',
     passwordConfirm: '',
   });
-  const [org, setOrg] = useState(draft?.org ?? EMPTY_ORG);
-  const [orgType, setOrgType] = useState<OrgType>(draft?.orgType ?? '기업');
+  const [org, setOrg] = useState(EMPTY_ORG);
+  const [orgType, setOrgType] = useState<OrgType>('기업');
   const [submitting, setSubmitting] = useState(false);
   // 가입 완료 후에는 초안 저장기를 멈춰, 남아 있는 디바운스가 지워진 초안을 다시 쓰지 않게 한다.
   const [completed, setCompleted] = useState(false);
+  // 초안 복원이 끝나기 전에는 저장기를 렌더링하지 않는다 — 복원 전 pristine 값으로 저장된
+  // 초안을 지우거나 덮어쓰는 것을 막는다.
+  const [restored, setRestored] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
   const [registered, setRegistered] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  // 마운트 시 한 번만 초안을 읽어 복원한다 — hydration 일치를 위해 렌더가 아니라 effect에서 적용한다.
+  useEffect(() => {
+    const draft = readFormDraft<SignupDraft>(SIGNUP_DRAFT_KEY, isSignupDraft);
+    if (draft) {
+      // localStorage(외부 시스템)에서 읽은 초안을 hydration 이후 한 번만 동기화한다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStep(draft.step);
+      setAgreed(draft.agreed);
+      // 비밀번호는 초안에 없으므로 이름·이메일만 복원한다.
+      setAccount((prev) => ({ ...prev, name: draft.accountName, email: draft.accountEmail }));
+      setOrg(draft.org);
+      setOrgType(draft.orgType);
+    }
+    setRestored(true);
+  }, []);
 
   // 비밀번호는 절대 초안에 포함하지 않는다 — 저장할 필드를 하나씩 골라 객체를 만든다.
   const draftValue = useMemo<SignupDraft>(
@@ -233,7 +252,7 @@ export function BizSignupFlow() {
   return (
     <Wrap>
       {BizGlobalStyles}
-      {!completed ? (
+      {restored && !completed ? (
         <DraftSaver
           draftKey={SIGNUP_DRAFT_KEY}
           value={draftValue}

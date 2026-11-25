@@ -65,6 +65,8 @@ export function BizProfileEditPage() {
   const [logoImage, setLogoImage] = useState<UploadedImage | null>(null);
   const [uploading, setUploading] = useState<ImageKind | null>(null);
   const [saveError, setSaveError] = useState(false);
+  // 저장 성공 후에는 초안 저장기를 멈춰, 남아 있는 디바운스가 지워진 초안을 다시 쓰지 않게 한다.
+  const [saved, setSaved] = useState(false);
   const previewUrls = useRef(new Set<string>());
 
   const existingBannerUrl = useExistingImageUrl(business?.bannerImageFileId);
@@ -144,13 +146,6 @@ export function BizProfileEditPage() {
       mapLongitude: mapCoords.longitude,
     }),
     [form, mapCoords],
-  );
-  // business가 로드되기 전에 빈 폼이 저장된 초안을 덮어쓰지 않도록, 초기화 전에는 임시 키로
-  // 돌리고 baseline을 현재 값으로 둬 저장된 초안을 건드리지 않게 한다.
-  useFormDraftSaver(
-    initialized && business ? `biz-profile:${business.id}` : 'biz-profile:pending',
-    draftValue,
-    { baseline: initialized ? serverBaseline : draftValue },
   );
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
@@ -261,7 +256,8 @@ export function BizProfileEditPage() {
           ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
         },
       });
-      // 저장에 성공했으므로 초안을 지운다.
+      // 저장에 성공했으므로 초안을 지우고 저장기를 멈춘다.
+      setSaved(true);
       clearFormDraft(`biz-profile:${business.id}`);
       await queryClient.invalidateQueries({ queryKey: generated.getFindMyBusinessQueryKey() });
       window.location.href = hrefOf('/profile');
@@ -305,6 +301,14 @@ export function BizProfileEditPage() {
     );
   return (
     <BizContent style={{ gap: 32 }}>
+      {/* business 로드·초안 복원 전에는 저장기를 렌더링하지 않는다 — 빈 폼이 초안을 덮어쓰는 것을 막는다. */}
+      {initialized && business && !saved ? (
+        <DraftSaver
+          draftKey={`biz-profile:${business.id}`}
+          value={draftValue}
+          baseline={serverBaseline}
+        />
+      ) : null}
       <Actions>
         <OutlineButton type="button" onClick={() => (window.location.href = hrefOf('/profile'))}>
           취소
@@ -393,6 +397,20 @@ export function BizProfileEditPage() {
       {saveError && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
+}
+
+/** useFormDraftSaver를 조건에 따라 끄기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
 }
 
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });

@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { ThemeProvider } from '@emotion/react';
@@ -73,6 +74,32 @@ describe('BizInquiryForm', () => {
 
     expect((screen.getByLabelText('성함') as HTMLInputElement).value).toBe('홍길동');
     expect((screen.getByLabelText('연락처') as HTMLInputElement).value).toBe('010-1234-5678');
+    expect((screen.getByLabelText('문의내용') as HTMLTextAreaElement).value).toBe(
+      '견적이 궁금합니다.',
+    );
+  });
+
+  it('서버 프리렌더는 초안이 있어도 pristine HTML을 만들고, 클라이언트에서 effect 후 복원된다', () => {
+    localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        value: { name: '홍길동', contact: '010-1234-5678', content: '견적이 궁금합니다.' },
+        savedAt: Date.now(),
+      }),
+    );
+
+    // 서버 프리렌더는 localStorage를 읽지 않으므로 hydration mismatch가 없어야 한다.
+    const html = renderToString(
+      <ThemeProvider theme={theme}>
+        <BizInquiryForm />
+      </ThemeProvider>,
+    );
+    expect(html).not.toContain('홍길동');
+    expect(html).not.toContain('견적이 궁금합니다.');
+
+    // 클라이언트 렌더에서는 마운트 effect 이후 초안이 적용된다.
+    renderForm();
+    expect((screen.getByLabelText('성함') as HTMLInputElement).value).toBe('홍길동');
     expect((screen.getByLabelText('문의내용') as HTMLTextAreaElement).value).toBe(
       '견적이 궁금합니다.',
     );

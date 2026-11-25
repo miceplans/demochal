@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -349,6 +350,46 @@ describe('BizSignupFlow', () => {
 
   describe('form draft', () => {
     const DRAFT_KEY = 'semochal:form-draft:v1:biz-signup';
+
+    it('server-renders pristine HTML even with a stored draft, then applies it on the client', () => {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          value: {
+            step: 2,
+            agreed: ['terms', 'privacy', 'business'],
+            accountName: '기업 담당자',
+            accountEmail: 'biz@semochal.kr',
+            org: {
+              name: '세모컴퍼니',
+              registrationNumber: '618-12-34567',
+              phone: '02-1234-5678',
+              email: 'contact@semochal.kr',
+            },
+            orgType: '기업',
+          },
+          savedAt: Date.now(),
+        }),
+      );
+
+      // 서버 프리렌더는 localStorage를 읽지 않으므로 초안이 있어도 항상 pristine(1단계) HTML이어야 한다.
+      const html = renderToString(
+        <ThemeProvider theme={theme}>
+          <BizSignupFlow />
+        </ThemeProvider>,
+      );
+      expect(html).not.toContain('biz@semochal.kr');
+      expect(html).not.toContain('세모컴퍼니');
+      expect(html).toContain('type="checkbox"');
+      expect(html).not.toContain('name="orgName"');
+
+      // 클라이언트 렌더에서는 마운트 effect 이후 초안이 적용된다.
+      renderSignup();
+      expect(screen.getByLabelText('기관 정보')).not.toBeNull();
+      expect((document.querySelector('input[name="orgName"]') as HTMLInputElement).value).toBe(
+        '세모컴퍼니',
+      );
+    });
 
     it('restores typed account and org fields after unmount and remount', async () => {
       const user = userEvent.setup();

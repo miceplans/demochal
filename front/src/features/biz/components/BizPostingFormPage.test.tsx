@@ -1,5 +1,6 @@
 import { ThemeProvider } from '@emotion/react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
 import { BizPostingEditPage, BizPostingFormPage, normalizeFontTags } from './BizPostingFormPage';
@@ -806,6 +807,27 @@ describe('BizPostingFormPage', () => {
     expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe(
       'https://cdn.example/thumb.webp',
     );
+  });
+
+  it('저장된 초안이 있어도 서버 프리렌더는 순정 폼을 렌더하고 마운트 뒤 복원한다', async () => {
+    const first = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '초안 제목' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    // SSR(renderToString)은 localStorage 없이 렌더하므로 순정 값이어야 hydration이 어긋나지 않는다.
+    const html = renderToString(
+      <ThemeProvider theme={theme}>
+        <BizPostingFormPage />
+      </ThemeProvider>,
+    );
+    expect(html).not.toContain('초안 제목');
+
+    // 클라이언트 마운트 뒤에는 effect가 초안을 복원한다.
+    renderForm();
+    expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '초안 제목');
   });
 
   describe('수정 페이지 초안', () => {

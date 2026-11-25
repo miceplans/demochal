@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
 import { useParams, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
@@ -346,12 +346,20 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
         }))
       : [blankQuestion()],
   );
-  // 초안이 있으면 공고 값 대신 초안으로 시작한다(마운트 시 한 번만).
-  const [questions, setQuestions] = useState<Question[]>(
-    () => readFormDraft(draftKey, isQuestionDraft) ?? initialQuestions,
-  );
+  // 초안이 있으면 마운트 뒤 effect에서 복원한다 — 렌더 중에 localStorage를 읽으면 서버 프리렌더(초안 없음)와
+  // 클라이언트 hydration(초안 있음)이 어긋나 hydration mismatch가 난다.
+  const [questions, setQuestions] = useState<Question[]>(initialQuestions);
   // 게시 성공 후에는 초안 저장기를 멈춰 지워진 초안이 디바운스 뒤 다시 저장되지 않게 한다.
   const [published, setPublished] = useState(false);
+  // 초안 복원 effect가 끝나기 전에는 초안 저장기를 띄우지 않아 복원 전 값으로 초안을 덮지 않게 한다.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const draft = readFormDraft(draftKey, isQuestionDraft);
+    // 마운트 1회 외부 저장소(localStorage) 동기화라 effect 안의 setState가 맞다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (draft) setQuestions(draft);
+    setRestored(true);
+  }, [draftKey]);
 
   const addQuestion = (type: QuestionType) => {
     setQuestions((qs) => [...qs, blankQuestion(type)]);
@@ -444,7 +452,7 @@ function ApplicationFormEditor({ id, challenge }: { id: string; challenge: Chall
 
   return (
     <Page>
-      {!published ? (
+      {restored && !published ? (
         <DraftSaver draftKey={draftKey} value={questions} baseline={initialQuestions} />
       ) : null}
       <Main>

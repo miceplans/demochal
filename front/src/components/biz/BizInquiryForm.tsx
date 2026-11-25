@@ -1,5 +1,5 @@
 'use client';
-import { useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
@@ -26,20 +26,35 @@ const isInquiryDraft = (value: unknown): value is InquiryDraft => {
 
 export function BizInquiryForm() {
   const toast = useToast();
-  // 마운트 시 한 번만 초안을 읽어 각 state의 lazy initializer로 복원한다.
-  const [draft] = useState(() => readFormDraft<InquiryDraft>(INQUIRY_DRAFT_KEY, isInquiryDraft));
-  const [name, setName] = useState(draft?.name ?? '');
-  const [contact, setContact] = useState(draft?.contact ?? '');
-  const [content, setContent] = useState(draft?.content ?? '');
+  // SSR 프리렌더와 클라이언트 hydration 렌더가 일치하도록 모든 state는 pristine으로 시작하고,
+  // 초안은 마운트 effect에서 복원한다.
+  const [name, setName] = useState('');
+  const [contact, setContact] = useState('');
+  const [content, setContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [status, setStatus] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<InquiryField, string>>>({});
+  // 초안 복원이 끝나기 전에는 저장기를 렌더링하지 않는다 — 복원 전 pristine 값으로 저장된
+  // 초안을 지우거나 덮어쓰는 것을 막는다.
+  const [restored, setRestored] = useState(false);
+
+  // 마운트 시 한 번만 초안을 읽어 복원한다 — hydration 일치를 위해 렌더가 아니라 effect에서 적용한다.
+  useEffect(() => {
+    const draft = readFormDraft<InquiryDraft>(INQUIRY_DRAFT_KEY, isInquiryDraft);
+    if (draft) {
+      // localStorage(외부 시스템)에서 읽은 초안을 hydration 이후 한 번만 동기화한다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setName(draft.name);
+      setContact(draft.contact);
+      setContent(draft.content);
+    }
+    setRestored(true);
+  }, []);
 
   const draftValue = useMemo<InquiryDraft>(
     () => ({ name, contact, content }),
     [name, contact, content],
   );
-  useFormDraftSaver(INQUIRY_DRAFT_KEY, draftValue, { baseline: EMPTY_INQUIRY });
 
   const clearFieldError = (field: InquiryField) => {
     setFieldErrors((current) => ({ ...current, [field]: undefined }));
@@ -106,6 +121,9 @@ export function BizInquiryForm() {
 
   return (
     <Wrap>
+      {restored ? (
+        <DraftSaver draftKey={INQUIRY_DRAFT_KEY} value={draftValue} baseline={EMPTY_INQUIRY} />
+      ) : null}
       <Form id="operations-inquiry" onSubmit={submitInquiry} noValidate>
         <FieldGroup>
           <FieldLabel htmlFor="op-name">성함</FieldLabel>
@@ -166,6 +184,20 @@ export function BizInquiryForm() {
       </Status>
     </Wrap>
   );
+}
+
+/** useFormDraftSaver를 조건에 따라 끄기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
 }
 
 const Wrap = styled.div({

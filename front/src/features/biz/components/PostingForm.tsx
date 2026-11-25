@@ -163,35 +163,6 @@ function isPostingDraft(value: unknown): value is PostingDraft {
   return true;
 }
 
-/** 초안을 폼 초기값에 합치기 위한 변환 — recruit를 서버 필드명(recruitMethod)으로 되돌린다. */
-function postingDraftToInput(draft: PostingDraft): Partial<PostingInput> {
-  return {
-    title: draft.title,
-    description: draft.description,
-    startDate: draft.startDate,
-    endDate: draft.endDate,
-    eventStartDate: draft.eventStartDate,
-    eventEndDate: draft.eventEndDate,
-    host: draft.host,
-    supervisor: draft.supervisor,
-    sponsor: draft.sponsor,
-    supporter: draft.supporter,
-    targetOther: draft.targetOther,
-    attachments: draft.attachments,
-    category: draft.category,
-    targets: draft.targets,
-    organizerType: draft.organizerType,
-    prizeAmount: draft.prizeAmount,
-    recruitMethod: draft.recruit === 'external' ? 'external' : 'seMOchall',
-    recruitUrl: draft.recruitUrl,
-    summary: draft.summary,
-    hashtags: draft.hashtags,
-    topics: draft.topics,
-    inquiryContact: draft.inquiryContact,
-    visibility: draft.visibility,
-  };
-}
-
 /**
  * 손대지 않은 폼이 초안을 남기지 않도록, 서버에서 온 초기값을 초안과 같은 모양으로 만든다.
  * 키 순서는 현재 값을 모으는 객체 리터럴과 같아야 JSON 비교가 성립한다.
@@ -240,7 +211,7 @@ function DraftSaver({
 }
 
 export function PostingForm({
-  initial: initialProp,
+  initial,
   draftKey,
   submitLabel,
   submittingLabel,
@@ -263,16 +234,8 @@ export function PostingForm({
   const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
-  // 초안 복원은 마운트 시 한 번만 — 이후 initial이 갱신돼도(수정 폼 리페치 등) 입력 중인 값을 덮지 않는다.
-  const [{ initial, draftPoster }] = useState(() => {
-    const draft = draftKey ? readFormDraft(draftKey, isPostingDraft) : null;
-    return {
-      initial: draft ? { ...initialProp, ...postingDraftToInput(draft) } : initialProp,
-      draftPoster: draft?.poster ?? null,
-    };
-  });
-  // 초안 저장의 baseline은 합치기 전 서버 값 — 그대로면 초안을 지운다.
-  const [draftBaseline] = useState(() => postingDraftBaseline(initialProp));
+  // 초안 저장의 baseline은 서버 초기값 — 폼이 그대로면 초안을 지운다.
+  const [draftBaseline] = useState(() => postingDraftBaseline(initial));
   const [title, setTitle] = useState(initial.title);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -299,16 +262,7 @@ export function PostingForm({
     thumbnailFileId: string;
     previewUrl: string;
     durableUrl: string | null;
-  } | null>(() =>
-    draftPoster
-      ? {
-          posterFileId: draftPoster.posterFileId,
-          thumbnailFileId: draftPoster.thumbnailFileId,
-          previewUrl: draftPoster.previewUrl ?? '',
-          durableUrl: draftPoster.previewUrl ?? null,
-        }
-      : null,
-  );
+  } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
   // OCR 자동 추천 위치 — 포스터를 고른 뒤 백그라운드 인식이 끝나면 늦게 세팅된다.
@@ -335,6 +289,8 @@ export function PostingForm({
   const [submitting, setSubmitting] = useState(false);
   // 제출 성공 후 초안 저장기를 멈추기 위한 표시 — 지워진 초안이 디바운스 뒤 다시 저장되지 않게 한다.
   const [submitted, setSubmitted] = useState(false);
+  // 초안 복원 effect가 끝났는지 — 끝나기 전에는 초안 저장기를 띄우지 않아 복원 전 값으로 초안을 덮지 않게 한다.
+  const [restored, setRestored] = useState(false);
   const [error, setError] = useState('');
   // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
@@ -377,6 +333,55 @@ export function PostingForm({
     if (isRichHtml(initial.description)) editor.innerHTML = sanitizeRichHtml(initial.description);
     else editor.innerText = initial.description;
   }, [initial.description]);
+
+  // 초안 복원은 마운트 뒤 effect에서 한 번만 — 렌더 중에 localStorage를 읽으면 서버 프리렌더(초안 없음)와
+  // 클라이언트 hydration(초안 있음)의 결과가 달라져 hydration mismatch가 난다.
+  // 위 [initial.description] effect보다 나중에 선언해 본문도 초안 값으로 덮어쓴다.
+  useEffect(() => {
+    const draft = draftKey ? readFormDraft(draftKey, isPostingDraft) : null;
+    if (draft) {
+      // 마운트 1회 외부 저장소(localStorage) 동기화라 effect 안의 setState가 맞다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTitle(draft.title);
+      setStartDate(draft.startDate);
+      setEndDate(draft.endDate);
+      setEventStartDate(draft.eventStartDate);
+      setEventEndDate(draft.eventEndDate);
+      setHost(draft.host);
+      setSupervisor(draft.supervisor);
+      setSponsor(draft.sponsor);
+      setSupporter(draft.supporter);
+      setTargetOther(draft.targetOther);
+      setAttachments(draft.attachments);
+      setCategory(draft.category);
+      setTargets(draft.targets);
+      setOrganizerType(draft.organizerType);
+      setPrizeAmount(draft.prizeAmount);
+      setRecruit(draft.recruit);
+      setRecruitUrl(draft.recruitUrl);
+      setSummary(draft.summary);
+      setHashtags(draft.hashtags);
+      setTopics(draft.topics);
+      setInquiryContact(draft.inquiryContact);
+      setVisibility(draft.visibility);
+      if (draft.poster) {
+        setPoster({
+          posterFileId: draft.poster.posterFileId,
+          thumbnailFileId: draft.poster.thumbnailFileId,
+          previewUrl: draft.poster.previewUrl ?? '',
+          durableUrl: draft.poster.previewUrl ?? null,
+        });
+      }
+      // 본문은 위 effect와 같은 경로(정화한 HTML 또는 평문)로 복원한다.
+      const editor = editorRef.current;
+      if (editor) {
+        if (isRichHtml(draft.description)) editor.innerHTML = sanitizeRichHtml(draft.description);
+        else editor.innerText = draft.description;
+      }
+      setDescriptionHtml(draft.description);
+    }
+    setRestored(true);
+  }, [draftKey]);
   const pendingPosterRef = useRef<CropImage | null>(null);
   useEffect(() => {
     // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
@@ -827,7 +832,7 @@ export function PostingForm({
   const radioIcon = (on: boolean) => `${ICON}/figma-radio-${on ? 'on' : 'off'}.svg`;
   return (
     <FormWrap ref={formRef}>
-      {draftKey && !submitted ? (
+      {draftKey && restored && !submitted ? (
         <DraftSaver draftKey={draftKey} value={draftValues} baseline={draftBaseline} />
       ) : null}
       <Uploader>

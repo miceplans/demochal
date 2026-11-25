@@ -310,6 +310,25 @@ describe('BizProfileEditPage', () => {
       await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
     });
 
+    it('저장 성공 후 디바운스가 남아 있어도 지워진 초안이 다시 생기지 않는다', async () => {
+      mocks.updateBusiness.mockResolvedValue({ status: 200, data: {} });
+      const user = userEvent.setup();
+      render(<BizProfileEditPage />);
+
+      // 마지막 입력의 디바운스(500ms)가 끝나기 전에 바로 저장한다.
+      fireEvent.change(screen.getByLabelText('기업명'), { target: { value: '바뀐 기업' } });
+      await user.click(screen.getByRole('button', { name: '저장' }));
+
+      await waitFor(() => expect(mocks.updateBusiness).toHaveBeenCalled());
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+
+      // 디바운스 시간이 지나도 지워진 초안이 다시 생기지 않는다.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      });
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
     it('저장 실패 시 초안을 지우지 않는다', async () => {
       mocks.updateBusiness.mockRejectedValue(new Error('save failed'));
       const user = userEvent.setup();
