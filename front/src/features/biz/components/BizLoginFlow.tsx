@@ -1,11 +1,12 @@
 'use client';
-import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { StepProgressBar } from '@/components/ui/StepProgressBar';
@@ -43,24 +44,105 @@ const formatRegistrationNumber = (value: string) => {
   return [d.slice(0, 3), d.slice(3, 5), d.slice(5)].filter(Boolean).join('-');
 };
 
+// 가입 초안은 계정 비밀번호를 절대 포함하지 않는다 — persisted 객체를 필드별로 직접 만들어
+// account state를 spread하는 일이 없도록 한다.
+type SignupDraft = {
+  step: number;
+  agreed: AgreementKey[];
+  accountName: string;
+  accountEmail: string;
+  org: { name: string; registrationNumber: string; phone: string; email: string };
+  orgType: OrgType;
+};
+
+const SIGNUP_DRAFT_KEY = 'biz-signup';
+const EMPTY_ORG = { name: '', registrationNumber: '', phone: '', email: '' };
+const SIGNUP_DRAFT_BASELINE: SignupDraft = {
+  step: 0,
+  agreed: [],
+  accountName: '',
+  accountEmail: '',
+  org: EMPTY_ORG,
+  orgType: '기업',
+};
+
+const isSignupDraft = (value: unknown): value is SignupDraft => {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  if (typeof v.step !== 'number' || v.step < 0 || v.step > 2) return false;
+  if (
+    !Array.isArray(v.agreed) ||
+    !v.agreed.every((a) => agreements.some((agreement) => agreement.value === a))
+  )
+    return false;
+  if (typeof v.accountName !== 'string' || typeof v.accountEmail !== 'string') return false;
+  if (!v.org || typeof v.org !== 'object') return false;
+  const org = v.org as Record<string, unknown>;
+  if (
+    typeof org.name !== 'string' ||
+    typeof org.registrationNumber !== 'string' ||
+    typeof org.phone !== 'string' ||
+    typeof org.email !== 'string'
+  )
+    return false;
+  return orgTypes.some((type) => type.value === v.orgType);
+};
+
 export function BizSignupFlow() {
   const router = useRouter();
   const hrefOf = useBizHref();
   const toast = useToast();
+  // SSR 프리렌더와 클라이언트 hydration 렌더가 일치하도록 모든 state는 pristine으로 시작하고,
+  // 초안은 마운트 effect에서 복원한다.
   const [step, setStep] = useState(0);
   const [agreed, setAgreed] = useState<AgreementKey[]>([]);
   const [account, setAccount] = useState({
     name: '',
     email: '',
+    // 비밀번호는 초안에 저장하지 않으므로 항상 빈 값에서 시작한다.
     password: '',
     passwordConfirm: '',
   });
-  const [org, setOrg] = useState({ name: '', registrationNumber: '', phone: '', email: '' });
+  const [org, setOrg] = useState(EMPTY_ORG);
   const [orgType, setOrgType] = useState<OrgType>('기업');
   const [submitting, setSubmitting] = useState(false);
+  // 가입 완료 후에는 초안 저장기를 멈춰, 남아 있는 디바운스가 지워진 초안을 다시 쓰지 않게 한다.
+  const [completed, setCompleted] = useState(false);
+  // 초안 복원이 끝나기 전에는 저장기를 렌더링하지 않는다 — 복원 전 pristine 값으로 저장된
+  // 초안을 지우거나 덮어쓰는 것을 막는다.
+  const [restored, setRestored] = useState(false);
   // 제출 도중 실패하면 다시 눌렀을 때 이미 끝난 단계(가입/기관 등록)를 건너뛴다.
   const [registered, setRegistered] = useState(false);
   const [businessId, setBusinessId] = useState<string | null>(null);
+
+  // 마운트 시 한 번만 초안을 읽어 복원한다 — hydration 일치를 위해 렌더가 아니라 effect에서 적용한다.
+  useEffect(() => {
+    const draft = readFormDraft<SignupDraft>(SIGNUP_DRAFT_KEY, isSignupDraft);
+    if (draft) {
+      // localStorage(외부 시스템)에서 읽은 초안을 hydration 이후 한 번만 동기화한다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStep(draft.step);
+      setAgreed(draft.agreed);
+      // 비밀번호는 초안에 없으므로 이름·이메일만 복원한다.
+      setAccount((prev) => ({ ...prev, name: draft.accountName, email: draft.accountEmail }));
+      setOrg(draft.org);
+      setOrgType(draft.orgType);
+    }
+    setRestored(true);
+  }, []);
+
+  // 비밀번호는 절대 초안에 포함하지 않는다 — 저장할 필드를 하나씩 골라 객체를 만든다.
+  const draftValue = useMemo<SignupDraft>(
+    () => ({
+      step,
+      agreed,
+      accountName: account.name,
+      accountEmail: account.email,
+      org,
+      orgType,
+    }),
+    [step, agreed, account.name, account.email, org, orgType],
+  );
 
   const toggle = (v: AgreementKey) =>
     setAgreed((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]));
@@ -99,6 +181,15 @@ export function BizSignupFlow() {
   };
 
   const submit = async () => {
+    // 초안 복원으로 기관 단계에 바로 진입한 경우 비밀번호는 복원되지 않으므로 계정 정보를 다시 확인한다.
+    if (!registered) {
+      const accountError = validateAccount();
+      if (accountError) {
+        toast.error(accountError);
+        setStep(1);
+        return;
+      }
+    }
     if (!businessId) {
       const error = validateOrg();
       if (error) {
@@ -139,6 +230,9 @@ export function BizSignupFlow() {
         lookupUnavailable = business.registrationLookupUnavailable === true;
         setBusinessId(business.id);
       }
+      // 가입이 모두 끝났으므로 초안을 지우고 저장기를 멈춘다.
+      setCompleted(true);
+      clearFormDraft(SIGNUP_DRAFT_KEY);
       toast.success(
         lookupUnavailable
           ? '가입이 완료됐어요. 사업자번호 조회는 일시적으로 이용할 수 없었어요.'
@@ -158,6 +252,13 @@ export function BizSignupFlow() {
   return (
     <Wrap>
       {BizGlobalStyles}
+      {restored && !completed ? (
+        <DraftSaver
+          draftKey={SIGNUP_DRAFT_KEY}
+          value={draftValue}
+          baseline={SIGNUP_DRAFT_BASELINE}
+        />
+      ) : null}
       <Card>
         <Content>
           <Header>
@@ -322,6 +423,20 @@ export function BizSignupFlow() {
       </Card>
     </Wrap>
   );
+}
+
+/** useFormDraftSaver를 조건에 따라 끄기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
 }
 
 function FormField({ label, children }: { label: string; children: ReactNode }) {

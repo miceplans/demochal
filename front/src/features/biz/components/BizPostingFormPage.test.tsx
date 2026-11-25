@@ -1,8 +1,9 @@
 import { ThemeProvider } from '@emotion/react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { theme } from '@/styles/theme';
-import { BizPostingFormPage, normalizeFontTags } from './BizPostingFormPage';
+import { BizPostingEditPage, BizPostingFormPage, normalizeFontTags } from './BizPostingFormPage';
 
 const renderForm = () =>
   render(
@@ -11,20 +12,35 @@ const renderForm = () =>
     </ThemeProvider>,
   );
 
+const renderEditPage = () =>
+  render(
+    <ThemeProvider theme={theme}>
+      <BizPostingEditPage />
+    </ThemeProvider>,
+  );
+
+// form-draft.ts의 PREFIX + BizPostingFormPage가 넘기는 키.
+const DRAFT_KEY = 'semochal:form-draft:v1:posting:new';
+// 수정 페이지 키 — 아래 next/navigation 모의의 useParams id('edit-1')와 맞춘다.
+const EDIT_DRAFT_KEY = 'semochal:form-draft:v1:posting:edit:edit-1';
+
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
+  update: vi.fn(),
   push: vi.fn(),
+  invalidateQueries: vi.fn(),
   requestUpload: vi.fn(),
   finalizeUpload: vi.fn(),
   fetchMock: vi.fn(),
   recommendPosterCrop: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
+  challenge: undefined as unknown as Record<string, unknown>,
 }));
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, back: vi.fn() }),
-  useParams: () => ({}),
+  useParams: () => ({ id: 'edit-1' }),
 }));
 vi.mock('@/components/biz/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -43,7 +59,17 @@ vi.mock('@/lib/ad-api', () => ({
 vi.mock('@semochal/api-client', () => ({
   generated: {
     useCreateChallenge: () => ({ mutateAsync: mocks.create }),
+    useGetMyChallenge: () => ({
+      data: { status: 200, data: mocks.challenge },
+      isPending: false,
+      refetch: vi.fn(),
+    }),
+    useUpdateChallenge: () => ({ mutateAsync: mocks.update }),
+    getGetMyChallengeQueryKey: (id: string) => ['my-challenge', id],
   },
+}));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ invalidateQueries: mocks.invalidateQueries }),
 }));
 // 실제 OCR 엔진(tesseract.js)이 테스트에서 돌지 않게 막고, 반환값으로 자동 추천 흐름을 제어한다.
 vi.mock('@/lib/poster-ocr', () => ({
@@ -76,8 +102,39 @@ async function fillRequired() {
   editor.innerHTML = '<p>내용</p>';
 }
 
+// 수정 페이지의 공고 조회 모의가 돌려주는 서버 값 — 초안이 서버 값 위에 합쳐지는지의 기준.
+const editChallenge = () => ({
+  title: '서버 제목',
+  description: '<p>서버 본문</p>',
+  price: 0,
+  startDate: '2026-11-01T00:00:00.000Z',
+  endDate: '2026-11-20T14:59:00.000Z',
+  eventStartDate: '2026-11-10',
+  eventEndDate: '2026-11-11',
+  host: '서버 주최',
+  supervisor: null,
+  sponsor: null,
+  supporter: null,
+  targetOther: null,
+  attachments: [],
+  category: '대회',
+  posterUrl: null,
+  targets: ['대학생'],
+  organizerType: null,
+  prizeAmount: null,
+  recruitMethod: 'seMOchall',
+  recruitUrl: null,
+  summary: '서버 요약',
+  hashtags: ['태그'],
+  topics: [],
+  inquiryContact: '',
+  visibility: 'public',
+});
+
 describe('BizPostingFormPage', () => {
   beforeEach(() => {
+    // 이전 테스트가 남긴 폼 초안이 복원되지 않게 지운다.
+    localStorage.clear();
     // jsdom에는 innerText가 없어 에디터 본문 검사가 동작하도록 textContent로 대신한다.
     Object.defineProperty(HTMLElement.prototype, 'innerText', {
       configurable: true,
@@ -91,6 +148,8 @@ describe('BizPostingFormPage', () => {
     // jsdom에는 scrollIntoView가 없어 검증 실패 스크롤 이동이 동작하도록 stub한다.
     Element.prototype.scrollIntoView = vi.fn();
     mocks.create.mockResolvedValue({ data: { id: 'ch-1' } });
+    mocks.update.mockResolvedValue({});
+    mocks.challenge = editChallenge();
     vi.stubGlobal('fetch', mocks.fetchMock);
     mocks.fetchMock.mockResolvedValue({ ok: true });
     mocks.requestUpload.mockImplementation((args: { purpose?: string }) =>
@@ -105,6 +164,7 @@ describe('BizPostingFormPage', () => {
   });
   afterEach(() => {
     cleanup();
+    localStorage.clear();
     vi.clearAllMocks();
     vi.unstubAllGlobals();
   });
@@ -372,6 +432,36 @@ describe('BizPostingFormPage', () => {
       fireEvent.keyDown(screen.getByLabelText('링크 주소'), { key: 'Escape' });
       expect(screen.queryByRole('dialog', { name: '링크 편집' })).toBeNull();
     });
+
+    it('기존 링크의 주소를 고치면 그 변경도 초안에 저장된다', async () => {
+      renderForm();
+      const editor = screen.getByLabelText('상세정보 본문');
+      editor.innerHTML = '<p><a href="https://old.example">링크 글자</a></p>';
+      // 커서를 링크 안에 둔다 — selectionchange가 기억한 위치로 팝오버가 기존 링크를 찾는다.
+      const range = document.createRange();
+      range.setStart(editor.querySelector('a')!.firstChild!, 1);
+      range.collapse(true);
+      const selection = window.getSelection()!;
+      selection.removeAllRanges();
+      selection.addRange(range);
+      await act(async () => {
+        document.dispatchEvent(new Event('selectionchange'));
+      });
+
+      fireEvent.click(screen.getByLabelText('링크'));
+      const dialog = screen.getByRole('dialog', { name: '링크 편집' });
+      fireEvent.change(within(dialog).getByLabelText('링크 주소'), {
+        target: { value: 'https://new.example/path' },
+      });
+      fireEvent.click(within(dialog).getByText('수정'));
+
+      // setAttribute 직접 변경도 input으로 미러링되어 디바운스 뒤 초안에 남아야 한다.
+      expect(editor.querySelector('a')!.getAttribute('href')).toBe('https://new.example/path');
+      await waitFor(
+        () => expect(localStorage.getItem(DRAFT_KEY)).toContain('https://new.example/path'),
+        { timeout: 2000 },
+      );
+    });
   });
 
   it('미리보기 버튼은 저장 없이 입력한 내용을 상세 화면 형태로 보여준다', async () => {
@@ -630,6 +720,159 @@ describe('BizPostingFormPage', () => {
     expect(screen.getByRole('button', { name: '기울임' }).getAttribute('aria-pressed')).toBe(
       'false',
     );
+  });
+
+  it('입력한 제목과 본문을 초안으로 저장해 다시 열어도 복원한다', async () => {
+    const first = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '초안 제목' } });
+    const editor = screen.getByLabelText('상세정보 본문');
+    editor.innerHTML = '<p>초안 본문</p>';
+    fireEvent.input(editor);
+    // 초안 저장 디바운스(500ms)가 지나기를 기다린다.
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('초안 제목'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    renderForm();
+    expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '초안 제목');
+    expect(screen.getByLabelText('상세정보 본문').innerHTML).toContain('초안 본문');
+  });
+
+  it('아무것도 고치지 않으면 초안을 남기지 않는다', async () => {
+    renderForm();
+    // 디바운스가 지나도 baseline과 같아 초안이 저장되지 않아야 한다.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it('게시에 성공하면 초안을 지운다', async () => {
+    renderForm();
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+      timeout: 2000,
+    });
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toBeNull());
+    // 디바운스가 지나도 지워진 초안이 다시 저장되지 않아야 한다(성공 후 저장기는 멈춘다).
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+  });
+
+  it('첨부파일을 초안에서 복원해 그대로 게시할 수 있다', async () => {
+    const first = renderForm();
+    const file = new File(['pdf'], '요강.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('첨부파일 선택'), { target: { files: [file] } });
+    expect(await screen.findByText(/요강\.pdf/)).toBeTruthy();
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('요강.pdf'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    renderForm();
+    expect(await screen.findByText(/요강\.pdf/)).toBeTruthy();
+    await fillRequired();
+    fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
+    await waitFor(() => expect(screen.getByText('게시하기')).toHaveProperty('disabled', false));
+    fireEvent.click(screen.getByText('게시하기'));
+    await waitFor(() => expect(mocks.create).toHaveBeenCalled());
+    expect(mocks.create.mock.calls[0]![0].data.attachments).toEqual([
+      { fileId: 'thumb-1', name: '요강.pdf', size: file.size },
+    ]);
+  });
+
+  it('포스터는 blob URL 대신 파일 id와 서버 URL만 초안에 저장해 복원한다', async () => {
+    stubCropApis();
+    mocks.finalizeUpload.mockResolvedValue({ url: 'https://cdn.example/thumb.webp' });
+    const { container, unmount } = renderForm();
+    selectPoster(container);
+    await confirmCrop();
+    await waitFor(() => expect(screen.getByAltText('포스터 미리보기')).toBeTruthy());
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('poster-1'), {
+      timeout: 2000,
+    });
+    // 새로고침 후 죽는 blob: 미리보기 주소는 초안에 남기지 않는다.
+    expect(localStorage.getItem(DRAFT_KEY)).not.toContain('blob:');
+    unmount();
+
+    renderForm();
+    expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe(
+      'https://cdn.example/thumb.webp',
+    );
+  });
+
+  it('저장된 초안이 있어도 서버 프리렌더는 순정 폼을 렌더하고 마운트 뒤 복원한다', async () => {
+    const first = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '초안 제목' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull(), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    // SSR(renderToString)은 localStorage 없이 렌더하므로 순정 값이어야 hydration이 어긋나지 않는다.
+    const html = renderToString(
+      <ThemeProvider theme={theme}>
+        <BizPostingFormPage />
+      </ThemeProvider>,
+    );
+    expect(html).not.toContain('초안 제목');
+
+    // 클라이언트 마운트 뒤에는 effect가 초안을 복원한다.
+    renderForm();
+    expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '초안 제목');
+  });
+
+  describe('수정 페이지 초안', () => {
+    it('공고 id별 키로 초안을 저장해 새 공고 초안과 섞이지 않는다', async () => {
+      renderEditPage();
+      fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '수정한 제목' } });
+      // 초안 저장 디바운스(500ms)가 지나기를 기다린다.
+      await waitFor(() => expect(localStorage.getItem(EDIT_DRAFT_KEY)).toContain('수정한 제목'), {
+        timeout: 2000,
+      });
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
+    it('다시 열어도 초안이 복원되고 손대지 않은 필드는 서버 값을 유지한다', async () => {
+      const first = renderEditPage();
+      // 서버 값이 폼에 먼저 채워진다.
+      expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '서버 제목');
+      fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '수정한 제목' } });
+      await waitFor(() => expect(localStorage.getItem(EDIT_DRAFT_KEY)).not.toBeNull(), {
+        timeout: 2000,
+      });
+      first.unmount();
+
+      renderEditPage();
+      expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '수정한 제목');
+      // 제목만 고쳤으므로 주최는 서버 값 그대로다.
+      expect(screen.getByLabelText('주최')).toHaveProperty('value', '서버 주최');
+    });
+
+    it('수정 저장에 성공하면 수정 초안을 지운다', async () => {
+      renderEditPage();
+      fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '수정한 제목' } });
+      await waitFor(() => expect(localStorage.getItem(EDIT_DRAFT_KEY)).not.toBeNull(), {
+        timeout: 2000,
+      });
+      fireEvent.click(screen.getByText('수정 저장'));
+
+      await waitFor(() => expect(mocks.update).toHaveBeenCalled());
+      await waitFor(() => expect(localStorage.getItem(EDIT_DRAFT_KEY)).toBeNull());
+      // 디바운스가 지나도 지워진 초안이 다시 저장되지 않아야 한다.
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      });
+      expect(localStorage.getItem(EDIT_DRAFT_KEY)).toBeNull();
+    });
   });
 });
 

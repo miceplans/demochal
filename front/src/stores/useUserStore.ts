@@ -29,6 +29,7 @@ type UserState = {
   completeOnboarding: () => void;
   setRecruitment: (value: UserState['recruitment']) => void;
   saveApplication: (value: NonNullable<UserState['applicationDraft']>) => void;
+  clearApplication: () => void;
 };
 export const useUserStore = create<UserState>()(
   persist(
@@ -52,6 +53,7 @@ export const useUserStore = create<UserState>()(
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
       setRecruitment: (recruitment) => set({ recruitment }),
       saveApplication: (applicationDraft) => set({ applicationDraft }),
+      clearApplication: () => set({ applicationDraft: null }),
     }),
     {
       name: 'semo-user-publishing',

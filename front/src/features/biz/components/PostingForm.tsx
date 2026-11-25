@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useToast } from '@/components/common/Toast';
 import { adApi, adError } from '@/lib/ad-api';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import { ImageCropModal } from '@/components/ui/ImageCropModal';
@@ -81,8 +82,137 @@ const categories = [
 const categoryDropdownOptions: DropdownOption[] = categories.map((x) => ({ value: x, label: x }));
 const organizerTypeOptions: DropdownOption[] = organizerTypes.map((x) => ({ value: x, label: x }));
 
+// 폼 초안에 저장하는 모양 — File/blob URL은 저장할 수 없어 포스터는 파일 id와 서버 URL만 담는다.
+type PostingDraft = {
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  eventStartDate: string;
+  eventEndDate: string;
+  host: string;
+  supervisor: string;
+  sponsor: string;
+  supporter: string;
+  targetOther: string;
+  attachments: Attachment[];
+  category: string;
+  targets: PostingInput['targets'];
+  organizerType: PostingInput['organizerType'];
+  prizeAmount: string;
+  poster: { posterFileId: string; thumbnailFileId: string; previewUrl?: string } | null;
+  recruit: 'semo' | 'external';
+  recruitUrl: string;
+  summary: string;
+  hashtags: string;
+  topics: string[];
+  inquiryContact: string;
+  visibility: 'public' | 'private';
+};
+
+const DRAFT_STRING_FIELDS = [
+  'title',
+  'description',
+  'startDate',
+  'endDate',
+  'eventStartDate',
+  'eventEndDate',
+  'host',
+  'supervisor',
+  'sponsor',
+  'supporter',
+  'targetOther',
+  'category',
+  'prizeAmount',
+  'recruitUrl',
+  'summary',
+  'hashtags',
+  'inquiryContact',
+] as const;
+
+const isStringArray = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((item) => typeof item === 'string');
+
+function isPostingDraft(value: unknown): value is PostingDraft {
+  if (typeof value !== 'object' || value === null) return false;
+  const draft = value as Record<string, unknown>;
+  if (!DRAFT_STRING_FIELDS.every((field) => typeof draft[field] === 'string')) return false;
+  if (!isStringArray(draft.targets) || !isStringArray(draft.topics)) return false;
+  if (!(draft.organizerType === null || typeof draft.organizerType === 'string')) return false;
+  if (draft.recruit !== 'semo' && draft.recruit !== 'external') return false;
+  if (draft.visibility !== 'public' && draft.visibility !== 'private') return false;
+  if (
+    !Array.isArray(draft.attachments) ||
+    !draft.attachments.every(
+      (file) =>
+        typeof file === 'object' &&
+        file !== null &&
+        typeof (file as Attachment).fileId === 'string' &&
+        typeof (file as Attachment).name === 'string' &&
+        typeof (file as Attachment).size === 'number',
+    )
+  )
+    return false;
+  if (draft.poster !== null) {
+    if (typeof draft.poster !== 'object') return false;
+    const poster = draft.poster as Record<string, unknown>;
+    if (typeof poster.posterFileId !== 'string' || typeof poster.thumbnailFileId !== 'string')
+      return false;
+    if (!(poster.previewUrl === undefined || typeof poster.previewUrl === 'string')) return false;
+  }
+  return true;
+}
+
+/**
+ * 손대지 않은 폼이 초안을 남기지 않도록, 서버에서 온 초기값을 초안과 같은 모양으로 만든다.
+ * 키 순서는 현재 값을 모으는 객체 리터럴과 같아야 JSON 비교가 성립한다.
+ */
+function postingDraftBaseline(initial: PostingInput): PostingDraft {
+  return {
+    title: initial.title,
+    description: initial.description,
+    startDate: initial.startDate,
+    endDate: initial.endDate,
+    eventStartDate: initial.eventStartDate,
+    eventEndDate: initial.eventEndDate,
+    host: initial.host,
+    supervisor: initial.supervisor,
+    sponsor: initial.sponsor,
+    supporter: initial.supporter,
+    targetOther: initial.targetOther,
+    attachments: initial.attachments,
+    category: initial.category,
+    targets: initial.targets,
+    organizerType: initial.organizerType,
+    prizeAmount: initial.prizeAmount,
+    poster: null,
+    recruit: initial.recruitMethod === 'external' ? 'external' : 'semo',
+    recruitUrl: initial.recruitUrl ?? '',
+    summary: initial.summary ?? '',
+    hashtags: initial.hashtags ?? '',
+    topics: initial.topics ?? [],
+    inquiryContact: initial.inquiryContact ?? '',
+    visibility: initial.visibility ?? 'public',
+  };
+}
+
+/** useFormDraftSaver를 조건에 따라 켜기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
+}
+
 export function PostingForm({
   initial,
+  draftKey,
   submitLabel,
   submittingLabel,
   disabled = false,
@@ -91,6 +221,8 @@ export function PostingForm({
   onSubmit,
 }: {
   initial: PostingInput;
+  /** 폼 초안을 저장할 키 — 없으면 초안 저장/복원을 끈다. */
+  draftKey?: string;
   submitLabel: string;
   submittingLabel: string;
   disabled?: boolean;
@@ -102,6 +234,8 @@ export function PostingForm({
   const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
+  // 초안 저장의 baseline은 서버 초기값 — 폼이 그대로면 초안을 지운다.
+  const [draftBaseline] = useState(() => postingDraftBaseline(initial));
   const [title, setTitle] = useState(initial.title);
   const [startDate, setStartDate] = useState(initial.startDate);
   const [endDate, setEndDate] = useState(initial.endDate);
@@ -122,10 +256,12 @@ export function PostingForm({
   const [organizerType, setOrganizerType] = useState(initial.organizerType);
   const [prizeAmount, setPrizeAmount] = useState(initial.prizeAmount);
   // 포스터는 크롭 모달에서 썸네일 영역까지 함께 확정된 뒤 원본+썸네일을 같이 올린다.
+  // durableUrl은 초안 복원용 서버 URL — blob: 미리보기는 새로고침 후 죽으므로 초안에는 이것만 남긴다.
   const [poster, setPoster] = useState<{
     posterFileId: string;
     thumbnailFileId: string;
     previewUrl: string;
+    durableUrl: string | null;
   } | null>(null);
   const existingPosterUrl = initial.posterUrl ?? null;
   const [pendingPoster, setPendingPoster] = useState<CropImage | null>(null);
@@ -148,7 +284,13 @@ export function PostingForm({
   const [visibility, setVisibility] = useState<'public' | 'private'>(
     initial.visibility ?? 'public',
   );
+  // 비제어 본문 에디터의 현재 HTML — 초안에 저장하기 위해 입력 시마다 state에 미러링한다.
+  const [descriptionHtml, setDescriptionHtml] = useState(initial.description);
   const [submitting, setSubmitting] = useState(false);
+  // 제출 성공 후 초안 저장기를 멈추기 위한 표시 — 지워진 초안이 디바운스 뒤 다시 저장되지 않게 한다.
+  const [submitted, setSubmitted] = useState(false);
+  // 초안 복원 effect가 끝났는지 — 끝나기 전에는 초안 저장기를 띄우지 않아 복원 전 값으로 초안을 덮지 않게 한다.
+  const [restored, setRestored] = useState(false);
   const [error, setError] = useState('');
   // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
@@ -191,6 +333,55 @@ export function PostingForm({
     if (isRichHtml(initial.description)) editor.innerHTML = sanitizeRichHtml(initial.description);
     else editor.innerText = initial.description;
   }, [initial.description]);
+
+  // 초안 복원은 마운트 뒤 effect에서 한 번만 — 렌더 중에 localStorage를 읽으면 서버 프리렌더(초안 없음)와
+  // 클라이언트 hydration(초안 있음)의 결과가 달라져 hydration mismatch가 난다.
+  // 위 [initial.description] effect보다 나중에 선언해 본문도 초안 값으로 덮어쓴다.
+  useEffect(() => {
+    const draft = draftKey ? readFormDraft(draftKey, isPostingDraft) : null;
+    if (draft) {
+      // 마운트 1회 외부 저장소(localStorage) 동기화라 effect 안의 setState가 맞다.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTitle(draft.title);
+      setStartDate(draft.startDate);
+      setEndDate(draft.endDate);
+      setEventStartDate(draft.eventStartDate);
+      setEventEndDate(draft.eventEndDate);
+      setHost(draft.host);
+      setSupervisor(draft.supervisor);
+      setSponsor(draft.sponsor);
+      setSupporter(draft.supporter);
+      setTargetOther(draft.targetOther);
+      setAttachments(draft.attachments);
+      setCategory(draft.category);
+      setTargets(draft.targets);
+      setOrganizerType(draft.organizerType);
+      setPrizeAmount(draft.prizeAmount);
+      setRecruit(draft.recruit);
+      setRecruitUrl(draft.recruitUrl);
+      setSummary(draft.summary);
+      setHashtags(draft.hashtags);
+      setTopics(draft.topics);
+      setInquiryContact(draft.inquiryContact);
+      setVisibility(draft.visibility);
+      if (draft.poster) {
+        setPoster({
+          posterFileId: draft.poster.posterFileId,
+          thumbnailFileId: draft.poster.thumbnailFileId,
+          previewUrl: draft.poster.previewUrl ?? '',
+          durableUrl: draft.poster.previewUrl ?? null,
+        });
+      }
+      // 본문은 위 effect와 같은 경로(정화한 HTML 또는 평문)로 복원한다.
+      const editor = editorRef.current;
+      if (editor) {
+        if (isRichHtml(draft.description)) editor.innerHTML = sanitizeRichHtml(draft.description);
+        else editor.innerText = draft.description;
+      }
+      setDescriptionHtml(draft.description);
+    }
+    setRestored(true);
+  }, [draftKey]);
   const pendingPosterRef = useRef<CropImage | null>(null);
   useEffect(() => {
     // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
@@ -411,7 +602,7 @@ export function PostingForm({
       ]);
       if (!posterResponse.ok || !thumbnailResponse.ok)
         throw new globalThis.Error('이미지 업로드에 실패했습니다.');
-      await Promise.all([
+      const [, finalizedThumbnail] = await Promise.all([
         adApi.files.finalizeUpload(presignedPoster.fileId),
         adApi.files.finalizeUpload(presignedThumbnail.fileId),
       ]);
@@ -424,6 +615,7 @@ export function PostingForm({
         posterFileId: presignedPoster.fileId,
         thumbnailFileId: presignedThumbnail.fileId,
         previewUrl,
+        durableUrl: finalizedThumbnail.url ?? null,
       });
     } catch {
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
@@ -501,6 +693,40 @@ export function PostingForm({
       inquiryContact: inquiryContact.trim(),
       externalUrl: recruit === 'external' ? recruitUrl.trim() || null : null,
     });
+  };
+
+  // 초안에 저장할 현재 폼 값 — 키 순서는 postingDraftBaseline과 같아야 baseline 비교가 성립한다.
+  const draftValues: PostingDraft = {
+    title,
+    description: descriptionHtml,
+    startDate,
+    endDate,
+    eventStartDate,
+    eventEndDate,
+    host,
+    supervisor,
+    sponsor,
+    supporter,
+    targetOther,
+    attachments,
+    category,
+    targets,
+    organizerType,
+    prizeAmount,
+    poster: poster
+      ? {
+          posterFileId: poster.posterFileId,
+          thumbnailFileId: poster.thumbnailFileId,
+          ...(poster.durableUrl ? { previewUrl: poster.durableUrl } : {}),
+        }
+      : null,
+    recruit,
+    recruitUrl,
+    summary,
+    hashtags,
+    topics,
+    inquiryContact,
+    visibility,
   };
 
   async function submit() {
@@ -591,6 +817,11 @@ export function PostingForm({
         inquiryContact: inquiryContact.trim() || null,
         visibility,
       });
+      // 성공 시 초안을 지우고 저장기를 멈춘다 — 실패하면 초안을 남겨 다시 시도할 수 있게 한다.
+      if (draftKey) {
+        setSubmitted(true);
+        clearFormDraft(draftKey);
+      }
     } catch (cause) {
       setError(adError(cause));
     } finally {
@@ -601,6 +832,9 @@ export function PostingForm({
   const radioIcon = (on: boolean) => `${ICON}/figma-radio-${on ? 'on' : 'off'}.svg`;
   return (
     <FormWrap ref={formRef}>
+      {draftKey && restored && !submitted ? (
+        <DraftSaver draftKey={draftKey} value={draftValues} baseline={draftBaseline} />
+      ) : null}
       <Uploader>
         <input
           type="file"
@@ -957,15 +1191,18 @@ export function PostingForm({
                   // 모두 지운 뒤 남는 <br>/<div> 때문에 placeholder(:empty)가 사라지는 것을 막는다.
                   if (!el.innerText.trim() && !el.querySelector('img,hr')) {
                     el.innerHTML = '';
+                    setDescriptionHtml('');
                     return;
                   }
                   // IME 조합 중에 DOM을 건드리면 한글 조합이 깨지므로, 조합이 끝난 뒤 input에서 정규화한다.
                   if (event.nativeEvent.isComposing) return;
                   normalizeFontTags(el, lastFontSizePx.current);
+                  setDescriptionHtml(el.innerHTML);
                 }}
                 onCompositionEnd={(event) => {
                   // 조합이 끝난 시점에 남은 font 태그를 span으로 바꾼다(캐럿 보존).
                   normalizeFontTags(event.currentTarget, lastFontSizePx.current);
+                  setDescriptionHtml(event.currentTarget.innerHTML);
                 }}
                 contentEditable
                 suppressContentEditableWarning

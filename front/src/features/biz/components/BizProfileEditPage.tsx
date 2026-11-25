@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
@@ -12,10 +12,35 @@ import { textStyle } from '@/styles/typography';
 import { useToast } from '@/components/common/Toast';
 import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compression';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { searchAddress } from '@/lib/google-maps';
 
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
+
+// 프로필 초안은 텍스트 필드와 지도 좌표만 저장한다 — 이미지는 선택 즉시 업로드되므로 제외한다.
+type ProfileDraft = {
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  mapLatitude: number | null;
+  mapLongitude: number | null;
+};
+
+const isProfileDraft = (value: unknown): value is ProfileDraft => {
+  if (!value || typeof value !== 'object') return false;
+  const v = value as Record<string, unknown>;
+  const isCoord = (coord: unknown) => coord === null || typeof coord === 'number';
+  return (
+    typeof v.name === 'string' &&
+    typeof v.address === 'string' &&
+    typeof v.phone === 'string' &&
+    typeof v.email === 'string' &&
+    isCoord(v.mapLatitude) &&
+    isCoord(v.mapLongitude)
+  );
+};
 
 function useExistingImageUrl(fileId?: string | null): string | null {
   const query = generated.useGetFile(fileId ?? '', { query: { enabled: !!fileId } });
@@ -40,6 +65,8 @@ export function BizProfileEditPage() {
   const [logoImage, setLogoImage] = useState<UploadedImage | null>(null);
   const [uploading, setUploading] = useState<ImageKind | null>(null);
   const [saveError, setSaveError] = useState(false);
+  // 저장 성공 후에는 초안 저장기를 멈춰, 남아 있는 디바운스가 지워진 초안을 다시 쓰지 않게 한다.
+  const [saved, setSaved] = useState(false);
   const previewUrls = useRef(new Set<string>());
 
   const existingBannerUrl = useExistingImageUrl(business?.bannerImageFileId);
@@ -62,22 +89,64 @@ export function BizProfileEditPage() {
   // refetch로 다시 값이 오더라도 사용자가 입력 중인 form을 덮어쓰지 않는다.
   useEffect(() => {
     if (business && !initialized) {
+      // 서버값이 도착한 시점에 한 번만 초안을 복원한다 — 초안이 서버값보다 우선한다.
+      const draft = readFormDraft<ProfileDraft>(`biz-profile:${business.id}`, isProfileDraft);
       // business는 라우트 진입 시 한 번만 조회되는 외부 API 동기화이며,
       // 이후 form은 로컬 편집 상태가 진실의 원천이다.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setForm({
-        name: business.name ?? '',
-        address: business.address ?? '',
-        phone: business.phone ?? '',
-        email: business.email ?? '',
-      });
-      setMapCoords({
-        latitude: business.mapLatitude ?? null,
-        longitude: business.mapLongitude ?? null,
-      });
+      setForm(
+        draft
+          ? {
+              name: draft.name,
+              address: draft.address,
+              phone: draft.phone,
+              email: draft.email,
+            }
+          : {
+              name: business.name ?? '',
+              address: business.address ?? '',
+              phone: business.phone ?? '',
+              email: business.email ?? '',
+            },
+      );
+      setMapCoords(
+        draft
+          ? { latitude: draft.mapLatitude, longitude: draft.mapLongitude }
+          : {
+              latitude: business.mapLatitude ?? null,
+              longitude: business.mapLongitude ?? null,
+            },
+      );
       setInitialized(true);
     }
   }, [business, initialized]);
+
+  // 서버에서 불러온 값을 baseline으로 둬, 손대지 않은 폼은 초안을 남기지 않는다.
+  const serverBaseline = useMemo<ProfileDraft | undefined>(
+    () =>
+      business
+        ? {
+            name: business.name ?? '',
+            address: business.address ?? '',
+            phone: business.phone ?? '',
+            email: business.email ?? '',
+            mapLatitude: business.mapLatitude ?? null,
+            mapLongitude: business.mapLongitude ?? null,
+          }
+        : undefined,
+    [business],
+  );
+  const draftValue = useMemo<ProfileDraft>(
+    () => ({
+      name: form.name,
+      address: form.address,
+      phone: form.phone,
+      email: form.email,
+      mapLatitude: mapCoords.latitude,
+      mapLongitude: mapCoords.longitude,
+    }),
+    [form, mapCoords],
+  );
 
   const update = (key: keyof typeof form) => (event: React.ChangeEvent<HTMLInputElement>) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
@@ -187,6 +256,9 @@ export function BizProfileEditPage() {
           ...(logoImage ? { logoImageFileId: logoImage.fileId } : {}),
         },
       });
+      // 저장에 성공했으므로 초안을 지우고 저장기를 멈춘다.
+      setSaved(true);
+      clearFormDraft(`biz-profile:${business.id}`);
       await queryClient.invalidateQueries({ queryKey: generated.getFindMyBusinessQueryKey() });
       window.location.href = hrefOf('/profile');
     } catch (error) {
@@ -229,6 +301,14 @@ export function BizProfileEditPage() {
     );
   return (
     <BizContent style={{ gap: 32 }}>
+      {/* business 로드·초안 복원 전에는 저장기를 렌더링하지 않는다 — 빈 폼이 초안을 덮어쓰는 것을 막는다. */}
+      {initialized && business && !saved ? (
+        <DraftSaver
+          draftKey={`biz-profile:${business.id}`}
+          value={draftValue}
+          baseline={serverBaseline}
+        />
+      ) : null}
       <Actions>
         <OutlineButton type="button" onClick={() => (window.location.href = hrefOf('/profile'))}>
           취소
@@ -317,6 +397,20 @@ export function BizProfileEditPage() {
       {saveError && <p role="alert">저장하지 못했습니다.</p>}
     </BizContent>
   );
+}
+
+/** useFormDraftSaver를 조건에 따라 끄기 위한 래퍼 — 훅은 조건적으로 부를 수 없어 렌더링 여부로 제어한다. */
+function DraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: unknown;
+  baseline: unknown;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
 }
 
 const Actions = styled.div({ display: 'flex', justifyContent: 'flex-end', gap: 8 });

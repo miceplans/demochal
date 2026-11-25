@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, type FormEvent } from 'react';
+import { Suspense, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { UserShell, FormContent } from '@/components/common/UserShell';
@@ -93,6 +93,7 @@ function ApplicationFormRoute() {
 function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   const draft = useUserStore((s) => s.applicationDraft);
   const save = useUserStore((s) => s.saveApplication);
+  const clearApplication = useUserStore((s) => s.clearApplication);
   const toast = useToast();
   const router = useRouter();
   // /applications/new?challenge=<uuid> — 챌린지 상세의 "참가 신청하기" 링크로만 들어온다.
@@ -105,7 +106,22 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   const [answers, setAnswers] = useState<Answers>(
     draft?.challengeId === challengeId ? (draft.answers ?? {}) : {},
   );
+  // 사용자가 직접 고치기 전에는 자동 저장하지 않는다 — 마운트만으로 다른 챌린지의 초안을
+  // 빈 폼으로 덮어쓰는 일을 막기 위해서다.
+  const dirtyRef = useRef(false);
   const questions = challenge?.applicationForm ?? [];
+  const changeAnswer = (id: string, value: string | string[]) => {
+    dirtyRef.current = true;
+    setAnswers((current) => ({ ...current, [id]: value }));
+  };
+  // 입력이 멈추면 초안을 자동 저장한다(수동 임시저장 버튼과 별개로 새로고침·이탈 대비).
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!dirtyRef.current) return;
+      save({ challengeId: challengeId ?? undefined, answers });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [answers, challengeId, save]);
   const saveDraft = () => {
     save({ challengeId: challengeId ?? undefined, answers });
     toast.success('임시저장했어요');
@@ -153,6 +169,9 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
       });
       if (response.status !== 201) throw new Error('Application rejected');
       const result = response.data;
+      // 신청이 서버에 생성됐으므로 초안은 지운다(묣료·유료 공통). 실패 시에는 지우지 않는다.
+      dirtyRef.current = false;
+      clearApplication();
       // 무료 챌린지(price 0)는 결제 없이 완료. 유료는 서버가 만든 pending 주문으로 토스 결제창을 연다.
       if (!result.order) {
         toast.success('신청이 완료됐어요');
@@ -199,7 +218,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
           <ApplicationQuestions
             questions={questions}
             answers={answers}
-            onChange={(id, value) => setAnswers((current) => ({ ...current, [id]: value }))}
+            onChange={changeAnswer}
             onUploading={setUploading}
             disabled={submitting || uploading}
           />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useMemo, useState, type FormEvent } from 'react';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated, type ApplicationFormAnswer } from '@semochal/api-client';
@@ -9,6 +9,7 @@ import { Button, IconButton, Input, Tag } from '@/components/common/Primitives';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { useToast } from '@/components/common/Toast';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { roles as presetRoles } from '@/data/user-design';
 import { colors as c, mobile } from '@/styles/design';
 import {
@@ -176,6 +177,41 @@ function Attachment({
   );
 }
 
+// 수정 모드 초안 — 새로고침·이탈 시에도 작성 중인 수정 내용을 복원하기 위해 저장한다.
+type EditDraft = { role: string; teammates: string[]; answers: Answers };
+
+function isEditDraft(value: unknown): value is EditDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Record<string, unknown>;
+  return (
+    typeof draft.role === 'string' &&
+    Array.isArray(draft.teammates) &&
+    draft.teammates.every((name) => typeof name === 'string') &&
+    !!draft.answers &&
+    typeof draft.answers === 'object' &&
+    !Array.isArray(draft.answers) &&
+    Object.values(draft.answers).every(
+      (answer) =>
+        typeof answer === 'string' ||
+        (Array.isArray(answer) && answer.every((item) => typeof item === 'string')),
+    )
+  );
+}
+
+// 수정 폼이 열린 동안에만 초안을 저장한다 — 읽기 모드에서 마운트되면 초안을 지워버리므로 분리한다.
+function EditDraftSaver({
+  draftKey,
+  value,
+  baseline,
+}: {
+  draftKey: string;
+  value: EditDraft;
+  baseline: EditDraft;
+}) {
+  useFormDraftSaver(draftKey, value, { baseline });
+  return null;
+}
+
 function ReadOnlyAnswers({
   applicationId,
   answers,
@@ -236,6 +272,20 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
   const [members, setMembers] = useState<string[]>([]);
   const [answers, setAnswers] = useState<Answers>({});
 
+  const draftKey = `application-edit:${applicationId}`;
+  // 수정 초안의 기준값 — 서버에 저장된 원래 지원서 내용. 손대지 않은 수정 폼은 초안을 남기지 않는다.
+  const editBaseline = useMemo<EditDraft | undefined>(
+    () =>
+      application
+        ? {
+            role: application.role ?? '',
+            teammates: application.teammates ?? [],
+            answers: answersFromSaved(application.formAnswers),
+          }
+        : undefined,
+    [application],
+  );
+
   // 지원 역할 선택지 — 챌린지가 밀어낸 모집 역할(Challenge.roles)을 1순위로 쓴다(ApplyChallengeDto.role).
   const baseRoleOptions = (challenge?.roles?.length ? challenge.roles : presetRoles).map(
     (item) => ({
@@ -258,9 +308,11 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
 
   const startEdit = () => {
     if (!application) return;
-    setPickedRole(application.role ?? '');
-    setMembers(application.teammates ?? []);
-    setAnswers(answersFromSaved(application.formAnswers));
+    // 작성하다 만 수정 초안이 있으면 서버 값 대신 초안을 복원한다.
+    const draft = readFormDraft(draftKey, isEditDraft);
+    setPickedRole(draft?.role ?? application.role ?? '');
+    setMembers(draft?.teammates ?? application.teammates ?? []);
+    setAnswers(draft?.answers ?? answersFromSaved(application.formAnswers));
     setEditing(true);
   };
 
@@ -297,6 +349,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
         queryKey: generated.getGetApplicationQueryKey(applicationId),
       });
       await queryClient.invalidateQueries({ queryKey: generated.getListMyApplicationsQueryKey() });
+      clearFormDraft(draftKey);
       setEditing(false);
       toast.success('지원서를 수정했어요');
     } catch (error) {
@@ -359,6 +412,13 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
     <MyShell title="지원서 상세">
       {editing ? (
         <form onSubmit={handleSave}>
+          {editBaseline && (
+            <EditDraftSaver
+              draftKey={draftKey}
+              value={{ role: pickedRole, teammates: members, answers }}
+              baseline={editBaseline}
+            />
+          )}
           <Stack>
             <Header>
               <Title>{challenge?.title ?? application.challengeTitle ?? '챌린지 지원서'}</Title>

@@ -38,6 +38,7 @@ export function BizPostingFormPage() {
   return (
     <PostingForm
       initial={EMPTY_POSTING}
+      draftKey="posting:new"
       submitLabel="게시하기"
       submittingLabel="게시 중…"
       disabled={loading || !businessId}
@@ -134,6 +135,7 @@ export function BizPostingEditPage() {
         inquiryContact: challenge.inquiryContact ?? '',
         visibility: challenge.visibility === 'private' ? 'private' : 'public',
       }}
+      draftKey={`posting:edit:${id}`}
       submitLabel="수정 저장"
       submittingLabel="저장 중…"
       onSubmit={async (values) => {
