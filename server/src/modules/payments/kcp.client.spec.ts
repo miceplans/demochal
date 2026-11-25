@@ -229,4 +229,108 @@ describe('kcp.client', () => {
     expect(fetchMock.mock.calls[0]![0]).toBe('https://spl.kcp.co.kr/gw/enc/v1/payment');
     expect(fetchMock.mock.calls[1]![0]).toBe('https://smpay.kcp.co.kr/trade/register.do');
   });
+
+  describe('승인 결과 불명', () => {
+    const input = { orderId: 'order-1', amount: 1000, encData: 'e', encInfo: 'i' };
+
+    it.each([
+      ['timeout', () => fetchMock.mockRejectedValue(new Error('timeout'))],
+      ['HTTP 500', () => fetchMock.mockResolvedValue(jsonResponse(null, false, 500))],
+      ['missing tno', () => fetchMock.mockResolvedValue(jsonResponse({ res_cd: '0000' }))],
+    ])('reports %s as an unknown result', async (_label, arrange) => {
+      const client = await loadClient(CONFIGURED);
+      arrange();
+      await expect(client.approveKcpPayment(input)).rejects.toBeInstanceOf(
+        client.KcpApprovalUnknownError,
+      );
+    });
+
+    it('does not treat an explicit rejection as unknown', async () => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock.mockResolvedValue(jsonResponse({ res_cd: '8350' }));
+      const error = await client.approveKcpPayment(input).catch((e: unknown) => e);
+      expect(error).not.toBeInstanceOf(client.KcpApprovalUnknownError);
+    });
+  });
+
+  describe('inquireKcpPaymentByOrder', () => {
+    // KST 2026-11-25 10:00
+    const input = { orderId: 'order-1', attemptedAt: new Date('2026-11-25T01:00:00Z') };
+
+    it('looks the order up with a signed request and returns an approved card payment', async () => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock.mockResolvedValue(
+        jsonResponse({ res_cd: '0000', tno: 'tno-1', amount: 1000, stat_ca_cd: 'STSR' }),
+      );
+
+      await expect(client.inquireKcpPaymentByOrder(input)).resolves.toEqual({
+        kind: 'approved',
+        tno: 'tno-1',
+        amount: 1000,
+      });
+      const [url, init] = fetchMock.mock.calls[0]!;
+      expect(url).toBe('https://stg-spl.kcp.co.kr/std/inquery');
+      const body = JSON.parse(String(init.body));
+      expect(body).toMatchObject({
+        site_cd: 'T0000',
+        tno: '20261125000000',
+        mod_ordr_idxx: 'order-1',
+        pay_type: 'PACA',
+      });
+      const verifier = createVerify('RSA-SHA256');
+      verifier.update('T0000^20261125000000^PACA', 'utf8');
+      expect(verifier.verify(PUBLIC_KEY_PEM, body.kcp_sign_data, 'base64')).toBe(true);
+    });
+
+    it.each([
+      ['canceled', { stat_ca_cd: 'STSC' }, { kind: 'canceled', tno: 'tno-1' }],
+      ['partially canceled', { stat_ca_cd: 'STPC' }, { kind: 'unverifiable', tno: 'tno-1' }],
+      ['stateless', {}, { kind: 'unverifiable', tno: 'tno-1' }],
+      [
+        'contradictory',
+        { stat_ca_cd: 'STSR', canc_card_yn: 'Y' },
+        { kind: 'unverifiable', tno: 'tno-1' },
+      ],
+    ])('never reports a %s card payment as approved', async (_label, extra, expected) => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock.mockResolvedValue(
+        jsonResponse({ res_cd: '0000', tno: 'tno-1', amount: 1000, ...extra }),
+      );
+      await expect(client.inquireKcpPaymentByOrder(input)).resolves.toEqual(expected);
+    });
+
+    it('falls back to point payments but never auto-settles them', async () => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock
+        .mockResolvedValueOnce(jsonResponse({ res_cd: '9999' }))
+        .mockResolvedValueOnce(jsonResponse({ res_cd: '0000', tno: 'tno-p', amount: 1000 }));
+      await expect(client.inquireKcpPaymentByOrder(input)).resolves.toEqual({
+        kind: 'unverifiable',
+        tno: 'tno-p',
+      });
+    });
+
+    it('checks the next KST day for an approval requested just before midnight', async () => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock.mockResolvedValue(jsonResponse({ res_cd: '9999' }));
+      await expect(
+        client.inquireKcpPaymentByOrder({
+          orderId: 'order-1',
+          attemptedAt: new Date('2026-11-25T14:59:50Z'),
+        }),
+      ).resolves.toEqual({ kind: 'not_confirmed', resCd: '9999' });
+      expect(fetchMock.mock.calls.map(([, init]) => JSON.parse(String(init.body)).tno)).toEqual([
+        '20261125000000',
+        '20261126000000',
+        '20261125000000',
+        '20261126000000',
+      ]);
+    });
+
+    it('throws on transport failures so they never read as "not approved"', async () => {
+      const client = await loadClient(CONFIGURED);
+      fetchMock.mockRejectedValue(new Error('timeout'));
+      await expect(client.inquireKcpPaymentByOrder(input)).rejects.toThrow('확인하지 못했습니다');
+    });
+  });
 });

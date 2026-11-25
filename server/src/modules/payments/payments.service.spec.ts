@@ -26,12 +26,28 @@ const kcpMocks = vi.hoisted(() => ({
   registerKcpTransaction: vi.fn(),
   approveKcpPayment: vi.fn(),
   cancelKcpPayment: vi.fn(),
+  inquireKcpPaymentByOrder: vi.fn(),
+  isKcpInquiryConfigured: vi.fn(() => true),
+}));
+// 승인 기록 저장소는 kcp-approval-attempts.spec.ts가 검증한다.
+const attemptMocks = vi.hoisted(() => ({
+  openKcpApprovalAttempt: vi.fn(async () => 'attempt-1'),
+  closeKcpApprovalAttempt: vi.fn(async () => undefined),
+  countKcpApprovalCheck: vi.fn(async () => undefined),
+  findOpenKcpApprovalAttempts: vi.fn(async (): Promise<unknown[]> => []),
+  listDueKcpApprovalAttempts: vi.fn(async (): Promise<unknown[]> => []),
+}));
+vi.mock('./kcp-approval-attempts.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./kcp-approval-attempts.js')>()),
+  ...attemptMocks,
 }));
 vi.mock('./kcp.client.js', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./kcp.client.js')>()),
   registerKcpTransaction: kcpMocks.registerKcpTransaction,
   approveKcpPayment: kcpMocks.approveKcpPayment,
   cancelKcpPayment: kcpMocks.cancelKcpPayment,
+  inquireKcpPaymentByOrder: kcpMocks.inquireKcpPaymentByOrder,
+  isKcpInquiryConfigured: kcpMocks.isKcpInquiryConfigured,
 }));
 
 // retryRefundPendingPayments의 네이버페이/KCP 자격증명 판정 테스트를 위해 env를 보강한다.
@@ -73,11 +89,33 @@ vi.mock('../../config/env.js', async (importOriginal) => {
 });
 
 /**
+ * Answers the post-write ownership lookup (provider + key + status) with the payment row
+ * that ended up on the order — by default the one the test just wrote — and passes every
+ * other select through to the stub's own chain.
+ */
+function withOwnedRow(
+  select: (...args: any[]) => any,
+  insertValues: { mock: { calls: any[][] } },
+  row?: Record<string, unknown>,
+) {
+  return vi.fn((fields?: Record<string, unknown>): any => {
+    if (!fields || !('provider' in fields) || !('providerPaymentKey' in fields)) {
+      return select(fields);
+    }
+    const limit = async () => [row ?? insertValues.mock.calls.at(-1)?.[0]];
+    return { from: () => ({ where: () => ({ limit }) }) };
+  });
+}
+
+/**
  * Drizzle stub. insert().values() returns the conflict handlers the service
  * chains onto every payment write (unique on payments.orderId); select() backs
  * the PARTIAL_CANCELED precondition lookup over the existing payment row.
  */
-function createDbStub(existingPayment: Record<string, unknown> | null = { status: 'paid' }) {
+function createDbStub(
+  existingPayment: Record<string, unknown> | null = { status: 'paid' },
+  boundRow?: Record<string, unknown>,
+) {
   const onConflictDoNothing = vi.fn().mockResolvedValue(undefined);
   const onConflictDoUpdate = vi.fn().mockResolvedValue(undefined);
   const insertValues = vi.fn(() => ({ onConflictDoNothing, onConflictDoUpdate }));
@@ -85,8 +123,8 @@ function createDbStub(existingPayment: Record<string, unknown> | null = { status
   const limit = vi.fn().mockResolvedValue(existingPayment ? [existingPayment] : []);
   const where = vi.fn(() => ({ limit }));
   const from = vi.fn(() => ({ where }));
-  const select = vi.fn(() => ({ from }));
-  const tx = { insert };
+  const select = withOwnedRow(() => ({ from }), insertValues as any, boundRow);
+  const tx = { insert, select };
   const transaction = vi.fn(async (fn: (txArg: unknown) => Promise<void>) => fn(tx));
   const db: any = { insert, select, transaction };
   return { db, tx, insertValues, onConflictDoNothing, onConflictDoUpdate, select, transaction };
@@ -854,7 +892,7 @@ describe('PaymentsService', () => {
           limit: orderLimit,
         }),
       }));
-      const select = vi.fn(() => ({ from: selectFrom }));
+      const select = withOwnedRow(() => ({ from: selectFrom }), insertValues as any);
 
       const ordersUpdateSet = vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
@@ -1791,11 +1829,11 @@ describe('PaymentsService', () => {
       const orderBy = vi.fn(() => ({ limit }));
       const where = vi.fn(() => ({ orderBy }));
       const from = vi.fn(() => ({ where }));
-      const select = vi.fn(() => ({ from }));
       const insertValues = vi.fn(() => ({
         onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
         onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
       }));
+      const select = withOwnedRow(() => ({ from }), insertValues as any);
       const insert = vi.fn(() => ({ values: insertValues }));
       const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
       const update = vi.fn(() => ({ set }));
@@ -1820,7 +1858,11 @@ describe('PaymentsService', () => {
       kcpMocks.cancelKcpPayment.mockReset();
       kcpMocks.cancelKcpPayment.mockResolvedValue(undefined);
       const { db, insertValues } = createScanDb([pendingRefundRow]);
-      const orders = { findByIdInternal: vi.fn(), settleOrderPaid: vi.fn(), cancelOrder: vi.fn() };
+      const orders = {
+        findByIdInternal: vi.fn().mockResolvedValue({ id: 'order-1', status: 'pending' }),
+        settleOrderPaid: vi.fn(),
+        cancelOrder: vi.fn(),
+      };
       const service = new PaymentsService(db, orders as never);
 
       const summary = await service.retryRefundPendingPayments();
@@ -1857,11 +1899,11 @@ describe('PaymentsService', () => {
       const orderBy = vi.fn(() => ({ limit }));
       const where = vi.fn(() => ({ orderBy }));
       const from = vi.fn(() => ({ where }));
-      const select = vi.fn(() => ({ from }));
       const insertValues = vi.fn(() => ({
         onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
         onConflictDoUpdate: vi.fn().mockResolvedValue(undefined),
       }));
+      const select = withOwnedRow(() => ({ from }), insertValues as any);
       const insert = vi.fn(() => ({ values: insertValues }));
       const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
       const update = vi.fn(() => ({ set }));
@@ -1887,7 +1929,7 @@ describe('PaymentsService', () => {
       naverpayMocks.cancelNaverPayPayment.mockResolvedValue(undefined);
       const { db, insertValues } = createScanDb([pendingRefundRow]);
       const orders = {
-        findByIdInternal: vi.fn(),
+        findByIdInternal: vi.fn().mockResolvedValue({ id: 'order-1', status: 'pending' }),
         settleOrderPaid: vi.fn(),
         cancelOrder: vi.fn().mockResolvedValue({}),
       };
@@ -1920,6 +1962,285 @@ describe('PaymentsService', () => {
       expect(naverpayMocks.cancelNaverPayPayment).not.toHaveBeenCalled();
       expect(insertValues).not.toHaveBeenCalled();
       envControl.naverpayConfigured = true;
+    });
+  });
+
+  describe('refund_pending이 남은 주문 (#1023)', () => {
+    const otherPending = {
+      provider: 'kcp',
+      providerPaymentKey: 'old-tno',
+      status: 'refund_pending',
+    };
+    const pendingOrder = { id: 'order-1', amount: 50000, status: 'pending' };
+
+    it('refuses a new Toss or KCP approval before charging', async () => {
+      fetchMock.mockReset();
+      kcpMocks.approveKcpPayment.mockReset();
+      const { db } = createDbStub({ status: 'refund_pending' });
+      const orders = { ...createOrdersStub(), findById: vi.fn().mockResolvedValue(pendingOrder) };
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          paymentKey: 'pay-key-1',
+          amount: 50000,
+        } as never),
+      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        service.confirmKcpPayment('user-1', { orderId: 'order-1', encData: 'e', encInfo: 'i' }),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('refunds the new charge without touching the order when another payment is on it', async () => {
+      naverpayMocks.fetchNaverPayPaymentDetail.mockReset();
+      naverpayMocks.cancelNaverPayPayment.mockReset();
+      const { NAVERPAY_PAYMENT_COMPLETED } = await import('./naverpay.client.js');
+      naverpayMocks.fetchNaverPayPaymentDetail.mockResolvedValue({
+        paymentStatus: NAVERPAY_PAYMENT_COMPLETED,
+        totalPayAmount: 50000,
+        merchantPayKey: 'order-1',
+      });
+      const { db } = createDbStub(null, otherPending);
+      const orders = { ...createOrdersStub(), findById: vi.fn().mockResolvedValue(pendingOrder) };
+      const service = new PaymentsService(db, orders as any);
+
+      await expect(
+        service.confirmPayment('user-1', {
+          orderId: 'order-1',
+          provider: 'naverpay',
+          paymentId: 'np-new',
+        } as never),
+      ).rejects.toBeInstanceOf(ConflictException);
+
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+      expect(naverpayMocks.cancelNaverPayPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ paymentId: 'np-new' }),
+      );
+      expect(orders.cancelOrder).not.toHaveBeenCalled();
+    });
+
+    it('never cancels a paid order from the refund retry scan', async () => {
+      kcpMocks.cancelKcpPayment.mockReset();
+      const limit = vi.fn().mockResolvedValue([
+        {
+          id: 'pay-1',
+          orderId: 'order-1',
+          provider: 'kcp',
+          providerPaymentKey: 'old-tno',
+          amount: 50000,
+          status: 'refund_pending',
+          refundRetryCount: 0,
+          refundRetriedAt: null,
+        },
+      ]);
+      const set = vi.fn(() => ({ where: vi.fn().mockResolvedValue(undefined) }));
+      const db: any = {
+        select: () => ({ from: () => ({ where: () => ({ orderBy: () => ({ limit }) }) }) }),
+        update: () => ({ set }),
+      };
+      const orders = {
+        findByIdInternal: vi.fn().mockResolvedValue({ id: 'order-1', status: 'paid' }),
+        cancelOrder: vi.fn(),
+      };
+      const service = new PaymentsService(db, orders as never);
+
+      const summary = await service.retryRefundPendingPayments();
+
+      expect(summary).toMatchObject({ scanned: 1, attempted: 0, refunded: 0 });
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+      expect(orders.cancelOrder).not.toHaveBeenCalled();
+      // 자동 재시도 대상에서 빼 수동 확인으로 넘긴다.
+      expect(set).toHaveBeenCalledWith(expect.objectContaining({ refundRetryCount: 5 }));
+    });
+  });
+
+  describe('KCP 승인 응답 유실 복구', () => {
+    const dto = { orderId: 'order-1', encData: 'e', encInfo: 'i' };
+    const pending = { id: 'order-1', amount: 50000, status: 'pending' };
+    const oldAttempt = {
+      id: 'attempt-0',
+      orderId: 'order-1',
+      attemptedAt: new Date(Date.now() - 10 * 60 * 1000),
+      checks: 0,
+    };
+
+    function setup(existing: Record<string, unknown> | null = null, order = pending) {
+      for (const mock of [...Object.values(kcpMocks), ...Object.values(attemptMocks)]) {
+        mock.mockClear();
+      }
+      kcpMocks.approveKcpPayment.mockReset();
+      kcpMocks.cancelKcpPayment.mockReset();
+      kcpMocks.inquireKcpPaymentByOrder.mockReset();
+      kcpMocks.isKcpInquiryConfigured.mockReturnValue(true);
+      attemptMocks.findOpenKcpApprovalAttempts.mockResolvedValue([]);
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([]);
+      const stub = createDbStub(existing);
+      const orders = {
+        findById: vi.fn().mockResolvedValue(pending),
+        findByIdInternal: vi.fn().mockResolvedValue(order),
+        settleOrderPaid: vi.fn().mockResolvedValue({ ...pending, status: 'paid' }),
+        cancelOrder: vi.fn(),
+      };
+      return { ...stub, orders, service: new PaymentsService(stub.db, orders as any) };
+    }
+    async function unknown() {
+      const { KcpApprovalUnknownError } = await import('./kcp.client.js');
+      return new KcpApprovalUnknownError();
+    }
+    const approved = { kind: 'approved', tno: 'tno-1', amount: 50000 };
+
+    it('settles from the inquiry when the approval response is lost', async () => {
+      const { service, orders, insertValues } = setup();
+      kcpMocks.approveKcpPayment.mockRejectedValue(await unknown());
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(approved);
+
+      await service.confirmKcpPayment('user-1', dto);
+
+      expect(insertValues).toHaveBeenCalledWith(
+        expect.objectContaining({ providerPaymentKey: 'tno-1', status: 'paid' }),
+      );
+      expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+      expect(attemptMocks.closeKcpApprovalAttempt).toHaveBeenCalledWith(
+        expect.anything(),
+        'attempt-1',
+        'sent',
+      );
+    });
+
+    it('leaves the attempt open for the worker when the inquiry cannot confirm it', async () => {
+      const { service, orders } = setup();
+      kcpMocks.approveKcpPayment.mockRejectedValue(await unknown());
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue({ kind: 'not_confirmed', resCd: '9999' });
+
+      await expect(service.confirmKcpPayment('user-1', dto)).rejects.toThrow('결제 승인에 실패');
+      expect(attemptMocks.closeKcpApprovalAttempt).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('closes the attempt when KCP explicitly rejects the approval', async () => {
+      const { service } = setup();
+      kcpMocks.approveKcpPayment.mockRejectedValue(new BadRequestException('rejected'));
+
+      await expect(service.confirmKcpPayment('user-1', dto)).rejects.toThrow('rejected');
+      expect(attemptMocks.closeKcpApprovalAttempt).toHaveBeenCalled();
+      expect(kcpMocks.inquireKcpPaymentByOrder).not.toHaveBeenCalled();
+    });
+
+    it('converges on an earlier lost approval instead of charging again', async () => {
+      const { service, orders } = setup();
+      attemptMocks.findOpenKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(approved);
+
+      await service.confirmKcpPayment('user-1', dto);
+
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['an approval is still in flight', { ...oldAttempt, attemptedAt: new Date() }, approved],
+      ['its state is unverifiable', oldAttempt, { kind: 'unverifiable', tno: 'tno-1' }],
+    ])('does not approve again while %s', async (_label, attempt, inquiry) => {
+      const { service } = setup();
+      attemptMocks.findOpenKcpApprovalAttempts.mockResolvedValue([attempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(inquiry);
+
+      await expect(service.confirmKcpPayment('user-1', dto)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('does not approve again when the inquiry itself fails', async () => {
+      const { service } = setup();
+      attemptMocks.findOpenKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockRejectedValue(new Error('timeout'));
+
+      await expect(service.confirmKcpPayment('user-1', dto)).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+      expect(kcpMocks.approveKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('approves again once the earlier attempt is confirmed as not approved', async () => {
+      const { service, orders } = setup();
+      attemptMocks.findOpenKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue({ kind: 'not_confirmed', resCd: '9999' });
+      kcpMocks.approveKcpPayment.mockResolvedValue({ tno: 'tno-2', amount: 50000 });
+
+      await service.confirmKcpPayment('user-1', dto);
+      expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+    });
+
+    it('worker settles an approved payment found by inquiry', async () => {
+      const { service, orders } = setup();
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(approved);
+
+      await expect(service.recoverKcpApprovals()).resolves.toMatchObject({ settled: 1 });
+      expect(orders.settleOrderPaid).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['the order was canceled', { ...pending, status: 'canceled' }, approved],
+      ['the amount differs', pending, { ...approved, amount: 40000 }],
+    ])('worker cancels the charge when %s', async (_label, order, inquiry) => {
+      const { service, orders } = setup(null, order);
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(inquiry);
+
+      await expect(service.recoverKcpApprovals()).resolves.toMatchObject({ compensated: 1 });
+      expect(kcpMocks.cancelKcpPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ tno: 'tno-1' }),
+      );
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('worker only closes the attempt when the payment is already settled', async () => {
+      const { service, orders } = setup(
+        { orderId: 'order-1', status: 'paid' },
+        { ...pending, status: 'paid' },
+      );
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue(approved);
+
+      await expect(service.recoverKcpApprovals()).resolves.toMatchObject({ settled: 1 });
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+      expect(orders.settleOrderPaid).not.toHaveBeenCalled();
+    });
+
+    it('worker counts unconfirmed checks and hands over to operators at the cap', async () => {
+      const { service } = setup();
+      kcpMocks.inquireKcpPaymentByOrder.mockResolvedValue({ kind: 'unverifiable', tno: 'tno-1' });
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([
+        oldAttempt,
+        { ...oldAttempt, id: 'attempt-last', checks: 5 },
+      ]);
+
+      await expect(service.recoverKcpApprovals()).resolves.toMatchObject({ exhausted: 1 });
+      expect(attemptMocks.countKcpApprovalCheck).toHaveBeenCalledWith(
+        expect.anything(),
+        'attempt-0',
+      );
+      expect(attemptMocks.closeKcpApprovalAttempt).toHaveBeenCalledWith(
+        expect.anything(),
+        'attempt-last',
+        'failed',
+      );
+      expect(kcpMocks.cancelKcpPayment).not.toHaveBeenCalled();
+    });
+
+    it('worker does not burn checks while KCP inquiry is not configured', async () => {
+      const { service } = setup();
+      kcpMocks.isKcpInquiryConfigured.mockReturnValue(false);
+      attemptMocks.listDueKcpApprovalAttempts.mockResolvedValue([oldAttempt]);
+
+      await service.recoverKcpApprovals();
+      expect(attemptMocks.countKcpApprovalCheck).not.toHaveBeenCalled();
+      expect(kcpMocks.inquireKcpPaymentByOrder).not.toHaveBeenCalled();
     });
   });
 });

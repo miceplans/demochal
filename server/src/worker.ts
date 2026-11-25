@@ -25,6 +25,7 @@ import { PaymentsService } from './modules/payments/payments.service.js';
 
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 const REFUND_PENDING_SCAN_INTERVAL_MS = 10 * 60 * 1000;
+const KCP_APPROVAL_SCAN_INTERVAL_MS = 5 * 60 * 1000;
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
 async function bootstrap() {
@@ -43,6 +44,7 @@ async function bootstrap() {
 
   const paymentsService = app.get(PaymentsService);
   let lastRefundPendingScanAt = 0;
+  let lastKcpApprovalScanAt = 0;
 
   let shuttingDown = false;
   process.on('SIGTERM', () => (shuttingDown = true));
@@ -60,6 +62,7 @@ async function bootstrap() {
   while (!shuttingDown) {
     await scanChallengeNotifications();
     await scanRefundPendingPayments();
+    await scanKcpApprovals();
 
     if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
       logger.warn('No worker queue is configured, idling');
@@ -121,6 +124,24 @@ async function bootstrap() {
     } catch (error) {
       const name = error instanceof Error ? error.name : 'UnknownError';
       logger.error(`Refund pending scan failed (${name})`);
+    }
+  }
+
+  // 승인 응답이 유실된 KCP 결제를 거래조회로 확인해 정산하거나 취소한다.
+  async function scanKcpApprovals() {
+    if (Date.now() - lastKcpApprovalScanAt < KCP_APPROVAL_SCAN_INTERVAL_MS) return;
+    lastKcpApprovalScanAt = Date.now();
+    try {
+      const result = await paymentsService.recoverKcpApprovals();
+      if (result.scanned > 0) {
+        logger.log(
+          `KCP approval scan: ${result.settled} settled, ${result.compensated} compensated, ` +
+            `${result.exhausted} need manual review of ${result.scanned}`,
+        );
+      }
+    } catch (error) {
+      const name = error instanceof Error ? error.name : 'UnknownError';
+      logger.error(`KCP approval scan failed (${name})`);
     }
   }
 
