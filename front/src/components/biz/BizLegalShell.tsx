@@ -5,7 +5,7 @@ import styled from '@emotion/styled';
 import { colors as c } from '@/styles/design';
 import { BizGlobalStyles, BizFooter, useBizHref } from '@/components/biz/BizShell';
 
-export function AdminHeader() {
+export function BizLegalHeader() {
   const hrefOf = useBizHref();
   return (
     <HeaderBox>
@@ -35,7 +35,7 @@ export function BizLegalShell({ children }: { children: ReactNode }) {
           background: c.white,
         }}
       >
-        <AdminHeader />
+        <BizLegalHeader />
         <main
           style={{
             flex: 1,
