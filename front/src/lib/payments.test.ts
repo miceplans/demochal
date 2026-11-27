@@ -45,6 +45,18 @@ describe('paymentProviderForHost', () => {
     expect(paymentProviderForHost('bzexample.com')).toBe('toss');
     expect(paymentProviderForHost('localhost')).toBe('toss');
   });
+
+  it('follows the shared BZ label from NEXT_PUBLIC_BZ_SUBDOMAIN', async () => {
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_BZ_SUBDOMAIN', 'pay');
+    const { paymentProviderForHost } = await import('./payments');
+
+    expect(paymentProviderForHost('pay.example.com')).toBe('naverpay');
+    expect(paymentProviderForHost('pay.example.com:443')).toBe('naverpay');
+    expect(paymentProviderForHost('bz.example.com')).toBe('toss');
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
 });
 
 describe('requestBizPayment — bz (KCP window)', () => {
