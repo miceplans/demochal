@@ -7,6 +7,10 @@ describe('useUserStore', () => {
     useUserStore.setState({ applicationDraft: null });
   });
 
+  it('신규 사용자의 관심사 초기값은 빈 배열이다', () => {
+    expect(useUserStore.getState().interests).toEqual([]);
+  });
+
   it('clearApplication은 저장된 지원서 초안을 지운다', () => {
     useUserStore
       .getState()

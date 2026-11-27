@@ -34,7 +34,7 @@ type UserState = {
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
-      interests: ['IT · 소프트웨어', '데이터 · AI'],
+      interests: [],
       query: '',
       survey: {},
       hasCompletedOnboarding: false,
