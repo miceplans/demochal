@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useAuth } from '@/features/auth/AuthProvider';
+import { useAuth, type AuthUser } from '@/features/auth/AuthProvider';
 
 /** 로그인 후 돌아올 경로를 담은 로그인 화면 주소. */
 export function loginHref(next: string | null | undefined, loginPath = '/login'): string {
@@ -32,20 +32,38 @@ export function useLoginRedirect(options?: { loginPath?: string; withNext?: bool
   );
 }
 
+export type AuthGate = 'loading' | 'allowed' | 'unauthenticated' | 'forbidden' | 'error';
+
+/**
+ * 모든 접근 가드(RequireAuth·관리자 콘솔·기업 콘솔)가 공유하는 접근 판단.
+ * 화면마다 보여주는 방식(리다이렉트·안내 박스·디자인 커버)만 다르고 판단 규칙은 여기 하나다.
+ * - role을 주면 그 역할의 로그인 사용자만 allowed, 다른 역할은 forbidden.
+ */
+export function useAuthGate(role?: AuthUser['role']): {
+  gate: AuthGate;
+  user: AuthUser | undefined;
+  refetch: () => Promise<unknown>;
+} {
+  const { status, user, refetch } = useAuth();
+  const gate: AuthGate =
+    status === 'authenticated' ? (!role || user?.role === role ? 'allowed' : 'forbidden') : status;
+  return { gate, user, refetch };
+}
+
 /**
  * 로그인 사용자에게만 children을 보여준다. 인증 상태는 AuthProvider(TanStack Query 캐시)에서 읽는다.
  * 비로그인(또는 인증 확인 실패)이면 현재 경로를 next로 붙여 로그인 화면으로 보낸다.
  * 로그인이 필요한 페이지는 page.tsx에서 이 컴포넌트로 감싼다.
  */
 export function RequireAuth({ children }: { children: ReactNode }) {
-  const { status } = useAuth();
+  const { gate } = useAuthGate();
   const redirectToLogin = useLoginRedirect();
-  const blocked = status === 'unauthenticated' || status === 'error';
+  const blocked = gate === 'unauthenticated' || gate === 'error';
 
   useEffect(() => {
     if (blocked) redirectToLogin('guard');
   }, [blocked, redirectToLogin]);
 
-  if (status !== 'authenticated') return null;
+  if (gate !== 'allowed') return null;
   return <>{children}</>;
 }

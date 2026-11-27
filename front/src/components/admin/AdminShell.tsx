@@ -11,7 +11,7 @@ import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
 import { routeOf } from './AdminShell.logic';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { useLoginRedirect } from '@/components/auth/RequireAuth';
+import { useAuthGate, useLoginRedirect } from '@/components/auth/RequireAuth';
 import { useLogout } from '@/features/auth/session';
 
 export { routeOf } from './AdminShell.logic';
@@ -105,8 +105,8 @@ function AdminSidebar() {
 function AdminAccessGate({ children }: { children: ReactNode }) {
   const hrefOf = useAdminHref();
   const logout = useAdminLogout();
-  const { status, user: me, refetch } = useAuth();
-  const unauthenticated = status === 'unauthenticated';
+  const { gate, refetch } = useAuthGate('admin');
+  const unauthenticated = gate === 'unauthenticated';
   // 관리자 로그인은 항상 콘솔 홈으로 들어가므로 next를 붙이지 않는다.
   const redirectToLogin = useLoginRedirect({ loginPath: hrefOf('/login'), withNext: false });
 
@@ -114,8 +114,8 @@ function AdminAccessGate({ children }: { children: ReactNode }) {
     if (unauthenticated) redirectToLogin('guard');
   }, [unauthenticated, redirectToLogin]);
 
-  if (status === 'loading' || unauthenticated) return null;
-  if (!me) {
+  if (gate === 'loading' || unauthenticated) return null;
+  if (gate === 'error') {
     return (
       <GateBox role="alert">
         <p>관리자 정보를 확인하지 못했어요.</p>
@@ -125,7 +125,7 @@ function AdminAccessGate({ children }: { children: ReactNode }) {
       </GateBox>
     );
   }
-  if (me.role !== 'admin') {
+  if (gate === 'forbidden') {
     return (
       <GateBox role="alert">
         <p>관리자 계정으로만 접근할 수 있어요.</p>

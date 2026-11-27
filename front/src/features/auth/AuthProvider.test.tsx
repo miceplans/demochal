@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@semochal/api-client';
 import { AuthProvider, needsOnboarding, useAuth } from './AuthProvider';
 import { useLogout } from './session';
-import { RequireAuth, useLoginRedirect } from '@/components/auth/RequireAuth';
+import { RequireAuth, useAuthGate, useLoginRedirect } from '@/components/auth/RequireAuth';
 import { readFormDraft, writeFormDraft } from '@/lib/form-draft';
 import { useUserStore } from '@/stores/useUserStore';
 
@@ -205,5 +205,21 @@ describe('useLoginRedirect (공통 로그인 리다이렉트 규칙)', () => {
     );
     result.current('guard');
     expect(mocks.replace).toHaveBeenCalledWith('/admin/login');
+  });
+});
+
+describe('useAuthGate (모든 가드의 공통 접근 판단)', () => {
+  it('역할이 맞으면 allowed, 다르면 forbidden', async () => {
+    mocks.getMyAuthInfo.mockResolvedValue(user('u1', { role: 'user' }));
+    const admin = renderHook(() => useAuthGate('admin'), { wrapper });
+    await waitFor(() => expect(admin.result.current.gate).toBe('forbidden'));
+    const any = renderHook(() => useAuthGate(), { wrapper });
+    await waitFor(() => expect(any.result.current.gate).toBe('allowed'));
+  });
+
+  it('비로그인은 역할과 무관하게 unauthenticated', async () => {
+    mocks.getMyAuthInfo.mockRejectedValue(new ApiError(401, null));
+    const { result } = renderHook(() => useAuthGate('business'), { wrapper });
+    await waitFor(() => expect(result.current.gate).toBe('unauthenticated'));
   });
 });
