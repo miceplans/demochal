@@ -1,6 +1,6 @@
 'use client';
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
 type UserState = {
   interests: string[];
   query: string;
@@ -31,6 +31,31 @@ type UserState = {
   saveApplication: (value: NonNullable<UserState['applicationDraft']>) => void;
   clearApplication: () => void;
 };
+const LEGACY_STORAGE_KEY = 'semo-user-publishing';
+// 구 키(semo-user-publishing)의 저장값을 새 키로 1회 이어받는 storage 래퍼.
+// skipHydration이라 실제 읽기는 persist.rehydrate() 시점에 일어나므로 마이그레이션도 그 전에 끝난다.
+const storageWithLegacyMigration: StateStorage = {
+  getItem: (name) => {
+    const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy !== null) {
+      if (window.localStorage.getItem(name) === null) {
+        try {
+          JSON.parse(legacy);
+          window.localStorage.setItem(name, legacy);
+        } catch {
+          // 손상된 구 저장값은 옮기지 않고 버린다.
+        }
+      }
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+    }
+    return window.localStorage.getItem(name);
+  },
+  setItem: (name, value) => window.localStorage.setItem(name, value),
+  removeItem: (name) => {
+    window.localStorage.removeItem(name);
+    window.localStorage.removeItem(LEGACY_STORAGE_KEY);
+  },
+};
 export const useUserStore = create<UserState>()(
   persist(
     (set) => ({
@@ -56,7 +81,12 @@ export const useUserStore = create<UserState>()(
       clearApplication: () => set({ applicationDraft: null }),
     }),
     {
-      name: 'semo-user-publishing',
+      name: 'semochal-user',
+      // SSR에서는 window가 없어 getStorage가 throw하고 storage가 비활성화된다(기존 기본값과 동일).
+      storage: createJSONStorage(() => {
+        if (typeof window === 'undefined') throw new Error('window is not available');
+        return storageWithLegacyMigration;
+      }),
       version: 4,
       // v1 → v2: 북마크를 서버(TanStack Query)로 옮기며 로컬 bookmarks만 버린다.
       // v2 → v3: '선호 역할'/'참가 대상' 칩 제거(서버 미지원)로 roles/audience를 버린다.
