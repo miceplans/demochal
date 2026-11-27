@@ -72,7 +72,7 @@ vi.mock('@semochal/api-client', () => ({
     useFinalizeUpload: () => ({
       mutateAsync: vi.fn(async () => ({ status: 201, data: { id: 'file-1', url: null } })),
     }),
-    cancelOrder: mocks.cancelOrder,
+    useCancelOrder: () => ({ mutateAsync: mocks.cancelOrder }),
     useListMyNotifications: () => ({ data: { data: [] } }),
     useListAdProducts: () => ({ data: { status: 200, data: products } }),
     listAdProducts: mocks.listAdProducts,
@@ -286,7 +286,7 @@ describe('BizAdsPage 결제 단계 (이미지 업로드 → 광고명 → 결제
     renderPage();
     await startPayment();
 
-    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith('order-1'));
+    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith({ id: 'order-1' }));
     expect(mocks.toastError).toHaveBeenCalled();
     expect(screen.getByRole('button', { name: '광고 정보 수정' })).toBeTruthy();
     expect(localStorage.getItem('semochal:biz-ad-payment-draft:v1')).not.toBeNull();
@@ -327,7 +327,7 @@ describe('BizAdsPage 결제 단계 (이미지 업로드 → 광고명 → 결제
     renderPage();
     await startPayment();
 
-    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith('order-1'));
+    await waitFor(() => expect(mocks.cancelOrder).toHaveBeenCalledWith({ id: 'order-1' }));
     expect(mocks.toastError).toHaveBeenCalled();
   });
 

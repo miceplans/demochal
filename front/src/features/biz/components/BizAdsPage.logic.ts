@@ -50,5 +50,54 @@ function extractErrorMessage(error: unknown): string {
   );
 }
 
+type ReservedPeriod = { startDate: string; endDate: string };
+
+// 기존 계약이 잡고 있는 기간을 건드리지 않는 가장 이른 시작일을 찾는다.
+function firstAvailableAdStart(
+  reservedPeriods: readonly ReservedPeriod[] | undefined,
+  fromDateKey: string,
+) {
+  let start = fromDateKey;
+  for (const period of [...(reservedPeriods ?? [])].sort((a, b) =>
+    a.startDate.localeCompare(b.startDate),
+  )) {
+    if (period.startDate.slice(0, 10) <= start && period.endDate.slice(0, 10) >= start) {
+      start = new Date(new Date(period.endDate.slice(0, 10)).getTime() + DAY_MS)
+        .toISOString()
+        .slice(0, 10);
+    }
+  }
+  return start;
+}
+
+function isAdEnded(ad: Ad, todayKey: string) {
+  return ad.status === 'ended' || ad.endDate.slice(0, 10) < todayKey;
+}
+
+// 결제는 끝났지만 이미지·광고명을 아직 등록하지 않은 광고.
+// placement를 알 수 없는 광고(hero·gallery 밖 상품, 상품 목록 로딩 중)는 등록 흐름을 시작할 수
+// 없으므로 막다른 길이 되지 않게 '이미지 등록' 대상에서 제외한다.
+function adNeedsContent(ad: Ad, placement: AdPlacement | null, todayKey: string) {
+  return ad.status === 'active' && !ad.imageUrl && !isAdEnded(ad, todayKey) && placement !== null;
+}
+
+function adStatusLabel(ad: Ad, needsContent: boolean, todayKey: string) {
+  if (ad.status === 'preparing') return '결제 대기';
+  if (needsContent) return '이미지 등록 필요';
+  if (isAdEnded(ad, todayKey)) return '종료';
+  if (ad.status === 'paused') return '일시 정지';
+  if (ad.startDate.slice(0, 10) > todayKey) return '시작 대기';
+  return '진행중';
+}
+
 export type { Ad, AdProduct, AdsScreen, SelectedAd };
-export { adDays, adPaymentAmount, extractErrorMessage, formatSlash };
+export {
+  adDays,
+  adNeedsContent,
+  adPaymentAmount,
+  adStatusLabel,
+  extractErrorMessage,
+  firstAvailableAdStart,
+  formatSlash,
+  isAdEnded,
+};
