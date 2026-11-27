@@ -4,6 +4,7 @@ import {
   type TossPaymentsPayment,
 } from '@tosspayments/tosspayments-sdk';
 
+import { BZ_SUBDOMAIN } from './bz-subdomain';
 import { requestKcpNaverPayPayment } from './kcp';
 
 let paymentPromise: Promise<TossPaymentsPayment> | null = null;
@@ -104,11 +105,9 @@ export async function requestTossBillingAuth(customerKey: string): Promise<boole
 }
 
 // ─── 결제 대행사 분기 ──────────────────────────────────────────────────────────
-// bz 서브도메인(기본 레이블 'bz') 호스트는 네이버페이, 그 외는 기존 토스다.
-// 프록시(front/src/proxy.ts)의 BZ_SUBDOMAIN과 같은 값을 쓰도록 NEXT_PUBLIC_BZ_SUBDOMAIN으로 맞춘다.
+// bz 서브도메인 호스트는 네이버페이, 그 외는 기존 토스다.
+// 레이블은 lib/bz-subdomain의 단일 해석을 공유한다(proxy.ts·lib/biz.ts와 같은 값).
 export type PaymentProvider = 'toss' | 'naverpay';
-
-const BZ_SUBDOMAIN = process.env.NEXT_PUBLIC_BZ_SUBDOMAIN ?? 'bz';
 
 // 호스트(또는 hostname)의 첫 레이블로 결제 대행사를 고른다.
 export function paymentProviderForHost(host: string): PaymentProvider {

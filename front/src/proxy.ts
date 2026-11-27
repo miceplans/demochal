@@ -1,13 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { BZ_SUBDOMAIN } from '@/lib/bz-subdomain';
+
 const BIZ_SUBDOMAIN = process.env.BIZ_SUBDOMAIN ?? 'biz';
 const BIZ_ORIGIN = process.env.BIZ_ORIGIN;
 const BIZ_PATH = '/biz';
-
-// bz 호스트는 biz와 동일한 콘텐츠를 서비스하되 결제만 네이버페이로 쓴다.
-// NEXT_PUBLIC_BZ_SUBDOMAIN을 먼저 봐서 프록시 rewrite와 클라이언트 결제 분기(lib/payments)의
-// 레이블이 항상 같게 유지되게 한다(서버 전용 BZ_SUBDOMAIN은 미설정 시 폴드백).
-const BZ_SUBDOMAIN = process.env.NEXT_PUBLIC_BZ_SUBDOMAIN ?? process.env.BZ_SUBDOMAIN ?? 'bz';
 
 const ADMIN_SUBDOMAIN = process.env.ADMIN_SUBDOMAIN ?? 'admin';
 const ADMIN_ORIGIN = process.env.ADMIN_ORIGIN;
@@ -24,25 +21,10 @@ export function proxy(request: NextRequest) {
   const underBizPath = pathname === BIZ_PATH || pathname.startsWith(`${BIZ_PATH}/`);
   const underAdminPath = pathname === ADMIN_PATH || pathname.startsWith(`${ADMIN_PATH}/`);
 
-  if (isSubdomainHost(host, BIZ_SUBDOMAIN)) {
-    // 토스 결제 successUrl(/payments/success)도 앱 레벨 공유 페이지라 /biz catch-all(404)로
-    // rewrite되면 안 된다.
-    if (pathname.startsWith('/payments/')) {
-      return NextResponse.next();
-    }
-    if (underBizPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = pathname.slice(BIZ_PATH.length) || '/';
-      return NextResponse.redirect(url);
-    }
-    return NextResponse.rewrite(
-      new URL(`${BIZ_PATH}${pathname === '/' ? '' : pathname}${search}`, request.url),
-    );
-  }
-
-  if (isSubdomainHost(host, BZ_SUBDOMAIN)) {
-    // /payments는 앱 레벨 공유 페이지(결제 결과)라 /biz rewrite 대상에서 제외해야
-    // 네이버페이 returnUrl 리다이렉트가 그대로 도달한다. 나머지 경로는 biz와 동일 규칙.
+  // biz/bz 호스트는 같은 /biz 콘텐츠를 서비스한다(bz는 결제만 네이버페이로 분기 — lib/payments).
+  if (isSubdomainHost(host, BIZ_SUBDOMAIN) || isSubdomainHost(host, BZ_SUBDOMAIN)) {
+    // /payments는 앱 레벨 공유 페이지(토스 successUrl·네이버페이 returnUrl)라 /biz catch-all로
+    // rewrite되면 결제 결과 리다이렉트가 도달하지 못한다.
     if (pathname.startsWith('/payments/')) {
       return NextResponse.next();
     }

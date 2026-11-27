@@ -93,4 +93,21 @@ describe('proxy subdomain routing', () => {
   it('serves the main site untouched on the root host', () => {
     expect(proxy(makeRequest('www.example.com', '/'))).toEqual({ kind: 'next' });
   });
+
+  it('uses the shared BZ label resolution (NEXT_PUBLIC_BZ_SUBDOMAIN override)', async () => {
+    vi.resetModules();
+    vi.stubEnv('NEXT_PUBLIC_BZ_SUBDOMAIN', 'pay');
+    const { proxy: proxyWithCustomBz } = await import('./proxy');
+
+    expect(proxyWithCustomBz(makeRequest('pay.example.com', '/'))).toEqual({
+      kind: 'rewrite',
+      url: 'https://pay.example.com/biz',
+    });
+    expect(proxyWithCustomBz(makeRequest('pay.example.com', '/payments/success'))).toEqual({
+      kind: 'next',
+    });
+    expect(proxyWithCustomBz(makeRequest('bz.example.com', '/'))).toEqual({ kind: 'next' });
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
 });
