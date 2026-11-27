@@ -79,6 +79,17 @@ describe('BizInquiryForm', () => {
     );
   });
 
+  it('초안 복원 후 입력 없이 디바운스가 지나도 초안이 삭제되지 않는다', async () => {
+    const draft = { name: '홍길동', contact: '010-1234-5678', content: '견적이 궁금합니다.' };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ value: draft, savedAt: Date.now() }));
+    renderForm();
+
+    // 복원값이 저장 구독에 반영되기 전에 DraftSaver가 baseline으로 오인해 지우는 회귀 방지.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    expect(JSON.parse(localStorage.getItem(DRAFT_KEY)!).value).toEqual(draft);
+  });
+
   it('서버 프리렌더는 초안이 있어도 pristine HTML을 만들고, 클라이언트에서 effect 후 복원된다', () => {
     localStorage.setItem(
       DRAFT_KEY,
