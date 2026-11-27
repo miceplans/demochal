@@ -1,4 +1,4 @@
-const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.webp';
 
 // 팀 상세 응답의 멤버 중 프로필 모달에 필요한 필드만 갖는 구조 타입(표의 행 그대로 넘긴다).
 type MemberSummary = {

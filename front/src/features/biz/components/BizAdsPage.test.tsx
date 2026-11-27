@@ -572,7 +572,7 @@ describe('BizAdsPage 현재 나의 광고 빈 상태', () => {
     expect(section).not.toBeNull();
     // 장식 이미지(alt="")는 role=img가 아니므로 alt로 직접 찾는다.
     const emptyImage = within(section as HTMLElement).getByAltText('');
-    expect((emptyImage as HTMLImageElement).src).toContain('/assets/empty-contents.png');
+    expect((emptyImage as HTMLImageElement).src).toContain('/assets/empty-contents.webp');
     expect(screen.getByText('광고가 없어요')).not.toBeNull();
   });
 });

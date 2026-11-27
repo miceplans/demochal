@@ -14,7 +14,7 @@ export function BizOperationsPage({ titleAs }: { titleAs?: 'h1' | 'h2' }) {
       <TopBlock>
         <Header>
           <Brand>
-            <MiceLogo src="/assets/mice-plans-logo.png" alt="MICE PLANS" />
+            <MiceLogo src="/assets/mice-plans-logo.webp" alt="MICE PLANS" />
             <Cross>X</Cross>
             <Logo size={11} />
           </Brand>
@@ -23,7 +23,7 @@ export function BizOperationsPage({ titleAs }: { titleAs?: 'h1' | 'h2' }) {
         <BizInquiryForm />
       </TopBlock>
       <InfoRow>
-        <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
+        <MapImg src="/assets/operations-map.webp" alt="센텀IS타워 위치" />
         <InfoList>
           <InfoItem>
             <InfoIcon src={`${ICON}/pin.svg`} alt="" />

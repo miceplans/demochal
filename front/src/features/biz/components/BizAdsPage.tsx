@@ -492,7 +492,7 @@ export function BizAdsPage() {
             ) : (
               <CurrentBannerEmpty>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/assets/empty-contents.png" alt="" />
+                <img src="/assets/empty-contents.webp" alt="" />
                 <p>광고가 없어요</p>
               </CurrentBannerEmpty>
             )}

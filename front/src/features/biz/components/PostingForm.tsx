@@ -857,7 +857,7 @@ export function PostingForm({
           </>
         ) : (
           <>
-            <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
+            <UploadMark src={`${ICON}/fileuploader.webp`} alt="" />
             <UploadText>파일 찾기</UploadText>
           </>
         )}

@@ -4,8 +4,8 @@ export type AdPreviewView = 'mobile' | 'pc';
 export type AdPlacement = 'hero' | 'gallery';
 
 const artwork = {
-  pc: { width: 1200, background: '/assets/pc-screen.png' },
-  mobile: { width: 358, background: '/assets/mobile-screen.png' },
+  pc: { width: 1200, background: '/assets/pc-screen.webp' },
+  mobile: { width: 358, background: '/assets/mobile-screen.webp' },
 } as const;
 
 // 업로드 크롭 프레임은 각 뷰가 실제 홈에서 광고를 노출하는 비율과 같아야 한다 —

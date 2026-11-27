@@ -18,7 +18,7 @@ describe('MaintenanceScreen', () => {
     expect(screen.getByRole('heading', { name: '서버 점검 중입니다.' })).toBeTruthy();
     expect(screen.getByText('죄송합니다. 더욱 나은 모습으로 찾아 뵙겠습니다!')).toBeTruthy();
     expect(screen.getByAltText('서버 점검 일러스트').getAttribute('src')).toBe(
-      '/assets/maintenance.png',
+      '/assets/maintenance.webp',
     );
   });
 

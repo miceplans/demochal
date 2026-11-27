@@ -71,7 +71,7 @@ function AdminSidebar() {
     <SidebarBox>
       <div>
         <BrandRow aria-label="세모챌 관리자">
-          <Image src="/assets/SEMOADMIN.png" alt="세모챌 관리자" width={88} height={28} priority />
+          <Image src="/assets/SEMOADMIN.webp" alt="세모챌 관리자" width={88} height={28} priority />
         </BrandRow>
         <NavItems aria-label="관리자 메뉴">
           {adminMenu.map(([href, label]) => {
