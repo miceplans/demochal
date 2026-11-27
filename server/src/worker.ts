@@ -6,12 +6,7 @@ import { env } from './config/env.js';
 import { SqsService } from './queue/sqs.service.js';
 import { runPeriodic, runQueueConsumer, sleep } from './queue/worker-loops.js';
 import { OutboxRelayService } from './outbox/outbox-relay.service.js';
-import { VerificationsProcessorService } from './modules/verifications/verifications.processor.js';
 import { VerificationDocumentRetentionService } from './modules/verifications/verification-document-retention.service.js';
-import {
-  VERIFICATION_SUBMITTED_EVENT,
-  type VerificationJobMessage,
-} from './modules/verifications/verifications.service.js';
 import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
@@ -31,7 +26,7 @@ const REFUND_PENDING_SCAN_INTERVAL_MS = 10 * 60 * 1000;
 const KCP_APPROVAL_SCAN_INTERVAL_MS = 5 * 60 * 1000;
 const VERIFICATION_DOCUMENT_RETENTION_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 // Outbox rows are relayed by their own loop, not between long polls, so a new
-// email/verification job reaches SQS within this delay instead of a full poll cycle.
+// email job reaches SQS within this delay instead of a full poll cycle.
 const OUTBOX_RELAY_INTERVAL_MS = 2000;
 
 function errorName(error: unknown): string {
@@ -48,7 +43,6 @@ async function bootstrap() {
 
   const sqsService = app.get(SqsService);
   const outboxRelayService = app.get(OutboxRelayService);
-  const verificationsProcessor = app.get(VerificationsProcessorService);
   const verificationDocumentRetention = app.get(VerificationDocumentRetentionService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
   const emailService = app.get(EmailService);
@@ -65,11 +59,10 @@ async function bootstrap() {
     env.sqsEmailsQueueUrl && (env.sesFromEmail || env.sesSupportFromEmail),
   );
   logger.log(
-    `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
-      `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
+    `Worker started (email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
       `inbound queue: ${env.sqsInboundEmailsQueueUrl ? 'on' : 'off'})`,
   );
-  if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
+  if (!emailEnabled && !env.sqsInboundEmailsQueueUrl) {
     logger.warn('No worker queue is configured; only periodic scans will run');
   }
 
@@ -134,26 +127,6 @@ async function bootstrap() {
   ];
 
   const relays: (() => Promise<void>)[] = [];
-
-  if (env.sqsVerificationsQueueUrl) {
-    const queueUrl = env.sqsVerificationsQueueUrl;
-    relays.push(() => outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, queueUrl));
-    loops.push(
-      runQueueConsumer(
-        sqsService,
-        {
-          queueUrl,
-          label: 'verifications',
-          handle: async (message: Message) => {
-            const body = JSON.parse(message.Body ?? '{}') as VerificationJobMessage;
-            await verificationsProcessor.process(body);
-          },
-        },
-        signal,
-        logger,
-      ),
-    );
-  }
 
   if (emailEnabled) {
     const queueUrl = env.sqsEmailsQueueUrl;

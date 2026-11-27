@@ -24,7 +24,7 @@ AWS 스테이징 IaC는 [`terraform/`](terraform/)에 있습니다. 이 구성�
 - ECS Fargate + ALB (API 서비스, 워커 서비스 — 같은 소스, 다른 CMD)
 - RDS PostgreSQL Single-AZ (private subnet)
 - NAT Gateway, RDS Multi-AZ는 초기 단계에서 제외 (필요해지면 도입)
-- SQS (verifications 큐, emails 큐) + SES(서비스성 이메일) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
+- SQS (emails 큐, inbound emails 큐) + SES(서비스성 이메일) + S3 (공개 콘텐츠 / 비공개 등록증 버킷 분리)
 
 ## 적용 전 준비
 
@@ -33,7 +33,7 @@ Terraform은 리소스만 정의하며 `apply`·DNS 변경·provider 콘솔 등�
 1. 암호화된 S3 state bucket과 DynamoDB lock table(`semochal-staging-tfstate`, `semochal-staging-tfstate-lock`)을 별도 bootstrap하고, 해당 backend에 접근할 IAM 권한을 부여합니다. 일반 apply는 `backend.tf`를 사용하며 local state로 진행하지 않습니다.
 2. `staging.tfvars.example`을 복사해 실제 도메인과 hosted zone ID를 넣습니다. 이 파일에는 secret 값을 넣지 않습니다.
 3. 첫 apply는 `enable_runtime=false`로 VPC/ECR/RDS/S3/SQS/IAM/ALB만 생성합니다. `api_image`/`worker_image`는 비워도 됩니다.
-4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. 두 repository 모두 `IMMUTABLE` tag이며 ECR lifecycle policy가 태그 prefix로 보존 기간을 나눕니다 — 실제 배포용 이미지는 `deploy-`로 시작하는 태그(예: `deploy-2024-06-01-abcd123`)로 push해 최근 10개까지 보존하고, 일회성 테스트 이미지만 `test-`로 시작하는 태그를 써서 2개 초과분이 즉시 정리되도록 합니다. 두 prefix 어디에도 속하지 않는 태그는 lifecycle policy가 건드리지 않습니다(무기한 보존). `api_image`/`worker_image`에는 push 후 resolve한 `@sha256:...` digest를 넣습니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NAVER_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `TOSS_SECRET_KEY`, `TOSS_WEBHOOK_ALLOWED_IPS`, `NAVERPAY_CLIENT_ID`, `NAVERPAY_CLIENT_SECRET`, `NAVERPAY_CHAIN_ID`, `KCP_SITE_CD`, `KCP_CERT_INFO`, `KCP_PRIVATE_KEY`, `KCP_PRIVATE_KEY_PASSWORD`, `KCP_MOBILE_RETURN_URL`, `CLOVA_OCR_API_URL`, `CLOVA_OCR_SECRET_KEY`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
+4. ECR repository URI로 API/worker immutable digest 이미지를 push합니다. 두 repository 모두 `IMMUTABLE` tag이며 ECR lifecycle policy가 태그 prefix로 보존 기간을 나눕니다 — 실제 배포용 이미지는 `deploy-`로 시작하는 태그(예: `deploy-2024-06-01-abcd123`)로 push해 최근 10개까지 보존하고, 일회성 테스트 이미지만 `test-`로 시작하는 태그를 써서 2개 초과분이 즉시 정리되도록 합니다. 두 prefix 어디에도 속하지 않는 태그는 lifecycle policy가 건드리지 않습니다(무기한 보존). `api_image`/`worker_image`에는 push 후 resolve한 `@sha256:...` digest를 넣습니다. RDS가 생성한 master secret에서 username/password를 승인된 운영자 세션에서 조회하고 RDS endpoint, port `5432`, database name과 함께 URL-encode한 `DATABASE_URL`을 application secret에 수동으로 저장합니다. application secret의 키는 `DATABASE_URL`, `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `NAVER_REDIRECT_URI`, `KAKAO_CLIENT_ID`, `KAKAO_CLIENT_SECRET`, `KAKAO_REDIRECT_URI`, `TOSS_SECRET_KEY`, `TOSS_WEBHOOK_ALLOWED_IPS`, `NAVERPAY_CLIENT_ID`, `NAVERPAY_CLIENT_SECRET`, `NAVERPAY_CHAIN_ID`, `KCP_SITE_CD`, `KCP_CERT_INFO`, `KCP_PRIVATE_KEY`, `KCP_PRIVATE_KEY_PASSWORD`, `KCP_MOBILE_RETURN_URL`, `NTS_API_KEY`입니다. RDS credential을 rotation하면 같은 세션에서 application secret의 `DATABASE_URL`을 갱신한 뒤 ECS API/worker에 force new deployment를 실행합니다. 값은 코드, tfvars, state, Issue/PR에 기록하지 않습니다.
 5. RDS는 private subnet에만 있어 로컬에서 직접 접근할 수 없고 `/health`는 단순 `select 1`이라 스키마가 없어도 통과합니다. `enable_runtime=true`로 API/worker를 띄우기 전에 반드시 아래 one-off ECS task로 Drizzle 마이그레이션을 적용합니다(`server/src/migrate.ts` → `dist/migrate.js`, `pnpm --filter @semochal/server db:generate`로 생성된 `server/drizzle/*.sql`을 그대로 적용 — drizzle-kit CLI가 아니라 `drizzle-orm`의 programmatic migrator를 쓰므로 devDependency 없이 API 이미지 그대로 재사용합니다):
 
    ```sh
@@ -153,7 +153,7 @@ Terraform은 `postgres:16-bookworm` 기반의 on-demand `db_admin` task definiti
 
 ## 워커 동작
 
-워커는 큐마다(verifications/emails/inbound-emails) 독립된 롱폴링 루프를 돌린다. outbox 릴레이(2초 주기)와 주기 스캔(챌린지 알림·환불 재시도·KCP 승인 복구·서류 보관 기한)도 각자 별도 루프에서 실행해, 빈 큐의 20초 대기가 다른 큐나 스캔을 늦추지 않는다. 처리 중인 메시지는 30초마다 `ChangeMessageVisibility`로 가시성 타임아웃(120초)을 연장해 배치 처리가 길어져도 중복 처리되지 않게 한다. 핸들러가 멈췄을 때 메시지가 영원히 묶이지 않도록 연장은 최대 15분까지만 한다.
+워커는 큐마다(emails/inbound-emails) 독립된 롱폴링 루프를 돌린다. outbox 릴레이(2초 주기)와 주기 스캔(챌린지 알림·환불 재시도·KCP 승인 복구·서류 보관 기한)도 각자 별도 루프에서 실행해, 빈 큐의 20초 대기가 다른 큐나 스캔을 늦추지 않는다. 처리 중인 메시지는 30초마다 `ChangeMessageVisibility`로 가시성 타임아웃(120초)을 연장해 배치 처리가 길어져도 중복 처리되지 않게 한다. 핸들러가 멈췄을 때 메시지가 영원히 묶이지 않도록 연장은 최대 15분까지만 한다.
 
 ## 파일 업로드 보안 필수 설정
 

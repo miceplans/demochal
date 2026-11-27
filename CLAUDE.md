@@ -23,12 +23,12 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 - **구조**: NestJS 모듈 — auth, users, businesses, verifications, challenges, applications, orders, payments, files, notifications, ads. `DbModule`/`QueueModule`은 `@Global`. 인증은 전역 `JwtAuthGuard`(HttpOnly 쿠키 JWT)이며 매 요청 DB에서 유저를 다시 로드해 권한 변경이 즉시 반영된다(`modules/auth/jwt-auth.guard.ts`) — 이 동작을 우회하는 캐싱을 추가하지 않는다. 공개 엔드포인트는 `modules/auth/public.decorator.ts`의 `@Public()`으로 명시하고, 관리자 권한은 `AdminRoleGuard`로 검사한다.
 - **Drizzle**: 스키마는 `server/src/db/schema/core.schema.ts` + `server/src/db/schema/features.schema.ts`로 나뉘어 있고, `server/src/db/schema.ts`는 이 둘을 재수출하는 배럴 파일이다(컨벤션: `uuid().defaultRandom()`, `jsonb.$type<>()`, `timestamp().defaultNow()`, varchar 상태값 + 코멘트로 유효값 나열). DB 접근은 `DRIZZLE` provider 주입으로만. 마이그레이션은 drizzle-kit으로 생성(`pnpm --filter @semochal/server db:generate`, `drizzle/meta/_journal.json`의 `when`은 이전 항목보다 커야 적용된다)한다. **배포(staging/prod) 마이그레이션은 CI의 migrate 태스크만 담당**한다 — 앱 부팅(main.ts/worker.ts)에 자동 `migrate()` 호출을 추가하지 않는다. 로컬에서는 `pnpm dev:local`(`scripts/dev-local.mjs`)이 워크트리별 DB 기동 + 마이그레이션 + `pnpm dev`를 한 번에 수행한다(compose `migrate` 서비스도 계속 사용 가능). `db/schema-migration.spec.ts`가 0000 baseline과 마이그레이션 일치를 검증하므로, 스키마 변경 시 마이그레이션 파일 + 스펙을 함께 갱신해야 테스트가 깨지지 않는다.
-- **워커**: `worker.ts`는 SQS(`SQS_VERIFICATIONS_QUEUE_URL`) 폧 루프만 돌리고 HTTP를 열지 않는다. 워커 전용 로직은 `worker.module.ts`에 등록된 모듈(현재 verifications, notifications)에만 둔다.
+- **워커**: `worker.ts`는 SQS(이메일·수신 이메일 큐) 폴링 루프와 주기 스캔(챌린지 알림·환불 재시도·KCP 승인 복구)만 돌리고 HTTP를 열지 않는다. 워커 전용 로직은 `worker.module.ts`에 등록된 모듈(현재 notifications, email, payments)에만 둔다. 기관 인증 제출(`POST /verifications`)은 외부 호출이 없는 자동 승인이라 요청 트랜잭션에서 동기로 확정한다 — 실제 서류 심사(OCR 등)를 붙이면 outbox + 워커로 되돌린다.
 - **설정**: `config/env.ts`는 zod 스키마로 `process.env`를 검증한다. 신규 환경변수는 여기 + `server/.env.example`에 함께 추가.
 
 ## 아키텍처 규칙(준수 필수)
 
-- **Outbox 패턴**: DB 트랜잭션과 외부 부수효과(메시지 발송, 알림 등)를 묶어야 하는 경우 `outbox_events` + `OutboxService.enqueue(tx, ...)`를 사용하고, 발송은 워커의 `OutboxRelayService`가 맡는다(`verifications`, 이메일/알림 이벤트가 적용 사례). 트랜잭션 밖 fire-and-forget 발송을 새로 추가하지 않는다.
+- **Outbox 패턴**: DB 트랜잭션과 외부 부수효과(메시지 발송, 알림 등)를 묶어야 하는 경우 `outbox_events` + `OutboxService.enqueue(tx, ...)`를 사용하고, 발송은 워커의 `OutboxRelayService`가 맡는다(이메일/알림 이벤트가 적용 사례). 트랜잭션 밖 fire-and-forget 발송을 새로 추가하지 않는다.
 - **결제(Toss Payments)**: Toss 웹훅은 서명이 없으므로 수신 즉시 신뢰하지 않고 반드시 Toss API(`GET /v1/payments/{paymentKey}`)로 재조회해 대사한다. 클라이언트 승인(`POST /payments/confirm`)과 웹훅(DONE/CANCELED/EXPIRED/ABORTED/PARTIAL_CANCELED)은 금액-주문 대사·멱등 처리·`payments` 영속화를 갖췄고, 정산 불가 주문은 자동 환불(실패 시 `refund_pending` + 워커 재시도)한다. 미처리 상태를 조용히 스킵하지 말고 TODO로 명시한다.
 - **개인정보(사업자등록증 등)**: 민감 문서는 반드시 private 버킷(`S3_PRIVATE_BUCKET`)에만 저장하고 presigned PUT(5분)으로만 접근한다(`modules/files/files.service.ts`). 공개/비공개 버킷 분리를 없애지 않는다. OCR/진위확인 결과(`ocrResult` 등)와 사업자번호를 로그에 남기지 않는다.
 - **청소년 보호**: 현재는 `front/src/app/youth/` 정적 안내 페이지만 존재하며 정책 강제 로직은 없다. 연령 확인·보호 관련 코드를 추가할 경우 별도 검토를 거치고, 개인정보 수집 최소화 원칙을 적용한다.

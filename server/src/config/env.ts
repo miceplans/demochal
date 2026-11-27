@@ -31,7 +31,6 @@ const envSchema = z
     // Local S3-compatible endpoint (LocalStack). Empty keeps the default AWS endpoint.
     S3_ENDPOINT: z.union([z.literal(''), z.string().url()]).default(''),
 
-    SQS_VERIFICATIONS_QUEUE_URL: z.string().default(''),
     // 사업자 서류 보관 기한(일). 워커가 인증 결정(verified/rejected) 후 이 기간이 지난 서류를
     // private 버킷에서 지우고, 결정과 무관하게 제출 후 MAX 기간이 지나면 지운다.
     // MAX는 private 버킷 S3 수명주기 규칙(business_document_max_retention_days)과 같게 둔다.
@@ -199,7 +198,6 @@ export const env = {
   s3PrivateBucket: raw.S3_PRIVATE_BUCKET,
   s3Endpoint: raw.S3_ENDPOINT || undefined,
 
-  sqsVerificationsQueueUrl: raw.SQS_VERIFICATIONS_QUEUE_URL,
   verificationDocumentRetentionDays: raw.VERIFICATION_DOCUMENT_RETENTION_DAYS,
   verificationDocumentMaxRetentionDays: raw.VERIFICATION_DOCUMENT_MAX_RETENTION_DAYS,
   sesFromEmail: raw.SES_FROM_EMAIL,
