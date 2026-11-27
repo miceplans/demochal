@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 // import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import styled from '@emotion/styled';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +11,7 @@ import { TextField } from '@/components/ui/TextField';
 import { useToast } from '@/components/common/Toast';
 import { generated } from '@semochal/api-client';
 import { apiErrorMessage } from '@/lib/api-error';
+import { invalidateAuth } from '@/features/auth/AuthProvider';
 // import { MfaStep } from './MfaStep';
 import { loginSchema, type LoginFormValues } from '../schema';
 import type { /* MfaChallenge, */ MfaUser } from '../mfa-types';
@@ -23,6 +25,7 @@ const Form = styled.form`
 
 export function AdminLoginForm() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const toast = useToast();
   // TODO(2FA): 2단계 인증 임시 비활성화 — 재활성화 시 주석 해제.
   // const [challenge, setChallenge] = useState<MfaChallenge | null>(null);
@@ -43,6 +46,8 @@ export function AdminLoginForm() {
       toast.error('관리자 계정이 아닙니다.');
       return;
     }
+    // 로그인 전 캐시된 비로그인 상태로 콘솔 게이트가 튕기지 않게 인증 상태를 다시 읽힌다.
+    await invalidateAuth(queryClient);
     router.push('/admin');
   };
 

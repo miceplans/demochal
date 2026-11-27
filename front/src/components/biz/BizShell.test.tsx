@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   logoFile: undefined as { status: number; data: { url?: string | null } } | undefined,
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/biz/dashboard',
   useRouter: () => ({ push: mocks.push }),
@@ -26,9 +27,9 @@ vi.mock('@semochal/api-client', () => ({
     useGetMyAuthInfo: () => ({ data: mocks.auth }),
     useFindMyBusiness: () => ({ data: mocks.business }),
     useGetFile: (id: string) => ({ data: id ? mocks.logoFile : undefined }),
-    useLogout: () => ({ mutate: mocks.logoutMutate }),
   },
 }));
+vi.mock('@/features/auth/session', () => ({ useLogout: () => mocks.logoutMutate }));
 
 function renderSidebar() {
   return render(

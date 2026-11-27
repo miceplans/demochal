@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import {
   FORM_DRAFT_TTL_MS,
+  clearAllFormDrafts,
   clearFormDraft,
   readFormDraft,
   useFormDraftSaver,
@@ -118,5 +119,43 @@ describe('useFormDraftSaver', () => {
     vi.advanceTimersByTime(150);
 
     expect(readFormDraft('hook', isObj)).toBeNull();
+  });
+});
+
+describe('session form drafts (개인정보가 들어갈 수 있는 초안)', () => {
+  const SESSION = { storage: 'session' } as const;
+  const isObj = (v: unknown): v is { title: string } =>
+    typeof v === 'object' && v !== null && typeof (v as { title?: unknown }).title === 'string';
+  beforeEach(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+
+  it('storage: session 초안은 sessionStorage에만 저장된다', () => {
+    writeFormDraft('application-new:c1', { title: '답변' }, SESSION);
+
+    expect(sessionStorage.getItem('semochal:form-draft:v1:application-new:c1')).toContain('답변');
+    expect(localStorage.getItem('semochal:form-draft:v1:application-new:c1')).toBeNull();
+    expect(readFormDraft('application-new:c1', isObj, SESSION)).toEqual({ title: '답변' });
+    expect(readFormDraft('application-new:c1', isObj)).toBeNull();
+  });
+
+  it('예전 버전이 localStorage에 남긴 같은 키의 초안은 세션 초안을 읽을 때 지운다', () => {
+    writeFormDraft('team-apply:t1', { title: '예전 초안' });
+
+    expect(readFormDraft('team-apply:t1', isObj, SESSION)).toBeNull();
+    expect(localStorage.getItem('semochal:form-draft:v1:team-apply:t1')).toBeNull();
+  });
+
+  it('clearAllFormDrafts는 두 저장소의 폼 초안만 모두 지운다', () => {
+    writeFormDraft('posting:new', { title: '공고' });
+    writeFormDraft('application-new:c1', { title: '답변' }, SESSION);
+    localStorage.setItem('unrelated', 'keep');
+
+    clearAllFormDrafts();
+
+    expect(readFormDraft('posting:new', isObj)).toBeNull();
+    expect(readFormDraft('application-new:c1', isObj, SESSION)).toBeNull();
+    expect(localStorage.getItem('unrelated')).toBe('keep');
   });
 });

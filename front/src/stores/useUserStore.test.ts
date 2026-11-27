@@ -1,55 +1,66 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUserStore } from './useUserStore';
 
+const STORAGE_KEY = 'semochal-user';
+const LEGACY_KEY = 'semo-user-publishing';
+
+const persisted = (state: Record<string, unknown>, version: number) =>
+  JSON.stringify({ state, version });
+
+const recruitment = {
+  challenge: 'c1',
+  title: '팀명',
+  introduction: '소개',
+  role: '디자인',
+  preferred: '프론트엔드',
+  etc: '',
+};
+
+const resetStore = () => {
+  // persist가 붙은 setState는 저장값을 다시 쓰므로, 상태 초기화 뒤 localStorage를 비워야
+  // 매 테스트가 깨끗한 저장소에서 시작한다.
+  useUserStore.getState().clearPersonalData();
+  localStorage.clear();
+};
+
 describe('useUserStore', () => {
   beforeEach(() => {
-    localStorage.clear();
-    useUserStore.setState({ applicationDraft: null });
+    resetStore();
   });
 
-  it('clearApplication은 저장된 지원서 초안을 지운다', () => {
-    useUserStore
-      .getState()
-      .saveApplication({ challengeId: 'challenge-1', answers: { q1: '답변' } });
-    expect(useUserStore.getState().applicationDraft).toEqual({
-      challengeId: 'challenge-1',
-      answers: { q1: '답변' },
-    });
+  it('clearPersonalData는 설문·모집 초안·검색어·주인을 기본값으로 되돌린다', () => {
+    const state = useUserStore.getState();
+    state.setOwner('user-1');
+    state.setSurvey('activity', ['대학생']);
+    state.setQuery('해커톤');
+    state.setRecruitment({ challenge: 'c1', introduction: '소개', role: '디자인' });
 
-    useUserStore.getState().clearApplication();
+    useUserStore.getState().clearPersonalData();
 
-    expect(useUserStore.getState().applicationDraft).toBeNull();
+    const cleared = useUserStore.getState();
+    expect(cleared.ownerId).toBeNull();
+    expect(cleared.survey).toEqual({});
+    expect(cleared.query).toBe('');
+    expect(cleared.recruitment.introduction).toBe('');
   });
 
-  it('clearApplication은 초안이 없어도 실패하지 않는다', () => {
-    useUserStore.getState().clearApplication();
+  it('온보딩 완료·지원서 초안·관심사는 스토어(localStorage)에 두지 않는다', () => {
+    useUserStore.getState().setSurvey('activity', ['직장인']);
 
-    expect(useUserStore.getState().applicationDraft).toBeNull();
-  });
-});
-
-describe('useUserStore persist 키 마이그레이션', () => {
-  const NEW_KEY = 'semochal-user';
-  const LEGACY_KEY = 'semo-user-publishing';
-
-  const persisted = (state: Record<string, unknown>, version: number) =>
-    JSON.stringify({ state, version });
-
-  const initialState = useUserStore.getState();
-
-  beforeEach(() => {
-    useUserStore.setState(initialState, true);
-    localStorage.clear();
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as {
+      state: Record<string, unknown>;
+    };
+    expect(Object.keys(stored.state).sort()).toEqual(['ownerId', 'recruitment', 'survey']);
   });
 
-  it('구 키에만 데이터가 있으면 rehydrate 시 새 키로 옮기고 구 키를 제거한다', async () => {
+  it('주인 정보 없이 저장된 이전 버전(v4) 데이터는 복원하지 않는다', async () => {
     localStorage.setItem(
-      LEGACY_KEY,
+      STORAGE_KEY,
       persisted(
         {
+          survey: { activity: ['대학생'] },
           hasCompletedOnboarding: true,
-          survey: { step1: ['개발'] },
-          applicationDraft: { challengeId: 'c1', answers: { q1: 'a1' } },
+          applicationDraft: { challengeId: 'c1', answers: { q1: '연락처 010-0000-0000' } },
         },
         4,
       ),
@@ -57,24 +68,46 @@ describe('useUserStore persist 키 마이그레이션', () => {
 
     await useUserStore.persist.rehydrate();
 
+    const state = useUserStore.getState() as unknown as Record<string, unknown>;
+    expect(state.survey).toEqual({});
+    expect(state.ownerId).toBeNull();
+    expect(state.applicationDraft).toBeUndefined();
+    expect(localStorage.getItem(STORAGE_KEY)).not.toContain('010-0000-0000');
+  });
+});
+
+describe('useUserStore persist 키 마이그레이션', () => {
+  beforeEach(() => {
+    resetStore();
+  });
+
+  it('구 키에만 v5 데이터가 있으면 rehydrate 시 새 키로 옮기고 구 키를 제거한다', async () => {
+    localStorage.setItem(
+      LEGACY_KEY,
+      persisted({ ownerId: 'user-1', survey: { activity: ['대학생'] }, recruitment }, 5),
+    );
+
+    await useUserStore.persist.rehydrate();
+
     const state = useUserStore.getState();
-    expect(state.hasCompletedOnboarding).toBe(true);
-    expect(state.survey).toEqual({ step1: ['개발'] });
-    expect(state.applicationDraft).toEqual({ challengeId: 'c1', answers: { q1: 'a1' } });
+    expect(state.ownerId).toBe('user-1');
+    expect(state.survey).toEqual({ activity: ['대학생'] });
+    expect(state.recruitment).toEqual(recruitment);
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
-    const stored = JSON.parse(localStorage.getItem(NEW_KEY)!);
-    expect(stored.version).toBe(4);
-    expect(stored.state.hasCompletedOnboarding).toBe(true);
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(stored.version).toBe(5);
+    expect(stored.state.ownerId).toBe('user-1');
   });
 
   it('구 키가 없으면 초기 상태로 정상 시작한다', async () => {
     await useUserStore.persist.rehydrate();
 
     const state = useUserStore.getState();
-    expect(state.hasCompletedOnboarding).toBe(false);
+    expect(state.ownerId).toBeNull();
     expect(state.survey).toEqual({});
-    expect(state.applicationDraft).toBeNull();
-    expect(localStorage.getItem(NEW_KEY)).toBeNull();
+    expect(state.recruitment.introduction).toBe('');
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
   });
 
   it('구 키에 손상된 JSON이 있으면 크래시 없이 초기 상태로 시작하고 구 키를 제거한다', async () => {
@@ -83,69 +116,71 @@ describe('useUserStore persist 키 마이그레이션', () => {
     await useUserStore.persist.rehydrate();
 
     const state = useUserStore.getState();
-    expect(state.hasCompletedOnboarding).toBe(false);
-    expect(state.applicationDraft).toBeNull();
+    expect(state.ownerId).toBeNull();
+    expect(state.survey).toEqual({});
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
-    expect(localStorage.getItem(NEW_KEY)).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 
-  it('구 키의 v1 저장값은 migrate를 거쳐 폐기 필드가 제거된 채 이어진다', async () => {
+  it('구 키의 v4 저장값은 v5 폐기 정책(migrate)을 거쳐 기본값으로 초기화된다', async () => {
     localStorage.setItem(
       LEGACY_KEY,
       persisted(
         {
+          survey: { activity: ['대학생'] },
           hasCompletedOnboarding: true,
-          bookmarks: ['b1'],
-          roles: ['프론트엔드'],
-          audience: ['대학생'],
-          isLoggedIn: true,
+          applicationDraft: { challengeId: 'c1', answers: { q1: '연락처 010-0000-0000' } },
         },
-        1,
+        4,
       ),
     );
 
     await useUserStore.persist.rehydrate();
 
-    const state = useUserStore.getState();
-    expect(state.hasCompletedOnboarding).toBe(true);
-    expect('bookmarks' in state).toBe(false);
-    expect('roles' in state).toBe(false);
-    expect('audience' in state).toBe(false);
-    expect('isLoggedIn' in state).toBe(false);
+    const state = useUserStore.getState() as unknown as Record<string, unknown>;
+    expect(state.survey).toEqual({});
+    expect(state.ownerId).toBeNull();
+    expect(state.applicationDraft).toBeUndefined();
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
-    const stored = JSON.parse(localStorage.getItem(NEW_KEY)!);
-    expect(stored.version).toBe(4);
-    expect(stored.state.hasCompletedOnboarding).toBe(true);
-    expect(stored.state.bookmarks).toBeUndefined();
-    expect(stored.state.roles).toBeUndefined();
-    expect(stored.state.audience).toBeUndefined();
-    expect(stored.state.isLoggedIn).toBeUndefined();
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!) as {
+      version: number;
+      state: Record<string, unknown>;
+    };
+    expect(stored.version).toBe(5);
+    expect(stored.state.survey).toEqual({});
+    expect(stored.state.applicationDraft).toBeUndefined();
   });
 
   it('새 키와 구 키가 모두 있으면 새 키 데이터를 우선하고 구 키는 제거한다', async () => {
-    localStorage.setItem(NEW_KEY, persisted({ hasCompletedOnboarding: true }, 4));
+    localStorage.setItem(
+      STORAGE_KEY,
+      persisted({ ownerId: 'user-1', survey: { activity: ['직장인'] } }, 5),
+    );
     localStorage.setItem(
       LEGACY_KEY,
-      persisted({ hasCompletedOnboarding: false, query: 'legacy' }, 4),
+      persisted({ ownerId: 'user-2', survey: { activity: ['대학생'] }, query: 'legacy' }, 5),
     );
 
     await useUserStore.persist.rehydrate();
 
     const state = useUserStore.getState();
-    expect(state.hasCompletedOnboarding).toBe(true);
+    expect(state.ownerId).toBe('user-1');
+    expect(state.survey).toEqual({ activity: ['직장인'] });
     expect(state.query).toBe('');
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    expect(stored.state.ownerId).toBe('user-1');
   });
 
   it('clearStorage는 새 키와 구 키를 모두 제거한다', async () => {
-    localStorage.setItem(NEW_KEY, persisted({ hasCompletedOnboarding: true }, 4));
+    localStorage.setItem(STORAGE_KEY, persisted({ ownerId: 'user-1' }, 5));
 
     await useUserStore.persist.rehydrate();
     // 구버전 탭 등이 남긴 구 키가 로그아웃 후 되살아나지 않아야 한다.
-    localStorage.setItem(LEGACY_KEY, persisted({ hasCompletedOnboarding: true }, 4));
+    localStorage.setItem(LEGACY_KEY, persisted({ ownerId: 'user-2' }, 5));
     useUserStore.persist.clearStorage();
 
-    expect(localStorage.getItem(NEW_KEY)).toBeNull();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
   });
 
@@ -160,7 +195,9 @@ describe('useUserStore persist 키 마이그레이션', () => {
 
       expect(() => blockedStore.getState().setQuery('차단')).not.toThrow();
       expect(blockedStore.getState().query).toBe('차단');
-      expect(() => blockedStore.getState().completeOnboarding()).not.toThrow();
+      expect(() => blockedStore.getState().setSurvey('activity', ['대학생'])).not.toThrow();
+      expect(blockedStore.getState().survey).toEqual({ activity: ['대학생'] });
+      expect(() => blockedStore.getState().setOwner('user-1')).not.toThrow();
     } finally {
       getItemSpy.mockRestore();
       vi.resetModules();

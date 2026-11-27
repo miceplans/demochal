@@ -17,4 +17,11 @@ front만 띄우려면 `pnpm --filter front dev` (기본 포트 3000).
 - Zustand(`src/stores/useUserStore.ts`)는 클라이언트 전용 UI/개인화 상태만 둔다.
 - 클라이언트 환경변수는 `NEXT_PUBLIC_*`만 사용한다.
 
+## 폴터 규칙
+
+도메인 코드는 `src/features/<domain>/`에 두고, 공용 프레젠테이션/쉘 컴포넌트만 `src/components/`에 둔다 (#1116 결정).
+
+- 예시: `features/auth`, `features/biz`, `features/bookmarks`
+- 기존 `components/biz`처럼 도메인 코드가 남아 있는 폴터는 도메인별 후속 Issue로 점진 이동한다.
+
 자세한 프로젝트 규칙은 루트 `CLAUDE.md`를 따른다.

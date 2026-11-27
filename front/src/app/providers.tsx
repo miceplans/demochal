@@ -8,6 +8,7 @@ import { ToastProvider } from '@/components/common/Toast';
 import { InputSecurityBoundary } from '@/components/common/InputSecurityBoundary';
 import { MaintenanceGate } from '@/components/common/MaintenanceGate';
 import { OnboardingGate } from '@/components/common/OnboardingGate';
+import { AuthProvider } from '@/features/auth/AuthProvider';
 import { theme } from '@/styles/theme';
 
 export function Providers({ children }: { children: ReactNode }) {
@@ -17,7 +18,10 @@ export function Providers({ children }: { children: ReactNode }) {
         <ToastProvider>
           <InputSecurityBoundary>
             <MaintenanceGate>
-              <OnboardingGate>{children}</OnboardingGate>
+              {/* QueryClient(MaintenanceGate) 안에서 인증 상태를 한 번만 구독해 전 화면에 제공한다. */}
+              <AuthProvider>
+                <OnboardingGate>{children}</OnboardingGate>
+              </AuthProvider>
             </MaintenanceGate>
           </InputSecurityBoundary>
         </ToastProvider>

@@ -4,7 +4,7 @@ let client: HttpClient | null = null;
 
 /**
  * generated/orval API를 쓰기 전에 한 번 호출한다.
- * front/의 providers나 앱 진입점에서 createApiClient와 동일한 옵션으로 설정하면 된다.
+ * front/src/lib/api.ts가 앱 진입점(providers)에서 한 번 설정한다 — 앱 전체가 이 HttpClient 하나만 쓴다.
  */
 export function configureGeneratedApi(options: HttpClientOptions) {
   client = new HttpClient(options);

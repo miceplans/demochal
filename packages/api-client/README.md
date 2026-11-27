@@ -3,11 +3,18 @@
 Shared types + typed HTTP client used by `front/` to call `server/`. `front/` must
 never call `fetch` directly against the API — always go through this package.
 
+**Only exception — presigned S3 uploads.** A presigned URL points at S3, not our API,
+and its signature covers `Content-Type`, so it cannot go through `HttpClient`. All such
+PUTs go through `front/src/lib/upload.ts` (`useFileUpload` = presign → PUT → finalize,
+or the low-level `putToPresignedUrl`). That file is the only place allowed to call
+`fetch`; ESLint (`no-restricted-globals`) rejects `fetch` everywhere else in `front/src`.
+
 ## Structure
 
-- `src/types.ts`, `src/client.ts`, `src/http.ts` — hand-written client
-  (`createApiClient`). Kept for compatibility; will be retired once the generated
-  client covers the used surface.
+- `src/types.ts` — hand-written shared types (kept for existing type imports).
+- `src/http.ts` — `HttpClient` (baseUrl, cookie credentials, `ApiError`). The app
+  creates exactly one instance via `configureGeneratedApi()`. The old hand-written
+  `createApiClient` has been removed — use the generated client.
 - `src/generated/` — **orval-generated** from the OpenAPI spec. Regenerate with
   `pnpm generate` after editing `server/docs/openapi.yaml`.
   `orval.config.ts` uses `client: 'react-query'`, so every operation becomes a
