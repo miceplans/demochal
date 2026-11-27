@@ -17,10 +17,11 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mocks.search),
 }));
 
-vi.mock('@/lib/ad-api', () => ({
-  adApi: {
-    orders: { get: mocks.getOrder },
-    payments: { confirm: mocks.confirmPayment },
+// 생성 클라이언트는 {status, data} 엔벨로프를 돌려준다 — 테스트는 주문 본문만 지정한다.
+vi.mock('@semochal/api-client', () => ({
+  generated: {
+    getOrder: async (...args: unknown[]) => ({ status: 200, data: await mocks.getOrder(...args) }),
+    confirmPayment: mocks.confirmPayment,
   },
 }));
 

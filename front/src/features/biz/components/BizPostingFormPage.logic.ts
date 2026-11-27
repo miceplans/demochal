@@ -82,7 +82,9 @@ const EMPTY_POSTING: PostingInput = {
   visibility: 'public',
 };
 
-const ATTACHMENT_TYPES: Record<string, string> = {
+type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
+// 서버 presign 허용 목록(UploadContentType)과 타입으로 묶어 어긋난 MIME을 막는다.
+const ATTACHMENT_TYPES: Record<string, UploadContentType> = {
   pdf: 'application/pdf',
   zip: 'application/zip',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

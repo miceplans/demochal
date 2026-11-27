@@ -3,15 +3,15 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
 import { PrimaryButton, OutlineButton, useBizHref } from './BizShell';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 export function BizAccessCover({ children }: { children: ReactNode }) {
   const hrefOf = useBizHref();
-  const { data: auth, isLoading } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const isBiz = auth?.status === 200 && auth.data.role === 'business';
+  const { status, user } = useAuth();
+  const isBiz = user?.role === 'business';
 
-  if (isLoading) {
+  if (status === 'loading') {
     return <LoadingView aria-busy aria-label="접근 권한 확인 중" />;
   }
 

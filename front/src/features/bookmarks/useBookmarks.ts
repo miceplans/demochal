@@ -4,6 +4,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { useToast } from '@/components/common/Toast';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { loginHref } from '@/components/auth/RequireAuth';
 
 type BookmarkSort = 'deadline' | 'latest' | 'popular';
 
@@ -18,9 +20,9 @@ export function useBookmarks(sort?: BookmarkSort) {
   const pathname = usePathname();
   const toast = useToast();
   const queryClient = useQueryClient();
-  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const auth = useAuth();
   const bookmarks = generated.useListMyBookmarks(sort ? { sort } : undefined, {
-    query: { enabled: auth.data?.status === 200 },
+    query: { enabled: auth.status === 'authenticated' },
   });
   const queryKey = generated.getListMyBookmarksQueryKey(sort ? { sort } : undefined);
   const toggle = generated.useToggleBookmark({
@@ -38,7 +40,7 @@ export function useBookmarks(sort?: BookmarkSort) {
       onError: (error, _variables, context) => {
         if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
         if (error instanceof ApiError && error.status === 401) {
-          router.push(`/login?next=${encodeURIComponent(pathname)}`);
+          router.push(loginHref(pathname));
           return;
         }
         toast.error('북마크를 저장하지 못했어요', '잠시 후 다시 시도해주세요');
@@ -53,11 +55,11 @@ export function useBookmarks(sort?: BookmarkSort) {
   });
 
   const toggleBookmark = (id: string | undefined) => {
-    if (!isBookmarkableId(id) || auth.isPending) return;
-    if (auth.data?.status !== 200) {
-      // 401일 때만 비로그인으로 본다. 인증 조회 자체가 실패한 경우엔 로그인으로 보내지 않는다.
-      if (auth.error instanceof ApiError && auth.error.status === 401) {
-        router.push(`/login?next=${encodeURIComponent(pathname)}`);
+    if (!isBookmarkableId(id) || auth.status === 'loading') return;
+    if (auth.status !== 'authenticated') {
+      // 세션 없음일 때만 비로그인으로 본다. 인증 조회 자체가 실패한 경우엔 로그인으로 보내지 않는다.
+      if (auth.status === 'unauthenticated') {
+        router.push(loginHref(pathname));
       } else {
         toast.error('로그인 상태를 확인하지 못했어요', '잠시 후 다시 시도해주세요');
       }
@@ -74,7 +76,8 @@ export function useBookmarks(sort?: BookmarkSort) {
   return {
     bookmarks: bookmarks.data?.data ?? [],
     // 비로그인이면 목록 쿼리가 비활성(영원히 pending)이라 인증 확인 중일 때만 로딩으로 본다.
-    isPending: auth.isPending || (auth.data?.status === 200 && bookmarks.isPending),
+    isPending:
+      auth.status === 'loading' || (auth.status === 'authenticated' && bookmarks.isPending),
     isError: bookmarks.isError,
     isToggling: toggle.isPending,
     toggleBookmark,

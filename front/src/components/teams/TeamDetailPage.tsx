@@ -34,6 +34,7 @@ import { teamCapacity } from './team-model';
 import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 import { DEFAULT_PROFILE_IMAGE, formatRegion } from './TeamDetailPage.logic';
 import type { MemberSummary } from './TeamDetailPage.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 // 팀 지원서 모달 초안 — 실수로 모달을 닫거나 새로고침할 때 작성 중인 내용을 복원하기 위해 저장한다.
 type ApplyDraft = { role: string; answers: Answers };
@@ -57,7 +58,7 @@ function isApplyDraft(value: unknown): value is ApplyDraft {
 
 // 신청서 모달이 열린 동안에만 초안을 저장한다 — 닫힌 상태에서 마운트되면 초안을 지워버리므로 분리한다.
 function ApplyDraftSaver({ draftKey, value }: { draftKey: string; value: ApplyDraft }) {
-  useFormDraftSaver(draftKey, value, { baseline: APPLY_DRAFT_BASELINE });
+  useFormDraftSaver(draftKey, value, { baseline: APPLY_DRAFT_BASELINE, storage: 'session' });
   return null;
 }
 
@@ -70,10 +71,8 @@ export function TeamDetailPage() {
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
 
   // UserShell과 같은 쿼리 키라 캐시를 공유한다 — 페이지 진입만으로는 로그인을 요구하지 않는다.
-  const { data: auth, isPending: authPending } = generated.useGetMyAuthInfo({
-    query: { retry: false },
-  });
-  const me = auth?.status === 200 ? auth.data : undefined;
+  const { user: me, status: authStatus } = useAuth();
+  const authPending = authStatus === 'loading';
   const teamQuery = generated.useGetTeam(id, { query: { retry: false } });
   const team = teamQuery.data?.status === 200 ? teamQuery.data.data : undefined;
   const challengeQuery = generated.useGetChallenge(team?.challengeId ?? '', {
@@ -101,7 +100,7 @@ export function TeamDetailPage() {
       onSuccess: () => {
         setApplyOpen(false);
         setAnswers({});
-        clearFormDraft(draftKey);
+        clearFormDraft(draftKey, { storage: 'session' });
         toast.success('팀 신청을 보냈어요', '팀장이 확인하면 알림으로 알려드릴게요');
         void queryClient.invalidateQueries({ queryKey: generated.getGetTeamQueryKey(id) });
       },
@@ -165,7 +164,7 @@ export function TeamDetailPage() {
     // 신청서가 있는 팀은 모달에서 질문에 답한 뒤 제출하고, 없는 팀은 지금 바로 신청한다.
     if (questions.length > 0) {
       // 작성하다 닫은 신청서 초안이 있으면 복원한다.
-      const draft = readFormDraft(draftKey, isApplyDraft);
+      const draft = readFormDraft(draftKey, isApplyDraft, { storage: 'session' });
       if (draft) {
         setPickedRole(draft.role);
         setAnswers(draft.answers);

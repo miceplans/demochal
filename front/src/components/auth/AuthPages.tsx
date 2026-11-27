@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { UserShell, Logo } from '@/components/common/UserShell';
 import { Button, Icon, Stack, Chip, Wrap } from '@/components/common/Primitives';
@@ -9,6 +9,7 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
+import { invalidateAuth, needsOnboarding, useAuth } from '@/features/auth/AuthProvider';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
@@ -47,7 +48,9 @@ const SOCIAL_LOGIN_PATHS: Record<string, string> = {
   Naver: '/auth/social/naver',
 };
 export function LoginPage({ next = null }: { next?: string | null }) {
-  const hasCompletedOnboarding = useUserStore((s) => s.hasCompletedOnboarding);
+  // 온보딩 완료 여부는 서버 onboardingSurvey만 기준으로 본다(로컬 플래그 없음).
+  const { user } = useAuth();
+  const afterLoginHref = user && !needsOnboarding(user) ? '/' : '/onboarding/activity';
   const startSocialLogin = (provider: string) => {
     const apiOrigin = process.env.NEXT_PUBLIC_API_URL ?? '/api';
     const path = SOCIAL_LOGIN_PATHS[provider];
@@ -67,7 +70,7 @@ export function LoginPage({ next = null }: { next?: string | null }) {
           {['Kakao', 'Google', 'Naver'].map((provider, i) => (
             <Social
               key={provider}
-              href={hasCompletedOnboarding ? '/' : '/onboarding/activity'}
+              href={afterLoginHref}
               provider={provider}
               onClick={(event) => {
                 event.preventDefault();
@@ -204,33 +207,38 @@ export function OnboardingPage({ step }: { step: string }) {
   const selected = useUserStore((s) => s.survey[step] ?? EMPTY_SURVEY_SELECTION);
   const survey = useUserStore((s) => s.survey);
   const setSurvey = useUserStore((s) => s.setSurvey);
-  const completeOnboarding = useUserStore((s) => s.completeOnboarding);
   const queryClient = useQueryClient();
-  // 설문은 첫 가입/로그인 사용자만 진행한다. 로컬 플래그는 기기·계정별로 어긋날 수 있어
-  // 서버의 onboardingSurvey(null = 미완료)를 기준으로 판단한다. 다른 탭에서 계정이 바뀌었을 수
-  // 있으므로 캐시된 /auth/me를 믿지 않고 진입할 때마다 새로 조회한 결과로만 판단한다.
-  const auth = generated.useGetMyAuthInfo({
-    query: { retry: false, staleTime: 0, refetchOnMount: 'always' },
-  });
-  const authChecked = auth.isFetchedAfterMount && !auth.isFetching;
-  const unauthenticated =
-    auth.error instanceof ApiError && (auth.error.status === 401 || auth.error.status === 403);
+  // 설문은 첫 가입/로그인 사용자만 진행한다. 서버의 onboardingSurvey(null = 미완료)가 유일한 기준이다.
+  // 다른 탭에서 계정이 바뀌었을 수 있으므로 캐시된 /auth/me를 믿지 않고 진입할 때 새로 조회한 결과로만 판단한다.
+  const auth = useAuth();
+  const { refetch: refetchAuth } = auth;
+  const [refetchedOnMount, setRefetchedOnMount] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void refetchAuth().finally(() => {
+      if (active) setRefetchedOnMount(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, [refetchAuth]);
+  const authChecked = refetchedOnMount && !auth.isFetching;
+  const unauthenticated = auth.status === 'unauthenticated';
   const alreadySurveyed =
-    authChecked && auth.data?.status === 200 && auth.data.data.onboardingSurvey !== null;
+    authChecked && auth.user !== undefined && auth.user.onboardingSurvey !== null;
   // 실패하면 전역 MutationCache가 에러 토스트를 띄우고, 로컬 완료 처리하지 않아 다시 시도할 수 있다.
   const saveSurvey = generated.useSaveOnboardingSurvey({
     mutation: {
       meta: { handledErrorStatuses: [409] },
       onSuccess: () => {
-        completeOnboarding();
-        void queryClient.invalidateQueries({ queryKey: generated.getGetMyAuthInfoQueryKey() });
+        void invalidateAuth(queryClient);
         celebrateBadgeAcquisition();
         router.replace('/');
       },
       onError: (error) => {
         // 409: 다른 탭/기기에서 이미 설문을 완료했다.
         if (error instanceof ApiError && error.status === 409) {
-          completeOnboarding();
+          void invalidateAuth(queryClient);
           router.replace('/');
         }
       },
@@ -240,11 +248,8 @@ export function OnboardingPage({ step }: { step: string }) {
   useEffect(() => {
     if (!authChecked) return;
     if (unauthenticated) router.replace('/login');
-    else if (alreadySurveyed) {
-      completeOnboarding();
-      router.replace('/');
-    }
-  }, [authChecked, unauthenticated, alreadySurveyed, completeOnboarding, router]);
+    else if (alreadySurveyed) router.replace('/');
+  }, [authChecked, unauthenticated, alreadySurveyed, router]);
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',
@@ -255,7 +260,7 @@ export function OnboardingPage({ step }: { step: string }) {
   const toggle = (x: string) =>
     setSurvey(step, selected.includes(x) ? selected.filter((v) => v !== x) : [...selected, x]);
   if (!authChecked || unauthenticated || alreadySurveyed) return null;
-  if (auth.isError) {
+  if (auth.status === 'error') {
     // 네트워크/서버 오류는 로그인 만료가 아니므로 설문 화면에 머물며 다시 확인할 수 있게 한다.
     // (오류 토스트는 전역 QueryCache가 띄운다.)
     return (

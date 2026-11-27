@@ -11,13 +11,14 @@ import { textStyle } from '@/styles/typography';
 import type { ProfileAward } from './ProfileCards';
 import { isGithubUrl, isSafeLinkUrl, linkDisplayText, linkIconName } from './link-model';
 import { DEFAULT_PROFILE_IMAGE, verificationBadges } from './ProfilePage.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
   // /profile?id=<uuid> — id가 없으면 로그인한 본인 프로필을 본다.
   const paramId = searchParams.get('id');
-  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const me = auth.data?.status === 200 ? auth.data.data : undefined;
+  const auth = useAuth();
+  const me = auth.user;
   const userId = paramId ?? me?.id ?? '';
   const userQuery = generated.useGetUser(userId, {
     query: { enabled: Boolean(userId), retry: false },
@@ -31,7 +32,7 @@ function ProfilePageContent() {
   const [scoutOpen, setScoutOpen] = useState(false);
   const canInvite = Boolean(me) && userId !== me?.id && hasManagedTeam;
 
-  if (!paramId && auth.isPending) {
+  if (!paramId && auth.status === 'loading') {
     return (
       <UserShell title="프로필" compact>
         <Content />

@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(mocks.search),
 }));
 
-vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
+vi.mock('@semochal/api-client', () => ({ generated: { cancelOrder: mocks.cancelOrder } }));
 
 describe('PaymentFailPage 광고 결제 재시도', () => {
   beforeEach(() => {

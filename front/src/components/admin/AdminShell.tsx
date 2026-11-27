@@ -4,14 +4,14 @@ import { createContext, useContext, useEffect, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useQueryClient } from '@tanstack/react-query';
 import { Global } from '@emotion/react';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
 import { routeOf } from './AdminShell.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useLogout } from '@/features/auth/session';
 
 export { routeOf } from './AdminShell.logic';
 
@@ -49,13 +49,10 @@ export const AdminGlobalStyles = (
 /** 로그아웃 후 로그인 화면으로 보낸다. 실패해도 세션이 남지 않도록 캐시는 항상 비운다. */
 function useAdminLogout() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const hrefOf = useAdminHref();
+  const logout = useLogout();
   return () => {
-    void generated.logout().finally(() => {
-      queryClient.clear();
-      router.push(hrefOf('/login'));
-    });
+    void logout(() => router.push(hrefOf('/login')));
   };
 }
 
@@ -63,8 +60,7 @@ function AdminSidebar() {
   const logout = useAdminLogout();
   const route = routeOf(usePathname() ?? '');
   const hrefOf = useAdminHref();
-  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const me = auth?.status === 200 ? auth.data : undefined;
+  const { user: me } = useAuth();
   const name = me?.name ?? '';
   const role = me?.role ? (roleLabel[me.role] ?? me.role) : '';
   return (
@@ -109,23 +105,15 @@ function AdminAccessGate({ children }: { children: ReactNode }) {
   const router = useRouter();
   const hrefOf = useAdminHref();
   const logout = useAdminLogout();
-  const {
-    data: auth,
-    isPending,
-    isError,
-    refetch,
-  } = generated.useGetMyAuthInfo({
-    query: { retry: false },
-  });
-  const me = auth?.status === 200 ? auth.data : undefined;
-  const unauthenticated = auth?.status === 401;
+  const { status, user: me, refetch } = useAuth();
+  const unauthenticated = status === 'unauthenticated';
 
   useEffect(() => {
     if (unauthenticated) router.replace(hrefOf('/login'));
   }, [unauthenticated, router, hrefOf]);
 
-  if (isPending || unauthenticated) return null;
-  if (isError || !me) {
+  if (status === 'loading' || unauthenticated) return null;
+  if (!me) {
     return (
       <GateBox role="alert">
         <p>관리자 정보를 확인하지 못했어요.</p>

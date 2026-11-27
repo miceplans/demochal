@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BizProfilePage } from './BizProfilePage';
 
 const mocks = vi.hoisted(() => ({ mutateAsync: vi.fn(), success: vi.fn(), error: vi.fn() }));
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('@/features/auth/components/MfaSettingsCard', () => ({ MfaSettingsCard: () => null }));
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
@@ -13,10 +14,8 @@ vi.mock('@semochal/api-client', async (importOriginal) => ({
       data: { status: 200, data: { name: '기업 담당자', email: 'biz@example.com' } },
     }),
     useFindMyBusiness: () => ({ data: { status: 200, data: { name: '예시 기업' } } }),
+    useGetFile: () => ({ data: undefined, isError: true }),
   },
-}));
-vi.mock('@/lib/ad-api', () => ({
-  adApi: { files: { get: vi.fn().mockRejectedValue(new Error('missing')) } },
 }));
 vi.mock('@/components/biz/BizShell', () => ({
   BizContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -27,6 +26,7 @@ vi.mock('@/components/biz/BizShell', () => ({
 }));
 vi.mock('@/components/biz/BizOrgProfile', () => ({ BizOrgProfile: () => <div /> }));
 vi.mock('@/components/common/Toast', () => ({
+  LOCAL_ERROR_TOAST_META: { localErrorToast: true },
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));
 vi.mock('@/components/common/Feedback', () => ({

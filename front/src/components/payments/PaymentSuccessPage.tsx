@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { Button } from '@/components/common/Primitives';
-import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 import { clearAdPaymentDraft } from '@/lib/ad-payment-draft';
 import { colors as c, mobile } from '@/styles/design';
 
@@ -132,7 +132,9 @@ export function PaymentSuccessPage() {
       }
       try {
         // 한 번에 하나의 조회만 진행되도록 await 뒤에 다음 틱을 예약한다.
-        const order = await adApi.orders.get(orderId, { signal: controller.signal });
+        const response = await generated.getOrder(orderId, { signal: controller.signal });
+        if (response.status !== 200) throw new Error('order lookup failed');
+        const order = response.data;
         if (order.status === 'paid') {
           finish('paid');
         } else if (order.status === 'canceled') {
@@ -158,7 +160,7 @@ export function PaymentSuccessPage() {
           const params = new URLSearchParams(window.location.search);
           const amount = Number(params.get('amount'));
           if (Number.isFinite(amount) && amount > 0) {
-            await adApi.payments.confirm({ orderId, paymentKey, amount });
+            await generated.confirmPayment({ orderId, paymentKey, amount });
           }
         }
       } catch {
