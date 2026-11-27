@@ -69,7 +69,10 @@ vi.mock('@semochal/api-client', () => ({
         data: { uploadUrl: 'https://upload.example', fileId: 'file-1' },
       })),
     }),
-    useFinalizeUpload: () => ({ mutateAsync: vi.fn(async () => undefined) }),
+    useFinalizeUpload: () => ({
+      mutateAsync: vi.fn(async () => ({ status: 201, data: { id: 'file-1', url: null } })),
+    }),
+    cancelOrder: mocks.cancelOrder,
     useListMyNotifications: () => ({ data: { data: [] } }),
     useListAdProducts: () => ({ data: { status: 200, data: products } }),
     listAdProducts: mocks.listAdProducts,
@@ -95,7 +98,6 @@ vi.mock('@/lib/api-error', () => ({
 }));
 
 vi.mock('@/lib/payments', () => ({ requestBizPayment: mocks.requestPayment }));
-vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: mocks.cancelOrder } } }));
 
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),

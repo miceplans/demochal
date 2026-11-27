@@ -22,12 +22,14 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { ApiError, generated } from '@semochal/api-client';
+import { useFileUpload } from '@/lib/upload';
 import {
   certificateBadges,
   CERTIFICATE_CONTENT_TYPES,
   CERTIFICATE_MAX_BYTES,
   CERTIFICATE_MAX_FILES,
 } from './Mypage';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { EndRow } from './styles';
 
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
@@ -38,8 +40,7 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [badge, setBadge] = useState<string | null>(null);
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const requestUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const createCertificate = generated.useCreateCertificate();
   const pickFiles = (picked: File[]) => {
     const valid: File[] = [];
@@ -78,24 +79,10 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
     try {
       const fileIds: string[] = [];
       for (const file of pickedFiles) {
-        const presigned = await requestUpload.mutateAsync({
-          data: {
-            bucket: 'private',
-            contentType: file.type as UploadContentType,
-            fileName: file.name.replace(/[/\\]/g, '_'),
-            sizeBytes: file.size,
-          },
+        const { fileId } = await uploadFile(file, {
+          bucket: 'private',
+          contentType: file.type as UploadContentType,
         });
-        const { uploadUrl, fileId } = presigned.data;
-        if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
-        // presigned URL은 우리 API가 아니라 S3로 직접 올리는 주소라 api-client를 거치지 않는다.
-        const uploaded = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        });
-        if (!uploaded.ok) throw new Error('upload failed');
-        await finalizeUpload.mutateAsync({ id: fileId });
         fileIds.push(fileId);
       }
       await createCertificate.mutateAsync({
@@ -443,8 +430,7 @@ export function ProfileEditor() {
   const [bioEditing, setBioEditing] = useState(false);
   const [bioSaving, setBioSaving] = useState(false);
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const { user: meInfo } = useAuth();
   const mySkills = meInfo?.stacks ?? [];
   const myLinks = meInfo?.externalLinks ?? [];
   const certificates = useCertificateLabels();
@@ -457,7 +443,7 @@ export function ProfileEditor() {
   });
   // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
   const startBioEdit = () => {
-    if (me.data?.status !== 200) return;
+    if (!meInfo) return;
     setBioEditing(true);
   };
   const saveBio = async (bio: string) => {
@@ -493,7 +479,7 @@ export function ProfileEditor() {
             <AddButton
               aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
               // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
-              disabled={me.data?.status !== 200}
+              disabled={!meInfo}
               onClick={startBioEdit}
             >
               <Icon name="imgAddSlotIc" size={18} />
@@ -519,7 +505,7 @@ export function ProfileEditor() {
           <AddButton
             aria-label="기술 스택 추가하기"
             // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
-            disabled={me.data?.status !== 200}
+            disabled={!meInfo}
             onClick={() => setSkillOpen(true)}
           >
             <Icon name="imgAddSlotIc" size={18} />
@@ -528,7 +514,7 @@ export function ProfileEditor() {
       />
       <Stack gap={12}>
         <Heading>링크</Heading>
-        {me.data?.status === 200 ? (
+        {meInfo ? (
           <InlineLinks
             initial={myLinks.map((link) => ({
               label: link.label ?? '',

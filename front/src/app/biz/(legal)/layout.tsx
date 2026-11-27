@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { AdminShell } from '@/components/biz/AdminHeader';
+import { BizLegalShell } from '@/components/biz/BizLegalShell';
 
 export default function BizLegalLayout({ children }: { children: ReactNode }) {
-  return <AdminShell>{children}</AdminShell>;
+  return <BizLegalShell>{children}</BizLegalShell>;
 }

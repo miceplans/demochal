@@ -5,10 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { UserShell, FormContent } from '@/components/common/UserShell';
 import { Button } from '@/components/common/Primitives';
-import { useUserStore } from '@/stores/useUserStore';
 import { useToast } from '@/components/common/Toast';
-import { adApi } from '@/lib/ad-api';
 import { apiErrorMessage } from '@/lib/api-error';
+import { clearFormDraft, readFormDraft, writeFormDraft } from '@/lib/form-draft';
 import { requestTossPayment } from '@/lib/payments';
 import {
   PAYMENTS_DISABLED_DESCRIPTION,
@@ -85,15 +84,28 @@ export function ApplicationPage() {
   );
 }
 
+const APPLICATION_DRAFT_STORAGE = { storage: 'session' } as const;
+
+function isAnswersDraft(value: unknown): value is Answers {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  return Object.values(value).every(
+    (answer) =>
+      typeof answer === 'string' ||
+      (Array.isArray(answer) && answer.every((item) => typeof item === 'string')),
+  );
+}
+
 function ApplicationFormRoute() {
   const challengeId = useSearchParams().get('challenge');
   return <ApplicationForm key={challengeId ?? 'generic'} challengeId={challengeId} />;
 }
 
 function ApplicationForm({ challengeId }: { challengeId: string | null }) {
-  const draft = useUserStore((s) => s.applicationDraft);
-  const save = useUserStore((s) => s.saveApplication);
-  const clearApplication = useUserStore((s) => s.clearApplication);
+  // 지원서 답변에는 개인정보가 들어갈 수 있어 localStorage가 아닌 sessionStorage에 챌린지별로 둔다
+  // (탭을 닫으면 사라지고, 로그아웃 시 clearAllFormDrafts로 지워진다).
+  const draftKey = `application-new:${challengeId ?? 'generic'}`;
+  const save = (value: Answers) => writeFormDraft(draftKey, value, APPLICATION_DRAFT_STORAGE);
+  const clearApplication = () => clearFormDraft(draftKey, APPLICATION_DRAFT_STORAGE);
   const toast = useToast();
   const router = useRouter();
   // /applications/new?challenge=<uuid> — 챌린지 상세의 "참가 신청하기" 링크로만 들어온다.
@@ -103,9 +115,14 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   const challenge = challengeQuery.data?.status === 200 ? challengeQuery.data.data : undefined;
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [answers, setAnswers] = useState<Answers>(
-    draft?.challengeId === challengeId ? (draft.answers ?? {}) : {},
-  );
+  const [answers, setAnswers] = useState<Answers>({});
+  // 초안 복원은 마운트 뒤 effect에서 한 번만 — 렌더 중에 저장소를 읽으면 서버 프리렌더(초안 없음)와
+  // 하이드레이션 결과가 어긋난다. 마운트 1회 외부 저장소 동기화라 effect 안의 setState가 맞다.
+  useEffect(() => {
+    const restored = readFormDraft(draftKey, isAnswersDraft, APPLICATION_DRAFT_STORAGE);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (restored) setAnswers(restored);
+  }, [draftKey]);
   // 사용자가 직접 고치기 전에는 자동 저장하지 않는다 — 마운트만으로 다른 챌린지의 초안을
   // 빈 폼으로 덮어쓰는 일을 막기 위해서다.
   const dirtyRef = useRef(false);
@@ -118,12 +135,12 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (!dirtyRef.current) return;
-      save({ challengeId: challengeId ?? undefined, answers });
+      writeFormDraft(draftKey, answers, APPLICATION_DRAFT_STORAGE);
     }, 500);
     return () => clearTimeout(timer);
-  }, [answers, challengeId, save]);
+  }, [answers, draftKey]);
   const saveDraft = () => {
-    save({ challengeId: challengeId ?? undefined, answers });
+    save(answers);
     toast.success('임시저장했어요');
   };
 
@@ -140,7 +157,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
       toast.error(`“${invalid.title}” 답변을 확인해 주세요.`);
       return;
     }
-    save({ challengeId: challengeId ?? undefined, answers });
+    save(answers);
     if (!challengeId) {
       // 목업 카탈로그 화면에서는 진입 링크에 챌린지 UUID가 없다 — 이 경우 저장만 하고
       // 실제 신청·결제 흐름은 챌린지 신청 링크(/applications/new?challenge=<uuid>) 경로로만
@@ -158,7 +175,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
       if (!pendingOrderId) return;
       const orderId = pendingOrderId;
       pendingOrderId = null;
-      await adApi.orders.cancel(orderId).catch(() => {});
+      await generated.cancelOrder(orderId).catch(() => {});
     };
     try {
       const response = await generated.applyChallenge({
@@ -200,7 +217,7 @@ function ApplicationForm({ challengeId }: { challengeId: string | null }) {
       if (invalidFileIds.length > 0) {
         const cleaned = withoutFileIds(answers, invalidFileIds);
         setAnswers(cleaned);
-        save({ challengeId: challengeId ?? undefined, answers: cleaned });
+        save(cleaned);
         toast.error('첨부파일을 다시 올려주세요', apiErrorMessage(error, ''));
       } else {
         toast.error('신청에 실패했어요', apiErrorMessage(error, '잠시 후 다시 시도해주세요'));

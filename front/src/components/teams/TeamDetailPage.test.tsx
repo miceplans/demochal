@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   challenge: undefined as Record<string, unknown> | undefined,
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   useParams: () => ({ id: 'team-1' }),
   usePathname: () => '/teams/team-1',
@@ -49,6 +50,8 @@ vi.mock('@/components/common/Feedback', () => ({
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {
+    useRequestPresignedUpload: () => ({ mutateAsync: vi.fn() }),
+    useFinalizeUpload: () => ({ mutateAsync: vi.fn() }),
     useGetMyAuthInfo: () => ({
       data: mocks.me ? { status: 200, data: mocks.me } : undefined,
       isPending: false,
@@ -97,7 +100,7 @@ const challenge = {
 
 const applyDraftStorageKey = 'semochal:form-draft:v1:team-apply:team-1';
 const readStoredApplyDraft = () => {
-  const raw = localStorage.getItem(applyDraftStorageKey);
+  const raw = sessionStorage.getItem(applyDraftStorageKey);
   return raw ? (JSON.parse(raw) as { value: unknown }).value : null;
 };
 
@@ -114,6 +117,7 @@ describe('TeamDetailPage 지원서 초안', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     mocks.me = { id: 'user-1', name: '홍길동' };
     mocks.team = team;
     mocks.challenge = challenge;
@@ -121,10 +125,15 @@ describe('TeamDetailPage 지원서 초안', () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
+    sessionStorage.clear();
   });
 
   it('모달을 열 때 작성하다 만 초안이 있으면 복원한다', async () => {
-    writeFormDraft('team-apply:team-1', { role: '백엔드', answers: { q1: '초안 답변' } });
+    writeFormDraft(
+      'team-apply:team-1',
+      { role: '백엔드', answers: { q1: '초안 답변' } },
+      { storage: 'session' },
+    );
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole('button', { name: '팀 신청하기' }));

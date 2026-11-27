@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   },
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('@semochal/api-client', () => ({
   ApiError: class ApiError extends Error {},
   generated: {

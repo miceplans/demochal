@@ -7,12 +7,13 @@ import { notificationSettings } from '@/data/user-design';
 import { generated } from '@semochal/api-client';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 const notificationSettingKeys = notificationSettings.flatMap((g) => g.rows.map(([key]) => key));
 export function NotificationSettingsPage() {
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const saved = me.data?.status === 200 ? me.data.data.notificationSettings : undefined;
+  const { user: me } = useAuth();
+  const saved = me?.notificationSettings;
   // 저장된 적 없는 키는 기본 on. 서버(users.notification_settings)가 유일한 기준값이다.
   const values: Record<string, boolean> = Object.fromEntries(
     notificationSettingKeys.map((key) => [key, saved?.[key] ?? true]),
@@ -25,7 +26,7 @@ export function NotificationSettingsPage() {
   });
   const toggle = (key: string) => {
     // 서버 값을 받기 전이나 저장 중에는 이전 값 기준으로 덮어쓰지 않게 막는다.
-    if (me.data?.status !== 200 || save.isPending) return;
+    if (!me || save.isPending) return;
     save.mutate({
       data: Object.fromEntries(
         notificationSettingKeys.map((k) => [k, { enabled: k === key ? !values[k] : values[k] }]),

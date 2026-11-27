@@ -11,8 +11,10 @@ pnpm 모노레포(pnpm 12, Node 20). 워크스페이스: `front`(Next.js 16 App 
 
 ## Front 규칙 (`front/`)
 
-- **상태 경계**: 서버 데이터는 전부 TanStack Query가 담당한다. Zustand는 클라이언트 전용 UI/개인화 상태(북마크, 관심사, 알림 설정, 온보팅 플래그 등)만 — `front/src/stores/useUserStore.ts`가 유일한 스토어이며 이 패턴을 유지한다. 서버 응답을 Zustand에 캐시하지 않는다. Query 기본값(`front/src/app/providers.tsx`): `staleTime: 30_000`, `retry: 1`, `refetchOnWindowFocus: false`, 전역 에러는 QueryCache/MutationCache onError 토스트.
-- **API 호출**: `fetch` 직접 호출 금지 — 반드시 `@semochal/api-client`(orval 생성, react-query 클라이언트)를 경유한다(`packages/api-client/README.md` 규칙). 엔드포인트 추가/변경 시 `server/docs/openapi.yaml`을 고친 뒤 `pnpm --filter @semochal/api-client generate`로 재생성. 기존 수기 클라이언트(`createApiClient`)는 신규 코드에 사용하지 않는다.
+- **상태 경계**: 서버 데이터는 전부 TanStack Query가 담당한다. Zustand는 클라이언트 전용 UI/개인화 상태(검색어, 온보딩 설문 진행 중 선택값, 팀 모집 초안 등)만 — `front/src/stores/useUserStore.ts`가 유일한 스토어이며 이 패턴을 유지한다. 서버 응답을 Zustand에 캐시하지 않는다. Query 기본값(`front/src/app/providers.tsx`): `staleTime: 30_000`, `retry: 1`, `refetchOnWindowFocus: false`, 전역 에러는 QueryCache/MutationCache onError 토스트.
+- **API 호출**: `fetch` 직접 호출 금지 — 반드시 `@semochal/api-client`(orval 생성, react-query 클라이언트)를 경유한다(`packages/api-client/README.md` 규칙). 엔드포인트 추가/변경 시 `server/docs/openapi.yaml`을 고친 뒤 `pnpm --filter @semochal/api-client generate`로 재생성. 수기 클라이언트(`createApiClient`/`adApi`)는 제거됐으며 HttpClient 인스턴스는 `front/src/lib/api.ts` 하나뿐이다. **유일한 예외는 S3 presigned PUT**이며 반드시 `front/src/lib/upload.ts`(`useFileUpload` = presign→PUT→finalize, `putToPresignedUrl`)를 쓴다 — 그 밖의 `fetch`는 ESLint `no-restricted-globals`가 막는다.
+- **인증 상태**: `/auth/me`는 `front/src/features/auth/AuthProvider.tsx`만 구독하고 화면은 `useAuth()`(`status`·`user`)로 읽는다. 보호 페이지는 page.tsx에서 `RequireAuth`로 감싸고, 비로그인 사용자를 로그인으로 보낼 때는 반드시 `useLoginRedirect()`(진입 차단 `'guard'`=replace, 버튼 동작 `'action'`=push, 기본 `next`=현재 경로)를 쓴다 — `/login?next=`를 직접 조립하지 않는다. 화면에서 `generated.useGetMyAuthInfo`를 직접 호출하지 않는다. 로그인/설문 저장 후에는 `invalidateAuth(queryClient)`, 로그아웃은 `useLogout()`(`features/auth/session.ts`)을 쓴다 — 서버 캐시와 로컬 개인 데이터(스토어·폼 초안)를 함께 지운다. 온보딩 완료 여부는 서버 `onboardingSurvey`(`needsOnboarding`)만 기준이다.
+- **로컬 저장소**: 개인정보가 들어갈 수 있는 초안(지원서 답변 등)은 localStorage가 아닌 sessionStorage(`lib/form-draft.ts`의 `storage: 'session'`)에 둔다.
 - **환경변수**: 클라이언트 코드는 `NEXT_PUBLIC_*`만 사용. 서버 전용 값(BIZ_SUBDOMAIN, API_PROXY_TARGET 등)을 클라이언트 번들에 넣지 않는다.
 - **스타일링**: Emotion + 테마(`front/src/styles/theme.ts` module augmentation). 디자인 토큰은 `styles/tokens.css` / `docs/design-tokens.md` 기준, 임의의 하드코딩 색상/폰트 값을 쓰지 않는다.
 - `front/AGENTS.md`의 Next.js 에이전트 규칙 블록은 `next dev`가 자동 관리하므로 삭제하거나 수동 수정하지 않는다.

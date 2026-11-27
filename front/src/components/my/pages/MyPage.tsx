@@ -20,6 +20,7 @@ import { useToast } from '@/components/common/Toast';
 import { colors as c, mobile } from '@/styles/design';
 import { ApiError, generated } from '@semochal/api-client';
 import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
+import { useFileUpload } from '@/lib/upload';
 import {
   challengeResultTag,
   formatParticipatingDay,
@@ -28,6 +29,7 @@ import {
   teamResultTag,
   type ParticipatingItem,
 } from '../Mypage';
+import { useAuth } from '@/features/auth/AuthProvider';
 import { ProfileEditor, useCertificateLabels } from '../ProfileEditor';
 
 // 모바일 마이페이지 '참가 이력' — 챌린지·팀 지원 내역을 실제 상세 링크와 함께 보여준다(#278).
@@ -80,8 +82,7 @@ function ParticipationHistory() {
 export function MyPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const { user: meInfo } = useAuth();
   // 이름이 없으면 이메일 앞부분을, 그마저 없으면 표시명을 쓴다.
   const displayName =
     meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
@@ -122,8 +123,7 @@ export function MyPage() {
       },
     },
   });
-  const requestUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const [avatarUploading, setAvatarUploading] = useState(false);
   // 프로필 이미지는 다른 사용자에게 보이므로 public 버킷에 올린다(presign → S3 PUT → finalize → 프로필 저장).
   const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -145,23 +145,10 @@ export function MyPage() {
     try {
       const compressed = await compressToWebP(picked, PROFILE_IMAGE_PRESET);
       previewUrl = compressed.previewUrl;
-      const presigned = await requestUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          contentType: 'image/webp',
-          fileName: compressed.file.name.replace(/[/\\]/g, '_'),
-          sizeBytes: compressed.file.size,
-        },
+      const { fileId } = await uploadFile(compressed.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      const { uploadUrl, fileId } = presigned.data;
-      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
-      const uploaded = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/webp' },
-        body: compressed.file,
-      });
-      if (!uploaded.ok) throw new Error('upload failed');
-      await finalizeUpload.mutateAsync({ id: fileId });
       await updateProfile.mutateAsync({ data: { profileImageFileId: fileId } });
       toast.success('프로필 이미지를 바꿨어요');
     } catch (error) {

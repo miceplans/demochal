@@ -223,6 +223,35 @@ paths:
       description: HttpOnly 세션 쿠키를 만료시킨다.
       responses:
         '204': { description: 로그아웃 성공 }
+  /auth/withdraw:
+    post:
+      tags: [Auth]
+      summary: 회원 탈퇴
+      operationId: withdrawAccount
+      x-impl-status: implemented
+      description: 비밀번호와 확인 문구를 검증한 뒤 계정을 탈퇴 처리하고 세션 쿠키를 만료시킨다.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password, confirmation]
+              properties:
+                password: { type: string, minLength: 8, maxLength: 128 }
+                confirmation: { type: string, enum: ['회원 탈퇴'] }
+                teamTransfers:
+                  type: array
+                  items:
+                    type: object
+                    required: [teamId, newLeaderUserId]
+                    properties:
+                      teamId: { type: string, format: uuid }
+                      newLeaderUserId: { type: string, format: uuid }
+                newBusinessOwnerUserId: { type: string, format: uuid }
+      responses:
+        '204': { description: 탈퇴 성공 }
+        '401': { description: 비밀번호 불일치 또는 미인증 }
   /auth/social/{provider}:
     post:
       tags: [Auth]

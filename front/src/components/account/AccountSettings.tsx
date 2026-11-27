@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { MyShell } from '@/components/common/UserShell';
 import { Button, Input, Stack, Title, Muted } from '@/components/common/Primitives';
-import { adApi } from '@/lib/ad-api';
-import { useUserStore } from '@/stores/useUserStore';
+import { generated } from '@semochal/api-client';
+import { resetClientSession, useLogout } from '@/features/auth/session';
 
 export function AccountSettings() {
   const router = useRouter();
@@ -15,25 +15,14 @@ export function AccountSettings() {
   const [password, setPassword] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState('');
-  const clearClient = () => {
-    queryClient.clear();
-    useUserStore.getState().logout();
-    useUserStore.persist.clearStorage();
-  };
-  const logout = async () => {
-    try {
-      await adApi.auth.logout();
-    } finally {
-      clearClient();
-      router.replace('/login');
-    }
-  };
+  const logoutSession = useLogout();
+  const logout = () => logoutSession(() => router.replace('/login'));
   const withdraw = async () => {
     setError('');
     try {
-      await adApi.auth.withdraw({ password, confirmation: '회원 탈퇴' });
-      clearClient();
+      await generated.withdrawAccount({ password, confirmation: '회원 탈퇴' });
       router.replace('/login');
+      await resetClientSession(queryClient);
     } catch {
       setError('현재 비밀번호를 확인하거나, 팀장·기관 소유권을 먼저 이전해 주세요.');
     }

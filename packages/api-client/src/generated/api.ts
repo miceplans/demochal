@@ -217,7 +217,8 @@ import type {
   VerifyMfaRecoveryCode200,
   VerifyMfaRecoveryCodeBody,
   VerifyMfaTotp200,
-  VerifyMfaTotpBody
+  VerifyMfaTotpBody,
+  WithdrawAccountBody
 } from './model';
 
 import { apiFetch } from '../mutator';
@@ -905,6 +906,114 @@ export const useLogout = <TError = unknown,
         TContext
       > => {
       return useMutation(getLogoutMutationOptions(options), queryClient);
+    }
+
+export type withdrawAccountResponse204 = {
+  data: void
+  status: 204
+}
+
+export type withdrawAccountResponse401 = {
+  data: void
+  status: 401
+}
+
+export type withdrawAccountResponseSuccess = (withdrawAccountResponse204) & {
+  headers: Headers;
+};
+export type withdrawAccountResponseError = (withdrawAccountResponse401) & {
+  headers: Headers;
+};
+
+export type withdrawAccountResponse = (withdrawAccountResponseSuccess | withdrawAccountResponseError)
+
+export const getWithdrawAccountUrl = () => {
+
+
+
+
+  return `/auth/withdraw`
+}
+
+/**
+ * 비밀번호와 확인 문구를 검증한 뒤 계정을 탈퇴 처리하고 세션 쿠키를 만료시킨다.
+ * @summary 회원 탈퇴
+ */
+export const withdrawAccount = async (withdrawAccountBody: WithdrawAccountBody, options?: Parameters<typeof apiFetch>[1]): Promise<withdrawAccountResponse> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<withdrawAccountResponse>(getWithdrawAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(withdrawAccountBody)
+  }
+);}
+
+
+
+
+
+export const getWithdrawAccountMutationKey = () => ['withdrawAccount'] as const;
+
+export const getWithdrawAccountMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawAccount>>, TError,WithdrawAccountMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof withdrawAccount>>, TError,WithdrawAccountMutationVariables, TContext> => {
+
+const mutationKey = getWithdrawAccountMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof withdrawAccount>>, WithdrawAccountMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  withdrawAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type WithdrawAccountMutationResult = NonNullable<Awaited<ReturnType<typeof withdrawAccount>>>
+    export type WithdrawAccountMutationBody = WithdrawAccountBody
+    export type WithdrawAccountMutationError = void
+    export type WithdrawAccountMutationVariables = {data: WithdrawAccountBody}
+
+    /**
+ * @summary 회원 탈퇴
+ */
+export const useWithdrawAccount = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof withdrawAccount>>, TError,WithdrawAccountMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof withdrawAccount>>,
+        TError,
+        WithdrawAccountMutationVariables,
+        TContext
+      > => {
+      return useMutation(getWithdrawAccountMutationOptions(options), queryClient);
     }
 
 export type socialLoginResponse200 = {

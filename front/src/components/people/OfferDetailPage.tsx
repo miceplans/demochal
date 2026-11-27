@@ -10,6 +10,7 @@ import { useToast } from '@/components/common/Toast';
 import { Button, Muted, Row, Stack } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 const statusLabel: Record<string, string> = {
   invited: '대기 중',
@@ -94,8 +95,7 @@ export function OfferDetailPage() {
   const queryClient = useQueryClient();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const me = auth.data?.status === 200 ? auth.data.data : undefined;
+  const { user: me } = useAuth();
   const offerQuery = generated.useGetTeamOffer(id, { query: { retry: false } });
   const offer = offerQuery.data?.status === 200 ? offerQuery.data.data : undefined;
   const respond = generated.useUpdateTeamMember();
