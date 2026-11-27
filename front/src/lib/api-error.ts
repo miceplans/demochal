@@ -17,3 +17,11 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof TypeError) return NETWORK_ERROR_MESSAGE;
   return fallback;
 }
+
+/** 기업 콘솔(공고·광고) 처리 실패 시 공통 안내 문구. */
+export function adError(error: unknown) {
+  return apiErrorMessage(
+    error,
+    '광고 정보를 처리하지 못했습니다. 로그인 및 서버 연결을 확인해 주세요.',
+  );
+}

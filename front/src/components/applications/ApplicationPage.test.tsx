@@ -43,15 +43,17 @@ vi.mock('@/components/common/UserShell', () => ({
 vi.mock('@/components/common/Toast', () => ({
   useToast: () => ({ success: mocks.success, error: mocks.error }),
 }));
-vi.mock('@/stores/useUserStore', () => ({
-  useUserStore: (selector: (s: unknown) => unknown) =>
-    selector({
-      applicationDraft: mocks.draft,
-      saveApplication: mocks.save,
-      clearApplication: mocks.clear,
-    }),
+// 지원서 초안은 sessionStorage 초안(form-draft)에 챌린지별 키로 저장된다.
+vi.mock('@/lib/form-draft', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/form-draft')>()),
+  readFormDraft: (key: string) =>
+    mocks.draft && key === `application-new:${mocks.draft.challengeId}`
+      ? (mocks.draft.answers ?? null)
+      : null,
+  writeFormDraft: (key: string, value: unknown, options?: unknown) =>
+    mocks.save(key, value, options),
+  clearFormDraft: (key: string, options?: unknown) => mocks.clear(key, options),
 }));
-vi.mock('@/lib/ad-api', () => ({ adApi: { orders: { cancel: vi.fn() } } }));
 vi.mock('@/lib/payments', () => ({ requestTossPayment: mocks.pay }));
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
@@ -66,12 +68,17 @@ vi.mock('@semochal/api-client', async (importOriginal) => ({
       isError: mocks.failed,
     }),
     applyChallenge: mocks.apply,
-    requestPresignedUpload: mocks.presign,
-    finalizeUpload: mocks.finalize,
+    cancelOrder: vi.fn(() => Promise.resolve()),
+    useRequestPresignedUpload: () => ({
+      mutateAsync: ({ data }: { data: unknown }) => mocks.presign(data),
+    }),
+    useFinalizeUpload: () => ({ mutateAsync: ({ id }: { id: string }) => mocks.finalize(id) }),
   },
 }));
 
 const fileId = '11111111-1111-4111-8111-111111111111';
+const DRAFT_KEY = 'application-new:challenge-1';
+const SESSION_DRAFT = { storage: 'session' };
 const questions: Question[] = (
   ['short', 'long', 'dropdown', 'radio', 'checkbox', 'file'] as const
 ).map((type) => ({ id: type, title: type, type, required: true, options: ['A', 'B'] }));
@@ -267,14 +274,11 @@ describe('saved application questionnaires', () => {
     render(<ApplicationPage />);
     await user.type(screen.getByLabelText('short'), '수동 저장 답변');
     await user.click(screen.getByRole('button', { name: '임시저장' }));
-    expect(mocks.save).toHaveBeenCalledWith({
-      challengeId: 'challenge-1',
-      answers: { short: '수동 저장 답변' },
-    });
+    expect(mocks.save).toHaveBeenCalledWith(DRAFT_KEY, { short: '수동 저장 답변' }, SESSION_DRAFT);
     expect(mocks.success).toHaveBeenCalledWith('임시저장했어요');
   });
 
-  it('auto-saves edited answers to the store after the debounce', async () => {
+  it('auto-saves edited answers to the session draft after the debounce', async () => {
     mocks.questions = [{ ...questions[0]!, required: false }];
     const user = userEvent.setup();
     render(<ApplicationPage />);
@@ -283,10 +287,11 @@ describe('saved application questionnaires', () => {
     expect(mocks.save).not.toHaveBeenCalled();
     await waitFor(
       () =>
-        expect(mocks.save).toHaveBeenCalledWith({
-          challengeId: 'challenge-1',
-          answers: { short: '자동 저장할 답변' },
-        }),
+        expect(mocks.save).toHaveBeenCalledWith(
+          DRAFT_KEY,
+          { short: '자동 저장할 답변' },
+          SESSION_DRAFT,
+        ),
       { timeout: 2000 },
     );
   });

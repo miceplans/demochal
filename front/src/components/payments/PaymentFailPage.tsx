@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { Button } from '@/components/common/Primitives';
 import { colors as c, mobile } from '@/styles/design';
-import { adApi } from '@/lib/ad-api';
+import { generated } from '@semochal/api-client';
 
 const PageWrap = styled.div({
   display: 'flex',
@@ -55,7 +55,7 @@ export function PaymentFailPage() {
 
   useEffect(() => {
     if (!orderId) return;
-    void adApi.orders.cancel(orderId).catch(() => {
+    void generated.cancelOrder(orderId).catch(() => {
       // Toss may have already canceled the order; the failure page remains safe to show.
     });
   }, [orderId]);

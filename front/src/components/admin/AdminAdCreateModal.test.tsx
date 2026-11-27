@@ -42,7 +42,7 @@ describe('AdminAdCreateModal', () => {
 
   it('결제 단계 없이 업로드한 이미지로 관리자 광고 생성을 요청한다', async () => {
     presign.mockResolvedValue({ data: { uploadUrl: 'https://s3.example/put', fileId: 'file-1' } });
-    finalize.mockResolvedValue({});
+    finalize.mockResolvedValue({ status: 201, data: { id: 'file-1', url: null } });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
     vi.stubGlobal('URL', Object.assign(URL, { revokeObjectURL: vi.fn() }));
 

@@ -3,19 +3,19 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
 import { PrimaryButton, OutlineButton, useBizHref } from './BizShell';
+import { useAuthGate } from '@/components/auth/RequireAuth';
 
 export function BizAccessCover({ children }: { children: ReactNode }) {
   const hrefOf = useBizHref();
-  const { data: auth, isLoading } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const isBiz = auth?.status === 200 && auth.data.role === 'business';
+  // 접근 판단은 공통 useAuthGate, 비허용 시 보여주는 방식만 기업 콘솔 디자인 커버다.
+  const { gate } = useAuthGate('business');
 
-  if (isLoading) {
+  if (gate === 'loading') {
     return <LoadingView aria-busy aria-label="접근 권한 확인 중" />;
   }
 
-  if (!isBiz) {
+  if (gate !== 'allowed') {
     return (
       <Cover>
         {/* eslint-disable-next-line @next/next/no-img-element */}

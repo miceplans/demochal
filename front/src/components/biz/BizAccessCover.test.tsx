@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   isLoading: false,
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('@semochal/api-client', () => ({
   generated: {
     useGetMyAuthInfo: () => ({ data: mocks.auth, isLoading: mocks.isLoading }),

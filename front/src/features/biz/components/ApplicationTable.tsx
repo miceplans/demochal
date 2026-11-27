@@ -4,14 +4,12 @@ import styled from '@emotion/styled';
 import { Fragment } from 'react';
 import { ApplicationAnswers } from './ApplicationAnswers';
 import { OutlineButton as ShellOutlineButton } from '@/components/biz/BizShell';
-import type { Application } from '@semochal/api-client';
+import type { Application, generated } from '@semochal/api-client';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 
-export type ApplicationPatch = Parameters<
-  typeof import('@/lib/ad-api').adApi.applications.update
->[1];
+export type ApplicationPatch = Parameters<typeof generated.updateApplication>[1];
 
 export const STATUS_LABEL: Record<Application['status'], string> = {
   pending: '대기',
