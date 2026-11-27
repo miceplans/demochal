@@ -14,11 +14,14 @@ function draftStorage(options?: FormDraftOptions): Storage {
   return options?.storage === 'session' ? window.sessionStorage : window.localStorage;
 }
 
-export function readFormDraft<T>(
+export type FormDraftEntry<T> = { value: T; savedAt: number };
+
+/** 초안 값과 저장 시각을 함께 읽는다 — "임시 저장본 불러오기" 안내에 저장 시각을 보여줄 때 쓴다. */
+export function readFormDraftEntry<T>(
   key: string,
   isValid: (value: unknown) => value is T,
   options?: FormDraftOptions,
-): T | null {
+): FormDraftEntry<T> | null {
   if (typeof window === 'undefined') return null;
   try {
     const storage = draftStorage(options);
@@ -33,10 +36,20 @@ export function readFormDraft<T>(
       storage.removeItem(PREFIX + key);
       return null;
     }
-    return isValid(envelope.value) ? (envelope.value as T) : null;
+    return isValid(envelope.value)
+      ? { value: envelope.value as T, savedAt: envelope.savedAt }
+      : null;
   } catch {
     return null;
   }
+}
+
+export function readFormDraft<T>(
+  key: string,
+  isValid: (value: unknown) => value is T,
+  options?: FormDraftOptions,
+): T | null {
+  return readFormDraftEntry(key, isValid, options)?.value ?? null;
 }
 
 export function writeFormDraft(key: string, value: unknown, options?: FormDraftOptions): void {
