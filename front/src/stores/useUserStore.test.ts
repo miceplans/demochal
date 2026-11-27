@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useUserStore } from './useUserStore';
 
 describe('useUserStore', () => {
@@ -147,5 +147,23 @@ describe('useUserStore persist 키 마이그레이션', () => {
 
     expect(localStorage.getItem(NEW_KEY)).toBeNull();
     expect(localStorage.getItem(LEGACY_KEY)).toBeNull();
+  });
+
+  it('localStorage 접근이 차단되면 persist가 비활성화되고 액션은 정상 동작한다', async () => {
+    vi.resetModules();
+    // Safari "모든 쿠키 차단"처럼 localStorage 접근 자체가 SecurityError로 막히는 상황.
+    const getItemSpy = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Access is denied', 'SecurityError');
+    });
+    try {
+      const { useUserStore: blockedStore } = await import('./useUserStore');
+
+      expect(() => blockedStore.getState().setQuery('차단')).not.toThrow();
+      expect(blockedStore.getState().query).toBe('차단');
+      expect(() => blockedStore.getState().completeOnboarding()).not.toThrow();
+    } finally {
+      getItemSpy.mockRestore();
+      vi.resetModules();
+    }
   });
 });

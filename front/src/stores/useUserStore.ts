@@ -85,6 +85,9 @@ export const useUserStore = create<UserState>()(
       // SSR에서는 window가 없어 getStorage가 throw하고 storage가 비활성화된다(기존 기본값과 동일).
       storage: createJSONStorage(() => {
         if (typeof window === 'undefined') throw new Error('window is not available');
+        // Safari "모든 쿠키 차단" 등으로 localStorage 접근 자체가 막히면 여기서 throw해
+        // persist가 조용히 비활성화된다(기존 기본 storage의 getStorage throw와 동일한 동작).
+        window.localStorage.getItem(LEGACY_STORAGE_KEY);
         return storageWithLegacyMigration;
       }),
       version: 4,
