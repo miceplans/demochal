@@ -146,7 +146,7 @@ variable "grafana_iam_role_name" {
 }
 
 variable "worker_desired_count" {
-  description = "Keep the SQS worker stopped by default; enable one task only while testing queue processing."
+  description = "SQS worker task count. The default of 0 is for bringing up a fresh environment; the live staging stack runs one worker continuously for queue processing and periodic scans."
   type        = number
   default     = 0
   validation {
