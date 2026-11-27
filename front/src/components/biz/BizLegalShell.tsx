@@ -22,7 +22,7 @@ export function AdminHeader() {
   );
 }
 
-export function AdminShell({ children }: { children: ReactNode }) {
+export function BizLegalShell({ children }: { children: ReactNode }) {
   return (
     <>
       {BizGlobalStyles}
