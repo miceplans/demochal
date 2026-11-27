@@ -80,7 +80,7 @@ export function Logo({ size = 24, mono = false }: { size?: number; mono?: boolea
     <BizBrand href={hrefOf('/dashboard')} aria-label="SEMO.BIZ 홈">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
-        src={mono ? '/assets/SEMOBIZ-mono.webp' : '/assets/SEMOBIZ.png'}
+        src={mono ? '/assets/SEMOBIZ-mono.png' : '/assets/SEMOBIZ.png'}
         alt="SEMO.BIZ"
         style={{ height: size, width: 'auto', display: 'block' }}
       />

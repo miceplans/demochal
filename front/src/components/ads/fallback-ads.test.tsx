@@ -60,6 +60,6 @@ describe('fallbackAds', () => {
 
     expect(allFallbackAds.every((ad) => /SEMO(?:\.BIZ)?/i.test(ad.alt))).toBe(true);
     expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-gallery.webp');
-    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-hero.webp');
+    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-hero.png');
   });
 });

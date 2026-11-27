@@ -123,7 +123,7 @@ export function MaintenanceScreen() {
         <MaintenanceContent>
           <Title>서버 점검 중입니다.</Title>
           <Illustration
-            src="/assets/maintenance.webp"
+            src="/assets/maintenance.png"
             alt="서버 점검 일러스트"
             width={814}
             height={736}

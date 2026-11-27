@@ -23,7 +23,7 @@ export function BizOperationsPage({ titleAs }: { titleAs?: 'h1' | 'h2' }) {
         <BizInquiryForm />
       </TopBlock>
       <InfoRow>
-        <MapImg src="/assets/operations-map.webp" alt="센텀IS타워 위치" />
+        <MapImg src="/assets/operations-map.png" alt="센텀IS타워 위치" />
         <InfoList>
           <InfoItem>
             <InfoIcon src={`${ICON}/pin.svg`} alt="" />

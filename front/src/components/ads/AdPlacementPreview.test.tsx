@@ -69,7 +69,7 @@ describe('AdPlacementPreview', () => {
     expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
     // 옆 슬롯은 같은 광고 복제가 아니라 서로 다른 기본 광고다.
     expect(container.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
-    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
     // 첫 슬롯이 복제 슬롯으로 오인되지 않아 alt가 비어 있지 않다.
     const img = container.querySelector<HTMLImageElement>(
       'img[src="https://cdn.example/hero-only.webp"]',
@@ -156,7 +156,7 @@ describe('AdPlacementPreview', () => {
     expect(video!.autoplay).toBe(true);
     expect(video!.loop).toBe(true);
     expect(video!.playsInline).toBe(true);
-    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
   });
 
   it('공개 광고 조회가 실패하거나 응답이 없으면 기본 광고로 낮춘다', () => {
@@ -183,8 +183,8 @@ describe('AdPlacementPreview', () => {
     const uploadedSlots = container.querySelectorAll('img[src="blob:uploaded-hero"]');
     expect(uploadedSlots.length).toBe(2);
     // 나머지 슬롯은 기본 소재 그대로다.
-    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).not.toBeNull();
-    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-3.webp"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
     // 업로드하지 않은 gallery 레일은 기본 소재를 그대로 보여준다.
     expect(container.querySelector('img[src="/assets/SEMO.png"]')).not.toBeNull();
     expect(screen.getByLabelText('상단 광고 1 / 5').children.length).toBe(5);
@@ -199,18 +199,18 @@ describe('AdPlacementPreview', () => {
     const fileInputs = container.querySelectorAll('input[type="file"][accept="image/*"]');
     expect(fileInputs.length).toBe(1);
     expect(screen.getAllByText('파일 찾기').length).toBe(1);
-    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).not.toBeNull();
+    expect(container.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
     expect(container.querySelector('img[src="/assets/SEMO.png"]')).not.toBeNull();
   });
 
   it('업로드 모드는 사용자가 선택한 칸에 업로더를 표시한다', () => {
     const { rerender } = render(<AdPlacementPreview view="pc" onSelect={() => {}} />);
 
-    // 두 번째 칸(기본 소재 home-hero-2.webp)을 호버해 선택한 뒤 업로드 모드로 진입한다.
+    // 두 번째 칸(기본 소재 home-hero-2.png)을 호버해 선택한 뒤 업로드 모드로 진입한다.
     // 갤러리 기본 세트도 같은 소재를 쓰므로 상단 레일 안에서만 찾는다.
     const heroRail = screen.getByLabelText('홈 상단 광고');
     const secondSlotImg = heroRail.querySelector<HTMLImageElement>(
-      'img[src="/assets/figma-ads/home-hero-2.webp"]',
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
     );
     fireEvent.mouseOver(secondSlotImg!.closest('button')!);
 
@@ -218,10 +218,10 @@ describe('AdPlacementPreview', () => {
 
     // 업로더가 정확히 1개이고, 선택한 두 번째 칸이 업로더로 교체된다.
     expect(screen.getAllByText('파일 찾기').length).toBe(1);
-    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).toBeNull();
     // 첫 칸(영상)과 나머지 칸은 기존 광고를 유지한다.
     expect(heroRail.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
-    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.webp"]')).not.toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
   });
 
   it('업로드 모드 중에는 다른 칸을 호버해도 업로더 위치가 바뀌지 않는다', () => {
@@ -230,13 +230,13 @@ describe('AdPlacementPreview', () => {
     // 다른 칸을 호버한다.
     const heroRail = screen.getByLabelText('홈 상단 광고');
     const otherSlotImg = heroRail.querySelector<HTMLImageElement>(
-      'img[src="/assets/figma-ads/home-hero-2.webp"]',
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
     );
     fireEvent.mouseOver(otherSlotImg!.closest('button')!);
 
     // 업로더는 그대로 1개이고 호버한 칸의 기존 광고는 유지된다.
     expect(screen.getAllByText('파일 찾기').length).toBe(1);
-    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).not.toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).not.toBeNull();
   });
 
   it('업로드 완료한 이미지는 선택한 칸에 표시되고 이후 호버로 옮겨가지 않는다', () => {
@@ -245,7 +245,7 @@ describe('AdPlacementPreview', () => {
 
     // 두 번째 칸을 선택해 업로드 모드로 진입한다.
     const secondSlotImg = heroRail.querySelector<HTMLImageElement>(
-      'img[src="/assets/figma-ads/home-hero-2.webp"]',
+      'img[src="/assets/figma-ads/home-hero-2.png"]',
     );
     fireEvent.mouseOver(secondSlotImg!.closest('button')!);
     rerender(<AdPlacementPreview view="pc" onSelect={() => {}} uploadPlacement="hero" />);
@@ -262,17 +262,17 @@ describe('AdPlacementPreview', () => {
     const uploaded = heroRail.querySelector<HTMLImageElement>('img[src="blob:uploaded-hero"]');
     expect(uploaded).not.toBeNull();
     expect(uploaded!.alt).toBe('업로드한 홈 상단 광고 이미지');
-    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.webp"]')).toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-2.png"]')).toBeNull();
     // 첫 칸(영상)과 나머지 칸은 기존 광고를 유지한다.
     expect(heroRail.querySelector('video[src="/assets/Hero-animation.webm"]')).not.toBeNull();
 
     // 이후 다른 칸을 호버해도 결과 이미지 위치는 그대로 유지된다.
     const thirdSlotImg = heroRail.querySelector<HTMLImageElement>(
-      'img[src="/assets/figma-ads/home-hero-3.webp"]',
+      'img[src="/assets/figma-ads/home-hero-3.png"]',
     );
     fireEvent.mouseOver(thirdSlotImg!.closest('button')!);
     expect(heroRail.querySelector('img[src="blob:uploaded-hero"]')).not.toBeNull();
-    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.webp"]')).not.toBeNull();
+    expect(heroRail.querySelector('img[src="/assets/figma-ads/home-hero-3.png"]')).not.toBeNull();
   });
 
   it('업로드 처리 중에는 안내 문구가 바뀐다', () => {
