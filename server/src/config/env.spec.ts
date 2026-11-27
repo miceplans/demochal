@@ -97,6 +97,21 @@ describe('env REDIS_URL', () => {
   });
 });
 
+describe('env API_PROXY_IP_SECRET', () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('keeps signed client IP handling disabled when unset', async () => {
+    expect((await loadEnv({ API_PROXY_IP_SECRET: '' })).env.apiProxyIpSecret).toBeUndefined();
+  });
+
+  it('requires a sufficiently long shared secret when configured', async () => {
+    await expect(loadEnv({ API_PROXY_IP_SECRET: 'short' })).rejects.toThrow(/API_PROXY_IP_SECRET/);
+    expect((await loadEnv({ API_PROXY_IP_SECRET: 's'.repeat(32) })).env.apiProxyIpSecret).toBe(
+      's'.repeat(32),
+    );
+  });
+});
+
 describe('env S3_ENDPOINT', () => {
   afterEach(() => vi.unstubAllEnvs());
 

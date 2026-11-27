@@ -74,9 +74,11 @@ export class PaymentsController {
   // calls, and the optional IP allowlist (TOSS_WEBHOOK_ALLOWED_IPS) rejects
   // callers outside Toss's published inbound ranges with 401.
   // Note: req.ip is the ALB-observed peer because app.configure.ts sets
-  // `trust proxy` to exactly one hop. If another proxy/LB layer is added in
-  // front of the API, that setting — not this check — must be revisited, since
-  // the X-Forwarded-For chain decides which address Express reports as req.ip.
+  // `trust proxy` to exactly one hop, unless signedClientIpMiddleware verified
+  // a frontend-signed client IP (Vercel /api rewrite) — that is the browser's
+  // own address, never a Toss range, so the allowlist still holds. If another
+  // proxy/LB layer is added in front of the API, that setting — not this check —
+  // must be revisited.
   @Public()
   @Post('webhook/toss')
   @HttpCode(200)

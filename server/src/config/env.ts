@@ -23,6 +23,7 @@ const envSchema = z
     // 분산 레이트리밋 저장소(redis:// 또는 rediss://). 비워두면 태스크 메모리의
     // 인메모리 저장소를 쓰므로 스케일아웃 환경에서는 반드시 설정한다.
     REDIS_URL: z.string().default(''),
+    API_PROXY_IP_SECRET: z.union([z.literal(''), z.string().min(32)]).default(''),
 
     AWS_REGION: z.string().default('ap-northeast-2'),
 
@@ -191,6 +192,7 @@ export const env = {
   databaseSslCaPath: raw.DATABASE_SSL_CA_PATH,
 
   redisUrl: raw.REDIS_URL || undefined,
+  apiProxyIpSecret: raw.API_PROXY_IP_SECRET || undefined,
 
   awsRegion: raw.AWS_REGION,
 

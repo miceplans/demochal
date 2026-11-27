@@ -7,14 +7,17 @@ import { env } from './config/env.js';
 import { HttpExceptionLoggingFilter } from './common/http/http-exception-logging.filter.js';
 import { InputSecurityPipe } from './common/security/input-security.pipe.js';
 import { SkipInputSecurityInterceptor } from './common/security/skip-input-security.interceptor.js';
+import { signedClientIpMiddleware } from './common/throttling/signed-client-ip.js';
 
 // Shared Nest configuration for the main.ts bootstrap and createApp() factory.
 export function configureApp(app: INestApplication): void {
   // The API sits behind exactly one ALB, which appends the peer address to
-  // X-Forwarded-For. Trusting one hop makes req.ip (the throttler key) that
-  // ALB-observed address; trusting more would let clients spoof it via the header.
+  // X-Forwarded-For. One hop yields the ALB-observed address; the middleware
+  // below replaces req.ip only when the frontend's signed client IP is valid.
+  // Trusting more hops would let direct API callers spoof X-Forwarded-For.
   // https://expressjs.com/en/guide/behind-proxies.html
   (app.getHttpAdapter().getInstance() as Express).set('trust proxy', 1);
+  app.use(signedClientIpMiddleware(env.apiProxyIpSecret));
   app.use(helmet());
   app.enableCors({
     origin: env.frontendOrigins,
