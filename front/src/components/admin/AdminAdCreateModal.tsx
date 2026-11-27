@@ -13,6 +13,7 @@ import { FileUploader } from '@/components/ui/FileUploader';
 import { apiErrorMessage } from '@/lib/api-error';
 import { toDateKey } from '@/lib/date';
 import { CROPPED_AD_IMAGE_PRESETS, compressToWebP } from '@/lib/image-compression';
+import { useFileUpload } from '@/lib/upload';
 
 type Props = {
   onClose: () => void;
@@ -38,8 +39,8 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
 
   const businessesQuery = generated.useListAdminBusinesses({ status: 'verified' });
   const productsQuery = generated.useListAdProducts();
-  const requestPresignedUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  // 업로드 실패는 아래 catch에서 직접 토스트로 안내한다.
+  const uploadFile = useFileUpload({ localErrors: true });
 
   const businesses = businessesQuery.data?.data.items ?? [];
   const products = productsQuery.data?.data ?? [];
@@ -84,24 +85,12 @@ export function AdminAdCreateModal({ onClose, onCreated }: Props) {
           : CROPPED_AD_IMAGE_PRESETS.gallery;
       const compressed = await compressToWebP(file, preset);
       URL.revokeObjectURL(compressed.previewUrl);
-      const presigned = await requestPresignedUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          contentType: 'image/webp',
-          fileName: compressed.file.name,
-          sizeBytes: compressed.file.size,
-        },
+      const { fileId } = await uploadFile(compressed.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      // presigned S3 PUT은 API 서버가 아닌 S3로 직접 올리므로 api-client를 거치지 않는다(BizAdsPage와 동일).
-      const uploadRes = await fetch(presigned.data.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': compressed.file.type },
-        body: compressed.file,
-      });
-      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했어요.');
-      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
       if (generation !== uploadGeneration.current) return;
-      setImage({ fileId: presigned.data.fileId, name: file.name });
+      setImage({ fileId, name: file.name });
     } catch (error) {
       if (generation !== uploadGeneration.current) return;
       toast.error('이미지 업로드에 실패했어요', apiErrorMessage(error, '다시 시도해주세요'));

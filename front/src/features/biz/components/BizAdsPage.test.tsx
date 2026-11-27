@@ -69,7 +69,9 @@ vi.mock('@semochal/api-client', () => ({
         data: { uploadUrl: 'https://upload.example', fileId: 'file-1' },
       })),
     }),
-    useFinalizeUpload: () => ({ mutateAsync: vi.fn(async () => undefined) }),
+    useFinalizeUpload: () => ({
+      mutateAsync: vi.fn(async () => ({ status: 201, data: { id: 'file-1', url: null } })),
+    }),
     useCancelOrder: () => ({ mutateAsync: mocks.cancelOrder }),
     useListMyNotifications: () => ({ data: { data: [] } }),
     useListAdProducts: () => ({ data: { status: 200, data: products } }),

@@ -4,8 +4,11 @@ import type { ReactNode } from 'react';
 import { generated } from '@semochal/api-client';
 import { ProfilePage } from './ProfilePage';
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams('id=u1'),
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => '/profile',
 }));
 
 vi.mock('@semochal/api-client', () => ({

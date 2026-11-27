@@ -1,16 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
-import type { AdReport } from '@semochal/api-client';
 import { BizContent, SectionTitle } from '@/components/biz/BizShell';
 import { ExposureChart } from '@/components/biz/ExposureChart';
 import { BizPaymentCard } from '@/components/biz/BizPaymentCard';
 import { Button } from '@/components/common/Primitives';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { requestTossBillingAuth, paymentProviderForHost } from '@/lib/payments';
 import {
   PAYMENTS_DISABLED_DESCRIPTION,
@@ -21,7 +20,6 @@ import { apiErrorMessage } from '@/lib/api-error';
 import { won } from '@/data/biz-design';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
-import { adApi } from '@/lib/ad-api';
 
 const WEEKDAYS = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 const weekdayLabel = (date: string) => WEEKDAYS[new Date(date).getDay()] ?? date;
@@ -50,21 +48,13 @@ export function BizBillingPage() {
         queryClient.invalidateQueries({ queryKey: generated.getListPaymentHistoryQueryKey() }),
     },
   });
-  const [ctrReport, setCtrReport] = useState<AdReport | null>(null);
-  // 가장 최근 광고의 일별 클릭률로 클릭률 차트를 그린다.
-  useEffect(() => {
-    let cancelled = false;
-    void adApi.ads
-      .listMine()
-      .then((ads) => (ads[0] ? adApi.ads.getReport(ads[0].id) : null))
-      .then((report) => {
-        if (!cancelled) setCtrReport(report);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // 가장 최근 광고의 일별 클릭률로 클릭률 차트를 그린다. 차트는 보조 정보라 실패해도 토스트를 띄우지 않는다.
+  const myAdsQuery = generated.useListMyAds(undefined, { query: { meta: LOCAL_ERROR_TOAST_META } });
+  const latestAdId = myAdsQuery.data?.status === 200 ? myAdsQuery.data.data[0]?.id : undefined;
+  const reportQuery = generated.useGetAdReport(latestAdId ?? '', undefined, {
+    query: { enabled: Boolean(latestAdId), meta: LOCAL_ERROR_TOAST_META },
+  });
+  const ctrReport = reportQuery.data?.status === 200 ? reportQuery.data.data : null;
 
   // 토스 빌링 인증창 → 성공 시 /biz/billing/auth/success으로 authKey와 함께 리다이렉트.
   // bz(네이버페이) 호스트에서는 정기결제 심사 전이므로 진입을 안내와 함께 막는다.

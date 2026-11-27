@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useToast } from '@/components/common/Toast';
-import { adApi, adError } from '@/lib/ad-api';
+import { adError } from '@/lib/api-error';
+import { useFileUpload } from '@/lib/upload';
 import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
@@ -232,6 +233,8 @@ export function PostingForm({
 }) {
   const router = useRouter();
   const toast = useToast();
+  // 업로드 실패는 폼의 error 문구로 직접 안내하므로 전역 토스트를 끈다.
+  const uploadFile = useFileUpload({ localErrors: true });
   const editorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLDivElement>(null);
   // 초안 저장의 baseline은 서버 초기값 — 폼이 그대로면 초안을 지운다.
@@ -489,19 +492,7 @@ export function PostingForm({
     let image: Awaited<ReturnType<typeof compressToWebP>> | undefined;
     try {
       image = await compressToWebP(file, AD_IMAGE_PRESETS.hero);
-      const presigned = await adApi.files.requestUpload({
-        bucket: 'public',
-        contentType: image.file.type,
-        fileName: image.file.name,
-        sizeBytes: image.file.size,
-      });
-      const response = await fetch(presigned.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
-      });
-      if (!response.ok) throw new globalThis.Error('이미지 업로드에 실패했습니다.');
-      const finalized = await adApi.files.finalizeUpload(presigned.fileId);
+      const finalized = await uploadFile(image.file, { bucket: 'public' });
       if (!finalized.url) throw new globalThis.Error('이미지 주소를 받지 못했습니다.');
       const editor = editorRef.current;
       if (!editor) return;
@@ -573,38 +564,9 @@ export function PostingForm({
     setError('');
     setUploadingPoster(true);
     try {
-      const [presignedPoster, presignedThumbnail] = await Promise.all([
-        adApi.files.requestUpload({
-          bucket: 'public',
-          purpose: 'poster',
-          contentType: file.type,
-          fileName: file.name,
-          sizeBytes: file.size,
-        }),
-        adApi.files.requestUpload({
-          bucket: 'public',
-          contentType: thumbnail.type,
-          fileName: thumbnail.name,
-          sizeBytes: thumbnail.size,
-        }),
-      ]);
-      const [posterResponse, thumbnailResponse] = await Promise.all([
-        fetch(presignedPoster.uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        }),
-        fetch(presignedThumbnail.uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': thumbnail.type },
-          body: thumbnail,
-        }),
-      ]);
-      if (!posterResponse.ok || !thumbnailResponse.ok)
-        throw new globalThis.Error('이미지 업로드에 실패했습니다.');
-      const [, finalizedThumbnail] = await Promise.all([
-        adApi.files.finalizeUpload(presignedPoster.fileId),
-        adApi.files.finalizeUpload(presignedThumbnail.fileId),
+      const [uploadedPoster, uploadedThumbnail] = await Promise.all([
+        uploadFile(file, { bucket: 'public', purpose: 'poster' }),
+        uploadFile(thumbnail, { bucket: 'public' }),
       ]);
       // 둘 다 성공한 뒤에만 폼 상태를 교체한다 — 하나만 올라간 부분 상태를 남기지 않는다.
       // 원본은 보관용이고, 작성 화면에서는 사용자가 확정한 크롭 썸네일을 그대로 보여준다.
@@ -612,10 +574,10 @@ export function PostingForm({
       if (posterObjectUrl.current) URL.revokeObjectURL(posterObjectUrl.current);
       posterObjectUrl.current = previewUrl;
       setPoster({
-        posterFileId: presignedPoster.fileId,
-        thumbnailFileId: presignedThumbnail.fileId,
+        posterFileId: uploadedPoster.fileId,
+        thumbnailFileId: uploadedThumbnail.fileId,
         previewUrl,
-        durableUrl: finalizedThumbnail.url ?? null,
+        durableUrl: uploadedThumbnail.url,
       });
     } catch {
       setError('포스터 업로드에 실패했습니다. 다시 시도해주세요.');
@@ -639,20 +601,8 @@ export function PostingForm({
       const uploaded: Attachment[] = [];
       for (const file of selected) {
         const contentType = attachmentContentType(file)!;
-        const presigned = await adApi.files.requestUpload({
-          bucket: 'private',
-          contentType,
-          fileName: file.name,
-          sizeBytes: file.size,
-        });
-        const response = await fetch(presigned.uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': contentType },
-          body: file,
-        });
-        if (!response.ok) throw new globalThis.Error('파일 업로드에 실패했습니다.');
-        await adApi.files.finalizeUpload(presigned.fileId);
-        uploaded.push({ fileId: presigned.fileId, name: file.name, size: file.size });
+        const { fileId } = await uploadFile(file, { bucket: 'private', contentType });
+        uploaded.push({ fileId, name: file.name, size: file.size });
       }
       setAttachments((current) => [...current, ...uploaded]);
     } catch {

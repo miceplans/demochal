@@ -8,9 +8,9 @@ import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { Icon, Row, DesktopOnly, MobileOnly, Input, IconButton, Button } from './Primitives';
 import { useUserStore } from '@/stores/useUserStore';
-import { generated } from '@semochal/api-client';
 import { useNotificationStream } from '@/lib/useNotificationStream';
 import { categories, roles } from '@/data/user-design';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 const Brand = styled(Link)({
   display: 'inline-flex',
@@ -353,9 +353,9 @@ export function UserShell({
   useEffect(() => {
     void useUserStore.persist.rehydrate();
   }, []);
-  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const isLoggedIn = auth?.status === 200;
-  const profileImageUrl = isLoggedIn ? (auth.data.profileImageUrl ?? null) : null;
+  const { user: authUser } = useAuth();
+  const isLoggedIn = authUser !== undefined;
+  const profileImageUrl = authUser?.profileImageUrl ?? null;
   useNotificationStream(isLoggedIn);
   const navItems = [
     ['/', '홈', '/assets/icons/figma-footer/home.svg'],
@@ -585,9 +585,9 @@ export function MyShell({
   hideMobileTitle?: boolean;
 }) {
   const path = usePathname();
-  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const userName = auth?.status === 200 ? (auth.data.name ?? '사용자') : '';
-  const profileImageUrl = auth?.status === 200 ? (auth.data.profileImageUrl ?? null) : null;
+  const { user: authUser } = useAuth();
+  const userName = authUser ? (authUser.name ?? '사용자') : '';
+  const profileImageUrl = authUser?.profileImageUrl ?? null;
   return (
     <UserShell compact title={title} hideMobileTitle={hideMobileTitle}>
       <MyGrid>

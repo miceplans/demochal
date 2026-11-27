@@ -14,6 +14,7 @@ import { AD_IMAGE_PRESETS, compressToWebP, formatBytes } from '@/lib/image-compr
 import { apiErrorMessage } from '@/lib/api-error';
 import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
 import { searchAddress } from '@/lib/google-maps';
+import { useFileUpload } from '@/lib/upload';
 
 type UploadedImage = { fileId: string; previewUrl: string };
 type ImageKind = 'banner' | 'logo';
@@ -76,8 +77,7 @@ export function BizProfileEditPage() {
     logo: existingLogoUrl,
   };
 
-  const requestPresignedUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const updateBusiness = generated.useUpdateBusiness();
 
   useEffect(() => {
@@ -161,22 +161,11 @@ export function BizProfileEditPage() {
         file,
         kind === 'banner' ? AD_IMAGE_PRESETS.hero : AD_IMAGE_PRESETS.gallery,
       );
-      const presigned = await requestPresignedUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          // compressToWebP는 항상 image/webp로 재인코딩한다.
-          contentType: 'image/webp',
-          fileName: image.file.name,
-          sizeBytes: image.file.size,
-        },
+      // compressToWebP는 항상 image/webp로 재인코딩한다.
+      const { fileId } = await uploadFile(image.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      const uploadRes = await fetch(presigned.data.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
-      });
-      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       const previous = kind === 'banner' ? bannerImage : logoImage;
       if (previous) {
@@ -184,7 +173,7 @@ export function BizProfileEditPage() {
         previewUrls.current.delete(previous.previewUrl);
       }
       previewUrls.current.add(image.previewUrl);
-      const next = { fileId: presigned.data.fileId, previewUrl: image.previewUrl };
+      const next = { fileId, previewUrl: image.previewUrl };
       if (kind === 'banner') setBannerImage(next);
       else setLogoImage(next);
       toast.success(

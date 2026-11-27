@@ -20,6 +20,7 @@ import {
 } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestBizPayment } from '@/lib/payments';
+import { useFileUpload } from '@/lib/upload';
 import {
   isBizPaymentEnabled,
   PAYMENTS_DISABLED_DESCRIPTION,
@@ -45,8 +46,7 @@ export function useBizAdsController() {
   const updateAdMutation = generated.useUpdateAd();
   const createAdMutation = generated.useCreateAd();
   const updateAdContentMutation = generated.useUpdateAdContent();
-  const requestPresignedUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const cancelOrderMutation = generated.useCancelOrder();
   // 실시간 갱신은 UserShell의 알림 SSE 스트림이 목록 쿼리를 invalidate하므로 폴링하지 않는다.
   const notificationsQuery = generated.useListMyNotifications();
@@ -239,22 +239,11 @@ export function useBizAdsController() {
     let image: CompressedAdImage | undefined;
     try {
       image = await compressToWebP(file, CROPPED_AD_IMAGE_PRESETS[placement]);
-      const presigned = await requestPresignedUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          // compressToWebP는 항상 image/webp로 재인코딩한다.
-          contentType: 'image/webp',
-          fileName: image.file.name,
-          sizeBytes: image.file.size,
-        },
+      // compressToWebP는 항상 image/webp로 재인코딩한다.
+      const { fileId } = await uploadFile(image.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      const uploadRes = await fetch(presigned.data.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
-      });
-      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       if (generation !== draftGeneration.current) {
         URL.revokeObjectURL(image.previewUrl);
@@ -268,7 +257,7 @@ export function useBizAdsController() {
       }
       previewUrls.current.add(image.previewUrl);
       setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
-      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.data.fileId }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: fileId }));
       setUploadPlacement(null);
       toast.success(
         '업로드 되었습니다',
