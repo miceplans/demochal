@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { requestPayment, loadTossPayments } = vi.hoisted(() => ({
   requestPayment: vi.fn(),
@@ -34,6 +34,12 @@ describe('requestTossPayment', () => {
 });
 
 describe('paymentProviderForHost', () => {
+  // assertion 실패 시에도 env/module 정리가 누락되지 않도록 afterEach에서 처리한다.
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
   it('routes the bz subdomain label to the Naver Pay (KCP window) provider', async () => {
     const { paymentProviderForHost } = await import('./payments');
 
@@ -54,8 +60,6 @@ describe('paymentProviderForHost', () => {
     expect(paymentProviderForHost('pay.example.com')).toBe('naverpay');
     expect(paymentProviderForHost('pay.example.com:443')).toBe('naverpay');
     expect(paymentProviderForHost('bz.example.com')).toBe('toss');
-    vi.unstubAllEnvs();
-    vi.resetModules();
   });
 });
 
