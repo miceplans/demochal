@@ -25,7 +25,6 @@ import {
   PAYMENTS_DISABLED_DESCRIPTION,
   PAYMENTS_DISABLED_TITLE,
 } from '@/lib/payments-gate';
-import { adApi } from '@/lib/ad-api';
 import {
   clearAdPaymentDraft,
   readAdPaymentDraft,
@@ -48,6 +47,7 @@ export function useBizAdsController() {
   const updateAdContentMutation = generated.useUpdateAdContent();
   const requestPresignedUpload = generated.useRequestPresignedUpload();
   const finalizeUpload = generated.useFinalizeUpload();
+  const cancelOrderMutation = generated.useCancelOrder();
   // 실시간 갱신은 UserShell의 알림 SSE 스트림이 목록 쿼리를 invalidate하므로 폴링하지 않는다.
   const notificationsQuery = generated.useListMyNotifications();
   const priceNotices = (notificationsQuery.data?.data ?? []).filter(
@@ -377,7 +377,7 @@ export function useBizAdsController() {
           throw new Error('결제창을 열 수 없습니다. 결제 클라이언트 키 설정을 확인해 주세요.');
       } catch (error) {
         // SDK 초기화나 결제창 진입이 실패하면 이 주문이 날짜를 계속 점유하지 않게 한다.
-        await adApi.orders.cancel(created.data.order.id).catch(() => {});
+        await cancelOrderMutation.mutateAsync({ id: created.data.order.id }).catch(() => {});
         throw error;
       }
       // 결제창을 연 시점에는 아직 결제가 확정되지 않았다. 완료/실패 안내는 토스가 리다이렉트하는
