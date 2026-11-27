@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { LegalPageBody } from '@/components/my/MyPages';
+import { LegalPageBody } from '@/components/my/pages/LegalPage';
 
 export const metadata: Metadata = {
   title: '이용약관',
