@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import styled from '@emotion/styled';
 import { useQueryClient } from '@tanstack/react-query';
 import { generated } from '@semochal/api-client';
 import { BizContent, useBizHref } from '@/components/biz/BizShell';
-import { useToast } from '@/components/common/Toast';
-import { adApi, adError } from '@/lib/ad-api';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
+import { adError } from '@/lib/api-error';
 import { colors as c } from '@/styles/design';
 import { EMPTY_POSTING, toDateInput, toDateTimeInput } from './BizPostingFormPage.logic';
 import { PostingForm } from './PostingForm';
@@ -17,23 +16,12 @@ export { normalizeFontTags } from './BizPostingFormPage.logic';
 export function BizPostingFormPage() {
   const router = useRouter();
   const hrefOf = useBizHref();
-  const [businessId, setBusinessId] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState('');
+  const businessQuery = generated.useFindMyBusiness({ query: { meta: LOCAL_ERROR_TOAST_META } });
+  const businessId = businessQuery.data?.status === 200 ? (businessQuery.data.data.id ?? '') : '';
+  const loading = businessQuery.isPending;
+  const loadError = businessQuery.isError ? adError(businessQuery.error) : '';
 
   const createChallenge = generated.useCreateChallenge();
-
-  useEffect(() => {
-    let active = true;
-    adApi.businesses
-      .me()
-      .then((business) => active && setBusinessId(business.id))
-      .catch((cause) => active && setLoadError(adError(cause)))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
-  }, []);
 
   return (
     <PostingForm

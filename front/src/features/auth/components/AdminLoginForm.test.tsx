@@ -1,6 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '@emotion/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { theme } from '@/styles/theme';
 import { AdminLoginForm } from './AdminLoginForm';
@@ -32,6 +33,7 @@ vi.mock('@semochal/api-client', () => ({
   generated: {
     login: mocks.login,
     logout: mocks.logout,
+    getGetMyAuthInfoQueryKey: () => ['/auth/me'],
     verifyMfaTotp: mocks.verifyMfaTotp,
     verifyMfaRecoveryCode: mocks.verifyMfaRecoveryCode,
     getMfaPasskeyAuthOptions: mocks.getMfaPasskeyAuthOptions,
@@ -50,9 +52,11 @@ vi.mock('qrcode', () => ({ toDataURL: mocks.toDataURL }));
 
 function renderForm() {
   return render(
-    <ThemeProvider theme={theme}>
-      <AdminLoginForm />
-    </ThemeProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <ThemeProvider theme={theme}>
+        <AdminLoginForm />
+      </ThemeProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -82,7 +86,7 @@ describe('AdminLoginForm', () => {
         password: TEST_PASSWORD,
       }),
     );
-    expect(mocks.push).toHaveBeenCalledWith('/admin');
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/admin'));
     expect(mocks.toastError).not.toHaveBeenCalled();
   });
 

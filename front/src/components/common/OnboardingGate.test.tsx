@@ -6,6 +6,7 @@ import { OnboardingGate } from './OnboardingGate';
 const replace = vi.fn();
 let pathname = '/';
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace }),
   usePathname: () => pathname,

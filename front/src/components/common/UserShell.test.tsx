@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     { status: number; data: { name?: string | null; profileImageUrl?: string | null } } | undefined,
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: vi.fn() }),

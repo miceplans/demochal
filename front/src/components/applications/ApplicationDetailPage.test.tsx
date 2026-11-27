@@ -17,6 +17,7 @@ const mocks = vi.hoisted(() => ({
   challenge: undefined as Record<string, unknown> | undefined,
 }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/my/applications/app-1',
 }));
@@ -31,6 +32,8 @@ vi.mock('@/components/common/Toast', () => ({
 vi.mock('@semochal/api-client', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@semochal/api-client')>()),
   generated: {
+    useRequestPresignedUpload: () => ({ mutateAsync: vi.fn() }),
+    useFinalizeUpload: () => ({ mutateAsync: vi.fn() }),
     useGetApplication: () => ({
       data: mocks.application ? { status: 200, data: mocks.application } : undefined,
       isPending: !mocks.application,
@@ -87,7 +90,7 @@ function renderPage() {
 
 const editDraftStorageKey = 'semochal:form-draft:v1:application-edit:app-1';
 const readStoredEditDraft = () => {
-  const raw = localStorage.getItem(editDraftStorageKey);
+  const raw = sessionStorage.getItem(editDraftStorageKey);
   return raw ? (JSON.parse(raw) as { value: unknown }).value : null;
 };
 
@@ -95,10 +98,12 @@ describe('ApplicationDetailPage', () => {
   afterEach(() => {
     cleanup();
     localStorage.clear();
+    sessionStorage.clear();
   });
   beforeEach(() => {
     vi.clearAllMocks();
     localStorage.clear();
+    sessionStorage.clear();
     mocks.meId = 'user-1';
     mocks.application = application('submitted');
     mocks.challenge = challenge;
@@ -192,11 +197,15 @@ describe('ApplicationDetailPage', () => {
   });
 
   it('수정 모드 진입 시 작성하다 만 초안이 있으면 서버 값 대신 복원한다', async () => {
-    writeFormDraft('application-edit:app-1', {
-      role: '프론트엔드',
-      teammates: ['임시 팀원'],
-      answers: { q1: '초안 답변' },
-    });
+    writeFormDraft(
+      'application-edit:app-1',
+      {
+        role: '프론트엔드',
+        teammates: ['임시 팀원'],
+        answers: { q1: '초안 답변' },
+      },
+      { storage: 'session' },
+    );
     const user = userEvent.setup();
     renderPage();
     await user.click(screen.getByRole('button', { name: '수정' }));

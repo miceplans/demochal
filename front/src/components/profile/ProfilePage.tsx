@@ -1,5 +1,5 @@
 'use client';
-import { Suspense, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import styled from '@emotion/styled';
 import { generated } from '@semochal/api-client';
@@ -11,13 +11,15 @@ import { textStyle } from '@/styles/typography';
 import type { ProfileAward } from './ProfileCards';
 import { isGithubUrl, isSafeLinkUrl, linkDisplayText, linkIconName } from './link-model';
 import { DEFAULT_PROFILE_IMAGE, verificationBadges } from './ProfilePage.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useLoginRedirect } from '@/components/auth/RequireAuth';
 
 function ProfilePageContent() {
   const searchParams = useSearchParams();
   // /profile?id=<uuid> — id가 없으면 로그인한 본인 프로필을 본다.
   const paramId = searchParams.get('id');
-  const auth = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const me = auth.data?.status === 200 ? auth.data.data : undefined;
+  const auth = useAuth();
+  const me = auth.user;
   const userId = paramId ?? me?.id ?? '';
   const userQuery = generated.useGetUser(userId, {
     query: { enabled: Boolean(userId), retry: false },
@@ -30,8 +32,14 @@ function ProfilePageContent() {
     managedQuery.data?.status === 200 && (managedQuery.data.data ?? []).length > 0;
   const [scoutOpen, setScoutOpen] = useState(false);
   const canInvite = Boolean(me) && userId !== me?.id && hasManagedTeam;
+  // id 없는 /profile은 '내 프로필'이라 로그인이 필요하다(다른 사람 프로필은 공개).
+  const redirectToLogin = useLoginRedirect();
+  const needsLogin = !paramId && (auth.status === 'unauthenticated' || auth.status === 'error');
+  useEffect(() => {
+    if (needsLogin) redirectToLogin('guard');
+  }, [needsLogin, redirectToLogin]);
 
-  if (!paramId && auth.isPending) {
+  if (!paramId && (auth.status === 'loading' || needsLogin)) {
     return (
       <UserShell title="프로필" compact>
         <Content />

@@ -360,3 +360,6 @@ export * from './webAuthnRegistrationCredentialType';
 export * from './webAuthnRequestOptions';
 export * from './webAuthnRequestOptionsAllowCredentialsItem';
 export * from './webAuthnRequestOptionsUserVerification';
+export * from './withdrawAccountBody';
+export * from './withdrawAccountBodyConfirmation';
+export * from './withdrawAccountBodyTeamTransfersItem';

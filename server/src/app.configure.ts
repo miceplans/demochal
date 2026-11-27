@@ -8,8 +8,7 @@ import { HttpExceptionLoggingFilter } from './common/http/http-exception-logging
 import { InputSecurityPipe } from './common/security/input-security.pipe.js';
 import { SkipInputSecurityInterceptor } from './common/security/skip-input-security.interceptor.js';
 
-// Applied by every bootstrap path (main.ts persistent server, api/index.js
-// Vercel serverless entry) so both hosting modes run the exact same app.
+// Shared Nest configuration for the main.ts bootstrap and createApp() factory.
 export function configureApp(app: INestApplication): void {
   // The API sits behind exactly one ALB, which appends the peer address to
   // X-Forwarded-For. Trusting one hop makes req.ip (the throttler key) that

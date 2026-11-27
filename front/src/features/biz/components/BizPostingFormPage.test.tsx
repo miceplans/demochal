@@ -47,14 +47,8 @@ vi.mock('@/components/biz/BizShell', () => ({
   useBizHref: () => (path: string) => path,
 }));
 vi.mock('@/components/common/Toast', () => ({
+  LOCAL_ERROR_TOAST_META: { localErrorToast: true },
   useToast: () => ({ success: mocks.toastSuccess, error: mocks.toastError }),
-}));
-vi.mock('@/lib/ad-api', () => ({
-  adError: () => '오류',
-  adApi: {
-    businesses: { me: async () => ({ id: 'biz-1' }) },
-    files: { requestUpload: mocks.requestUpload, finalizeUpload: mocks.finalizeUpload },
-  },
 }));
 vi.mock('@semochal/api-client', () => ({
   generated: {
@@ -66,6 +60,24 @@ vi.mock('@semochal/api-client', () => ({
     }),
     useUpdateChallenge: () => ({ mutateAsync: mocks.update }),
     getGetMyChallengeQueryKey: (id: string) => ['my-challenge', id],
+    useFindMyBusiness: () => ({
+      data: { status: 200, data: { id: 'biz-1' } },
+      isPending: false,
+      isError: false,
+    }),
+    // useFileUpload(@/lib/upload)가 쓰는 업로드 mutation — 테스트는 요청 본문/응답 본문만 다룬다.
+    useRequestPresignedUpload: () => ({
+      mutateAsync: async ({ data }: { data: unknown }) => ({
+        status: 201,
+        data: await mocks.requestUpload(data),
+      }),
+    }),
+    useFinalizeUpload: () => ({
+      mutateAsync: async ({ id }: { id: string }) => ({
+        status: 201,
+        data: (await mocks.finalizeUpload(id)) ?? {},
+      }),
+    }),
   },
 }));
 vi.mock('@tanstack/react-query', () => ({

@@ -19,6 +19,7 @@ import {
   type Answers,
 } from './ApplicationQuestions';
 import { answersFromSaved, EDITABLE_STATUSES } from './ApplicationDetailPage.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 // biz 지원서 관리(ApplicationTable)의 STATUS_LABEL과 같은 매핑을 쓴다.
 const STATUS_LABEL: Record<string, string> = {
@@ -208,7 +209,7 @@ function EditDraftSaver({
   value: EditDraft;
   baseline: EditDraft;
 }) {
-  useFormDraftSaver(draftKey, value, { baseline });
+  useFormDraftSaver(draftKey, value, { baseline, storage: 'session' });
   return null;
 }
 
@@ -255,10 +256,10 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
   const toast = useToast();
   const queryClient = useQueryClient();
   const applicationQuery = generated.useGetApplication(applicationId);
-  const meQuery = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { user: me } = useAuth();
   const application =
     applicationQuery.data?.status === 200 ? applicationQuery.data.data : undefined;
-  const meId = meQuery.data?.status === 200 ? meQuery.data.data.id : undefined;
+  const meId = me?.id;
   const challengeQuery = generated.useGetChallenge(application?.challengeId ?? '', {
     query: { enabled: Boolean(application) },
   });
@@ -309,7 +310,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
   const startEdit = () => {
     if (!application) return;
     // 작성하다 만 수정 초안이 있으면 서버 값 대신 초안을 복원한다.
-    const draft = readFormDraft(draftKey, isEditDraft);
+    const draft = readFormDraft(draftKey, isEditDraft, { storage: 'session' });
     setPickedRole(draft?.role ?? application.role ?? '');
     setMembers(draft?.teammates ?? application.teammates ?? []);
     setAnswers(draft?.answers ?? answersFromSaved(application.formAnswers));
@@ -349,7 +350,7 @@ export function ApplicationDetailPage({ applicationId }: { applicationId: string
         queryKey: generated.getGetApplicationQueryKey(applicationId),
       });
       await queryClient.invalidateQueries({ queryKey: generated.getListMyApplicationsQueryKey() });
-      clearFormDraft(draftKey);
+      clearFormDraft(draftKey, { storage: 'session' });
       setEditing(false);
       toast.success('지원서를 수정했어요');
     } catch (error) {

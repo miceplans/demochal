@@ -17,6 +17,8 @@ import {
   lerpRgba,
   routeOf,
 } from './BizShell.logic';
+import { useAuth } from '@/features/auth/AuthProvider';
+import { useLogout } from '@/features/auth/session';
 
 export { isMenuActive, routeOf } from './BizShell.logic';
 
@@ -261,9 +263,8 @@ export function BizSidebar() {
   const base = useBizBase();
   const menu = bizMenu(useIsBzHost());
   const router = useRouter();
-  const { data: auth, isPending: authPending } = generated.useGetMyAuthInfo({
-    query: { retry: false },
-  });
+  const { user: authUser, status: authStatus } = useAuth();
+  const authPending = authStatus === 'loading';
   const { data: business, isPending: businessPending } = generated.useFindMyBusiness({
     query: { retry: false },
   });
@@ -273,19 +274,18 @@ export function BizSidebar() {
     query: { enabled: !!logoFileId },
   });
   const logoUrl = logoFileId && logoFile?.status === 200 ? (logoFile.data.url ?? null) : null;
-  const profileImageUrl = auth?.status === 200 ? (auth.data.profileImageUrl ?? null) : null;
+  const profileImageUrl = authUser?.profileImageUrl ?? null;
   const avatarImage = logoUrl ?? profileImageUrl;
-  const accountName =
-    auth?.status === 200 ? (auth.data.name ?? '') : authPending ? '불러오는 중' : '';
+  const accountName = authUser ? (authUser.name ?? '') : authPending ? '불러오는 중' : '';
   const businessName =
     business?.status === 200 ? (business.data.name ?? '') : businessPending ? '불러오는 중' : '';
-  const logoutMutation = generated.useLogout();
+  const logoutSession = useLogout();
   const activeHref = menu.reduce(
     (best, [href]) => (isMenuActive(route, href) && href.length > best.length ? href : best),
     '',
   );
   const logout = () => {
-    logoutMutation.mutate(undefined, { onSettled: () => router.push(`${base}/login`) });
+    void logoutSession(() => router.push(`${base}/login`));
   };
   return (
     <SidebarBox>
