@@ -79,6 +79,17 @@ describe('BizInquiryForm', () => {
     );
   });
 
+  it('초안 복원 후 입력 없이 디바운스가 지나도 초안이 삭제되지 않는다', async () => {
+    const draft = { name: '홍길동', contact: '010-1234-5678', content: '견적이 궁금합니다.' };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ value: draft, savedAt: Date.now() }));
+    renderForm();
+
+    // 복원값이 저장 구독에 반영되기 전에 DraftSaver가 baseline으로 오인해 지우는 회귀 방지.
+    await new Promise((resolve) => setTimeout(resolve, 700));
+
+    expect(JSON.parse(localStorage.getItem(DRAFT_KEY)!).value).toEqual(draft);
+  });
+
   it('서버 프리렌더는 초안이 있어도 pristine HTML을 만들고, 클라이언트에서 effect 후 복원된다', () => {
     localStorage.setItem(
       DRAFT_KEY,
@@ -160,5 +171,95 @@ describe('BizInquiryForm', () => {
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
     expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+  });
+
+  it('빈 값으로 제출하면 전송하지 않고 필드 에러와 안내 메시지를 보여준다', async () => {
+    const { container } = renderForm();
+
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() =>
+      expect(mocks.toastError).toHaveBeenCalledWith(
+        '입력 내용을 확인해주세요',
+        '성함을 입력해주세요. 연락처를 입력해주세요. 문의 내용을 입력해주세요.',
+      ),
+    );
+    expect(mocks.submitOperationsInquiry).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('성함').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('연락처').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('문의내용').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('status').textContent).toBe(
+      '성함을 입력해주세요. 연락처를 입력해주세요. 문의 내용을 입력해주세요.',
+    );
+  });
+
+  it('입력을 고치면 해당 필드의 에러만 지워진다', async () => {
+    const { container } = renderForm();
+    fireEvent.submit(container.querySelector('form')!);
+    await waitFor(() =>
+      expect(screen.getByLabelText('성함').getAttribute('aria-invalid')).toBe('true'),
+    );
+
+    fireEvent.change(screen.getByLabelText('성함'), { target: { value: '홍길동' } });
+
+    expect(screen.getByLabelText('성함').getAttribute('aria-invalid')).toBe('false');
+    expect(screen.getByLabelText('연락처').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('문의내용').getAttribute('aria-invalid')).toBe('true');
+  });
+
+  it('공백만 입력하면 필수 입력 에러를 보여준다', async () => {
+    const { container } = renderForm();
+    fireEvent.change(screen.getByLabelText('성함'), { target: { value: '   ' } });
+    fireEvent.change(screen.getByLabelText('연락처'), { target: { value: '010-1234-5678' } });
+    fireEvent.change(screen.getByLabelText('문의내용'), {
+      target: { value: '견적이 궁금합니다.' },
+    });
+
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('성함을 입력해주세요.'),
+    );
+    expect(mocks.submitOperationsInquiry).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('성함').getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByLabelText('연락처').getAttribute('aria-invalid')).toBe('false');
+    expect(screen.getByLabelText('문의내용').getAttribute('aria-invalid')).toBe('false');
+  });
+
+  it('최대 길이를 넘기면 길이 에러를 보여준다', async () => {
+    const { container } = renderForm();
+    fireEvent.change(screen.getByLabelText('성함'), { target: { value: '가'.repeat(101) } });
+    fireEvent.change(screen.getByLabelText('연락처'), { target: { value: '010-1234-5678' } });
+    fireEvent.change(screen.getByLabelText('문의내용'), {
+      target: { value: '견적이 궁금합니다.' },
+    });
+
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() =>
+      expect(screen.getByRole('status').textContent).toBe('성함은 100자 이내로 입력해주세요.'),
+    );
+    expect(mocks.submitOperationsInquiry).not.toHaveBeenCalled();
+  });
+
+  it('제출 시 앞뒤 공백을 제거한 값을 전송한다', async () => {
+    mocks.submitOperationsInquiry.mockResolvedValue({ status: 200, data: {} });
+    const { container } = renderForm();
+
+    fireEvent.change(screen.getByLabelText('성함'), { target: { value: ' 홍길동 ' } });
+    fireEvent.change(screen.getByLabelText('연락처'), { target: { value: ' 010-1234-5678' } });
+    fireEvent.change(screen.getByLabelText('문의내용'), {
+      target: { value: ' 견적이 궁금합니다. ' },
+    });
+
+    fireEvent.submit(container.querySelector('form')!);
+
+    await waitFor(() =>
+      expect(mocks.submitOperationsInquiry).toHaveBeenCalledWith({
+        name: '홍길동',
+        contact: '010-1234-5678',
+        content: '견적이 궁금합니다.',
+      }),
+    );
   });
 });
