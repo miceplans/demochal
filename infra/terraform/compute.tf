@@ -153,7 +153,9 @@ resource "aws_iam_role" "api_task" {
 
 data "aws_iam_policy_document" "api_task" {
   statement {
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    # PutObjectTagging: a submitted business document is tagged so the private
+    # bucket lifecycle rule enforces its retention cap (data.tf).
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:PutObjectTagging"]
     resources = ["${aws_s3_bucket.private.arn}/*"]
   }
   statement {
@@ -179,23 +181,27 @@ data "aws_iam_policy_document" "worker_task" {
   statement {
     # SendMessage: worker.ts relays verification outbox rows to this queue
     # (OutboxRelayService) before consuming them.
-    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    # ChangeMessageVisibility: the consumer heartbeat keeps a slow batch invisible
+    # past the 120s timeout (server/src/queue/worker-loops.ts) — same on every queue.
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.verifications.arn]
   }
   statement {
-    # Presigns a short-lived GET for the submitted document so the OCR
+    # GetObject: presigns a short-lived GET for the submitted document so the OCR
     # provider can fetch it; the signature only works if this role can read it.
-    actions   = ["s3:GetObject"]
+    # DeleteObject: the retention scan deletes business documents past their
+    # retention period (VerificationDocumentRetentionService).
+    actions   = ["s3:GetObject", "s3:DeleteObject"]
     resources = ["${aws_s3_bucket.private.arn}/*"]
   }
   statement {
     # The worker relays notification email outbox rows to this queue and
     # consumes them; the API task only writes outbox rows and gets no access.
-    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.emails.arn]
   }
   statement {
-    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
+    actions   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
     resources = [aws_sqs_queue.inbound_emails.arn]
   }
   dynamic "statement" {
@@ -395,7 +401,9 @@ locals {
   # (issue #569).
   api_environment = local.common_environment
   worker_environment = concat(local.common_environment, [
-    { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
+    { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email },
+    { name = "VERIFICATION_DOCUMENT_RETENTION_DAYS", value = tostring(var.business_document_retention_days) },
+    { name = "VERIFICATION_DOCUMENT_MAX_RETENTION_DAYS", value = tostring(var.business_document_max_retention_days) }
   ])
   # The migration task only needs DB credentials, not the full application
   # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).

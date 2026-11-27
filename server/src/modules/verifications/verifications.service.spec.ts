@@ -76,7 +76,10 @@ describe('VerificationsService.submit', () => {
     const insertedVerification = { id: 'verif-1', status: 'pending' };
     const { db, insert } = createDbStub(insertedVerification);
     const outboxService = { enqueue: vi.fn().mockResolvedValue(undefined) };
-    const filesService = { assertOwnedReadyPrivate: vi.fn().mockResolvedValue(undefined) };
+    const filesService = {
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({ id: 'file-1', key: 'pending/doc.pdf' }),
+      tagBusinessDocument: vi.fn().mockResolvedValue(undefined),
+    };
     const service = new VerificationsService(db, outboxService as any, filesService as any);
 
     const result = await service.submit(
@@ -85,6 +88,11 @@ describe('VerificationsService.submit', () => {
     );
 
     expect(filesService.assertOwnedReadyPrivate).toHaveBeenCalledWith('file-1', 'user-1');
+    // Tagged before the row is written so every stored document is under the S3 lifecycle cap.
+    expect(filesService.tagBusinessDocument).toHaveBeenCalledWith('pending/doc.pdf');
+    expect(filesService.tagBusinessDocument.mock.invocationCallOrder[0]).toBeLessThan(
+      insert.mock.invocationCallOrder[0]!,
+    );
     expect(insert).toHaveBeenCalled();
     expect(outboxService.enqueue).toHaveBeenCalledWith(db, VERIFICATION_SUBMITTED_EVENT, {
       verificationId: 'verif-1',
@@ -111,6 +119,22 @@ describe('VerificationsService.submit', () => {
       service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
     ).rejects.toThrow('not owned');
 
+    expect(insert).not.toHaveBeenCalled();
+    expect(outboxService.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('does not insert a verification row when tagging the document fails', async () => {
+    const { db, insert } = createDbStub({ id: 'verif-1', status: 'pending' });
+    const outboxService = { enqueue: vi.fn() };
+    const filesService = {
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({ id: 'file-1', key: 'pending/doc.pdf' }),
+      tagBusinessDocument: vi.fn().mockRejectedValue(new Error('AccessDenied')),
+    };
+    const service = new VerificationsService(db, outboxService as any, filesService as any);
+
+    await expect(
+      service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
+    ).rejects.toThrow('AccessDenied');
     expect(insert).not.toHaveBeenCalled();
     expect(outboxService.enqueue).not.toHaveBeenCalled();
   });

@@ -227,3 +227,23 @@ variable "enable_db_admin" {
   type        = bool
   default     = false
 }
+
+variable "business_document_retention_days" {
+  description = "Days a business document (사업자등록증) is kept after its verification is decided; the worker retention scan deletes it afterwards."
+  type        = number
+  default     = 30
+  validation {
+    condition     = var.business_document_retention_days >= 1
+    error_message = "business_document_retention_days must be at least 1."
+  }
+}
+
+variable "business_document_max_retention_days" {
+  description = "Hard cap in days from submission for a business document: the private bucket lifecycle rule expires tagged documents and the worker scan deletes any older one."
+  type        = number
+  default     = 90
+  validation {
+    condition     = var.business_document_max_retention_days >= 1
+    error_message = "business_document_max_retention_days must be at least 1."
+  }
+}

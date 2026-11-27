@@ -33,7 +33,10 @@ export class VerificationsService {
     if (!business || business.ownerUserId !== userId) {
       throw new NotFoundException('기업 정보를 찾을 수 없습니다.');
     }
-    await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
+    const document = await this.filesService.assertOwnedReadyPrivate(dto.documentFileId, userId);
+    // 행 기록 전에 태그를 단다 — 태그 없이 저장된 서류는 S3 수명주기 상한을 벗어나기 때문이다.
+    // 이후 DB 기록이 실패해도 태그된 객체는 수명주기 규칙으로 만료된다.
+    await this.filesService.tagBusinessDocument(document.key);
 
     const verification = await this.db.transaction(async (tx) => {
       const [verification] = await tx

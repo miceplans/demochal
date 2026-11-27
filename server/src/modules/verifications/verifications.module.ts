@@ -6,12 +6,22 @@ import { OutboxModule } from '../../outbox/outbox.module.js';
 import { VerificationsController } from './verifications.controller.js';
 import { VerificationsProcessorService } from './verifications.processor.js';
 import { VerificationsService } from './verifications.service.js';
+import { VerificationDocumentRetentionService } from './verification-document-retention.service.js';
 
-// Imported by both AppModule (HTTP: submit/get) and WorkerModule (SQS processor).
+// Imported by both AppModule (HTTP: submit/get) and WorkerModule (SQS processor +
+// document retention scan).
 @Module({
   imports: [NotificationsModule, FilesModule, AuthModule, OutboxModule],
   controllers: [VerificationsController],
-  providers: [VerificationsService, VerificationsProcessorService],
-  exports: [VerificationsService, VerificationsProcessorService],
+  providers: [
+    VerificationsService,
+    VerificationsProcessorService,
+    VerificationDocumentRetentionService,
+  ],
+  exports: [
+    VerificationsService,
+    VerificationsProcessorService,
+    VerificationDocumentRetentionService,
+  ],
 })
 export class VerificationsModule {}
