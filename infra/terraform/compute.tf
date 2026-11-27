@@ -177,18 +177,6 @@ resource "aws_iam_role" "worker_task" {
 
 data "aws_iam_policy_document" "worker_task" {
   statement {
-    # SendMessage: worker.ts relays verification outbox rows to this queue
-    # (OutboxRelayService) before consuming them.
-    actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
-    resources = [aws_sqs_queue.verifications.arn]
-  }
-  statement {
-    # Presigns a short-lived GET for the submitted document so the OCR
-    # provider can fetch it; the signature only works if this role can read it.
-    actions   = ["s3:GetObject"]
-    resources = ["${aws_s3_bucket.private.arn}/*"]
-  }
-  statement {
     # The worker relays notification email outbox rows to this queue and
     # consumes them; the API task only writes outbox rows and gets no access.
     actions   = ["sqs:SendMessage", "sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes"]
@@ -376,7 +364,7 @@ resource "aws_lb_listener" "https" {
 }
 
 locals {
-  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "KAKAO_REDIRECT_URI", "TOSS_SECRET_KEY", "TOSS_WEBHOOK_ALLOWED_IPS", "NAVERPAY_CLIENT_ID", "NAVERPAY_CLIENT_SECRET", "NAVERPAY_CHAIN_ID", "KCP_SITE_CD", "KCP_CERT_INFO", "KCP_PRIVATE_KEY", "KCP_PRIVATE_KEY_PASSWORD", "KCP_MOBILE_RETURN_URL", "CLOVA_OCR_API_URL", "CLOVA_OCR_SECRET_KEY", "NTS_API_KEY"]
+  secret_keys = ["DATABASE_URL", "JWT_SECRET", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_REDIRECT_URI", "NAVER_CLIENT_ID", "NAVER_CLIENT_SECRET", "NAVER_REDIRECT_URI", "KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "KAKAO_REDIRECT_URI", "TOSS_SECRET_KEY", "TOSS_WEBHOOK_ALLOWED_IPS", "NAVERPAY_CLIENT_ID", "NAVERPAY_CLIENT_SECRET", "NAVERPAY_CHAIN_ID", "KCP_SITE_CD", "KCP_CERT_INFO", "KCP_PRIVATE_KEY", "KCP_PRIVATE_KEY_PASSWORD", "KCP_MOBILE_RETURN_URL", "NTS_API_KEY"]
   app_secrets = [for key in local.secret_keys : { name = key, valueFrom = "${aws_secretsmanager_secret.app.arn}:${key}::" }]
   common_environment = [
     { name = "NODE_ENV", value = "production" }, { name = "AWS_REGION", value = var.aws_region },
@@ -384,7 +372,6 @@ locals {
     { name = "KCP_PRODUCTION", value = "false" },
     { name = "TOSS_PAYMENTS_ENABLED", value = tostring(var.toss_payments_enabled) },
     { name = "S3_PUBLIC_BUCKET", value = aws_s3_bucket.public.id }, { name = "S3_PRIVATE_BUCKET", value = aws_s3_bucket.private.id },
-    { name = "SQS_VERIFICATIONS_QUEUE_URL", value = aws_sqs_queue.verifications.url },
     { name = "SQS_EMAILS_QUEUE_URL", value = aws_sqs_queue.emails.url }, { name = "SES_FROM_EMAIL", value = var.ses_from_email }, { name = "FRONTEND_ORIGIN", value = var.frontend_origin },
     { name = "SQS_INBOUND_EMAILS_QUEUE_URL", value = aws_sqs_queue.inbound_emails.url },
     { name = "API_PUBLIC_URL", value = "https://${var.api_domain_name}" },
@@ -398,7 +385,7 @@ locals {
     { name = "SES_SUPPORT_FROM_EMAIL", value = var.ses_support_from_email }
   ])
   # The migration task only needs DB credentials, not the full application
-  # secret set (Toss/OCR/OAuth keys are irrelevant to `drizzle-orm` migrate).
+  # secret set (Toss/NTS/OAuth keys are irrelevant to `drizzle-orm` migrate).
   migrate_secrets = [for s in local.app_secrets : s if s.name == "DATABASE_URL"]
 }
 

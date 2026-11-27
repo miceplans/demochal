@@ -8664,8 +8664,8 @@ export const getSubmitVerificationUrl = () => {
 
 /**
  * 기업 가입의 기관 인증 단계. 파일 업로드(`POST /files/presign` → S3 PUT) 후 fileId로 제출.
- * 제출 즉시 SQS(`SQS_VERIFICATIONS_QUEUE_URL`)로 잡을 발송하고 `status=pending`으로 생성된다.
- * 워커가 서류 심사 없이 자동 승인(`verified`)하며, 관리자가 차단(`rejected`)한 기관은 자동 승인하지 않는다.
+ * 서류 심사 없이 제출 트랜잭션에서 바로 자동 승인(`status=verified`)되고 결과 알림이 생성된다.
+ * 관리자가 차단(`rejected`)한 기관은 자동 승인하지 않고 `status=pending`으로 남아 관리자 심사를 기다린다.
  * @summary 기관 인증 서류 제출 (사업자등록증)
  */
 export const submitVerification = async (submitVerificationRequest: SubmitVerificationRequest, options?: Parameters<typeof apiFetch>[1]): Promise<submitVerificationResponse> => {

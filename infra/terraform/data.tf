@@ -28,23 +28,7 @@ resource "aws_db_instance" "postgres" {
   performance_insights_enabled = false
 }
 
-resource "aws_sqs_queue" "verifications_dlq" {
-  name                      = "${local.name_prefix}-verifications-dlq"
-  message_retention_seconds = 1209600
-}
-
-resource "aws_sqs_queue" "verifications" {
-  name                       = "${local.name_prefix}-verifications"
-  visibility_timeout_seconds = 120
-  receive_wait_time_seconds  = 20
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.verifications_dlq.arn
-    maxReceiveCount     = 5
-  })
-}
-
-# Service email (SES) jobs relayed from the notification outbox. Kept separate
-# from the verifications queue so a SES outage cannot delay verifications.
+# Service email (SES) jobs relayed from the notification outbox.
 resource "aws_sqs_queue" "emails_dlq" {
   name                      = "${local.name_prefix}-emails-dlq"
   message_retention_seconds = 1209600

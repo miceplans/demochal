@@ -27,8 +27,7 @@ export class OutboxRelayService {
    *
    * `includeEventId` wraps the row payload in an `{ eventId, payload }`
    * envelope so the consumer can key idempotent side effects (e.g. SES
-   * sends) on the outbox event id; the default keeps the bare payload shape
-   * used by the verifications queue.
+   * sends) on the outbox event id; without it the bare payload is sent.
    */
   async relay(
     eventType: string,
