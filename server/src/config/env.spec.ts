@@ -183,6 +183,18 @@ describe('env PAYMENTS_ENABLED live-credential guard', () => {
     ).rejects.toThrow(/KCP_PRODUCTION/);
   });
 
+  it('rejects enabling payments in production with the KCP test site even when production mode is true', async () => {
+    await expect(
+      loadEnv({
+        ...base,
+        PAYMENTS_ENABLED: 'true',
+        KCP_SITE_CD: 'T0000',
+        KCP_PRODUCTION: 'true',
+        KCP_PRIVATE_KEY: 'pem',
+      }),
+    ).rejects.toThrow(/KCP_SITE_CD/);
+  });
+
   it('accepts enabling payments in production with live credentials', async () => {
     const { env } = await loadEnv({
       ...base,
