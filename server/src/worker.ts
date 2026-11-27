@@ -4,11 +4,6 @@ import { WorkerModule } from './worker.module.js';
 import { env } from './config/env.js';
 import { SqsService } from './queue/sqs.service.js';
 import { OutboxRelayService } from './outbox/outbox-relay.service.js';
-import { VerificationsProcessorService } from './modules/verifications/verifications.processor.js';
-import {
-  VERIFICATION_SUBMITTED_EVENT,
-  type VerificationJobMessage,
-} from './modules/verifications/verifications.service.js';
 import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
@@ -34,7 +29,6 @@ async function bootstrap() {
 
   const sqsService = app.get(SqsService);
   const outboxRelayService = app.get(OutboxRelayService);
-  const verificationsProcessor = app.get(VerificationsProcessorService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
   const emailService = app.get(EmailService);
   const supportEmailProcessor = app.get(SupportEmailProcessorService);
@@ -54,8 +48,7 @@ async function bootstrap() {
     env.sqsEmailsQueueUrl && (env.sesFromEmail || env.sesSupportFromEmail),
   );
   logger.log(
-    `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
-      `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
+    `Worker started (email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
       `inbound queue: ${env.sqsInboundEmailsQueueUrl ? 'on' : 'off'})`,
   );
 
@@ -64,15 +57,12 @@ async function bootstrap() {
     await scanRefundPendingPayments();
     await scanKcpApprovals();
 
-    if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
+    if (!emailEnabled && !env.sqsInboundEmailsQueueUrl) {
       logger.warn('No worker queue is configured, idling');
       await new Promise((resolve) => setTimeout(resolve, 5000));
       continue;
     }
 
-    if (env.sqsVerificationsQueueUrl) {
-      await pollVerifications(env.sqsVerificationsQueueUrl);
-    }
     if (emailEnabled) {
       await pollEmails(env.sqsEmailsQueueUrl);
     }
@@ -142,28 +132,6 @@ async function bootstrap() {
     } catch (error) {
       const name = error instanceof Error ? error.name : 'UnknownError';
       logger.error(`KCP approval scan failed (${name})`);
-    }
-  }
-
-  async function pollVerifications(queueUrl: string) {
-    try {
-      await outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, queueUrl);
-    } catch (error) {
-      logger.error('Outbox relay pass failed', error);
-    }
-
-    const messages = await receive(queueUrl, 'verifications');
-    for (const message of messages) {
-      try {
-        const body = JSON.parse(message.Body ?? '{}') as VerificationJobMessage;
-        await verificationsProcessor.process(body);
-        if (message.ReceiptHandle) {
-          await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
-        }
-      } catch (error) {
-        logger.error('Failed to process message', error);
-        // Left on the queue to be retried / eventually sent to a DLQ.
-      }
     }
   }
 

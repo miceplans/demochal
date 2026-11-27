@@ -4,14 +4,13 @@ import { DEFAULT_THROTTLE } from './common/throttling/throttling.js';
 import { DbModule } from './db/db.module.js';
 import { QueueModule } from './queue/queue.module.js';
 import { OutboxModule } from './outbox/outbox.module.js';
-import { VerificationsModule } from './modules/verifications/verifications.module.js';
 import { NotificationsModule } from './modules/notifications/notifications.module.js';
 import { EmailModule } from './modules/email/email.module.js';
 import { PaymentsModule } from './modules/payments/payments.module.js';
 
 // Subset of AppModule needed to process background jobs. Shares the same
-// VerificationsModule/NotificationsModule as the HTTP app — only the entry
-// point (worker.ts vs main.ts) differs; no HTTP listener is started here.
+// NotificationsModule as the HTTP app — only the entry point (worker.ts vs main.ts)
+// differs; no HTTP listener is started here.
 // PaymentsModule backs the refund_pending retry scan (worker.ts).
 // ThrottlerModule is required because AuthModule (pulled in transitively) declares
 // LoginAttemptThrottlerGuard, which needs THROTTLER:MODULE_OPTIONS to resolve.
@@ -21,7 +20,6 @@ import { PaymentsModule } from './modules/payments/payments.module.js';
     DbModule,
     QueueModule,
     OutboxModule,
-    VerificationsModule,
     NotificationsModule,
     EmailModule,
     PaymentsModule,
