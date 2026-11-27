@@ -13,7 +13,13 @@ export function AdminLoginScreen() {
       {AdminGlobalStyles}
       <Container>
         <Panel>
-          <Image src="/assets/SEMOADMIN.png" alt="세모챌 관리자" width={132} height={42} priority />
+          <Image
+            src="/assets/SEMOADMIN.webp"
+            alt="세모챌 관리자"
+            width={132}
+            height={42}
+            priority
+          />
           <Heading>관리자 로그인</Heading>
           <AdminLoginForm />
         </Panel>

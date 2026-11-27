@@ -17,12 +17,12 @@ const ICON_SOURCES: Record<string, string> = {
   imgLink2Icon: '/assets/icons/link-external.svg',
   imgLink3Icon: '/assets/icons/document.svg',
   imgCertificate: '/assets/icons/document.svg',
-  imgToastSuccess: '/assets/icons/toast/check-icon.png',
-  imgToastError: '/assets/icons/toast/close-icon.png',
-  imgToastInfo: '/assets/icons/toast/info-icon.png',
-  imgImage2: '/assets/oauth/kakao-logo.png',
-  imgImage1: '/assets/oauth/google-logo.png',
-  imgImage3: '/assets/oauth/naver-logo.png',
+  imgToastSuccess: '/assets/icons/toast/check-icon.webp',
+  imgToastError: '/assets/icons/toast/close-icon.webp',
+  imgToastInfo: '/assets/icons/toast/info-icon.webp',
+  imgImage2: '/assets/oauth/kakao-logo.webp',
+  imgImage1: '/assets/oauth/google-logo.webp',
+  imgImage3: '/assets/oauth/naver-logo.webp',
 };
 /** 북마크 하트. 저장(filled)이면 색을 채우고, 아니면 외곽선만 그린다. */
 export function HeartIcon({ filled, size = 18 }: { filled: boolean; size?: number }) {
@@ -163,7 +163,7 @@ export function EmptyState({ width = 280 }: { width?: number }) {
   return (
     <EmptyStateWrapper>
       <img
-        src="/assets/empty-contents.png"
+        src="/assets/empty-contents.webp"
         alt=""
         width={800}
         height={533}

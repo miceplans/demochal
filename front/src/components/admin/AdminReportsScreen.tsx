@@ -99,7 +99,7 @@ export function AdminReportsScreen() {
               onMouseDown={(event) => event.stopPropagation()}
             >
               <ModalContent>
-                <ExcelLogo src="/assets/microsoft/exel.png" alt="Excel" />
+                <ExcelLogo src="/assets/microsoft/exel.webp" alt="Excel" />
                 <ModalTitle id="report-export-title">CSV 파일로 다운로드</ModalTitle>
                 <ModalText>현재 필터가 적용된 신고 목록을 CSV 파일로 저장합니다.</ModalText>
               </ModalContent>

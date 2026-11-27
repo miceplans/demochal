@@ -144,7 +144,7 @@ describe('로그인 사용자 프로필 아바타', () => {
       </>,
     );
 
-    expect(screen.getByAltText('프로필').getAttribute('src')).toBe('/assets/icons/profile.png');
+    expect(screen.getByAltText('프로필').getAttribute('src')).toBe('/assets/icons/profile.webp');
     expect(container.querySelector('aside a[href="/my"] img')).toBeNull();
   });
 

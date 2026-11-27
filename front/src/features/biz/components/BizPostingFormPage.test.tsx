@@ -24,6 +24,11 @@ const DRAFT_KEY = 'semochal:form-draft:v1:posting:new';
 // 수정 페이지 키 — 아래 next/navigation 모의의 useParams id('edit-1')와 맞춘다.
 const EDIT_DRAFT_KEY = 'semochal:form-draft:v1:posting:edit:edit-1';
 
+// 임시 저장본이 있으면 진입 시 뜨는 모달에서 불러오기를 고른다.
+async function restoreDraft() {
+  fireEvent.click(await screen.findByRole('button', { name: '불러오기' }));
+}
+
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
@@ -747,8 +752,56 @@ describe('BizPostingFormPage', () => {
     first.unmount();
 
     renderForm();
+    await restoreDraft();
     expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '초안 제목');
     expect(screen.getByLabelText('상세정보 본문').innerHTML).toContain('초안 본문');
+  });
+
+  it('임시 저장본이 있으면 불러오기 전까지 폼을 덮지 않고 모달로 묻는다', async () => {
+    const first = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '초안 제목' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('초안 제목'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    renderForm();
+    const dialog = await screen.findByRole('dialog', { name: '임시 저장된 공고가 있어요' });
+    expect(within(dialog).getByText(/자동 저장된 내용을 불러올까요/)).toBeTruthy();
+    expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '');
+    // 선택 전에는 저장기가 돌지 않아 임시 저장본이 지워지거나 덮이지 않는다.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 800));
+    });
+    expect(localStorage.getItem(DRAFT_KEY)).toContain('초안 제목');
+  });
+
+  it('불러오지 않기를 고르면 임시 저장본을 지우고 빈 폼으로 시작한다', async () => {
+    const first = renderForm();
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '초안 제목' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('초안 제목'), {
+      timeout: 2000,
+    });
+    first.unmount();
+
+    renderForm();
+    fireEvent.click(await screen.findByRole('button', { name: '불러오지 않기' }));
+    expect(screen.queryByRole('dialog', { name: '임시 저장된 공고가 있어요' })).toBeNull();
+    expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '');
+    expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    // 이후 입력은 다시 자동 저장된다.
+    fireEvent.change(screen.getByLabelText('공고 제목'), { target: { value: '새 제목' } });
+    await waitFor(() => expect(localStorage.getItem(DRAFT_KEY)).toContain('새 제목'), {
+      timeout: 2000,
+    });
+  });
+
+  it('임시 저장본이 없으면 불러오기 모달을 띄우지 않는다', async () => {
+    renderForm();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(screen.queryByRole('dialog', { name: '임시 저장된 공고가 있어요' })).toBeNull();
   });
 
   it('아무것도 고치지 않으면 초안을 남기지 않는다', async () => {
@@ -790,6 +843,7 @@ describe('BizPostingFormPage', () => {
     first.unmount();
 
     renderForm();
+    await restoreDraft();
     expect(await screen.findByText(/요강\.pdf/)).toBeTruthy();
     await fillRequired();
     fireEvent.change(screen.getByLabelText('주최'), { target: { value: '세모챌' } });
@@ -816,6 +870,7 @@ describe('BizPostingFormPage', () => {
     unmount();
 
     renderForm();
+    await restoreDraft();
     expect(screen.getByAltText('포스터 미리보기').getAttribute('src')).toBe(
       'https://cdn.example/thumb.webp',
     );
@@ -837,8 +892,9 @@ describe('BizPostingFormPage', () => {
     );
     expect(html).not.toContain('초안 제목');
 
-    // 클라이언트 마운트 뒤에는 effect가 초안을 복원한다.
+    // 클라이언트 마운트 뒤에는 effect가 임시 저장본을 찾아 불러오기를 묻는다.
     renderForm();
+    await restoreDraft();
     expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '초안 제목');
   });
 
@@ -864,6 +920,7 @@ describe('BizPostingFormPage', () => {
       first.unmount();
 
       renderEditPage();
+      await restoreDraft();
       expect(screen.getByLabelText('공고 제목')).toHaveProperty('value', '수정한 제목');
       // 제목만 고쳤으므로 주최는 서버 값 그대로다.
       expect(screen.getByLabelText('주최')).toHaveProperty('value', '서버 주최');

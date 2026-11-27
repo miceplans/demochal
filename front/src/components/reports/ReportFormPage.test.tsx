@@ -117,13 +117,13 @@ describe('ReportFormPage 신고 대상 미리보기 이미지', () => {
       isPending: false,
       data: {
         status: 200,
-        data: { name: '사용자', profileImageUrl: '/profile.png' },
+        data: { name: '사용자', profileImageUrl: '/profile.webp' },
       },
     } as never);
 
     const { container } = render(<ReportFormPage />);
 
-    expect(container.querySelector('img')?.getAttribute('src')).toBe('/profile.png');
+    expect(container.querySelector('img')?.getAttribute('src')).toBe('/profile.webp');
   });
 
   it('이미지 로드에 실패하면 placeholder로 되돌린다', () => {

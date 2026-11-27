@@ -329,3 +329,50 @@ describe('FilesService.finalizeUpload', () => {
     );
   });
 });
+
+describe('FilesService business document retention helpers', () => {
+  it('tags a submitted business document so the private bucket lifecycle rule expires it', async () => {
+    const { service } = createService([]);
+    const send = vi.fn().mockResolvedValue({});
+    Object.defineProperty(service, 's3', { value: { send } });
+
+    await service.tagBusinessDocument('pending/doc.pdf');
+
+    expect(send.mock.calls[0]![0].input).toEqual({
+      Bucket: 'semochal-private-dev',
+      Key: 'pending/doc.pdf',
+      Tagging: { TagSet: [{ Key: 'data-class', Value: 'business-document' }] },
+    });
+  });
+
+  it('deletes the private object before marking the row deleted', async () => {
+    const where = vi.fn().mockResolvedValue(undefined);
+    const set = vi.fn().mockReturnValue({ where });
+    const update = vi.fn().mockReturnValue({ set });
+    const service = new FilesService({ update } as any);
+    const send = vi.fn().mockResolvedValue({});
+    Object.defineProperty(service, 's3', { value: { send } });
+
+    await service.deletePrivateFile({ id: 'file-1', key: 'pending/doc.pdf' });
+
+    expect(send.mock.calls[0]![0].input).toEqual({
+      Bucket: 'semochal-private-dev',
+      Key: 'pending/doc.pdf',
+    });
+    expect(set).toHaveBeenCalledWith({ uploadStatus: 'deleted' });
+    expect(send.mock.invocationCallOrder[0]).toBeLessThan(update.mock.invocationCallOrder[0]!);
+  });
+
+  it('keeps the row untouched when the S3 delete fails', async () => {
+    const update = vi.fn();
+    const service = new FilesService({ update } as any);
+    Object.defineProperty(service, 's3', {
+      value: { send: vi.fn().mockRejectedValue(new Error('AccessDenied')) },
+    });
+
+    await expect(
+      service.deletePrivateFile({ id: 'file-1', key: 'pending/doc.pdf' }),
+    ).rejects.toThrow('AccessDenied');
+    expect(update).not.toHaveBeenCalled();
+  });
+});

@@ -3,7 +3,6 @@ output "api_url" { value = "https://${var.api_domain_name}" }
 output "cloudfront_public_content_domain" { value = aws_cloudfront_distribution.public.domain_name }
 output "private_bucket_name" { value = aws_s3_bucket.private.id }
 output "public_bucket_name" { value = aws_s3_bucket.public.id }
-output "verifications_queue_url" { value = aws_sqs_queue.verifications.url }
 output "emails_queue_url" { value = aws_sqs_queue.emails.url }
 output "inbound_emails_queue_url" { value = aws_sqs_queue.inbound_emails.url }
 output "ses_identity_arn" { value = local.ses_identity_arn }

@@ -14,7 +14,7 @@ export function BizOperationsPage({ titleAs }: { titleAs?: 'h1' | 'h2' }) {
       <TopBlock>
         <Header>
           <Brand>
-            <MiceLogo src="/assets/mice-plans-logo.png" alt="MICE PLANS" />
+            <MiceLogo src="/assets/mice-plans-logo.webp" alt="MICE PLANS" />
             <Cross>X</Cross>
             <Logo size={11} />
           </Brand>

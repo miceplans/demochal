@@ -134,7 +134,7 @@ jobs:
             우선순위:
             1. CLAUDE.md에 명시된 아키텍처 규칙 위반 (Outbox 패턴, Zustand/TanStack Query 경계,
                Dockerfile 분기 등)
-            2. 결제(Toss Payments)·개인정보(CLOVA OCR)·청소년 보호 관련 코드의 보안/정책 이슈
+            2. 결제(Toss Payments)·개인정보(사업자등록증·NTS 진위확인)·청소년 보호 관련 코드의 보안/정책 이슈
             3. 일반적인 버그, 예외 처리 누락, 타입 안정성 문제
 
             사소한 스타일 의견은 최소화하고, 위 우선순위에 해당하는 이슈만 인라인 코멘트로 남겨줘.

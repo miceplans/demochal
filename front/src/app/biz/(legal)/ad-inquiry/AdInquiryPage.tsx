@@ -60,7 +60,7 @@ export function AdInquiryPage() {
                 gap: 12,
               }}
             >
-              <Icon src="/assets/icons/bullet-icon.png" width={8} height={23} alt="" />
+              <Icon src="/assets/icons/bullet-icon.webp" width={8} height={23} alt="" />
               {s.heading}
             </Heading>
             <p style={{ ...textStyle.body, color: c.gray900, whiteSpace: 'pre-line' }}>{s.body}</p>

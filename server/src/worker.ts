@@ -1,14 +1,12 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import type { Message } from '@aws-sdk/client-sqs';
 import { WorkerModule } from './worker.module.js';
 import { env } from './config/env.js';
 import { SqsService } from './queue/sqs.service.js';
+import { runPeriodic, runQueueConsumer, sleep } from './queue/worker-loops.js';
 import { OutboxRelayService } from './outbox/outbox-relay.service.js';
-import { VerificationsProcessorService } from './modules/verifications/verifications.processor.js';
-import {
-  VERIFICATION_SUBMITTED_EVENT,
-  type VerificationJobMessage,
-} from './modules/verifications/verifications.service.js';
+import { VerificationDocumentRetentionService } from './modules/verifications/verification-document-retention.service.js';
 import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import {
@@ -26,202 +24,188 @@ import { PaymentsService } from './modules/payments/payments.service.js';
 const CHALLENGE_SCAN_INTERVAL_MS = 60 * 60 * 1000;
 const REFUND_PENDING_SCAN_INTERVAL_MS = 10 * 60 * 1000;
 const KCP_APPROVAL_SCAN_INTERVAL_MS = 5 * 60 * 1000;
+const VERIFICATION_DOCUMENT_RETENTION_SCAN_INTERVAL_MS = 60 * 60 * 1000;
+// Outbox rows are relayed by their own loop, not between long polls, so a new
+// email job reaches SQS within this delay instead of a full poll cycle.
+const OUTBOX_RELAY_INTERVAL_MS = 2000;
+
+function errorName(error: unknown): string {
+  return error instanceof Error ? error.name : 'UnknownError';
+}
 
 // SQS consumer entry point — no HTTP server, no ALB/external inbound access.
+// Every queue consumer, the outbox relay and every periodic scan runs as its own
+// concurrent loop, so an empty queue's 20s long poll never delays another queue
+// or a scan.
 async function bootstrap() {
   const logger = new Logger('Worker');
   const app = await NestFactory.createApplicationContext(WorkerModule);
 
   const sqsService = app.get(SqsService);
   const outboxRelayService = app.get(OutboxRelayService);
-  const verificationsProcessor = app.get(VerificationsProcessorService);
+  const verificationDocumentRetention = app.get(VerificationDocumentRetentionService);
   const notificationEmailProcessor = app.get(NotificationEmailProcessorService);
   const emailService = app.get(EmailService);
   const supportEmailProcessor = app.get(SupportEmailProcessorService);
-
   const challengeNotificationScan = app.get(ChallengeNotificationScanService);
-  let lastChallengeScanAt = 0;
-
   const paymentsService = app.get(PaymentsService);
-  let lastRefundPendingScanAt = 0;
-  let lastKcpApprovalScanAt = 0;
 
-  let shuttingDown = false;
-  process.on('SIGTERM', () => (shuttingDown = true));
-  process.on('SIGINT', () => (shuttingDown = true));
+  const shutdown = new AbortController();
+  process.on('SIGTERM', () => shutdown.abort());
+  process.on('SIGINT', () => shutdown.abort());
+  const signal = shutdown.signal;
 
   const emailEnabled = Boolean(
     env.sqsEmailsQueueUrl && (env.sesFromEmail || env.sesSupportFromEmail),
   );
   logger.log(
-    `Worker started (verifications queue: ${env.sqsVerificationsQueueUrl ? 'on' : 'off'}, ` +
-      `email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
+    `Worker started (email queue: ${emailEnabled ? 'on' : 'off — SES_FROM_EMAIL/SQS_EMAILS_QUEUE_URL unset'}, ` +
       `inbound queue: ${env.sqsInboundEmailsQueueUrl ? 'on' : 'off'})`,
   );
-
-  while (!shuttingDown) {
-    await scanChallengeNotifications();
-    await scanRefundPendingPayments();
-    await scanKcpApprovals();
-
-    if (!env.sqsVerificationsQueueUrl && !emailEnabled && !env.sqsInboundEmailsQueueUrl) {
-      logger.warn('No worker queue is configured, idling');
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      continue;
-    }
-
-    if (env.sqsVerificationsQueueUrl) {
-      await pollVerifications(env.sqsVerificationsQueueUrl);
-    }
-    if (emailEnabled) {
-      await pollEmails(env.sqsEmailsQueueUrl);
-    }
-    if (env.sqsInboundEmailsQueueUrl) {
-      await pollInboundEmails(env.sqsInboundEmailsQueueUrl);
-    }
+  if (!emailEnabled && !env.sqsInboundEmailsQueueUrl) {
+    logger.warn('No worker queue is configured; only periodic scans will run');
   }
 
-  // A transient SQS/network failure on one queue must not reject bootstrap()
-  // and kill the process (stopping every consumer); back off and let the
-  // loop try again.
-  async function receive(queueUrl: string, label: string) {
-    try {
-      return await sqsService.receiveMessages(queueUrl);
-    } catch (error) {
-      const name = error instanceof Error ? error.name : 'UnknownError';
-      logger.error(`Receiving from the ${label} queue failed (${name}), backing off`);
-      await new Promise((resolve) => setTimeout(resolve, 5000));
-      return [];
-    }
-  }
-
-  // 마감/공고 알림은 큐 설정과 무관하게 주기적으로 DB를 스캔해 만든다(중복은 dedupeKey로 차단).
-  async function scanChallengeNotifications() {
-    if (Date.now() - lastChallengeScanAt < CHALLENGE_SCAN_INTERVAL_MS) return;
-    lastChallengeScanAt = Date.now();
-    try {
-      const { created } = await challengeNotificationScan.scan();
-      if (created > 0) logger.log(`Created ${created} challenge notifications`);
-    } catch (error) {
-      const name = error instanceof Error ? error.name : 'UnknownError';
-      logger.error(`Challenge notification scan failed (${name})`);
-    }
-  }
-
-  // 환불 보상이 실패한 결제(refund_pending)도 큐 설정과 무관하게 주기적으로
-  // 재스캔해 Toss 취소를 재시도한다(백오프/상한은 PaymentsService가 관리).
-  async function scanRefundPendingPayments() {
-    if (Date.now() - lastRefundPendingScanAt < REFUND_PENDING_SCAN_INTERVAL_MS) return;
-    lastRefundPendingScanAt = Date.now();
-    try {
-      const result = await paymentsService.retryRefundPendingPayments();
-      if (result.attempted > 0) {
-        logger.log(
-          `Refund retry scan: ${result.refunded} refunded, ${result.failed} failed ` +
-            `of ${result.attempted} attempted (${result.scanned} pending)`,
-        );
-      }
-    } catch (error) {
-      const name = error instanceof Error ? error.name : 'UnknownError';
-      logger.error(`Refund pending scan failed (${name})`);
-    }
-  }
-
-  // 승인 응답이 유실된 KCP 결제를 거래조회로 확인해 정산하거나 취소한다.
-  async function scanKcpApprovals() {
-    if (Date.now() - lastKcpApprovalScanAt < KCP_APPROVAL_SCAN_INTERVAL_MS) return;
-    lastKcpApprovalScanAt = Date.now();
-    try {
-      const result = await paymentsService.recoverKcpApprovals();
-      if (result.scanned > 0) {
-        logger.log(
-          `KCP approval scan: ${result.settled} settled, ${result.compensated} compensated, ` +
-            `${result.exhausted} need manual review of ${result.scanned}`,
-        );
-      }
-    } catch (error) {
-      const name = error instanceof Error ? error.name : 'UnknownError';
-      logger.error(`KCP approval scan failed (${name})`);
-    }
-  }
-
-  async function pollVerifications(queueUrl: string) {
-    try {
-      await outboxRelayService.relay(VERIFICATION_SUBMITTED_EVENT, queueUrl);
-    } catch (error) {
-      logger.error('Outbox relay pass failed', error);
-    }
-
-    const messages = await receive(queueUrl, 'verifications');
-    for (const message of messages) {
-      try {
-        const body = JSON.parse(message.Body ?? '{}') as VerificationJobMessage;
-        await verificationsProcessor.process(body);
-        if (message.ReceiptHandle) {
-          await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
+  const loops: Promise<void>[] = [
+    // 마감/공고 알림은 큐 설정과 무관하게 주기적으로 DB를 스캔해 만든다(중복은 dedupeKey로 차단).
+    runPeriodic(
+      'Challenge notification scan',
+      CHALLENGE_SCAN_INTERVAL_MS,
+      async () => {
+        const { created } = await challengeNotificationScan.scan();
+        if (created > 0) logger.log(`Created ${created} challenge notifications`);
+      },
+      signal,
+      logger,
+    ),
+    // 환불 보상이 실패한 결제(refund_pending)도 큐 설정과 무관하게 주기적으로
+    // 재스캔해 Toss 취소를 재시도한다(백오프/상한은 PaymentsService가 관리).
+    runPeriodic(
+      'Refund pending scan',
+      REFUND_PENDING_SCAN_INTERVAL_MS,
+      async () => {
+        const result = await paymentsService.retryRefundPendingPayments();
+        if (result.attempted > 0) {
+          logger.log(
+            `Refund retry scan: ${result.refunded} refunded, ${result.failed} failed ` +
+              `of ${result.attempted} attempted (${result.scanned} pending)`,
+          );
         }
-      } catch (error) {
-        logger.error('Failed to process message', error);
-        // Left on the queue to be retried / eventually sent to a DLQ.
-      }
-    }
-  }
-
-  async function pollEmails(queueUrl: string) {
-    try {
-      // The envelope carries the outbox event id, the email idempotency key.
-      await outboxRelayService.relay(NOTIFICATION_EMAIL_EVENT, queueUrl, 10, {
-        includeEventId: true,
-      });
-    } catch (error) {
-      logger.error('Email outbox relay pass failed', error);
-    }
-    try {
-      await outboxRelayService.relay(SUPPORT_EMAIL_EVENT, queueUrl, 10, { includeEventId: true });
-    } catch (error) {
-      logger.error('Support email outbox relay pass failed', error);
-    }
-
-    const messages = await receive(queueUrl, 'email');
-    for (const message of messages) {
-      try {
-        const body = JSON.parse(message.Body ?? '{}');
-        const job = parseNotificationEmailJob(body);
-        const supportJob = parseSupportEmailJob(body);
-        // A malformed body can never succeed; throwing lets it reach the DLQ
-        // after maxReceiveCount instead of silently dropping it.
-        if (job) await notificationEmailProcessor.process(job);
-        else if (supportJob) await supportEmailProcessor.process(supportJob);
-        else throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
-        if (message.ReceiptHandle) {
-          await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
+      },
+      signal,
+      logger,
+    ),
+    // 승인 응답이 유실된 KCP 결제를 거래조회로 확인해 정산하거나 취소한다.
+    runPeriodic(
+      'KCP approval scan',
+      KCP_APPROVAL_SCAN_INTERVAL_MS,
+      async () => {
+        const result = await paymentsService.recoverKcpApprovals();
+        if (result.scanned > 0) {
+          logger.log(
+            `KCP approval scan: ${result.settled} settled, ${result.compensated} compensated, ` +
+              `${result.exhausted} need manual review of ${result.scanned}`,
+          );
         }
-      } catch (error) {
-        // Only the error name: SES/DB errors can echo the recipient address.
-        const name = error instanceof Error ? error.name : 'UnknownError';
-        logger.error(`Failed to process email message ${message.MessageId ?? ''} (${name})`);
-        // Left on the queue to be retried / eventually sent to a DLQ.
-      }
-    }
-  }
-
-  async function pollInboundEmails(queueUrl: string) {
-    const messages = await receive(queueUrl, 'inbound email');
-    for (const message of messages) {
-      try {
-        const body = JSON.parse(message.Body ?? '{}');
-        if (!body.messageId || !body.from || !body.to || !body.subject || !body.sentAt) {
-          throw new Error(`Malformed inbound email message ${message.MessageId ?? ''}`);
+      },
+      signal,
+      logger,
+    ),
+    // 사업자 서류(사업자등록증)는 보관 기한이 지나면 private 버킷에서 지운다(개인정보 최소 보관).
+    runPeriodic(
+      'Verification document retention scan',
+      VERIFICATION_DOCUMENT_RETENTION_SCAN_INTERVAL_MS,
+      async () => {
+        const { deleted, failed } = await verificationDocumentRetention.purgeExpired();
+        if (deleted > 0 || failed > 0) {
+          logger.log(`Verification document retention: ${deleted} deleted, ${failed} failed`);
         }
-        await emailService.ingestInbound(body);
-        if (message.ReceiptHandle) await sqsService.deleteMessage(queueUrl, message.ReceiptHandle);
-      } catch (error) {
-        const name = error instanceof Error ? error.name : 'UnknownError';
-        logger.error(`Failed to process inbound email ${message.MessageId ?? ''} (${name})`);
-      }
-    }
+      },
+      signal,
+      logger,
+    ),
+  ];
+
+  const relays: (() => Promise<void>)[] = [];
+
+  if (emailEnabled) {
+    const queueUrl = env.sqsEmailsQueueUrl;
+    // The envelope carries the outbox event id, the email idempotency key.
+    relays.push(() =>
+      outboxRelayService.relay(NOTIFICATION_EMAIL_EVENT, queueUrl, 10, { includeEventId: true }),
+    );
+    relays.push(() =>
+      outboxRelayService.relay(SUPPORT_EMAIL_EVENT, queueUrl, 10, { includeEventId: true }),
+    );
+    loops.push(
+      runQueueConsumer(
+        sqsService,
+        {
+          queueUrl,
+          label: 'email',
+          handle: async (message: Message) => {
+            const body = JSON.parse(message.Body ?? '{}');
+            const job = parseNotificationEmailJob(body);
+            const supportJob = parseSupportEmailJob(body);
+            // A malformed body can never succeed; throwing lets it reach the DLQ
+            // after maxReceiveCount instead of silently dropping it.
+            if (job) await notificationEmailProcessor.process(job);
+            else if (supportJob) await supportEmailProcessor.process(supportJob);
+            else throw new Error(`Malformed email job ${message.MessageId ?? ''}`);
+          },
+          // Only the error name: SES/DB errors can echo the recipient address.
+          onError: (message, error) =>
+            logger.error(
+              `Failed to process email message ${message.MessageId ?? ''} (${errorName(error)})`,
+            ),
+        },
+        signal,
+        logger,
+      ),
+    );
   }
 
+  if (env.sqsInboundEmailsQueueUrl) {
+    loops.push(
+      runQueueConsumer(
+        sqsService,
+        {
+          queueUrl: env.sqsInboundEmailsQueueUrl,
+          label: 'inbound email',
+          handle: async (message: Message) => {
+            const body = JSON.parse(message.Body ?? '{}');
+            if (!body.messageId || !body.from || !body.to || !body.subject || !body.sentAt) {
+              throw new Error(`Malformed inbound email message ${message.MessageId ?? ''}`);
+            }
+            await emailService.ingestInbound(body);
+          },
+        },
+        signal,
+        logger,
+      ),
+    );
+  }
+
+  if (relays.length > 0) {
+    loops.push(
+      (async () => {
+        while (!signal.aborted) {
+          // Each event type is relayed independently so one failing relay does not
+          // hold back the others.
+          for (const relay of relays) {
+            try {
+              await relay();
+            } catch (error) {
+              logger.error(`Outbox relay pass failed (${errorName(error)})`);
+            }
+          }
+          await sleep(OUTBOX_RELAY_INTERVAL_MS, signal);
+        }
+      })(),
+    );
+  }
+
+  await Promise.all(loops);
   await app.close();
   logger.log('Worker stopped');
 }

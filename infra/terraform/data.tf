@@ -28,23 +28,7 @@ resource "aws_db_instance" "postgres" {
   performance_insights_enabled = false
 }
 
-resource "aws_sqs_queue" "verifications_dlq" {
-  name                      = "${local.name_prefix}-verifications-dlq"
-  message_retention_seconds = 1209600
-}
-
-resource "aws_sqs_queue" "verifications" {
-  name                       = "${local.name_prefix}-verifications"
-  visibility_timeout_seconds = 120
-  receive_wait_time_seconds  = 20
-  redrive_policy = jsonencode({
-    deadLetterTargetArn = aws_sqs_queue.verifications_dlq.arn
-    maxReceiveCount     = 5
-  })
-}
-
-# Service email (SES) jobs relayed from the notification outbox. Kept separate
-# from the verifications queue so a SES outage cannot delay verifications.
+# Service email (SES) jobs relayed from the notification outbox.
 resource "aws_sqs_queue" "emails_dlq" {
   name                      = "${local.name_prefix}-emails-dlq"
   message_retention_seconds = 1209600
@@ -94,6 +78,42 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
   bucket = aws_s3_bucket.private.id
   rule {
     apply_server_side_encryption_by_default { sse_algorithm = "AES256" }
+  }
+}
+
+# Personal-data retention backstop for the private bucket. Business documents
+# (사업자등록증) share the pending/ key prefix with other private files, so the API
+# tags them at submit (data-class=business-document, FilesService.tagBusinessDocument)
+# and this rule expires them by tag. The worker's retention scan
+# (VerificationDocumentRetentionService) deletes them earlier — retention days after
+# the verification is decided — and also covers documents stored before tagging.
+# The bucket is unversioned, so expiration removes the object permanently.
+resource "aws_s3_bucket_lifecycle_configuration" "private" {
+  bucket = aws_s3_bucket.private.id
+  rule {
+    id     = "expire-business-documents"
+    status = "Enabled"
+    filter {
+      tag {
+        key   = "data-class"
+        value = "business-document"
+      }
+    }
+    expiration { days = var.business_document_max_retention_days }
+  }
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+    filter {}
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+
+  lifecycle {
+    # Cross-variable check here (not in a variable validation) to keep Terraform >= 1.6.
+    precondition {
+      condition     = var.business_document_max_retention_days >= var.business_document_retention_days
+      error_message = "business_document_max_retention_days must be >= business_document_retention_days (the worker refuses to boot otherwise)."
+    }
   }
 }
 

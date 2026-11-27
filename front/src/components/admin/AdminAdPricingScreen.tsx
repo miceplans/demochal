@@ -20,7 +20,7 @@ import { ScrollRail } from '@/components/ui/ScrollRail';
 type PreviewView = 'mobile' | 'pc';
 
 const HERO_IMAGE = '/assets/figma-ads/home-hero.png';
-const GALLERY_IMAGE = '/assets/figma-ads/home-gallery.png';
+const GALLERY_IMAGE = '/assets/figma-ads/home-gallery.webp';
 const AD_COUNT = 5;
 const AD_INTERVAL = 5000;
 

@@ -163,7 +163,7 @@ export function RecommendedPeople({ onSelect }: { onSelect: (person: PersonCardM
   return (
     <Section id="recommended-people" style={{ scrollMarginTop: 80 }}>
       <Heading>
-        <img src="/assets/people/recommend-icon.png" alt="" />
+        <img src="/assets/people/recommend-icon.webp" alt="" />
         나와 맞는 사람 찾기
       </Heading>
       <PeopleRow>

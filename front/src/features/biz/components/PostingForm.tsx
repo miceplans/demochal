@@ -6,7 +6,7 @@ import styled from '@emotion/styled';
 import { useToast } from '@/components/common/Toast';
 import { adError } from '@/lib/api-error';
 import { useFileUpload } from '@/lib/upload';
-import { clearFormDraft, readFormDraft, useFormDraftSaver } from '@/lib/form-draft';
+import { clearFormDraft, readFormDraftEntry, useFormDraftSaver } from '@/lib/form-draft';
 import { Dropdown, type DropdownOption } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import { ImageCropModal } from '@/components/ui/ImageCropModal';
@@ -19,6 +19,7 @@ import { textStyle } from '@/styles/typography';
 import { challengeTargets, organizerTypes } from '@/data/user-design';
 import { richContentStyles } from '@/components/common/RichDescription';
 import { PostingPreviewModal, type PostingPreview } from './PostingPreviewModal';
+import { PostingDraftRestoreModal } from './PostingDraftRestoreModal';
 import {
   ATTACHMENT_ACCEPT,
   attachmentContentType,
@@ -294,6 +295,11 @@ export function PostingForm({
   const [submitted, setSubmitted] = useState(false);
   // 초안 복원 effect가 끝났는지 — 끝나기 전에는 초안 저장기를 띄우지 않아 복원 전 값으로 초안을 덮지 않게 한다.
   const [restored, setRestored] = useState(false);
+  // 불러올지 묻는 중인 임시 저장본 — 선택 전에는 저장기를 띄우지 않아 임시 저장본이 덮이지 않는다.
+  const [pendingDraft, setPendingDraft] = useState<{
+    value: PostingDraft;
+    savedAt: number;
+  } | null>(null);
   const [error, setError] = useState('');
   // 검증에 실패한 필드(빨간 테두리로 표시). 해당 필드를 고치기 시작하면 그 필드만 해제한다.
   const [invalid, setInvalid] = useState<ReadonlySet<string>>(new Set());
@@ -337,54 +343,67 @@ export function PostingForm({
     else editor.innerText = initial.description;
   }, [initial.description]);
 
-  // 초안 복원은 마운트 뒤 effect에서 한 번만 — 렌더 중에 localStorage를 읽으면 서버 프리렌더(초안 없음)와
-  // 클라이언트 hydration(초안 있음)의 결과가 달라져 hydration mismatch가 난다.
-  // 위 [initial.description] effect보다 나중에 선언해 본문도 초안 값으로 덮어쓴다.
-  useEffect(() => {
-    const draft = draftKey ? readFormDraft(draftKey, isPostingDraft) : null;
-    if (draft) {
-      // 마운트 1회 외부 저장소(localStorage) 동기화라 effect 안의 setState가 맞다.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setTitle(draft.title);
-      setStartDate(draft.startDate);
-      setEndDate(draft.endDate);
-      setEventStartDate(draft.eventStartDate);
-      setEventEndDate(draft.eventEndDate);
-      setHost(draft.host);
-      setSupervisor(draft.supervisor);
-      setSponsor(draft.sponsor);
-      setSupporter(draft.supporter);
-      setTargetOther(draft.targetOther);
-      setAttachments(draft.attachments);
-      setCategory(draft.category);
-      setTargets(draft.targets);
-      setOrganizerType(draft.organizerType);
-      setPrizeAmount(draft.prizeAmount);
-      setRecruit(draft.recruit);
-      setRecruitUrl(draft.recruitUrl);
-      setSummary(draft.summary);
-      setHashtags(draft.hashtags);
-      setTopics(draft.topics);
-      setInquiryContact(draft.inquiryContact);
-      setVisibility(draft.visibility);
-      if (draft.poster) {
-        setPoster({
-          posterFileId: draft.poster.posterFileId,
-          thumbnailFileId: draft.poster.thumbnailFileId,
-          previewUrl: draft.poster.previewUrl ?? '',
-          durableUrl: draft.poster.previewUrl ?? null,
-        });
-      }
-      // 본문은 위 effect와 같은 경로(정화한 HTML 또는 평문)로 복원한다.
-      const editor = editorRef.current;
-      if (editor) {
-        if (isRichHtml(draft.description)) editor.innerHTML = sanitizeRichHtml(draft.description);
-        else editor.innerText = draft.description;
-      }
-      setDescriptionHtml(draft.description);
+  function applyDraft(draft: PostingDraft) {
+    setTitle(draft.title);
+    setStartDate(draft.startDate);
+    setEndDate(draft.endDate);
+    setEventStartDate(draft.eventStartDate);
+    setEventEndDate(draft.eventEndDate);
+    setHost(draft.host);
+    setSupervisor(draft.supervisor);
+    setSponsor(draft.sponsor);
+    setSupporter(draft.supporter);
+    setTargetOther(draft.targetOther);
+    setAttachments(draft.attachments);
+    setCategory(draft.category);
+    setTargets(draft.targets);
+    setOrganizerType(draft.organizerType);
+    setPrizeAmount(draft.prizeAmount);
+    setRecruit(draft.recruit);
+    setRecruitUrl(draft.recruitUrl);
+    setSummary(draft.summary);
+    setHashtags(draft.hashtags);
+    setTopics(draft.topics);
+    setInquiryContact(draft.inquiryContact);
+    setVisibility(draft.visibility);
+    if (draft.poster) {
+      setPoster({
+        posterFileId: draft.poster.posterFileId,
+        thumbnailFileId: draft.poster.thumbnailFileId,
+        previewUrl: draft.poster.previewUrl ?? '',
+        durableUrl: draft.poster.previewUrl ?? null,
+      });
     }
-    setRestored(true);
+    // 본문은 서버 초기값 effect와 같은 경로(정화한 HTML 또는 평문)로 복원한다.
+    const editor = editorRef.current;
+    if (editor) {
+      if (isRichHtml(draft.description)) editor.innerHTML = sanitizeRichHtml(draft.description);
+      else editor.innerText = draft.description;
+    }
+    setDescriptionHtml(draft.description);
+  }
+
+  // 임시 저장본 확인은 마운트 뒤 effect에서 한 번만 — 렌더 중에 localStorage를 읽으면 서버 프리렌더(초안 없음)와
+  // 클라이언트 hydration(초안 있음)의 결과가 달라져 hydration mismatch가 난다.
+  // 임시 저장본이 있으면 바로 덮어쓰지 않고 모달로 불러올지 묻는다.
+  useEffect(() => {
+    const entry = draftKey ? readFormDraftEntry(draftKey, isPostingDraft) : null;
+    // 마운트 1회 외부 저장소(localStorage) 동기화라 effect 안의 setState가 맞다.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (entry) setPendingDraft(entry);
+    else setRestored(true);
   }, [draftKey]);
+
+  const restorePendingDraft = () => {
+    if (pendingDraft) applyDraft(pendingDraft.value);
+    setPendingDraft(null);
+    setRestored(true);
+  };
+  const discardPendingDraft = () => {
+    if (draftKey) clearFormDraft(draftKey);
+    setPendingDraft(null);
+    setRestored(true);
+  };
   const pendingPosterRef = useRef<CropImage | null>(null);
   useEffect(() => {
     // 언마운트 정리에서 최신 값을 보기 위해 ref로 미러링한다.
@@ -807,7 +826,7 @@ export function PostingForm({
           </>
         ) : (
           <>
-            <UploadMark src={`${ICON}/fileuploader.png`} alt="" />
+            <UploadMark src={`${ICON}/fileuploader.webp`} alt="" />
             <UploadText>파일 찾기</UploadText>
           </>
         )}
@@ -1450,6 +1469,13 @@ export function PostingForm({
         </PublishButton>
       </Actions>
       {preview && <PostingPreviewModal data={preview} onClose={() => setPreview(null)} />}
+      {pendingDraft && (
+        <PostingDraftRestoreModal
+          savedAt={pendingDraft.savedAt}
+          onRestore={restorePendingDraft}
+          onDiscard={discardPendingDraft}
+        />
+      )}
     </FormWrap>
   );
 }

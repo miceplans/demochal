@@ -196,7 +196,7 @@ export function BizPostingsPage() {
                                 )}
                               </CardMeta>
                               <CardBottom>
-                                <Icon src="/assets/icons/scrap.png" size={16} alt="북마크" />
+                                <Icon src="/assets/icons/scrap.webp" size={16} alt="북마크" />
                               </CardBottom>
                             </CardBody>
                           </CardBox>

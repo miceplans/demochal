@@ -206,7 +206,7 @@ export function AdminAdsScreen() {
       )}
       <Preview>
         <Image
-          src="/assets/ads-preview.png"
+          src="/assets/ads-preview.webp"
           alt="광고 노출 미리보기"
           fill
           priority

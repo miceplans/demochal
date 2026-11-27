@@ -5,6 +5,7 @@ import {
   GetObjectCommand,
   HeadObjectCommand,
   PutObjectCommand,
+  PutObjectTaggingCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { eq, inArray } from 'drizzle-orm';
@@ -32,6 +33,12 @@ const EXTENSION_BY_CONTENT_TYPE: Record<AllowedUploadContentType, string> = {
   'application/x-hwp': 'hwp',
   'application/hwp+zip': 'hwpx',
 };
+
+// Object tag that the private bucket's lifecycle rule expires on
+// (aws_s3_bucket_lifecycle_configuration.private in infra/terraform/data.tf). Business
+// documents share the pending/ key prefix with other private files, so a tag — not a
+// prefix — is what lets S3 enforce a hard retention cap on them alone.
+export const BUSINESS_DOCUMENT_TAG = { Key: 'data-class', Value: 'business-document' } as const;
 
 function hasExpectedMagicBytes(contentType: AllowedUploadContentType, bytes: Uint8Array): boolean {
   const startsWith = (...signature: number[]) =>
@@ -272,6 +279,24 @@ export class FilesService {
       }),
       { expiresIn: 60 * 5 },
     );
+  }
+
+  // 사업자 서류로 제출된 private 객체에 태그를 달아 S3 수명주기 규칙이 최대 보관 기한을 강제하게 한다.
+  async tagBusinessDocument(key: string): Promise<void> {
+    await this.s3.send(
+      new PutObjectTaggingCommand({
+        Bucket: env.s3PrivateBucket,
+        Key: key,
+        Tagging: { TagSet: [{ ...BUSINESS_DOCUMENT_TAG }] },
+      }),
+    );
+  }
+
+  // 보관 기한이 지난 private 파일을 지우고 행을 'deleted'로 남긴다(참조 무결성 유지, 재사용 차단).
+  // S3 DeleteObject는 이미 없는 키에도 성공하므로 재시도·다중 워커에서 안전하다.
+  async deletePrivateFile(file: { id: string; key: string }): Promise<void> {
+    await this.s3.send(new DeleteObjectCommand({ Bucket: env.s3PrivateBucket, Key: file.key }));
+    await this.db.update(files).set({ uploadStatus: 'deleted' }).where(eq(files.id, file.id));
   }
 
   async assertOwnedReadyPrivate(id: string, userId: string) {

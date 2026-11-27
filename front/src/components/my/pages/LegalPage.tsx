@@ -36,7 +36,7 @@ export function LegalPageBody({
           <section key={i}>
             <LegalHeading chapter={s.isChapter}>
               {!s.isChapter && (
-                <Icon src="/assets/icons/bullet-icon.png" width={8} height={23} alt="" />
+                <Icon src="/assets/icons/bullet-icon.webp" width={8} height={23} alt="" />
               )}
               {s.heading}
             </LegalHeading>
