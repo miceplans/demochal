@@ -46,7 +46,7 @@ describe('fallbackAds', () => {
     expect(fallbackAds.hero).toHaveLength(5);
     expect(fallbackAds.hero[0].type).toBe('video');
     expect(fallbackAds.hero[1]).toMatchObject({
-      src: '/assets/ads/ad-inquiry.png',
+      src: '/assets/ads/ad-inquiry.webp',
       href: '/biz/ad-inquiry',
     });
     expect(fallbackAds.gallery).toHaveLength(6);
@@ -59,7 +59,7 @@ describe('fallbackAds', () => {
     const allFallbackAds = [...fallbackAds.hero, ...fallbackAds.gallery];
 
     expect(allFallbackAds.every((ad) => /SEMO(?:\.BIZ)?/i.test(ad.alt))).toBe(true);
-    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-gallery.png');
+    expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-gallery.webp');
     expect(allFallbackAds.map((ad) => ad.src)).not.toContain('/assets/figma-ads/home-hero.png');
   });
 });

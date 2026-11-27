@@ -102,7 +102,7 @@ export function PeoplePage() {
           <Stack gap={20}>
             <Filters>
               <SearchBox className="search" role="search">
-                <Icon src="/assets/icons/search.png" size={16} alt="" />
+                <Icon src="/assets/icons/search.webp" size={16} alt="" />
                 <Input
                   aria-label="닉네임으로 검색"
                   placeholder="닉네임으로 검색"

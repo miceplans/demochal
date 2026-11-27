@@ -52,6 +52,8 @@ describe('ProfilePage 아바타', () => {
   it('profileImageUrl이 없으면 기본 이미지를 표시한다', () => {
     mockUser(null);
     const { container } = render(<ProfilePage />);
-    expect(container.querySelector('img')?.getAttribute('src')).toBe('/assets/default-profile.png');
+    expect(container.querySelector('img')?.getAttribute('src')).toBe(
+      '/assets/default-profile.webp',
+    );
   });
 });

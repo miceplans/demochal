@@ -23,7 +23,7 @@ export function Logo({ dot = false, mono = false }: { dot?: boolean; mono?: bool
   return (
     <Brand href="/" aria-label="SEMO 홈">
       <img
-        src={mono ? '/assets/SEMO-mono.png' : '/assets/SEMO.png'}
+        src={mono ? '/assets/SEMO-mono.webp' : '/assets/SEMO.png'}
         alt={dot ? 'SEMO.' : 'SEMO'}
         width={96}
         height={28}
@@ -72,7 +72,7 @@ function SearchBar() {
         router.push('/explore');
       }}
     >
-      <Icon src="/assets/icons/search.png" size={16} alt="검색" />
+      <Icon src="/assets/icons/search.webp" size={16} alt="검색" />
       <Input
         aria-label="챌린지, 팀, 분야 검색"
         placeholder="챌린지, 팀, 분야를 검색하세요"
@@ -411,13 +411,13 @@ export function UserShell({
                 {isLoggedIn ? (
                   <>
                     <Link href="/notifications" aria-label="알림">
-                      <Icon src="/assets/icons/bell.png" alt="알림" />
+                      <Icon src="/assets/icons/bell.webp" alt="알림" />
                     </Link>
                     <Link href="/my" aria-label="내 프로필">
                       {profileImageUrl ? (
                         <HeaderProfileAvatar src={profileImageUrl} alt="" />
                       ) : (
-                        <Icon src="/assets/icons/profile.png" alt="프로필" />
+                        <Icon src="/assets/icons/profile.webp" alt="프로필" />
                       )}
                     </Link>
                   </>

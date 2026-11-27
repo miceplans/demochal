@@ -1,7 +1,7 @@
 import type { ProfileUserData } from './ProfileCards';
 import { isGithubUrl, isSafeLinkUrl } from './link-model';
 
-const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.png';
+const DEFAULT_PROFILE_IMAGE = '/assets/default-profile.webp';
 
 // 사람 카드와 같은 규칙: 링크·수상 이력에서 인증 배지를 도출하고, 저장된 badges와 합쳐 중복을 없앤다.
 function verificationBadges(user: ProfileUserData) {

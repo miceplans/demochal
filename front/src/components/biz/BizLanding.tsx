@@ -262,45 +262,45 @@ const IntroBackdrop = styled(Parallax)({
 
 const marketingWallItems: DriftWallItem[] = [
   {
-    image: '/assets/marketing/20260106094601_b8e20646fcbee92c1af44d84c36a93b7.jpg',
+    image: '/assets/marketing/20260106094601_b8e20646fcbee92c1af44d84c36a93b7.webp',
     title: '행사 현장',
   },
   {
-    image: '/assets/marketing/20260106092933_3ebed32cf4087a5572de6508f7f03ba4.jpg',
+    image: '/assets/marketing/20260106092933_3ebed32cf4087a5572de6508f7f03ba4.webp',
     title: '행사 프로그램',
   },
   {
-    image: '/assets/marketing/20260106093101_bbbe2da73ae39d285be65d0a7036e17b.jpg',
+    image: '/assets/marketing/20260106093101_bbbe2da73ae39d285be65d0a7036e17b.webp',
     title: '참가자 경험',
   },
   {
-    image: '/assets/marketing/20260106094035_287ee8162ac77e2c1b3ae85dae5891db.jpg',
+    image: '/assets/marketing/20260106094035_287ee8162ac77e2c1b3ae85dae5891db.webp',
     title: '브랜드 이벤트',
   },
   {
-    image: '/assets/marketing/20260106093234_fdad2fc1267991ab5ad848ba0520f1fb.jpg',
+    image: '/assets/marketing/20260106093234_fdad2fc1267991ab5ad848ba0520f1fb.webp',
     title: '무대 행사',
   },
   {
-    image: '/assets/marketing/20260105165859_22a1a3377c734cf7b25b82acd1b5427c.jpg',
+    image: '/assets/marketing/20260105165859_22a1a3377c734cf7b25b82acd1b5427c.webp',
     title: '현장 운영',
   },
   {
-    image: '/assets/marketing/20260106095026_bf2f23432086c175d5a891272f4739d2.jpg',
+    image: '/assets/marketing/20260106095026_bf2f23432086c175d5a891272f4739d2.webp',
     title: '행사 공간',
   },
   {
-    image: '/assets/marketing/20250211134854_7cb7bfcaa55a265897a1510943a43a60.jpg',
+    image: '/assets/marketing/20250211134854_7cb7bfcaa55a265897a1510943a43a60.webp',
     title: '행사 네트워크',
   },
 ];
 const operationIcons = [
-  '/assets/landing-icons/landing-documents.png',
-  '/assets/landing-icons/landing-megaphone.png',
-  '/assets/landing-icons/landing-applicant.png',
-  '/assets/landing-icons/landing-check.png',
-  '/assets/landing-icons/landing-award.png',
-  '/assets/landing-icons/landing-person.png',
+  '/assets/landing-icons/landing-documents.webp',
+  '/assets/landing-icons/landing-megaphone.webp',
+  '/assets/landing-icons/landing-applicant.webp',
+  '/assets/landing-icons/landing-check.webp',
+  '/assets/landing-icons/landing-award.webp',
+  '/assets/landing-icons/landing-person.webp',
 ];
 
 export function BizLanding() {

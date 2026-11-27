@@ -145,7 +145,7 @@ export function PeopleBanners() {
         {/* 블러·왼쪽 페이드가 Figma 렌더로 이미 반영된 이미지(1334:22794)라 별도 filter 없이 쓴다. */}
         <Layer style={{ inset: 0 }}>
           <Image
-            src="/assets/people/banner-team-bg.png"
+            src="/assets/people/banner-team-bg.webp"
             alt=""
             fill
             sizes="861px"
@@ -154,7 +154,7 @@ export function PeopleBanners() {
         </Layer>
         <Layer style={{ right: -12, top: 71.5, width: 368, height: 175 }}>
           <Image
-            src="/assets/people/banner-team-people.png"
+            src="/assets/people/banner-team-people.webp"
             alt=""
             fill
             sizes="368px"
@@ -183,7 +183,7 @@ export function PeopleBanners() {
       <ContestBanner href="/explore" aria-label="합격 확률 높은 공모전 추천">
         <Layer style={{ left: -13, top: -717.5, width: 632, height: 1122, opacity: 0.12 }}>
           <Image
-            src="/assets/people/banner-contest-bg.png"
+            src="/assets/people/banner-contest-bg.webp"
             alt=""
             fill
             sizes="632px"
@@ -192,7 +192,7 @@ export function PeopleBanners() {
         </Layer>
         <Layer style={{ left: 5, top: 14.5, width: 76, height: 68 }}>
           <Image
-            src="/assets/people/banner-contest-percent.png"
+            src="/assets/people/banner-contest-percent.webp"
             alt=""
             fill
             sizes="76px"

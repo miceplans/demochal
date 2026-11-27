@@ -20,7 +20,7 @@ export function BizPaymentCard({ label, amount, maskedNumber, cardName }: BizPay
         <BalanceLabel>{label}</BalanceLabel>
         <BalanceAmount>{amount}</BalanceAmount>
       </Balance>
-      <Chip src="/assets/card-chip.png" alt="" />
+      <Chip src="/assets/card-chip.webp" alt="" />
       {cardName ? (
         <CardMeta>
           <MetaItem>

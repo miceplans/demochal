@@ -138,7 +138,7 @@ export function ShareMenu({ title }: ShareMenuProps) {
   return (
     <>
       <Button small tone="plain" aria-haspopup="dialog" onClick={openDialog}>
-        <Icon src="/assets/icons/share-ic.png" size={14} alt="공유" />
+        <Icon src="/assets/icons/share-ic.webp" size={14} alt="공유" />
         공유
       </Button>
       {open &&

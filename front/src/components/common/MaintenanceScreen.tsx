@@ -107,8 +107,8 @@ export function MaintenanceScreen() {
             <img src="/assets/SEMO.png" alt="SEMO" width={96} height={28} />
           </HomeLink>
           <RightIcons aria-hidden>
-            <img src="/assets/icons/bell.png" alt="" width={20} height={20} />
-            <img src="/assets/icons/profile.png" alt="" width={20} height={20} />
+            <img src="/assets/icons/bell.webp" alt="" width={20} height={20} />
+            <img src="/assets/icons/profile.webp" alt="" width={20} height={20} />
           </RightIcons>
         </HeaderRow>
         <Nav>

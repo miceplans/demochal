@@ -50,7 +50,7 @@ export function NotFound({
     <Page>
       <Inner>
         <div>
-          <Image src="/assets/404.png" alt="404" width={598} height={228} />
+          <Image src="/assets/404.webp" alt="404" width={598} height={228} />
           <Message>{'앗, 여긴 아무것도 없어요. \n홈으로 돌아가실래요?'}</Message>
         </div>
         <HomeLink href={homeHref}>{buttonText}</HomeLink>

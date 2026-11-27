@@ -15,7 +15,7 @@ export const fallbackAds: Record<'hero' | 'gallery', AdCarouselItem[]> = {
     // 광고 문의 배너 — 클릭 시 biz 도메인의 광고 문의(전화·입금 계좌) 안내로 이동한다.
     // 메인 호스트의 /biz/* 경로는 proxy가 biz 오리진으로 리다이렉트한다.
     {
-      src: '/assets/ads/ad-inquiry.png',
+      src: '/assets/ads/ad-inquiry.webp',
       alt: '세모챌 홈 광고 문의 SEMO.BIZ 051-783-1170',
       href: '/biz/ad-inquiry',
     },
