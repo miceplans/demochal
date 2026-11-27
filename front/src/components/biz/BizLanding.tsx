@@ -1,6 +1,5 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type LocomotiveScroll from 'locomotive-scroll';
+import { useEffect, useRef, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 import styled from '@emotion/styled';
 import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
@@ -70,7 +69,6 @@ const Cards = styled.div({
   gap: 28,
   [mobile]: { gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 },
 });
-const StoryCard = styled.div({ willChange: 'transform' });
 const Card = styled.div({
   border: `0.5px solid ${c.gray500}`,
   borderRadius: 12,
@@ -170,6 +168,67 @@ function RevealOnScroll({ children, className }: { children: ReactNode; classNam
   );
 }
 
+function Parallax({
+  speed,
+  style,
+  children,
+  ...rest
+}: { speed: number } & ComponentPropsWithoutRef<'div'>) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    if ('ontouchstart' in window || navigator.maxTouchPoints > 0) return;
+
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let raf = 0;
+    let translate = 0;
+    let active = false;
+
+    const update = () => {
+      raf = 0;
+      const viewport = window.innerHeight;
+      const rect = node.getBoundingClientRect();
+      const top = rect.top - translate;
+      const progress = Math.min(1, Math.max(0, (viewport - top) / (viewport + rect.height)));
+      translate = (progress * 2 - 1) * viewport * -speed;
+      node.style.transform = `translate3d(0, ${translate}px, 0)`;
+    };
+    const schedule = () => {
+      if (active && raf === 0) raf = requestAnimationFrame(update);
+    };
+    const sync = () => {
+      active = !media.matches;
+      if (active) {
+        update();
+        return;
+      }
+      if (raf !== 0) cancelAnimationFrame(raf);
+      raf = 0;
+      translate = 0;
+      node.style.transform = '';
+    };
+
+    window.addEventListener('scroll', schedule, { passive: true });
+    window.addEventListener('resize', schedule);
+    media.addEventListener('change', sync);
+    sync();
+    return () => {
+      window.removeEventListener('scroll', schedule);
+      window.removeEventListener('resize', schedule);
+      media.removeEventListener('change', sync);
+      if (raf !== 0) cancelAnimationFrame(raf);
+    };
+  }, [speed]);
+
+  return (
+    <div ref={ref} style={{ willChange: 'transform', ...style }} {...rest}>
+      {children}
+    </div>
+  );
+}
+
 const IntroReveal = styled(RevealOnScroll)({
   display: 'flex',
   flexDirection: 'column',
@@ -189,7 +248,7 @@ const OpsReveal = styled(RevealOnScroll)({
   flexDirection: 'column',
   gap: 28,
 });
-const IntroBackdrop = styled.div({
+const IntroBackdrop = styled(Parallax)({
   position: 'absolute',
   inset: '-3% 0',
   pointerEvents: 'none',
@@ -250,21 +309,6 @@ export function BizLanding() {
     return () => document.documentElement.classList.remove('biz-landing-scroll');
   }, []);
 
-  useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    let instance: LocomotiveScroll | undefined;
-    let disposed = false;
-    void import('locomotive-scroll').then(({ default: Locomotive }) => {
-      if (disposed) return;
-      instance = new Locomotive({ lenisOptions: { lerp: 0.08, smoothWheel: true } });
-    });
-    return () => {
-      disposed = true;
-      instance?.destroy();
-    };
-  }, []);
-
   return (
     <>
       {BizGlobalStyles}
@@ -296,7 +340,7 @@ export function BizLanding() {
         </Hero>
       </RevealOnScroll>
       <Intro>
-        <IntroBackdrop data-scroll data-scroll-speed="-0.22" aria-hidden>
+        <IntroBackdrop speed={-0.22} aria-hidden>
           <DriftWall items={marketingWallItems} />
         </IntroBackdrop>
         <IntroReveal>
@@ -305,12 +349,12 @@ export function BizLanding() {
           </div>
           <Cards>
             {serviceCards.map((card, index) => (
-              <StoryCard data-scroll data-scroll-speed={`${0.04 + index * 0.025}`} key={card.title}>
+              <Parallax speed={0.04 + index * 0.025} key={card.title}>
                 <Card data-reveal-item>
                   <CardTitle>{card.title}</CardTitle>
                   <CardDesc>{card.desc}</CardDesc>
                 </Card>
-              </StoryCard>
+              </Parallax>
             ))}
           </Cards>
         </IntroReveal>
