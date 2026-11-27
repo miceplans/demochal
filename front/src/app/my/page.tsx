@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { MyPage as UserMyPage } from '@/components/my/MyPages';
+import { MyPage as UserMyPage } from '@/components/my/pages/MyPage';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 
 export const metadata: Metadata = {

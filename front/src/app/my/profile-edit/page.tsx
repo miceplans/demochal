@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { MyProfileEditPage } from '@/components/my/MyPages';
+import { MyProfileEditPage } from '@/components/my/pages/MyProfileEditPage';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 
 export const metadata: Metadata = {
