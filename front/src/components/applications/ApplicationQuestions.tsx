@@ -4,9 +4,9 @@ import { useRef, useState } from 'react';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { FileUploader } from '@/components/ui/FileUploader';
 import styled from '@emotion/styled';
-import { generated } from '@semochal/api-client';
 import { colors as c, shadows as s, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
+import { useFileUpload } from '@/lib/upload';
 import { fileAnswerIds, isAnswered, MAX_FILE_ANSWERS } from './ApplicationQuestions.logic';
 import type { Answers, Question } from './ApplicationQuestions.logic';
 
@@ -27,6 +27,8 @@ export function ApplicationQuestions({
   disabled: boolean;
 }) {
   const busy = useRef(false);
+  // 업로드 실패는 uploadError 문구로 직접 안내하므로 전역 토스트를 끈다.
+  const uploadFile = useFileUpload({ localErrors: true });
   const [uploadError, setUploadError] = useState('');
   const [fileNames, setFileNames] = useState<Record<string, string>>({});
   const upload = async (questionId: string, picked: File[]) => {
@@ -58,23 +60,7 @@ export function ApplicationQuestions({
     try {
       for (const file of batch) {
         const contentType = allowed.find((type) => type === file.type)!;
-        const response = await generated.requestPresignedUpload({
-          bucket: 'private',
-          contentType,
-          fileName: file.name,
-          sizeBytes: file.size,
-        });
-        if (response.status !== 201) throw new Error('Upload unavailable');
-        const { uploadUrl, fileId } = response.data;
-        // Presigned S3 PUT uses the existing private upload flow; API requests use the generated client.
-        const put = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': contentType },
-          body: file,
-        });
-        if (!put.ok) throw new Error('Upload failed');
-        const finalized = await generated.finalizeUpload(fileId);
-        if (finalized.status !== 201) throw new Error('Upload verification failed');
+        const { fileId } = await uploadFile(file, { bucket: 'private', contentType });
         uploaded.push(fileId);
         setFileNames((names) => ({ ...names, [fileId]: file.name }));
       }

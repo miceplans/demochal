@@ -38,6 +38,7 @@ import { ApiError, generated } from '@semochal/api-client';
 import { useBookmarks } from '@/features/bookmarks/useBookmarks';
 import { daysUntil, isPastDeadline } from '@/lib/date';
 import { compressToWebP, PROFILE_IMAGE_PRESET } from '@/lib/image-compression';
+import { useFileUpload } from '@/lib/upload';
 import legalCopy from '@/data/design-copy.json';
 import {
   acceptedChatLink,
@@ -60,6 +61,7 @@ import {
   type ApplicantResult,
   type ParticipatingItem,
 } from './Mypage';
+import { useAuth } from '@/features/auth/AuthProvider';
 type UploadContentType = Parameters<typeof generated.requestPresignedUpload>[0]['contentType'];
 
 function CertificateModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -68,8 +70,7 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [badge, setBadge] = useState<string | null>(null);
   const [pickedFiles, setPickedFiles] = useState<File[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const requestUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const createCertificate = generated.useCreateCertificate();
   const pickFiles = (picked: File[]) => {
     const valid: File[] = [];
@@ -108,24 +109,10 @@ function CertificateModal({ open, onClose }: { open: boolean; onClose: () => voi
     try {
       const fileIds: string[] = [];
       for (const file of pickedFiles) {
-        const presigned = await requestUpload.mutateAsync({
-          data: {
-            bucket: 'private',
-            contentType: file.type as UploadContentType,
-            fileName: file.name.replace(/[/\\]/g, '_'),
-            sizeBytes: file.size,
-          },
+        const { fileId } = await uploadFile(file, {
+          bucket: 'private',
+          contentType: file.type as UploadContentType,
         });
-        const { uploadUrl, fileId } = presigned.data;
-        if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
-        // presigned URL은 우리 API가 아니라 S3로 직접 올리는 주소라 api-client를 거치지 않는다.
-        const uploaded = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: { 'Content-Type': file.type },
-          body: file,
-        });
-        if (!uploaded.ok) throw new Error('upload failed');
-        await finalizeUpload.mutateAsync({ id: fileId });
         fileIds.push(fileId);
       }
       await createCertificate.mutateAsync({
@@ -520,8 +507,7 @@ function ProfileEditor() {
   const [bioEditing, setBioEditing] = useState(false);
   const [bioSaving, setBioSaving] = useState(false);
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const { user: meInfo } = useAuth();
   const mySkills = meInfo?.stacks ?? [];
   const myLinks = meInfo?.externalLinks ?? [];
   const certificates = useCertificateLabels();
@@ -534,7 +520,7 @@ function ProfileEditor() {
   });
   // 한 줄 소개는 더블클릭으로 해당 자리에서 바로 고친다. 서버 프로필을 받기 전에는 시작하지 않는다.
   const startBioEdit = () => {
-    if (me.data?.status !== 200) return;
+    if (!meInfo) return;
     setBioEditing(true);
   };
   const saveBio = async (bio: string) => {
@@ -570,7 +556,7 @@ function ProfileEditor() {
             <AddButton
               aria-label={meInfo?.bio ? '한 줄 소개 수정하기' : '한 줄 소개 추가하기'}
               // 서버 프로필을 받기 전에 열면 빈 값으로 덮어쓸 수 있어 막는다.
-              disabled={me.data?.status !== 200}
+              disabled={!meInfo}
               onClick={startBioEdit}
             >
               <Icon name="imgAddSlotIc" size={18} />
@@ -596,7 +582,7 @@ function ProfileEditor() {
           <AddButton
             aria-label="기술 스택 추가하기"
             // 서버 기술 스택을 받기 전에 열면 저장 시 기존 값을 덮어쓸 수 있어 막는다.
-            disabled={me.data?.status !== 200}
+            disabled={!meInfo}
             onClick={() => setSkillOpen(true)}
           >
             <Icon name="imgAddSlotIc" size={18} />
@@ -605,7 +591,7 @@ function ProfileEditor() {
       />
       <Stack gap={12}>
         <Heading>링크</Heading>
-        {me.data?.status === 200 ? (
+        {meInfo ? (
           <InlineLinks
             initial={myLinks.map((link) => ({
               label: link.label ?? '',
@@ -644,8 +630,7 @@ export function MyProfileEditPage() {
 export function MyPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const meInfo = me.data?.status === 200 ? me.data.data : undefined;
+  const { user: meInfo } = useAuth();
   // 이름이 없으면 이메일 앞부분을, 그마저 없으면 표시명을 쓴다.
   const displayName =
     meInfo?.name?.trim() || (meInfo?.email ? meInfo.email.split('@')[0] : '') || '사용자';
@@ -686,8 +671,7 @@ export function MyPage() {
       },
     },
   });
-  const requestUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   const [avatarUploading, setAvatarUploading] = useState(false);
   // 프로필 이미지는 다른 사용자에게 보이므로 public 버킷에 올린다(presign → S3 PUT → finalize → 프로필 저장).
   const pickAvatar = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -709,23 +693,10 @@ export function MyPage() {
     try {
       const compressed = await compressToWebP(picked, PROFILE_IMAGE_PRESET);
       previewUrl = compressed.previewUrl;
-      const presigned = await requestUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          contentType: 'image/webp',
-          fileName: compressed.file.name.replace(/[/\\]/g, '_'),
-          sizeBytes: compressed.file.size,
-        },
+      const { fileId } = await uploadFile(compressed.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      const { uploadUrl, fileId } = presigned.data;
-      if (!uploadUrl || !fileId) throw new Error('presign response is missing fields');
-      const uploaded = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'image/webp' },
-        body: compressed.file,
-      });
-      if (!uploaded.ok) throw new Error('upload failed');
-      await finalizeUpload.mutateAsync({ id: fileId });
       await updateProfile.mutateAsync({ data: { profileImageFileId: fileId } });
       toast.success('프로필 이미지를 바꿨어요');
     } catch (error) {
@@ -1009,8 +980,8 @@ export function InterestsPage() {
 const notificationSettingKeys = notificationSettings.flatMap((g) => g.rows.map(([key]) => key));
 export function NotificationSettingsPage() {
   const queryClient = useQueryClient();
-  const me = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const saved = me.data?.status === 200 ? me.data.data.notificationSettings : undefined;
+  const { user: me } = useAuth();
+  const saved = me?.notificationSettings;
   // 저장된 적 없는 키는 기본 on. 서버(users.notification_settings)가 유일한 기준값이다.
   const values: Record<string, boolean> = Object.fromEntries(
     notificationSettingKeys.map((key) => [key, saved?.[key] ?? true]),
@@ -1023,7 +994,7 @@ export function NotificationSettingsPage() {
   });
   const toggle = (key: string) => {
     // 서버 값을 받기 전이나 저장 중에는 이전 값 기준으로 덮어쓰지 않게 막는다.
-    if (me.data?.status !== 200 || save.isPending) return;
+    if (!me || save.isPending) return;
     save.mutate({
       data: Object.fromEntries(
         notificationSettingKeys.map((k) => [k, { enabled: k === key ? !values[k] : values[k] }]),

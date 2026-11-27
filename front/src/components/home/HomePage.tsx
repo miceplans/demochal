@@ -21,6 +21,7 @@ import { mobile, colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { generated } from '@semochal/api-client';
 import { ScrollRail } from '@/components/ui/ScrollRail';
+import { useAuth } from '@/features/auth/AuthProvider';
 
 // 홈 '마감임박' 섹션 노출 기준(일).
 const DEADLINE_SOON_DAYS = 7;
@@ -116,15 +117,16 @@ export function HomePage() {
     parsedAdPreviewPrice !== null && Number.isFinite(parsedAdPreviewPrice)
       ? parsedAdPreviewPrice
       : null;
-  const { data: auth } = generated.useGetMyAuthInfo({ query: { retry: false } });
-  const userName = auth?.status === 200 ? auth.data.name : undefined;
+  const { user: authUser } = useAuth();
+  const isLoggedIn = authUser !== undefined;
+  const userName = authUser?.name;
   const { data: teamList } = generated.useListTeams();
   // Figma sec3grid: 팀 카드 5장(오른쪽 끝은 잘려 보이며 레일로 스크롤).
   const liveTeams = (teamList?.data ?? []).slice(0, 5).map(toTeamCard);
   // 추천은 인증 기반 엔드포인트라 비로그인이면 요청하지 않는다.
   const { data: recommended } = generated.useListRecommendedChallenges(
     { limit: 8 },
-    { query: { enabled: auth?.status === 200 } },
+    { query: { enabled: isLoggedIn } },
   );
   const liveRecommendationContests = (recommended?.data.items ?? []).map((challenge) =>
     challengeToContest(challenge, now),
@@ -137,7 +139,7 @@ export function HomePage() {
     includeClosed: false,
     limit: 4,
   });
-  const waitingForRecommendations = auth?.status === 200 && recommended === undefined;
+  const waitingForRecommendations = isLoggedIn && recommended === undefined;
   const recommendationFallbackContests = waitingForRecommendations
     ? []
     : (recommendationFallbackList?.data.items ?? []).map((challenge) =>

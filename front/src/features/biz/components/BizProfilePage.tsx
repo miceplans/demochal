@@ -1,26 +1,25 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { LoadingState } from '@/components/common/LoadingState';
 import styled from '@emotion/styled';
 import { ApiError, generated } from '@semochal/api-client';
-import { adApi } from '@/lib/ad-api';
 import { Modal } from '@/components/common/Feedback';
-import { useToast } from '@/components/common/Toast';
+import { LOCAL_ERROR_TOAST_META, useToast } from '@/components/common/Toast';
 import { BizOrgProfile } from '@/components/biz/BizOrgProfile';
 import { BizContent, PrimaryButton, useBizHref } from '@/components/biz/BizShell';
 import { colors as c } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { apiErrorMessage } from '@/lib/api-error';
+import { useAuth } from '@/features/auth/AuthProvider';
 // import { MfaSettingsCard } from '@/features/auth/components/MfaSettingsCard';
 
-async function resolveFileUrl(fileId?: string | null): Promise<string | null> {
-  if (!fileId) return null;
-  try {
-    return (await adApi.files.get(fileId)).url ?? null;
-  } catch {
-    return null;
-  }
+/** 파일 id → 표시용 URL. 이미지가 없거나 조회에 실패하면 null(기본 이미지)로 둔다. */
+function useFileUrl(fileId?: string | null): string | null {
+  const fileQuery = generated.useGetFile(fileId ?? '', {
+    query: { enabled: Boolean(fileId), retry: false, meta: LOCAL_ERROR_TOAST_META },
+  });
+  return fileId && fileQuery.data?.status === 200 ? (fileQuery.data.data.url ?? null) : null;
 }
 
 export function BizProfilePage() {
@@ -29,21 +28,14 @@ export function BizProfilePage() {
   const changePassword = generated.useChangePassword();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
-  const authQuery = generated.useGetMyAuthInfo({ query: { retry: false } });
+  const { user: authUser } = useAuth();
   const businessQuery = generated.useFindMyBusiness();
   const business = businessQuery.data?.status === 200 ? businessQuery.data.data : null;
-  const [images, setImages] = useState<{ banner: string | null; logo: string | null }>({
-    banner: null,
-    logo: null,
-  });
-  useEffect(() => {
-    if (!business) return;
-    void Promise.all([
-      resolveFileUrl(business.bannerImageFileId),
-      resolveFileUrl(business.logoImageFileId),
-    ]).then(([banner, logo]) => setImages({ banner, logo }));
-  }, [business]);
-  const user = authQuery.data?.status === 200 ? authQuery.data.data : null;
+  const images = {
+    banner: useFileUrl(business?.bannerImageFileId),
+    logo: useFileUrl(business?.logoImageFileId),
+  };
+  const user = authUser ?? null;
 
   const closePasswordDialog = () => {
     if (changePassword.isPending) return;

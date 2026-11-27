@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { vi, describe, expect, it, beforeEach, afterEach } from 'vitest';
 import type { ReactNode } from 'react';
@@ -32,8 +32,10 @@ const mocks = vi.hoisted(() => {
   return m;
 });
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
+  usePathname: () => '/onboarding/activity',
 }));
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -55,24 +57,27 @@ vi.mock('@semochal/api-client', () => ({
   },
 }));
 
-function renderOnboarding(step: string) {
-  return render(
+// 설문 화면은 진입 시 /auth/me를 다시 조회(refetch)한 뒤에만 그려지므로, 그 조회가 끝날 때까지 기다린다.
+async function renderOnboarding(step: string) {
+  const rendered = render(
     <ThemeProvider theme={theme}>
       <OnboardingPage step={step} />
     </ThemeProvider>,
   );
+  await act(async () => {});
+  return rendered;
 }
 
 describe('OnboardingPage', () => {
   afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
-    useUserStore.setState({ survey: {}, hasCompletedOnboarding: false });
+    useUserStore.setState({ survey: {} });
   });
 
   it('toggles an interest chip and enables the next button only when selected', async () => {
     const user = userEvent.setup();
-    renderOnboarding('interests');
+    await renderOnboarding('interests');
 
     const chip = screen.getByRole('button', { name: 'IT/SW' });
     const next = screen.getByRole('button', { name: '다음' });
@@ -90,7 +95,7 @@ describe('OnboardingPage', () => {
 
   it('toggles a purpose check option and enables the next button only when selected', async () => {
     const user = userEvent.setup();
-    renderOnboarding('purpose');
+    await renderOnboarding('purpose');
 
     const option = screen.getByRole('button', { name: '상금이 목적이예요' });
     const next = screen.getByRole('button', { name: '다음' });
@@ -104,7 +109,7 @@ describe('OnboardingPage', () => {
 
   it('selects an activity from the dropdown and moves to the next step', async () => {
     const user = userEvent.setup();
-    renderOnboarding('activity');
+    await renderOnboarding('activity');
 
     const next = screen.getByRole('button', { name: '다음' });
     expect((next as HTMLButtonElement).disabled).toBe(true);
@@ -126,7 +131,7 @@ describe('OnboardingPage', () => {
       },
     });
     const user = userEvent.setup();
-    renderOnboarding('challenge');
+    await renderOnboarding('challenge');
 
     const finish = screen.getByRole('button', { name: '완료' });
     expect((finish as HTMLButtonElement).disabled).toBe(false);
@@ -151,8 +156,8 @@ describe('OnboardingPage', () => {
     ['challenge', 75, 100, '4'],
   ])(
     'renders the %s step progress bar filled to %s%% with a fill animation from %s%%',
-    (step, fromWidth, toWidth, valueNow) => {
-      renderOnboarding(step);
+    async (step, fromWidth, toWidth, valueNow) => {
+      await renderOnboarding(step);
 
       const progress = screen.getByRole('progressbar');
       expect(progress.getAttribute('aria-valuenow')).toBe(valueNow);
@@ -171,10 +176,10 @@ describe('OnboardingPage', () => {
     },
   );
 
-  it('keeps per-variant keyframes independent when steps are revisited in one session', () => {
-    const first = renderOnboarding('interests');
+  it('keeps per-variant keyframes independent when steps are revisited in one session', async () => {
+    const first = await renderOnboarding('interests');
     first.unmount();
-    renderOnboarding('activity');
+    await renderOnboarding('activity');
 
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')
@@ -184,8 +189,8 @@ describe('OnboardingPage', () => {
     expect(styleText).toContain('semo-onboarding-bar-fill-0-25');
   });
 
-  it('applies a horizontal slide-in animation to the step content like the home carousel', () => {
-    renderOnboarding('interests');
+  it('applies a horizontal slide-in animation to the step content like the home carousel', async () => {
+    await renderOnboarding('interests');
 
     const styleText = Array.from(document.querySelectorAll('style'))
       .map((s) => s.textContent ?? '')

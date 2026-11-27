@@ -27,12 +27,12 @@ import { useToast } from '@/components/common/Toast';
 import { adDays, adPaymentAmount, extractErrorMessage, formatSlash } from './BizAdsPage.logic';
 import type { Ad, AdsScreen, SelectedAd } from './BizAdsPage.logic';
 import { requestBizPayment } from '@/lib/payments';
+import { useFileUpload } from '@/lib/upload';
 import {
   isBizPaymentEnabled,
   PAYMENTS_DISABLED_DESCRIPTION,
   PAYMENTS_DISABLED_TITLE,
 } from '@/lib/payments-gate';
-import { adApi } from '@/lib/ad-api';
 import {
   clearAdPaymentDraft,
   readAdPaymentDraft,
@@ -51,8 +51,7 @@ export function BizAdsPage() {
   const updateAdMutation = generated.useUpdateAd();
   const createAdMutation = generated.useCreateAd();
   const updateAdContentMutation = generated.useUpdateAdContent();
-  const requestPresignedUpload = generated.useRequestPresignedUpload();
-  const finalizeUpload = generated.useFinalizeUpload();
+  const uploadFile = useFileUpload();
   // 실시간 갱신은 UserShell의 알림 SSE 스트림이 목록 쿼리를 invalidate하므로 폴링하지 않는다.
   const notificationsQuery = generated.useListMyNotifications();
   const priceNotices = (notificationsQuery.data?.data ?? []).filter(
@@ -255,22 +254,11 @@ export function BizAdsPage() {
     let image: CompressedAdImage | undefined;
     try {
       image = await compressToWebP(file, CROPPED_AD_IMAGE_PRESETS[placement]);
-      const presigned = await requestPresignedUpload.mutateAsync({
-        data: {
-          bucket: 'public',
-          // compressToWebP는 항상 image/webp로 재인코딩한다.
-          contentType: 'image/webp',
-          fileName: image.file.name,
-          sizeBytes: image.file.size,
-        },
+      // compressToWebP는 항상 image/webp로 재인코딩한다.
+      const { fileId } = await uploadFile(image.file, {
+        bucket: 'public',
+        contentType: 'image/webp',
       });
-      const uploadRes = await fetch(presigned.data.uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': image.file.type },
-        body: image.file,
-      });
-      if (!uploadRes.ok) throw new Error('이미지 업로드에 실패했습니다.');
-      await finalizeUpload.mutateAsync({ id: presigned.data.fileId });
 
       if (generation !== draftGeneration.current) {
         URL.revokeObjectURL(image.previewUrl);
@@ -284,7 +272,7 @@ export function BizAdsPage() {
       }
       previewUrls.current.add(image.previewUrl);
       setUploadedImages((current) => ({ ...current, [placement]: image!.previewUrl }));
-      setUploadedFileIds((current) => ({ ...current, [placement]: presigned.data.fileId }));
+      setUploadedFileIds((current) => ({ ...current, [placement]: fileId }));
       setUploadPlacement(null);
       toast.success(
         '업로드 되었습니다',
@@ -393,7 +381,7 @@ export function BizAdsPage() {
           throw new Error('결제창을 열 수 없습니다. 결제 클라이언트 키 설정을 확인해 주세요.');
       } catch (error) {
         // SDK 초기화나 결제창 진입이 실패하면 이 주문이 날짜를 계속 점유하지 않게 한다.
-        await adApi.orders.cancel(created.data.order.id).catch(() => {});
+        await generated.cancelOrder(created.data.order.id).catch(() => {});
         throw error;
       }
       // 결제창을 연 시점에는 아직 결제가 확정되지 않았다. 완료/실패 안내는 토스가 리다이렉트하는

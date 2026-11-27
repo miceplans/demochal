@@ -3,10 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { LoginPage } from './AuthPages';
-import { useUserStore } from '@/stores/useUserStore';
 
 const mocks = vi.hoisted(() => ({ assign: vi.fn() }));
 
+vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,
   Logo: () => <div />,
@@ -31,7 +31,6 @@ describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubGlobal('location', { assign: mocks.assign });
-    useUserStore.setState({ hasCompletedOnboarding: false });
   });
 
   afterEach(() => {
