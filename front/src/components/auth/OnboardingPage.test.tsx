@@ -35,6 +35,7 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/features/auth/AuthProvider', () => import('@/test/auth-mock'));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: mocks.push, replace: mocks.replace }),
+  usePathname: () => '/onboarding/activity',
 }));
 vi.mock('@/components/common/UserShell', () => ({
   UserShell: ({ children }: { children: ReactNode }) => <div>{children}</div>,

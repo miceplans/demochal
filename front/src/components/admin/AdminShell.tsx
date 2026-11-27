@@ -11,6 +11,7 @@ import { textStyle } from '@/styles/typography';
 import { adminMenu } from '@/data/admin-design';
 import { routeOf } from './AdminShell.logic';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useLoginRedirect } from '@/components/auth/RequireAuth';
 import { useLogout } from '@/features/auth/session';
 
 export { routeOf } from './AdminShell.logic';
@@ -102,15 +103,16 @@ function AdminSidebar() {
 
 /** 콘솔은 admin 세션에서만 연다: 미인증 → 로그인으로, 비관리자 → 안내 + 로그아웃. */
 function AdminAccessGate({ children }: { children: ReactNode }) {
-  const router = useRouter();
   const hrefOf = useAdminHref();
   const logout = useAdminLogout();
   const { status, user: me, refetch } = useAuth();
   const unauthenticated = status === 'unauthenticated';
+  // 관리자 로그인은 항상 콘솔 홈으로 들어가므로 next를 붙이지 않는다.
+  const redirectToLogin = useLoginRedirect({ loginPath: hrefOf('/login'), withNext: false });
 
   useEffect(() => {
-    if (unauthenticated) router.replace(hrefOf('/login'));
-  }, [unauthenticated, router, hrefOf]);
+    if (unauthenticated) redirectToLogin('guard');
+  }, [unauthenticated, redirectToLogin]);
 
   if (status === 'loading' || unauthenticated) return null;
   if (!me) {

@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useParams, usePathname, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import styled from '@emotion/styled';
@@ -35,6 +35,7 @@ import { canSubmitTeamJoin, joinRoleForTeam } from './team-join';
 import { DEFAULT_PROFILE_IMAGE, formatRegion } from './TeamDetailPage.logic';
 import type { MemberSummary } from './TeamDetailPage.logic';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { useLoginRedirect } from '@/components/auth/RequireAuth';
 
 // 팀 지원서 모달 초안 — 실수로 모달을 닫거나 새로고침할 때 작성 중인 내용을 복원하기 위해 저장한다.
 type ApplyDraft = { role: string; answers: Answers };
@@ -64,8 +65,6 @@ function ApplyDraftSaver({ draftKey, value }: { draftKey: string; value: ApplyDr
 
 export function TeamDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const pathname = usePathname();
   const toast = useToast();
   const queryClient = useQueryClient();
   const { bookmarks, toggleBookmark, isToggling } = useBookmarks();
@@ -85,7 +84,8 @@ export function TeamDetailPage() {
   const bookmarkId = challenge?.id;
   const saved = bookmarks.some((item) => item.id === bookmarkId);
 
-  const goLogin = () => router.push(`/login?next=${encodeURIComponent(pathname)}`);
+  const redirectToLogin = useLoginRedirect();
+  const goLogin = () => redirectToLogin('action');
   // 팀 지원 시 맡을 역할. 팀 조회가 끝난 뒤 openRoles로 선택지를 만들고, 선택값이 유효하지 않으면 첫 슬롯으로 되돌린다.
   const [pickedRole, setPickedRole] = useState('');
   // 표에서 고른 팀원 — 프로필(프사) 모달에 표시한다.

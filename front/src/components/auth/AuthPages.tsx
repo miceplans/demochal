@@ -10,6 +10,7 @@ import { colors as c, mobile } from '@/styles/design';
 import { textStyle } from '@/styles/typography';
 import { useUserStore } from '@/stores/useUserStore';
 import { invalidateAuth, needsOnboarding, useAuth } from '@/features/auth/AuthProvider';
+import { useLoginRedirect } from '@/components/auth/RequireAuth';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { celebrateBadgeAcquisition } from '@/lib/confetti';
@@ -211,6 +212,8 @@ export function OnboardingPage({ step }: { step: string }) {
   // 설문은 첫 가입/로그인 사용자만 진행한다. 서버의 onboardingSurvey(null = 미완료)가 유일한 기준이다.
   // 다른 탭에서 계정이 바뀌었을 수 있으므로 캐시된 /auth/me를 믿지 않고 진입할 때 새로 조회한 결과로만 판단한다.
   const auth = useAuth();
+  // 설문 경로는 로그인 후 돌아올 곳(next)으로 쓰지 않는다(sanitizeNextPath가 막는 경로).
+  const redirectToLogin = useLoginRedirect({ withNext: false });
   const { refetch: refetchAuth } = auth;
   const [refetchedOnMount, setRefetchedOnMount] = useState(false);
   useEffect(() => {
@@ -247,9 +250,9 @@ export function OnboardingPage({ step }: { step: string }) {
 
   useEffect(() => {
     if (!authChecked) return;
-    if (unauthenticated) router.replace('/login');
+    if (unauthenticated) redirectToLogin('guard');
     else if (alreadySurveyed) router.replace('/');
-  }, [authChecked, unauthenticated, alreadySurveyed, router]);
+  }, [authChecked, unauthenticated, alreadySurveyed, router, redirectToLogin]);
   const titles = [
     '지금 어떤 활동을 하고 계신가요?',
     '어떤 분야에 관심이 있으신가요?',

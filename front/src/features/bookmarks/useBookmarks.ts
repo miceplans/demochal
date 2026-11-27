@@ -1,11 +1,10 @@
 'use client';
 
-import { usePathname, useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiError, generated } from '@semochal/api-client';
 import { useToast } from '@/components/common/Toast';
 import { useAuth } from '@/features/auth/AuthProvider';
-import { loginHref } from '@/components/auth/RequireAuth';
+import { useLoginRedirect } from '@/components/auth/RequireAuth';
 
 type BookmarkSort = 'deadline' | 'latest' | 'popular';
 
@@ -16,11 +15,10 @@ export function isBookmarkableId(id: string | undefined): id is string {
 }
 
 export function useBookmarks(sort?: BookmarkSort) {
-  const router = useRouter();
-  const pathname = usePathname();
   const toast = useToast();
   const queryClient = useQueryClient();
   const auth = useAuth();
+  const redirectToLogin = useLoginRedirect();
   const bookmarks = generated.useListMyBookmarks(sort ? { sort } : undefined, {
     query: { enabled: auth.status === 'authenticated' },
   });
@@ -40,7 +38,7 @@ export function useBookmarks(sort?: BookmarkSort) {
       onError: (error, _variables, context) => {
         if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
         if (error instanceof ApiError && error.status === 401) {
-          router.push(loginHref(pathname));
+          redirectToLogin('action');
           return;
         }
         toast.error('북마크를 저장하지 못했어요', '잠시 후 다시 시도해주세요');
@@ -59,7 +57,7 @@ export function useBookmarks(sort?: BookmarkSort) {
     if (auth.status !== 'authenticated') {
       // 세션 없음일 때만 비로그인으로 본다. 인증 조회 자체가 실패한 경우엔 로그인으로 보내지 않는다.
       if (auth.status === 'unauthenticated') {
-        router.push(loginHref(pathname));
+        redirectToLogin('action');
       } else {
         toast.error('로그인 상태를 확인하지 못했어요', '잠시 후 다시 시도해주세요');
       }

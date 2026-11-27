@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@semochal/api-client';
 import { AuthProvider, needsOnboarding, useAuth } from './AuthProvider';
 import { useLogout } from './session';
-import { RequireAuth } from '@/components/auth/RequireAuth';
+import { RequireAuth, useLoginRedirect } from '@/components/auth/RequireAuth';
 import { readFormDraft, writeFormDraft } from '@/lib/form-draft';
 import { useUserStore } from '@/stores/useUserStore';
 
@@ -13,11 +13,12 @@ const mocks = vi.hoisted(() => ({
   getMyAuthInfo: vi.fn(),
   logout: vi.fn(),
   replace: vi.fn(),
+  push: vi.fn(),
 }));
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/my/bookmarks',
-  useRouter: () => ({ replace: mocks.replace }),
+  useRouter: () => ({ replace: mocks.replace, push: mocks.push }),
 }));
 vi.mock('@semochal/api-client', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@semochal/api-client')>();
@@ -186,5 +187,23 @@ describe('useLogout', () => {
     await act(() => result.current());
 
     expect(useUserStore.getState().survey).toEqual({});
+  });
+});
+
+describe('useLoginRedirect (공통 로그인 리다이렉트 규칙)', () => {
+  it('guard는 replace, action은 push로 현재 경로를 next에 붙인다', () => {
+    const { result } = renderHook(() => useLoginRedirect());
+    result.current('guard');
+    expect(mocks.replace).toHaveBeenCalledWith('/login?next=%2Fmy%2Fbookmarks');
+    result.current('action');
+    expect(mocks.push).toHaveBeenCalledWith('/login?next=%2Fmy%2Fbookmarks');
+  });
+
+  it('콘솔은 자기 로그인 화면으로, next 없이 보낼 수 있다', () => {
+    const { result } = renderHook(() =>
+      useLoginRedirect({ loginPath: '/admin/login', withNext: false }),
+    );
+    result.current('guard');
+    expect(mocks.replace).toHaveBeenCalledWith('/admin/login');
   });
 });
