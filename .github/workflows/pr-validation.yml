@@ -91,6 +91,8 @@ jobs:
       - run: node --test scripts/git-account-switch.test.mjs
       # Per-worktree local DB naming/port helpers.
       - run: node --test scripts/dev-local.test.mjs
+      # 공모전 자동 업로드 CLI 입력 검증/정규화 테스트(네트워크 미사용).
+      - run: node --test scripts/upload-contest.test.mjs
       # Playwright/GLM contract tests do not launch a browser or call the network.
       - run: node --test qa/*.test.mjs
 
