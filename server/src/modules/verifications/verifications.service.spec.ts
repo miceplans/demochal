@@ -84,7 +84,10 @@ describe('VerificationsService.submit', () => {
     const insertedVerification = { id: 'verif-1', status: 'verified' };
     const { db, insert, values, set } = createDbStub(insertedVerification);
     const notifications = { create: vi.fn().mockResolvedValue(undefined) };
-    const filesService = { assertOwnedReadyPrivate: vi.fn().mockResolvedValue(undefined) };
+    const filesService = {
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({ id: 'file-1', key: 'pending/doc.pdf' }),
+      tagBusinessDocument: vi.fn().mockResolvedValue(undefined),
+    };
     const service = new VerificationsService(db, filesService as any, notifications as any);
 
     const result = await service.submit(
@@ -93,6 +96,11 @@ describe('VerificationsService.submit', () => {
     );
 
     expect(filesService.assertOwnedReadyPrivate).toHaveBeenCalledWith('file-1', 'user-1');
+    // Tagged before the row is written so every stored document is under the S3 lifecycle cap.
+    expect(filesService.tagBusinessDocument).toHaveBeenCalledWith('pending/doc.pdf');
+    expect(filesService.tagBusinessDocument.mock.invocationCallOrder[0]).toBeLessThan(
+      insert.mock.invocationCallOrder[0]!,
+    );
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(insert).toHaveBeenCalled();
     expect(values).toHaveBeenCalledWith(expect.objectContaining({ status: 'verified' }));
@@ -115,7 +123,10 @@ describe('VerificationsService.submit', () => {
       'rejected',
     );
     const notifications = { create: vi.fn() };
-    const filesService = { assertOwnedReadyPrivate: vi.fn().mockResolvedValue(undefined) };
+    const filesService = {
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({ id: 'file-1', key: 'pending/doc.pdf' }),
+      tagBusinessDocument: vi.fn().mockResolvedValue(undefined),
+    };
     const service = new VerificationsService(db, filesService as any, notifications as any);
 
     const result = await service.submit(
@@ -147,6 +158,22 @@ describe('VerificationsService.submit', () => {
       service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
     ).rejects.toThrow('not owned');
 
+    expect(insert).not.toHaveBeenCalled();
+    expect(notifications.create).not.toHaveBeenCalled();
+  });
+
+  it('does not insert a verification row when tagging the document fails', async () => {
+    const { db, insert } = createDbStub({ id: 'verif-1', status: 'verified' });
+    const notifications = { create: vi.fn() };
+    const filesService = {
+      assertOwnedReadyPrivate: vi.fn().mockResolvedValue({ id: 'file-1', key: 'pending/doc.pdf' }),
+      tagBusinessDocument: vi.fn().mockRejectedValue(new Error('AccessDenied')),
+    };
+    const service = new VerificationsService(db, filesService as any, notifications as any);
+
+    await expect(
+      service.submit({ businessId: 'biz-1', documentFileId: 'file-1' }, 'user-1'),
+    ).rejects.toThrow('AccessDenied');
     expect(insert).not.toHaveBeenCalled();
     expect(notifications.create).not.toHaveBeenCalled();
   });

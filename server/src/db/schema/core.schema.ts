@@ -491,6 +491,7 @@ export const files = pgTable('files', {
   requestedBucket: varchar('requested_bucket', { length: 20 }).notNull(),
   key: text('key').notNull(),
   contentType: varchar('content_type', { length: 100 }).notNull(),
+  // pending | ready | rejected | deleted(보관 기한 경과로 객체 삭제됨)
   uploadStatus: varchar('upload_status', { length: 20 }).notNull().default('pending'),
   // 공고 포스터처럼 원본(JPG/PNG/WebP)을 변환 없이 공개 버킷에 올리는 파일. 그 외 공개 이미지는 WebP로 강제한다.
   preserveOriginal: boolean('preserve_original').notNull().default(false),

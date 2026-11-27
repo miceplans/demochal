@@ -81,6 +81,42 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "private" {
   }
 }
 
+# Personal-data retention backstop for the private bucket. Business documents
+# (사업자등록증) share the pending/ key prefix with other private files, so the API
+# tags them at submit (data-class=business-document, FilesService.tagBusinessDocument)
+# and this rule expires them by tag. The worker's retention scan
+# (VerificationDocumentRetentionService) deletes them earlier — retention days after
+# the verification is decided — and also covers documents stored before tagging.
+# The bucket is unversioned, so expiration removes the object permanently.
+resource "aws_s3_bucket_lifecycle_configuration" "private" {
+  bucket = aws_s3_bucket.private.id
+  rule {
+    id     = "expire-business-documents"
+    status = "Enabled"
+    filter {
+      tag {
+        key   = "data-class"
+        value = "business-document"
+      }
+    }
+    expiration { days = var.business_document_max_retention_days }
+  }
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+    filter {}
+    abort_incomplete_multipart_upload { days_after_initiation = 1 }
+  }
+
+  lifecycle {
+    # Cross-variable check here (not in a variable validation) to keep Terraform >= 1.6.
+    precondition {
+      condition     = var.business_document_max_retention_days >= var.business_document_retention_days
+      error_message = "business_document_max_retention_days must be >= business_document_retention_days (the worker refuses to boot otherwise)."
+    }
+  }
+}
+
 # requestUpload() returns a presigned PUT for this bucket that the browser calls
 # directly from frontend_origin (comma-separated list, same as the API's FRONTEND_ORIGIN); without CORS the preflight for that cross-origin
 # PUT has no Access-Control-Allow-Origin and the upload never happens.

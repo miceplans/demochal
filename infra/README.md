@@ -143,9 +143,17 @@ TLS 정책은 URL이 아니라 애플리케이션 코드와 이미지에 있습�
 
 Terraform은 `postgres:16-bookworm` 기반의 on-demand `db_admin` task definition만 관리한다. custom db-admin Dockerfile과 이미지는 이 저장소에 포함하지 않는다. 따라서 이 task를 TLS 검증이 필요한 운영 접근 경로로 사용하지 않으며, 그런 접근이 필요하면 CA bundle과 `PGSSLMODE=verify-full`을 포함하는 별도 이미지·검증 절차를 별도 작업으로 추가한다.
 
-## 별도 배포 대상 (server/ 코드베이스에 포함하지 않음)
+## 사업자 서류 보관 기한
 
-- `lambda/verification-cleanup/` — 사업자등록증 만료 삭제 배치 (EventBridge 트리거, Lambda)
+사업자등록증 등 인증 서류는 별도 Lambda 없이 아래 두 장치로 보관 기한을 지킨다.
+
+- **워커 보관 기한 스캔**(`VerificationDocumentRetentionService`, 1시간 주기): 인증이 결정(verified/rejected)된 지 `business_document_retention_days`(기본 30일)가 지났거나, 결정과 무관하게 제출된 지 `business_document_max_retention_days`(기본 90일)가 지난 서류를 private 버킷에서 지운다. files 행은 `deleted`, `verifications.ocr_result`는 null이 된다. 태그 도입 전에 저장된 서류도 이 스캔이 지운다.
+- **private 버킷 S3 수명주기 규칙**(`aws_s3_bucket_lifecycle_configuration.private`): API가 제출 시 서류 객체에 `data-class=business-document` 태그를 달고, 이 태그가 달린 객체는 업로드 후 `business_document_max_retention_days`가 지나면 S3가 만료시킨다. 워커가 멈춰도 상한은 지켜진다. 미완료 멀티파트 업로드는 1일 뒤 정리한다.
+- 인증 제출 없이 버려진 업로드는 사업자 서류인지 구분할 수 없어 대상이 아니다(코드 TODO).
+
+## 워커 동작
+
+워커는 큐마다(emails/inbound-emails) 독립된 롱폴링 루프를 돌린다. outbox 릴레이(2초 주기)와 주기 스캔(챌린지 알림·환불 재시도·KCP 승인 복구·서류 보관 기한)도 각자 별도 루프에서 실행해, 빈 큐의 20초 대기가 다른 큐나 스캔을 늦추지 않는다. 처리 중인 메시지는 30초마다 `ChangeMessageVisibility`로 가시성 타임아웃(120초)을 연장해 배치 처리가 길어져도 중복 처리되지 않게 한다. 핸들러가 멈췄을 때 메시지가 영원히 묶이지 않도록 연장은 최대 15분까지만 한다.
 
 ## 파일 업로드 보안 필수 설정
 

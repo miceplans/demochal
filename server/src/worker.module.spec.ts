@@ -5,6 +5,7 @@ import { WorkerModule } from './worker.module.js';
 import { ChallengeNotificationScanService } from './modules/notifications/challenge-notification-scan.service.js';
 import { NotificationEmailProcessorService } from './modules/notifications/email/notification-email.processor.js';
 import { SupportEmailProcessorService } from './modules/notifications/email/support-email.processor.js';
+import { VerificationDocumentRetentionService } from './modules/verifications/verification-document-retention.service.js';
 
 describe('WorkerModule', () => {
   // Regression: AuthModule (transitively imported) needs ThrottlerModule options,
@@ -18,6 +19,9 @@ describe('WorkerModule', () => {
     expect(app.get(SupportEmailProcessorService)).toBeInstanceOf(SupportEmailProcessorService);
     expect(app.get(ChallengeNotificationScanService)).toBeInstanceOf(
       ChallengeNotificationScanService,
+    );
+    expect(app.get(VerificationDocumentRetentionService)).toBeInstanceOf(
+      VerificationDocumentRetentionService,
     );
     await app.close();
   });
